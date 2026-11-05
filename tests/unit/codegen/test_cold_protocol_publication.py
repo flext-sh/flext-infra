@@ -10,7 +10,7 @@ import os
 import sys
 from pathlib import Path
 
-from flext_infra._protocols_bootstrap import plan_protocol_facades
+from flext_infra.protocols_bootstrap import plan_protocol_facades
 from tests import p, tm, u
 
 
@@ -49,7 +49,7 @@ class TestsColdProtocolPublication:
     @staticmethod
     def _bootstrap(root: Path) -> p.Cli.CommandOutput:
         entrypoint = (
-            Path(__file__).parents[3] / "src/flext_infra/_protocols_bootstrap.py"
+            Path(__file__).parents[3] / "src/flext_infra/protocols_bootstrap.py"
         )
         return tm.ok(
             u.Cli.run_raw(
@@ -116,7 +116,7 @@ class TestsColdProtocolPublication:
                     "-c",
                     (
                         "import sys\nfrom pathlib import Path\n"
-                        "from flext_infra._protocols_bootstrap import "
+                        "from flext_infra.protocols_bootstrap import "
                         "publish_protocol_facades\n"
                         f"root = Path({str(root)!r})\n"
                         f"source = Path({str(source)!r})\n"

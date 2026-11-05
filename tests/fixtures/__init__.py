@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports

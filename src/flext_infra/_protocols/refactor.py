@@ -656,7 +656,7 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
-    class ViolationsSweepReport(FlextCliProtocols.BaseModel, Protocol):
+    class ViolationsSweepScope(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -690,6 +690,10 @@ class FlextInfraProtocolsRefactor:
         ) -> tuple[FlextInfraProtocolsRefactor.ViolationsSweepStage, ...]:
             """Independent operation receipts in invocation order."""
             ...
+
+    @runtime_checkable
+    class ViolationsSweepReport(ViolationsSweepScope, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def before(self) -> FlextInfraProtocolsRefactor.ViolationsTotals | None:

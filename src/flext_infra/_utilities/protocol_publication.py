@@ -17,13 +17,13 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import m, p
-from flext_infra._protocols_bootstrap import (
+from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
+from flext_infra.protocols_bootstrap import (
     declared_protocol_package,
     normalize_protocol_source,
     plan_protocol_facades,
     plan_protocol_family_inits,
 )
-from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
 
 
 class FlextInfraUtilitiesProtocolPublication:

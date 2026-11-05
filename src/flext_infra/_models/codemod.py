@@ -326,8 +326,8 @@ class FlextInfraModelsCodemod:
                 raise ValueError(msg)
             return self
 
-    class RopeContractRule(m.ContractModel):
-        """Identity-constrained native Rope restructuring of a Python contract."""
+    class RopeContractRuleTarget(m.ContractModel):
+        """Identity, admission scope and native pattern of one Rope contract rule."""
 
         owner_root: Path | None = m.Field(
             default=None,
@@ -422,6 +422,10 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(t.TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
+
+    class RopeContractRuleShape(RopeContractRuleTarget):
+        """Ancestry, capture and lexical-scope admission constraints of one Rope contract rule."""
+
         model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
@@ -475,6 +479,10 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Native module and primitive whose backend stays native",
         )
+
+    class RopeContractRule(RopeContractRuleShape):
+        """Identity-constrained native Rope restructuring of a Python contract."""
+
         receiver_methods: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded-call interface required of a factory product",

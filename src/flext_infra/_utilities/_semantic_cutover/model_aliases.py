@@ -637,7 +637,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             )
 
         rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            project, resource, source, quoted
+            (project, resource), source, quoted
         )
         if rewritten == source:
             return False

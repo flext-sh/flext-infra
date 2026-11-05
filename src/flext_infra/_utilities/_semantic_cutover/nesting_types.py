@@ -34,14 +34,14 @@ class FlextInfraUtilitiesTypesSemanticNesting(
     @classmethod
     def quoted_type_edits(
         cls,
-        project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
         protected: tuple[int, int] | None = None,
         module: p.Infra.RopePyModule | None = None,
     ) -> tuple[p.Infra.SourceRewrite, ...]:
+        project, resource = native
         # A caller that already parsed ``source`` passes its module, so the
         # scopes handed to ``replacement`` are the caller's own objects.
         if module is None:
@@ -132,8 +132,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
     @classmethod
     def rewrite_quoted_types(
         cls,
-        project: p.Infra.RopeProject,
-        resource: p.Infra.RopeResource,
+        native: tuple[p.Infra.RopeProject, p.Infra.RopeResource],
         source: str,
         replacement: Callable[[p.Infra.RopeScope, str], str | None],
         *,
@@ -141,15 +140,14 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         module: p.Infra.RopePyModule | None = None,
     ) -> str:
         edits = cls.quoted_type_edits(
-            project,
-            resource,
+            native,
             source,
             replacement,
             protected=protected,
             module=module,
         )
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource,
+            native[1],
             source,
             edits,
         ).new_contents

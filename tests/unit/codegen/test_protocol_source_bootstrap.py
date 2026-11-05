@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
-from flext_infra._protocols_bootstrap import (
+from flext_infra.protocols_bootstrap import (
     consolidate_protocol_owners,
     normalize_model_alias_source,
     normalize_model_alias_tree,
@@ -272,7 +272,7 @@ class TestsProtocolSourceBootstrap:
                 Path(__file__).parents[3]
                 / "src"
                 / "flext_infra"
-                / "_protocols_bootstrap.py"
+                / "protocols_bootstrap.py"
             )
             command = (sys.executable, "-P", str(entrypoint), str(root))
             first = TestsProtocolSourceBootstrap.checked_run(command)

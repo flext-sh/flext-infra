@@ -71,7 +71,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         location: tuple[str, int],
         message: str,
-    ) -> p.Infra.Issue | None:
+    ) -> m.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
 
         Returns:
@@ -96,7 +96,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         *,
         default_message: str,
-    ) -> Sequence[p.Infra.Issue]:
+    ) -> Sequence[m.Infra.Issue]:
         """Translate one ruff result into origin-mapped findings coded with this gate.
 
         Every ruff line that names an extracted source (verdict, parse error or
@@ -105,10 +105,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         as a clean pass: the tool-level error becomes the finding.
 
         Returns:
-            The resulting ``Sequence[p.Infra.Issue]``.
+            The resulting ``Sequence[m.Infra.Issue]``.
 
         """
-        issues: MutableSequence[p.Infra.Issue] = []
+        issues: MutableSequence[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_CODE_SOURCE_RE.search(line)
             issue = (
@@ -182,7 +182,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         ctx: p.Infra.GateContext,
         *,
         fix: bool,
-    ) -> tuple[bool, bool, Sequence[p.Infra.Issue]]:
+    ) -> tuple[bool, bool, Sequence[m.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -192,10 +192,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         never enter the extracted tree and cannot turn into gate findings.
 
         Returns:
-            The resulting ``tuple[bool, bool, Sequence[p.Infra.Issue]]``.
+            The resulting ``tuple[bool, bool, Sequence[m.Infra.Issue]]``.
 
         """
-        findings: MutableSequence[p.Infra.Issue] = []
+        findings: MutableSequence[m.Infra.Issue] = []
         embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()

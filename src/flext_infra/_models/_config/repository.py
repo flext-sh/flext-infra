@@ -50,10 +50,8 @@ class FlextInfraModelsConfigRepository:
             raise ValueError(msg)
         return value
 
-    class ProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Deterministic project metadata required to materialize a new tree."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+    class ProjectIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Source, naming, namespace and authorship identity of a scaffolded project."""
 
         flext_source: Annotated[
             t.NonEmptyStr | None,
@@ -111,6 +109,12 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Author display name"),
         ]
         author_email: Annotated[t.NonEmptyStr, m.Field(description="Author email")]
+
+    class ProjectSpec(ProjectIdentitySpec):
+        """Deterministic project metadata required to materialize a new tree."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
@@ -306,10 +310,8 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Optional provider base URL override"),
         ] = None
 
-    class RepositoryRef(FlextInfraModelsConfigContract.ConfigContract):
-        """One declared repository and its immutable Git origin contract."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+    class RepositoryRefIdentity(FlextInfraModelsConfigContract.ConfigContract):
+        """Identity, location, topology and governance kind of one declared repository."""
 
         inputs: Annotated[
             tuple[t.Port[p.Cli.AtomicFileState], ...],
@@ -365,6 +367,12 @@ class FlextInfraModelsConfigRepository:
                 ),
             ),
         ]
+
+    class RepositoryRef(RepositoryRefIdentity):
+        """One declared repository and its immutable Git origin contract."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         codegen: Annotated[
             c.Infra.CodegenKind,
             m.Field(description="Repository code-generation policy"),

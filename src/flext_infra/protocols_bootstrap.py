@@ -7,7 +7,7 @@ this module stays importable before the package exists.
 
 Run it before the public CLI when legacy protocol source prevents package import::
 
-    python -P src/flext_infra/_protocols_bootstrap.py ROOT -- codegen generate
+    python -P src/flext_infra/protocols_bootstrap.py ROOT -- codegen generate
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

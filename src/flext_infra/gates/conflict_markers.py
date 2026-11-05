@@ -88,7 +88,7 @@ class FlextInfraGatesConflictMarkers(FlextInfraGates):
 
         """
         started = time.monotonic()
-        issues: list[p.Infra.Issue] = []
+        issues: list[m.Infra.Issue] = []
         root = project_dir.resolve()
         for path in paths:
             source = path if path.is_absolute() else project_dir / path

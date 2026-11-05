@@ -537,10 +537,8 @@ class FlextInfraModelsConfigArtifact(
             """
             return tuple(f"**/{name}/**" for name in self.generated_sources)
 
-    class CodegenConfigSpec(CodegenArtifactScopeSpec):
-        """Fully modeled content of ``config/codegen.yaml``."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+    class CodegenEngineSpec(CodegenArtifactScopeSpec):
+        """Generation engine, schema and toolchain declarations of ``config/codegen.yaml``."""
 
         runtime_module_overrides: Annotated[
             Mapping[
@@ -644,6 +642,10 @@ class FlextInfraModelsConfigArtifact(
             FlextInfraModelsMiseToolchain.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
         ]
+
+    class CodegenCiSpec(CodegenEngineSpec):
+        """GitHub Actions, CI checkout and analysis declarations of ``config/codegen.yaml``."""
+
         github_actions: Annotated[
             Mapping[str, FlextInfraModelsConfigProvider.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -712,6 +714,10 @@ class FlextInfraModelsConfigArtifact(
             FlextInfraModelsConfigRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
         ]
+
+    class CodegenWorkspaceSpec(CodegenCiSpec):
+        """Infrastructure source, branch, profile, Make and editor policies of ``config/codegen.yaml``."""
+
         infra_repository: Annotated[
             FlextInfraModelsConfigProvider.RepositorySourceSpec,
             m.Field(description="Canonical infrastructure repository identity"),
@@ -750,6 +756,11 @@ class FlextInfraModelsConfigArtifact(
                 ),
             ),
         ]
+
+    class CodegenConfigSpec(CodegenWorkspaceSpec):
+        """Fully modeled content of ``config/codegen.yaml``."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
 
         @m.computed_field
         @property

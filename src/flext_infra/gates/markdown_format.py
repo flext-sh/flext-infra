@@ -119,7 +119,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         projected = self._projected_targets(project_dir, targets)
         if not projected:
             return super()._execute_check_command(project_dir, ctx, targets, started)
-        executions: list[p.Infra.GateExecution] = []
+        executions: list[m.Infra.GateExecution] = []
         plain = tuple(target for target in targets if target not in projected)
         if plain:
             executions.append(

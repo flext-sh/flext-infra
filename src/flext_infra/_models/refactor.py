@@ -648,13 +648,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Introduced text occurrences, None if unobserved"),
         ] = None
 
-    class ViolationsSweepReport(m.ContractModel):
-        """Before/after receipt of one violations sweep.
-
-        Published for successful and partial failed repair sequences.
-        """
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+    class ViolationsSweepScope(m.ContractModel):
+        """Repository, verbs and topology one violations sweep covers."""
 
         schema_version: Annotated[
             int,
@@ -688,6 +683,15 @@ class FlextInfraModelsRefactor(
             ],
             m.Field(description="Independent operation receipts in invocation order"),
         ] = ()
+
+    class ViolationsSweepReport(ViolationsSweepScope):
+        """Before/after receipt of one violations sweep.
+
+        Published for successful and partial failed repair sequences.
+        """
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
         before: Annotated[
             Annotated[
                 p.Infra.ViolationsTotals,

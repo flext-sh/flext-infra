@@ -44,7 +44,7 @@ class FlextInfraDuplicationEvidence:
         ] = {}
 
     @staticmethod
-    def parse(raw: str) -> p.Infra.JscpdReport:
+    def parse(raw: str) -> m.Infra.JscpdReport:
         """Validate an initial report without discarding a console trailer.
 
         The caller retains raw bytes, including any trailer, in its receipt.
@@ -79,13 +79,13 @@ class FlextInfraDuplicationEvidence:
 
     def assess(
         self,
-        report: p.Infra.JscpdReport,
+        report: m.Infra.JscpdReport,
         root: Path,
         config: p.Infra.ProjectDuplicationOverrides,
         *,
         raw_receipt: str,
         execution: str,
-    ) -> p.Infra.DuplicationAssessment:
+    ) -> m.Infra.DuplicationAssessment:
         """Keep every candidate; unsupported roles and failures remain blocking.
 
         Returns:
@@ -104,7 +104,7 @@ class FlextInfraDuplicationEvidence:
             if path.is_dir()
         )
         allowed: Sequence[Path] = (root.resolve(), *comparison)
-        candidates: list[p.Infra.DuplicationCandidateEvidence] = []
+        candidates: list[m.Infra.DuplicationCandidateEvidence] = []
         pairs: MutableMapping[tuple[str, str], int] = {}
         counts: MutableMapping[str, int] = {
             "raw": len(report.duplicates),
@@ -128,7 +128,7 @@ class FlextInfraDuplicationEvidence:
             counts["raw_hard"] += int(
                 owned and canonical == index and keys[0] != keys[1]
             )
-            measures: tuple[p.Infra.DuplicationSpanMeasure, ...] = ()
+            measures: tuple[m.Infra.DuplicationSpanMeasure, ...] = ()
             try:
                 measures = self._candidate_measures(candidate, allowed)
                 classification = self._classify(
@@ -189,8 +189,8 @@ class FlextInfraDuplicationEvidence:
 
     def _revalidate_sources(
         self,
-        candidates: list[p.Infra.DuplicationCandidateEvidence],
-    ) -> list[p.Infra.DuplicationCandidateEvidence]:
+        candidates: list[m.Infra.DuplicationCandidateEvidence],
+    ) -> list[m.Infra.DuplicationCandidateEvidence]:
         """Keep per-candidate race failures in the lossless receipt.
 
         Returns:
@@ -206,7 +206,7 @@ class FlextInfraDuplicationEvidence:
             else:
                 if current != data:
                     errors[name] = f"source changed during assessment: {name}"
-        verified: list[p.Infra.DuplicationCandidateEvidence] = []
+        verified: list[m.Infra.DuplicationCandidateEvidence] = []
         for item in candidates:
             failures = [
                 errors[side.name]
@@ -226,9 +226,9 @@ class FlextInfraDuplicationEvidence:
 
     def _candidate_measures(
         self,
-        candidate: p.Infra.JscpdDuplicate,
+        candidate: m.Infra.JscpdDuplicate,
         allowed: Sequence[Path],
-    ) -> tuple[p.Infra.DuplicationSpanMeasure, ...]:
+    ) -> tuple[m.Infra.DuplicationSpanMeasure, ...]:
         """Bind both reported spans to a scanned scope root.
 
         A scanned scope root is the invoking project or one of its declared
@@ -263,7 +263,7 @@ class FlextInfraDuplicationEvidence:
     @staticmethod
     def _classify(
         format_name: str,
-        measures: tuple[p.Infra.DuplicationSpanMeasure, ...],
+        measures: tuple[m.Infra.DuplicationSpanMeasure, ...],
         config: p.Infra.ProjectDuplicationOverrides,
     ) -> p.Infra.DuplicationClassification:
         """Explain structural measurements without granting an exemption.
@@ -318,7 +318,7 @@ class FlextInfraDuplicationEvidence:
         self,
         side: p.Infra.JscpdFile,
         format_name: str,
-    ) -> p.Infra.DuplicationSpanMeasure:
+    ) -> m.Infra.DuplicationSpanMeasure:
         """Parse whole files and intersect tokens with the reported source span.
 
         Returns:

@@ -3511,146 +3511,151 @@ if TYPE_CHECKING:
         return value
 
     def model_protocol_700(
+        value: (FlextInfraModels.Infra.ViolationsSweepScope),
+    ) -> FlextInfraProtocols.Infra.ViolationsSweepScope:
+        return value
+
+    def model_protocol_701(
         value: (FlextInfraModels.Infra.ViolationsSweepSources),
     ) -> FlextInfraProtocols.Infra.ViolationsSweepSources:
         return value
 
-    def model_protocol_701(
+    def model_protocol_702(
         value: (FlextInfraModels.Infra.ViolationsSweepStage),
     ) -> FlextInfraProtocols.Infra.ViolationsSweepStage:
         return value
 
-    def model_protocol_702(
+    def model_protocol_703(
         value: (FlextInfraModels.Infra.ViolationsTotals),
     ) -> FlextInfraProtocols.Infra.ViolationsTotals:
         return value
 
-    def model_protocol_703(
+    def model_protocol_704(
         value: (FlextInfraModels.Infra.WorkspaceBeadsServerSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceBeadsServerSpec:
         return value
 
-    def model_protocol_704(
+    def model_protocol_705(
         value: (FlextInfraModels.Infra.WorkspaceBootstrapDependencies),
     ) -> FlextInfraProtocols.Infra.WorkspaceBootstrapDependencies:
         return value
 
-    def model_protocol_705(
+    def model_protocol_706(
         value: (FlextInfraModels.Infra.WorkspaceDependencyReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceDependencyReport:
         return value
 
-    def model_protocol_706(
+    def model_protocol_707(
         value: (FlextInfraModels.Infra.WorkspaceEnforcementReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceEnforcementReport:
         return value
 
-    def model_protocol_707(
+    def model_protocol_708(
         value: (FlextInfraModels.Infra.WorkspaceExclusionSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceExclusionSpec:
         return value
 
-    def model_protocol_708(
+    def model_protocol_709(
         value: (FlextInfraModels.Infra.WorkspaceIntegrationSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceIntegrationSpec:
         return value
 
-    def model_protocol_709(
+    def model_protocol_710(
         value: (FlextInfraModels.Infra.WorkspaceManifestSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceManifestSpec:
         return value
 
-    def model_protocol_710(
+    def model_protocol_711(
         value: (FlextInfraModels.Infra.WorkspaceOperationApplicability),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationApplicability:
         return value
 
-    def model_protocol_711(
+    def model_protocol_712(
         value: (FlextInfraModels.Infra.WorkspaceOperationReceipt),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationReceipt:
         return value
 
-    def model_protocol_712(
+    def model_protocol_713(
         value: (FlextInfraModels.Infra.WorkspaceOperationReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationReport:
         return value
 
-    def model_protocol_713(
+    def model_protocol_714(
         value: (FlextInfraModels.Infra.WorkspaceOperationTarget),
     ) -> FlextInfraProtocols.Infra.WorkspaceOperationTarget:
         return value
 
-    def model_protocol_714(
+    def model_protocol_715(
         value: (FlextInfraModels.Infra.WorkspaceProjectContext),
     ) -> FlextInfraProtocols.Infra.WorkspaceProjectContext:
         return value
 
-    def model_protocol_715(
+    def model_protocol_716(
         value: (FlextInfraModels.Infra.WorkspaceReport),
     ) -> FlextInfraProtocols.Infra.WorkspaceReport:
         return value
 
-    def model_protocol_716(
+    def model_protocol_717(
         value: (FlextInfraModels.Infra.WorkspaceRequest),
     ) -> FlextInfraProtocols.Infra.WorkspaceRequest:
         return value
 
-    def model_protocol_717(
+    def model_protocol_718(
         value: (FlextInfraModels.Infra.WorkspaceRuntimeContext),
     ) -> FlextInfraProtocols.Infra.WorkspaceRuntimeContext:
         return value
 
-    def model_protocol_718(
+    def model_protocol_719(
         value: (FlextInfraModels.Infra.WorkspaceSnapshot),
     ) -> FlextInfraProtocols.Infra.WorkspaceSnapshot:
         return value
 
-    def model_protocol_719(
+    def model_protocol_720(
         value: (FlextInfraModels.Infra.WorkspaceSnapshotSource),
     ) -> FlextInfraProtocols.Infra.WorkspaceSnapshotSource:
         return value
 
-    def model_protocol_720(
+    def model_protocol_721(
         value: (FlextInfraModels.Infra.WorkspaceSpec),
     ) -> FlextInfraProtocols.Infra.WorkspaceSpec:
         return value
 
-    def model_protocol_721(
+    def model_protocol_722(
         value: (FlextInfraModels.Infra.WorkspaceTestsRequest),
     ) -> FlextInfraProtocols.Infra.WorkspaceTestsRequest:
         return value
 
-    def model_protocol_722(
+    def model_protocol_723(
         value: (FlextInfraModels.Infra.WorktreeCandidate),
     ) -> FlextInfraProtocols.Infra.WorktreeCandidate:
         return value
 
-    def model_protocol_723(
+    def model_protocol_724(
         value: (FlextInfraModels.Infra.WorktreeFact),
     ) -> FlextInfraProtocols.Infra.WorktreeFact:
         return value
 
-    def model_protocol_724(
+    def model_protocol_725(
         value: (FlextInfraModels.Infra.WorktreeFactsPolicy),
     ) -> FlextInfraProtocols.Infra.WorktreeFactsPolicy:
         return value
 
-    def model_protocol_725(
+    def model_protocol_726(
         value: (FlextInfraModels.Infra.WorktreeFactsQuery),
     ) -> FlextInfraProtocols.Infra.WorktreeFactsQuery:
         return value
 
-    def model_protocol_726(
+    def model_protocol_727(
         value: (FlextInfraModels.Infra.WorktreesReport),
     ) -> FlextInfraProtocols.Infra.WorktreesReport:
         return value
 
-    def model_protocol_727(
+    def model_protocol_728(
         value: (FlextInfraModels.Infra.WrapperRewriteAccumulator),
     ) -> FlextInfraProtocols.Infra.WrapperRewriteAccumulator:
         return value
 
-    def model_protocol_728(
+    def model_protocol_729(
         value: (FlextInfraModels.Infra.WriteMixin),
     ) -> FlextInfraProtocols.Infra.WriteMixin:
         return value

@@ -439,15 +439,26 @@ class FlextInfraModelsDuplication:
         canonical_index: t.NonNegativeInt = m.Field(
             description="First unordered span pair index"
         )
-        candidate: FlextInfraModelsDuplication.JscpdDuplicate = m.Field(
+        candidate: Annotated[
+            p.Infra.JscpdDuplicate,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDuplication.JscpdDuplicate,
+            ),
+        ] = m.Field(
             description="Unmodified typed scanner candidate",
         )
         owned: bool = m.Field(description="At least one side belongs to the project")
         self_span: bool = m.Field(description="Both sides name the identical span")
-        measures: tuple[FlextInfraModelsDuplication.DuplicationSpanMeasure, ...] = (
-            m.Field(
-                description="Both measured spans when analysis succeeds",
-            )
+        measures: tuple[
+            Annotated[
+                p.Infra.DuplicationSpanMeasure,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDuplication.DuplicationSpanMeasure,
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            description="Both measured spans when analysis succeeds",
         )
 
     class DuplicationAssessment(m.ContractModel):

@@ -81,7 +81,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 if part
             ),
         )
-        assessment: p.Infra.DuplicationAssessment | None = None
+        assessment: m.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
             assessment_failures, assessment = self._publish_assessment(
                 (report, overrides.value),
@@ -134,7 +134,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> tuple[p.Infra.JscpdReport | None, tuple[p.Infra.Issue, ...], bool]:
+    ) -> tuple[m.Infra.JscpdReport | None, tuple[m.Infra.Issue, ...], bool]:
         """Parse the native report into owned clones plus any tool failure.
 
         A non-findings exit, or a findings exit whose report holds no clone,
@@ -144,14 +144,14 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             The parsed report, its issues, and whether the tool itself failed.
 
         """
-        report: p.Infra.JscpdReport | None = None
+        report: m.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
                 report = FlextInfraDuplicationEvidence.parse(scan.stdout)
             parsed = self._issues_from_report(project_dir, report)
         except ValueError as exc:
-            parsed = r[tuple[p.Infra.Issue, ...]].fail(str(exc), exception=exc)
-        issues: tuple[p.Infra.Issue, ...] = (
+            parsed = r[tuple[m.Infra.Issue, ...]].fail(str(exc), exception=exc)
+        issues: tuple[m.Infra.Issue, ...] = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         empty_failure = (
@@ -166,11 +166,11 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
     def _publish_assessment(
         self,
-        assessed: tuple[p.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[m.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: p.Infra.GateOutputReceipt,
         execution: str,
-    ) -> tuple[tuple[p.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
+    ) -> tuple[tuple[m.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:
@@ -194,7 +194,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             evidence.path.with_suffix(".assessment.json"),
             assessment.model_dump_json(indent=2),
         ).unwrap()
-        analysis_failures: tuple[p.Infra.Issue, ...] = ()
+        analysis_failures: tuple[m.Infra.Issue, ...] = ()
         if assessment.counts.get("analysis_error", 0):
             analysis_failures = (
                 self._failure_issue(
@@ -206,11 +206,11 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
     def _blocking_issues(
         self,
-        report: p.Infra.JscpdReport,
-        issues: tuple[p.Infra.Issue, ...],
-        assessment: p.Infra.DuplicationAssessment,
+        report: m.Infra.JscpdReport,
+        issues: tuple[m.Infra.Issue, ...],
+        assessment: m.Infra.DuplicationAssessment,
         project_dir: Path,
-    ) -> tuple[p.Infra.Issue, ...]:
+    ) -> tuple[m.Infra.Issue, ...]:
         """Keep every raw clone issue the assessment holds behavioral.
 
         The assessment vocabulary already declares which spans carry no
@@ -461,7 +461,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
     @staticmethod
     def _read_project_config(
         project_dir: Path,
-    ) -> p.Result[p.Infra.ProjectDuplicationOverrides]:
+    ) -> p.Result[m.Infra.ProjectDuplicationOverrides]:
         """Read ``[tool.flext.project.duplication]`` from pyproject.toml.
 
         Why: a malformed manifest is a declared error, never an empty config —
@@ -471,33 +471,33 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         it legitimately yields the default overrides.
 
         Returns:
-            The resulting ``p.Result[p.Infra.ProjectDuplicationOverrides]``.
+            The resulting ``p.Result[m.Infra.ProjectDuplicationOverrides]``.
 
         """
         pyproject_path = project_dir / c.PYPROJECT_FILENAME
         if not pyproject_path.is_file():
-            return r[p.Infra.ProjectDuplicationOverrides].ok(
+            return r[m.Infra.ProjectDuplicationOverrides].ok(
                 m.Infra.ProjectDuplicationOverrides(),
             )
         loaded = u.Cli.config_load(pyproject_path, expand_env=False)
         if loaded.failure:
-            return r[p.Infra.ProjectDuplicationOverrides].fail(
+            return r[m.Infra.ProjectDuplicationOverrides].fail(
                 f"invalid project manifest ({pyproject_path}): {loaded.error}",
             )
         tool = u.Cli.json_as_mapping(loaded.value.data).get("tool", {})
         flext = u.Cli.json_as_mapping(tool).get("flext", {})
         project = u.Cli.json_as_mapping(flext).get("project", {})
         duplication = u.Cli.json_as_mapping(project).get("duplication", {})
-        validated: p.Result[p.Infra.ProjectDuplicationOverrides] = u.validate_value(
+        validated: p.Result[m.Infra.ProjectDuplicationOverrides] = u.validate_value(
             m.Infra.ProjectDuplicationOverrides,
             u.Cli.json_as_mapping(duplication),
         )
         if validated.failure:
-            return r[p.Infra.ProjectDuplicationOverrides].fail_op(
+            return r[m.Infra.ProjectDuplicationOverrides].fail_op(
                 f"[tool.flext.project.duplication] validation ({pyproject_path})",
                 validated.error,
             )
-        return r[p.Infra.ProjectDuplicationOverrides].ok(validated.value)
+        return r[m.Infra.ProjectDuplicationOverrides].ok(validated.value)
 
     @classmethod
     def _project_overlay(

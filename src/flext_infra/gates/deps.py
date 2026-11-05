@@ -280,7 +280,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
     def _capture_with_retry(
         project_dir: Path,
         report_dir: Path,
-    ) -> p.Infra.DeptryScan:
+    ) -> m.Infra.DeptryScan:
         """Capture the deptry scan, retrying transient concurrent-write races.
 
         Multi-agent worktrees mutate production sources while a scan runs; the
@@ -322,7 +322,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         self,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-    ) -> tuple[p.Infra.GateExecution, m.Infra.DeptryScan | None]:
+    ) -> tuple[m.Infra.GateExecution, m.Infra.DeptryScan | None]:
         """Capture and grade one native report for checking or guarded repair.
 
         Args:
@@ -336,9 +336,9 @@ class FlextInfraGatesDeps(FlextInfraGates):
         """
         started = time.monotonic()
         raw_output = ""
-        issues: tuple[p.Infra.Issue, ...] = ()
+        issues: tuple[m.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: p.Infra.DeptryScan | None = None
+        scan: m.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)

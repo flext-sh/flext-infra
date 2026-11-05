@@ -797,7 +797,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 for field_name, value in codegen.toolchain.model_dump().items()
                 if field_name in m.Infra.ToolchainSpec.model_fields
             }
-            spec = m.Infra.ToolchainSpec(**toolchain_data)
+            spec = m.Infra.ToolchainSpec.model_validate(toolchain_data)
         elif destination == c.Infra.GIT_HOOK_VALIDATOR_RELPATH:
             spec = m.Infra.GitHookRenderSpec(
                 preservation_ref_namespaces=(
