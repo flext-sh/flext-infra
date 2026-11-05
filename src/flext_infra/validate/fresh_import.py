@@ -481,9 +481,16 @@ class FlextInfraValidateFreshImport(s[bool]):
                     (klass,),
                     {"__module__": probe_module.__name__},
                 )
-                parent_namespace = dict(vars(sys.modules[klass.__module__])) | {
-                    klass.__name__: klass,
-                }
+                # The synthetic subclass declares no PEP 695 parameters of its own,
+                # so the ones its inherited annotations name come from `klass`.
+                parent_namespace = (
+                    dict(vars(sys.modules[klass.__module__]))
+                    | {
+                        parameter.__name__: parameter
+                        for parameter in getattr(klass, "__type_params__", ())
+                    }
+                    | {klass.__name__: klass}
+                )
                 u.type_adapter(probe_subclass).rebuild(
                     force=True,
                     raise_errors=True,
