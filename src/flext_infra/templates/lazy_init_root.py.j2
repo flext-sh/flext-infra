@@ -18,7 +18,7 @@ install_lazy_exports(
     __name__,
     globals(),
 {{ lazy_export_mapping }}
-    public_exports=__all__,
+    public_exports=__all__,{{ deferred_members_mapping }}
 )
 {%- if eager_binding_lines %}
 

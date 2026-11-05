@@ -19,6 +19,7 @@ from textwrap import dedent, indent
 from types import ModuleType
 from typing import Annotated, override
 
+from flext_core import resolve_lazy_members
 from pydantic.warnings import UnsupportedFieldAttributeWarning
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
@@ -376,7 +377,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             "from sys import modules\n"
             "from types import ModuleType\n"
             "from pydantic.warnings import UnsupportedFieldAttributeWarning\n"
-            "from flext_core import c, p, r, t, u\n"
+            "from flext_core import c, p, r, resolve_lazy_members, t, u\n"
             + getsource(FlextInfraWorkspaceEnvironmentProvenanceModuleSource)
             + "\nclass FlextInfraValidateFreshImport:\n"
             + "\n".join(
@@ -402,7 +403,9 @@ class FlextInfraValidateFreshImport(s[bool]):
         use would. An annotation that stays unresolved (a ``TYPE_CHECKING``-
         only type, a misspelled name) still fails that build, and pydantic's
         own error escapes unchanged naming the unresolved name. Inherited
-        classes belong to their own package's probe.
+        classes belong to their own package's probe. Every deferred member
+        along a reached class's MRO resolves first, so a broken deferred
+        capability fails exactly as its eager import would.
 
         """
         package = module.__name__.partition(".")[0]
@@ -418,6 +421,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             if klass in seen or not klass.__module__.startswith(prefix):
                 continue
             seen.add(klass)
+            resolve_lazy_members(klass)
             if vars(klass).get("__pydantic_complete__") is False:
                 incomplete.append(klass)
             pending.extend(

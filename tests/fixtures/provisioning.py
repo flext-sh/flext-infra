@@ -760,3 +760,19 @@ def duplicate_project(
     """
     with session_runtime.lease(_provision_consumer_template) as root:
         yield root
+
+
+@pytest.fixture
+def deferred_capability_project(
+    session_runtime: p.Tests.SessionRuntime,
+    fixture_tree: p.Tests.FixtureTree,
+) -> Iterator[Path]:
+    """Lease the provisioned consumer carrying the deferred-capability scenario.
+
+    Yields:
+        The consumer root whose capability family imports a provisioned library.
+
+    """
+    with session_runtime.lease(_provision_consumer_template) as root:
+        fixture_tree("lazy-deferred-capability", destination=root)
+        yield root
