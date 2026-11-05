@@ -26,7 +26,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         *,
         config_path: Path,
         json_output_path: Path,
-    ) -> p.Result[m.Infra.DeptryScan]:
+    ) -> p.Result[p.Infra.DeptryScan]:
         """Capture one native deptry report against unchanged production trees.
 
         Callers elect the interpreter, configuration and fresh report destination;
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             Complete native findings and the states authenticating their inputs.
 
         """
-        result_type = r[m.Infra.DeptryScan]
+        result_type = r[p.Infra.DeptryScan]
         payload = cls._captured_deptry_inputs(
             project_path,
             config_path=config_path,

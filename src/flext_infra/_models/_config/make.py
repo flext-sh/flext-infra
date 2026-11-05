@@ -991,7 +991,7 @@ class FlextInfraModelsConfigMake(
         ]
 
     class MakeVerbCatalogSpec(MakeHarnessSpec):
-        """Public verb catalog, CLI routing and lifecycle policies of the Make surface."""
+        """Public verb catalog, CLI routing and lifecycle policies of Make."""
 
         verbs: Annotated[
             tuple[

@@ -71,7 +71,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         location: tuple[str, int],
         message: str,
-    ) -> m.Infra.Issue | None:
+    ) -> p.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
 
         Returns:
@@ -96,7 +96,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         *,
         default_message: str,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Translate one ruff result into origin-mapped findings coded with this gate.
 
         Every ruff line that names an extracted source (verdict, parse error or
@@ -105,10 +105,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         as a clean pass: the tool-level error becomes the finding.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_CODE_SOURCE_RE.search(line)
             issue = (
@@ -182,7 +182,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         ctx: p.Infra.GateContext,
         *,
         fix: bool,
-    ) -> tuple[bool, bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, bool, Sequence[p.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -192,10 +192,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         never enter the extracted tree and cannot turn into gate findings.
 
         Returns:
-            The resulting ``tuple[bool, bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, bool, Sequence[p.Infra.Issue]]``.
 
         """
-        findings: MutableSequence[m.Infra.Issue] = []
+        findings: MutableSequence[p.Infra.Issue] = []
         embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()
@@ -270,7 +270,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         project_dir: Path,
         sources_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> Sequence[m.Cli.FileChange]:
+    ) -> Sequence[p.Cli.FileChange]:
         """Plan formatted blocks back into docs whose round-trip recompiles cleanly.
 
         Enumeration matches the extractor exactly: only parseable non-``notest``
@@ -282,7 +282,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
             One change per rewritten document, in enumeration order.
 
         """
-        changes: MutableSequence[m.Cli.FileChange] = []
+        changes: MutableSequence[p.Cli.FileChange] = []
         for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
             project_dir, scope_facts
         ):
@@ -296,7 +296,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         md_path: Path,
         project_dir: Path,
         sources_dir: Path,
-    ) -> m.Cli.FileChange | None:
+    ) -> p.Cli.FileChange | None:
         """Plan one document's formatted blocks back when its round-trip holds.
 
         Returns:

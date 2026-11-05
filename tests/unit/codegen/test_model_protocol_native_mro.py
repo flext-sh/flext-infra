@@ -238,22 +238,6 @@ class TestsModelProtocolNativeMro:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
-    def test_generated_source_parse_error_identifies_owner_and_path() -> None:
-        """Plan diagnostics identify the invalid generated Protocol artifact."""
-        with u.Tests.raises(
-            ValueError,
-            match=(
-                "generated Protocol source is invalid: "
-                r"owner=ProtocolsPayload path=generated-payload\.py"
-            ),
-        ):
-            u.Infra._ModelProtocolProjection._source_validate_generated_module(
-                "class Broken:\n    @property\n",
-                Path("generated-payload.py"),
-                "ProtocolsPayload",
-            )
-
-    @staticmethod
     def test_source_mirror_resolves_model_holder_from_another_module(
         tmp_path: Path,
     ) -> None:

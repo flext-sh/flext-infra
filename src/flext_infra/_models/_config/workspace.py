@@ -159,7 +159,7 @@ class FlextInfraModelsConfigWorkspace:
             return values
 
     class RepositoryDeltaAnalysisSpec(CandidateDependenciesSpec):
-        """Documentation, scaffold, integration and analysis declarations of one repository delta."""
+        """Docs, scaffold, integration and analysis part of a repository delta."""
 
         docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,

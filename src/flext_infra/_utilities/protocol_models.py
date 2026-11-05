@@ -791,7 +791,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 Path, tuple[tuple[str, str], ...]
             ] = {}
             self.source_protocol_rewrites: dict[
-                Path, tuple[m.Infra.SourceRewrite, ...]
+                Path, tuple[p.Infra.SourceRewrite, ...]
             ] = {}
             self.source_model_aliases: dict[
                 str,

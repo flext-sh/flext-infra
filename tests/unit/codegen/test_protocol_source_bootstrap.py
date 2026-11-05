@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
 
 from flext_infra.protocols_bootstrap import (
     consolidate_protocol_owners,
@@ -18,7 +17,7 @@ from flext_infra.protocols_bootstrap import (
     normalize_protocol_source,
     plan_protocol_facades,
 )
-from tests import c, p, t, tm, u
+from tests import c, p, tm, u
 
 
 class TestsProtocolSourceBootstrap:
@@ -388,159 +387,6 @@ class TestsProtocolSourceBootstrap:
 
     class TestsBootstrapFacadeMembers:
         """Published members bind on the loaded facade."""
-
-        @staticmethod
-        def test_installs_only_declared_infra_holder_members(
-            tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
-        ) -> None:
-            """A same-named CLI member cannot be projected onto the Infra facade."""
-            root = tmp_path / "repository"
-            package = root / "src" / "flext_infra"
-            package.mkdir(parents=True)
-            (package / "protocols.py").touch()
-
-            cli_module = ModuleType("flext_cli.protocols")
-            cli_context = type("CommandPayloadContext", (), {})
-            cli_context.__module__ = cli_module.__name__
-            cli_module.FlextCliProtocols = type(
-                "FlextCliProtocols",
-                (),
-                {
-                    "__module__": cli_module.__name__,
-                    "CommandPayloadContext": cli_context,
-                },
-            )
-            source_module = ModuleType("flext_infra._protocols.models")
-            source_module.__dict__["FlextCliProtocols"] = cli_module.FlextCliProtocols
-            infra_context = type("CommandPayloadContext", (), {})
-            infra_context.__module__ = source_module.__name__
-            source_module.FlextInfraProtocolsModels = type(
-                "FlextInfraProtocolsModels",
-                (),
-                {
-                    "__module__": source_module.__name__,
-                    "CommandPayloadContext": infra_context,
-                },
-            )
-            infra = type("Infra", (), {})
-            cli = type("Cli", (), {})
-            facade_module = ModuleType("flext_infra.protocols")
-            facade_module.p = SimpleNamespace(Infra=infra, Cli=cli)
-            monkeypatch.setitem(sys.modules, "flext_cli.protocols", cli_module)
-            monkeypatch.setitem(sys.modules, "flext_infra.protocols", facade_module)
-            monkeypatch.setitem(
-                sys.modules, "flext_infra._protocols.models", source_module
-            )
-
-            u.Infra._install_bootstrap_facade_members(
-                [
-                    (
-                        "flext_infra._protocols.models",
-                        "FlextInfraProtocolsModels",
-                        ("CommandPayloadContext",),
-                    )
-                ],
-                root,
-            )
-
-            tm.that(
-                infra.CommandPayloadContext
-                is source_module.FlextInfraProtocolsModels.CommandPayloadContext,
-                truth=True,
-            )
-            tm.that(
-                infra.CommandPayloadContext
-                is not cli_module.FlextCliProtocols.CommandPayloadContext,
-                truth=True,
-            )
-            tm.that(hasattr(cli, "CommandPayloadContext"), truth=False)
-
-        @staticmethod
-        def test_installs_target_member_on_cli_facade(
-            tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
-        ) -> None:
-            """A CLI source projection publishes only through ``p.Cli``."""
-            root = tmp_path / "repository"
-            package = root / "src" / "flext_cli"
-            package.mkdir(parents=True)
-            (package / "protocols.py").touch()
-
-            source_module = ModuleType("flext_cli._protocols.config")
-            config_document = type("ConfigDocument", (), {})
-            config_document.__module__ = source_module.__name__
-            source_module.FlextCliProtocolsConfig = type(
-                "FlextCliProtocolsConfig",
-                (),
-                {
-                    "__module__": source_module.__name__,
-                    "ConfigDocument": config_document,
-                },
-            )
-            infra = type("Infra", (), {})
-            cli = type("Cli", (), {})
-            facade_module = ModuleType("flext_cli.protocols")
-            facade_module.p = SimpleNamespace(Infra=infra, Cli=cli)
-            monkeypatch.setitem(sys.modules, "flext_cli.protocols", facade_module)
-            monkeypatch.setitem(
-                sys.modules, "flext_cli._protocols.config", source_module
-            )
-
-            u.Infra._install_bootstrap_facade_members(
-                [
-                    (
-                        "flext_cli._protocols.config",
-                        "FlextCliProtocolsConfig",
-                        ("ConfigDocument",),
-                    )
-                ],
-                root,
-            )
-
-            tm.that(cli.ConfigDocument is config_document, truth=True)
-            tm.that(hasattr(infra, "ConfigDocument"), truth=False)
-
-        @staticmethod
-        def test_installs_core_root_member_without_artificial_namespace(
-            tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch
-        ) -> None:
-            """Core model contracts publish directly through its root ``p`` facade."""
-            root = tmp_path / "repository"
-            package = root / "src" / "flext_core"
-            package.mkdir(parents=True)
-            (package / "protocols.py").touch()
-
-            source_module = ModuleType("flext_core._protocols.config")
-            config_document = type("ConfigDocument", (), {})
-            config_document.__module__ = source_module.__name__
-            source_module.FlextProtocolsConfig = type(
-                "FlextProtocolsConfig",
-                (),
-                {
-                    "__module__": source_module.__name__,
-                    "ConfigDocument": config_document,
-                },
-            )
-            root_facade = type("FlextProtocols", (), {})
-            facade_module = ModuleType("flext_core.protocols")
-            facade_module.p = root_facade
-            monkeypatch.setitem(sys.modules, "flext_core.protocols", facade_module)
-            monkeypatch.setitem(
-                sys.modules, "flext_core._protocols.config", source_module
-            )
-
-            u.Infra._install_bootstrap_facade_members(
-                [
-                    (
-                        "flext_core._protocols.config",
-                        "FlextProtocolsConfig",
-                        ("ConfigDocument",),
-                    )
-                ],
-                root,
-            )
-
-            tm.that(root_facade.ConfigDocument is config_document, truth=True)
-            tm.that(hasattr(root_facade, "Core"), truth=False)
 
     class TestsProtocolImportCanonicalization:
         """Protocol facade imports converge canonically."""

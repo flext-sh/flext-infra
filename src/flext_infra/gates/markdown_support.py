@@ -478,7 +478,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             return super()._execute_fix_command(
                 project_dir, ctx, targets, started, lock_owners
             )
-        executions: list[m.Infra.GateExecution] = []
+        executions: list[p.Infra.GateExecution] = []
         plain = tuple(target for target in targets if target not in projected)
         if plain:
             executions.append(
@@ -550,8 +550,8 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         project_dir: Path,
         ctx: p.Infra.GateContext,
         started: float,
-        executions: Sequence[m.Infra.GateExecution],
-    ) -> m.Infra.GateExecution:
+        executions: Sequence[p.Infra.GateExecution],
+    ) -> p.Infra.GateExecution:
         """Join the disk pass and the projected passes into one execution.
 
         Returns:

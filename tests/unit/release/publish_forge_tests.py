@@ -9,14 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.release import FlextInfraReleaseOrchestrator
-from tests import TestsFlextInfraReleaseForgeMemory, c, m, p, tm, u
+from tests import TestsFlextInfraReleaseForgeMemory, c, p, tm, u
 
 
 class TestsFlextInfraReleasePublishForge:
     """Publication is one commit point taken only after every asset verifies."""
 
     @staticmethod
-    def _tag(report: m.Infra.BuildReport) -> str:
+    def _tag(report: p.Infra.BuildReport) -> str:
         """Return the release tag the receipt's version declares.
 
         Returns:
@@ -28,7 +28,7 @@ class TestsFlextInfraReleasePublishForge:
     @staticmethod
     def _forge(
         workspace: Path,
-        report: m.Infra.BuildReport,
+        report: p.Infra.BuildReport,
         *,
         native_digest: bool = True,
         upload_state: str = "uploaded",
@@ -70,7 +70,7 @@ class TestsFlextInfraReleasePublishForge:
         ).execute()
 
     @staticmethod
-    def _artifacts(report: m.Infra.BuildReport) -> tuple[Path, ...]:
+    def _artifacts(report: p.Infra.BuildReport) -> tuple[Path, ...]:
         """Return every attested artifact path of the receipt.
 
         Returns:

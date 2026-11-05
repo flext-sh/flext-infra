@@ -43,7 +43,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
         return cls.semantic_cutover_render(scenario)
 
     @staticmethod
-    def semantic_cutover_render(scenario: m.Tests.SemanticCutoverScenario) -> str:
+    def semantic_cutover_render(scenario: p.Tests.SemanticCutoverScenario) -> str:
         """Render one scenario through the flext-cli J2 engine.
 
         Returns:
@@ -67,7 +67,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
         repository_root: Path,
         source: str,
         phase: c.Infra.SemanticCutoverPhase,
-    ) -> m.Infra.ModOccurrence:
+    ) -> p.Infra.ModOccurrence:
         """Build the finding that selects one semantic phase.
 
         Returns:

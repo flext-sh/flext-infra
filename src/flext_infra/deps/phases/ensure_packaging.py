@@ -219,7 +219,7 @@ class FlextInfraEnsurePackagingPhase:
         data_excludes: Sequence[str],
         topology: p.Infra.PyprojectDeclaredTopology,
         project_declaration_resource: tuple[str, str] | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.DepsToml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name.
 
         Package sources, their ``config/`` defaults and declared data reach the

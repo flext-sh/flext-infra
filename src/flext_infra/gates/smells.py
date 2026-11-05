@@ -36,14 +36,14 @@ class FlextInfraGatesSmells(FlextInfraGates):
         self,
         scan: p.Cli.CommandOutput,
         project_dir: Path,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Filter one scan to the blocking issues owned by ``project``.
 
         Empty or malformed SARIF is a blocking scan failure, regardless of the
         process status. A valid SARIF document with zero results is a pass.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
         prefix = (
@@ -224,7 +224,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
         )
 
     @staticmethod
-    def _failure_issue(message: str | None) -> m.Infra.Issue:
+    def _failure_issue(message: str | None) -> p.Infra.Issue:
         """Represent malformed or absent scanner output as a blocking issue.
 
         Returns:
@@ -245,23 +245,23 @@ class FlextInfraGatesSmells(FlextInfraGates):
         cls,
         sarif_json: str,
         prefix: str,
-    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+    ) -> p.Result[tuple[p.Infra.Issue, ...]]:
         """Extract one Issue per smell finding inside ``project_name``.
 
         Pure function over a literal qlty SARIF payload (unit-testable, no
         subprocess) — same strategy as ``loc_cap._files_over_cap``.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.Issue, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.Issue, ...]]``.
 
         """
         if not sarif_json.strip():
-            return r[tuple[m.Infra.Issue, ...]].fail("qlty returned empty SARIF output")
+            return r[tuple[p.Infra.Issue, ...]].fail("qlty returned empty SARIF output")
         parsed = u.Cli.json_parse(sarif_json)
         if parsed.failure:
-            return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
+            return r[tuple[p.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
-        return r[tuple[m.Infra.Issue, ...]].ok(
+        return r[tuple[p.Infra.Issue, ...]].ok(
             tuple(
                 cls._issue_from_result(result, prefix)
                 for run in u.Cli.json_deep_mapping_list(data, "runs")
@@ -271,7 +271,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
         )
 
     @classmethod
-    def _issue_from_result(cls, result: t.JsonMapping, prefix: str) -> m.Infra.Issue:
+    def _issue_from_result(cls, result: t.JsonMapping, prefix: str) -> p.Infra.Issue:
         """Map one SARIF result to an Issue enriched with the FLEXT fix text.
 
         Returns:

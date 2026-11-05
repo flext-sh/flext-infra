@@ -352,7 +352,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ] = ""
 
     class ProjectRenderRuntimeContext(FlextInfraModelsConfigContract.ConfigContract):
-        """Distribution, tooling runtime and workspace integration of the rendered project."""
+        """Distribution, tooling runtime and integration of a rendered project."""
 
         dist: t.NonEmptyStr = m.Field(description="Project distribution identity")
         make_profile: c.Infra.MakeProfile = m.Field(
@@ -419,7 +419,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ] = None
 
     class ProjectRenderDependencyContext(ProjectRenderRuntimeContext):
-        """Scaffold, dependency, tooling and ownership declarations of the rendered project."""
+        """Scaffold, dependency, tooling and ownership of a rendered project."""
 
         scaffold: Annotated[
             Annotated[
@@ -484,7 +484,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ]
 
     class ProjectRenderPackageContext(ProjectRenderDependencyContext):
-        """Package identity, namespace and entry-point layout of the rendered project."""
+        """Package identity, namespace and entry points of a rendered project."""
 
         canonical_project_name: Annotated[
             t.NonEmptyStr,

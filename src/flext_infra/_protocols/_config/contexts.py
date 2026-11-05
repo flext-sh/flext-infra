@@ -100,7 +100,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
     @runtime_checkable
-    class MakefileRenderSpec(MakeCommandContext, Protocol):
+    class MakefileProjectRenderSpec(MakeCommandContext, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -151,6 +151,10 @@ class FlextInfraProtocolsConfigContexts:
         def workspace_subprojects(self) -> tuple[str, ...]:
             """Declared workspace subproject paths."""
             ...
+
+    @runtime_checkable
+    class MakefileToolchainRenderSpec(MakefileProjectRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def uv_link_mode(self) -> t.NonEmptyStr:
@@ -214,6 +218,10 @@ class FlextInfraProtocolsConfigContexts:
         def python_version(self) -> t.NonEmptyStr:
             """Python minor line the environment syncs against."""
             ...
+
+    @runtime_checkable
+    class MakefileRenderSpec(MakefileToolchainRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
@@ -358,7 +366,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
     @runtime_checkable
-    class ProjectRenderContext(
+    class ProjectRenderRuntimeContext(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
@@ -423,20 +431,9 @@ class FlextInfraProtocolsConfigContexts:
             """
             ...
 
-        @property
-        def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name."""
-            ...
-
-        @property
-        def config_base_class(self) -> str:
-            """Config base class composed by the generated ``_config.py``."""
-            ...
-
-        @property
-        def config_base_module(self) -> str:
-            """Import module exposing ``config_base_class``."""
-            ...
+    @runtime_checkable
+    class ProjectRenderDependencyContext(ProjectRenderRuntimeContext, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def scaffold(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldSpec:
@@ -479,6 +476,10 @@ class FlextInfraProtocolsConfigContexts:
         def ownership_command_prefix(self) -> tuple[t.NonEmptyStr, ...]:
             """Configured Beads ownership command."""
             ...
+
+    @runtime_checkable
+    class ProjectRenderPackageContext(ProjectRenderDependencyContext, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def canonical_project_name(self) -> t.NonEmptyStr:
@@ -597,6 +598,25 @@ class FlextInfraProtocolsConfigContexts:
             Repository-declared runtime requirements rendered ahead of the
             dependency profile's runtime set; see the ProjectSpec namesake.
             """
+            ...
+
+    @runtime_checkable
+    class ProjectRenderContext(ProjectRenderPackageContext, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name."""
+            ...
+
+        @property
+        def config_base_class(self) -> str:
+            """Config base class composed by the generated ``_config.py``."""
+            ...
+
+        @property
+        def config_base_module(self) -> str:
+            """Import module exposing ``config_base_class``."""
             ...
 
         @property

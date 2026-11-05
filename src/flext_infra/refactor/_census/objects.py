@@ -441,7 +441,7 @@ class FlextInfraRefactorCensusObjects:
         tree: ast.Module,
         module_name: str,
         by_site: Mapping[tuple[str, str], p.Infra.Object],
-    ) -> tuple[m.Infra.AliasCensus, ...]:
+    ) -> tuple[p.Infra.AliasCensus, ...]:
         """Classify the alias bindings and repeated exports of one module.
 
         Returns:
@@ -453,7 +453,7 @@ class FlextInfraRefactorCensusObjects:
         own_classes = frozenset(
             node.name for node in tree.body if isinstance(node, ast.ClassDef)
         )
-        rows: list[m.Infra.AliasCensus] = []
+        rows: list[p.Infra.AliasCensus] = []
         for node in tree.body:
             declared = cls._declared_alias(node)
             if declared is None:
@@ -509,14 +509,14 @@ class FlextInfraRefactorCensusObjects:
         path: Path,
         tree: ast.Module,
         by_site: Mapping[tuple[str, str], p.Infra.Object],
-    ) -> tuple[m.Infra.ShortestFormCensus, ...]:
+    ) -> tuple[p.Infra.ShortestFormCensus, ...]:
         """Classify pass-through wrappers and ceremony classes of one module.
 
         Returns:
             Review-only shortest-form rows for the module.
 
         """
-        rows: list[m.Infra.ShortestFormCensus] = []
+        rows: list[p.Infra.ShortestFormCensus] = []
         for node in tree.body:
             if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 forwarded = (
@@ -557,14 +557,14 @@ class FlextInfraRefactorCensusObjects:
     @classmethod
     def _duplicate_rows(
         cls, duplicates: Sequence[p.Infra.DuplicateGroup]
-    ) -> tuple[m.Infra.DuplicateCensus, ...]:
+    ) -> tuple[p.Infra.DuplicateCensus, ...]:
         """Project duplicate groups into rows; only identity groups are fixable.
 
         Returns:
             One row per duplicate group with its elected canonical owner.
 
         """
-        rows: list[m.Infra.DuplicateCensus] = []
+        rows: list[p.Infra.DuplicateCensus] = []
         for group in duplicates:
             users: MutableMapping[tuple[str, int, str], p.Infra.ReferenceSite] = {}
             for definition in group.definitions:
@@ -614,9 +614,9 @@ class FlextInfraRefactorCensusObjects:
         duplicates: Sequence[p.Infra.DuplicateGroup],
         census_kinds: frozenset[str] | None,
     ) -> tuple[
-        tuple[m.Infra.AliasCensus, ...],
-        tuple[m.Infra.DuplicateCensus, ...],
-        tuple[m.Infra.ShortestFormCensus, ...],
+        tuple[p.Infra.AliasCensus, ...],
+        tuple[p.Infra.DuplicateCensus, ...],
+        tuple[p.Infra.ShortestFormCensus, ...],
     ]:
         """Classify aliases, duplicate declarations and shortest-form defects.
 
@@ -634,8 +634,8 @@ class FlextInfraRefactorCensusObjects:
 
         by_site = {(item.file_path, item.name): item for item in objects}
         modules = {Path(item.file_path): item.module_name for item in objects}
-        aliases: list[m.Infra.AliasCensus] = []
-        shortest: list[m.Infra.ShortestFormCensus] = []
+        aliases: list[p.Infra.AliasCensus] = []
+        shortest: list[p.Infra.ShortestFormCensus] = []
         for path, source in sorted(sources.items()):
             if path.name == c.Infra.INIT_PY or source.lstrip().startswith(
                 c.Infra.AUTOGEN_HEADER

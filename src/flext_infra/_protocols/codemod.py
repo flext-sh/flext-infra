@@ -259,7 +259,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractRule(FlextCliProtocols.BaseModel, Protocol):
+    class RopeContractRuleTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -341,6 +341,10 @@ class FlextInfraProtocolsCodemod:
             """Destination expressions and their required Rope identities."""
             ...
 
+    @runtime_checkable
+    class RopeContractRuleShape(RopeContractRuleTarget, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
         def model_bases(self) -> tuple[str, ...]:
             """Required model ancestry for every matched declaration."""
@@ -399,6 +403,10 @@ class FlextInfraProtocolsCodemod:
         def implementation_owner(self) -> tuple[t.NonEmptyStr, t.NonEmptyStr] | None:
             """Native module and primitive whose backend stays native."""
             ...
+
+    @runtime_checkable
+    class RopeContractRule(RopeContractRuleShape, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def receiver_methods(self) -> tuple[str, ...]:

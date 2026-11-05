@@ -311,7 +311,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
 
     class RepositoryRefIdentity(FlextInfraModelsConfigContract.ConfigContract):
-        """Identity, location, topology and governance kind of one declared repository."""
+        """Identity, location, topology and governance kind of a repository."""
 
         inputs: Annotated[
             tuple[t.Port[p.Cli.AtomicFileState], ...],

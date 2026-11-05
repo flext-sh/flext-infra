@@ -538,7 +538,7 @@ class FlextInfraModelsConfigArtifact(
             return tuple(f"**/{name}/**" for name in self.generated_sources)
 
     class CodegenEngineSpec(CodegenArtifactScopeSpec):
-        """Generation engine, schema and toolchain declarations of ``config/codegen.yaml``."""
+        """Generation engine, schema and toolchain part of ``codegen.yaml``."""
 
         runtime_module_overrides: Annotated[
             Mapping[
@@ -644,7 +644,7 @@ class FlextInfraModelsConfigArtifact(
         ]
 
     class CodegenCiSpec(CodegenEngineSpec):
-        """GitHub Actions, CI checkout and analysis declarations of ``config/codegen.yaml``."""
+        """GitHub Actions, CI checkout and analysis part of ``codegen.yaml``."""
 
         github_actions: Annotated[
             Mapping[str, FlextInfraModelsConfigProvider.GithubActionPinSpec],
@@ -716,7 +716,7 @@ class FlextInfraModelsConfigArtifact(
         ]
 
     class CodegenWorkspaceSpec(CodegenCiSpec):
-        """Infrastructure source, branch, profile, Make and editor policies of ``config/codegen.yaml``."""
+        """Infra source, branch, profile, Make and editor part of ``codegen.yaml``."""
 
         infra_repository: Annotated[
             FlextInfraModelsConfigProvider.RepositorySourceSpec,

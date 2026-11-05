@@ -43,7 +43,7 @@ class FlextInfraGatesDirenv(FlextInfraGates):
     def _contract_issue(
         file: str,
         violation: p.Infra.EnvironmentContractViolation,
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Render one typed contract violation as a gate issue.
 
         Returns:

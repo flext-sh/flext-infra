@@ -30,8 +30,8 @@ class TestsFlextInfraReleaseForgeMemory:
         self.tag_commit = tag_commit
         self.native_digest = native_digest
         self.upload_state = upload_state
-        self.releases: MutableSequence[m.Infra.GithubReleaseIdentity] = []
-        self.assets: MutableMapping[int, MutableSequence[m.Infra.GithubReleaseAsset]] = {}
+        self.releases: MutableSequence[p.Infra.GithubReleaseIdentity] = []
+        self.assets: MutableMapping[int, MutableSequence[p.Infra.GithubReleaseAsset]] = {}
         self.blobs: MutableMapping[str, bytes] = {}
         self.effects: MutableSequence[str] = []
 

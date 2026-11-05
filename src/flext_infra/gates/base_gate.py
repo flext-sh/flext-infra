@@ -216,7 +216,7 @@ class FlextInfraGates:
             severity=c.Infra.ERROR,
         )
 
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass.
 
         Returns:
@@ -237,7 +237,7 @@ class FlextInfraGates:
         result: p.Cli.CommandOutput,
         tool: str,
         file: str,
-    ) -> m.Infra.Issue:
+    ) -> p.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues.
 
         The failure belongs to the whole ``file``, located at its first position.
@@ -489,7 +489,7 @@ class FlextInfraGates:
         self,
         params: p.Infra.GateExecutionParams,
         ctx: p.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Publish the native output receipt, then assemble the gate execution.
 
         Returns:
@@ -504,7 +504,7 @@ class FlextInfraGates:
         self,
         params: p.Infra.GateExecutionParams,
         evidence: p.Infra.GateOutputReceipt,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Assemble a gate execution from its native outcome and findings.
 
         Native outcome and acceptance are separate. Every remaining finding

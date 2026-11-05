@@ -127,7 +127,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 failure = "managed scanner resolution failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
-        failures: list[m.Infra.Issue] = []
+        failures: list[p.Infra.Issue] = []
         raw_output: list[str] = []
         found: list[p.Infra.AstGrepDiagnostic] = list(
             u.Infra.codemod_path_findings(
@@ -202,7 +202,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
         ruleset: p.Infra.CodemodRuleset,
         targets: Sequence[str],
-        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[m.Infra.Issue], list[str]],
+        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
     ) -> bool:
         """Scan one project's staged ruleset and collect its native report.
 

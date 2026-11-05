@@ -177,7 +177,7 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
         protocols: Sequence[p.Infra.RopeSourceClass],
         routes: Sequence[str],
         owners: Sequence[p.Infra.RopePyObject],
-    ) -> tuple[tuple[str, ...], dict[Path, tuple[m.Infra.SourceRewrite, ...]]]:
+    ) -> tuple[tuple[str, ...], dict[Path, tuple[p.Infra.SourceRewrite, ...]]]:
         """Plan how every use of a retired Protocol reaches its projected owner.
 
         A use through the public facade or its namespace already re-binds to
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
             offsets = [0]
             for line in lines:
                 offsets.append(offsets[-1] + len(line))
-            rewrites: list[m.Infra.SourceRewrite] = []
+            rewrites: list[p.Infra.SourceRewrite] = []
             for holder in (
                 node
                 for node in tree.body

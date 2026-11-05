@@ -424,7 +424,7 @@ class FlextInfraModelsCodemod:
         )
 
     class RopeContractRuleShape(RopeContractRuleTarget):
-        """Ancestry, capture and lexical-scope admission constraints of one Rope contract rule."""
+        """Ancestry, capture and lexical-scope constraints of a Rope rule."""
 
         model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
