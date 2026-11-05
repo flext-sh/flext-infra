@@ -656,9 +656,16 @@ Infra:
         # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
+        # Member extension 2026-11-05 (algar-oud-mig workspace top; clone
+        # infra/ansible/__init__.py L4-19 vs plugins/action/__init__.py
+        # L4-19): fleet members carry their own license holder and SPDX tag
+        # by the same "license header repeats in every module" contract, so
+        # the two header patterns cover any holder and identifier instead of
+        # only the family's. Remaining generated-package body stays under
+        # minLines/minTokens and keeps scanned.
         ignore-patterns:
-        - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
-        - "SPDX-License-Identifier: MIT"
+        - "Copyright \\(c\\) [0-9]{4} .+\\. All rights reserved\\."
+        - "SPDX-License-Identifier: [A-Za-z0-9._-]+"
         - "from __future__ import annotations"
         - "from typing import TYPE_CHECKING"
         - "from types import MappingProxyType"
