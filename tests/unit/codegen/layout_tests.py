@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import FlextInfraConfig, m
+from flext_infra import FlextInfraConfig, config, m
 from flext_infra.gates.layout import FlextInfraGatesLayout
 from tests import c, p, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
@@ -323,6 +323,46 @@ class TestsFlextInfraCodegenLayout:
         paths = {finding.path for finding in report.findings}
         tm.fail("data" in paths)
         tm.fail("external-docs" in paths)
+
+    @staticmethod
+    def test_catalog_roots_are_canonical_for_their_make_profile(
+        tmp_path: Path,
+    ) -> None:
+        """A root the template catalog projects is canonical for its profile only."""
+        roots: dict[c.Infra.MakeProfile, set[str]] = {
+            profile: {
+                Path(entry.destination).parts[0]
+                for entry in config.Infra.codegen.templates.entries
+                if profile in entry.profiles and not entry.destination.startswith(".")
+            }
+            for profile in c.Infra.MakeProfile
+        }
+        project = TestsFlextInfraCodegenLayoutSupport.build_loose_project(tmp_path)
+        for root, names in (
+            (project, roots[c.Infra.MakeProfile.STANDALONE]),
+            (tmp_path, roots[c.Infra.MakeProfile.WORKSPACE]),
+        ):
+            for name in names:
+                if not (root / name).exists():
+                    (root / name).write_text("generated\n", encoding="utf-8")
+        engine = TestsFlextInfraCodegenLayoutSupport.layout_engine(tmp_path)
+
+        standalone = {
+            finding.path for finding in engine.check_project(project).findings
+        }
+        workspace = {
+            finding.path for finding in engine.check_project(tmp_path).findings
+        }
+
+        tm.that(standalone & roots[c.Infra.MakeProfile.STANDALONE], eq=set())
+        tm.that(workspace & roots[c.Infra.MakeProfile.WORKSPACE], eq=set())
+        workspace_only = (
+            roots[c.Infra.MakeProfile.WORKSPACE] - roots[c.Infra.MakeProfile.STANDALONE]
+        )
+        for name in workspace_only:
+            (project / name).write_text("generated\n", encoding="utf-8")
+        reviewed = {finding.path for finding in engine.check_project(project).findings}
+        tm.that(workspace_only - reviewed, eq=set())
 
     @staticmethod
     def test_infrastructure_root_is_canonical(tmp_path: Path) -> None:
