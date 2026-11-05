@@ -888,7 +888,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     ),
                     (rf"^{re.escape(package)}(?:\.|$)", f"^(?:{names})$"),
                     (cls._codemod_file_globs(files), ()),
-                    correlate=False,
+                    condition=None,
                 )
             )
         for package, files in sorted(by_package.items()):
@@ -904,7 +904,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     ),
                     (rf"^{re.escape(package)}(?:\.|$)", r"^[a-z]$"),
                     (cls._codemod_file_globs(sorted(files)), ()),
-                    correlate=True,
+                    condition=cls._codemod_other_origin_condition(
+                        rf"^{re.escape(package)}(?:\.|$)"
+                    ),
                 )
             )
         layer_zero = frozenset(cls.codemod_layer_zero_files(snapshot, root))
@@ -937,7 +939,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         [cls._codemod_directory_glob(home)],
                         cls._codemod_foreign_ignores(exempt),
                     ),
-                    correlate=False,
+                    condition=None,
                 )
             )
         if facade_packages:
@@ -956,9 +958,24 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         r"^[a-z]$",
                     ),
                     (["**/*.py"], [f"**/{c.Infra.INIT_PY}"]),
-                    correlate=False,
+                    condition=None,
                 )
             )
+        documents.update(
+            cls._codemod_origin_removal_documents(
+                ("typing-duplicate",),
+                (
+                    (
+                        "A name the module binds at runtime is never bound again "
+                        "under TYPE_CHECKING."
+                    ),
+                    ("ENFORCE-003",),
+                ),
+                (".", r"^[A-Za-z_][A-Za-z0-9_]*$"),
+                (["**/*.py"], [f"**/{c.Infra.INIT_PY}"]),
+                condition=cls._codemod_runtime_duplicate_condition(),
+            )
+        )
         documents.update(
             cls._codemod_letter_module_object_documents(
                 facade_packages,
@@ -1037,13 +1054,13 @@ class FlextInfraUtilitiesCodemodNativePackage:
         target: tuple[str, str],
         scope: tuple[Sequence[str], Sequence[str]],
         *,
-        correlate: bool,
+        condition: t.JsonDict | None,
     ) -> Mapping[str, t.JsonMapping]:
-        """Remove a bound letter from an origin, in every statement shape.
+        """Remove a bound name from an origin, in every statement shape.
 
         ``metadata`` is the documents' message and enforced laws; ``scope``
-        their file globs and ignores. ``correlate`` removes the binding only
-        when the module binds the same name from another origin.
+        their file globs and ignores. ``condition``, when given, restricts the
+        removal (for example to a module that also binds the name elsewhere).
 
         Returns:
             The four removal documents keyed by id.
@@ -1054,7 +1071,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
         separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
         base = separator.join((c.Infra.CODEMOD_IMPORT_HEADER_SHAPE, *identity))
         documents: dict[str, t.JsonMapping] = {}
-        shapes = cls._codemod_origin_removal_shapes(target, correlate=correlate)
+        shapes = cls._codemod_origin_removal_shapes(target, condition=condition)
         for kind, (rule, fix) in shapes.items():
             rule_id = f"{base}{separator}{kind}"
             document: dict[str, t.JsonValue] = {
@@ -1072,15 +1089,110 @@ class FlextInfraUtilitiesCodemodNativePackage:
         return documents
 
     @classmethod
+    def _codemod_other_origin_condition(cls, origin: str) -> t.JsonDict:
+        """Match a module that also binds ``$NAME`` from another origin.
+
+        Returns:
+            The native condition reading ``$NAME``.
+
+        """
+        return {
+            "inside": {
+                "kind": "module",
+                "stopBy": "end",
+                "has": {
+                    "stopBy": "end",
+                    "kind": "import_from_statement",
+                    "all": [
+                        {
+                            "has": {
+                                "field": "module_name",
+                                "regex": ".",
+                                "not": {"regex": origin},
+                            }
+                        },
+                        {
+                            "has": {
+                                "kind": "dotted_name",
+                                "pattern": "$NAME",
+                                **cls._codemod_comment_free(2),
+                            }
+                        },
+                    ],
+                },
+            }
+        }
+
+    @classmethod
+    def _codemod_runtime_duplicate_condition(cls) -> t.JsonDict:
+        """Match a ``TYPE_CHECKING`` binding of ``$NAME`` the module makes at runtime.
+
+        The binding sits under an ``if TYPE_CHECKING:`` guard (or is the
+        guard's sole statement), and a module-level import outside every guard
+        binds the same name from the same origin (``$ORIGIN``). A name bound
+        from two origins names two objects (a family's upstream letter and its
+        own), so only the same-origin repeat is redundant.
+
+        Returns:
+            The native condition reading ``$NAME``.
+
+        """
+        guard: t.JsonDict = {
+            "kind": "if_statement",
+            "has": {
+                "field": "condition",
+                "regex": c.Infra.CODEMOD_TYPE_CHECKING_TEST_REGEX,
+            },
+        }
+        origin: t.JsonDict = {"field": "module_name", "pattern": "$ORIGIN"}
+        return {
+            "all": [
+                {"any": [guard, {"inside": {"stopBy": "end", **guard}}]},
+                {
+                    "any": [
+                        {"inside": {"kind": "import_from_statement", "has": origin}},
+                        {
+                            "has": {
+                                "stopBy": "end",
+                                "kind": "import_from_statement",
+                                "has": origin,
+                            }
+                        },
+                    ]
+                },
+                {
+                    "inside": {
+                        "kind": "module",
+                        "stopBy": "end",
+                        "has": {
+                            "kind": "import_from_statement",
+                            "all": [
+                                {"has": origin},
+                                {
+                                    "has": {
+                                        "kind": "dotted_name",
+                                        "pattern": "$NAME",
+                                        **cls._codemod_comment_free(2),
+                                    }
+                                },
+                            ],
+                        },
+                    }
+                },
+            ]
+        }
+
+    @classmethod
     def _codemod_origin_removal_shapes(
-        cls, target: tuple[str, str], *, correlate: bool
+        cls, target: tuple[str, str], *, condition: t.JsonDict | None
     ) -> Mapping[str, tuple[t.JsonDict, t.JsonValue]]:
         """Native rule and fix of each statement shape a binding removal needs.
 
         The binding is one name of a ``from <origin> import ...`` statement:
         a name followed by a comma, the last name, the sole name of a
         statement, and the sole statement of an ``if TYPE_CHECKING:`` block each
-        need their own native fix.
+        need their own native fix. ``condition``, when given, must also hold;
+        it reads the removed name as ``$NAME``.
 
         Returns:
             The rule and fix of each shape keyed by shape name.
@@ -1088,36 +1200,12 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         origin, names = target
         own: t.JsonDict = {"field": "module_name", "regex": origin}
-        other: t.JsonDict = {
-            "field": "module_name",
-            "regex": ".",
-            "not": {"regex": origin},
-        }
         free = cls._codemod_comment_free
         name: t.JsonDict = {"kind": "dotted_name", "regex": names}
         conditions: list[t.JsonValue] = []
-        if correlate:
+        if condition is not None:
             name["pattern"] = "$NAME"
-            conditions.append({
-                "inside": {
-                    "kind": "module",
-                    "stopBy": "end",
-                    "has": {
-                        "stopBy": "end",
-                        "kind": "import_from_statement",
-                        "all": [
-                            {"has": other},
-                            {
-                                "has": {
-                                    "kind": "dotted_name",
-                                    "pattern": "$NAME",
-                                    **free(2),
-                                }
-                            },
-                        ],
-                    },
-                }
-            })
+            conditions.append(condition)
         sole: t.JsonDict = {
             "kind": "import_from_statement",
             "all": [
@@ -1184,7 +1272,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         {
                             "has": {
                                 "field": "condition",
-                                "regex": r"^(?:typing\.)?TYPE_CHECKING$",
+                                "regex": c.Infra.CODEMOD_TYPE_CHECKING_TEST_REGEX,
                             }
                         },
                         {
@@ -1411,27 +1499,58 @@ class FlextInfraUtilitiesCodemodNativePackage:
         # parameter that merely shares the name binds nothing outside itself.
         # A nested function's own name binds in the searching scope: the stop
         # node is still visited, so it is matched by its ``name`` field.
+        # A binding under ``if TYPE_CHECKING:`` serves typing reads only:
+        # annotations, type aliases and code inside such a guard, which never
+        # runs. A runtime read needs a binding outside every guard.
         own_scope: t.JsonDict = {
             "any": [{"kind": kind} for kind in c.Infra.CODEMOD_NAME_SCOPE_KINDS]
         }
-        visible_binding: t.JsonDict = {
+        guarded: t.JsonDict = {
             "inside": {
                 "stopBy": "end",
-                "any": [
-                    {"kind": "module"},
-                    *({"kind": kind} for kind in c.Infra.CODEMOD_NAME_SCOPE_KINDS),
-                ],
+                "kind": "if_statement",
                 "has": {
-                    "stopBy": own_scope,
-                    "any": [
-                        bound,
-                        {
-                            "kind": "function_definition",
-                            "has": {"field": "name", "pattern": "$USED"},
-                        },
-                    ],
+                    "field": "condition",
+                    "regex": c.Infra.CODEMOD_TYPE_CHECKING_TEST_REGEX,
                 },
             }
+        }
+
+        def visible(binding: t.JsonDict) -> t.JsonDict:
+            return {
+                "inside": {
+                    "stopBy": "end",
+                    "any": [
+                        {"kind": "module"},
+                        *({"kind": kind} for kind in c.Infra.CODEMOD_NAME_SCOPE_KINDS),
+                    ],
+                    "has": {
+                        "stopBy": own_scope,
+                        "any": [
+                            binding,
+                            {
+                                "kind": "function_definition",
+                                "has": {"field": "name", "pattern": "$USED"},
+                            },
+                        ],
+                    },
+                }
+            }
+
+        typing_use: t.JsonDict = {
+            "any": [
+                guarded,
+                *(
+                    {"inside": {"stopBy": "end", "kind": kind}}
+                    for kind in ("type", "type_alias_statement")
+                ),
+            ]
+        }
+        visible_binding: t.JsonDict = {
+            "any": [
+                {"all": [typing_use, visible(bound)]},
+                visible({"all": [bound, {"not": guarded}]}),
+            ]
         }
         return {
             "pattern": "$ANCHOR",
