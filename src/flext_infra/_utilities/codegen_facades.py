@@ -135,10 +135,10 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         *,
         original_root: Path,
     ) -> tuple[str, ...]:
-        """Derive the configured import roots covered by declared candidate effects.
+        """Elect declared live source roots together with proposed virtual roots.
 
         Returns:
-            The virtual source-folder election of the overlaid view.
+            The live and proposed source-folder election of the overlaid view.
 
         """
         proposed = tuple(
@@ -158,7 +158,8 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                         for name in config.Infra.source_scan.roots
                     ),
                 )
-                if any(path.is_relative_to(folder) for path in proposed)
+                if folder.is_dir()
+                or any(path.is_relative_to(folder) for path in proposed)
             }),
         )
 
@@ -3107,9 +3108,6 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
         Returns:
             Existing base expressions whose providers left the family publication.
 
-        Raises:
-            ValueError: If an existing base has no resolved source identity.
-
         """
         facade_path, namespace = facade
         candidates = tuple(
@@ -3129,102 +3127,11 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
                 facade_path.relative_to(Path(project.root.real_path)).as_posix(),
             ),
         )
-        scope = pymodule.get_scope()
         retired: set[str] = set()
         for base in candidates:
-            expression = base.value if isinstance(base, ast.Subscript) else base
-            head = expression
-            attributes: list[str] = []
-            while isinstance(head, ast.Attribute):
-                attributes.insert(0, head.attr)
-                head = head.value
-            head_binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(scope, head)
-            holder, line = (
-                head_binding.get_definition_location()
-                if head_binding is not None
-                else (None, None)
+            binding = FlextInfraUtilitiesCodegenFacades._retired_base_binding(
+                project, pymodule, sources, facade, base
             )
-            shadowed = (
-                holder is not None
-                and (resource := holder.get_resource()) is not None
-                and resource.real_path == str(facade_path)
-                and line is not None
-                and line > namespace.lineno
-            )
-            if (
-                not shadowed
-                and head is not expression
-                and FlextInfraUtilitiesCodegenFacades._upstream_binding(
-                    project, project, head_binding
-                )
-            ):
-                continue
-            if shadowed:
-                # Module scopes include later writes; bases read the earlier binding.
-                (module_name,) = (
-                    name for name, (path, _) in sources.items() if path == facade_path
-                )
-                definitions: dict[str, m.Infra.SourceClassDefinition] = {}
-                visible = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
-                    m.Infra.SourceBindingInventoryRequest(
-                        project=project,
-                        module=module_name,
-                        path=facade_path,
-                        source=contents[facade_path],
-                        required_line=namespace.lineno,
-                    ),
-                    definitions,
-                    provider=pymodule,
-                )
-                origin = visible.get(head.id) if isinstance(head, ast.Name) else None
-                if origin is None:
-                    message = (
-                        f"Unresolved facade base origin: {facade_path}:"
-                        f"{ast.unparse(base)}"
-                    )
-                    raise ValueError(message)
-                if origin.target in definitions:
-                    declaration_line = int(origin.target.rsplit(":", 1)[1])
-                    declared_scope = scope.get_inner_scope_for_line(declaration_line)
-                    parent = declared_scope.parent
-                    if declared_scope.get_start() != declaration_line or parent is None:
-                        message = f"Unresolved facade declaration: {origin.target}"
-                        raise ValueError(message)
-                    binding = parent.get_defined_names().get(
-                        declared_scope.pyobject.get_name()
-                    )
-                    if (
-                        binding is None
-                        or binding.get_object() is not declared_scope.pyobject
-                    ):
-                        message = f"Ambiguous facade declaration: {origin.target}"
-                        raise ValueError(message)
-                    for attribute in (*origin.attributes, *attributes):
-                        binding = binding.get_object().get_attribute(attribute)
-                else:
-                    binding = FlextInfraUtilitiesRopeRuntime.qualified_name(
-                        project,
-                        ".".join((*origin.attributes, *attributes)),
-                        module_name=origin.target,
-                    )
-            else:
-                binding = FlextInfraUtilitiesRopeRuntime.resolve_symbol(
-                    scope,
-                    expression,
-                )
-            if binding is None:
-                message = f"Unresolved facade base: {facade_path}:{ast.unparse(base)}"
-                raise ValueError(message)
-            if shadowed and not FlextInfraUtilitiesRopeRuntime.abstract_class(
-                binding.get_object()
-            ):
-                message = (
-                    f"Non-class facade base origin: {facade_path}:{ast.unparse(base)}"
-                )
-                raise ValueError(message)
-            if FlextInfraUtilitiesRopeRuntime.semantic_module(binding.get_object()):
-                message = f"Module used as a class base: {ast.unparse(base)}"
-                raise ValueError(message)
             holder = binding.get_definition_location()[0]
             provider = holder.get_resource() if holder is not None else None
             if provider is None:
@@ -3261,6 +3168,110 @@ class FlextInfraUtilitiesCodegenFacades(FlextInfraUtilitiesCodegenFacadeSyntax):
             ):
                 retired.add(ast.unparse(base))
         return frozenset(retired)
+
+    @staticmethod
+    def _retired_base_binding(
+        project: p.Infra.RopeProject,
+        pymodule: p.Infra.RopePyModule,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        facade: t.Pair[Path, ast.ClassDef],
+        base: ast.expr,
+    ) -> p.Infra.RopePyName:
+        """Resolve a base's native identity before deciding family retirement.
+
+        Returns:
+            The class binding visible at the facade declaration.
+
+        Raises:
+            ValueError: If the base is unresolved, a module or a non-class.
+
+        """
+        expression = base.value if isinstance(base, ast.Subscript) else base
+        head = expression
+        attributes: list[str] = []
+        while isinstance(head, ast.Attribute):
+            attributes.insert(0, head.attr)
+            head = head.value
+        binding = FlextInfraUtilitiesCodegenFacades._declared_facade_base_binding(
+            project, pymodule, sources, facade, (base, head, attributes)
+        )
+        if FlextInfraUtilitiesRopeRuntime.semantic_module(binding.get_object()):
+            message = f"Module used as a class base: {ast.unparse(base)}"
+            raise ValueError(message)
+        if not FlextInfraUtilitiesRopeRuntime.abstract_class(binding.get_object()):
+            message = f"Non-class facade base origin: {facade[0]}:{ast.unparse(base)}"
+            raise ValueError(message)
+        return binding
+
+    @staticmethod
+    def _declared_facade_base_binding(
+        project: p.Infra.RopeProject,
+        pymodule: p.Infra.RopePyModule,
+        sources: t.MappingKV[str, t.Pair[Path, str]],
+        facade: t.Pair[Path, ast.ClassDef],
+        reference: t.Triple[ast.expr, ast.expr, t.SequenceOf[str]],
+    ) -> p.Infra.RopePyName:
+        """Resolve the declaration-time binding through its public source origin.
+
+        Returns:
+            The original native binding, including its declared attribute chain.
+
+        Raises:
+            ValueError: If the original declaration is unresolved or ambiguous.
+
+        """
+        # Module scopes include later writes; bases read the earlier binding.
+        ((module_name, source),) = (
+            (name, text) for name, (path, text) in sources.items() if path == facade[0]
+        )
+        definitions: dict[str, m.Infra.SourceClassDefinition] = {}
+        visible = FlextInfraUtilitiesRopeSourceBasesInventory.inventory(
+            m.Infra.SourceBindingInventoryRequest(
+                project=project,
+                module=module_name,
+                path=facade[0],
+                source=source,
+                required_line=facade[1].lineno,
+            ),
+            definitions,
+            provider=pymodule,
+        )
+        origin = (
+            visible.get(reference[1].id) if isinstance(reference[1], ast.Name) else None
+        )
+        if origin is None:
+            message = (
+                f"Unresolved facade base origin: {facade[0]}:"
+                f"{ast.unparse(reference[0])}"
+            )
+            raise ValueError(message)
+        if origin.target not in definitions:
+            return FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_binding(
+                project,
+                m.Infra.SourceClassReference(
+                    target=origin.target,
+                    attributes=(*origin.attributes, *reference[2]),
+                    qualified_base=".".join((
+                        origin.target,
+                        *origin.attributes,
+                        *reference[2],
+                    )),
+                ),
+                sources=sources,
+            )
+        declaration_line = int(origin.target.rsplit(":", 1)[1])
+        declared_scope = pymodule.get_scope().get_inner_scope_for_line(declaration_line)
+        parent = declared_scope.parent
+        if declared_scope.get_start() != declaration_line or parent is None:
+            message = f"Unresolved facade declaration: {origin.target}"
+            raise ValueError(message)
+        binding = parent.get_defined_names().get(declared_scope.pyobject.get_name())
+        if binding is None or binding.get_object() is not declared_scope.pyobject:
+            message = f"Ambiguous facade declaration: {origin.target}"
+            raise ValueError(message)
+        for attribute in (*origin.attributes, *reference[2]):
+            binding = binding.get_object().get_attribute(attribute)
+        return binding
 
     @staticmethod
     def _retired_family_provider(

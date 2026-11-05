@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from importlib import import_module
 from pathlib import Path
 
 from tests import c, t, tm, u
@@ -25,7 +24,7 @@ class TestsFlextInfraFacadeMemberConstraints:
 
     @classmethod
     def _project(cls) -> Path:
-        package_dir = Path(import_module(cls.PACKAGE).__file__ or "").parent
+        package_dir = tm.not_none(u.Infra.declared_package_dir(cls.PACKAGE))
         return package_dir.parent.parent
 
     @classmethod
@@ -61,16 +60,26 @@ class TestsFlextInfraFacadeMemberConstraints:
     @classmethod
     def test_relocations_name_only_foreign_references(cls) -> None:
         """Each census reference is a non-owner reference bound to its owner."""
-        core = import_module(cls.PACKAGE)
-        _lineage, relocations, _names = u.Infra.facade_member_census(cls._project())
-        tm.that(relocations, empty=False)
-        for owner, references in relocations.items():
-            for reference in references:
-                letter, member = reference.split(".")
-                value = getattr(getattr(core, letter), member)
-                tm.that(letter, ne=owner)
-                tm.that(u.Infra.facade_member_owner(value), eq=owner)
-                tm.that(f"{owner}.{member}" in references, eq=False)
+        project = cls._project()
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            _lineage, relocations, _names = u.Infra.facade_member_census(
+                project, source_project=snapshot.engine
+            )
+            tm.that(relocations, empty=False)
+            for owner, references in relocations.items():
+                for reference in references:
+                    letter, member = reference.split(".")
+                    value = u.Infra.source_member_binding(
+                        snapshot.engine, f"{cls.PACKAGE}.{owner}.{member}"
+                    )
+                    tm.that(
+                        u.Infra.facade_member_owner(
+                            value, source_project=snapshot.engine
+                        ),
+                        eq=owner,
+                    )
+                    tm.that(letter, ne=owner)
+                    tm.that(f"{owner}.{member}" in references, eq=False)
 
     @classmethod
     def test_retirements_match_their_relocations(cls) -> None:
@@ -79,7 +88,11 @@ class TestsFlextInfraFacadeMemberConstraints:
         Relocation also covers receivers that bind no object under the
         owner's name, so retirements are a subset of the references.
         """
-        _lineage, relocations, _names = u.Infra.facade_member_census(cls._project())
+        project = cls._project()
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            _lineage, relocations, _names = u.Infra.facade_member_census(
+                project, source_project=snapshot.engine
+            )
         references = {
             reference for found in relocations.values() for reference in found
         }
@@ -95,16 +108,22 @@ class TestsFlextInfraFacadeMemberConstraints:
     @classmethod
     def test_wrong_layer_names_are_unbound_by_their_owner(cls) -> None:
         """A wrong-layer name is declared by its letter and absent from its owner."""
-        core = import_module(cls.PACKAGE)
         misplaced = cls._by_shape(c.Infra.FACADE_MEMBER_WRONG_LAYER_SHAPE)
         retirements = cls._by_shape(c.Infra.FACADE_MEMBER_RETIRE_SHAPE)
-        for letter, names in misplaced.items():
-            for name in names:
-                owner = u.Infra.facade_member_owner(
-                    getattr(getattr(core, letter), name)
-                )
-                tm.that(name in dir(getattr(core, owner)), eq=False)
-                tm.that(name in retirements.get(letter, ()), eq=False)
+        with u.Infra.codemod_workspace_snapshot(cls._project()) as snapshot:
+            for letter, names in misplaced.items():
+                for name in names:
+                    owner = u.Infra.facade_member_owner(
+                        u.Infra.source_member_binding(
+                            snapshot.engine, f"{cls.PACKAGE}.{letter}.{name}"
+                        ),
+                        source_project=snapshot.engine,
+                    )
+                    holder = u.Infra.facade_source_classes(
+                        cls.PACKAGE, (owner,), source_project=snapshot.engine
+                    )[owner]
+                    tm.that(name in holder.get_attributes(), eq=False)
+                    tm.that(name in retirements.get(letter, ()), eq=False)
 
     @classmethod
     def test_documents_scope_their_letter_family(cls) -> None:
@@ -122,5 +141,12 @@ class TestsFlextInfraFacadeMemberConstraints:
         """Two derivations publish identical rules and census."""
         first = cls._ownership_rules()
         tm.that(cls._ownership_rules(), eq=first)
-        census = u.Infra.facade_member_census(cls._project())
-        tm.that(u.Infra.facade_member_census(cls._project()), eq=census)
+        project = cls._project()
+        with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            census = u.Infra.facade_member_census(
+                project, source_project=snapshot.engine
+            )
+            tm.that(
+                u.Infra.facade_member_census(project, source_project=snapshot.engine),
+                eq=census,
+            )

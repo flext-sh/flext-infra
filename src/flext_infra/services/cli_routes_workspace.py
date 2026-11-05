@@ -39,7 +39,12 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _tests(params: m.Infra.WorkspaceTestsRequest) -> p.Cli.ErasedCommandResult:
-        """Preserve the first native test status at the CLI boundary."""
+        """Preserve the first native test status at the CLI boundary.
+
+        Returns:
+            The successful native test result or its unchanged failure.
+
+        """
         completed = flext_infra.infra.workspace_tests(params)
         if completed.failure:
             return r[int].from_failure(completed)
@@ -217,7 +222,7 @@ class FlextInfraWorkspaceRoutes:
             ),
             *u.Infra.result_routes((
                 (
-                    c.Infra.VERB_TESTS,
+                    c.Infra.VERB_TEST,
                     "Run persistent incremental tests after global source admission",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests,

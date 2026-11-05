@@ -27,19 +27,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
     @classmethod
     def source_member_binding(
-        cls, project: p.Infra.RopeProject, qualified: str
+        cls,
+        project: p.Infra.RopeProject,
+        qualified: str | m.Infra.SourceClassReference,
+        *,
+        sources: t.MappingKV[str, t.Pair[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
         """Resolve the first declared member along its authenticated native C3 order.
 
-        Native resolution failures propagate without changing their cause.
+        Typed base references resolve the class itself. Planned sources retain
+        their original mapping; native resolution failures propagate unchanged.
 
         Returns:
             The member binding belonging to the exact source or external owner.
 
         """
-        return cls._RuntimeBaseResolver(project, {}, (), None).source_member_binding(
-            qualified
-        )
+        return cls._RuntimeBaseResolver(
+            project, sources if sources is not None else {}, (), None
+        ).source_member_binding(qualified)
 
     @staticmethod
     def merge_class_lineages[TIdentity: str | t.Pair[str, str]](
@@ -142,7 +147,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return False
             return True
 
-        def source_member_binding(self, qualified: str) -> p.Infra.RopePyName:
+        def source_member_binding(
+            self, qualified: str | m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
             """Read a member from the first native declaration in the source MRO.
 
             Returns:
@@ -152,6 +159,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 ValueError: If an owner scope or declared member cannot be proven.
 
             """
+            if isinstance(qualified, m.Infra.SourceClassReference):
+                return self._source_class_binding(qualified)
             receiver, _, member = qualified.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
             for ancestor in self._linearize(identity):
@@ -177,6 +186,53 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                     return binding
             msg = f"model utility has no declared binding: {qualified}"
             raise ValueError(msg)
+
+        def _source_class_binding(
+            self, qualified: m.Infra.SourceClassReference
+        ) -> p.Infra.RopePyName:
+            """Resolve the native class declaration before reading its members.
+
+            Returns:
+                The proven binding of the declared source class.
+
+            Raises:
+                ValueError: If the native resource or scope has another identity.
+
+            """
+            self._prepare_ordering()
+            identity = self._resolve(qualified)
+            self._linearize(identity)
+            if identity in self._external:
+                return self._class_bindings[identity]
+            module_name, class_name, line = identity.rsplit(":", 2)
+            declared = FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                self._project.get_module(module_name)
+            )
+            if module_name in self._sources:
+                path, source = self._sources[module_name]
+                resource = declared.get_resource()
+                if resource is None or resource.real_path != str(path):
+                    msg = f"Source class resource does not identify owner: {identity}"
+                    raise ValueError(msg)
+                declared = FlextInfraUtilitiesRopeRuntime.build_string_module(
+                    self._project,
+                    source,
+                    resource=resource,
+                )
+            scope = declared.get_scope().get_inner_scope_for_line(int(line))
+            parent = scope.parent
+            if (
+                scope.get_start() != int(line)
+                or scope.pyobject.get_name() != class_name.rsplit(".", 1)[-1]
+                or parent is None
+            ):
+                msg = f"native class scope does not identify source owner: {identity}"
+                raise ValueError(msg)
+            binding = parent.get_defined_names().get(scope.pyobject.get_name())
+            if binding is None or binding.get_object() is not scope.pyobject:
+                msg = f"Ambiguous source class binding: {identity}"
+                raise ValueError(msg)
+            return binding
 
         def __init__(
             self,
@@ -210,6 +266,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 str, m.Infra.SourceClassReference
             ] = {}
             self._external: t.MutableMappingKV[str, t.Infra.RopePyObject] = {}
+            self._class_bindings: t.MutableMappingKV[str, p.Infra.RopePyName] = {}
             self._linearizations: t.MutableMappingKV[str, t.StrTuple] = {}
             self._active: set[str] = set()
             self._resolved_memo: t.MutableMappingKV[str, str] = {}
@@ -793,6 +850,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 # reaches the class attribute through the instance's type.
                 value = value.get_type()
             identity = self._external_identity(value)
+            if identity in self._external and binding.get_object() is value:
+                self._class_bindings[identity] = binding
             for attribute in remaining:
                 identity = self._member(identity, attribute, depth + 1, visiting)
             return identity
@@ -1322,7 +1381,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 value = self._external[ancestor]
                 external_members = value.get_attributes()
                 if name in external_members:
-                    return self._external_identity(external_members[name].get_object())
+                    binding = external_members[name]
+                    resolved = self._external_identity(binding.get_object())
+                    if resolved in self._external:
+                        self._class_bindings[resolved] = binding
+                    return resolved
             message = f"Missing inherited class member: {identity}.{name}"
             raise ValueError(message)
 

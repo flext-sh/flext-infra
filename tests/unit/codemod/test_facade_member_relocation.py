@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 
 from flext_infra.codemod import FlextInfraModGateEngine
@@ -77,14 +76,20 @@ class TestsFlextInfraFacadeMemberRelocation:
         )
         # The census decides each move: a member relocates when its owner
         # letter binds it and the receiver binds no object or the identical one.
-        _lineage, references, _names = u.Infra.facade_member_census(mod_workspace)
-        core = import_module(c.Infra.PKG_CORE_UNDERSCORE)
-        owners = {
-            name: u.Infra.facade_member_owner(
-                getattr(core.u, name, None) or getattr(core.m, name)
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            _lineage, references, _names = u.Infra.facade_member_census(
+                mod_workspace, source_project=snapshot.engine
             )
-            for name in names
-        }
+            owners = {
+                name: u.Infra.facade_member_owner(
+                    u.Infra.source_member_binding(
+                        snapshot.engine,
+                        f"{c.Infra.PKG_CORE_UNDERSCORE}.m.{name}",
+                    ),
+                    source_project=snapshot.engine,
+                )
+                for name in names
+            }
         moved = {
             name
             for name, owner in owners.items()

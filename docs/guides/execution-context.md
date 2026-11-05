@@ -693,10 +693,17 @@ reconcile installed metadata through `make setup` before running its consumer te
 the complete applicable population. The 2026-10-26 operator order supersedes the
 forced complete-run behavior: unchanged tests are not rerun merely because the
 verb was invoked again. Selection and execution share one persistent database and
-aggregate deadline, with no second execution pass. Every execution retains the
-same-scope green-check prerequisite. The common catalog has no manual file selector
-or separate complete-suite alias. Fleet acceptance requires global Ruff, Pyrefly
-and pytest evidence; a member-only receipt never claims fleet completion.
+aggregate deadline, with no second execution pass. The common catalog has no manual
+file selector or separate complete-suite alias. The 2026-10-26 operator priority
+requires global Ruff and Pyrefly admission before native incremental pytest and
+global pytest success before later phases. The public fleet owner is
+`flext-infra workspace tests --repository-root <root> --scope all`; it admits
+global source quality once before executing the native engines in dependency
+order. Ordinary test failures preserve the first original status while every
+selected repository is reached. Configuration failures escape unchanged. Existing
+receipt-based operations retain their own admission contracts. Full applicable
+checks remain required before completion and integration; a member-only receipt
+never claims fleet completion.
 
 ## New projects
 
@@ -2449,6 +2456,14 @@ original process, accounting and diagnostics reports with complete positive exec
 Timeouts, signals, collection errors, operational failures, missing artifacts and
 changed digests remain failures. The complete-execution policy may admit finished
 findings while preserving their nonzero status; the clean-quality policy rejects them.
+Green-check reuse receives its global-target planner through the required typed
+`p.Infra.GlobalCheckTargetPlanner` callback. The pytest composition supplies the native
+checker's `plan_global_targets` operation; the Git evidence utility never imports the
+checker. Admission invokes the callback only after original execution and complete,
+unfiltered SARIF coverage have been admitted, retaining the first-failure order before
+topology comparison and candidate freshness. The native checker remains the sole
+topology and applicable-gate planning owner; no caller-authored target inventory or
+optional planner fallback substitutes for it.
 Bare `make check` uses the existing workspace capture route to execute the original
 checker once. It preserves that producer's native process outcome and owns an exclusive
 report base, then writes an immutable receipt when the original reports and execution
@@ -2945,6 +2960,18 @@ imported to derive this fact. Unresolved or dynamic candidate identities fail
 explicitly; no runtime retry, omitted fact or second analysis engine is allowed.
 This contract is not runtime acceptance; the consuming public `make mod` and
 subsequent global gates remain the integration owner's proof.
+Facade-member census, ownership and component metadata use that same injected
+source project, including external-library classification. Their canonical APIs
+accept native bindings, not arbitrary runtime objects. Published facade selection
+is shared across the requested letters; qualified publishers remain qualified
+(`infra.contracts` and `infra.pulumi.lib` are independent publication boundaries).
+Source ancestry and declaration kinds retain the configured owner precedence;
+direct protocol declarations are not confused with concrete protocol descendants.
+Binding identity is proven by the same alias declaration or exact nominal binding,
+never by equal expression text or generic origins with their arguments erased.
+Unknown kinds and unsupported dynamic identity proofs fail explicitly. No metadata
+producer imports the target to bootstrap its own migration, and no runtime API
+compatibility branch or second classifier is retained.
 Repository planning emits an exception's original traceback when capturing its
 failed outcome. The final report retains that same cause; interruption before
 the cohort finishes cannot hide the first failure behind a timeout.
