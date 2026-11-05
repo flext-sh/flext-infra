@@ -465,6 +465,15 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             t.NonEmptyStr,
             m.Field(description="Project-relative owner of the runtime environment"),
         ] = "."
+        mise_config_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Only project Mise config the activation loads; a "
+                    "machine-local override never enters the governed shell"
+                ),
+            ),
+        ] = c.Infra.MISE_TOML_FILENAME
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Project-relative executable paths"),
