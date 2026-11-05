@@ -458,6 +458,15 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def mise_config_filename(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Only project Mise config the activation loads; a machine-local override
+            never enters the governed shell.
+            """
+            ...
+
+        @property
         def environment_path_prepends(self) -> tuple[t.NonEmptyStr, ...]:
             """Project-relative executable paths."""
             ...

@@ -187,6 +187,15 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
+        def mise_config_filename(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Only project Mise config the locked bootstrap loads; a machine-local
+            override never enters a locked install.
+            """
+            ...
+
+        @property
         def uv_lock_filename(self) -> t.NonEmptyStr:
             """Committed native uv lock of the runtime root."""
             ...
