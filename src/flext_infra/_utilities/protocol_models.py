@@ -3390,12 +3390,23 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                     + f" import {letter}"
                 )
+            # The declaring module is named from the package's import name, not
+            # its parent directory: a nested package (``infra.contracts``) keeps
+            # every segment, so its own holder never reads as a foreign family.
             declaring = (
                 None
                 if destination is None or self.package is None
-                else ".".join(
-                    destination.relative_to(self.package.parent).with_suffix("").parts
+                else ".".join((
+                    package_name,
+                    *destination.relative_to(self.package).with_suffix("").parts,
+                ))
+            )
+            declared_here = frozenset(
+                name
+                for name, (_family, module, _declared) in (
+                    self.source_family_classes.items()
                 )
+                if module == declaring
             )
             type_imports.extend(
                 f"from {family} import {name}"
@@ -3467,11 +3478,14 @@ class FlextInfraUtilitiesModelsProtocol:
                     "__future__",
                     "pydantic",
                 }:
+                    # A source model may import the holder its mirror declares;
+                    # the mirror reads that name from its own module scope.
                     names = [
                         alias
                         for alias in statement.names
                         if (alias.asname or alias.name) in roots
                         and (alias.asname or alias.name) not in families
+                        and (alias.asname or alias.name) not in declared_here
                     ]
                     if names:
                         model_source = statement.module.startswith(
