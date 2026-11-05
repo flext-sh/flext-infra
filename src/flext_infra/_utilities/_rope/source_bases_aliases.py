@@ -86,6 +86,12 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         # bodies are not inputs to this package-alias reader.
         if path.name != c.Infra.INIT_PY or not module:
             return {}
+        # Only an initializer that names the installer can declare a lazy
+        # route; any other one (a third-party distribution) is never handed to
+        # the semantic scope analysis below.
+        installer = "install_lazy_exports"
+        if installer not in source:
+            return {}
         # The bindings are a pure function of the initializer text, so one
         # read per distinct text serves every facade render of the process.
         key = (str(project), module, str(path), source)
@@ -104,7 +110,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
                     node.func,
                     scope,
                     ("flext_core", "flext_core.lazy"),
-                    "install_lazy_exports",
+                    installer,
                 )
             ):
                 continue
