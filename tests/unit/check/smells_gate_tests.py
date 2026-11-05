@@ -302,6 +302,31 @@ class TestsFlextInfraSmellsGate:
         tm.fail(any("{" in message for message in messages))
         tm.ok(all(" Fix: " in message for message in messages))
 
+    def test_ignored_check_file_is_never_scanned(
+        self,
+        tmp_path: Path,
+        smells_project: Path,
+    ) -> None:
+        """A check-target file the repository ignores carries no finding."""
+        self._configure(tmp_path)
+        params = ", ".join(f"p{index}" for index in range(16))
+        (self._package(smells_project) / "local_wide.py").write_text(
+            f"def wide({params}):\n    return p0\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tmp_path / c.Infra.GITIGNORE).write_text(
+            "local_*.py\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        execution = FlextInfraGatesSmells(tmp_path).check(
+            smells_project,
+            self._ctx(tmp_path),
+        )
+
+        tm.ok(execution.result.passed)
+        tm.that(execution.issues, length=0)
+
     def test_qlty_scan_runs_without_project_metadata(
         self,
         tmp_path: Path,
