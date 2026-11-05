@@ -221,7 +221,7 @@ override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
-override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', '"$(BOOTSTRAP_ROOT)"', uv_tool, make.native_environment_unset, true) }})
+override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', '"$(BOOTSTRAP_ROOT)"', uv_tool, make.native_environment_unset, mise_config_filename, true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -302,6 +302,9 @@ override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
 endif
+# The locked install reads only the declared project config: a machine-local
+# override (mise.local.toml and siblings) never selects a tool outside the lock.
+override export MISE_OVERRIDE_CONFIG_FILENAMES := {{ mise_config_filename }}
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
 # The project manifest remains in native project scope. An optional global
 # configuration has its own explicit runtime-scoped path; when absent, Mise

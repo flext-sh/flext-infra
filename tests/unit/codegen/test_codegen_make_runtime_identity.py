@@ -69,6 +69,46 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         tm.that(lock.read_bytes(), eq=lock_before)
 
     @staticmethod
+    def test_status_ignores_a_project_local_mise_override(
+        tmp_path: Path,
+    ) -> None:
+        """A machine-local project override never selects a tool outside the lock."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.ok(u.Tests.provision_python_project_environment(root))
+        lock = root / c.Infra.MISE_LOCK_FILENAME
+        lock_before = lock.read_bytes()
+        locked_uv = u.Tests.toml_tables_at(
+            lock.read_text(encoding="utf-8"),
+            "tools",
+            "uv",
+        )
+        tm.that(len(locked_uv), eq=1)
+        version = locked_uv[0]["version"]
+        tm.ok(isinstance(version, str))
+        # Mise loads this name from the project directory on its own; the
+        # pinned release is absent from the lock, as in the reported override.
+        (root / ".mise.local.toml").write_text(
+            '[tools]\nuv = "0.0.1"\n', encoding="utf-8"
+        )
+
+        result = tm.ok(
+            u.Tests.run_isolated_make(["--no-print-directory", "status"], cwd=root)
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
+        tm.that(result.stdout, has=f"uv {version} ")
+        tm.that(result.stderr, lacks="not in the lockfile")
+        tm.that(result.stderr, lacks="0.0.1")
+        tm.that(lock.read_bytes(), eq=lock_before)
+
+    @staticmethod
     def test_status_reports_the_first_missing_declared_package(
         tmp_path: Path,
     ) -> None:

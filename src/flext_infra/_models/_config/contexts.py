@@ -178,6 +178,15 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Committed Mise lock of every governed repository"),
         ] = c.Infra.MISE_LOCK_FILENAME
+        mise_config_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Only project Mise config the locked bootstrap loads; a "
+                    "machine-local override never enters a locked install"
+                ),
+            ),
+        ] = c.Infra.MISE_TOML_FILENAME
         uv_lock_filename: Annotated[
             t.NonEmptyStr,
             m.Field(description="Committed native uv lock of the runtime root"),
