@@ -22,17 +22,16 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
     @classmethod
     def rewrite_own_family_members(
         cls,
-        source: str,
+        native: tuple[p.Infra.RopeProject, Path, str],
         routes: Mapping[t.StrTuple, tuple[str, str, str]],
         imports: Mapping[str, str],
         *,
-        source_project: p.Infra.RopeProject,
-        file_path: Path,
         local_module: str,
         upstream: Mapping[str, str],
     ) -> str:
         """Plan member and import changes without moving an import's suite.
 
+        ``native`` is the bound source project, the file path and its source.
         A route whose owner is declared in ``local_module`` is spelled through
         the local class and imports nothing; ``upstream`` binds each elected
         name from the upstream package that publishes it.
@@ -44,6 +43,7 @@ class FlextInfraUtilitiesSemanticCutoverOwnMro:
             ValueError: A source binding is captured or an import is incomplete.
 
         """
+        source_project, file_path, source = native
         module = cls._module(source_project, file_path, source)
         declarations = cls._family_declarations(
             module,

@@ -10,7 +10,7 @@ import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codemod.class_nesting_owner_support import (
     TestsFlextInfraClassNestingSupport,
 )
@@ -333,8 +333,13 @@ class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSup
         A suffix spanning the whole core facade name doubles the stem in every
         derived owner (``<Project>FlextUtilities<Module>``).
         """
+        facades = {"c": c, "t": t, "p": p, "m": m, "u": u}
         stems = {
-            getattr(flext_core, letter).__name__.removesuffix(family.suffix)
+            next(
+                owner
+                for owner in facades[letter].__mro__
+                if owner.__module__.partition(".")[0] == "flext_core"
+            ).__name__.removesuffix(family.suffix)
             for letter, family in u.Infra.facade_families().items()
         }
         tm.that(len(stems), eq=1)

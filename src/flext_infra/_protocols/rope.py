@@ -1,4 +1,3 @@
-# AUTO-GENERATED FILE - Source bootstrap legacy protocol holder.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -39,8 +38,7 @@ SPDX-License-Identifier: MIT
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from flext_core import t
-
+    from flext_infra import t
     from flext_infra._protocols import (
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,

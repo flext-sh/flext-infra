@@ -79,6 +79,78 @@ class TestsModelProtocolCallableContracts:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
+    def test_cached_property_member_keeps_its_source_descriptor(
+        tmp_path: Path,
+    ) -> None:
+        """A cached model member projects the descriptor the checkers accept."""
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from functools import cached_property\n"
+            "from pydantic import BaseModel\n\n"
+            "class ModelsPayload:\n"
+            "    class Artifact(BaseModel):\n"
+            "        name: str\n\n"
+            "        @cached_property\n"
+            "        def artifact(self) -> str:\n"
+            "            return self.name\n",
+        )
+
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+
+        generated = projected[(package / "_protocols" / "payload.py").relative_to(root)]
+        tm.ok("from functools import cached_property" in generated)
+        tm.ok("@cached_property\n        def artifact(self) -> str: ..." in generated)
+        tm.fail("@property\n        def artifact(self)" in generated)
+        ast.parse(generated, filename="generated-payload.py")
+
+    @staticmethod
+    def test_sole_upstream_letter_must_expose_every_reference(
+        tmp_path: Path,
+    ) -> None:
+        """A single upstream provider is not elected for members it lacks."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-infra",
+            package_name="flext_infra",
+        )
+        sources = {
+            package / "models.py": (
+                f"from {package.name}._models.payload import FlextInfraModelsPayload\n"
+                "class FlextInfraModels(FlextInfraModelsPayload): pass\n"
+                "m = FlextInfraModels\n"
+            ),
+            package / "protocols.py": (
+                "from flext_cli import FlextCliProtocols\n"
+                "class FlextInfraProtocols(FlextCliProtocols): pass\n"
+                "p = FlextInfraProtocols\n"
+            ),
+            package / "_models/payload.py": (
+                "from __future__ import annotations\n"
+                "from typing import TYPE_CHECKING\n"
+                "from pydantic import BaseModel\n"
+                "if TYPE_CHECKING:\n"
+                "    from flext_infra.protocols import p\n"
+                "class FlextInfraModelsPayload:\n"
+                "    class Request(BaseModel):\n"
+                "        value: p.AbsentUpstreamContract\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        before = {path: path.read_bytes() for path in package.rglob("*.py")}
+
+        with (
+            u.Infra.facade_source_project(root) as binding,
+            u.Tests.raises(ValueError, match="no unique upstream package exposing"),
+        ):
+            u.Infra.protocol_model_sources_from_source(root, binding[0])
+        tm.that({path: path.read_bytes() for path in before}, eq=before)
+
+    @staticmethod
     @c.Tests.MARK.parametrize(
         ("frozen", "typed_config"), [(False, True), (True, True), (True, False)]
     )

@@ -218,31 +218,25 @@ class FlextInfraUtilitiesModelsProtocol:
         *,
         package_name: str | None = None,
     ) -> Mapping[str, str]:
-        """Obtain model class routes mapped to public protocol routes without publishing.
+        """Map model identity routes to public protocol routes without publishing.
 
         Returns:
-            Mapping from model class route (e.g. 'pkg._models.Foo') to public protocol route ('p.Foo').
+            Mapping from each model identity route, both its declaring source route
+            (e.g. 'pkg._models.Foo') and its public facade route ('m.Foo'), to its
+            public protocol route ('p.Foo').
 
         """
-        routes: dict[str, str] = {}
-        try:
-            projection = cls._ModelProtocolProjection(
-                repository_root.expanduser().resolve(),
-                source_project,
-                package_name=package_name,
-            )
-            layout = projection.source_layout()
-            if layout is not None:
-                package_dir, class_stem, pkg = layout
-                projection.package = package_dir
-                projection.package_name = pkg
-                projection.class_stem = class_stem
-                projection.source_package_name = pkg
-                projection.source_model_facade_owners(package_dir, pkg)
-                routes.update(projection.source_model_protocol_routes)
-        except (ValueError, KeyError, AttributeError):
-            pass
-        return routes
+        projection = cls._ModelProtocolProjection(
+            repository_root.expanduser().resolve(),
+            source_project,
+            package_name=package_name,
+        )
+        if projection.source_model_inventory() is None:
+            return {}
+        return {
+            **projection.source_model_protocol_routes,
+            **projection.source_model_facade_protocols,
+        }
 
     @classmethod
     def protocol_model_package_names(
@@ -287,14 +281,96 @@ class FlextInfraUtilitiesModelsProtocol:
             # projects ahead of the surfaces: its engine imports those holders.
             # A consumer's projection is planned by the lazy-init surface, in the
             # same ordered candidate as its regenerated initializers.
-            if primary is not None:
-                bootstrap_init = primary[0] / "_protocols" / "__init__.py"
-                if not (
-                    bootstrap_init.is_file()
-                    and is_source_bootstrap_owned(bootstrap_init)
-                ):
-                    return r[bool].ok(value=False)
-            prepared: list[
+            if primary is not None and not cls._is_bootstrap_owned_protocol_package(
+                primary[0]
+            ):
+                return r[bool].ok(value=False)
+            prepared = cls._bootstrap_prepared_packages(
+                root,
+                project,
+                (
+                    *(
+                        (layout[2], True)
+                        for layout in projection.namespacesource_layouts()
+                    ),
+                    *(() if primary is None else ((primary[2], False),)),
+                ),
+            )
+            if prepared.failure:
+                return r[bool].from_failure(prepared)
+            if not prepared.value:
+                return r[bool].ok(value=False)
+            return cls._bootstrap_publish_prepared(root, project, ports, prepared.value)
+
+    @staticmethod
+    def _is_bootstrap_owned_protocol_package(package_dir: Path) -> bool:
+        """Whether ``package_dir`` carries the source-bootstrap protocol facade.
+
+        Returns:
+            True when its ``_protocols`` initializer is source-bootstrap owned.
+
+        """
+        bootstrap_init = package_dir / "_protocols" / "__init__.py"
+        return bootstrap_init.is_file() and is_source_bootstrap_owned(bootstrap_init)
+
+    @classmethod
+    def _bootstrap_prepared_packages(
+        cls,
+        root: Path,
+        project: p.Infra.RopeProject,
+        packages: Sequence[tuple[str, bool]],
+    ) -> p.Result[
+        Sequence[
+            tuple[
+                Path,
+                Mapping[Path, str],
+                Mapping[Path, str],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Sequence[tuple[str, str, tuple[str, ...]]],
+            ]
+        ]
+    ]:
+        """Prepare every declared package's bootstrap sources in one source view.
+
+        Returns:
+            The prepared packages declaring a projection, or the first failure.
+
+        """
+        prepared: list[
+            tuple[
+                Path,
+                Mapping[Path, str],
+                Mapping[Path, str],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Sequence[tuple[str, str, tuple[str, ...]]],
+            ]
+        ] = []
+        for package_name, namespace_package in packages:
+            part = cls._bootstrap_package_sources(
+                root,
+                project,
+                package_name=package_name,
+                namespace_package=namespace_package,
+            )
+            if part.failure:
+                return r[
+                    Sequence[
+                        tuple[
+                            Path,
+                            Mapping[Path, str],
+                            Mapping[Path, str],
+                            Mapping[Path, p.Cli.AtomicFileState],
+                            Mapping[Path, p.Cli.AtomicFileState],
+                            Sequence[tuple[str, str, tuple[str, ...]]],
+                        ]
+                    ]
+                ].from_failure(part)
+            if part.value is not None:
+                prepared.append(part.value)
+        return r[
+            Sequence[
                 tuple[
                     Path,
                     Mapping[Path, str],
@@ -303,139 +379,166 @@ class FlextInfraUtilitiesModelsProtocol:
                     Mapping[Path, p.Cli.AtomicFileState],
                     Sequence[tuple[str, str, tuple[str, ...]]],
                 ]
-            ] = []
-            for package_name, namespace_package in (
-                *((layout[2], True) for layout in projection.namespacesource_layouts()),
-                *(() if primary is None else ((primary[2], False),)),
-            ):
-                part = cls._bootstrap_package_sources(
-                    root,
-                    project,
-                    package_name=package_name,
-                    namespace_package=namespace_package,
-                )
-                if part.failure:
-                    return r[bool].from_failure(part)
-                if part.value is not None:
-                    prepared.append(part.value)
-            if not prepared:
-                return r[bool].ok(value=False)
-            packages = tuple(part[0] for part in prepared)
-            planned: dict[Path, str] = {}
-            updates: dict[Path, str] = {}
-            originals: dict[Path, p.Cli.AtomicFileState] = {}
-            inputs: dict[Path, p.Cli.AtomicFileState] = {}
-            members: list[tuple[str, str, tuple[str, ...]]] = []
-            for (
-                _package,
-                part_planned,
-                part_updates,
-                part_originals,
-                part_inputs,
-                part_members,
-            ) in prepared:
-                planned.update(part_planned)
-                updates.update(part_updates)
-                originals.update(part_originals)
-                inputs.update(part_inputs)
-                members.extend(part_members)
-            manifest = root / c.PYPROJECT_FILENAME
+            ]
+        ].ok(prepared)
 
-            def admit(
-                candidate: Path, paths: Mapping[Path, Path]
-            ) -> p.Result[
-                tuple[tuple[p.Infra.CodegenFilePlan, ...], tuple[p.Cli.FileChange, ...]]
-            ]:
-                target = paths[manifest].parent
-                consolidate_protocol_owners(target, planned)
-                # Only the source-bootstrap protocol owner (flext-infra's own
-                # family) republishes its bootstrap facade; consumers carry the
-                # generated lazy init instead.
-                bootstrap_inits = tuple(
-                    target / package.relative_to(root) / "_protocols" / "__init__.py"
-                    for package in packages
-                )
-                exported = (
-                    cls._publish_bootstrap_protocol_facades(target, members)
-                    if any(
-                        bootstrap_init.is_file()
-                        and is_source_bootstrap_owned(bootstrap_init)
-                        for bootstrap_init in bootstrap_inits
-                    )
-                    else r[bool].ok(value=False)
-                )
-                if exported.failure:
-                    return r[
-                        tuple[
-                            tuple[p.Infra.CodegenFilePlan, ...],
-                            tuple[p.Cli.FileChange, ...],
-                        ]
-                    ].from_failure(exported)
-                plans = tuple(
-                    m.Infra.CodegenFilePlan(
-                        project=root,
-                        path=path,
-                        before=before,
-                        desired_content=(target / path.relative_to(root)).read_bytes(),
-                        desired_mode=before.mode
-                        if before.mode is not None
-                        else config.Infra.codegen.modes.file_default,
-                        inputs=tuple(inputs.values()),
-                    )
-                    for path, before in originals.items()
-                )
-                repaired = ports.file_publisher.normalized_codegen_changes(plans)
-                if repaired.failure:
-                    return r[
-                        tuple[
-                            tuple[p.Infra.CodegenFilePlan, ...],
-                            tuple[p.Cli.FileChange, ...],
-                        ]
-                    ].from_failure(repaired)
-                for change in repaired.value:
-                    destination = target / change.path.relative_to(root)
-                    if change.desired_content is None:
-                        destination.unlink()
-                    else:
-                        destination.write_bytes(change.desired_content)
-                validated = ports.candidate_validator(root, candidate, (root,))
-                if validated.failure:
-                    return r[
-                        tuple[
-                            tuple[p.Infra.CodegenFilePlan, ...],
-                            tuple[p.Cli.FileChange, ...],
-                        ]
-                    ].from_failure(validated)
-                if not validated.value:
-                    return r[
-                        tuple[
-                            tuple[p.Infra.CodegenFilePlan, ...],
-                            tuple[p.Cli.FileChange, ...],
-                        ]
-                    ].fail("bootstrap candidate admission returned no acceptance")
-                return r[
-                    tuple[
-                        tuple[p.Infra.CodegenFilePlan, ...],
-                        tuple[p.Cli.FileChange, ...],
-                    ]
-                ].ok((plans, repaired.value))
+    @classmethod
+    def _bootstrap_publish_prepared(
+        cls,
+        root: Path,
+        project: p.Infra.RopeProject,
+        ports: p.Infra.CodegenConformPorts,
+        prepared: Sequence[
+            tuple[
+                Path,
+                Mapping[Path, str],
+                Mapping[Path, str],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Mapping[Path, p.Cli.AtomicFileState],
+                Sequence[tuple[str, str, tuple[str, ...]]],
+            ]
+        ],
+    ) -> p.Result[bool]:
+        """Admit the merged prepared packages once and publish the candidate.
 
-            preview = ports.source_preview.preview_sources(
-                root,
-                {manifest: project.source_text(manifest), **updates},
-                admit,
-                options=m.Infra.StageSourceOptions(inputs=tuple(inputs.values())),
-            ).flat_map(lambda outcome: outcome)
-            if preview.failure:
-                return r[bool].from_failure(preview)
-            plans, changes = preview.value
-            published = ports.file_publisher.publish_normalized_codegen_plans(
-                root, plans, changes
+        Returns:
+            Whether the authenticated, normalized candidate changed live sources.
+
+        """
+        packages = tuple(part[0] for part in prepared)
+        planned: dict[Path, str] = {}
+        updates: dict[Path, str] = {}
+        originals: dict[Path, p.Cli.AtomicFileState] = {}
+        inputs: dict[Path, p.Cli.AtomicFileState] = {}
+        members: list[tuple[str, str, tuple[str, ...]]] = []
+        for (
+            _package,
+            part_planned,
+            part_updates,
+            part_originals,
+            part_inputs,
+            part_members,
+        ) in prepared:
+            planned.update(part_planned)
+            updates.update(part_updates)
+            originals.update(part_originals)
+            inputs.update(part_inputs)
+            members.extend(part_members)
+        manifest = root / c.PYPROJECT_FILENAME
+        merged = (packages, planned, originals, inputs, members)
+        preview = ports.source_preview.preview_sources(
+            root,
+            {manifest: project.source_text(manifest), **updates},
+            lambda candidate, paths: cls._bootstrap_admit_candidate(
+                (root, ports), merged, candidate, paths
+            ),
+            options=m.Infra.StageSourceOptions(inputs=tuple(inputs.values())),
+        ).flat_map(lambda outcome: outcome)
+        if preview.failure:
+            return r[bool].from_failure(preview)
+        plans, changes = preview.value
+        published = ports.file_publisher.publish_normalized_codegen_plans(
+            root, plans, changes
+        )
+        if published.failure:
+            return r[bool].from_failure(published)
+        cls._install_bootstrap_facade_members(members, root)
+        return r[bool].ok(value=bool(published.value))
+
+    @classmethod
+    def _bootstrap_admit_candidate(
+        cls,
+        owner: tuple[Path, p.Infra.CodegenConformPorts],
+        merged: tuple[
+            tuple[Path, ...],
+            dict[Path, str],
+            Mapping[Path, p.Cli.AtomicFileState],
+            Mapping[Path, p.Cli.AtomicFileState],
+            list[tuple[str, str, tuple[str, ...]]],
+        ],
+        candidate: Path,
+        paths: Mapping[Path, Path],
+    ) -> p.Result[
+        tuple[tuple[p.Infra.CodegenFilePlan, ...], tuple[p.Cli.FileChange, ...]]
+    ]:
+        """Consolidate, normalize and validate one staged bootstrap candidate.
+
+        Returns:
+            The publication plans and normalized changes, or the first failure.
+
+        """
+        root, ports = owner
+        packages, planned, originals, inputs, members = merged
+        target = paths[root / c.PYPROJECT_FILENAME].parent
+        consolidate_protocol_owners(target, planned)
+        # Only the source-bootstrap protocol owner (flext-infra's own
+        # family) republishes its bootstrap facade; consumers carry the
+        # generated lazy init instead.
+        exported = (
+            cls._publish_bootstrap_protocol_facades(target, members)
+            if any(
+                cls._is_bootstrap_owned_protocol_package(
+                    target / package.relative_to(root)
+                )
+                for package in packages
             )
-            if published.failure:
-                return r[bool].from_failure(published)
-            cls._install_bootstrap_facade_members(members, root)
-            return r[bool].ok(value=bool(published.value))
+            else r[bool].ok(value=False)
+        )
+        if exported.failure:
+            return r[
+                tuple[
+                    tuple[p.Infra.CodegenFilePlan, ...],
+                    tuple[p.Cli.FileChange, ...],
+                ]
+            ].from_failure(exported)
+        plans = tuple(
+            m.Infra.CodegenFilePlan(
+                project=root,
+                path=path,
+                before=before,
+                desired_content=(target / path.relative_to(root)).read_bytes(),
+                desired_mode=before.mode
+                if before.mode is not None
+                else config.Infra.codegen.modes.file_default,
+                inputs=tuple(inputs.values()),
+            )
+            for path, before in originals.items()
+        )
+        repaired = ports.file_publisher.normalized_codegen_changes(plans)
+        if repaired.failure:
+            return r[
+                tuple[
+                    tuple[p.Infra.CodegenFilePlan, ...],
+                    tuple[p.Cli.FileChange, ...],
+                ]
+            ].from_failure(repaired)
+        for change in repaired.value:
+            destination = target / change.path.relative_to(root)
+            if change.desired_content is None:
+                destination.unlink()
+            else:
+                destination.write_bytes(change.desired_content)
+        validated = ports.candidate_validator(root, candidate, (root,))
+        if validated.failure:
+            return r[
+                tuple[
+                    tuple[p.Infra.CodegenFilePlan, ...],
+                    tuple[p.Cli.FileChange, ...],
+                ]
+            ].from_failure(validated)
+        if not validated.value:
+            return r[
+                tuple[
+                    tuple[p.Infra.CodegenFilePlan, ...],
+                    tuple[p.Cli.FileChange, ...],
+                ]
+            ].fail("bootstrap candidate admission returned no acceptance")
+        return r[
+            tuple[
+                tuple[p.Infra.CodegenFilePlan, ...],
+                tuple[p.Cli.FileChange, ...],
+            ]
+        ].ok((plans, repaired.value))
 
     @classmethod
     def _bootstrap_package_sources(
@@ -726,7 +829,8 @@ class FlextInfraUtilitiesModelsProtocol:
         def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """The owning project's authenticated generated documentation language."""
             if self._documentation_language is None:
-                declaration = FlextInfraUtilitiesProjectManagedArtifacts.load_repository_declaration_inputs(
+                artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+                declaration = artifacts.load_repository_declaration_inputs(
                     self.repository_root, source_project=self.project
                 ).unwrap()
                 project = declaration.spec.project
@@ -891,25 +995,31 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration,
             )
 
-        def _source_model_sources(self) -> p.Result[Mapping[Path, str]]:
-            """Project local Pydantic declarations using only the source view.
+        def source_model_inventory(
+            self,
+        ) -> (
+            tuple[
+                Path,
+                str,
+                dict[Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]],
+            ]
+            | None
+        ):
+            """Inventory and index local model declarations from the source view.
 
-            The source inventory deliberately does not consult ``m`` or ``p``.
-            Those facades are consumers of this projection and may be incomplete
-            during bootstrap.
+            Both the protocol projection and its consumer route table read this
+            one index, so a model identity resolves to the same public Protocol
+            route wherever it is projected or received.
 
             Returns:
-                Same-path protocol mirror sources derived from local model files.
-
-            Raises:
-                ValueError: If retired Protocol route has no planned holder.
+                The package directory, its name and the grouped declarations, or
+                None when source declares no model layout.
 
             """
             self.source_field_cache.clear()
-            result_type = r[Mapping[Path, str]]
             layout = self.source_layout()
             if layout is None:
-                return result_type.ok({})
+                return None
             package_dir, class_stem, package_name = layout
             self.package = package_dir
             self.package_name = package_name
@@ -917,7 +1027,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_package_name = package_name
             models_root = package_dir / "_models"
             if not self.project.source_query(models_root, "isdir"):
-                return result_type.ok({})
+                return None
             grouped: dict[
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ] = {}
@@ -948,6 +1058,24 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                     grouped[destination] = [(*entry, tree) for entry in classes]
             self._source_index_model_protocols(package_dir, package_name, grouped)
+            return package_dir, package_name, grouped
+
+        def _source_model_sources(self) -> p.Result[Mapping[Path, str]]:
+            """Project local Pydantic declarations using only the source view.
+
+            The source inventory deliberately does not consult ``m`` or ``p``.
+            Those facades are consumers of this projection and may be incomplete
+            during bootstrap.
+
+            Returns:
+                Same-path protocol mirror sources derived from local model files.
+
+            """
+            result_type = r[Mapping[Path, str]]
+            inventory = self.source_model_inventory()
+            if inventory is None:
+                return result_type.ok({})
+            package_dir, package_name, grouped = inventory
             conformance = self._source_model_conformance_source(
                 package_dir, package_name, grouped
             )
@@ -975,11 +1103,50 @@ class FlextInfraUtilitiesModelsProtocol:
                     package_dir, package_name, rendered
                 )
             )
-            facade = self._source_protocol_aggregate(package_dir, class_stem, rendered)
+            facade = self._source_protocol_aggregate(
+                package_dir, self.class_stem, rendered
+            )
             if facade is not None:
                 rendered[
                     (package_dir / "protocols.py").relative_to(self.repository_root)
                 ] = facade
+            self._source_apply_protocol_rewrites(package_dir, rendered)
+            # Displaced authored Protocols retire in the candidate that composes
+            # their projected owners, so no public route is ever unbound.
+            for (
+                relative,
+                source,
+            ) in FlextInfraUtilitiesModelsProtocolRetirement.retired_sources(
+                self.project,
+                self.repository_root,
+                self.source_protocol_retirements,
+                rendered,
+            ).items():
+                rendered[relative] = (
+                    FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
+                        self.repository_root / relative, source
+                    ).unwrap()
+                )
+            for relative, source in rendered.items():
+                self._source_validate_generated_module(
+                    source,
+                    self.repository_root / relative,
+                    relative.with_suffix("").name,
+                )
+            if conformance is not None:
+                path, source = conformance
+                rendered[path.relative_to(self.repository_root)] = source
+            return result_type.ok(rendered)
+
+        def _source_apply_protocol_rewrites(
+            self, package_dir: Path, rendered: dict[Path, str]
+        ) -> None:
+            """Move uses of displaced Protocols to their planned routes in ``rendered``.
+
+            Raises:
+                ValueError: If retired Protocol route has no planned holder.
+
+            """
             # Uses that named a displaced Protocol move to its facade route in
             # the same candidate, before the declaration itself retires.
             # Inside the package's own families the facade letter is either
@@ -1053,32 +1220,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     normalized,
                     tuple(rewrite.text for rewrite in planned_rewrites),
                 )
-            # Displaced authored Protocols retire in the candidate that composes
-            # their projected owners, so no public route is ever unbound.
-            for (
-                relative,
-                source,
-            ) in FlextInfraUtilitiesModelsProtocolRetirement.retired_sources(
-                self.project,
-                self.repository_root,
-                self.source_protocol_retirements,
-                rendered,
-            ).items():
-                rendered[relative] = (
-                    FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
-                        self.repository_root / relative, source
-                    ).unwrap()
-                )
-            for relative, source in rendered.items():
-                self._source_validate_generated_module(
-                    source,
-                    self.repository_root / relative,
-                    relative.with_suffix("").name,
-                )
-            if conformance is not None:
-                path, source = conformance
-                rendered[path.relative_to(self.repository_root)] = source
-            return result_type.ok(rendered)
 
         def _source_model_conformance_source(
             self,
@@ -1088,7 +1229,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ],
         ) -> tuple[Path, str] | None:
-            """Render constructor-to-port assignments for the mandatory candidate checker.
+            """Render the mandatory candidate checker's constructor-to-port pairs.
 
             Returns:
                 The candidate's structural evidence source, or no public model pairs.
@@ -1125,23 +1266,9 @@ class FlextInfraUtilitiesModelsProtocol:
                         or any(part.startswith("_") for part in path)
                     ):
                         continue
-                    parameters = []
-                    for original in node.type_params:
-                        parameter = copy.deepcopy(original)
-                        for name in ("bound", "default_value"):
-                            value = getattr(parameter, name, None)
-                            if isinstance(value, ast.expr):
-                                setattr(
-                                    parameter,
-                                    name,
-                                    self._source_witness_bound(
-                                        value,
-                                        (tree, node, path),
-                                        classes,
-                                        (model_facade, public),
-                                    ),
-                                )
-                        parameters.append(ast.unparse(parameter))
+                    parameters = self._source_witness_parameters(
+                        (tree, node, path), classes, (model_facade, public)
+                    )
                     arguments = tuple(
                         ("*" if isinstance(parameter, ast.TypeVarTuple) else "")
                         + parameter.name
@@ -1150,7 +1277,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     checks.append((
                         f"{model_facade}{model.removeprefix('m')}",
                         f"{protocol_facade}{port.removeprefix('p')}",
-                        tuple(parameters),
+                        parameters,
                         arguments,
                     ))
             imports = [
@@ -1195,6 +1322,34 @@ class FlextInfraUtilitiesModelsProtocol:
             return path, FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
                 path, source
             ).unwrap()
+
+        def _source_witness_parameters(
+            self,
+            declaration: tuple[ast.Module, ast.ClassDef, tuple[str, ...]],
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            facades: tuple[str, Mapping[str, str]],
+        ) -> tuple[str, ...]:
+            """Render a witnessed model's type parameters with public bounds.
+
+            Returns:
+                Each type parameter source with its bound and default rewritten.
+
+            """
+            parameters: list[str] = []
+            for original in declaration[1].type_params:
+                parameter = copy.deepcopy(original)
+                for name in ("bound", "default_value"):
+                    value = getattr(parameter, name, None)
+                    if isinstance(value, ast.expr):
+                        setattr(
+                            parameter,
+                            name,
+                            self._source_witness_bound(
+                                value, declaration, classes, facades
+                            ),
+                        )
+                parameters.append(ast.unparse(parameter))
+            return tuple(parameters)
 
         def _source_domain_facade_protocols(
             self,
@@ -3348,6 +3503,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     if method.returns is not None:
                         annotations.append(method.returns)
                     annotations.extend(method.type_params)
+                    # A retained source descriptor (``cached_property``) needs
+                    # its provider import; builtin descriptors bind none.
+                    annotations.extend(method.decorator_list)
             roots = {
                 symbol.id
                 for annotation in annotations
@@ -3841,11 +3999,14 @@ class FlextInfraUtilitiesModelsProtocol:
             decorators: list[ast.expr] = []
             for decorator in method.decorator_list:
                 if self._denotes(decorator, scope, "functools", "cached_property"):
-                    # A cached property is a read-only instance attribute in a
-                    # structural Protocol: the cache is implementation, the
-                    # descriptor contract is the plain ``property`` every
-                    # consumer already reads through the model.
-                    decorators.append(ast.Name(id="property", ctx=ast.Load()))
+                    # The member keeps the source's own ``cached_property``
+                    # spelling: Pyright types a model's cached member as the
+                    # ``cached_property[T]`` descriptor, which neither a plain
+                    # ``property`` nor an attribute annotation accepts, while
+                    # Pyright, Pyrefly and Mypy all accept the same descriptor
+                    # declared on the Protocol. The source import that binds
+                    # it is retained with the projected annotation providers.
+                    decorators.append(copy.deepcopy(decorator))
                     continue
                 name = next(
                     (
@@ -4662,11 +4823,19 @@ class FlextInfraUtilitiesModelsProtocol:
                         }
                         if self._source_letter_exposes(provider, letter, references)
                     }
-            if len(providers) != 1:
+            # A sole upstream is elected under the same law as a composed one:
+            # its facade must expose every referenced member, or the binding
+            # would name members the bound letter does not carry.
+            if len(providers) != 1 or (
+                references
+                and not self._source_letter_exposes(
+                    next(iter(providers)), letter, references
+                )
+            ):
                 message = (
-                    f"facade {letter} has no unique upstream package: "
-                    f"{self.source_package_name} -> {sorted(providers)}; "
-                    f"references={sorted(references)}"
+                    f"facade {letter} has no unique upstream package exposing "
+                    f"its references: {self.source_package_name} -> "
+                    f"{sorted(providers)}; references={sorted(references)}"
                 )
                 raise ValueError(message)
             return next(iter(providers))

@@ -10,9 +10,6 @@ import re
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra._utilities._codemod.native_utilities import (
-    FlextInfraUtilitiesCodemodNative,
-)
 from tests import c, t, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
@@ -20,6 +17,11 @@ from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixS
 @c.Tests.MARK.slow
 class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupport):
     """Prove generated dependency, distro and host workflow artifacts."""
+
+    @staticmethod
+    def _native_owner(attribute: str) -> type:
+        """Return the public ``u.Infra`` base that declares ``attribute``."""
+        return next(owner for owner in u.Infra.__mro__ if attribute in vars(owner))
 
     @staticmethod
     def _assert_dispatch_only(triggers: str) -> None:
@@ -69,7 +71,9 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
 
         with monkeypatch.context() as selected:
             selected.setattr(
-                FlextInfraUtilitiesCodemodNative,
+                TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
+                    "codemod_native_scopes"
+                ),
                 "codemod_native_scopes",
                 classmethod(fail_scope_producers),
             )
@@ -123,17 +127,23 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         scopes = {"all": ("sample.py",)}
         with monkeypatch.context() as unselected:
             unselected.setattr(
-                FlextInfraUtilitiesCodemodNative,
+                TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
+                    "codemod_native_scopes"
+                ),
                 "codemod_native_scopes",
                 classmethod(lambda *_args: scopes),
             )
             unselected.setattr(
-                FlextInfraUtilitiesCodemodNative,
+                TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
+                    "native_utilities"
+                ),
                 "native_utilities",
                 classmethod(lambda *_args: {}),
             )
             unselected.setattr(
-                FlextInfraUtilitiesCodemodNative,
+                TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
+                    "codemod_native_rules"
+                ),
                 "codemod_native_rules",
                 classmethod(lambda *_args, **_kwargs: {}),
             )
@@ -151,92 +161,103 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         tm.that(default.scopes, eq=scopes)
         tm.that(explicit_none, eq=default)
 
-    @staticmethod
-    def test_dependabot_applies_the_fleet_cooldown_everywhere(
-        rendered_project: Path,
-    ) -> None:
-        """Every ecosystem entry carries the one configured cooldown."""
-        root = rendered_project
-        days = config.Infra.codegen.toolchain.dependency_cooldown_days
+    class TestsDependabotCooldown:
+        """Prove the supply-chain cooldown projected into Dependabot."""
 
-        document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
-        updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
-        ecosystems = {
-            str(u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["package-ecosystem"])
-            for item in updates
-        }
-        tm.that(ecosystems, eq={"github-actions", "pip"})
-        for item in updates:
-            update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
-            tm.that(cooldown["default-days"], eq=days)
+        @staticmethod
+        def test_dependabot_applies_the_fleet_cooldown_everywhere(
+            rendered_project: Path,
+        ) -> None:
+            """Every ecosystem entry carries the one configured cooldown."""
+            root = rendered_project
+            days = config.Infra.codegen.toolchain.dependency_cooldown_days
 
-    @staticmethod
-    def test_cooldown_exclusion_is_the_direct_git_requirement_set(
-        tmp_path: Path,
-    ) -> None:
-        """Only requirements taken by direct reference are excluded."""
-        pyproject = tmp_path / c.PYPROJECT_FILENAME
-        pyproject.write_text(
-            "[project]\n"
-            'name = "example"\n'
-            'version = "0.1.0"\n'
-            "dependencies = [\n"
-            '  "registry-package>=1.0",\n'
-            '  "example-local @ git+https://example.invalid/local.git@main",\n'
-            "]\n"
-            "[dependency-groups]\n"
-            'dev = ["example-fork @ git+https://example.invalid/fork.git@main"]\n',
-            encoding="utf-8",
-        )
-        document = tm.ok(u.Cli.toml_read_document(pyproject))
+            document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
+            updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+            ecosystems = {
+                str(
+                    u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)[
+                        "package-ecosystem"
+                    ]
+                )
+                for item in updates
+            }
+            tm.that(ecosystems, eq={"github-actions", "pip"})
+            for item in updates:
+                update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+                cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    update["cooldown"]
+                )
+                tm.that(cooldown["default-days"], eq=days)
 
-        names = tm.ok(u.Infra.direct_source_names(document))
+        @staticmethod
+        def test_cooldown_exclusion_is_the_direct_git_requirement_set(
+            tmp_path: Path,
+        ) -> None:
+            """Only requirements taken by direct reference are excluded."""
+            pyproject = tmp_path / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                "[project]\n"
+                'name = "example"\n'
+                'version = "0.1.0"\n'
+                "dependencies = [\n"
+                '  "registry-package>=1.0",\n'
+                '  "example-local @ git+https://example.invalid/local.git@main",\n'
+                "]\n"
+                "[dependency-groups]\n"
+                'dev = ["example-fork @ git+https://example.invalid/fork.git@main"]\n',
+                encoding="utf-8",
+            )
+            document = tm.ok(u.Cli.toml_read_document(pyproject))
 
-        tm.that(names, eq=("example-fork", "example-local"))
+            names = tm.ok(u.Infra.direct_source_names(document))
 
-    @staticmethod
-    def test_dependabot_cooldown_skips_forks_and_local_projects() -> None:
-        """Git-referenced requirements are excluded from pip cooldowns only.
+            tm.that(names, eq=("example-fork", "example-local"))
 
-        Forks and local projects never enter the supply-chain cooldown; the
-        exclusion rides the pip entries, while every entry keeps the one
-        configured default-days.
-        """
-        excluded = ("example-fork", "example-local")
-        spec = u.CodegenTestSupport.Ci.workflow_spec(
-            dist="example-dist",
-            make_profile=c.Infra.MakeProfile.STANDALONE,
-            repository_branch="develop",
-            ci_trigger_branches=u.CodegenTestSupport.Ci.ci_trigger_branches(
-                "develop",
-            ),
-            overrides=u.CodegenTestSupport.Ci.WorkflowRenderOverrides(
-                has_devcontainer=True,
-                cooldown_excluded_dependencies=excluded,
-            ),
-        )
-        days = config.Infra.codegen.toolchain.dependency_cooldown_days
-        template = (
-            Path(__file__).resolve().parents[3]
-            / "src/flext_infra/templates/project/base/.github/dependabot.yml.j2"
-        )
-        rendered = u.Cli.template_render(template, spec)
-        tm.ok(rendered)
-        rendered_text: str = rendered.value
-        document = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            tm.ok(u.Cli.yaml_parse(rendered_text)),
-        )
-        updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
-        tm.that(len(updates), eq=3)
-        for item in updates:
-            update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(update["cooldown"])
-            tm.that(cooldown["default-days"], eq=days)
-            if update["package-ecosystem"] == "pip":
-                tm.that(list(excluded), eq=cooldown["exclude"])
-            else:
-                tm.that(cooldown, lacks="exclude")
+        @staticmethod
+        def test_dependabot_cooldown_skips_forks_and_local_projects() -> None:
+            """Git-referenced requirements are excluded from pip cooldowns only.
+
+            Forks and local projects never enter the supply-chain cooldown; the
+            exclusion rides the pip entries, while every entry keeps the one
+            configured default-days.
+            """
+            excluded = ("example-fork", "example-local")
+            spec = u.CodegenTestSupport.Ci.workflow_spec(
+                dist="example-dist",
+                make_profile=c.Infra.MakeProfile.STANDALONE,
+                repository_branch="develop",
+                ci_trigger_branches=u.CodegenTestSupport.Ci.ci_trigger_branches(
+                    "develop",
+                ),
+                overrides=u.CodegenTestSupport.Ci.WorkflowRenderOverrides(
+                    has_devcontainer=True,
+                    cooldown_excluded_dependencies=excluded,
+                ),
+            )
+            days = config.Infra.codegen.toolchain.dependency_cooldown_days
+            template = (
+                Path(__file__).resolve().parents[3]
+                / "src/flext_infra/templates/project/base/.github/dependabot.yml.j2"
+            )
+            rendered = u.Cli.template_render(template, spec)
+            tm.ok(rendered)
+            rendered_text: str = rendered.value
+            document = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                tm.ok(u.Cli.yaml_parse(rendered_text)),
+            )
+            updates = u.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+            tm.that(len(updates), eq=3)
+            for item in updates:
+                update = u.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+                cooldown = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                    update["cooldown"]
+                )
+                tm.that(cooldown["default-days"], eq=days)
+                if update["package-ecosystem"] == "pip":
+                    tm.that(list(excluded), eq=cooldown["exclude"])
+                else:
+                    tm.that(cooldown, lacks="exclude")
 
     @staticmethod
     def test_distro_dockerfiles_emitted(rendered_project: Path) -> None:

@@ -11,12 +11,7 @@ import sys
 from pathlib import Path
 
 from flext_infra import infra
-from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
-from flext_infra._models.deps import FlextInfraModelsDeps
-from flext_infra._models.gates import FlextInfraModelsGates
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
-from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
-from tests import c, p, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsModelProtocolNativeMro:
@@ -81,23 +76,23 @@ class TestsModelProtocolNativeMro:
     @staticmethod
     def test_runtime_dependency_plan_schema_uses_the_port_owner() -> None:
         """A structural manifest remains schema-safe at the public model boundary."""
-        schema = FlextInfraModelsDeps.RuntimeDependencyPlan.model_json_schema()
+        schema = m.Infra.RuntimeDependencyPlan.model_json_schema()
         tm.ok(isinstance(schema, dict))
 
     @staticmethod
     def test_deptry_scan_schema_uses_the_port_owner() -> None:
         """A gate model schema accepts its structural source manifest port."""
-        schema = FlextInfraModelsGates.DeptryScan.model_json_schema()
+        schema = m.Infra.DeptryScan.model_json_schema()
         tm.ok(isinstance(schema, dict))
 
     @staticmethod
     def test_codegen_source_authority_schema_uses_the_port_owner() -> None:
         """Source authority completes its runtime Pydantic core schema."""
-        FlextInfraModelsWorkspace.CodegenSourceAuthority.model_rebuild()
-        tm.ok(FlextInfraModelsWorkspace.CodegenSourceAuthority.__pydantic_complete__)
+        m.Infra.CodegenSourceAuthority.model_rebuild()
+        tm.ok(m.Infra.CodegenSourceAuthority.__pydantic_complete__)
         tm.ok(
             isinstance(
-                FlextInfraModelsWorkspace.CodegenSourceAuthority.__pydantic_core_schema__,
+                m.Infra.CodegenSourceAuthority.__pydantic_core_schema__,
                 dict,
             )
         )
@@ -105,10 +100,8 @@ class TestsModelProtocolNativeMro:
     @staticmethod
     def test_mise_toolchain_sources_schema_uses_the_port_owner() -> None:
         """Computed source fields rebuild with their structural state port."""
-        FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan.model_rebuild()
-        tm.ok(
-            FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan.__pydantic_complete__
-        )
+        m.Infra.MiseToolchainWorkspacePlan.model_rebuild()
+        tm.ok(m.Infra.MiseToolchainWorkspacePlan.__pydantic_complete__)
 
     @staticmethod
     def test_source_inventory_does_not_open_missing_protocol_model_facade(
@@ -254,7 +247,7 @@ class TestsModelProtocolNativeMro:
                 r"owner=ProtocolsPayload path=generated-payload\.py"
             ),
         ):
-            FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection._source_validate_generated_module(
+            u.Infra._ModelProtocolProjection._source_validate_generated_module(
                 "class Broken:\n    @property\n",
                 Path("generated-payload.py"),
                 "ProtocolsPayload",
@@ -613,7 +606,7 @@ class TestsModelProtocolNativeMro:
     def test_authored_protocol_annotation_facades_stay_type_checking(
         tmp_path: Path,
     ) -> None:
-        """Source completion keeps protocol annotation facades out of runtime imports."""
+        """Source completion keeps protocol annotation facades type-checking only."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         destination = package / "_protocols" / "payload.py"
         owner = "FlextTestProjectProtocolsPayload"

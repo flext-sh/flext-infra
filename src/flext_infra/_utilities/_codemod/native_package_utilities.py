@@ -292,10 +292,10 @@ class FlextInfraUtilitiesCodemodNativePackage:
     def codemod_package_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[str, t.JsonMapping]:
-        """One ``exports--<dotted package>`` utility per package of the project
-        and its declared providers.
+        """Render one ``exports--<dotted package>`` utility per package.
 
-        The import-header rules read the workspace export facts (project plus
+        One utility exists per package of the project and its declared
+        providers. The import-header rules read the workspace export facts (project plus
         provider packages) and reference each root package's utility; the
         utilities must come from the same facts, or a readable provider
         ``__all__`` leaves its reference undefined and the native scan fails

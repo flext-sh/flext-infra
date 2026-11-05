@@ -670,10 +670,12 @@ Infra:
       # subproject. MakeRuffSpec fails validation without the flag. Rules
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
+      # --force-exclude: a file-scoped run (pre-commit --file) honors the
+      # project's ruff exclude exactly like the repo-wide run.
       ruff:
-        format_check: [ --preview, --check ]
-        format_apply: [ --preview ]
-        lint_check: [ --preview, --no-fix ]
+        format_check: [ --preview, --check, --force-exclude ]
+        format_apply: [ --preview, --force-exclude ]
+        lint_check: [ --preview, --no-fix, --force-exclude ]
         lint_fix: [ --preview, --fix, --unsafe-fixes ]
       # Gates whose mutating side `make fmt` drives (formatters). Their
       # read-only side runs in `make check`; `make fix` never repeats them

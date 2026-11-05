@@ -88,10 +88,14 @@ class FlextInfraModelsCodegenTransaction:
             if self.path.suffix == ".pyi" and self.desired_content is not None:
                 msg = f"first-party .pyi publication is forbidden: {self.path}"
                 raise ValueError(msg)
-            if self.move_source is not None and (
-                not self.move_source.is_absolute()
-                or not self.move_source.is_relative_to(self.project)
-                or self.move_source == self.path
+            move_source = self.move_source
+            move_escapes = move_source is not None and (
+                not move_source.is_absolute()
+                or not move_source.is_relative_to(self.project)
+            )
+            if move_source is not None and (
+                move_escapes
+                or move_source == self.path
                 or self.before.content is not None
                 or self.desired_content is None
             ):

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
@@ -29,6 +30,7 @@ from flext_infra import (
 )
 from flext_infra._conform import FlextInfraConformWiring
 from flext_infra._preview import FlextInfraPreviewWiring
+from flext_infra._utilities import FlextInfraUtilitiesReleaseForge
 from flext_infra.codemod._rename import FlextInfraCodemodRenameSymbols
 from flext_infra.services import FlextInfraCodegenHandlers, FlextInfraModHandlers
 
@@ -208,6 +210,7 @@ class FlextInfra(
             pr_title=request.pr_title,
             ownership=ownership,
             conform_collaborators=self.codegen_conform_collaborators(),
+            release_forge=FlextInfraUtilitiesReleaseForge,
         ).execute()
 
     def workspace_propagate(
@@ -319,6 +322,80 @@ class FlextInfra(
             )
         return r[frozenset[Path]].ok(selected)
 
+    @staticmethod
+    def _mod_repository_order(
+        root: Path,
+        governed: frozenset[Path],
+    ) -> p.Result[tuple[Sequence[str], Mapping[str, Path]]]:
+        """Order the governed repositories by their declared dependencies.
+
+        Returns:
+            The distributions in dependency order with each repository root,
+            or the input, workspace or declaration-mismatch failure.
+
+        """
+        result_type = r[tuple[Sequence[str], Mapping[str, Path]]]
+        inputs = u.Infra.load_codegen_inputs(root)
+        if inputs.failure:
+            return result_type.from_failure(inputs)
+        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            root, inputs=inputs.value
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        references = tuple(
+            repository
+            for repository in (
+                observed.value.repository,
+                *observed.value.subprojects,
+            )
+            if (root / repository.path).resolve() in governed
+        )
+        by_root = {
+            (root / repository.path).resolve(): repository for repository in references
+        }
+        if len(by_root) != len(references) or frozenset(by_root) != governed:
+            return result_type.fail(
+                "mod workspace declarations differ from governed repositories: "
+                f"duplicate_paths={len(references) - len(by_root)}; "
+                f"missing={tuple(sorted(governed.difference(by_root)))}"
+            )
+        ordered = u.Infra.workspace_dependency_order(root, references)
+        by_distribution = {
+            repository.distribution: repository_root
+            for repository_root, repository in by_root.items()
+        }
+        return result_type.ok((ordered, by_distribution))
+
+    @staticmethod
+    def _mod_child_request(
+        request: p.Infra.ModCommand,
+        repository_root: Path,
+        *,
+        root: Path,
+    ) -> p.Infra.ModCommand:
+        """Scope one repository run of a workspace mod request.
+
+        Returns:
+            The original request for the workspace root, otherwise the same
+            selection bound to ``repository_root`` without ``projects``.
+
+        """
+        if repository_root == root:
+            return request
+        return m.Infra.ModCommand(
+            repository_root=repository_root,
+            projects=None,
+            verbose=request.verbose,
+            check=request.check,
+            dry_run_mode=request.dry_run_mode,
+            rename_plan=request.rename_plan,
+            consumer_roots=request.consumer_roots,
+            rule_id=request.rule_id,
+            rule_ids=request.rule_ids,
+            laws=request.laws,
+        )
+
     @override
     def mod(
         self,
@@ -357,59 +434,20 @@ class FlextInfra(
         selected_roots = selected.value
         if governed == frozenset({root}):
             return super().mod(request, progress)
-        inputs = u.Infra.load_codegen_inputs(root)
-        if inputs.failure:
-            return r[t.Cli.ResultValue].from_failure(inputs)
-        observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
-            root, inputs=inputs.value
-        )
-        if observed.failure:
-            return r[t.Cli.ResultValue].from_failure(observed)
-        references = tuple(
-            repository
-            for repository in (
-                observed.value.repository,
-                *observed.value.subprojects,
-            )
-            if (root / repository.path).resolve() in governed
-        )
-        by_root = {
-            (root / repository.path).resolve(): repository for repository in references
-        }
-        if len(by_root) != len(references) or frozenset(by_root) != governed:
-            return r[t.Cli.ResultValue].fail(
-                "mod workspace declarations differ from governed repositories: "
-                f"duplicate_paths={len(references) - len(by_root)}; "
-                f"missing={tuple(sorted(governed.difference(by_root)))}"
-            )
-        ordered = u.Infra.workspace_dependency_order(root, references)
-        by_distribution = {
-            repository.distribution: repository_root
-            for repository_root, repository in by_root.items()
-        }
+        order = self._mod_repository_order(root, governed)
+        if order.failure:
+            return r[t.Cli.ResultValue].from_failure(order)
+        ordered, by_distribution = order.value
         failures: list[tuple[str, str]] = []
         for distribution in ordered:
             repository_root = by_distribution[distribution]
             if repository_root not in selected_roots:
                 continue
             progress.emit(f"mod: repository {distribution} root={repository_root}")
-            child_request = (
-                request
-                if repository_root == root
-                else m.Infra.ModCommand(
-                    repository_root=repository_root,
-                    projects=None,
-                    verbose=request.verbose,
-                    check=request.check,
-                    dry_run_mode=request.dry_run_mode,
-                    rename_plan=request.rename_plan,
-                    consumer_roots=request.consumer_roots,
-                    rule_id=request.rule_id,
-                    rule_ids=request.rule_ids,
-                    laws=request.laws,
-                )
+            completed = super().mod(
+                self._mod_child_request(request, repository_root, root=root),
+                progress,
             )
-            completed = super().mod(child_request, progress)
             if completed.success:
                 continue
             if request.apply:

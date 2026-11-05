@@ -89,6 +89,11 @@ class FlextInfraProtocolsRelease:
             """Exact release tag."""
             ...
 
+        @property
+        def draft(self) -> bool:
+            """Whether the release is an unpublished draft."""
+            ...
+
     @runtime_checkable
     class GithubReleaseInventory(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

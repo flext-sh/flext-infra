@@ -65,6 +65,40 @@ class TestsFlextInfraRealGateRunners:
         tm.ok(not result.result.passed)
         tm.that([issue.code for issue in result.issues], has=["line-too-long"])
 
+    @staticmethod
+    def test_ruff_selected_files_honor_project_exclude(tmp_path: Path) -> None:
+        """A file-scoped run skips an excluded path and still lints a normal one."""
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "force-exclude",
+            pyproject=(
+                '[project]\nname = "force-exclude"\nversion = "0.0.1"\n\n'
+                '[tool.ruff]\nexclude = ["tests/fixtures"]\n'
+            ),
+        )
+        excluded = project_dir / "tests" / "fixtures" / "bad.py"
+        normal = project_dir / "src" / "bad.py"
+        for path in (excluded, normal):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("import os\n", encoding="utf-8")
+        gate = FlextInfraGatesRuffLint(tmp_path)
+
+        def run(path: Path) -> int:
+            return len(
+                gate.check(
+                    project_dir,
+                    m.Infra.GateContext(
+                        repository_root=tmp_path,
+                        reports_dir=tmp_path,
+                        selected_files=(path,),
+                        ruff_args=("--select", "F401"),
+                    ),
+                ).issues
+            )
+
+        tm.that(run(excluded), eq=0)
+        tm.that(run(normal), gte=1)
+
     @c.Tests.MARK.slow
     def test_ruff_lint_fix_reports_stderr_diagnostics_instead_of_deleting_them(
         self,

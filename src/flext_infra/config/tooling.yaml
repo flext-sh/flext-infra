@@ -235,6 +235,9 @@ Infra:
         - writer: beads
           begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
           end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
+        - writer: rtk
+          begin: '<!-- rtk-instructions v(?P<version>\d+) -->'
+          end: '<!-- /rtk-instructions -->'
         # Rules not named in `rules` stay enabled. Turning this off would make
         # `rules` a strict allowlist; the fleet keeps rumdl's complete default
         # set and declares every intentional configuration below.
@@ -628,10 +631,17 @@ Infra:
       # embeddings host, so the CI context records it NOT EXECUTED.
       jscpd:
         similarity: 0.8
+        # Embedding model of the pass: bge-m3, by the name jscpd's own catalog
+        # calibrates, so its thresholds come from jscpd and are not restated
+        # here. Measured 2026-11-05 on gruponos-merges (jscpd 5.4.2, two
+        # snapshots; tracker dc_recon-26p): jina-embeddings-v2-base-code
+        # reported 19 pairs, most of them related rather than duplicated code;
+        # bge-m3 reported 6, 5 of them real duplication, stable across runs;
+        # CodeRankEmbed took about 6 minutes, over the gate budget.
         semantic:
           provider: http
           url: http://localhost:11434/v1
-          model: unclemusclez/jina-embeddings-v2-base-code
+          model: bge-m3
         # Operator authorization 2026-10-25 (in-session answer "Autorizar
         # exclusão no jscpd"): the mandated module license header repeats in
         # every module by contract, so it is no clone to repair. jscpd matches

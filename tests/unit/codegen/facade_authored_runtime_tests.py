@@ -102,6 +102,50 @@ class TestsFlextInfraGeneratedRuntime:
         )
 
     @staticmethod
+    def test_utility_classvar_storage_composes_into_namespace(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A provider holding only ``ClassVar`` storage composes its namespace."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / "tree.py": (
+                "class Tree:\n"
+                "    @staticmethod\n"
+                "    def build(): return 'built'\n"
+                "__all__ = ['Tree']\n"
+            ),
+            directory / "storage.py": (
+                "from fractions import Fraction\n"
+                "from typing import ClassVar\n"
+                "class Storage:\n"
+                "    Ratio: ClassVar[type[Fraction]] = Fraction\n"
+                "__all__ = ['Storage']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{family.directory}.tree import Tree\n"
+                "class Utilities(Tree): pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: "from .utilities import u\n__all__ = ['u']\n",
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "from fractions import Fraction\n"
+            f"from {package.name} import u\n"
+            "assert u.build() == 'built'\n"
+            "assert u.Ratio is Fraction\n",
+            cwd=root,
+        )
+
+    @staticmethod
     def test_facade_imports_do_not_require_part_reexports(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,

@@ -121,31 +121,25 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
         return tuple(reported)
 
     @classmethod
-    def facade_rebinding(
+    def _retired_declarations(
         cls,
         project: p.Infra.RopeProject,
         protocols: Sequence[p.Infra.RopeSourceClass],
         routes: Sequence[str],
-        owners: Sequence[p.Infra.RopePyObject],
-    ) -> tuple[tuple[str, ...], dict[Path, tuple[m.Infra.SourceRewrite, ...]]]:
-        """Plan how every use of a retired Protocol reaches its projected owner.
-
-        A use through the public facade or its namespace already re-binds to
-        the projected contract composed in the same candidate. A use inside a
-        retired declaration leaves with it. A use that names the retired
-        declaration itself, through its authored holder or a bare name, is
-        rewritten to the projected facade route. Any other use would point to
-        a retired identity.
+    ) -> tuple[
+        list[tuple[Path, int, int]],
+        list[tuple[Path, int, p.Infra.RopeSourceClass, str]],
+    ]:
+        """Read the native source extent and identifier of each retired Protocol.
 
         Returns:
-            ``path:line`` for each use that would lose its declaration, and the
-            planned rewrites of every module whose uses move to the facade.
+            The retired source spans and each declaration with its identifier
+            offset and projected facade route.
 
         Raises:
             ValueError: A retired Protocol has no native source or extent.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         spans: list[tuple[Path, int, int]] = []
         declarations: list[tuple[Path, int, p.Infra.RopeSourceClass, str]] = []
         for protocol, route in zip(protocols, routes, strict=True):
@@ -174,6 +168,32 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
                 protocol,
                 route,
             ))
+        return spans, declarations
+
+    @classmethod
+    def facade_rebinding(
+        cls,
+        project: p.Infra.RopeProject,
+        protocols: Sequence[p.Infra.RopeSourceClass],
+        routes: Sequence[str],
+        owners: Sequence[p.Infra.RopePyObject],
+    ) -> tuple[tuple[str, ...], dict[Path, tuple[m.Infra.SourceRewrite, ...]]]:
+        """Plan how every use of a retired Protocol reaches its projected owner.
+
+        A use through the public facade or its namespace already re-binds to
+        the projected contract composed in the same candidate. A use inside a
+        retired declaration leaves with it. A use that names the retired
+        declaration itself, through its authored holder or a bare name, is
+        rewritten to the projected facade route. Any other use would point to
+        a retired identity.
+
+        Returns:
+            ``path:line`` for each use that would lose its declaration, and the
+            planned rewrites of every module whose uses move to the facade.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        spans, declarations = cls._retired_declarations(project, protocols, routes)
         blocked: list[str] = []
         rewrites: dict[Path, dict[tuple[int, int], m.Infra.SourceRewrite]] = {}
         for path, offset, protocol, route in declarations:
