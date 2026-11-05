@@ -15,7 +15,7 @@ from typing import Annotated, Literal, Self
 from flext_core import c, m
 
 from flext_infra import p, t
-from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
+from flext_infra._models import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraModelsMiseToolchain:
