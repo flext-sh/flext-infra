@@ -220,7 +220,7 @@ class FlextInfraCodemodDuplicateApply(
         *,
         layers: Mapping[Path, int],
         working: MutableMapping[Path, str],
-    ) -> p.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
+    ) -> m.Infra.DuplicateCurePlan | m.Infra.DuplicateGroupCure:
         """Plan one group either as a trivial cure or as a manual plan.
 
         Returns:
@@ -1073,7 +1073,7 @@ class FlextInfraCodemodDuplicateApply(
         group: p.Infra.DuplicateGroup,
         definitions: Sequence[p.Infra.DuplicateDefinition],
         reason: str,
-    ) -> p.Infra.DuplicateCurePlan:
+    ) -> m.Infra.DuplicateCurePlan:
         """Build the manual assisted-cure plan of one non-trivial group.
 
         Returns:
