@@ -95,7 +95,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
                     if execution.outcome is c.Infra.ToolOutcome.ERROR
                     else c.Infra.ToolOutcome.FINDINGS
                 ),
-                issues=(*execution.issues, *issues),
+                issues=tuple[p.Infra.Issue, ...]((*execution.issues, *issues)),
                 raw_output=execution.raw_output + "\n" + "\n".join(changes),
                 started=time.monotonic(),
             ),
@@ -222,7 +222,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
                     project_dir=project_dir,
                     verdict=False,
                     outcome=c.Infra.ToolOutcome.ERROR,
-                    issues=(*execution.issues, issue),
+                    issues=tuple[p.Infra.Issue, ...]((*execution.issues, issue)),
                     raw_output=execution.raw_output + "\n" + issue.message,
                     started=started,
                 ),
@@ -322,7 +322,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         self,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-    ) -> tuple[p.Infra.GateExecution, m.Infra.DeptryScan | None]:
+    ) -> tuple[p.Infra.GateExecution, p.Infra.DeptryScan | None]:
         """Capture and grade one native report for checking or guarded repair.
 
         Args:
@@ -338,7 +338,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         raw_output = ""
         issues: tuple[p.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: m.Infra.DeptryScan | None = None
+        scan: p.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)
