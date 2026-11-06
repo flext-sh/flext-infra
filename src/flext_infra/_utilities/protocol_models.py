@@ -2470,6 +2470,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             prefix = f"p.{self.class_stem}"
+            declared_protocol_names = self._source_protocol_declared_names()
             global_model_names = {
                 path[-1]
                 for classes in grouped.values()
@@ -2502,12 +2503,38 @@ class FlextInfraUtilitiesModelsProtocol:
                             )
                             if not matched or not isinstance(alias.name, ast.Name):
                                 continue
+                            if alias.name.id in declared_protocol_names:
+                                continue
                             self.source_model_aliases[f"{prefix}.{alias.name.id}"] = (
                                 destination,
                                 alias,
                                 tree,
                                 model_nodes.get(matched[0], classes[0][0]),
                             )
+
+        def _source_protocol_declared_names(self) -> frozenset[str]:
+            """Return names already declared by the authored protocol tree.
+
+            Returns:
+                Class and alias names the protocol facade already owns.
+
+            """
+            if self.package is None:
+                return frozenset()
+            names: set[str] = set()
+            for path in (self.package / "_protocols").rglob("*.py"):
+                try:
+                    tree = ast.parse(path.read_text(encoding="utf-8"))
+                except (OSError, SyntaxError):
+                    continue
+                for node in tree.body:
+                    if isinstance(node, ast.ClassDef):
+                        names.add(node.name)
+                    elif isinstance(node, ast.TypeAlias) and isinstance(
+                        node.name, ast.Name
+                    ):
+                        names.add(node.name.id)
+            return frozenset(names)
 
         @staticmethod
         def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:
