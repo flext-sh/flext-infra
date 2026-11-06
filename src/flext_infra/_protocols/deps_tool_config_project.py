@@ -26,16 +26,30 @@ class FlextInfraProtocolsDepsToolConfigProject:
     class ProjectManagedArtifactsFragment(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        Mise: FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig | None
-        Gitignore: FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig | None
+        @property
+        def Mise(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig | None:
+            """Mise section declared by this source."""
+            ...
+
+        @property
+        def Gitignore(
+            self,
+        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig | None:
+            """Gitignore section declared by this source."""
+            ...
 
     @runtime_checkable
     class ProjectConfigDocument(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        ManagedArtifacts: (
-            FlextInfraProtocolsDepsToolConfigProject.ProjectManagedArtifactsFragment
-        )
+        @property
+        def ManagedArtifacts(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProject.ProjectManagedArtifactsFragment:
+            """Project-local managed artifact configuration."""
+            ...
 
 
 __all__: list[str] = [

@@ -219,6 +219,11 @@ Infra:
       # that one module path; every other module keeps the rule.
       ruff.lint.per-file-ignores:
       - [ '**/_protocols/pydantic.py', [ too-many-arguments ] ]
+      # Generated protocol mirrors preserve the owning model's member names
+      # verbatim: a capitalized Pydantic field (``Mise``, ``Gitignore``) must
+      # stay capitalized in the read-only `p.*` contract, so the function-name
+      # rule cannot apply to generated `_protocols` sources.
+      - [ '**/_protocols/**', [ invalid-function-name ] ]
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]

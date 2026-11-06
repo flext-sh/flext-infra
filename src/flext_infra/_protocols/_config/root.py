@@ -76,7 +76,10 @@ class FlextInfraProtocolsConfigRoot:
     class Root(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
-        Infra: FlextInfraProtocolsConfigRoot.Infra
+        @property
+        def Infra(self) -> FlextInfraProtocolsConfigRoot.Infra:
+            """Validated flext-infra namespace."""
+            ...
 
 
 __all__: list[str] = [
