@@ -5116,16 +5116,17 @@ class FlextInfraUtilitiesModelsProtocol:
                         # the concrete model satisfy its own contract. Pydantic
                         # metadata is no rewrite: compare against the declared
                         # value type with its ``Annotated`` wrappers removed.
-                        # A capitalized namespace field stays an attribute in
-                        # every case, exactly as the concrete model declares it.
+                        # The field name's casing is not a kind: a capitalized
+                        # Pydantic field (``Mise``, ``Gitignore``) is owned data
+                        # exactly like a lowercase one, and declaring it as a
+                        # read-write attribute makes the protocol invariant.
                         read_only=(
                             read_only
                             or ast.dump(structural)
                             != ast.dump(
                                 self._source_without_annotated(annotation, tree, node)
                             )
-                        )
-                        and name == name.lower(),
+                        ),
                         description=description,
                     )
                 )

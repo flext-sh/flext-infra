@@ -31,8 +31,19 @@ class FlextInfraProtocolsProjectArtifacts:
     class ProjectManagedArtifactsConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        Mise: FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig
-        Gitignore: FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig
+        @property
+        def Mise(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig:
+            """Mise additions owned by the current project."""
+            ...
+
+        @property
+        def Gitignore(
+            self,
+        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig:
+            """Ignore patterns owned by the current project."""
+            ...
 
     @runtime_checkable
     class ProjectManagedArtifactsResolution(FlextCliProtocols.BaseModel, Protocol):
