@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -125,7 +125,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def modules(
             self,
-        ) -> MutableMapping[
+        ) -> Mapping[
             FlextInfraTypesRopeNative.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
         ]:
@@ -370,14 +370,16 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
-        def plans(self) -> dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
+        def plans(
+            self,
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
             """Decided plans, children first."""
             ...
 
         @property
         def contexts(
             self,
-        ) -> dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
             """Package contexts by directory."""
             ...
 

@@ -73,7 +73,12 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         working: MutableMapping[Path, str]
-        originals: MutableMapping[Path, p.Cli.AtomicFileState]
+
+        @property
+        def originals(self) -> Mapping[Path, p.Cli.AtomicFileState]:
+            """Complete original dependency closure."""
+            ...
+
         modes: MutableMapping[Path, int | None]
 
     @runtime_checkable

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -186,7 +186,7 @@ class FlextInfraProtocolsWorkspace:
         origins: MutableMapping[str, Path]
 
         @property
-        def module_anchors(self) -> MutableMapping[str, t.Infra.NativeOperand]:
+        def module_anchors(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Strong native identities of elected module anchors; live interpreter
@@ -199,26 +199,26 @@ class FlextInfraProtocolsWorkspace:
         @property
         def evidence(
             self,
-        ) -> MutableSequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+        ) -> Sequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
             """Ordered native binding and executable observations."""
             ...
 
         @property
         def evidence_index(
             self,
-        ) -> MutableMapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+        ) -> Mapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
             """Invocation-local references to the first binding evidence."""
             ...
 
         @property
         def generated_owners(
             self,
-        ) -> MutableMapping[int, tuple[str, str, p.AttributeProbe | None]]:
+        ) -> Mapping[int, tuple[str, str, p.AttributeProbe | None]]:
             """Strongly retained generated function source receivers."""
             ...
 
         @property
-        def references(self) -> MutableSequence[tuple[str, t.Infra.NativeOperand]]:
+        def references(self) -> Sequence[tuple[str, t.Infra.NativeOperand]]:
             """Structural member projected from the owning model.
 
             Native operand registrations awaiting graph traversal; live interpreter
@@ -229,7 +229,7 @@ class FlextInfraProtocolsWorkspace:
         @property
         def pending(
             self,
-        ) -> MutableSequence[
+        ) -> Sequence[
             tuple[
                 str,
                 t.Infra.NativeOperand,
@@ -256,7 +256,7 @@ class FlextInfraProtocolsWorkspace:
         owner_source: str
 
         @property
-        def visited(self) -> MutableMapping[int, tuple[t.Infra.NativeOperand, str]]:
+        def visited(self) -> Mapping[int, tuple[t.Infra.NativeOperand, str]]:
             """Structural member projected from the owning model.
 
             Strong exact identities in original first-visit order; live interpreter
@@ -295,7 +295,7 @@ class FlextInfraProtocolsWorkspace:
         generated_operands: tuple[tuple[str, str], ...]
 
         @property
-        def nonlocals(self) -> MutableMapping[str, t.Infra.NativeOperand]:
+        def nonlocals(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Actual closure cell values in native free-variable order: live
@@ -304,7 +304,7 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def global_bindings(self) -> MutableMapping[str, t.Infra.NativeOperand]:
+        def global_bindings(self) -> Mapping[str, t.Infra.NativeOperand]:
             """Structural member projected from the owning model.
 
             Actual globals selected by native LOAD_GLOBAL instructions: live

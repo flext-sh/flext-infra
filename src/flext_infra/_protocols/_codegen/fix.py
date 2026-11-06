@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet, Sequence
+from collections.abc import MutableSet, Sequence
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
@@ -30,14 +30,14 @@ class FlextInfraProtocolsCodegenFix:
         @property
         def violations_fixed(
             self,
-        ) -> MutableSequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
             """Fixed violations."""
             ...
 
         @property
         def violations_skipped(
             self,
-        ) -> MutableSequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
             """Skipped violations (not auto-fixable)."""
             ...
 
@@ -148,14 +148,14 @@ class FlextInfraProtocolsCodegenFix:
         @property
         def violations_fixed(
             self,
-        ) -> MutableSequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
             """List of violations that were fixed."""
             ...
 
         @property
         def violations_skipped(
             self,
-        ) -> MutableSequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
             """List of violations that were skipped."""
             ...
 
