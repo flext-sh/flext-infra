@@ -214,7 +214,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Typed render input for an existing repository Makefile."""
 
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
@@ -307,7 +310,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(gt=0, description="Forced-termination grace period"),
         ]
         tooling_runtime: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
+            Annotated[
+                p.Infra.ToolingRuntimeContext,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
+                ),
+            ],
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -345,11 +353,25 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Ordered workspace subproject paths"),
         ] = ()
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Repository-specific additional public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
+            Annotated[
+                p.Infra.ScriptDispatchSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.ScriptDispatchSpec
+                ),
+            ]
+            | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
         workspace_cli_group: Annotated[
