@@ -11,8 +11,8 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra import c, p, t
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigProvider:
@@ -246,7 +246,17 @@ class FlextInfraModelsConfigProvider:
             ),
         ]
         deploy_keys: Annotated[
-            tuple[FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CiPrivateSubmoduleDeployKeySpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigProvider.CiPrivateSubmoduleDeployKeySpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 

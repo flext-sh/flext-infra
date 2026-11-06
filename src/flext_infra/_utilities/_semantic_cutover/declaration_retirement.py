@@ -39,6 +39,95 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
     """Complete the existing contract planner through the native relocation owner."""
 
     @staticmethod
+    def contract_assignment(
+        binding: p.Infra.RopePyName,
+    ) -> (
+        tuple[
+            p.Infra.RopeSourceModule,
+            p.Infra.RopeScope,
+            p.Infra.RopeSourceAssignmentLayout,
+        ]
+        | None
+    ):
+        """Locate one original alias or direct assignment through native metadata.
+
+        Returns:
+            Its source module, lexical scope and unique native assignment layout.
+
+        Raises:
+            ValueError: If an elected binding has ambiguous direct assignments.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        alias = runtime.annotation_alias_definition(binding)
+        module, line = binding.get_definition_location()
+        if alias is not None:
+            _declaration, scope = alias
+            module = scope.pyobject.get_module()
+        elif isinstance(module, p.Infra.RopeSourceModule) and line is not None:
+            scope = module.get_scope().get_inner_scope_for_line(line)
+        else:
+            return None
+        if not isinstance(module, p.Infra.RopeSourceModule) or scope.get_kind() not in {
+            "Module",
+            "Class",
+        }:
+            return None
+        layouts = tuple(
+            layout
+            for layout in module.get_source_binding_index().assignment_layouts(
+                scope, resolve_values=True
+            )
+            if layout.kind in {"TypeAlias", "Assign"}
+            and len(layout.targets) == 1
+            and runtime.same_name(
+                binding, scope.get_defined_names().get(layout.targets[0][0])
+            )
+        )
+        if len(layouts) > 1:
+            message = "ownership transfer has ambiguous assignment declarations"
+            raise ValueError(message)
+        return (module, scope, layouts[0]) if layouts else None
+
+    @classmethod
+    def contract_transfer_module(
+        cls, binding: p.Infra.RopePyName
+    ) -> p.Infra.RopeSourceModule:
+        """Retain native source ownership without inferring a lazy alias value.
+
+        Returns:
+            The original source module of a class, callable or assignment.
+
+        Raises:
+            TypeError: If the binding has no governed native source declaration.
+
+        """
+        assignment = cls.contract_assignment(binding)
+        if assignment is not None:
+            return assignment[0]
+        value = binding.get_object()
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        if types.py_function(value) or types.py_class(value):
+            return types.require_source_module(value.get_module())
+        message = "ownership transfer requires a native source declaration"
+        raise TypeError(message)
+
+    @classmethod
+    def _retiring_binding_name(cls, binding: p.Infra.RopePyName) -> str:
+        """Read the original declaration name without alias-value inference.
+
+        Returns:
+            The exact native assignment target or class/callable name.
+
+        """
+        assignment = cls.contract_assignment(binding)
+        if assignment is not None:
+            return assignment[2].targets[0][0]
+        return FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
+            binding.get_object(), "retiring declaration"
+        ).get_name()
+
+    @staticmethod
     def contract_transfer_binding(
         project: p.Infra.RopeProject,
         identity: tuple[str, str],
@@ -135,8 +224,6 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             transfer destination path.
 
         Raises:
-            TypeError: If an elected declaration owner is an external library
-                rather than a governed source module.
             ValueError: If the transfer has no single destination, no native
                 receiver, leaves the project scope or cannot be proven.
 
@@ -157,11 +244,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         destination = runtime.qualified_name(project, elected)
         destinations_path: t.Infra.RopeSourcePath | None = None
         for selected in (binding, destination):
-            value = selected.get_object()
-            provider = value.get_module()
-            if not isinstance(provider, p.Infra.RopeSourceModule):
-                message = f"{rule.id}: an external library declaration cannot retire"
-                raise TypeError(message)
+            provider = cls.contract_transfer_module(selected)
             resource = provider.get_resource()
             if resource is None:
                 message = f"{rule.id}: ownership requires a native source resource"
@@ -185,22 +268,16 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         binding: p.Infra.RopePyName,
         proposed: Mapping[t.Infra.RopeSourcePath, str],
     ) -> tuple[p.Infra.RopePyModule, tuple[t.Infra.RopeSourcePath, str]]:
-        """Authenticate the native class or function owner of the binding.
+        """Authenticate the native declaration owner of the binding.
 
         Returns:
             The defining module and the governed ``(path, source)`` it owns.
 
         Raises:
-            TypeError: If the binding has no native class or function scope.
             ValueError: If the scope, module or governed source is missing.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        value = binding.get_object()
-        if not (types.py_function(value) or types.py_class(value)):
-            message = "ownership transfer requires a native class or function"
-            raise TypeError(message)
-        module = value.get_module()
+        module = cls.contract_transfer_module(binding)
         resource = module.get_resource()
         if resource is None:
             message = "ownership transfer has no native definition resource"
@@ -402,6 +479,14 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         """
         refactors = FlextInfraUtilitiesRopeRuntimeRefactors
         analysis_exports = FlextInfraUtilitiesRopeAnalysisExports
+        if cls.contract_assignment(binding) is not None:
+            return cls._retire_contract_assignment(
+                project,
+                binding,
+                destination,
+                proposed,
+                destinations=destinations,
+            )
         module, (path, source) = cls._authenticated_retirement_owner(binding, proposed)
         definition = binding.get_object()
         if not isinstance(definition, p.Infra.RopeSourceDefinition):
@@ -469,6 +554,89 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         if empty:
             proposed[path] = ""
         return path, empty
+
+    @classmethod
+    def _retire_contract_assignment(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        destination: p.Infra.RopePyName,
+        proposed: MutableMapping[t.Infra.RopeSourcePath, str],
+        *,
+        destinations: Sequence[p.Infra.RopePyName],
+    ) -> tuple[t.Infra.RopeSourcePath, bool]:
+        """Retire a lazy alias or an already-rebound pure reference assignment.
+
+        Returns:
+            Its original source path and whether that module became empty.
+
+        Raises:
+            ValueError: If alias parameters or the native destination are unproven.
+
+        """
+        declaration = cls.contract_assignment(binding)
+        if declaration is None:
+            message = "retiring assignment lost its native declaration"
+            raise ValueError(message)
+        module, scope, layout = declaration
+        receiver = cls.contract_assignment(destination)
+        if layout.kind == "TypeAlias":
+            if (
+                receiver is None
+                or receiver[2].kind != "TypeAlias"
+                or layout.type_parameters
+                or receiver[2].type_parameters
+            ):
+                message = "alias transfer lacks matching native parameter proof"
+                raise ValueError(message)
+        elif (
+            layout.root_binding is None
+            or not FlextInfraUtilitiesRopeRuntimeModules.same_name(
+                destination, layout.value_binding
+            )
+        ):
+            message = "retiring assignment is not a direct destination reference"
+            raise ValueError(message)
+        resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
+            module.get_resource(), "retiring assignment"
+        )
+        path = Path(resource.real_path).resolve()
+        source = proposed[path]
+        first, last = layout.region
+        start_line = module.lines.get_line_number(first)
+        end_line = module.lines.get_line_number(last - 1)
+        cls._prove_contract_retirement(
+            project,
+            proposed,
+            owners=(binding, None),
+            destinations=destinations,
+            span=(path, start_line, end_line),
+        )
+        first = module.lines.get_line_start(start_line)
+        last = module.lines.get_line_end(end_line)
+        last += int(source[last:].startswith("\n"))
+        rewritten = FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
+            resource,
+            source,
+            (m.Infra.SourceRewrite(start=first, end=last, text=""),),
+        ).new_contents
+        if scope.get_kind() == "Module":
+            with FlextInfraUtilitiesRopeModulePatch.candidate_module(
+                module, rewritten
+            ) as candidate:
+                rewritten = (
+                    FlextInfraUtilitiesRopeModulePatch.remove_runtime_alias_export(
+                        candidate, alias=layout.targets[0][0]
+                    )
+                )
+        proposed[path] = rewritten
+        cls._drop_changed_orphaned_imports(project, proposed)
+        return path, cls._prove_retired_module_emptiness(
+            FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
+                project, proposed[path], resource=resource
+            ),
+            None,
+        )
 
     @staticmethod
     def _contract_signature(node: p.Infra.RopeAstNode) -> t.Infra.RopeCallableSignature:
@@ -575,11 +743,12 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             )
             for name in ("getattr", "hasattr", "setattr", "delattr")
         )
+        member = cls._retiring_binding_name(owners[0])
         for path, source in sources.items():
             cls._prove_retirement_source(
                 project,
                 (path, source),
-                owners,
+                (*owners, member),
                 (destinations, reflectors),
                 span,
             )
@@ -589,7 +758,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         cls,
         project: p.Infra.RopeProject,
         entry: tuple[Path, str],
-        owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None],
+        owners: tuple[p.Infra.RopePyName, p.Infra.RopePyName | None, str],
         callees: tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
         span: tuple[Path, int, int],
     ) -> None:
@@ -597,7 +766,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         if source.startswith(c.Infra.AUTOGEN_HEADER):
             return
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        binding, container = owners
+        binding, container, member = owners
         resource = FlextInfraUtilitiesRopeRuntimeTypes.require_file_resource(
             project.get_resource(
                 path.relative_to(Path(project.root.real_path)).as_posix()
@@ -610,9 +779,14 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         def covers(line: int) -> bool:
             return path == span[0] and span[1] <= line <= span[2]
 
+        resolutions: dict[tuple[int, str], p.Infra.RopePyName | None] = {}
+
         def resolves(node: p.Infra.RopeAstNode) -> p.Infra.RopePyName | None:
             scope = runtime.scope_at(module, runtime.source_offset(source, node))
-            return runtime.resolve_symbol(scope, node)
+            key = (id(scope), ast.unparse(node))
+            if key not in resolutions:
+                resolutions[key] = runtime.resolve_symbol(scope, node)
+            return resolutions[key]
 
         def whole_owner(actual: p.Infra.RopePyName | None) -> bool:
             return (
@@ -626,16 +800,16 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         def carries(expression: p.Infra.RopeAstNode) -> bool:
             return cls._carries_retirement_owner(
-                expression, resolves, whole_owner, binding
+                expression, resolves, whole_owner, binding, member
             )
 
-        cls._prove_retirement_exports(module, entry, owners, span[0])
+        cls._prove_retirement_exports(module, entry, (binding, container), span[0])
         cls._prove_retirement_nodes(
             tree,
             covers,
             resolves,
             (whole_owner, carries),
-            (binding, container, path, callees),
+            (binding, container, path, callees, member),
         )
         if path != span[0]:
             cls._prove_retirement_aliases(
@@ -643,11 +817,13 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             )
 
         def quoted(scope: p.Infra.RopeScope, expression: str) -> str | None:
-            cls._prove_retirement_annotation(scope, expression, covers, owners, path)
+            cls._prove_retirement_annotation(
+                scope, expression, covers, (binding, container), path
+            )
             return None
 
         FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            project, resource, source, quoted
+            (project, resource), source, quoted
         )
 
     @classmethod
@@ -665,9 +841,10 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             p.Infra.RopePyName | None,
             Path,
             tuple[Sequence[p.Infra.RopePyName], Sequence[p.Infra.RopePyName]],
+            str,
         ],
     ) -> None:
-        binding, container, path, callees = context
+        binding, container, path, callees, member = context
         whole_owner, carries = probes
         parents = FlextInfraUtilitiesRopeAnalysisAstHelpers.ast_parent_map(tree)
         for node in ast.walk(tree):
@@ -687,9 +864,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                     carries,
                     (
                         *callees,
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
-                            binding.get_object(), str(path)
-                        ).get_name(),
+                        member,
                         path,
                     ),
                 )
@@ -721,28 +896,28 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         resolves: Callable[[p.Infra.RopeAstNode], p.Infra.RopePyName | None],
         whole_owner: Callable[[p.Infra.RopePyName | None], bool],
         binding: p.Infra.RopePyName,
+        member: str,
     ) -> bool:
         if not isinstance(expression, ast.AST):
             msg = "native carrier proof requires an AST expression"
             raise TypeError(msg)
+        qualifiers = {
+            id(node.value)
+            for node in ast.walk(expression)
+            if isinstance(node, ast.Attribute)
+        }
         return any(
             actual is not None
             and (
                 whole_owner(actual)
                 or FlextInfraUtilitiesRopeRuntimeModules.same_name(
                     binding,
-                    actual
-                    .get_object()
-                    .get_attributes()
-                    .get(
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_named_object(
-                            binding.get_object(), "retirement owner"
-                        ).get_name()
-                    ),
+                    actual.get_object().get_attributes().get(member),
                 )
             )
             for part in ast.walk(expression)
             if isinstance(part, c.Infra.AST_NAME_REFERENCE_TYPES)
+            and id(part) not in qualifiers
             for actual in (resolves(part),)
         )
 
@@ -899,7 +1074,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
                 path,
             )
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
-            changes: list[m.Infra.SourceRewrite] = []
+            changes: list[p.Infra.SourceRewrite] = []
             tree = module.get_ast()
             for node in ast.walk(tree):
                 rewrite = cls._retired_base_rewrite(
@@ -919,7 +1094,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
         entry: tuple[Path, str],
         node: ast.AST,
         container: p.Infra.RopePyName,
-    ) -> m.Infra.SourceRewrite | None:
+    ) -> p.Infra.SourceRewrite | None:
         if not isinstance(node, ast.ClassDef) or not node.bases:
             return None
         runtime = FlextInfraUtilitiesRopeRuntimeModules

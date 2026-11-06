@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import c
 
+from flext_infra._constants import FlextInfraConstantsCheck
+from flext_infra._pytest import FlextInfraPytestProfileChild
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -108,10 +111,12 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: ClassVar[str] = "."
     GITIGNORE: ClassVar[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: ClassVar[str] = ".pre-commit-config.yaml"
-    MARKDOWN_CONFIG_FILENAME: ClassVar[str] = ".rumdl.toml"
-    MARKDOWNLINT_IGNORE_FILENAME: ClassVar[str] = ".markdownlintignore"
-    "Generated markdown lint/format projections (SSOT: tooling.tools.markdown)."
     "Hook-config projection whose presence decides whether a checkout runs hooks."
+    MARKDOWN_CONFIG_FILENAME: ClassVar[str] = ".rumdl.toml"
+    "The one Markdown projection (SSOT: tooling.tools.markdown), read by rumdl."
+    MARKDOWN_RULE_ID_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^MD\d{3}$")
+    MARKDOWN_GENERATOR_OWNED_TABLES: ClassVar[frozenset[str]] = frozenset({"global"})
+    "Native tables the renderer owns; a project declaration cannot replace them."
     SONARCLOUD_PROPERTIES_FILENAME: ClassVar[str] = ".sonarcloud.properties"
     "Generated SonarCloud automatic-analysis scope (SSOT: codegen.sonarcloud)."
     SONARCLOUD_ISSUE_IGNORE_KEY: ClassVar[str] = "sonar.issue.ignore.multicriteria"
@@ -197,6 +202,10 @@ class FlextInfraConstantsSharedInfra:
     TIMEOUT_MEDIUM: ClassVar[int] = 120
     TIMEOUT_LONG: ClassVar[int] = 600
     TIMEOUT_CI: ClassVar[int] = 900
+    # Whole-workspace whole-program runs measured 2026-11-05: the umbrella
+    # pyright analyzed 4829 files in 744s wall clock, exceeding TIMEOUT_LONG,
+    # so its gate needs the next ladder rung with headroom.
+    TIMEOUT_UMBRELLA: ClassVar[int] = 1200
 
     # --- Path constants (was: class Paths) ---
     DEFAULT_SRC_DIR: ClassVar[str] = "src"
@@ -206,6 +215,9 @@ class FlextInfraConstantsSharedInfra:
         "import importlib, sys\n"
         "from importlib.metadata import EntryPoint\n"
         "from pathlib import Path\n"
+    )
+    FRESH_IMPORT_PROFILE_CODE: ClassVar[str] = FlextInfraPytestProfileChild.source_stub(
+        FlextInfraConstantsCheck.PYTEST_PROFILE_CLOCK_MODULE
     )
     FRESH_IMPORT_EXPORT_IMPORT_CODE: ClassVar[str] = (
         "module = importlib.import_module({package!r})\n"
@@ -220,9 +232,7 @@ class FlextInfraConstantsSharedInfra:
     FRESH_IMPORT_EXPORT_RESOLVE_CODE: ClassVar[str] = (
         "for name in (*{exports!r}, *getattr(module, '__all__', ())):\n"
         "    getattr(module, name)\n"
-        "from flext_infra.validate.fresh_import import "
-        "FlextInfraValidateFreshImport as fresh_import_owner\n"
-        "fresh_import_owner.require_complete_models(module)\n"
+        "FlextInfraValidateFreshImport.require_complete_models(module, {prefix!r})\n"
     )
     # Synthetic concat keeps the placeholder out of one plain literal: the
     # marker is template text substituted at render time, never an f-string.
@@ -230,12 +240,11 @@ class FlextInfraConstantsSharedInfra:
     # The origin gate runs inside the same probe namespace as the export
     # resolution, so its loop names must never rebind the probed ``module``.
     FRESH_IMPORT_ORIGIN_CODE: ClassVar[str] = (
-        "from flext_infra.workspace import "
-        "FlextInfraWorkspaceEnvironmentProvenance as native_origins\n"
         "for loaded_name in tuple(sys.modules):\n"
         "    for package, directory in {origins!r}:\n"
         "        if loaded_name == package or loaded_name.startswith(package + '.'):\n"
-        "            origin = native_origins.module_source(loaded_name).unwrap()\n"
+        "            origin = FlextInfraWorkspaceEnvironmentProvenanceModuleSource"
+        ".module_source(loaded_name).unwrap()\n"
         "            if not origin.resolve().is_relative_to(Path(directory)):\n"
         "                raise ImportError(\n"
         "                    f'{loaded_name}: origin {origin!r} '\n"

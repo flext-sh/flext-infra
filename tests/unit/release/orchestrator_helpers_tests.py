@@ -9,10 +9,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import pytest
-
 from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
-from flext_infra.release import FlextInfraReleaseReleaseBuild
+from flext_infra.release import FlextInfraReleaseRelease
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
@@ -382,7 +380,7 @@ class TestsFlextInfraReleaseHelpers:
         @staticmethod
         def test_artifact_rejects_relative_path() -> None:
             """Reject a relative artifact path at the public model boundary."""
-            with pytest.raises(c.ValidationError) as exc_info:
+            with u.Tests.raises(c.ValidationError) as exc_info:
                 m.Infra.BuildArtifact(
                     path="dist/flext_a-1.0.0-py3-none-any.whl",
                     kind="wheel",
@@ -405,7 +403,7 @@ class TestsFlextInfraReleaseHelpers:
             )
 
             tm.that(record.exit_code, eq=-9)
-            with pytest.raises(c.ValidationError):
+            with u.Tests.raises(c.ValidationError):
                 m.Infra.BuildRecord.model_validate({
                     "project": "flext-a",
                     "path": str(tmp_path.resolve()),
@@ -418,7 +416,7 @@ class TestsFlextInfraReleaseHelpers:
 
         # Why (flext-oftik class): builds a real artifact twice (uv build); the
         # SSOT slow budget (flext_slow_timeout_seconds) owns its ceiling.
-        @pytest.mark.slow
+        @c.Tests.MARK.slow
         @staticmethod
         def test_collision_preserves_complete_existing_set(tmp_path: Path) -> None:
             """Fail on immutable collision without partial or temporary output."""
@@ -472,7 +470,7 @@ class TestsFlextInfraReleaseHelpers:
             )
             (project / "src" / "flext_a" / "build_hook.py").write_text(
                 "from pathlib import Path\n"
-                "from hatchling.builders.hooks.plugin.interface import "
+                "from hatchling.builders.hooks.plugin import "
                 "BuildHookInterface\n\n"
                 "class CustomBuildHook(BuildHookInterface):\n"
                 '    PLUGIN_NAME = "custom"\n\n'
@@ -541,7 +539,7 @@ source = { registry = "https://pypi.org/simple" }
                 lock_body,
             )
 
-            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseRelease.internal_locked_versions(tmp_path)
 
             tm.ok(result, eq={"flext-api": "0.12.0"})
 
@@ -549,7 +547,7 @@ source = { registry = "https://pypi.org/simple" }
         def test_missing_lock_fails_loud(tmp_path: Path) -> None:
             """Release pins require the lock owned by dependency resolution."""
             u.Tests.initialize_git_repo(tmp_path)
-            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseRelease.internal_locked_versions(tmp_path)
 
             tm.fail(result)
             tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
@@ -563,7 +561,7 @@ source = { registry = "https://pypi.org/simple" }
                 "not [ valid toml",
             )
 
-            result = FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
+            result = FlextInfraReleaseRelease.internal_locked_versions(tmp_path)
 
             tm.fail(result)
             tm.that(result.error or "", has=c.Infra.UV_LOCK_FILENAME)
@@ -577,5 +575,5 @@ source = { registry = "https://pypi.org/simple" }
                 '[[package]]\nname = "flext-api"\nversion = 1\nsource = {git = "repo"}',
             )
 
-            with pytest.raises(c.ValidationError):
-                FlextInfraReleaseReleaseBuild.internal_locked_versions(tmp_path)
+            with u.Tests.raises(c.ValidationError):
+                FlextInfraReleaseRelease.internal_locked_versions(tmp_path)

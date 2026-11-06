@@ -10,8 +10,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.workspace import FlextInfraBindingService
 from tests import c, p, tm, u
@@ -319,7 +317,7 @@ class TestsMakeBootstrapPublication:
         tm.ok(result.outcome.raw_return_code != 0)
         tm.that(result.stderr + result.stdout, has="direct_url mismatch")
 
-    @pytest.mark.parametrize("hosted", [False, True])
+    @c.Tests.MARK.parametrize("hosted", [False, True])
     def test_hosted_election_is_independent_of_the_gate_partition(
         self,
         tmp_path: Path,

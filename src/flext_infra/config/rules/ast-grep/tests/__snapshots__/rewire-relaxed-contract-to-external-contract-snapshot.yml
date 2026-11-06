@@ -1,6 +1,6 @@
 id: rewire-relaxed-contract-to-external-contract
 snapshots:
-  "class Finding(m.ContractModel):\n    \"\"\"Required fields consumed from one native finding.\"\"\"\n\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n\n    code: str\n":
+  "class Finding(m.ContractModel):\n    \"\"\"Required fields consumed from one native finding.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n\n    code: str\n":
     fixed: |
       class Finding(m.ExternalContractModel):
           """Required fields consumed from one native finding."""
@@ -10,13 +10,13 @@ snapshots:
         class Finding(m.ContractModel):
             """Required fields consumed from one native finding."""
         
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore")
         
             code: str
       style: primary
       start: 0
       end: 179
-  "class FlextModelsDemo:\n    class Report(m.ContractModel):\n        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n        items: Sequence[str]\n":
+  "class FlextModelsDemo:\n    class Report(m.ContractModel):\n        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\")\n        items: Sequence[str]\n":
     fixed: |
       class FlextModelsDemo:
           class Report(m.ExternalContractModel):
@@ -25,7 +25,7 @@ snapshots:
     labels:
     - source: |-
         class Report(m.ContractModel):
-                model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+                model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore")
                 items: Sequence[str]
       style: primary
       start: 27

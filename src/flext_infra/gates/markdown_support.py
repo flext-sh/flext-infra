@@ -13,13 +13,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra.gates import FlextInfraGates
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraMarkdownGateBase(FlextInfraGates):
@@ -53,7 +50,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _union_targets(
         self,
         project_dirs: Sequence[Path],
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         repair: bool,
     ) -> Sequence[str]:
@@ -95,6 +92,45 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             )
         )
 
+    @classmethod
+    def untracked_markdown_files(
+        cls,
+        project_dir: Path,
+        scope_facts: p.Infra.GitScopeFacts | None,
+    ) -> Sequence[Path]:
+        """Collect worktree Markdown that Git neither tracks nor ignores.
+
+        Repair widens to these files so a new document is formatted before it
+        is ever committed; findings stay on ``collect_markdown_files``.
+
+        Returns:
+            The untracked governed Markdown, empty outside a Git worktree.
+
+        Raises:
+            RuntimeError: If Git cannot list the worktree's changed paths.
+
+        """
+        root = project_dir.resolve()
+        request = m.Infra.GitRepoRequest(repo_root=root)
+        if u.Infra.git_repository_root(request).failure:
+            return ()
+        changed = u.Infra.git_changed_paths(request)
+        if changed.failure:
+            msg = changed.error or f"{root}: git changed paths failed"
+            raise RuntimeError(msg)
+        tracked = set(cls.collect_markdown_files(project_dir, scope_facts))
+        return u.Infra.scope_excluded_paths(
+            root,
+            tuple(
+                path
+                for path in changed.value
+                if path.suffix == ".md"
+                and not path.is_symlink()
+                and path not in tracked
+            ),
+            u.Infra.load_codegen_inputs(root).unwrap().spec.markdown_exclude_globs,
+        )
+
     @staticmethod
     def projected_block_spans(
         path: Path,
@@ -115,7 +151,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         """
         blocks = config.Infra.tooling.tools.markdown.projected_blocks
         spans: list[tuple[int, int]] = []
-        opened: tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None
+        opened: tuple[p.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None
         opened = None
         for index, line in enumerate(lines):
             marker = line.strip()
@@ -233,8 +269,8 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         path: Path,
         index: int,
         marker: str,
-        blocks: Sequence[m.Infra.MarkdownProjectedBlock],
-    ) -> tuple[m.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None:
+        blocks: Sequence[p.Infra.MarkdownProjectedBlock],
+    ) -> tuple[p.Infra.MarkdownProjectedBlock, Mapping[str, str], int] | None:
         """Open the declared block whose begin marker is ``marker``.
 
         Returns:
@@ -342,9 +378,9 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _projected_round_trip(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         target: str,
-    ) -> tuple[m.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
+    ) -> tuple[p.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
         """Run the stdin pass over one file's lint view and splice its blocks.
 
         The file is observed once through the atomic reader, so its state is
@@ -414,11 +450,11 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _execute_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         started: float,
         lock_owners: Sequence[Path],
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Repair projected files through their view; the rest in one disk pass.
 
         A file without a declared projected block keeps the single native
@@ -434,12 +470,15 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
             RuntimeError: If the publisher rejects the repaired files.
 
         """
+        failed = self._repair_untracked(ctx, started, lock_owners)
+        if failed is not None:
+            return failed
         projected = self._projected_targets(project_dir, targets)
         if not projected:
             return super()._execute_fix_command(
                 project_dir, ctx, targets, started, lock_owners
             )
-        executions: list[m.Infra.GateExecution] = []
+        executions: list[p.Infra.GateExecution] = []
         plain = tuple(target for target in targets if target not in projected)
         if plain:
             executions.append(
@@ -447,7 +486,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
                     project_dir, ctx, plain, started, lock_owners
                 )
             )
-        plans: dict[Path, list[m.Infra.CodegenFilePlan]] = {}
+        plans: dict[Path, list[p.Infra.CodegenFilePlan]] = {}
         for target in targets:
             if target not in projected:
                 continue
@@ -476,13 +515,43 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
                 raise RuntimeError(msg)
         return self._merged_execution(project_dir, ctx, started, executions)
 
+    def _repair_untracked(
+        self,
+        ctx: p.Infra.GateContext,
+        started: float,
+        lock_owners: Sequence[Path],
+    ) -> p.Infra.GateExecution | None:
+        """Repair each owner's untracked Markdown without reporting it.
+
+        Residual findings stay with ``check`` over tracked files; only a native
+        tool error fails the repair.
+
+        Returns:
+            The failed native execution, or ``None`` when every pass completed.
+
+        """
+        for owner in lock_owners:
+            untracked = self.untracked_markdown_files(owner, ctx.scope_facts)
+            if not untracked:
+                continue
+            widened = super()._execute_fix_command(
+                owner,
+                ctx,
+                tuple(path.as_posix() for path in untracked),
+                started,
+                (owner,),
+            )
+            if widened.outcome is c.Infra.ToolOutcome.ERROR:
+                return widened
+        return None
+
     def _merged_execution(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         started: float,
-        executions: Sequence[m.Infra.GateExecution],
-    ) -> m.Infra.GateExecution:
+        executions: Sequence[p.Infra.GateExecution],
+    ) -> p.Infra.GateExecution:
         """Join the disk pass and the projected passes into one execution.
 
         Returns:
@@ -584,7 +653,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         )
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """Only a project with governed Markdown selects a Markdown gate.
 
         Returns:
@@ -597,7 +666,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Return the governed Markdown paths relative to their repository.
 

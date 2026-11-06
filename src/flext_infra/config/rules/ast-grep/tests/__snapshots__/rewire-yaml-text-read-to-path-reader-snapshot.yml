@@ -1,0 +1,34 @@
+id: rewire-yaml-text-read-to-path-reader
+snapshots:
+  "documents = u.Cli.yaml_parse_documents(\n    u.Cli.files_read_text(test_file).unwrap()\n).unwrap()\n":
+    fixed: |
+      documents = u.Cli.yaml_load_documents(test_file).unwrap()
+    labels:
+    - source: |-
+        u.Cli.yaml_parse_documents(
+            u.Cli.files_read_text(test_file).unwrap()
+        )
+      style: primary
+      start: 12
+      end: 87
+  documents = u.Cli.yaml_parse_documents(rule.read_text()):
+    fixed: documents = u.Cli.yaml_load_documents(rule)
+    labels:
+    - source: u.Cli.yaml_parse_documents(rule.read_text())
+      style: primary
+      start: 12
+      end: 56
+  payload = u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING)):
+    fixed: payload = u.Cli.yaml_safe_load(config)
+    labels:
+    - source: u.Cli.yaml_parse(config.read_text(encoding=c.DEFAULT_ENCODING))
+      style: primary
+      start: 10
+      end: 73
+  payload = u.Cli.yaml_parse(u.Cli.files_read_text(config).unwrap()).unwrap():
+    fixed: payload = u.Cli.yaml_safe_load(config).unwrap()
+    labels:
+    - source: u.Cli.yaml_parse(u.Cli.files_read_text(config).unwrap())
+      style: primary
+      start: 10
+      end: 66

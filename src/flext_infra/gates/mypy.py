@@ -9,13 +9,10 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.gates import FlextInfraGates
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesMypy(FlextInfraGates):
@@ -40,7 +37,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
         super().__init__(repository_root, runner=runner)
         self._resource_limits: MutableMapping[Path, m.Infra.MypyResourceLimit] = {}
 
-    def _project_limit(self, project_dir: Path) -> m.Infra.MypyResourceLimit:
+    def _project_limit(self, project_dir: Path) -> p.Infra.MypyResourceLimit:
         """Return the admitted policy shared by the child, runner and receipt.
 
         Returns:
@@ -92,7 +89,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Check local Python roots directly instead of recursively scanning ``.``.
 
@@ -114,7 +111,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
         ]
 
     @staticmethod
-    def _resolve_config(project_dir: Path, ctx: m.Infra.GateContext) -> Path:
+    def _resolve_config(project_dir: Path, ctx: p.Infra.GateContext) -> Path:
         """Resolve Mypy settings from the project, then the workspace.
 
         Returns:
@@ -138,7 +135,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Run the resource-limited Mypy invocation with its JSON report.
@@ -181,10 +178,10 @@ class FlextInfraGatesMypy(FlextInfraGates):
     def _parsed_gate_execution(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         result: p.Cli.CommandOutput,
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Publish the admitted budget alongside untouched checker streams.
 
         Returns:
@@ -210,7 +207,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
     ) -> None:
         """Account for every submitted target from Mypy's native build trace.
@@ -255,21 +252,20 @@ class FlextInfraGatesMypy(FlextInfraGates):
         return None, u.Infra.mypy_runner_deadline(timeout)
 
     @override
-    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
+    def check_budget_seconds(self, project_dir: Path) -> int:
         """Keep the outer runner alive through the controlled Mypy deadline.
 
         Returns:
-            The resulting ``int``.
+            The project's admitted Mypy budget plus its controlled grace.
 
         """
-        del ctx
         return u.Infra.mypy_runner_timeout(self._project_limit(project_dir))
 
     @override
     def _check_env(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Mapping[str, str] | None:
         """Run Mypy against the project's shared analysis cache.
 
@@ -290,7 +286,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Validate Mypy's one-JSON-object-per-line report into findings.
 
@@ -325,7 +321,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
                 # the tool's own human stream, never diagnostics; the machine
                 # contract of this gate is one JSON object per line.
                 continue
-            validated: p.Result[m.Infra.MypyDiagnostic] = u.validate_value(
+            validated: p.Result[p.Infra.MypyDiagnostic] = u.validate_value(
                 m.Infra.MypyDiagnostic,
                 raw_line,
                 from_json=True,

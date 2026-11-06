@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.refactor import FlextInfraRefactorProject
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class FlextInfraProjectClassifier(
         self._pyproject_payload = pyproject_payload
         self._src_path = self._project_root / c.Infra.DEFAULT_SRC_DIR
 
-    def classify(self) -> m.Infra.ProjectClassification:
+    def classify(self) -> p.Infra.ProjectClassification:
         """Return classification and family chains for this project.
 
         Returns:

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -140,7 +140,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         ])
 
     @staticmethod
-    def _receipt(root: Path) -> m.Infra.FleetGapsReport:
+    def _receipt(root: Path) -> p.Infra.FleetGapsReport:
         """Load the typed receipt the verb publishes.
 
         Returns:

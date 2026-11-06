@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from flext_core import m
+from flext_core import m, p
 
 if TYPE_CHECKING:
     from decimal import Decimal

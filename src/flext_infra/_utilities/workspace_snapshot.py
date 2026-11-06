@@ -26,12 +26,14 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
 )
+from flext_infra._utilities._rope import (
+    FlextInfraRopeProject,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.project import FlextInfraRopeProject
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
@@ -53,7 +55,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def facade_original_sources(
         root: Path,
-        states: tuple[m.Cli.AtomicFileState, ...],
+        states: tuple[p.Cli.AtomicFileState, ...],
     ) -> Mapping[Path, str]:
         """Select owned Python observations without another read or discovery.
 
@@ -75,8 +77,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @classmethod
     def candidate_python_sources(
         cls,
-        candidate: m.Infra.StageSourcePlan,
-        states: tuple[m.Cli.AtomicFileState, ...],
+        candidate: p.Infra.StageSourcePlan,
+        states: tuple[p.Cli.AtomicFileState, ...],
     ) -> MutableMapping[Path, str]:
         """Project source observations over the candidate's declared scopes.
 
@@ -204,7 +206,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         root: Path,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
         planned_sources: Mapping[Path, str | None] | None = None,
         project_roots: tuple[Path, ...] = (),
         source_project: p.Infra.RopeProject | None = None,
@@ -275,7 +277,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     def _workspace_planned_folders(
         root: Path,
         project_roots: tuple[Path, ...],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         *,
         original_root: Path,
     ) -> tuple[str, ...]:
@@ -310,11 +312,11 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     @staticmethod
     def workspace_declared_sources(
         root: Path,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         planned_sources: Mapping[Path, str | None],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Bind planned overrides to their original physical witnesses.
 
         Returns:
@@ -389,7 +391,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         root: Path,
         project_roots: tuple[Path, ...],
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
         additional_source_folders: tuple[str, ...] = (),
     ) -> Generator[p.Infra.RopeProject]:
         """Open the native source engine project that reads planned sources first.
@@ -450,12 +452,15 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         root: Path,
         members: Sequence[Path],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> Generator[p.Infra.WorkspaceSnapshot]:
         """Open one repository engine with explicit nested inventory ownership.
 
         ``members`` separates nested checkout inventories. Only ``root`` elects
         the native project's source roots, so sibling internal packages cannot
-        replace this repository's bindings.
+        replace this repository's bindings. An injected engine is borrowed under
+        its original source-view barrier and is never closed by this snapshot.
 
         Yields:
             The snapshot every stage of the run reads.
@@ -463,7 +468,14 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         """
         root = root.resolve()
         member_roots = tuple(dict.fromkeys(member.resolve() for member in members))
-        with cls.workspace_overlay_project(root, (root,)) as project:
+        project_context = (
+            cls.workspace_overlay_project(root, (root,))
+            if source_project is None
+            else source_project.source_view(
+                declared_files=None, additional_source_folders=None
+            )
+        )
+        with project_context as project:
             yield m.Infra.WorkspaceSnapshot(
                 workspace_root=root,
                 members=member_roots,
@@ -506,7 +518,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         """
         member = member.resolve()
         view = snapshot.engine if project is None else project
-        listed = snapshot.python_files.get(member) if project is None else None
+        cacheable = project is None and not view.source_plans
+        listed = snapshot.python_files.get(member) if cacheable else None
         if listed is None:
             nested = tuple(
                 other
@@ -522,7 +535,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 )
                 if not any(path.is_relative_to(other) for other in nested)
             )
-            if project is None:
+            if cacheable:
                 snapshot.python_files[member] = listed
         return listed
 
@@ -664,15 +677,16 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         source = snapshot.sources.get(path)
         if source is not None:
             return source
-        member = max(
-            (root for root in snapshot.members if path.is_relative_to(root)),
-            key=lambda root: len(root.parts),
-            default=None,
+        member = next(
+            (root for root in (path, *path.parents) if root in snapshot.members),
+            None,
         )
         if member is None:
             msg = f"workspace file lies outside every member: {path}"
             raise ValueError(msg)
-        state = snapshot.engine.source_state(path, required=True)
+        # Publication retains physical absence for planned additions; the
+        # candidate byte read below still requires a source in the active view.
+        state = snapshot.engine.source_state(path, required=False)
         raw = snapshot.engine.source_bytes(path)
         source = m.Infra.WorkspaceSnapshotSource(
             path=path,

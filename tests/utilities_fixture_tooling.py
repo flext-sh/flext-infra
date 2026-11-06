@@ -17,12 +17,12 @@ from textwrap import indent
 
 from typing_extensions import TypeForm
 
-from flext_infra import config, u, validate, workspace
-from tests import c, m, p, r, t, tm
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+from flext_infra import config, validate, workspace
+from tests import c, m, p, r, t, tm, u
+from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
 
-class TestsFlextInfraUtilitiesToolingFixtureMixin:
+class TestsFlextInfraUtilitiesToolingFixture:
     """Executable, Make, and toolchain-environment fixture helpers."""
 
     class PytestRunner:
@@ -87,7 +87,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 + f'\n[project]\nname = "{name}"\nversion = "0.1.0"\n',
                 encoding=c.DEFAULT_ENCODING,
             )
-            return TestsFlextInfraUtilitiesToolingFixtureMixin.PytestRunner.runner_for(
+            return TestsFlextInfraUtilitiesToolingFixture.PytestRunner.runner_for(
                 project_root,
             )
 
@@ -111,10 +111,8 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
                 + pyproject.read_text(encoding=c.DEFAULT_ENCODING),
                 encoding=c.DEFAULT_ENCODING,
             )
-            runner = (
-                TestsFlextInfraUtilitiesToolingFixtureMixin.PytestRunner.runner_for(
-                    project_root,
-                )
+            runner = TestsFlextInfraUtilitiesToolingFixture.PytestRunner.runner_for(
+                project_root,
             )
             tm.that(runner.parallel_worker_budget(policy) > 1, truth=True)
 
@@ -225,7 +223,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             )
 
     @staticmethod
-    def mypy_deadline_limit() -> m.Infra.MypyResourceLimit:
+    def mypy_deadline_limit() -> p.Infra.MypyResourceLimit:
         """Reserve harness startup and cleanup inside the configured slow budget.
 
         Returns:
@@ -267,7 +265,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             u.Cli.run(("/bin/kill", "-KILL", pid), timeout=timeout).unwrap()
 
     @staticmethod
-    def mypy_workload(root: Path, plugin_body: str = "") -> m.Infra.MypyInvocation:
+    def mypy_workload(root: Path, plugin_body: str = "") -> p.Infra.MypyInvocation:
         """Create a real checker project with an optional workload plugin.
 
         Returns:
@@ -396,7 +394,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             Real wheels, or the original build failure without retrying it.
 
         """
-        fixture = TestsFlextInfraUtilitiesToolingFixtureMixin
+        fixture = TestsFlextInfraUtilitiesToolingFixture
         binary = fixture.managed_uv()
         wheels: list[Path] = []
         with u.Cli.file_changes_lock(directory / "dependency-wheels.lock"):
@@ -445,7 +443,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             return r[bool].from_failure(binary)
         environment = u.Infra.runtime_environment_dir(root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesToolingFixtureMixin.managed_uv()
+        TestsFlextInfraUtilitiesToolingFixture.managed_uv()
         created = u.Cli.run_checked(
             [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,
@@ -454,7 +452,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             return created
         if session_runtime is None:
             return r[bool].fail("Fixture dependency builds require a session runtime")
-        wheels = TestsFlextInfraUtilitiesToolingFixtureMixin.python_dependency_wheels(
+        wheels = TestsFlextInfraUtilitiesToolingFixture.python_dependency_wheels(
             session_runtime.directory,
             tuple(dependency_projects),
         )
@@ -537,13 +535,13 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         # Provisioning a runtime never rewrites a checkout's declared identity:
         # an existing checkout keeps its origin, only a bare root becomes one.
         if not (root / c.Infra.GIT_DIR).exists():
-            TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(root)
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
         environment = u.Infra.runtime_environment_dir(root)
         if environment.is_symlink():
             msg = f"Fixture environment must be physical: {environment}"
             raise ValueError(msg)
         if not (environment / "pyvenv.cfg").is_file():
-            TestsFlextInfraUtilitiesToolingFixtureMixin.create_python_environment(
+            TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
                 root,
             ).unwrap()
         provisioned = Path(sys.executable).parent
@@ -574,25 +572,6 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
     def make_read_only(path: Path) -> None:
         """Make one fixture path read-only."""
         path.chmod(0o444)
-
-    @staticmethod
-    def runtime_evaluated_roots() -> t.StrTuple:
-        """Return the configured runtime-evaluated roots, first-seen order."""
-        return tuple(
-            dict.fromkeys(
-                config.Infra.tooling.tools.ruff.lint.flake8_type_checking.runtime_evaluated_roots,
-            ),
-        )
-
-    @staticmethod
-    def runtime_root_import() -> str:
-        """Return an import binding the first configured root as ``RuntimeRoot``."""
-        module, _, name = (
-            TestsFlextInfraUtilitiesToolingFixtureMixin.runtime_evaluated_roots()[
-                0
-            ].rpartition(".")
-        )
-        return f"from {module} import {name} as RuntimeRoot\n"
 
     @staticmethod
     def copy_tracked_mise_seeds(root: Path, *, source_root: Path | None = None) -> None:
@@ -723,4 +702,4 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
         return log
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesToolingFixtureMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesToolingFixture"]

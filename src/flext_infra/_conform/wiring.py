@@ -10,14 +10,14 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen, docs, gates, m, r, validate
+from flext_infra import c, codegen, docs, gates, m, r, u, validate
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProtectedEditLinting,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import c, p
+    from flext_infra import p
 
 
 class FlextInfraConformWiring:
@@ -71,9 +71,9 @@ class FlextInfraConformWiring:
     def facade_component_planner(
         workspace: p.Infra.RopeWorkspaceDsl,
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None,
-    ) -> m.Infra.CodegenRepositoryPlanOutcome:
+    ) -> p.Infra.CodegenRepositoryPlanOutcome:
         """Close facade cohorts through the session's own projection DSL.
 
         Returns:
@@ -91,40 +91,91 @@ class FlextInfraConformWiring:
         candidate: Path,
         projects: tuple[Path, ...],
     ) -> p.Result[bool]:
-        """Admit the complete candidate through the existing fresh-import owner.
-
-        The source repository elects its physical runtime. Only the candidate's
-        sources of every owning project are probed; a successful import of the
-        live package cannot admit a half-published facade and initializer cohort.
+        """Admit exact staged sources through native runtime and type contracts.
 
         Returns:
-            Acceptance, or the original native runtime or import failure.
+            Acceptance or the original candidate runtime or typing failure.
 
         """
         workspace = codegen.FlextInfraStagedPackage.workspace_root(root)
         if workspace.failure:
             return r[bool].from_failure(workspace)
+        runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
+        if runtime.failure:
+            return r[bool].from_failure(runtime)
         repository = candidate / root.relative_to(workspace.value)
         repositories = tuple(
             candidate / project.relative_to(workspace.value) for project in projects
         )
-        return (
-            FlextInfraUtilitiesProjectDiscovery
-            .runtime_owner_root(root)
-            .flat_map(
-                lambda runtime: validate.FlextInfraValidateFreshImport(
-                    repository_root=repository,
-                    runtime_root=runtime,
-                ).build_report(repository_roots=repositories)
+        imported = validate.FlextInfraValidateFreshImport(
+            repository_root=repository,
+            runtime_root=runtime.value,
+        ).build_report(repository_roots=repositories)
+        if imported.failure:
+            return r[bool].from_failure(imported)
+        if not imported.value.passed:
+            return r[bool].fail(
+                "\n".join((imported.value.summary, *imported.value.violations)),
             )
-            .flat_map(
-                lambda report: (
-                    r[bool].ok(value=True)
-                    if report.passed
-                    else r[bool].fail("\n".join((report.summary, *report.violations)))
-                )
-            )
+        return FlextInfraConformWiring._validate_model_conformance(
+            candidate,
+            repositories,
+            runtime.value,
         )
+
+    @staticmethod
+    def _validate_model_conformance(
+        candidate: Path,
+        repositories: tuple[Path, ...],
+        runtime: Path,
+    ) -> p.Result[bool]:
+        """Check the declared witness cohort once using only staged import roots.
+
+        Returns:
+            Acceptance or a missing witness or native typing failure.
+
+        """
+        layouts: list[p.Infra.RopeProjectLayout] = []
+        witnesses: list[Path] = []
+        for repository in repositories:
+            layout = u.Infra.layout(repository)
+            if layout is None:
+                return r[bool].fail(
+                    f"model conformance has no Python layout: {repository}"
+                )
+            layouts.append(layout)
+            models = layout.package_dir / "models.py"
+            witness = (
+                layout.package_dir
+                / "_protocols"
+                / c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME
+            )
+            if models.is_file():
+                if not witness.is_file():
+                    return r[bool].fail(
+                        f"model conformance witness is missing: {witness}"
+                    )
+                witnesses.append(witness)
+        if not witnesses:
+            return r[bool].ok(value=True)
+        reports = u.Cli.ensure_dir(candidate / c.Infra.REPORTS_DIR_NAME)
+        if reports.failure:
+            return r[bool].from_failure(reports)
+        context = m.Infra.GateContext(
+            repository_root=candidate,
+            runtime_root=runtime,
+            reports_dir=reports.value,
+            selected_files=tuple(witnesses),
+        )
+        checked = gates.FlextInfraGatesPyrefly(
+            candidate,
+            source_roots=tuple(layout.src_dir for layout in layouts),
+        ).check_files(witnesses, candidate, context)
+        if not checked.result.passed:
+            return r[bool].fail(
+                f"model/protocol conformance failed:\n{checked.raw_output}"
+            )
+        return r[bool].ok(value=True)
 
 
 __all__: list[str] = ["FlextInfraConformWiring"]

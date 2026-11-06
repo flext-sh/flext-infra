@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.refactor import FlextInfraNamespaceRelocationCascade
 
@@ -30,10 +30,10 @@ class FlextInfraRefactorNamespaceEnforcerProject:
         *,
         project_root: Path,
         py_files: Sequence[Path],
-        before: m.Infra.ModScanReport,
-        after: m.Infra.ModScanReport,
-        rule_deltas: tuple[m.Infra.ViolationsRuleDelta, ...],
-    ) -> m.Infra.ProjectEnforcementReport:
+        before: p.Infra.ModScanReport,
+        after: p.Infra.ModScanReport,
+        rule_deltas: tuple[p.Infra.ViolationsRuleDelta, ...],
+    ) -> p.Infra.ProjectEnforcementReport:
         """Compare one project's observations bracketing the whole workspace repair.
 
         Returns:

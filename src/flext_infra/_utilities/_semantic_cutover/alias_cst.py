@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import libcst as cst
 from libcst.metadata import (
@@ -22,11 +22,8 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverAliasCst:
@@ -43,7 +40,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
 
         def __init__(
             self,
-            plan: m.Infra.CompatibilityAliasRewritePlan,
+            plan: p.Infra.CompatibilityAliasRewritePlan,
             positions: Mapping[t.Infra.Cst.CSTNode, CodeRange],
         ) -> None:
             self.plan = plan
@@ -361,7 +358,7 @@ class FlextInfraUtilitiesSemanticCutoverAliasCst:
     def _rewrite_compatibility_alias_source(
         cls,
         source: str,
-        plan: m.Infra.CompatibilityAliasRewritePlan,
+        plan: p.Infra.CompatibilityAliasRewritePlan,
     ) -> str:
         """Return the structurally rewritten source without changing its layout.
 

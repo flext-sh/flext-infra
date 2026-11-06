@@ -12,14 +12,12 @@ from pathlib import Path
 from sys import executable
 from tempfile import TemporaryDirectory
 
-import pytest
-
 from flext_infra import FlextInfraGitService, config
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraWorkspaceEnvironmentProvenance:
@@ -102,7 +100,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tm.ok(identities[0] != identities[1])
 
     @staticmethod
-    def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    def pytest_generate_tests(metafunc: t.Tests.Metafunc) -> None:
         """Derive independent runtime probes from the real typed topology."""
         if "live_repository" not in metafunc.fixturenames:
             return
@@ -123,7 +121,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             ids=tuple(repository.distribution for repository in repositories),
         )
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def ci_mode() -> bool:
         """Read the hosted-runner contract used by the public consumer.
@@ -150,7 +148,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """
         return u.Infra.runtime_environment_dir(root, runtime_root=root)
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def site_packages(
         tmp_path: Path,
@@ -476,7 +474,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         *,
         direct_root: Path | None = None,
         source_root: Path | None = None,
-        receipt: m.Infra.DirectUrlReceipt | None = None,
+        receipt: p.Infra.DirectUrlReceipt | None = None,
     ) -> p.Result[int]:
         """Read real distribution metadata without changing the active environment.
 
@@ -515,7 +513,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
                 metadata_paths=(str(site_packages),),
             )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("root_name", "branch"),
         [("candidate one", "integration/alpha"), ("candidate-two", "release/beta")],
     )
@@ -530,7 +528,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         u.Tests.git_run(workspace / "sample-member", "checkout", "-b", branch)
         tm.ok(self._locked_verdict(workspace), eq=1)
 
-    @pytest.mark.parametrize("surface", ["direct_url", "pth"])
+    @c.Tests.MARK.parametrize("surface", ["direct_url", "pth"])
     def test_locked_rejects_stale_build_identity(
         self,
         tmp_path: Path,
@@ -552,7 +550,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         )
         tm.that(tm.fail(result), has=diagnostic)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "defect",
         ["editable", "missing_directory", "vcs", "remote", "relative"],
     )
@@ -705,7 +703,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         tm.that(report.porcelain, has=unrelated.name)
         tm.that(unrelated.read_text(encoding="utf-8"), eq="independent change\n")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("defect", "diagnostic"),
         [
             ("lock_path", "locked workspace source differs"),
@@ -770,7 +768,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         with u.Tests.env_vars_context(env_vars={ci.variable: ci.value}):
             tm.that(tm.fail(self._locked_verdict(workspace)), has=diagnostic)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "defect",
         ["none", "revision", "remote", "vcs", "editable", "missing"],
     )

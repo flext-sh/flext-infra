@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.release import FlextInfraReleaseReleaseSource
+from flext_infra.release._release import FlextInfraReleaseReleaseSource
 
 
 class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):

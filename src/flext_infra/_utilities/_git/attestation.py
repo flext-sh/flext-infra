@@ -46,8 +46,8 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def git_signing_identity(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitSigningIdentityReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitSigningIdentityReport]:
         """Read only native signing references and their effective provenance.
 
         No signing/default-key command, key file or credential helper is invoked.
@@ -57,19 +57,19 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
 
         """
         root = request.repo_root.expanduser().resolve()
-        observations: list[m.Infra.GitSigningConfigObservation] = []
+        observations: list[p.Infra.GitSigningConfigObservation] = []
         for key in c.Infra.GIT_SIGNING_CONFIGURATION_KEYS:
             observed = cls._signing_config_observation(root, key)
             if observed.failure:
-                return r[m.Infra.GitSigningIdentityReport].from_failure(observed)
+                return r[p.Infra.GitSigningIdentityReport].from_failure(observed)
             observations.append(observed.value)
         signing_format, signing_key, allowed_signers = observations
         if any(item.value is not None and not item.value for item in observations):
-            return r[m.Infra.GitSigningIdentityReport].fail(
+            return r[p.Infra.GitSigningIdentityReport].fail(
                 "native Git signing configuration declares an empty reference",
             )
         if signing_format.value not in {None, "openpgp", "x509", "ssh"}:
-            return r[m.Infra.GitSigningIdentityReport].fail(
+            return r[p.Infra.GitSigningIdentityReport].fail(
                 "native Git signing configuration declares an unsupported format",
             )
         key = signing_key.value
@@ -80,11 +80,11 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             try:
                 cls._validate_inline_ssh_key(key)
             except ValueError as error:
-                return r[m.Infra.GitSigningIdentityReport].fail(
+                return r[p.Infra.GitSigningIdentityReport].fail(
                     "native Git signing configuration declares a malformed public key",
                     exception=error,
                 )
-        return r[m.Infra.GitSigningIdentityReport].ok(
+        return r[p.Infra.GitSigningIdentityReport].ok(
             m.Infra.GitSigningIdentityReport(
                 repo_root=root,
                 signing_format=signing_format.value,
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     def _signing_config_observation(
         root: Path,
         key: str,
-    ) -> p.Result[m.Infra.GitSigningConfigObservation]:
+    ) -> p.Result[p.Infra.GitSigningConfigObservation]:
         """Read one exact Git setting using its NUL-delimited native protocol.
 
         Returns:
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             cwd=root,
         )
         if query.failure:
-            return r[m.Infra.GitSigningConfigObservation].from_failure(query)
+            return r[p.Infra.GitSigningConfigObservation].from_failure(query)
         output = query.value
         process = m.Cli.ProcessOutcome.model_validate(
             output.outcome,
@@ -148,13 +148,13 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             scope = origin = value = None
         elif not u.Cli.process_succeeded(process):
             if not output.stderr:
-                return r[m.Infra.GitSigningConfigObservation].fail(
+                return r[p.Infra.GitSigningConfigObservation].fail(
                     f"native Git signing query failed: {key}; "
                     f"raw_return_code={process.raw_return_code}; "
                     f"timed_out={process.timed_out}; "
                     f"forwarded_signal={process.forwarded_signal}",
                 )
-            return r[m.Infra.GitSigningConfigObservation].fail(
+            return r[p.Infra.GitSigningConfigObservation].fail(
                 output.stderr,
             )
         else:
@@ -162,11 +162,11 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 case [scope, origin, value, ""] if scope and origin:
                     pass
                 case _:
-                    return r[m.Infra.GitSigningConfigObservation].fail(
+                    return r[p.Infra.GitSigningConfigObservation].fail(
                         "native Git signing configuration returned "
                         "malformed origin data",
                     )
-        return r[m.Infra.GitSigningConfigObservation].ok(
+        return r[p.Infra.GitSigningConfigObservation].ok(
             m.Infra.GitSigningConfigObservation(
                 key=key,
                 scope=scope,
@@ -179,19 +179,19 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def git_capture_gate(
         cls,
-        request: m.Infra.GateCaptureRequest,
+        request: p.Infra.GateCaptureRequest,
         *,
-        inputs: m.Infra.CodegenInputs,
-        load_inputs: Callable[[Path], p.Result[m.Infra.CodegenInputs]],
+        inputs: p.Infra.CodegenInputs,
+        load_inputs: Callable[[Path], p.Result[p.Infra.CodegenInputs]],
         read_runtime_identity: Callable[[Sequence[str]], p.Result[str]],
-    ) -> p.Result[m.Infra.GateCaptureReport]:
+    ) -> p.Result[p.Infra.GateCaptureReport]:
         """Execute the original checker once and retain its native evidence.
 
         Optional measurement profiles that checker through the shared CLI owner,
         preserving the same arguments, outcome and invocation directory.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GateCaptureReport]``.
+            The resulting ``p.Result[p.Infra.GateCaptureReport]``.
 
         """
         root = request.repository_root.resolve()
@@ -202,12 +202,12 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             )
         )
         if not gates:
-            return r[m.Infra.GateCaptureReport].fail(
+            return r[p.Infra.GateCaptureReport].fail(
                 "no active check gates remain in the selected context",
             )
         directory = inputs.spec.make.gate_receipts_directory
         if directory.is_absolute() or ".." in directory.parts:
-            return r[m.Infra.GateCaptureReport].fail(
+            return r[p.Infra.GateCaptureReport].fail(
                 "gate receipts directory must remain repository-relative",
             )
         started = datetime.now(tz=UTC)
@@ -280,7 +280,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             ),
         )
         if native.failure:
-            return r[m.Infra.GateCaptureReport].from_failure(native)
+            return r[p.Infra.GateCaptureReport].from_failure(native)
         process = m.Cli.ProcessOutcome.model_validate(
             native.value, from_attributes=True
         )
@@ -312,10 +312,10 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def git_begin_gate_capture(
         cls,
-        request: m.Infra.GateCaptureBeginRequest,
+        request: p.Infra.GateCaptureBeginRequest,
         *,
-        inputs: m.Infra.CodegenInputs,
-    ) -> m.Infra.GateCaptureStart:
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Infra.GateCaptureStart:
         """Inspect the candidate before its original producer executes.
 
         Returns:
@@ -354,8 +354,8 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @staticmethod
     def _gate_capture_context_digest(
         gate: str,
-        intent: m.Infra.GateExecutionIntent,
-        inputs: m.Infra.CodegenInputs,
+        intent: p.Infra.GateExecutionIntent,
+        inputs: p.Infra.CodegenInputs,
         runtime_identity: str,
     ) -> str:
         """Bind effective target configuration and native runtime without paths.
@@ -387,10 +387,10 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def git_finish_gate_capture(
         cls,
-        request: m.Infra.GateCaptureFinishRequest,
+        request: p.Infra.GateCaptureFinishRequest,
         *,
-        inputs: p.Result[m.Infra.CodegenInputs],
-    ) -> p.Result[m.Infra.GateCaptureReport]:
+        inputs: p.Result[p.Infra.CodegenInputs],
+    ) -> p.Result[p.Infra.GateCaptureReport]:
         """Publish original native facts without rerunning or accepting the stage.
 
         Returns:
@@ -458,20 +458,20 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             request.report_root / c.Infra.GATE_CAPTURE_RESULT_FILENAME,
             result.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
-        return r[m.Infra.GateCaptureReport].ok(result)
+        return r[p.Infra.GateCaptureReport].ok(result)
 
     @staticmethod
     def git_capture_report_bindings(
         root: Path,
         paths: tuple[tuple[Path, c.Infra.GateEvidenceReportKind], ...],
-    ) -> p.Result[tuple[m.Infra.GateReportEvidence, ...]]:
+    ) -> p.Result[tuple[p.Infra.GateReportEvidence, ...]]:
         """Capture producer-owned report bytes through the atomic read owner.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.GateReportEvidence, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.GateReportEvidence, ...]]``.
 
         """
-        reports: list[m.Infra.GateReportEvidence] = []
+        reports: list[p.Infra.GateReportEvidence] = []
         for path, kind in paths:
             content = (
                 u.Cli
@@ -480,7 +480,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 .content
             )
             if content is None:
-                return r[tuple[m.Infra.GateReportEvidence, ...]].fail(
+                return r[tuple[p.Infra.GateReportEvidence, ...]].fail(
                     f"required original checker report has no captured bytes: {path}",
                 )
             reports.append(
@@ -490,24 +490,24 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                     kind=kind,
                 )
             )
-        return r[tuple[m.Infra.GateReportEvidence, ...]].ok(tuple(reports))
+        return r[tuple[p.Infra.GateReportEvidence, ...]].ok(tuple(reports))
 
     @classmethod
     def _captured_gate_evidence(
         cls,
-        started: m.Infra.GateCaptureStart,
-        process: m.Cli.ProcessOutcome,
-        reports: tuple[m.Infra.GateReportEvidence, ...],
-        after: m.Infra.GitIdentityReport | None,
-    ) -> p.Result[m.Infra.GateCommandEvidence]:
+        started: p.Infra.GateCaptureStart,
+        process: p.Cli.ProcessOutcome,
+        reports: tuple[p.Infra.GateReportEvidence, ...],
+        after: p.Infra.GitIdentityReport | None,
+    ) -> p.Result[p.Infra.GateCommandEvidence]:
         """Bind the original producer reports to the observed candidate.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GateCommandEvidence]``.
+            The resulting ``p.Result[p.Infra.GateCommandEvidence]``.
 
         """
         if not reports:
-            return r[m.Infra.GateCommandEvidence].fail(
+            return r[p.Infra.GateCommandEvidence].fail(
                 "original producer has no complete report inventory",
             )
         evidence = m.Infra.GateCommandEvidence(
@@ -542,15 +542,15 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         )
         classified = cls._original_report_outcome(started.repository_root, evidence)
         if classified.failure:
-            return r[m.Infra.GateCommandEvidence].from_failure(classified)
-        return r[m.Infra.GateCommandEvidence].ok(
+            return r[p.Infra.GateCommandEvidence].from_failure(classified)
+        return r[p.Infra.GateCommandEvidence].ok(
             evidence.model_copy(update={"native_outcome": classified.value}),
         )
 
     @classmethod
     def _attestation_tag(
         cls,
-        request: m.Infra.GateAttestationVerifyRequest,
+        request: p.Infra.GateAttestationVerifyRequest,
         receipt_digest: str,
     ) -> str:
         context = u.Cli.sha256_content(
@@ -563,7 +563,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
 
     @staticmethod
     def _attestation_paths(
-        request: m.Infra.GateAttestationCreateRequest
+        request: p.Infra.GateAttestationCreateRequest
         | m.Infra.GateAttestationVerifyRequest,
     ) -> p.Result[tuple[Path, Path]]:
         repo_root = Path(request.workspace).expanduser().resolve()
@@ -577,15 +577,15 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def _attestation_predicate(
         cls,
-        request: m.Infra.GateAttestationCreateRequest,
+        request: p.Infra.GateAttestationCreateRequest,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationPredicate]:
+    ) -> p.Result[p.Infra.GateAttestationPredicate]:
 
         repo_root = Path(request.workspace).expanduser().resolve()
         repo = cls._repo(repo_root)
         evidence_result = cls._original_gate_evidence(repo_root, request)
         if evidence_result.failure:
-            return r[m.Infra.GateAttestationPredicate].from_failure(evidence_result)
+            return r[p.Infra.GateAttestationPredicate].from_failure(evidence_result)
         evidence, receipt = evidence_result.value
         receipt_matches = evidence.context_digest == request.context_digest
         policy_matches = (
@@ -594,7 +594,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             and tuple(request.gates) == (evidence.gate,)
         )
         if not (receipt_matches and policy_matches):
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 "original workspace receipt does not match context or stage",
             )
         for validation in (
@@ -603,11 +603,11 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         ):
             checked = validation()
             if checked.failure:
-                return r[m.Infra.GateAttestationPredicate].from_failure(checked)
+                return r[p.Infra.GateAttestationPredicate].from_failure(checked)
         toolchain = cls._toolchain_digest(repo_root, context)
         source = cls._report_bytes(repo_root, receipt)
         if source.failure:
-            return r[m.Infra.GateAttestationPredicate].from_failure(source)
+            return r[p.Infra.GateAttestationPredicate].from_failure(source)
         with FlextInfraUtilitiesGitWorktreeIO.git_stdin(source.value) as stream:
             anchor = repo.git.hash_object("--stdin", istream=stream)
         predicate = m.Infra.GateAttestationPredicate(
@@ -656,9 +656,9 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def git_create_gate_attestation(
         cls,
-        request: m.Infra.GateAttestationCreateRequest,
+        request: p.Infra.GateAttestationCreateRequest,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationReport]:
+    ) -> p.Result[p.Infra.GateAttestationReport]:
         """Sign original workspace execution on its selected Git storage anchor.
 
         Args:
@@ -668,23 +668,23 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 predicate's trust anchor.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GateAttestationReport]``.
+            The resulting ``p.Result[p.Infra.GateAttestationReport]``.
 
         """
         paths = cls._attestation_paths(request)
         if paths.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(paths)
+            return r[p.Infra.GateAttestationReport].from_failure(paths)
         repo_root, allowed = paths.value
         predicate_result = cls._attestation_predicate(request, context)
         if predicate_result.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
+            return r[p.Infra.GateAttestationReport].from_failure(predicate_result)
         predicate = predicate_result.value
         serialized = u.Cli.json_dumps(
             predicate.model_dump(mode="json", round_trip=True),
             sort_keys=True,
         )
         if serialized.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(serialized)
+            return r[p.Infra.GateAttestationReport].from_failure(serialized)
         verification_request = m.Infra.GateAttestationVerifyRequest(
             workspace=str(repo_root),
             allowed_signers=str(allowed),
@@ -703,7 +703,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         cls,
         repo_root: Path,
         tag: str,
-        predicate: m.Infra.GateAttestationPredicate,
+        predicate: p.Infra.GateAttestationPredicate,
         serialized: str,
     ) -> p.Result[str]:
         source = cls._report_bytes(repo_root, predicate.receipt)
@@ -729,11 +729,11 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def _publish_gate_tag(
         cls,
-        request: m.Infra.GateAttestationVerifyRequest,
-        predicate: m.Infra.GateAttestationPredicate,
+        request: p.Infra.GateAttestationVerifyRequest,
+        predicate: p.Infra.GateAttestationPredicate,
         serialized: str,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationReport]:
+    ) -> p.Result[p.Infra.GateAttestationReport]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()
         repo = cls._repo(repo_root)
@@ -743,9 +743,9 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             if not reused:
                 created = cls._create_gate_tag(repo_root, tag, predicate, serialized)
                 if created.failure:
-                    return r[m.Infra.GateAttestationReport].from_failure(created)
+                    return r[p.Infra.GateAttestationReport].from_failure(created)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GateAttestationReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GateAttestationReport].fail(str(exc), exception=exc)
         verified = cls._verified_gate_predicate(
             request,
             repo_root,
@@ -754,7 +754,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             context,
         )
         if verified.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(verified)
+            return r[p.Infra.GateAttestationReport].from_failure(verified)
         if reused:
             stored = verified.value.model_dump(mode="json", round_trip=True)
             current = predicate.model_dump(mode="json", round_trip=True)
@@ -764,20 +764,20 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 if stored.get(name) != current.get(name)
             )
             if fields:
-                return r[m.Infra.GateAttestationReport].fail(
+                return r[p.Infra.GateAttestationReport].fail(
                     f"existing immutable stage proof differs from original "
                     f"evidence: {tag}; fields={','.join(fields)}",
                 )
-        return r[m.Infra.GateAttestationReport].ok(
+        return r[p.Infra.GateAttestationReport].ok(
             cls._attestation_report(tag, verified.value, reused=reused)
         )
 
     @classmethod
     def git_verify_gate_attestation(
         cls,
-        request: m.Infra.GateAttestationVerifyRequest,
+        request: p.Infra.GateAttestationVerifyRequest,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationReport]:
+    ) -> p.Result[p.Infra.GateAttestationReport]:
         """Verify signature, original workspace receipt, and exact gate coverage.
 
         Args:
@@ -787,16 +787,16 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 toolchain digest or verification fails.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GateAttestationReport]``.
+            The resulting ``p.Result[p.Infra.GateAttestationReport]``.
 
         """
         paths = cls._attestation_paths(request)
         if paths.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(paths)
+            return r[p.Infra.GateAttestationReport].from_failure(paths)
         repo_root, allowed = paths.value
         original = cls._original_gate_evidence(repo_root, request)
         if original.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(original)
+            return r[p.Infra.GateAttestationReport].from_failure(original)
         tag = cls._attestation_tag(request, original.value[1].digest)
         predicate_result = cls._verified_gate_predicate(
             request,
@@ -806,28 +806,28 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             context,
         )
         if predicate_result.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(predicate_result)
+            return r[p.Infra.GateAttestationReport].from_failure(predicate_result)
         predicate = predicate_result.value
         published = cls._published_attestation_report(request, predicate)
         if published.failure:
-            return r[m.Infra.GateAttestationReport].from_failure(published)
-        return r[m.Infra.GateAttestationReport].ok(
+            return r[p.Infra.GateAttestationReport].from_failure(published)
+        return r[p.Infra.GateAttestationReport].ok(
             cls._attestation_report(tag, predicate),
         )
 
     @classmethod
     def _verified_gate_predicate(
         cls,
-        request: m.Infra.GateAttestationVerifyRequest,
+        request: p.Infra.GateAttestationVerifyRequest,
         repo_root: Path,
         allowed: Path,
         tag: str,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationPredicate]:
+    ) -> p.Result[p.Infra.GateAttestationPredicate]:
         """Verify the tag signature and gate coverage against the predicate.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GateAttestationPredicate]``.
+            The resulting ``p.Result[p.Infra.GateAttestationPredicate]``.
 
         """
         verification = u.Cli.run_raw(
@@ -844,15 +844,15 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             cwd=repo_root,
         )
         if verification.failure:
-            return r[m.Infra.GateAttestationPredicate].from_failure(verification)
+            return r[p.Infra.GateAttestationPredicate].from_failure(verification)
         if not u.Cli.process_succeeded(verification.value.outcome):
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 f"git verify-tag failed: {verification.value.stdout}"
                 f"{verification.value.stderr}",
             )
         predicate_result = cls._predicate_from_tag(repo_root, tag)
         if predicate_result.failure:
-            return r[m.Infra.GateAttestationPredicate].from_failure(predicate_result)
+            return r[p.Infra.GateAttestationPredicate].from_failure(predicate_result)
         predicate = predicate_result.value
         return cls._verify_predicate_evidence(
             request,
@@ -864,11 +864,11 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @classmethod
     def _verify_predicate_evidence(
         cls,
-        request: m.Infra.GateAttestationVerifyRequest,
-        predicate: m.Infra.GateAttestationPredicate,
+        request: p.Infra.GateAttestationVerifyRequest,
+        predicate: p.Infra.GateAttestationPredicate,
         output: p.Cli.CommandOutput,
         context: p.Infra.GateAttestationRuntimeContext,
-    ) -> p.Result[m.Infra.GateAttestationPredicate]:
+    ) -> p.Result[p.Infra.GateAttestationPredicate]:
         repo_root = Path(request.workspace).expanduser().resolve()
         checked = cls._attestation_predicate_from_value(
             repo_root,
@@ -876,18 +876,18 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             context,
         )
         if checked.failure:
-            return r[m.Infra.GateAttestationPredicate].from_failure(checked)
+            return r[p.Infra.GateAttestationPredicate].from_failure(checked)
         match = re.search(
             r'^Good "git" signature for (\S+) with ',
             f"{output.stdout}\n{output.stderr}",
             flags=re.MULTILINE,
         )
         if match is None or match.group(1) != predicate.signer:
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 f"verified signature does not identify signer: {predicate.signer}",
             )
         if tuple(request.expected_gates) != tuple(predicate.covered_gates):
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 "attestation gate coverage does not exactly match required gates",
             )
         facts = predicate.commands[0]
@@ -897,7 +897,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             or facts.policy != request.policy
             or facts.policy_digest != request.policy_digest
         ):
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 "attestation context or policy does not match the required stage",
             )
         for validation in (
@@ -906,14 +906,14 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         ):
             checked = validation()
             if checked.failure:
-                return r[m.Infra.GateAttestationPredicate].from_failure(checked)
-        return r[m.Infra.GateAttestationPredicate].ok(predicate)
+                return r[p.Infra.GateAttestationPredicate].from_failure(checked)
+        return r[p.Infra.GateAttestationPredicate].ok(predicate)
 
     @classmethod
     def _verified_original_receipt(
         cls,
         repo_root: Path,
-        predicate: m.Infra.GateAttestationPredicate,
+        predicate: p.Infra.GateAttestationPredicate,
     ) -> p.Result[bool]:
         if predicate.receipt.kind != c.Infra.GateEvidenceReportKind.RECEIPT:
             return r[bool].fail("signed proof has no original producer receipt")
@@ -935,8 +935,8 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
 
     @staticmethod
     def _published_attestation_report(
-        request: m.Infra.GateAttestationVerifyRequest,
-        predicate: m.Infra.GateAttestationPredicate,
+        request: p.Infra.GateAttestationVerifyRequest,
+        predicate: p.Infra.GateAttestationPredicate,
     ) -> p.Result[bool]:
         """Write the attestation report when the request names an output path.
 
@@ -965,35 +965,35 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         cls,
         repo_root: Path,
         tag: str,
-    ) -> p.Result[m.Infra.GateAttestationPredicate]:
+    ) -> p.Result[p.Infra.GateAttestationPredicate]:
 
         try:
             tag_ref = next(
                 item for item in cls._repo(repo_root).tags if item.name == tag
             )
         except (OSError, StopIteration) as exc:
-            return r[m.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
+            return r[p.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
         if tag_ref.tag is None:
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 f"attestation is not an annotated tag: {tag}",
             )
         message = tag_ref.tag.message.split(cls._SSH_SIGNATURE_MARKER, maxsplit=1)[0]
         try:
             predicate = m.Infra.GateAttestationPredicate.model_validate_json(message)
         except ValueError as exc:
-            return r[m.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
+            return r[p.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
         target = tag_ref.tag.object
         if target.type != "blob" or target.hexsha != predicate.anchor_oid:
-            return r[m.Infra.GateAttestationPredicate].fail(
+            return r[p.Infra.GateAttestationPredicate].fail(
                 "attestation tag target is not its original receipt blob"
             )
-        return r[m.Infra.GateAttestationPredicate].ok(predicate)
+        return r[p.Infra.GateAttestationPredicate].ok(predicate)
 
     @classmethod
     def _attestation_predicate_from_value(
         cls,
         repo_root: Path,
-        predicate: m.Infra.GateAttestationPredicate,
+        predicate: p.Infra.GateAttestationPredicate,
         context: p.Infra.GateAttestationRuntimeContext,
     ) -> p.Result[bool]:
 
@@ -1025,10 +1025,10 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @staticmethod
     def _attestation_report(
         tag: str,
-        predicate: m.Infra.GateAttestationPredicate,
+        predicate: p.Infra.GateAttestationPredicate,
         *,
         reused: bool = False,
-    ) -> m.Infra.GateAttestationReport:
+    ) -> p.Infra.GateAttestationReport:
         return m.Infra.GateAttestationReport(
             tag=tag,
             anchor_oid=predicate.anchor_oid,

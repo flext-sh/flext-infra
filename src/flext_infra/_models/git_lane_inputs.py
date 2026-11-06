@@ -42,28 +42,24 @@ class FlextInfraModelsGitLaneInputs:
         """Selected public GitHub PR fields, parsed once at ingress."""
 
         number: Annotated[int, m.Field(description="Open pull request number")]
-        head_ref_name: Annotated[
-            str,
-            m.Field(alias="headRefName", description="PR source branch"),
-        ]
-        updated_at: Annotated[
-            t.AwareDatetime,
-            m.Field(alias="updatedAt", description="Latest PR activity"),
-        ]
+        head_ref_name: str = m.Field(
+            alias="headRefName", description="PR source branch"
+        )
+        updated_at: t.AwareDatetime = m.Field(
+            alias="updatedAt", description="Latest PR activity"
+        )
 
     class GitLaneBeadMetadata(m.ExternalContractModel):
         """Canonical tracker ownership fields used by worktree correlation."""
 
         branch: Annotated[str, m.Field(description="Declared Bead branch")] = ""
-        work_branch: Annotated[
-            str,
-            m.Field(alias="gc.work_branch", description="Gas City branch"),
-        ] = ""
+        work_branch: str = m.Field(
+            "", alias="gc.work_branch", description="Gas City branch"
+        )
         work_dir: Annotated[str, m.Field(description="Declared Bead worktree")] = ""
-        gc_work_dir: Annotated[
-            str,
-            m.Field(alias="gc.work_dir", description="Gas City worktree"),
-        ] = ""
+        gc_work_dir: str = m.Field(
+            "", alias="gc.work_dir", description="Gas City worktree"
+        )
 
     class GitLaneCoordinationPolicy(m.ExternalContractModel):
         """Read the abandonment threshold from global governance, not a copy."""

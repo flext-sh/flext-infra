@@ -19,7 +19,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
     """Prove generated and decorated callables authenticate their native origin."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "defect",
         ["none", "filename", "annotation", "parameters"],
     )
@@ -71,7 +71,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
         native_consumer(consumer, str(tmp_path), defect)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "defect",
         ["none", "wrapped", "cached_wrapped", "partial_arguments"],
     )
@@ -172,7 +172,7 @@ class TestsFlextInfraWorkspaceEnvironmentProvenanceCallables:
 
     @staticmethod
     def test_real_checkout_runtime_uses_declared_source(
-        live_repository: m.Infra.RepositoryRef,
+        live_repository: p.Infra.RepositoryRef,
     ) -> None:
         """Authenticate each real public import resolver without fake packages."""
         checkout = tm.ok(

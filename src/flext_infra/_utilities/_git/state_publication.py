@@ -53,8 +53,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def _state_verify_publication(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
     ) -> None:
         cls._state_validate_checkpoint(checkpoint)
         if (publication.checkpoint_ref, publication.checkpoint_oid) != (
@@ -83,9 +83,9 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def _state_publish(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         remote: str,
-    ) -> m.Infra.GitWorktreeCheckpointPublication:
+    ) -> p.Infra.GitWorktreeCheckpointPublication:
         cls._state_validate_checkpoint(checkpoint)
         root = checkpoint.snapshot.repo_root
         publication = m.Infra.GitWorktreeCheckpointPublication(
@@ -116,29 +116,29 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def git_publish_worktree_checkpoint(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
         remote: str,
-    ) -> p.Result[m.Infra.GitWorktreeCheckpointPublication]:
+    ) -> p.Result[p.Infra.GitWorktreeCheckpointPublication]:
         """Publish once by ordinary atomic push and return its exact remote proof.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitWorktreeCheckpointPublication]``.
+            The resulting ``p.Result[p.Infra.GitWorktreeCheckpointPublication]``.
 
         """
         try:
             publication = cls._state_publish(checkpoint, remote)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitWorktreeCheckpointPublication].fail(
+            return r[p.Infra.GitWorktreeCheckpointPublication].fail(
                 str(exc),
                 exception=exc,
             )
-        return r[m.Infra.GitWorktreeCheckpointPublication].ok(publication)
+        return r[p.Infra.GitWorktreeCheckpointPublication].ok(publication)
 
     @classmethod
     def git_verify_worktree_checkpoint_publication(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
     ) -> p.Result[bool]:
         """Revalidate endpoint identity and retained remote reference without writes.
 
@@ -155,8 +155,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def _state_checkpoint_branch_ref(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
     ) -> str:
         cls._state_verify_publication(checkpoint, publication)
@@ -167,8 +167,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def git_create_checkpoint_branch(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
     ) -> p.Result[bool]:
         """Create an immutable recovery alias, never switch or carry unknown WIP.
@@ -203,8 +203,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def _state_push_checkpoint_branch(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
     ) -> None:
         root = checkpoint.snapshot.repo_root
@@ -239,8 +239,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def git_publish_checkpoint_branch(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
     ) -> p.Result[bool]:
         """Publish only an alias of the independently retained checkpoint.
@@ -260,8 +260,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def _state_delete_checkpoint_branch(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
         expected_oid: str,
     ) -> None:
@@ -283,8 +283,8 @@ class FlextInfraUtilitiesGitStatePublication(
     @classmethod
     def git_delete_checkpoint_branch(
         cls,
-        checkpoint: m.Infra.GitWorktreeStateCheckpoint,
-        publication: m.Infra.GitWorktreeCheckpointPublication,
+        checkpoint: p.Infra.GitWorktreeStateCheckpoint,
+        publication: p.Infra.GitWorktreeCheckpointPublication,
         branch: str,
         expected_oid: str,
     ) -> p.Result[bool]:

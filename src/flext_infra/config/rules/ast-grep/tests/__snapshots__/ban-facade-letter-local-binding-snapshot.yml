@@ -1,0 +1,54 @@
+id: ban-facade-letter-local-binding
+snapshots:
+  "for s in subjects:\n    emit(s)\n":
+    labels:
+    - source: s
+      style: primary
+      start: 4
+      end: 5
+    - source: |-
+        for s in subjects:
+            emit(s)
+      style: secondary
+      start: 0
+      end: 30
+  "found = any(p.match(dn) for p in patterns)\n":
+    labels:
+    - source: p
+      style: primary
+      start: 28
+      end: 29
+    - source: for p in patterns
+      style: secondary
+      start: 24
+      end: 41
+  "if (m := pattern.match(text)) is not None:\n    return m\n":
+    labels:
+    - source: m
+      style: primary
+      start: 4
+      end: 5
+    - source: m := pattern.match(text)
+      style: secondary
+      start: 4
+      end: 28
+  "names = [e.dn for e in entries]\n":
+    labels:
+    - source: e
+      style: primary
+      start: 18
+      end: 19
+    - source: for e in entries
+      style: secondary
+      start: 14
+      end: 30
+  "ordered = sorted(items, key=lambda s: order[s])\n":
+    labels:
+    - source: s
+      style: primary
+      start: 35
+      end: 36
+    - source: s
+      style: secondary
+      start: 35
+      end: 36

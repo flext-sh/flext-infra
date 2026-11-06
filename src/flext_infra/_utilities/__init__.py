@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -41,6 +40,11 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
+    from flext_infra._utilities.generation_inventory import (
+        FlextInfraGenerationInventory,
+        FlextInfraGenerationSource,
+        FlextInfraUtilitiesGenerationInventory,
+    )
     from flext_infra._utilities.git import FlextInfraUtilitiesGit
     from flext_infra._utilities.import_law import FlextInfraUtilitiesImportLaw
     from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
@@ -67,6 +71,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
     from flext_infra._utilities.managed_conflicts import (
         FlextInfraUtilitiesManagedConflicts,
+    )
+    from flext_infra._utilities.markdown_tooling import (
+        FlextInfraUtilitiesMarkdownTooling,
     )
     from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
     from flext_infra._utilities.mypy import FlextInfraUtilitiesMypy
@@ -116,7 +123,16 @@ if TYPE_CHECKING:
     from flext_infra._utilities.protected_edit_writes import (
         FlextInfraUtilitiesProtectedEditWrites,
     )
+    from flext_infra._utilities.protocol_contracts import (
+        FlextInfraUtilitiesModelsProtocolContracts,
+    )
     from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
+    from flext_infra._utilities.protocol_publication import (
+        FlextInfraUtilitiesProtocolPublication,
+    )
+    from flext_infra._utilities.protocol_retirement import (
+        FlextInfraUtilitiesModelsProtocolRetirement,
+    )
     from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
     from flext_infra._utilities.pytest_collection import (
         FlextInfraUtilitiesPytestCollection,
@@ -126,6 +142,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
     from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
     from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+    from flext_infra._utilities.release_forge import FlextInfraUtilitiesReleaseForge
     from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
     from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
     from flext_infra._utilities.rope import FlextInfraUtilitiesRope
@@ -155,6 +172,8 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraGenerationInventory",
+    "FlextInfraGenerationSource",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
@@ -171,6 +190,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
+    "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesImportLaw",
     "FlextInfraUtilitiesIteration",
@@ -184,8 +204,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLintSourcePositions",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
+    "FlextInfraUtilitiesMarkdownTooling",
     "FlextInfraUtilitiesMiseBinary",
     "FlextInfraUtilitiesModelsProtocol",
+    "FlextInfraUtilitiesModelsProtocolContracts",
+    "FlextInfraUtilitiesModelsProtocolRetirement",
     "FlextInfraUtilitiesMypy",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNativeTooling",
@@ -203,6 +226,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditLinting",
     "FlextInfraUtilitiesProtectedEditPreview",
     "FlextInfraUtilitiesProtectedEditWrites",
+    "FlextInfraUtilitiesProtocolPublication",
     "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesPytest",
     "FlextInfraUtilitiesPytestCollection",
@@ -214,6 +238,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
     "FlextInfraUtilitiesRelease",
+    "FlextInfraUtilitiesReleaseForge",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRope",
@@ -231,7 +256,9 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
+        "FlextInfraGenerationInventory": ".generation_inventory",
+        "FlextInfraGenerationSource": ".generation_inventory",
         "FlextInfraUtilitiesBase": ".base",
         "FlextInfraUtilitiesCodegen": ".codegen",
         "FlextInfraUtilitiesCodegenFacades": ".codegen_facades",
@@ -252,6 +279,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
+        "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesImportLaw": ".import_law",
         "FlextInfraUtilitiesIteration": ".iteration",
@@ -265,8 +293,11 @@ install_lazy_exports(
         "FlextInfraUtilitiesLintSourcePositions": ".lint_source_positions",
         "FlextInfraUtilitiesLogParser": ".log_parser",
         "FlextInfraUtilitiesManagedConflicts": ".managed_conflicts",
+        "FlextInfraUtilitiesMarkdownTooling": ".markdown_tooling",
         "FlextInfraUtilitiesMiseBinary": ".mise_binary",
         "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
+        "FlextInfraUtilitiesModelsProtocolContracts": ".protocol_contracts",
+        "FlextInfraUtilitiesModelsProtocolRetirement": ".protocol_retirement",
         "FlextInfraUtilitiesMypy": ".mypy",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNativeTooling": ".native_tooling",
@@ -284,6 +315,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesProtectedEditLinting": ".protected_edit_linting",
         "FlextInfraUtilitiesProtectedEditPreview": ".protected_edit_preview",
         "FlextInfraUtilitiesProtectedEditWrites": ".protected_edit_writes",
+        "FlextInfraUtilitiesProtocolPublication": ".protocol_publication",
         "FlextInfraUtilitiesPyrefly": ".pyrefly",
         "FlextInfraUtilitiesPytest": ".pytest_surface",
         "FlextInfraUtilitiesPytestCollection": ".pytest_collection",
@@ -295,6 +327,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRefactorNamespaceFlext": ".namespace_analysis",
         "FlextInfraUtilitiesRefactorNamespaceMoves": ".namespace_moves",
         "FlextInfraUtilitiesRelease": ".release",
+        "FlextInfraUtilitiesReleaseForge": ".release_forge",
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRope": ".rope",
@@ -307,6 +340,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesWorkspaceSnapshot": ".workspace_snapshot",
         "FlextInfraWorktreeLifecycle": ".worktree_lifecycle",
         "FlextInfraWorktreeProvisioning": ".worktree_provisioning",
-    }),
+    },
     public_exports=__all__,
 )

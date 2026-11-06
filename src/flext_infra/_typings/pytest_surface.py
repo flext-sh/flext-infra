@@ -39,6 +39,7 @@ class FlextInfraTypesPytest:
         type FixtureRequest = pytest.FixtureRequest
         type Item = pytest.Item
         type LogCaptureFixture = pytest.LogCaptureFixture
+        type MarkDecorator = pytest.MarkDecorator
         type MarkdownItem = MarkdownInlinePythonItem
         type Metafunc = pytest.Metafunc
         type MonkeyPatch = pytest.MonkeyPatch

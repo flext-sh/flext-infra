@@ -14,14 +14,12 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m, t, u
+from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseToolchainProof,
 )
-from tests import c, tm
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraMiseToolchainProof:
@@ -50,10 +48,10 @@ class TestsFlextInfraMiseToolchainProof:
         for record in (endpoint, move, overrides):
             contract = type(record)
             tm.that(contract.model_validate_json(record.model_dump_json()), eq=record)
-            with pytest.raises(m.ValidationError, match="extra_forbidden"):
+            with u.Tests.raises(m.ValidationError, match="extra_forbidden"):
                 contract.model_validate({**record.model_dump(), "unexpected": True})
             for field, value in record.model_dump().items():
-                with pytest.raises(m.ValidationError, match="frozen_instance"):
+                with u.Tests.raises(m.ValidationError, match="frozen_instance"):
                     setattr(record, field, value)
 
     @staticmethod
@@ -71,7 +69,7 @@ class TestsFlextInfraMiseToolchainProof:
         ).repository_root
 
     @staticmethod
-    def _native_entry() -> m.Infra.MiseToolEntry:
+    def _native_entry() -> p.Infra.MiseToolEntry:
         """Read the declared UV probe from the production configuration.
 
         Returns:
@@ -143,7 +141,7 @@ class TestsFlextInfraMiseToolchainProof:
         )
 
     @classmethod
-    def _entry(cls) -> m.Infra.MiseToolEntry:
+    def _entry(cls) -> p.Infra.MiseToolEntry:
         """Bind the scenario identity to the real configured UV probe.
 
         Returns:
@@ -308,7 +306,7 @@ class TestsFlextInfraMiseToolchainProof:
             },
         }
 
-        with pytest.raises(ValueError, match="no npm backend"):
+        with u.Tests.raises(ValueError, match="no npm backend"):
             m.Infra.ToolchainSpec.model_validate({
                 **declared,
                 "tools": [*declared["tools"], npm_tool],

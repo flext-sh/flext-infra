@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from tests import c, p, tm, u
 
 
@@ -195,5 +193,5 @@ class TestsFlextInfraLazyInitWorkspaceElection:
             parent=f"{child.name}_absent",
             class_name="FlextWsChildConstants",
         )
-        with pytest.raises(AssertionError, match="resolves nowhere"):
+        with u.Tests.raises(AssertionError, match="resolves nowhere"):
             _ = self._run_plan(workspace, child_repo, check_only=True)

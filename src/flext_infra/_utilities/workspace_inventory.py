@@ -20,15 +20,15 @@ class FlextInfraUtilitiesWorkspaceInventory:
     def discover_external_consumers(
         cls,
         root: Path,
-        inputs: m.Infra.CodegenInputs,
-    ) -> p.Result[tuple[m.Infra.ExternalConsumerSpec, ...]]:
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Result[tuple[p.Infra.ExternalConsumerSpec, ...]]:
         """Read selected host identities, retaining the first native failure.
 
         Returns:
             Governing guests, or the first transport or inventory failure.
 
         """
-        result = r[tuple[m.Infra.ExternalConsumerSpec, ...]]
+        result = r[tuple[p.Infra.ExternalConsumerSpec, ...]]
         command = inputs.spec.repository.workspace_inventory_command
         if not command:
             return result.ok(())
@@ -53,17 +53,17 @@ class FlextInfraUtilitiesWorkspaceInventory:
     def _collect_consumers(
         root: Path,
         payload: str,
-    ) -> p.Result[tuple[m.Infra.ExternalConsumerSpec, ...]]:
+    ) -> p.Result[tuple[p.Infra.ExternalConsumerSpec, ...]]:
         """Parse host ingress once and elect governing guests in inventory order.
 
         Returns:
             Ordered guest contracts, or the first rejected entry.
 
         """
-        result = r[tuple[m.Infra.ExternalConsumerSpec, ...]]
+        result = r[tuple[p.Infra.ExternalConsumerSpec, ...]]
         inventory = m.Infra.HostWorkspaceInventory.model_validate_json(payload)
         workspace_root = root.resolve(strict=True)
-        consumers: list[m.Infra.ExternalConsumerSpec] = []
+        consumers: list[p.Infra.ExternalConsumerSpec] = []
         identities: set[str | Path] = set()
         for entry in inventory.entries:
             if entry.checkout_id != entry.governing_checkout_id:

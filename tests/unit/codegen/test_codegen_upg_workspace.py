@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
+from tests import c, m, p, r, tm, u
 
-from tests import c, m, r, tm, u
-
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraCodegenUpgWorkspace:
@@ -161,7 +159,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
         tm.that(len(artifacts), eq=2)
         tm.ok(
             u.Tests.materialize_codegen_plans(
-                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(artifacts),
+                r[tuple[p.Infra.CodegenFilePlan, ...]].ok(artifacts),
             ),
         )
         u.Tests.git_bootstrap(root, ("submodule", "deinit", "--force", "--all"))

@@ -8,24 +8,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli, codegen, config, infra, workspace
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraCodegenWorkflowRetirement:
     """Exercise scaffold and existing-tree conformance through the public facade."""
 
-    pytestmark = pytest.mark.slow
+    pytestmark = c.Tests.MARK.slow
 
     @staticmethod
     def _declared_workspace(
         root: Path,
         *,
         publishes_release: bool,
-    ) -> m.Infra.WorkspaceSpec:
+    ) -> p.Infra.WorkspaceSpec:
         """Declare release capability through the real repository manifest.
 
         Returns:
@@ -70,8 +68,8 @@ class TestsFlextInfraCodegenWorkflowRetirement:
         return tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod
-    @pytest.mark.parametrize("declared_release", [False, True])
-    @pytest.mark.parametrize("marker", [None, *c.Infra.TEMPLATE_GENERATED_MARKERS])
+    @c.Tests.MARK.parametrize("declared_release", [False, True])
+    @c.Tests.MARK.parametrize("marker", [None, *c.Infra.TEMPLATE_GENERATED_MARKERS])
     def test_retirement_requires_both_exclusion_and_codegen_authorship(
         infra_git_repo: Path,
         *,
@@ -135,7 +133,7 @@ class TestsFlextInfraCodegenWorkflowRetirement:
             tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize("declared_release", [False, True])
+    @c.Tests.MARK.parametrize("declared_release", [False, True])
     def test_release_workflows_converge_for_effective_repository_policy(
         infra_git_repo: Path,
         *,

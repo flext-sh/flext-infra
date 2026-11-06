@@ -148,14 +148,6 @@ Infra:
       - [ reportInconsistentConstructor, error ]
       - [ reportMissingImports, error ]
       - [ reportMissingModuleSource, error ]
-      # The only authorized checker exception (tracker memory
-      # operator-ruling-20261022-missing-type-stubs): strict mode requires a
-      # stub file for an untyped third-party import even when Pyright already
-      # infers the library source (useLibraryCodeForTypes). Used surfaces stay
-      # typed through `p` protocols at one boundary module per library. A
-      # project that needs another value declares it in its own
-      # config/tooling.yaml overlay under this same settings table.
-      - [ reportMissingTypeStubs, none ]
       - [ reportPrivateUsage, error ]
       - [ reportUnnecessaryCast, error ]
       - [ reportUnnecessaryComparison, error ]
@@ -187,12 +179,9 @@ Infra:
       # its fix turns a facade class publication `Name: TypeAlias = Owner`
       # into a PEP 695 `type` statement, replacing the class with a
       # TypeAliasType (2026-10-25: `type Cli = FlextCliUtilitiesCli` killed the
-      # flext-infra CLI fleet-wide). Operator decision 2026-10-25, "Exceção
-      # UP040 por identidade": the lint verdict exempts exactly the
-      # authenticated publication identities (file, row, column, rule); every
-      # other UP040 finding blocks and is rewritten by its declared owner.
+      # flext-infra CLI fleet-wide).
       - [ unfixable, [ multi-value-repeated-key-literal, multi-value-repeated-key-variable, non-pep695-type-alias, p-print, print, pytest-duplicate-parametrize-test-cases ] ]
-      - [ extend-safe-fixes, [ relative-imports, typing-only-first-party-import, camelcase-imported-as-lowercase ] ]
+      - [ extend-safe-fixes, [ relative-imports, camelcase-imported-as-lowercase ] ]
       - [ extend-select, [ missing-blank-line-after-last-section ] ]
       ruff.lint.flake8-tidy-imports:
       - [ ban-relative-imports, all ]
@@ -210,14 +199,26 @@ Infra:
       - [ split-on-trailing-comma, false ]
       ruff.lint.pydocstyle:
       - [ convention, google ]
-      ruff.lint.pep8-naming:
-      # Settings-branch protocol properties mirror their config namespace
-      # name (``settings.Ldif.*``): the branch attribute is capitalized by
-      # the config law, so the structural contract repeats that name and
-      # pep8-naming carries the namespace-name exception here.
-      - [ ignore-names, [ Ldif ] ]
       ruff.lint.pylint:
-      - [ allow-dunder-method-names, [ __base__, __bases__ ] ]
+      - [
+          allow-dunder-method-names,
+          [
+            __base__,
+            __bases__,
+            __get_pydantic_core_schema__,
+            __get_pydantic_json_schema__,
+          ],
+        ]
+      # Axiom (operator decision 2026-11-05, tracker key
+      # operator-decisions-2026-11-05-ws7iv-testverbs-timeout-ldap-pydantic,
+      # answer "Exceção-axioma"): the Pydantic protocol module mirrors
+      # Pydantic's own public method signatures (p.BaseModel.model_dump keeps
+      # pydantic's keyword set, every keyword with fleet consumers). The
+      # argument count is the external SDK's contract, not a local design, so
+      # too-many-arguments cannot coexist with the faithful protocol. Scoped to
+      # that one module path; every other module keeps the rule.
+      ruff.lint.per-file-ignores:
+      - [ '**/_protocols/pydantic.py', [ too-many-arguments ] ]
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]
@@ -252,9 +253,31 @@ Infra:
         - writer: beads
           begin: '<!-- BEGIN BEADS (?P<block>[A-Z]+(?: [A-Z]+)*)(?:[: ].*)? -->'
           end: '<!-- END BEADS (?P<block>[A-Z]+(?: [A-Z]+)*) -->'
+        - writer: rtk
+          begin: '<!-- rtk-instructions v(?P<version>\d+) -->'
+          end: '<!-- /rtk-instructions -->'
+        # Rules not named in `rules` stay enabled. Turning this off would make
+        # `rules` a strict allowlist; the fleet keeps rumdl's complete default
+        # set and declares every intentional configuration below.
+        default-enabled: true
+        # MD060 (aligned tables, repaired by `rumdl fmt`) is opt-in in rumdl.
+        extend-enable: [ MD060 ]
+        # rumdl is the ONE Markdown engine: CLI (make fmt/fix/check) and editor
+        # (rvben.rumdl reads the generated .rumdl.toml for diagnostics and
+        # formatting). It implements every markdownlint rule (MD001-MD060)
+        # plus MD061+, so markdownlint is retired everywhere (codegen.yaml
+        # retires .markdownlintignore and silences the extension).
         rules:
-        - [ default, true ]
-        - [ MD001, false ]
+        # Wave 1 (active): every rule here is either repaired by `rumdl fmt`
+        # (`make fmt`) or was already enforced, so the policy lands together
+        # with its automatic repair and no consumer is left red. Measured on
+        # the fleet (2026-11-04): 18040 findings, 15573 repaired by rumdl fmt.
+        # Wave 2 (disabled below, per-repo text migration, bead flext-5yu64):
+        # MD036/MD041/MD042/MD051/MD057 have no automatic repair (2467 sites).
+        - [ MD001, true ]
+        - [ MD003, { style: atx } ]
+        - [ MD004, { style: dash } ]
+        - [ MD007, { indent: 2 } ]
           # MD013 prose and code lengths are THE markdown line contract for
           # both rumdl surfaces: `rumdl check` (markdown gate, `make fix`) and
           # `rumdl fmt` (markdown-format gate, `make fmt`) read this one rule
@@ -265,8 +288,10 @@ Infra:
           # joins a hand-wrapped paragraph into one line and cannot re-split
           # lines containing inline-code spans. With reflow off, nobody
           # rewrites an author's breaks, and MD013 stays the check-only line
-          # contract: a genuinely long line is a finding the author fixes by
-          # wrapping.
+          # contract. Neither `strict` nor `stern` is set: measured on the
+          # consumers (merges 801, devops-oud-iac +212 unfixable lines), both
+          # turn hand-wrapped legacy prose into findings no tool can repair.
+          # Tightening MD013 is a separate, per-repo text migration.
         - - MD013
           - line_length: *formatting_width
             heading_line_length: 200
@@ -275,24 +300,30 @@ Infra:
             # leniency as headings.
             code_block_line_length: 200
             tables: false
-        - [ MD022, false ]
-        - [ MD023, false ]
+            reflow: false
+        - [ MD022, true ]
+        - [ MD023, true ]
         - [ MD024, { siblings_only: true } ]
-        - [ MD025, false ]
-        - [ MD031, false ]
+        - [ MD025, { level: 1, front_matter_title: title } ]
+        # one_or_ordered accepts lazy `1. 1. 1.` and
+        # sequential numbering, consistent per list; `ordered` produced 3057
+        # findings with no repair value (inventory 2026-11-04, flext-2vrgl).
+        - [ MD029, { style: one_or_ordered } ]
+        - [ MD031, true ]
         - [ MD033, { allowed_elements: [ br, details, summary, kbd ] } ]
         - [ MD036, false ]
-        - [ MD040, false ]
+        - [ MD040, true ]
         - [ MD041, false ]
         - [ MD042, false ]
-        - [ MD046, false ]
-        - [ MD050, { style: consistent } ]
+        - [ MD046, { style: fenced } ]
+        - [ MD048, { style: backtick } ]
+        - [ MD049, { style: asterisk } ]
+        - [ MD050, { style: asterisk } ]
         - [ MD051, false ]
-        - [ MD060, false ]
-        native_rules:
-        - [ MD013, { reflow: false } ]
+        - [ MD055, { style: leading_and_trailing } ]
+        # MD057 (relative link targets) has no repair: wave 2 with MD051.
         - [ MD057, false ]
-        - [ MD076, false ]
+        - [ MD060, { style: aligned } ]
         native_settings:
         - [ per-file-flavor, { 'docs/**/*.md': mkdocs } ]
       ruff:
@@ -317,7 +348,6 @@ Infra:
           # is derived from these claims and the other owners' declarations.
           enforce:
             import-outside-top-level: [ ENFORCE-015, ENFORCE-081 ]
-            empty-type-checking-block: [ ENFORCE-015 ]
             any-type: [ ENFORCE-016 ]
             non-pep585-annotation: [ ENFORCE-016 ]
             non-pep604-annotation-union: [ ENFORCE-016 ]
@@ -325,17 +355,14 @@ Infra:
             non-pep695-type-alias: [ ENFORCE-016 ]
             print: [ ENFORCE-027 ]
             magic-value-comparison: [ ENFORCE-097 ]
-          # Operator law (2026-10-05 flext-p7bxt, reiterated 2026-10-18):
-          # TC001-TC004 break Pydantic model resolution — the lazy facade
-          # architecture requires the runtime imports these rules would move
-          # into TYPE_CHECKING blocks. Always disabled here at the SSOT and
-          # projected into lint ignore; manual per-file noqa hints are
-          # forbidden everywhere, including per-project overrides.
+          # Axiom (operator authorization 2026-11-02, tracker key
+          # operator-order-2026-11-02-ruff-type-checking-axiom-off): Ruff's
+          # whole type-checking family (its native family code TC) is off;
+          # "RUFF FALHA MISERAVELMENTE COM PYDANTIC". TYPE_CHECKING placement
+          # is calculated by the import-law rules (cycles plus Pydantic
+          # runtime evaluation) and proven by fresh import.
           ruling-disabled-rules:
-          - runtime-import-in-type-checking-block
-          - typing-only-first-party-import
-          - typing-only-standard-library-import
-          - typing-only-third-party-import
+          - TC
           # RUF067 flags the generated family __init__ files that carry the
           # install_lazy_exports call: that PEP 562 lazy facade IS the
           # canonical projection shape, so the rule is structurally
@@ -403,14 +430,6 @@ Infra:
           - [ summary-docstring, copyright-notice, static-method ]
           - [ returns-section, yields-section, raises-section, extraneous-raises ]
           - [ wrap-long-line ]
-          # Pydantic evaluates model field annotations at runtime, so an
-          # import used only in a model annotation is runtime, not typing-only.
-          # Ruff follows imported bases only by qualified name: codegen derives
-          # every project class base that subclasses a root below into
-          # runtime-evaluated-base-classes (tooling_runtime), never a list here.
-          flake8-type-checking:
-            runtime-evaluated-roots:
-            - pydantic.BaseModel
           # Banned API messages are policy data, never template literals.
           # Operator ruling 2026-10-01 (docstring convention): docstrings follow
           # the Google convention, the shape the docstring fix recipes render.
@@ -450,6 +469,17 @@ Infra:
           justification: >-
             Analyze Rope's installed source without suppressing import-untyped; https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports
       pyright:
+        # Global axioms (operator order 2026-11-03, verbatim:
+        # "reportMissingTypeStubs tb tem que entrar em tooling.yaml global como
+        # axioma, lembre-se que axiomas tem que ser autorizados unicamente pelo
+        # operador e ser globais"; earlier ruling
+        # operator-ruling-20261022-missing-type-stubs): strict mode requires a
+        # stub file for an untyped third-party import even when Pyright already
+        # infers the library source. Used surfaces stay typed through `p`
+        # protocols at one boundary module per library. Axioms are global and
+        # only the operator authorizes them; no project overrides them.
+        ruling-disabled-rules:
+        - reportMissingTypeStubs
         path-rules:
           # Source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
@@ -472,6 +502,7 @@ Infra:
           test-like-report-private-usage: error
           other-report-private-usage: error
       pyrefly:
+        findings-exit-codes: [ 1 ]
         path-rules:
           source-dir: src
           project-root: .
@@ -502,7 +533,7 @@ Infra:
         # A local suite that cannot finish within run-timeout-seconds is a
         # performance defect. Collection, lease waits and every suite child
         # share the entrypoint clock, with termination grace inside this wall.
-        run-timeout-seconds: 60
+        run-timeout-seconds: 240
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
         # corrected owner instead of accumulating a backlog of unrelated
@@ -524,6 +555,8 @@ Infra:
         # invocation; in-flight cases may report after the stop, which the
         # declaring consumer accepts by declaring.
         parallel-worker-overrides:
+          merges:
+            workers: 4
           cosmos-docgen:
             workers: 4
           # The measured ceiling for this suite; higher ceilings regressed the
@@ -590,6 +623,9 @@ Infra:
         - "requires_engine: native check engine required by this test"
         # External-token gates never run inside
         # offline verification (`make test`); the runner records their exclusion.
+        # Under the Make CI token the incremental global scope (`make tests`)
+        # deselects them too: CI has neither Docker nor remote services, so they
+        # are reported NOT EXECUTED, never skipped (operator decision 2026-11-05).
         # `make test-full` runs locally only and executes every marker once,
         # without testmon and without any time limit. Existing external tests
         # retain their declared environment and authentication requirements.
@@ -613,10 +649,17 @@ Infra:
       # embeddings host, so the CI context records it NOT EXECUTED.
       jscpd:
         similarity: 0.8
+        # Embedding model of the pass: bge-m3, by the name jscpd's own catalog
+        # calibrates, so its thresholds come from jscpd and are not restated
+        # here. Measured 2026-11-05 on gruponos-merges (jscpd 5.4.2, two
+        # snapshots; tracker dc_recon-26p): jina-embeddings-v2-base-code
+        # reported 19 pairs, most of them related rather than duplicated code;
+        # bge-m3 reported 6, 5 of them real duplication, stable across runs;
+        # CodeRankEmbed took about 6 minutes, over the gate budget.
         semantic:
           provider: http
           url: http://localhost:11434/v1
-          model: unclemusclez/jina-embeddings-v2-base-code
+          model: bge-m3
         # Operator authorization 2026-10-25 (in-session answer "Autorizar
         # exclusão no jscpd"): the mandated module license header repeats in
         # every module by contract, so it is no clone to repair. jscpd matches
@@ -631,9 +674,16 @@ Infra:
         # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
+        # Member extension 2026-11-05 (algar-oud-mig workspace top; clone
+        # infra/ansible/__init__.py L4-19 vs plugins/action/__init__.py
+        # L4-19): fleet members carry their own license holder and SPDX tag
+        # by the same "license header repeats in every module" contract, so
+        # the two header patterns cover any holder and identifier instead of
+        # only the family's. Remaining generated-package body stays under
+        # minLines/minTokens and keeps scanned.
         ignore-patterns:
-        - "Copyright \\(c\\) [0-9]{4} FLEXT Team\\. All rights reserved\\."
-        - "SPDX-License-Identifier: MIT"
+        - "Copyright \\(c\\) [0-9]{4} .+\\. All rights reserved\\."
+        - "SPDX-License-Identifier: [A-Za-z0-9._-]+"
         - "from __future__ import annotations"
         - "from typing import TYPE_CHECKING"
         - "from types import MappingProxyType"

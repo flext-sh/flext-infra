@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import c, tm, u
 
@@ -69,7 +67,7 @@ class TestsFlextInfraRunProjects:
         tm.fail(result, has="selected no projects")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "report_name",
         [c.Infra.CHECK_REPORT_MARKDOWN_FILENAME, c.Infra.CHECK_REPORT_SARIF_FILENAME],
     )

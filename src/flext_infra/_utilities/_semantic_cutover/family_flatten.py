@@ -35,7 +35,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
 
         candidates = tuple(
             path
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
             workspace.rope_project,
             sources,
         )
-        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+        rewrites: MutableMapping[Path, list[p.Infra.SourceRewrite]] = {}
         wrappers = 0
         try:
             for path in candidates:
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
                     rewrites,
                 )
                 wrappers += count
-            edits: list[m.Infra.SemanticMigrationEdit] = []
+            edits: list[p.Infra.SemanticMigrationEdit] = []
             for path, changes in sorted(rewrites.items()):
                 resource = project.get_resource(
                     path.relative_to(Path(project.root.real_path)).as_posix(),
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
     ) -> (
         tuple[
             m.Infra.LogicalStatement,
-            tuple[m.Infra.LogicalStatement, ...],
+            tuple[p.Infra.LogicalStatement, ...],
             tuple[int, int] | None,
         ]
         | None
@@ -201,7 +201,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         path: Path,
         owner_scope: p.Infra.RopeScopeDsl,
         child: p.Infra.RopeScopeDsl,
-    ) -> m.Infra.FamilyWrapperFlatten:
+    ) -> p.Infra.FamilyWrapperFlatten:
         """Build the flatten plan after proving the wrapper is safely removable.
 
         Returns:
@@ -251,8 +251,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        flatten: m.Infra.FamilyWrapperFlatten,
-    ) -> tuple[bool, MutableMapping[Path, list[m.Infra.SourceRewrite]]]:
+        flatten: p.Infra.FamilyWrapperFlatten,
+    ) -> tuple[bool, MutableMapping[Path, list[p.Infra.SourceRewrite]]]:
         """Collect candidate consumer rewrites for non-generated sources.
 
         Returns:
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
 
         """
         root = Path(project.root.real_path)
-        candidate_rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]] = {}
+        candidate_rewrites: MutableMapping[Path, list[p.Infra.SourceRewrite]] = {}
         for consumer, source in sources.items():
             if source.startswith(c.Infra.AUTOGEN_HEADER):
                 continue
@@ -283,7 +283,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         project: p.Infra.RopeProject,
         path: Path,
         sources: Mapping[Path, str],
-        rewrites: MutableMapping[Path, list[m.Infra.SourceRewrite]],
+        rewrites: MutableMapping[Path, list[p.Infra.SourceRewrite]],
     ) -> int:
 
         scopes = cls._wrapper_scopes(workspace, project, path)
@@ -340,8 +340,8 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        flatten: m.Infra.FamilyWrapperFlatten,
-        rewrites: Mapping[Path, Sequence[m.Infra.SourceRewrite]],
+        flatten: p.Infra.FamilyWrapperFlatten,
+        rewrites: Mapping[Path, Sequence[p.Infra.SourceRewrite]],
     ) -> bool:
         """Return whether a resolved wrapper member has no planned rewrite.
 

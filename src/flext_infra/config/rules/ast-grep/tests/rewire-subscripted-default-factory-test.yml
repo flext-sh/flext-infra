@@ -1,0 +1,15 @@
+id: rewire-subscripted-default-factory
+valid:
+  - |
+    class Service(m.Model):
+        _operations: MutableSequence[p.Demo.Record] = m.PrivateAttr(default_factory=list)
+  - |
+    class Service(m.Model):
+        names: list[str] = m.Field(default_factory=lambda: list[str]())
+invalid:
+  - |
+    class Service(m.Model):
+        _operations: MutableSequence[p.Demo.Record] = m.PrivateAttr(default_factory=list[p.Demo.Record])
+  - |
+    class Service(m.Model):
+        _plugins: MutableMapping[str, t.JsonPayload] = m.PrivateAttr(default_factory=dict[str, t.JsonPayload])

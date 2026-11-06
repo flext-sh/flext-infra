@@ -10,7 +10,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraModelsSonarcloud:
@@ -19,28 +19,22 @@ class FlextInfraModelsSonarcloud:
     class SonarcloudIssueFieldValue(m.ContractModel):
         """One ``sonar.issue.ignore.multicriteria`` entry as the API spells it."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid",
             frozen=True,
             populate_by_name=True,
         )
 
-        rule_key: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                validation_alias="ruleKey",
-                serialization_alias="ruleKey",
-                description="Sonar rule key",
-            ),
-        ]
-        resource_key: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                validation_alias="resourceKey",
-                serialization_alias="resourceKey",
-                description="Project-relative resource",
-            ),
-        ]
+        rule_key: t.NonEmptyStr = m.Field(
+            validation_alias="ruleKey",
+            serialization_alias="ruleKey",
+            description="Sonar rule key",
+        )
+        resource_key: t.NonEmptyStr = m.Field(
+            validation_alias="resourceKey",
+            serialization_alias="resourceKey",
+            description="Project-relative resource",
+        )
 
     class SonarcloudSetting(m.ExternalContractModel):
         """One setting returned by ``api/settings/values``.
@@ -50,24 +44,38 @@ class FlextInfraModelsSonarcloud:
         Unread metadata is ignored rather than forbidden.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             populate_by_name=True,
         )
         key: Annotated[t.NonEmptyStr, m.Field(description="Setting key")]
-        field_values: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...],
-            m.Field(
-                validation_alias="fieldValues",
-                serialization_alias="fieldValues",
-                description="PROPERTY_SET entries",
-            ),
-        ] = ()
+        field_values: tuple[
+            Annotated[
+                p.Infra.SonarcloudIssueFieldValue,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            (),
+            validation_alias="fieldValues",
+            serialization_alias="fieldValues",
+            description="PROPERTY_SET entries",
+        )
 
     class SonarcloudSettingsValues(m.ContractModel):
         """The ``api/settings/values`` response body."""
 
         settings: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudSetting, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudSetting,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudSetting
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Effective settings for the requested keys"),
         ]
 
@@ -93,7 +101,15 @@ class FlextInfraModelsSonarcloud:
             m.Field(description="PROPERTY_SET setting key"),
         ]
         field_values: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudIssueFieldValue,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Entries in SSOT order; empty means reset"),
         ]
 
@@ -124,14 +140,12 @@ class FlextInfraModelsSonarcloud:
     class SonarcloudIssuePaging(m.ExternalContractModel):
         """Server-side page accounting required before reporting completeness."""
 
-        page_index: Annotated[
-            t.PositiveInt,
-            m.Field(validation_alias="pageIndex", description="One-based page index"),
-        ]
-        page_size: Annotated[
-            t.PositiveInt,
-            m.Field(validation_alias="pageSize", description="Issues per page"),
-        ]
+        page_index: t.PositiveInt = m.Field(
+            validation_alias="pageIndex", description="One-based page index"
+        )
+        page_size: t.PositiveInt = m.Field(
+            validation_alias="pageSize", description="Issues per page"
+        )
         total: Annotated[
             int,
             m.Field(ge=0, description="Total issues matching the server query"),
@@ -141,11 +155,24 @@ class FlextInfraModelsSonarcloud:
         """A complete typed page returned by ``api/issues/search``."""
 
         paging: Annotated[
-            FlextInfraModelsSonarcloud.SonarcloudIssuePaging,
+            Annotated[
+                p.Infra.SonarcloudIssuePaging,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsSonarcloud.SonarcloudIssuePaging
+                ),
+            ],
             m.Field(description="Server-side page accounting of this page"),
         ]
         issues: Annotated[
-            tuple[FlextInfraModelsSonarcloud.SonarcloudIssue, ...],
+            tuple[
+                Annotated[
+                    p.Infra.SonarcloudIssue,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudIssue
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Issues returned on this page"),
         ]
 

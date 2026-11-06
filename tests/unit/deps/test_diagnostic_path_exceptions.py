@@ -9,11 +9,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.deps import (
+from flext_infra.deps.phases import (
     FlextInfraEnsurePyreflyConfigPhase,
     FlextInfraEnsurePyrightConfigPhase,
 )
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -62,9 +62,9 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
 
     @staticmethod
     def _document(
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         entry: t.JsonDict,
-    ) -> m.Infra.ToolConfigDocument:
+    ) -> p.Infra.ToolConfigDocument:
         """Validate the canonical document carrying one declared exception.
 
         Returns:
@@ -121,7 +121,7 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
 
     def test_exception_without_authorization_fails_validation(
         self,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """No declaration is admitted without its tracker key or operator words."""
         entry = self._entry("src/flext_sample/models.py")
@@ -134,7 +134,7 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
     def test_absent_root_fails_loud(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """A declared root missing from the project stops rendering."""
         project = self._project(tmp_path, "src/flext_sample/__init__.py")
@@ -153,7 +153,7 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
     def test_one_entry_renders_both_checkers(
         self,
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
         """The same entry yields the Pyright environment and the Pyrefly sub-config."""
         root = "src/flext_sample/models.py"

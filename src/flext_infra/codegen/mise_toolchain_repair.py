@@ -18,7 +18,7 @@ from flext_infra.codegen import (
 class FlextInfraCodegenMiseToolchainRepair(FlextInfraCodegenExecution[bool]):
     """Reinstall the selected locked tool, then use the existing reality proof."""
 
-    def _prepare(self, requested: str) -> m.Infra.MiseToolchainRepairPlan:
+    def _prepare(self, requested: str) -> p.Infra.MiseToolchainRepairPlan:
         """Bind the requested declaration and every required input before effects.
 
         Returns:

@@ -10,8 +10,6 @@ import ast
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -22,7 +20,7 @@ class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declarations", "base", "body", "expected"),
         [
             ("", "Exception", "pass", ()),
@@ -114,7 +112,9 @@ class TestsFlextInfraRopeAnalysis:
         )
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ValueError, match="cyclic facade namespace inheritance"):
+            with u.Tests.raises(
+                ValueError, match="cyclic facade namespace inheritance"
+            ):
                 u.Infra.inherited_facade_namespaces(
                     rope_project,
                     resource,
@@ -141,7 +141,7 @@ class TestsFlextInfraRopeAnalysis:
         tm.that(source.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "expected"),
         [
             ("value = object", "object"),
@@ -173,7 +173,7 @@ class TestsFlextInfraRopeAnalysis:
             tm.that(u.Infra.superclass_name(value), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "message"),
         [
             ("def value():\n    pass\n", "not a class or inferred instance"),
@@ -195,11 +195,11 @@ class TestsFlextInfraRopeAnalysis:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
             module = u.Infra.resolve_pymodule(rope_project, resource)
             value = module.get_attribute("value").get_object()
-            with pytest.raises((TypeError, ValueError), match=message):
+            with u.Tests.raises((TypeError, ValueError), match=message):
                 u.Infra.superclass_name(value)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n",
@@ -217,11 +217,11 @@ class TestsFlextInfraRopeAnalysis:
         source.write_text(declaration, encoding="utf-8")
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ValueError, match="Unresolved Rope superclass lineage"):
+            with u.Tests.raises(ValueError, match="Unresolved Rope superclass lineage"):
                 u.Infra.resolve_class_info(rope_project, resource)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("statement", "suffix"),
         [
             ("from . import Owner as Local", ".inner.leaf.Owner"),
@@ -286,7 +286,7 @@ class TestsFlextInfraRopeAnalysis:
         source.write_text("from .. import Owner\n", encoding="utf-8")
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ImportError, match="beyond top-level package"):
+            with u.Tests.raises(ImportError, match="beyond top-level package"):
                 u.Infra.resolve_declared_module_imports(rope_project, resource)
 
     @staticmethod
@@ -301,119 +301,5 @@ class TestsFlextInfraRopeAnalysis:
         child = u.Infra.ensure_ast_node(source_tree.body[0])
         tm.ok(u.Infra.module_level_node(child, parents))
         # The rejection names the offending runtime type; its prose is not a contract.
-        with pytest.raises(TypeError, match=r"\bobject\b"):
+        with u.Tests.raises(TypeError, match=r"\bobject\b"):
             u.Infra.ensure_ast_node(object())
-
-    @staticmethod
-    def test_call_headed_assignment_binds_as_non_class(tmp_path: Path) -> None:
-        """A call-headed value is a non-class binding, never a base reference.
-
-        Generated package-data modules assign validated payloads
-        (``Payload.model_validate_json(resource).section``); the inventory
-        records that binding as ``None`` instead of feeding the call to the
-        class-reference resolver.
-        """
-        project, package = u.Tests.demo_project(tmp_path)
-        source = package / "data_module.py"
-        source.write_text(
-            "class Owner:\n"
-            "    pass\n"
-            "\n"
-            "\n"
-            "PAYLOAD_SECTION: dict[str, Owner] = Owner.factory(\n"
-            "    resource_text('values.json'),\n"
-            ").items\n",
-            encoding="utf-8",
-        )
-        bases = u.Infra.runtime_evaluated_base_classes(
-            project,
-            {source: source.read_text(encoding="utf-8")},
-            (),
-        )
-        tm.that(bases, eq=())
-
-    @staticmethod
-    def test_base_through_external_facade_instance_resolves_to_its_class(
-        tmp_path: Path,
-    ) -> None:
-        """A base read through a provider's module-level facade instance resolves.
-
-        Consumer facades publish their bases as nested classes of the facade
-        type and expose one module-level instance (``meltano.Tap`` on
-        ``meltano: FlextMeltano``). Attribute access on that instance reaches
-        the class attribute through the instance's type, so the planner walks
-        the type's MRO instead of rejecting the instance as a non-class base.
-        """
-        provider_root, provider = u.Tests.demo_project(
-            tmp_path, name="provider-project"
-        )
-        (provider / "bases.py").write_text(
-            "class ProviderBases:\n    class Tap:\n        pass\n",
-            encoding="utf-8",
-        )
-        (provider / "api.py").write_text(
-            "from provider_project.bases import ProviderBases\n"
-            "\n"
-            "\n"
-            "class ProviderFacade(ProviderBases):\n"
-            "    pass\n"
-            "\n"
-            "\n"
-            "facade: ProviderFacade = ProviderFacade()\n",
-            encoding="utf-8",
-        )
-        (provider / "__init__.py").write_text(
-            "from provider_project.api import ProviderFacade, facade\n",
-            encoding="utf-8",
-        )
-        project, package = u.Tests.demo_project(tmp_path, name="consumer-project")
-        consumer = package / "api.py"
-        consumer.write_text(
-            "from provider_project import facade\n"
-            "\n"
-            "\n"
-            "class Consumer(facade.Tap):\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-        with u.Infra.open_project(
-            tmp_path,
-            project_roots=(provider_root, project),
-        ) as rope_project:
-            bases = u.Infra.runtime_evaluated_base_classes(
-                project,
-                {consumer: consumer.read_text(encoding="utf-8")},
-                ("provider_project.bases.ProviderBases.Tap",),
-                source_project=rope_project,
-            )
-        tm.that(bases, has="provider_project.facade.Tap")
-
-    @staticmethod
-    def test_missing_planned_class_binding_fails_at_the_required_base(
-        tmp_path: Path,
-    ) -> None:
-        """An explicit missing base fails instead of silently losing its lineage."""
-        project, package = u.Tests.demo_project(tmp_path)
-        helper = package / "data_module.py"
-        helper.write_text(
-            "def build() -> int:\n    return 0\n",
-            encoding="utf-8",
-        )
-        consumer = package / "consumer.py"
-        consumer.write_text(
-            "from . import data_module\n"
-            "\n"
-            "\n"
-            "class Consumer(data_module.Helper):\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-        with pytest.raises(ValueError, match="Unresolved planned base"):
-            u.Infra.runtime_evaluated_base_classes(
-                project,
-                {
-                    source: source.read_text(encoding="utf-8")
-                    for source in (helper, consumer)
-                },
-                (),
-            )

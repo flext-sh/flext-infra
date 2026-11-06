@@ -24,7 +24,7 @@ class FlextInfraUtilitiesGitignore:
     """Gitignore rendering utilities."""
 
     @staticmethod
-    def codegen_templates_root(codegen: m.Infra.CodegenConfigSpec) -> Path:
+    def codegen_templates_root(codegen: p.Infra.CodegenConfigSpec) -> Path:
         """Return the resolved template root of the installed flext-infra package.
 
         Returns:
@@ -39,8 +39,8 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def codegen_artifact_source(
-        codegen: m.Infra.CodegenConfigSpec,
-        entry: m.Infra.TemplateEntrySpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        entry: p.Infra.TemplateEntrySpec,
     ) -> Path:
         """Resolve a declared source inside its explicit package or template root.
 
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesGitignore:
         return source
 
     @staticmethod
-    def codegen_template_sources(codegen: m.Infra.CodegenConfigSpec) -> frozenset[Path]:
+    def codegen_template_sources(codegen: p.Infra.CodegenConfigSpec) -> frozenset[Path]:
         """Resolve only manifest-declared template inputs, never output suffixes.
 
         Returns:
@@ -106,11 +106,11 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def render_project_gitignore(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
         project_name: str,
-        workspace: m.Infra.WorkspaceSpec | None = None,
+        workspace: p.Infra.WorkspaceSpec | None = None,
         project_dir: Path | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` for one named project.
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesGitignore:
             )
         templates_root = FlextInfraUtilitiesGitignore.codegen_templates_root(codegen)
         project_patterns: Sequence[str] = ()
-        preserved_blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...] = ()
+        preserved_blocks: tuple[p.Infra.ProjectGitignorePreservedBlock, ...] = ()
         if project_dir is not None:
             managed = FlextInfraUtilitiesProjectManagedArtifacts
             resolved = managed.load_project_managed_artifacts(project_dir)
@@ -174,7 +174,7 @@ class FlextInfraUtilitiesGitignore:
     def preserve_project_gitignore_blocks(
         rendered: str,
         project_dir: Path,
-        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
+        blocks: tuple[p.Infra.ProjectGitignorePreservedBlock, ...],
         *,
         runtime_suffix: str = "",
     ) -> p.Result[str]:
@@ -236,7 +236,7 @@ class FlextInfraUtilitiesGitignore:
         return r[str].ok(composed.value + separator + runtime_suffix)
 
     @staticmethod
-    def gitignore_runtime_suffix(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+    def gitignore_runtime_suffix(codegen: p.Infra.CodegenConfigSpec) -> p.Result[str]:
         """Render the final tracking policy from the same typed section owner.
 
         Returns:
@@ -287,7 +287,7 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def _block_sections(
-        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
+        blocks: tuple[p.Infra.ProjectGitignorePreservedBlock, ...],
         found: Mapping[str, list[int]],
         lines: Sequence[str],
         destination: Path,
@@ -325,7 +325,7 @@ class FlextInfraUtilitiesGitignore:
     def _compose_preserved_blocks(
         rendered: str,
         content: bytes,
-        blocks: tuple[m.Infra.ProjectGitignorePreservedBlock, ...],
+        blocks: tuple[p.Infra.ProjectGitignorePreservedBlock, ...],
         markers: frozenset[str],
         destination: Path,
     ) -> p.Result[str]:
@@ -362,13 +362,13 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def gitignore_sections(
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
-        workspace: m.Infra.WorkspaceSpec | None = None,
+        workspace: p.Infra.WorkspaceSpec | None = None,
         project_patterns: Sequence[str] = (),
-    ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
+    ) -> tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Derive the ordered ``.gitignore`` sections for one project.
 
         Single owner of the section list: the profile-filtered SSOT sections,
@@ -379,7 +379,7 @@ class FlextInfraUtilitiesGitignore:
         demand a pattern that ``make gen`` does not materialize.
 
         Returns:
-            The resulting ``tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...],``.
+            The resulting ``tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...],``.
 
         """
         sections = [
@@ -441,8 +441,8 @@ class FlextInfraUtilitiesGitignore:
 
     @staticmethod
     def _runtime_gitignore_sections(
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...]:
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...]:
         """Declare final ignore precedence for precisely the runtime-local artifacts.
 
         Returns:

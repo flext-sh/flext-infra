@@ -22,8 +22,8 @@ class FlextInfraCandidateBootstrapService:
     def execute(
         self,
         source_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        command: m.Infra.CandidateBootstrapCommand,
+        workspace: p.Infra.WorkspaceSpec,
+        command: p.Infra.CandidateBootstrapCommand,
     ) -> p.Result[bool]:
         """Publish a fixed point for the entire typed target declaration.
 
@@ -49,7 +49,7 @@ class FlextInfraCandidateBootstrapService:
     @staticmethod
     def _resolved_roots(
         source_root: Path,
-        targets: m.Infra.CandidateBootstrapTargets,
+        targets: p.Infra.CandidateBootstrapTargets,
     ) -> p.Result[tuple[Path, ...]]:
         """Resolve each declared target to its exact elected worktree root.
 
@@ -80,16 +80,16 @@ class FlextInfraCandidateBootstrapService:
     def plan_candidates(
         self,
         roots: Sequence[Path],
-        targets: m.Infra.CandidateBootstrapTargets,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        targets: p.Infra.CandidateBootstrapTargets,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose the file plans of every declared target.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.CodegenFilePlan, ...]]``.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        files: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        files: list[p.Infra.CodegenFilePlan] = []
         for root, target in zip(roots, targets, strict=True):
             planned = self._planned_target(root, target)
             if planned.failure:
@@ -100,8 +100,8 @@ class FlextInfraCandidateBootstrapService:
     def _planned_target(
         self,
         root: Path,
-        target: m.Infra.CandidateBootstrapTargetSpec,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        target: p.Infra.CandidateBootstrapTargetSpec,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan one target under its surface contract and prove destinations.
 
         Args:
@@ -112,7 +112,7 @@ class FlextInfraCandidateBootstrapService:
             The planned files of the target, or the first contract violation.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
             return result_type.from_failure(captured)
@@ -151,8 +151,8 @@ class FlextInfraCandidateBootstrapService:
     @staticmethod
     def _destination_failure(
         root: Path,
-        file: m.Infra.CodegenFilePlan,
-        contract: m.Infra.CodegenConformSurfaceContract,
+        file: p.Infra.CodegenFilePlan,
+        contract: p.Infra.CodegenConformSurfaceContract,
     ) -> str | None:
         """Name the first destination violation of one planned file.
 
@@ -174,7 +174,7 @@ class FlextInfraCandidateBootstrapService:
     def _verify(
         self,
         roots: Sequence[Path],
-        targets: m.Infra.CandidateBootstrapTargets,
+        targets: p.Infra.CandidateBootstrapTargets,
     ) -> p.Result[bool]:
         """Require a complete fixed point for every declared target.
 

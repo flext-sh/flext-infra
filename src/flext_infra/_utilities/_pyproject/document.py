@@ -148,19 +148,19 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         project_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[m.Infra.ProjectMetadataState]:
+    ) -> p.Result[p.Infra.ProjectMetadataState]:
         """Parse metadata and packaging declarations without importing source exports.
 
         Returns:
             Retained typed metadata and packaging facts from one live TOML read.
 
         """
-        result_type = r[m.Infra.ProjectMetadataState]
+        result_type = r[p.Infra.ProjectMetadataState]
         path = project_root / c.PYPROJECT_FILENAME
         captured = (
             u.Cli.atomic_read_binary_file_state(path, required=True)
             if source_project is None
-            else r[m.Cli.AtomicFileState].ok(
+            else r[p.Cli.AtomicFileState].ok(
                 source_project.source_state(path, required=False)
             )
         )
@@ -204,7 +204,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     def project_package_participation(
-        declaration: m.Infra.ProjectPackagingDeclaration,
+        declaration: p.Infra.ProjectPackagingDeclaration,
     ) -> bool:
         """Apply native project defaults without consulting directories or exports.
 
@@ -600,7 +600,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """Detected integration provenance for internal requirements and dev floors."""
 
         flext_line: Annotated[
-            m.Infra.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(lambda: m.Infra.WorkspaceIntegrationSpec),
+            ]
+            | None,
             m.Field(
                 description="Detected provider and branch for internal requirements",
             ),
@@ -643,9 +647,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         pyproject_content: str,
         *,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         required_dev_dependencies: Sequence[str],
-        uv_resolution: m.Infra.UvResolutionSpec,
+        uv_resolution: p.Infra.UvResolutionSpec,
         options: PyprojectConformOptions | None = None,
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and uv policy.
@@ -720,9 +724,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         pyproject_content: str,
         *,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         required_dev_dependencies: Sequence[str],
-        uv_resolution: m.Infra.UvResolutionSpec,
+        uv_resolution: p.Infra.UvResolutionSpec,
         options: PyprojectConformOptions | None,
     ) -> p.Result[_ConformedProvenance]:
         """Parse the source and compose its declared requirement provenance.
@@ -782,7 +786,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         source: t.Cli.TomlDocument,
         *,
         pyproject_content: str,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[_CustomGroupsPair]:
         """Synchronize root environment groups for workspace-role repositories.
 
@@ -804,7 +808,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _normalized_requirement_sources(
         cls,
         source: t.Cli.TomlDocument,
-        provenance: m.Infra.RequirementsProvenance,
+        provenance: p.Infra.RequirementsProvenance,
     ) -> p.Result[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]:
         """Validate composed declarations before applying the one source context.
 
@@ -882,7 +886,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         custom_groups: _CustomGroupsPair,
-        context: m.Infra.RequirementsProvenance,
+        context: p.Infra.RequirementsProvenance,
     ) -> p.Result[bool]:
         """Tag derived occurrences after normalizing their declared origins.
 
@@ -915,11 +919,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
 
     @staticmethod
     def _declared_floor_sources(
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         *,
         project_name: str,
         requirements: Sequence[str],
-        flext_line: m.Infra.WorkspaceIntegrationSpec | None,
+        flext_line: p.Infra.WorkspaceIntegrationSpec | None,
     ) -> p.Result[Mapping[str, str]]:
         """Derive governed source defaults solely for generated bare floors.
 
@@ -1005,9 +1009,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         *,
         project_name: str,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         required_dev_dependencies: Sequence[str],
-        flext_line: m.Infra.WorkspaceIntegrationSpec | None,
+        flext_line: p.Infra.WorkspaceIntegrationSpec | None,
     ) -> p.Result[tuple[Mapping[str, str], Mapping[str, str]]]:
         """Return the declared and candidate Git sources of internal requirements.
 
@@ -1042,10 +1046,10 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         *,
-        uv_resolution: m.Infra.UvResolutionSpec,
+        uv_resolution: p.Infra.UvResolutionSpec,
         candidate_sources: Mapping[str, str],
         local_requirements: Sequence[str],
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Sync the canonical typecheck, namespace, uv, and provenance tables.
 
@@ -1121,7 +1125,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     @staticmethod
     def _sync_project_documentation(
         document: t.Cli.TomlDocument,
-        project: m.Infra.ProjectSpec | None,
+        project: p.Infra.ProjectSpec | None,
     ) -> None:
         """Resolve the sole project declaration through the owned leaf policy."""
         FlextInfraUtilitiesPyprojectDocument._sync_documentation_language(
@@ -1133,7 +1137,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def project_documentation_metadata(
         cls,
         source: str,
-        project: m.Infra.ProjectSpec | None,
+        project: p.Infra.ProjectSpec | None,
     ) -> p.Result[str]:
         """Project only documentation metadata without conformance planning.
 

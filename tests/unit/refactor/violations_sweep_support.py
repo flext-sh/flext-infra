@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from flext_infra import FlextInfraCli, config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 LOCAL_RULE_CATALOG = (
     f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
@@ -125,7 +125,7 @@ class TestsFlextInfraRefactorViolationsSweepSupport:
         ])
 
     @staticmethod
-    def _receipt(root: Path) -> m.Infra.ViolationsSweepReport:
+    def _receipt(root: Path) -> p.Infra.ViolationsSweepReport:
         """Load the typed receipt the verb publishes.
 
         Returns:

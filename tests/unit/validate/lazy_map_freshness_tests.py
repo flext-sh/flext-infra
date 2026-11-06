@@ -13,10 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate import FlextInfraValidateLazyMapFreshness
-from tests import m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +23,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraLazyMapFreshness:
     """Wrapper semantics: runs the check-only generator and formats the report."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def v() -> FlextInfraValidateLazyMapFreshness:
         """Shared validator instance.
@@ -42,7 +40,7 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test empty workspace yields passing report."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.ok(report.passed)
         tm.that(report.violations, length=0)
@@ -53,7 +51,7 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test passing summary mentions lazy maps."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="lazy")
 
     @staticmethod
@@ -62,13 +60,13 @@ class TestsFlextInfraLazyMapFreshness:
         v: FlextInfraValidateLazyMapFreshness,
     ) -> None:
         """Test report is validation report."""
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
 
     # Why (suite budget): full-suite xdist can stall durable atomic writes
     # beyond the default case timeout while the lazy-init harness publishes files.
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_stale_generated_lazy_map_fails_report(
         tmp_path: Path,
         v: FlextInfraValidateLazyMapFreshness,
@@ -87,7 +85,7 @@ class TestsFlextInfraLazyMapFreshness:
             encoding="utf-8",
         )
 
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(repository_root))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(repository_root))
 
         tm.fail(report.passed)
         tm.that(report.summary, has="stale")

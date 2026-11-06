@@ -14,3 +14,10 @@ captured normalizer facade rejects the transformation before publication. The pu
 normalizers preserve scope token parsing and optional path resolution without adding
 serialized computed fields. Consumer propagation runs through `make mod`; repeated
 passes produce no accessor changes.
+
+The scoped contract annotation rules migrate model references to their existing
+protocol owners through the native annotation-member planner. The data-field
+rules retain each authenticated model as executable `schema_for_model` metadata
+so validation, serialization, and JSON Schema keep their original owner. The
+contract planner's constructors and metadata expressions are not type references
+and remain concrete. Scope is declared per source module, not by analyzer exclusion.

@@ -11,13 +11,11 @@ from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra import c, m, r
+from flext_infra import c, m, p, r
 from flext_infra._utilities._git import FlextInfraUtilitiesGitStateFiles
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
@@ -65,12 +63,12 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def git_head_numstat(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitNumstatReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitNumstatReport]:
         """Capture HEAD subject and ``HEAD~1..HEAD`` numstat.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitNumstatReport]``.
+            The resulting ``p.Result[p.Infra.GitNumstatReport]``.
 
         """
         try:
@@ -78,38 +76,38 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
             subject = repo.git.log("-1", "--format=%s")
             numstat = repo.git.diff("--numstat", "HEAD~1", c.Infra.GIT_HEAD)
         except GitCommandError as exc:
-            return r[m.Infra.GitNumstatReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitNumstatReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitNumstatReport].fail(
+            return r[p.Infra.GitNumstatReport].fail(
                 f"git numstat read failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitNumstatReport].ok(
+        return r[p.Infra.GitNumstatReport].ok(
             m.Infra.GitNumstatReport(subject=subject.strip(), numstat=numstat),
         )
 
     @classmethod
     def git_fingerprint_inputs(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitFingerprintInputsReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitFingerprintInputsReport]:
         """Capture byte-exact fingerprint inputs for one worktree.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitFingerprintInputsReport]``.
+            The resulting ``p.Result[p.Infra.GitFingerprintInputsReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             paths_z, index_z, head = cls._git_capture_fingerprint(repo)
         except GitCommandError as exc:
-            return r[m.Infra.GitFingerprintInputsReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitFingerprintInputsReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitFingerprintInputsReport].fail(
+            return r[p.Infra.GitFingerprintInputsReport].fail(
                 f"failed to capture fingerprint inputs: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitFingerprintInputsReport].ok(
+        return r[p.Infra.GitFingerprintInputsReport].ok(
             m.Infra.GitFingerprintInputsReport(
                 paths_z=paths_z,
                 index_z=index_z,
@@ -144,12 +142,12 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def git_update_index_gitlink(
         cls,
-        request: m.Infra.GitUpdateIndexGitlinkRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitUpdateIndexGitlinkRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Stage one gitlink (mode 160000) into the index.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
@@ -162,19 +160,19 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
                 request.relative_path,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to update-index gitlink: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_staged_gitlink_oid(
         cls,
-        request: m.Infra.GitRefRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitRefRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Return the gitlink OID the index records for one submodule path.
 
         The ``ls-files --stage`` entry is validated structurally: gitlink
@@ -188,12 +186,12 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
             repo = cls._repo(request.repo_root)
             staged = repo.git.ls_files("--stage", "--", request.reference)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"failed to read the staged gitlink for {request.reference}: {exc}",
                 exception=exc,
             )
         if not staged.strip():
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"governed gitlink is absent from the index: {request.reference}",
             )
         match staged.split(maxsplit=c.Infra.GIT_LS_FILES_STAGE_FIELDS - 1):
@@ -202,9 +200,9 @@ class FlextInfraUtilitiesGitSemanticIndex(FlextInfraUtilitiesGitStateFiles):
                 and stage == str(c.Infra.GIT_STAGE_NORMAL)
                 and indexed_path == request.reference
             ):
-                return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
+                return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid))
             case _:
-                return r[m.Infra.GitOidReport].fail(
+                return r[p.Infra.GitOidReport].fail(
                     f"Git gitlink entry is malformed: {request.reference}",
                 )
 

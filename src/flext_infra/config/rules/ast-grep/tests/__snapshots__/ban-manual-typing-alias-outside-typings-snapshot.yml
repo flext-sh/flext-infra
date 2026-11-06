@@ -122,6 +122,32 @@ snapshots:
       style: secondary
       start: 0
       end: 31
+  _T = TypeVar("_T"):
+    labels:
+    - source: _T = TypeVar("_T")
+      style: primary
+      start: 0
+      end: 18
+    - source: _T
+      style: secondary
+      start: 0
+      end: 2
+    - source: TypeVar
+      style: secondary
+      start: 5
+      end: 12
+    - source: TypeVar("_T")
+      style: secondary
+      start: 5
+      end: 18
+    - source: _T = TypeVar("_T")
+      style: secondary
+      start: 0
+      end: 18
+    - source: _T = TypeVar("_T")
+      style: secondary
+      start: 0
+      end: 18
   "type Box[T] = list[T]":
     labels:
     - source: type Box[T] = list[T]
@@ -158,3 +184,21 @@ snapshots:
       style: secondary
       start: 0
       end: 29
+  type _Private = int:
+    labels:
+    - source: type _Private = int
+      style: primary
+      start: 0
+      end: 19
+    - source: _Private
+      style: secondary
+      start: 5
+      end: 13
+    - source: _Private
+      style: secondary
+      start: 5
+      end: 13
+    - source: type _Private = int
+      style: secondary
+      start: 0
+      end: 19

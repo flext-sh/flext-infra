@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, u
-from flext_infra.release import FlextInfraReleaseReleasePublish
+from flext_infra.release._release import FlextInfraReleaseReleasePublish
 
 
 class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
@@ -18,36 +18,36 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
 
     def phase_plan(
         self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[m.Infra.ReleasePlan]:
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
+    ) -> p.Result[p.Infra.ReleasePlan]:
         """Derive the next version and record it as the plan receipt.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ReleasePlan]``.
+            The resulting ``p.Result[p.Infra.ReleasePlan]``.
 
         """
         root = ctx.repository_root
         if ctx.pr_title and not c.Infra.CONVENTIONAL_SUBJECT_RE.match(ctx.pr_title):
-            return r[m.Infra.ReleasePlan].fail(
+            return r[p.Infra.ReleasePlan].fail(
                 "pull-request title must follow Conventional Commits "
                 f"(type(scope)!: description): {ctx.pr_title!r}",
             )
         guard = self._guard_version_change(root, ctx.version)
         if guard.failure:
-            return r[m.Infra.ReleasePlan].from_failure(guard)
+            return r[p.Infra.ReleasePlan].from_failure(guard)
         plan = self._derive_plan(root, ctx.version)
         if plan.failure:
             return plan
         admitted = self._guard_maintenance_line(root, plan.value)
         if admitted.failure:
-            return r[m.Infra.ReleasePlan].from_failure(admitted)
+            return r[p.Infra.ReleasePlan].from_failure(admitted)
         written = u.Cli.json_write(
             self._release_dir(root) / c.Infra.RELEASE_PLAN_FILENAME,
             plan.value.model_dump(mode="json", exclude_computed_fields=True),
             m.Cli.JsonWriteOptions(sort_keys=True),
         )
         if written.failure:
-            return r[m.Infra.ReleasePlan].from_failure(written)
+            return r[p.Infra.ReleasePlan].from_failure(written)
         self.logger.info(
             "release_plan",
             current=plan.value.current,
@@ -61,7 +61,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
     def _guard_maintenance_line(
         cls,
         root: Path,
-        plan: m.Infra.ReleasePlan,
+        plan: p.Infra.ReleasePlan,
     ) -> p.Result[bool]:
         """Reject every out-of-line candidate before publishing its receipt.
 
@@ -88,14 +88,14 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _release_policy(root: Path) -> p.Result[m.Infra.ReleasePolicySpec]:
+    def _release_policy(root: Path) -> p.Result[p.Infra.ReleasePolicySpec]:
         """Read the release policy of the authenticated containing workspace.
 
         Returns:
             The workspace policy, or the repository policy for a standalone checkout.
 
         """
-        result_type = r[m.Infra.ReleasePolicySpec]
+        result_type = r[p.Infra.ReleasePolicySpec]
         owner = u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=root))
         if owner.failure:
             return result_type.from_failure(owner)
@@ -123,22 +123,22 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         )
 
     @classmethod
-    def _derive_plan(cls, root: Path, current: str) -> p.Result[m.Infra.ReleasePlan]:
+    def _derive_plan(cls, root: Path, current: str) -> p.Result[p.Infra.ReleasePlan]:
         """Apply the protocol's decision rules to the repository state.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ReleasePlan]``.
+            The resulting ``p.Result[p.Infra.ReleasePlan]``.
 
         """
         tagged = cls._tag_and_history(root, current)
         if tagged.failure:
-            return r[m.Infra.ReleasePlan].from_failure(tagged)
+            return r[p.Infra.ReleasePlan].from_failure(tagged)
         latest, history = tagged.value
         if latest != c.Infra.TAG_FORMAT.format(version=current) and any(
             u.Infra.release_subject(subject, current) for subject in history
         ):
             # The release commit is merged and awaits its tag: nothing to bump.
-            return r[m.Infra.ReleasePlan].ok(
+            return r[p.Infra.ReleasePlan].ok(
                 m.Infra.ReleasePlan(
                     current=current,
                     next=current,
@@ -148,7 +148,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             )
         final = u.Infra.finalize_version(current)
         if final.failure:
-            return r[m.Infra.ReleasePlan].from_failure(final)
+            return r[p.Infra.ReleasePlan].from_failure(final)
         # A pre-release segment is kept: ``0.12.0`` is ahead of ``v0.12.0rc2``.
         ahead = (
             u.Infra.version_is_newer(
@@ -159,12 +159,12 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             else r[bool].ok(value=True)
         )
         if ahead.failure:
-            return r[m.Infra.ReleasePlan].from_failure(ahead)
+            return r[p.Infra.ReleasePlan].from_failure(ahead)
         if ahead.value or final.value != current:
             # A first release, a declared pre-release or a declared version
             # beyond the last tag was decided when the version was written:
             # the titles merged since the tag are not consulted.
-            return r[m.Infra.ReleasePlan].ok(
+            return r[p.Infra.ReleasePlan].ok(
                 m.Infra.ReleasePlan(
                     current=current,
                     next=final.value,
@@ -235,7 +235,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         root: Path,
         current: str,
         latest: str,
-    ) -> p.Result[m.Infra.ReleasePlan]:
+    ) -> p.Result[p.Infra.ReleasePlan]:
         """Derive the bump from the merge titles since the last release tag.
 
         Returns:
@@ -244,16 +244,16 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         """
         merges = cls._subjects(root, latest, merges_only=True)
         if merges.failure:
-            return r[m.Infra.ReleasePlan].from_failure(merges)
+            return r[p.Infra.ReleasePlan].from_failure(merges)
         policy = cls._release_policy(root)
         if policy.failure:
-            return r[m.Infra.ReleasePlan].from_failure(policy)
+            return r[p.Infra.ReleasePlan].from_failure(policy)
         if policy.value.finalize_maintenance:
             bump = r[c.Infra.VersionBump].ok(c.Infra.VersionBump.PATCH)
         else:
             bump = u.Infra.plan_bump(merges.value, policy.value.bump_types)
         if bump.failure:
-            return r[m.Infra.ReleasePlan].from_failure(bump)
+            return r[p.Infra.ReleasePlan].from_failure(bump)
         return u.Infra.bump_version(current, bump.value).map(
             lambda next_version: m.Infra.ReleasePlan(
                 current=current,

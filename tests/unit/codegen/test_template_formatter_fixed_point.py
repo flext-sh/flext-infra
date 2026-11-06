@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraTemplateFormatterFixedPoint:
@@ -33,7 +33,7 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
     )
 
     @staticmethod
-    def _empty_root_render() -> m.Infra.LazyInitRootRender:
+    def _empty_root_render() -> p.Infra.LazyInitRootRender:
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring='"""Tests package."""',
@@ -42,15 +42,15 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
                 "install_lazy_exports"
             ),
             exports_tuple="()",
-            lazy_export_mapping="    MappingProxyType({}),",
+            lazy_export_mapping="    {},",
         )
 
     @staticmethod
     def _workflow_spec(
         *,
-        workspace_repositories: tuple[m.Infra.RepositoryRef, ...],
+        workspace_repositories: tuple[p.Infra.RepositoryRef, ...],
         has_devcontainer: bool,
-    ) -> m.Infra.GithubWorkflowRenderSpec:
+    ) -> p.Infra.GithubWorkflowRenderSpec:
         return u.CodegenTestSupport.Ci.workflow_spec(
             dist="demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -130,8 +130,9 @@ class TestsFlextInfraTemplateFormatterFixedPoint:
 
         tm.that(
             rendered,
-            has="    MappingProxyType({}),\n    public_exports=__all__,\n)[0]",
+            has="    {},\n    public_exports=__all__,\n)[0]",
         )
+        tm.that(rendered, lacks="MappingProxyType")
 
     def test_lazy_root_preserves_module_documentation(self) -> None:
         """A package propagates exports without declaring a namespace class."""

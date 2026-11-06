@@ -9,11 +9,11 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, u
-from tests import c, m, p, r, t, tm
+from flext_infra import config
+from tests import c, p, r, t, tm, u
 
 
-class TestsFlextInfraUtilitiesTomlMixin:
+class TestsFlextInfraUtilitiesToml:
     """TOML, JSON payload, and typed-mapping test helpers."""
 
     @staticmethod
@@ -51,7 +51,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
             The ``str`` version a mise.lock text pins for ``tool``.
 
         """
-        entry = TestsFlextInfraUtilitiesTomlMixin.toml_tables_at(
+        entry = TestsFlextInfraUtilitiesToml.toml_tables_at(
             lock_text,
             "tools",
             tool,
@@ -69,12 +69,12 @@ class TestsFlextInfraUtilitiesTomlMixin:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / c.Infra.MISE_LOCK_FILENAME,
-                TestsFlextInfraUtilitiesTomlMixin.repo_mise_lock(),
+                TestsFlextInfraUtilitiesToml.repo_mise_lock(),
             ),
         )
 
     @staticmethod
-    def codegen_file_text(plan: m.Infra.CodegenFilePlan) -> str:
+    def codegen_file_text(plan: p.Infra.CodegenFilePlan) -> str:
         """Decode the present text payload of a generated-file test plan.
 
         Returns:
@@ -102,11 +102,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
             The resulting ``t.JsonMapping``.
 
         """
-        current = TestsFlextInfraUtilitiesTomlMixin.toml_doc_mapping(
-            TestsFlextInfraUtilitiesTomlMixin.toml_doc(content),
+        current = TestsFlextInfraUtilitiesToml.toml_doc_mapping(
+            TestsFlextInfraUtilitiesToml.toml_doc(content),
         )
         for segment in path:
-            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
+            current = TestsFlextInfraUtilitiesToml.toml_mapping(
                 current[segment],
             )
         return current
@@ -121,8 +121,8 @@ class TestsFlextInfraUtilitiesTomlMixin:
         """
         if not path:
             return ()
-        table = TestsFlextInfraUtilitiesTomlMixin.toml_table_at(content, *path[:-1])
-        return TestsFlextInfraUtilitiesTomlMixin.toml_strings(table[path[-1]])
+        table = TestsFlextInfraUtilitiesToml.toml_table_at(content, *path[:-1])
+        return TestsFlextInfraUtilitiesToml.toml_strings(table[path[-1]])
 
     @staticmethod
     def toml_tables_at(content: str, *path: str) -> Sequence[t.JsonMapping]:
@@ -134,10 +134,10 @@ class TestsFlextInfraUtilitiesTomlMixin:
         """
         if not path:
             return ()
-        table = TestsFlextInfraUtilitiesTomlMixin.toml_table_at(content, *path[:-1])
-        values = TestsFlextInfraUtilitiesTomlMixin.toml_list(table[path[-1]])
+        table = TestsFlextInfraUtilitiesToml.toml_table_at(content, *path[:-1])
+        values = TestsFlextInfraUtilitiesToml.toml_list(table[path[-1]])
         return tuple(
-            TestsFlextInfraUtilitiesTomlMixin.toml_mapping(value) for value in values
+            TestsFlextInfraUtilitiesToml.toml_mapping(value) for value in values
         )
 
     @staticmethod
@@ -149,11 +149,11 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
         """
         return r[t.JsonMapping].ok(
-            TestsFlextInfraUtilitiesTomlMixin.infra_mapping(value),
+            TestsFlextInfraUtilitiesToml.infra_mapping(value),
         )
 
     @staticmethod
-    def tool_config_document() -> m.Infra.ToolConfigDocument:
+    def tool_config_document() -> p.Infra.ToolConfigDocument:
         # Tests consume the validated config singleton; the removed utility
         # loader must not survive as a hidden test path.
         """Provide the typed test helper `tool_config_document`.
@@ -274,5 +274,48 @@ class TestsFlextInfraUtilitiesTomlMixin:
         result: Sequence[str] = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
         return result
 
+    @staticmethod
+    def json_rows(payload: t.JsonMapping, key: str) -> list[t.JsonDict]:
+        """Narrow one payload sequence key into its mutable row mappings.
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesTomlMixin"]
+        Model dumps reach ``model_validate`` fixtures as ``JsonValue`` trees;
+        a payload test that rewrites one declared row list narrows it once
+        here and works on typed mappings afterwards.
+
+        Returns:
+            The resulting ``list[t.JsonDict]``.
+
+        Raises:
+            TypeError: If payload key is not a sequence of row mappings.
+
+        """
+        rows = payload[key]
+        if not isinstance(rows, list):
+            msg = "payload key must hold a sequence of rows"
+            raise TypeError(msg)
+        return [u.json_dict_adapter().validate_python(row) for row in rows]
+
+    @staticmethod
+    def json_strings(value: t.JsonValue) -> tuple[str, ...]:
+        """Narrow one payload value into its declared string sequence.
+
+        Returns:
+            The resulting ``tuple[str, ...]``.
+
+        Raises:
+            TypeError: If payload value is not a sequence of strings.
+
+        """
+        if not isinstance(value, list):
+            msg = "payload value must hold a sequence of strings"
+            raise TypeError(msg)
+        strings: list[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                msg = "payload sequence must hold strings"
+                raise TypeError(msg)
+            strings.append(item)
+        return tuple(strings)
+
+
+__all__: list[str] = ["TestsFlextInfraUtilitiesToml"]

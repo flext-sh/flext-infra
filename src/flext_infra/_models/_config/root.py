@@ -10,12 +10,14 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.release import FlextInfraModelsConfigRelease
-from flext_infra._models._config.static import FlextInfraModelsConfigStatic
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolConfig
+from flext_infra import p, t
+from flext_infra._models import FlextInfraModelsDepsToolConfig
+from flext_infra._models._config import (
+    FlextInfraModelsConfigArtifact,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigRelease,
+    FlextInfraModelsConfigStatic,
+)
 
 
 class FlextInfraModelsConfigRoot:
@@ -30,37 +32,70 @@ class FlextInfraModelsConfigRoot:
             m.Field(description="Version seeded into a newly scaffolded project"),
         ]
         codegen: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
+            Annotated[
+                p.Infra.CodegenConfigSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
+                ),
+            ],
             m.Field(description="Unified project and workspace codegen contract"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
+                ),
+            ],
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
-            FlextInfraModelsConfigStatic.SourceScanSpec,
+            Annotated[
+                p.Infra.SourceScanSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigStatic.SourceScanSpec),
+            ],
             m.Field(description="Production-only source discovery contract"),
         ]
         mutation_lock: Annotated[
-            FlextInfraModelsConfigStatic.MutationLockSpec,
+            Annotated[
+                p.Infra.MutationLockSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigStatic.MutationLockSpec
+                ),
+            ],
             m.Field(description="Bounded wait for a mutation scope lock"),
         ]
         release: Annotated[
-            FlextInfraModelsConfigRelease.ReleasePolicySpec,
+            Annotated[
+                p.Infra.ReleasePolicySpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRelease.ReleasePolicySpec
+                ),
+            ],
             m.Field(description="Release protocol policy"),
         ]
         refactor_csv_campaigns: Annotated[
-            FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec,
+            Annotated[
+                p.Infra.RefactorCsvCampaignsSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec
+                ),
+            ],
             m.Field(
                 description="Declared CSV-driven rename campaigns for the mod verb",
             ),
         ]
 
-    class Root(FlextInfraModelsConfigContract.ConfigContract):
-        """Root payload deep-merged from flext-infra config files."""
+    class Root(FlextInfraModelsConfigContract.ConfigContract, frozen=False):
+        """Root payload deep-merged from flext-infra config files.
+
+        Not frozen: the ``Infra`` namespace is a read-write attribute, exactly
+        as its structural protocol declares it.
+        """
 
         Infra: Annotated[
-            FlextInfraModelsConfigRoot.Infra,
+            p.Infra.Infra,
+            t.schema_for_model(lambda: FlextInfraModelsConfigRoot.Infra),
             m.Field(description="Validated flext-infra namespace"),
         ]
 

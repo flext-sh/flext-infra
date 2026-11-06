@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.gates import FlextInfraGatesPyright
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,11 +20,11 @@ class TestsFlextInfraPyrightPublicContract:
     """Exercise the configured semantic owner with real source and type stubs."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("partially_generated", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("partially_generated", [False, True])
     def test_generated_facade_letter_remains_a_type_alias(
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         *,
         partially_generated: bool,
     ) -> None:
@@ -124,11 +122,11 @@ class TestsFlextInfraPyrightPublicContract:
             )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("selected", ["first", "second", "workspace"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("selected", ["first", "second", "workspace"])
     def test_homonymous_test_facades_resolve_in_their_own_project(
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         selected: str,
     ) -> None:
         """Identical facade imports resolve distinct inherited member contracts."""
@@ -212,8 +210,8 @@ class TestsFlextInfraPyrightPublicContract:
         tm.that(result.issues, eq=(), msg=result.raw_output)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("consumer", "private"),
         [
             (
@@ -252,7 +250,7 @@ class TestsFlextInfraPyrightPublicContract:
     )
     def test_publicness_uses_resolved_owner(
         tmp_path: Path,
-        tool_config_document: m.Infra.ToolConfigDocument,
+        tool_config_document: p.Infra.ToolConfigDocument,
         consumer: str,
         *,
         private: bool,

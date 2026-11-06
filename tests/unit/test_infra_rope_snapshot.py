@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, infra, m
-from tests import p, tm, u
+from flext_infra import config, infra
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraRopeSnapshot:
@@ -65,7 +65,7 @@ class TestsFlextInfraRopeSnapshot:
         first.evidence.append(evidence)
         tm.that(tuple(first.evidence), eq=(evidence,))
         tm.that(second.evidence, eq=[])
-        with pytest.raises(ValueError, match="binding"):
+        with u.Tests.raises(ValueError, match="binding"):
             m.Infra.NativeObservationContext.model_validate({
                 "paths": (),
                 "evidence": ({"kind": "module"},),
@@ -101,14 +101,14 @@ class TestsFlextInfraRopeSnapshot:
         (package / "provider_alias").symlink_to(provider, target_is_directory=True)
 
         with (
-            pytest.raises(ValueError, match="is not in the subpath"),
+            u.Tests.raises(ValueError, match="is not in the subpath"),
             u.Infra.facade_source_project(root) as (project, _sources),
         ):
             tuple(project.get_python_files())
 
     @staticmethod
-    @pytest.mark.parametrize("external", [False, True])
-    @pytest.mark.parametrize("planned", [False, True])
+    @c.Tests.MARK.parametrize("external", [False, True])
+    @c.Tests.MARK.parametrize("planned", [False, True])
     def test_declared_plan_overlays_without_touching_the_physical_source(
         tmp_path: Path,
         *,
@@ -298,7 +298,7 @@ class TestsFlextInfraRopeCandidateViews:
                 desired_mode=owned_before.mode,
             )
             with (
-                pytest.raises(ValueError, match="competing declarations"),
+                u.Tests.raises(ValueError, match="competing declarations"),
                 u.Infra.facade_source_project(
                     root,
                     declared_files=(competing,),
@@ -352,7 +352,7 @@ class TestsFlextInfraRopeCandidateViews:
                     tm.that(nested_sources[source], eq=inner.decode())
                     tm.that(parent_sources[source], eq=outer.decode())
                 with (
-                    pytest.raises(ValueError, match=str(consumer_failure)) as failure,
+                    u.Tests.raises(ValueError, match=str(consumer_failure)) as failure,
                     u.Infra.facade_source_project(
                         root, declared_files=(inner_plan,), source_project=project
                     ),
@@ -491,7 +491,7 @@ class TestsFlextInfraRopeCandidateViews:
                     tm.that(candidate.source_state(source) is before, eq=True)
                     tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
                 tm.that(retired.source_query(source, "exists"), eq=False)
-                with pytest.raises(FileNotFoundError):
+                with u.Tests.raises(FileNotFoundError):
                     retired.source_bytes(source)
                 tm.that(retired.source_state(source) is before, eq=True)
             tm.that(project.source_bytes(source), eq=physical)
@@ -520,7 +520,7 @@ class TestsFlextInfraRopeCandidateViews:
             ) as (candidate, candidate_sources):
                 tm.that(candidate.find_module(module_name), eq=None)
                 tm.that(source in candidate_sources, eq=False)
-                with pytest.raises(FileNotFoundError):
+                with u.Tests.raises(FileNotFoundError):
                     candidate.source_bytes(source)
                 tm.that(source.read_bytes(), eq=content)
             tm.that(
@@ -552,7 +552,7 @@ class TestsFlextInfraRopeCandidateViews:
                 desired_mode=before.mode,
             )
             with (
-                pytest.raises(ValueError, match="conflicts with captured state"),
+                u.Tests.raises(ValueError, match="conflicts with captured state"),
                 u.Infra.facade_source_project(
                     root, declared_files=(conflicting,), source_project=project
                 ),
@@ -563,7 +563,7 @@ class TestsFlextInfraRopeCandidateViews:
         tm.that(source.read_bytes(), eq=foreign)
 
     @staticmethod
-    @pytest.mark.parametrize("declared", [False, True])
+    @c.Tests.MARK.parametrize("declared", [False, True])
     def test_lazy_planning_reads_both_overlay_routes(
         tmp_path: Path, *, declared: bool
     ) -> None:
@@ -622,7 +622,7 @@ class TestsFlextInfraRopeCandidateViews:
         native_consumer(
             r"""sys.path.insert(0, sys.argv[1])
 import pytest
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 root, package = u.Tests.create_lazy_init_workspace(Path(sys.argv[2]))
 layout = tm.not_none(u.Infra.layout(root))
 source = package / "provider.py"
@@ -704,7 +704,7 @@ tm.that(source.exists(), eq=False)
                 snapshot.close()
 
     @staticmethod
-    @pytest.mark.parametrize("root_name", config.Infra.source_scan.roots)
+    @c.Tests.MARK.parametrize("root_name", config.Infra.source_scan.roots)
     def test_declared_package_root_keeps_qualified_imports(
         tmp_path: Path,
         root_name: str,
@@ -819,7 +819,7 @@ tm.that(source.exists(), eq=False)
         }
         with (
             infra.rope_workspace(repository_root) as rope,
-            pytest.raises(
+            u.Tests.raises(
                 ValueError,
                 match=r"outside its project",
             ) as guard_error,

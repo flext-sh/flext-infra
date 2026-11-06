@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codegen import FlextInfraCodegenScaffolder
-from tests import c, m, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenScaffolder:
@@ -44,8 +44,8 @@ class TestsFlextInfraCodegenScaffolder:
         project: Path,
         *,
         package_name: str = "test_project",
-    ) -> m.Infra.ProjectInfo:
-        project_info: m.Infra.ProjectInfo = u.Tests.create_project_info(
+    ) -> p.Infra.ProjectInfo:
+        project_info: p.Infra.ProjectInfo = u.Tests.create_project_info(
             project,
             name=project.name,
             package_name=package_name,

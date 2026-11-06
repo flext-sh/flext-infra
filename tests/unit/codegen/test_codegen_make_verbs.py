@@ -10,12 +10,10 @@ import os
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 def _run_make_help(
@@ -54,7 +52,7 @@ class TestsFlextInfraCodegenMakeVerbs:
     """Prove every declared verb renders one reachable, inert-input target."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -81,7 +79,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -105,7 +103,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(makefile, lacks="package=false (content-only root)")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -134,7 +132,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(makefile, has="_builtin_build_artifacts:")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -233,7 +231,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(invocation, lacks="--apply")
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_help_prints_description_as_literal_data(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -457,3 +455,113 @@ class TestsFlextInfraCodegenMakeVerbs:
                 tm.that(builtin_padded, has=f" {verb.name} ")
                 if verb.name not in body_free:
                     tm.that(makefile, has=f"_builtin-{verb.name}:")
+
+    @staticmethod
+    def _grouped_shape() -> u.Tests.MakeEnvironmentShape:
+        """Declare two product sections and one CLI-transported verb per section.
+
+        Returns:
+            The fixture shape carrying the declared sections and verbs.
+
+        """
+        common = config.Infra.codegen.make.common_verb_group
+        return u.Tests.MakeEnvironmentShape(
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(
+                    name="diag-route",
+                    group="diag",
+                    cli=("fixture-cli", "diag", "route"),
+                    arguments=("ADDRESS",),
+                    description="Consulta a rota efetiva.",
+                ),
+                m.Infra.MakeVerbSpec(
+                    name="infra-preview",
+                    group="infra",
+                    cli=("fixture-cli", "infra", "preview"),
+                    arguments=("STACK", "FORMAT"),
+                    description="Pré-visualiza a stack.",
+                ),
+            ),
+            verb_groups=(
+                m.Infra.MakeVerbGroupSpec(name=common, title="Desenvolvimento"),
+                m.Infra.MakeVerbGroupSpec(name="infra", title="Infraestrutura"),
+                m.Infra.MakeVerbGroupSpec(name="diag", title="Diagnóstico"),
+            ),
+        )
+
+    def test_help_renders_declared_sections_in_order(self, tmp_path: Path) -> None:
+        """Declared sections print in order, each listing only its own verbs."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+            shape=self._grouped_shape(),
+        )
+        stdout = _run_make_help(project_root).stdout
+        development = stdout.index("Desenvolvimento:")
+        infra = stdout.index("Infraestrutura:")
+        diag = stdout.index("Diagnóstico:")
+        tm.that(development < infra < diag, eq=True, msg=stdout)
+        tm.that(development < stdout.index("  setup ") < infra, eq=True, msg=stdout)
+        tm.that(infra < stdout.index("  infra-preview ") < diag, eq=True, msg=stdout)
+        tm.that(diag < stdout.index("  diag-route "), eq=True, msg=stdout)
+
+    def test_cli_verb_renders_quoted_transport(self, tmp_path: Path) -> None:
+        """A CLI verb forwards each declared input as one quoted option."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+            shape=self._grouped_shape(),
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        target = makefile.split("_builtin-infra-preview:", 1)[1].split("\n\n", 1)[0]
+        tm.that(target, has='--stack "$$FLEXT_VERB_STACK"')
+        tm.that(target, has='--format "$$FLEXT_VERB_FORMAT"')
+        tm.that(target, has='"$(RUNTIME_BIN)/fixture-cli" infra preview "$$@"')
+        tm.that(makefile, has="export FLEXT_VERB_STACK := $(value STACK)")
+        tm.that(target, lacks="_dispatch")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("verb_group", "declared"),
+        [("diag", ()), ("unknown", ("diag",))],
+    )
+    def test_verb_group_must_name_a_declared_section(
+        verb_group: str,
+        declared: tuple[str, ...],
+    ) -> None:
+        """A verb names a declared section; a section exists only by declaration."""
+        provider = u.Tests.provider()
+        with u.Tests.raises(m.ValidationError):
+            m.Infra.RepositoryRef(
+                name="demo",
+                distribution="demo",
+                url=f"{provider.base_url}/demo.git",
+                path=Path(),
+                role=c.Infra.MakeProfile.STANDALONE,
+                provider=provider.name,
+                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
+                codegen=c.Infra.CodegenKind.CONFORM,
+                package=False,
+                editable=False,
+                read_only=False,
+                extra_verbs=(
+                    m.Infra.MakeVerbSpec(
+                        name="diag-route", group=verb_group, description="Rota."
+                    ),
+                ),
+                verb_groups=tuple(
+                    m.Infra.MakeVerbGroupSpec(name=name, title=name.title())
+                    for name in declared
+                ),
+            )
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("token", ["infra;rm", "Infra", "$(X)", ""])
+    def test_cli_route_tokens_are_shell_inert(token: str) -> None:
+        """Route words are lowercase identifiers; anything else is refused."""
+        with u.Tests.raises(m.ValidationError):
+            m.Infra.MakeVerbSpec(
+                name="infra-preview",
+                cli=("fixture-cli", token),
+                description="Pré-visualiza.",
+            )

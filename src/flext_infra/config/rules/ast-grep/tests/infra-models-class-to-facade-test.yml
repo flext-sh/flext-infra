@@ -1,16 +1,25 @@
 id: infra-models-class-to-facade
 valid:
 - |
-  from flext_infra import m
-  value: m.Infra.ProjectInfo
+  from flext_infra import m, p
+  value: p.Infra.ProjectInfo
 - |
   def record() -> None:
-      from flext_infra import m
+      from flext_infra import m, p
       _ = m
 
   def load() -> None:
       value = FlextInfraModelsCore.PytestCollectionManifest
-invalid:
 - |
   from flext_infra import m
+  value = FlextInfraModelsWorkspace.ProjectInfo(name="project")
+- |
+  from flext_infra import m
+  value: FlextInfraModelsWorkspace.ProjectInfo
+- |
+  from flext_infra import p
+  value: p.Infra.ProjectInfo = FlextInfraModelsWorkspace.ProjectInfo(name="project")
+invalid:
+- |
+  from flext_infra import p
   value: FlextInfraModelsWorkspace.ProjectInfo

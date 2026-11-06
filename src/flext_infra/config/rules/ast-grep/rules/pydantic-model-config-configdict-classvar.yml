@@ -1,5 +1,5 @@
-# Same contract as `pydantic-model-config-m-configdict-classvar`, for modules
-# that bind `ConfigDict` directly instead of through the `m` facade.
+# ClassVar metadata for foundation modules that bind the native ConfigDict
+# contract directly. Facade-valued constructors use the companion typed rule.
 #
 # Idempotent: the rewrite yields an annotated assignment, which the plain
 # assignment pattern never matches.
@@ -18,5 +18,5 @@ rule:
           kind: class_definition
 fix: "model_config: ClassVar[ConfigDict] = ConfigDict($$$ARGS)"
 message: >-
-  model_config must be a ClassVar; a bare assignment declares a pydantic
-  field instead of model metadata.
+  FLEXT model_config declarations explicitly identify class metadata with
+  ClassVar while retaining the directly bound native constructor and type.

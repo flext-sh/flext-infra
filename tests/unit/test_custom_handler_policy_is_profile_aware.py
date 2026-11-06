@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm
+from tests import c, m, p, tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
@@ -21,7 +19,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     @staticmethod
     def test_every_declared_profile_has_a_custom_handler_policy() -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        codegen_profiles: tuple[m.Infra.ProfileSpec, ...] = (
+        codegen_profiles: tuple[p.Infra.ProfileSpec, ...] = (
             config.Infra.codegen.profiles
         )
         declared = frozenset(
@@ -37,7 +35,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         tm.that(declared - covered, empty=True)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_profile_permissions_follow_declared_overrides(
         profile: c.Infra.MakeProfile,
     ) -> None:
@@ -63,8 +61,8 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("allow_public_targets", [False, True])
-    @pytest.mark.parametrize("allow_toolchain_declarations", [False, True])
+    @c.Tests.MARK.parametrize("allow_public_targets", [False, True])
+    @c.Tests.MARK.parametrize("allow_toolchain_declarations", [False, True])
     def test_validator_honours_the_permissions_it_is_given(
         *, allow_public_targets: bool, allow_toolchain_declarations: bool
     ) -> None:

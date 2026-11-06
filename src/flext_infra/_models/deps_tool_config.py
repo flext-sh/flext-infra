@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsDepsToolConfigLinters,
     FlextInfraModelsDepsToolConfigTypeCheckers,
@@ -73,27 +73,29 @@ class FlextInfraModelsDepsToolConfig(
     class ModPhasesConfig(m.ArbitraryTypesModel):
         """Component selection for ``make mod`` phases (toggles are data)."""
 
-        import_alignment: Annotated[
-            bool,
-            m.Field(
-                alias="import-alignment",
-                default=True,
-                description=("Run the rope-native import-alignment phase of make mod."),
+        import_alignment: bool = m.Field(
+            default=True,
+            alias="import-alignment",
+            description="Run the rope-native import-alignment phase of make mod.",
+        )
+        pass_cap: int = m.Field(
+            alias="pass-cap",
+            gt=0,
+            description=(
+                "Most passes of the native stage sequence before the cascade must reach"
+                " its fixed point; reaching it fails."
             ),
-        ] = True
-        pass_cap: Annotated[
-            int,
-            m.Field(
-                alias="pass-cap",
-                gt=0,
-                description=(
-                    "Most passes of the native stage sequence before the "
-                    "cascade must reach its fixed point; reaching it fails."
-                ),
-            ),
-        ]
+        )
         stages: Annotated[
-            tuple[FlextInfraModelsDepsToolConfig.ModStageConfig, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ModStageConfig,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsDepsToolConfig.ModStageConfig
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -142,7 +144,10 @@ class FlextInfraModelsDepsToolConfig(
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
 
-        phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
+        phases: Annotated[
+            p.Infra.ModPhasesConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModPhasesConfig),
+        ] = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
 
@@ -212,235 +217,170 @@ class FlextInfraModelsDepsToolConfig(
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
-        slow_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="slow-timeout-seconds",
-                gt=0,
-                description="Hard maximum runtime for one explicitly slow item.",
+        slow_timeout_seconds: int = m.Field(
+            alias="slow-timeout-seconds",
+            gt=0,
+            description="Hard maximum runtime for one explicitly slow item.",
+        )
+        slow_marker: t.NonEmptyStr = m.Field(
+            alias="slow-marker",
+            description="Native pytest marker whose items run in their own phase.",
+        )
+        run_timeout_seconds: int = m.Field(
+            alias="run-timeout-seconds",
+            gt=0,
+            le=1800,
+            description=(
+                "Fleet-default wall-clock maximum for one testmon runner operation. "
+                "Repositories whose session prepares a real local runtime (for example "
+                "the Docker OUD stack) may declare a higher budget; the previous 120s "
+                "fleet ceiling predates in-session real-runtime preparation and is "
+                "recorded in the fleet policy notes."
             ),
-        ]
-        slow_marker: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="slow-marker",
-                description="Native pytest marker whose items run in their own phase.",
+        )
+        termination_grace_seconds: int = m.Field(
+            alias="termination-grace-seconds",
+            gt=0,
+            description="Grace period reserved inside the invocation deadline.",
+        )
+        max_failures: int = m.Field(
+            alias="max-failures",
+            ge=1,
+            description="Maximum failures before the pytest invocation stops.",
+        )
+        enforcement_plugin: t.NonEmptyStr = m.Field(
+            alias="enforcement-plugin",
+            description="Required pytest11 enforcement plugin loaded by Make.",
+        )
+        progress_args: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="progress-args",
+            strict=False,
+            min_length=1,
+            description="Arguments that expose each pytest item and live progress.",
+        )
+        report_args: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="report-args",
+            strict=False,
+            min_length=1,
+            description="Canonical concise pytest reporting arguments.",
+        )
+        diagnostic_args: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="diagnostic-args",
+            strict=False,
+            min_length=1,
+            description="Canonical expanded pytest diagnostic arguments.",
+        )
+        parallel_workers: int = m.Field(
+            alias="parallel-workers",
+            gt=0,
+            le=16,
+            description="Upper pytest-xdist worker ceiling for full runs.",
+        )
+        parallel_worker_memory_gb: int = m.Field(
+            alias="parallel-worker-memory-gb",
+            gt=0,
+            le=64,
+            description=(
+                "Physical-memory reservation per xdist worker; the runner also bounds "
+                "workers by available CPU."
             ),
-        ]
-        run_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="run-timeout-seconds",
-                gt=0,
-                le=1800,
-                description=(
-                    "Fleet-default wall-clock maximum for one testmon runner "
-                    "operation. Repositories whose session prepares a real "
-                    "local runtime (for example the Docker OUD stack) may "
-                    "declare a higher budget; the previous 120s fleet ceiling "
-                    "predates in-session real-runtime preparation and is "
-                    "recorded in the fleet policy notes."
+        )
+        parallel_distribution: Literal["load", "loadscope"] = m.Field(
+            alias="parallel-distribution",
+            description="Pytest-xdist scheduler for full runs.",
+        )
+        loadscope_reorder: bool = m.Field(
+            alias="loadscope-reorder",
+            strict=True,
+            description="Let the native loadscope scheduler reorder scopes by size.",
+        )
+        parallel_schedule_chunk: int = m.Field(
+            alias="parallel-schedule-chunk",
+            ge=1,
+            description=(
+                "Maximum tests scheduled per dispatch step under the load distribution."
+                " One makes the declared max-failures stop take effect at the next item"
+                " boundary in every worker instead of after each worker drains a large "
+                "pre-assigned chunk, so a red suite exits typed and early at fleet "
+                "scale inside the fixed run budget."
+            ),
+        )
+        parallel_worker_overrides: Mapping[
+            str,
+            Annotated[
+                p.Infra.PytestWorkerCeiling,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.PytestWorkerCeiling
                 ),
-            ),
-        ]
-        termination_grace_seconds: Annotated[
-            int,
-            m.Field(
-                alias="termination-grace-seconds",
-                gt=0,
-                description="Grace period reserved inside the invocation deadline.",
-            ),
-        ]
-        max_failures: Annotated[
-            int,
-            m.Field(
-                alias="max-failures",
-                ge=1,
-                description="Maximum failures before the pytest invocation stops.",
-            ),
-        ]
-        enforcement_plugin: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="enforcement-plugin",
-                description="Required pytest11 enforcement plugin loaded by Make.",
-            ),
-        ]
-        progress_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="progress-args",
-                strict=False,
-                min_length=1,
-                description="Arguments that expose each pytest item and live progress.",
-            ),
-        ]
-        report_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="report-args",
-                strict=False,
-                min_length=1,
-                description="Canonical concise pytest reporting arguments.",
-            ),
-        ]
-        diagnostic_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="diagnostic-args",
-                strict=False,
-                min_length=1,
-                description="Canonical expanded pytest diagnostic arguments.",
-            ),
-        ]
-        parallel_workers: Annotated[
-            int,
-            m.Field(
-                alias="parallel-workers",
-                gt=0,
-                le=16,
-                description="Upper pytest-xdist worker ceiling for full runs.",
-            ),
-        ]
-        parallel_worker_memory_gb: Annotated[
-            int,
-            m.Field(
-                alias="parallel-worker-memory-gb",
-                gt=0,
-                le=64,
-                description=(
-                    "Physical-memory reservation per xdist worker; the runner "
-                    "also bounds workers by available CPU."
-                ),
-            ),
-        ]
-        parallel_distribution: Annotated[
-            Literal["load", "loadscope"],
-            m.Field(
-                alias="parallel-distribution",
-                description="Pytest-xdist scheduler for full runs.",
-            ),
-        ]
-        loadscope_reorder: Annotated[
-            bool,
-            m.Field(
-                alias="loadscope-reorder",
-                strict=True,
-                description=(
-                    "Let the native loadscope scheduler reorder scopes by size."
-                ),
-            ),
-        ]
-        parallel_schedule_chunk: Annotated[
-            int,
-            m.Field(
-                alias="parallel-schedule-chunk",
-                ge=1,
-                description=(
-                    "Maximum tests scheduled per dispatch step under the load "
-                    "distribution. One makes the declared max-failures stop "
-                    "take effect at the next item boundary in every worker "
-                    "instead of after each worker drains a large pre-assigned "
-                    "chunk, so a red suite exits typed and early at fleet "
-                    "scale inside the fixed run budget."
-                ),
-            ),
-        ]
-        parallel_worker_overrides: Annotated[
-            Mapping[str, FlextInfraModelsDepsToolConfig.PytestWorkerCeiling],
-            m.Field(
-                alias="parallel-worker-overrides",
-                description=(
-                    "Per declared-project worker ceilings (``[project].name`` "
-                    "→ absolute ``workers`` or CPU ``cpu_fraction``) resolved "
-                    "by the runner over the fleet-wide ``parallel-workers`` "
-                    "default: a consumer whose measured suite cannot fit the "
-                    "single-worker process boundary declares its ceiling "
-                    "here, inside the fleet cycle. The legacy bare-integer "
-                    "form still reads as an absolute ``workers`` ceiling."
-                ),
-            ),
-        ] = {}
-        profile_sort: Annotated[
-            Literal[
-                "calls",
-                "cumulative",
-                "filename",
-                "line",
-                "name",
-                "nfl",
-                "pcalls",
-                "stdname",
-                "time",
             ],
-            m.Field(alias="profile-sort", description="Sort key for cProfile reports."),
-        ]
-        profile_limit: Annotated[
-            int,
-            m.Field(
-                alias="profile-limit",
-                gt=0,
-                le=1000,
-                description="Maximum cProfile rows rendered.",
+        ] = m.Field(
+            {},
+            alias="parallel-worker-overrides",
+            description=(
+                "Per declared-project worker ceilings (``[project].name`` → absolute "
+                "``workers`` or CPU ``cpu_fraction``) resolved by the runner over the "
+                "fleet-wide ``parallel-workers`` default: a consumer whose measured "
+                "suite cannot fit the single-worker process boundary declares its "
+                "ceiling here, inside the fleet cycle. The legacy bare-integer form "
+                "still reads as an absolute ``workers`` ceiling."
             ),
-        ]
-        profile_suite_filename: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="profile-suite-filename",
-                description="Suite cProfile artifact filename",
-            ),
-        ]
-        profile_process_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="profile-process-directory",
-                description="Per-process cProfile artifact directory",
-            ),
-        ]
+        )
+        profile_sort: Literal[
+            "calls",
+            "cumulative",
+            "filename",
+            "line",
+            "name",
+            "nfl",
+            "pcalls",
+            "stdname",
+            "time",
+        ] = m.Field(alias="profile-sort", description="Sort key for cProfile reports.")
+        profile_limit: int = m.Field(
+            alias="profile-limit",
+            gt=0,
+            le=1000,
+            description="Maximum cProfile rows rendered.",
+        )
+        profile_suite_filename: t.NonEmptyStr = m.Field(
+            alias="profile-suite-filename",
+            description="Suite cProfile artifact filename",
+        )
+        profile_process_directory: t.NonEmptyStr = m.Field(
+            alias="profile-process-directory",
+            description="Per-process cProfile artifact directory",
+        )
         # Collection roots are validated config, not local state.
 
-        standard_markers: Annotated[
-            Sequence[str],
-            m.Field(
-                alias="standard-markers",
-                description="Standard pytest markers enforced by modernizer.",
+        standard_markers: Sequence[str] = m.Field(
+            alias="standard-markers",
+            description="Standard pytest markers enforced by modernizer.",
+        )
+        external_gate_markers: tuple[str, ...] = m.Field(
+            alias="external-gate-markers",
+            strict=False,
+            description=(
+                "Markers of external-token gates deselected by offline verification and"
+                " reported as NOT EXECUTED; each must be declared in standard-markers."
             ),
-        ]
-        external_gate_markers: Annotated[
-            tuple[str, ...],
-            m.Field(
-                alias="external-gate-markers",
-                strict=False,
-                description=(
-                    "Markers of external-token gates deselected by offline"
-                    " verification and reported as NOT EXECUTED; each must be"
-                    " declared in standard-markers."
-                ),
-            ),
-        ]
+        )
 
         @property
         def external_gate_deselection(self) -> str:
             """Pytest ``-m`` expression that skips external gates."""
             return f"not ({' or '.join(self.external_gate_markers)})"
 
-        ci_excluded_markers: Annotated[
-            tuple[str, ...],
-            m.Field(
-                alias="ci-excluded-markers",
-                strict=False,
-                description="Declared markers deselected in CI and pre-commit only.",
-            ),
-        ]
-        ci_excluded_fixtures: Annotated[
-            tuple[str, ...],
-            m.Field(
-                alias="ci-excluded-fixtures",
-                strict=False,
-                description="Fixtures that need local-only provisioning",
-            ),
-        ] = ()
+        ci_excluded_markers: tuple[str, ...] = m.Field(
+            alias="ci-excluded-markers",
+            strict=False,
+            description="Declared markers deselected in CI and pre-commit only.",
+        )
+        ci_excluded_fixtures: tuple[str, ...] = m.Field(
+            (),
+            alias="ci-excluded-fixtures",
+            strict=False,
+            description="Fixtures that need local-only provisioning",
+        )
 
         @m.computed_field
         @property
@@ -577,15 +517,12 @@ class FlextInfraModelsDepsToolConfig(
     class TomlsortConfig(m.ArbitraryTypesModel):
         """Process budget for native TOML formatting."""
 
-        process_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                alias="process-timeout-seconds",
-                gt=0,
-                le=60,
-                description="Maximum runtime for Taplo resolution or formatting.",
-            ),
-        ]
+        process_timeout_seconds: int = m.Field(
+            alias="process-timeout-seconds",
+            gt=0,
+            le=60,
+            description="Maximum runtime for Taplo resolution or formatting.",
+        )
 
     class JscpdToolConfig(m.ArbitraryTypesModel):
         """jscpd's own clone-semantics passes the duplication gate selects."""
@@ -599,19 +536,18 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         semantic: Annotated[
-            FlextInfraModelsDuplication.JscpdSemantic,
+            Annotated[
+                p.Infra.JscpdSemantic,
+                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdSemantic),
+            ],
             m.Field(description="Embedding pass host (--semantic)."),
         ]
-        ignore_patterns: Annotated[
-            t.StrTuple,
-            m.Field(
-                alias="ignore-patterns",
-                description=(
-                    "Operator-authorized code-level regexes jscpd skips "
-                    "(--ignore-pattern)."
-                ),
+        ignore_patterns: t.StrTuple = m.Field(
+            alias="ignore-patterns",
+            description=(
+                "Operator-authorized code-level regexes jscpd skips (--ignore-pattern)."
             ),
-        ]
+        )
         ignore: Annotated[
             Sequence[str],
             m.Field(
@@ -650,136 +586,202 @@ class FlextInfraModelsDepsToolConfig(
     class MarkdownConfig(m.ArbitraryTypesModel):
         """Markdown rules; artifact and exclusion declarations own file scope."""
 
-        projected_blocks: Annotated[
-            tuple[FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock, ...],
-            m.Field(
-                alias="projected-blocks",
-                description=(
-                    "Foreign writers whose marker-delimited blocks the Markdown "
-                    "lint reads as masked lines; FLEXT-owned blocks never appear."
+        projected_blocks: tuple[
+            Annotated[
+                p.Infra.MarkdownProjectedBlock,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock
                 ),
+            ],
+            ...,
+        ] = m.Field(
+            alias="projected-blocks",
+            description=(
+                "Foreign writers whose marker-delimited blocks the Markdown lint reads "
+                "as masked lines; FLEXT-owned blocks never appear."
             ),
-        ]
+        )
 
-        findings_exit_codes: Annotated[
-            tuple[int, ...],
-            m.Field(
-                alias="findings-exit-codes",
-                description="Exit statuses with which rumdl reports its findings.",
+        findings_exit_codes: tuple[int, ...] = m.Field(
+            alias="findings-exit-codes",
+            description="Exit statuses with which rumdl reports its findings.",
+        )
+        default_enabled: bool = m.Field(
+            alias="default-enabled",
+            description=(
+                "Whether rules not declared in rules stay enabled; false turns "
+                "the declared rules into a strict allowlist."
             ),
-        ]
+        )
+        extend_enable: Annotated[
+            t.StrTuple,
+            m.BeforeValidator(
+                lambda value: tuple(value) if isinstance(value, list) else value
+            ),
+            m.Field(
+                alias="extend-enable",
+                description="Opt-in rules activated on top of the default set.",
+            ),
+        ] = ()
         rules: Annotated[
             t.Infra.SettingsPairs,
-            m.Field(description="Ordered rules supported by both Markdown tools."),
-        ]
-        native_rules: Annotated[
-            t.Infra.SettingsPairs,
-            m.Field(
-                description="Native Markdown rule overrides for the execution tool."
-            ),
+            m.Field(description="Ordered rumdl rules and their options."),
         ]
         native_settings: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Native Markdown configuration tables."),
         ]
 
+        @m.model_validator(mode="after")
+        def _validate_rule_ids(self) -> Self:
+            for table_name, names in (
+                ("rules", [name for name, _value in self.rules]),
+                ("extend-enable", list(self.extend_enable)),
+            ):
+                invalid = sorted({
+                    name
+                    for name in names
+                    if c.Infra.MARKDOWN_RULE_ID_PATTERN.fullmatch(name) is None
+                })
+                duplicated = sorted({name for name in names if names.count(name) > 1})
+                if invalid or duplicated:
+                    msg = (
+                        f"{table_name} must declare unique MD### rule ids "
+                        f"(use default-enabled for control); invalid={invalid}, "
+                        f"duplicated={duplicated}"
+                    )
+                    raise ValueError(msg)
+            return self
+
+        @m.model_validator(mode="after")
+        def _validate_native_tables(self) -> Self:
+            tables = [table for table, _value in self.native_settings]
+            owned = sorted({
+                table
+                for table in tables
+                if table.split(".", 1)[0] in c.Infra.MARKDOWN_GENERATOR_OWNED_TABLES
+            })
+            duplicated = sorted({table for table in tables if tables.count(table) > 1})
+            disabled = {name for name, value in self.rules if value is False}
+            contradictory = sorted(set(self.extend_enable) & disabled)
+            if owned or duplicated or contradictory:
+                msg = (
+                    "native_settings must not redeclare renderer-owned or "
+                    f"duplicated tables, nor extend-enable disabled rules: "
+                    f"owned={owned}, duplicated={duplicated}, "
+                    f"contradictory={contradictory}"
+                )
+                raise ValueError(msg)
+            return self
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
+        markdown: Annotated[
+            p.Infra.MarkdownConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.MarkdownConfig),
+        ] = m.Field(
             description="Markdown lint settings",
         )
-        ruff: FlextInfraModelsDepsToolConfig.RuffConfig = m.Field(
+        ruff: Annotated[
+            p.Infra.RuffConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfigLinters.RuffConfig
+            ),
+        ] = m.Field(
             description="Ruff settings",
         )
-        mypy: FlextInfraModelsDepsToolConfig.MypyConfig = m.Field(
+        mypy: Annotated[
+            p.Infra.MypyConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfigLinters.MypyConfig
+            ),
+        ] = m.Field(
             description="Mypy settings",
         )
-        pyright: FlextInfraModelsDepsToolConfig.PyrightConfig = m.Field(
+        pyright: Annotated[
+            p.Infra.PyrightConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig
+            ),
+        ] = m.Field(
             description="Pyright settings",
         )
-        pyrefly: FlextInfraModelsDepsToolConfig.PyreflyConfig = m.Field(
+        pyrefly: Annotated[
+            p.Infra.PyreflyConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig
+            ),
+        ] = m.Field(
             description="Pyrefly settings",
         )
-        pytest: FlextInfraModelsDepsToolConfig.PytestConfig = m.Field(
+        pytest: Annotated[
+            p.Infra.PytestConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
+        ] = m.Field(
             description="Pytest settings",
         )
-        tomlsort: FlextInfraModelsDepsToolConfig.TomlsortConfig = m.Field(
+        tomlsort: Annotated[
+            p.Infra.TomlsortConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.TomlsortConfig),
+        ] = m.Field(
             description="Tomlsort settings",
         )
-        jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
+        jscpd: Annotated[
+            p.Infra.JscpdToolConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.JscpdToolConfig),
+        ] = m.Field(
             description="jscpd clone-semantics passes",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
-        import_layer_order: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="import-layer-order",
-                description=(
-                    "Canonical dependency layer order for project "
-                    "imports. Lower index = lower layer. A module may "
-                    "runtime-import modules at equal or lower index "
-                    "(relative-dot within the same package); importing "
-                    "a module at higher index is a reverse dependency "
-                    "and the engine emits it under ``if TYPE_CHECKING:`` "
-                    "(see ``reverse_import_mode``). Any value not in "
-                    "the fleet SSOT is rejected."
-                ),
+        import_layer_order: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="import-layer-order",
+            description=(
+                "Canonical dependency layer order for project imports. Lower index = "
+                "lower layer. A module may runtime-import modules at equal or lower "
+                "index (relative-dot within the same package); importing a module at "
+                "higher index is a reverse dependency and the engine emits it under "
+                "``if TYPE_CHECKING:`` (see ``reverse_import_mode``). Any value not in "
+                "the fleet SSOT is rejected."
             ),
-        ]
-        layer_aliases: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                alias="layer-aliases",
-                description=(
-                    "Runtime aliases of the core package that rank inside a "
-                    "declared layer instead of forming their own: the alias "
-                    "and the module the core package binds it to share that "
-                    "layer's rank. Same-rank imports are runtime-legal; the "
-                    "import-cycle law keeps them acyclic."
-                ),
+        )
+        layer_aliases: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
+            alias="layer-aliases",
+            description=(
+                "Runtime aliases of the core package that rank inside a declared layer "
+                "instead of forming their own: the alias and the module the core "
+                "package binds it to share that layer's rank. Same-rank imports are "
+                "runtime-legal; the import-cycle law keeps them acyclic."
             ),
-        ]
-        stdlib_backports: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="stdlib-backports",
-                description=(
-                    "Import roots of stdlib backports that every module may "
-                    "import like the standard library itself (operator "
-                    "decision 2026-10-24, ADR-028). The facade boundary "
-                    "derives stdlib from ``sys.stdlib_module_names`` and adds "
-                    "only these declared roots."
-                ),
+        )
+        stdlib_backports: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="stdlib-backports",
+            description=(
+                "Import roots of stdlib backports that every module may import like the"
+                " standard library itself (operator decision 2026-10-24, ADR-028). The "
+                "facade boundary derives stdlib from ``sys.stdlib_module_names`` and "
+                "adds only these declared roots."
             ),
-        ]
-        reverse_import_mode: Annotated[
-            Literal["type_checking"],
-            m.Field(
-                alias="reverse-import-mode",
-                description=(
-                    "How reverse (upward) runtime dependencies are "
-                    "emitted. ``type_checking`` moves the import into "
-                    "an ``if TYPE_CHECKING:`` block. The engine rejects "
-                    "any other value; reverse runtime imports are a "
-                    "module defect fixed at the module root cause."
-                ),
+        )
+        reverse_import_mode: Literal["type_checking"] = m.Field(
+            alias="reverse-import-mode",
+            description=(
+                "How reverse (upward) runtime dependencies are emitted. "
+                "``type_checking`` moves the import into an ``if TYPE_CHECKING:`` "
+                "block. The engine rejects any other value; reverse runtime imports are"
+                " a module defect fixed at the module root cause."
             ),
-        ]
-        forward_import_form: Annotated[
-            Literal["absolute"],
-            m.Field(
-                alias="forward-import-form",
-                description=(
-                    "How forward (downward) intra-project imports are "
-                    "emitted. ``absolute`` names the full module path; "
-                    "relative imports are banned."
-                ),
+        )
+        forward_import_form: Literal["absolute"] = m.Field(
+            alias="forward-import-form",
+            description=(
+                "How forward (downward) intra-project imports are emitted. ``absolute``"
+                " names the full module path; relative imports are banned."
             ),
-        ]
+        )
 
         @m.model_validator(mode="after")
         def _validate_layer_aliases(self) -> Self:
@@ -815,29 +817,22 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ]
-        model_declaration_modules: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="model-declaration-modules",
-                strict=False,
-                description=(
-                    "Modules of the model library whose callables declare "
-                    "models (field specifiers, validators, serializers)."
-                ),
+        model_declaration_modules: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="model-declaration-modules",
+            strict=False,
+            description=(
+                "Modules of the model library whose callables declare models (field "
+                "specifiers, validators, serializers)."
             ),
-        ]
-        type_constructor_modules: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="type-constructor-modules",
-                strict=False,
-                description=(
-                    "Modules of the model library whose callables build "
-                    "constrained types (``constr``, ``conint``) used in "
-                    "annotations."
-                ),
+        )
+        type_constructor_modules: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="type-constructor-modules",
+            strict=False,
+            description=(
+                "Modules of the model library whose callables build constrained types "
+                "(``constr``, ``conint``) used in annotations."
             ),
-        ]
+        )
 
         @m.model_validator(mode="after")
         def _validate_owner_kinds(self) -> Self:
@@ -859,17 +854,14 @@ class FlextInfraModelsDepsToolConfig(
     class SmellsConfig(m.FrozenModel):
         """Repair guidance attached to qlty smell findings."""
 
-        fix_text: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                alias="fix-text",
-                min_length=1,
-                description=(
-                    "Repair text appended to each qlty finding, keyed by the "
-                    "qlty check name (the SARIF ruleId suffix)."
-                ),
+        fix_text: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
+            alias="fix-text",
+            min_length=1,
+            description=(
+                "Repair text appended to each qlty finding, keyed by the qlty check "
+                "name (the SARIF ruleId suffix)."
             ),
-        ]
+        )
         enforce: Annotated[
             Mapping[t.NonEmptyStr, t.Infra.EnforcementIds],
             m.Field(
@@ -884,17 +876,14 @@ class FlextInfraModelsDepsToolConfig(
     class AccessorPolicyConfig(m.FrozenModel):
         """Accessor naming policy enforced by the accessor migration."""
 
-        forbidden_prefixes: Annotated[
-            Mapping[t.NonEmptyStr, t.NonEmptyStr],
-            m.Field(
-                alias="forbidden-prefixes",
-                min_length=1,
-                description=(
-                    "Public method-name prefixes that declare an accessor, "
-                    "mapped to the domain-verb guidance that replaces them."
-                ),
+        forbidden_prefixes: Mapping[t.NonEmptyStr, t.NonEmptyStr] = m.Field(
+            alias="forbidden-prefixes",
+            min_length=1,
+            description=(
+                "Public method-name prefixes that declare an accessor, mapped to the "
+                "domain-verb guidance that replaces them."
             ),
-        ]
+        )
 
     class ToolConfigDocument(m.ContractModel, str_strip_whitespace=False):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
@@ -912,56 +901,68 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
 
-        derived_tool_roots: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                alias="derived-tool-roots",
-                strict=False,
-                description=(
-                    "Native roots whose owner combines declared options with "
-                    "typed topology or execution policy."
-                ),
+        derived_tool_roots: tuple[t.NonEmptyStr, ...] = m.Field(
+            alias="derived-tool-roots",
+            strict=False,
+            description=(
+                "Native roots whose owner combines declared options with typed topology"
+                " or execution policy."
             ),
-        ]
+        )
 
-        derived_settings: Annotated[
-            Mapping[
-                t.NonEmptyStr,
-                Annotated[tuple[t.NonEmptyStr, ...], m.Field(strict=False)],
-            ],
-            m.Field(
-                alias="derived-settings",
-                description="Native keys owned by topology and execution policy.",
-            ),
-        ]
-        raw_check_receipt_suffix: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                alias="raw-check-receipt-suffix",
-                pattern=r"^\.[A-Za-z0-9_.-]+$",
-                description="Filename suffix for verbatim native check receipts.",
-            ),
-        ]
-        tools: FlextInfraModelsDepsToolConfig.ToolConfigTools = m.Field(
+        derived_settings: Mapping[
+            t.NonEmptyStr, Annotated[tuple[t.NonEmptyStr, ...], m.Field(strict=False)]
+        ] = m.Field(
+            alias="derived-settings",
+            description="Native keys owned by topology and execution policy.",
+        )
+        raw_check_receipt_suffix: t.NonEmptyStr = m.Field(
+            alias="raw-check-receipt-suffix",
+            pattern="^\\.[A-Za-z0-9_.-]+$",
+            description="Filename suffix for verbatim native check receipts.",
+        )
+        tools: Annotated[
+            p.Infra.ToolConfigTools,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ToolConfigTools),
+        ] = m.Field(
             description="Tools",
         )
-        lazy_init: FlextInfraModelsDepsToolConfig.LazyInitConfig = m.Field(
+        lazy_init: Annotated[
+            p.Infra.LazyInitConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.LazyInitConfig),
+        ] = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
         )
-        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
+        facade_members: Annotated[
+            p.Infra.FacadeMembersConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfig.FacadeMembersConfig
+            ),
+        ] = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
         )
-        smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
+        smells: Annotated[
+            p.Infra.SmellsConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.SmellsConfig),
+        ] = m.Field(
             description="Repair guidance for qlty smell findings.",
         )
-        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
+        accessor_policy: Annotated[
+            p.Infra.AccessorPolicyConfig,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig
+            ),
+        ] = m.Field(
             alias="accessor-policy",
             description="Accessor naming policy of the accessor migration.",
         )
 
-        mod: FlextInfraModelsDepsToolConfig.ModConfig = m.Field(
+        mod: Annotated[
+            p.Infra.ModConfig,
+            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModConfig),
+        ] = m.Field(
             description="Declarative make-mod phase policy.",
         )
 
@@ -1244,26 +1245,35 @@ class FlextInfraModelsDepsToolConfig(
         """One elected tooling document and its publication preimages."""
 
         document: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
+                ),
+            ],
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(description="Captured canonical and project configuration layers."),
         ]
 
     class ToolingRuntimeContext(m.ArbitraryTypesModel):
         """Resolved topology and native tool tables consumed by every template."""
 
-        document: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument | None,
-            m.Field(
-                exclude=True,
-                description=(
-                    "The elected tooling policy shared by every render context."
+        document: (
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
                 ),
-            ),
-        ] = None
+            ]
+            | None
+        ) = m.Field(
+            None,
+            exclude=True,
+            description="The elected tooling policy shared by every render context.",
+        )
         project_kind: Annotated[
             t.NonEmptyStr,
             m.Field(description="Resolved project classification"),
@@ -1276,13 +1286,11 @@ class FlextInfraModelsDepsToolConfig(
             Mapping[str, t.JsonMapping],
             m.Field(description="Conformed native tables keyed by declared table path"),
         ]
-        sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
-            m.Field(
-                exclude=True,
-                description="Original configuration layers bound to the render",
-            ),
-        ] = ()
+        sources: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
+            (),
+            exclude=True,
+            description="Original configuration layers bound to the render",
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfig"]

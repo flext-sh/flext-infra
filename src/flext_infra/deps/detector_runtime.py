@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
-from flext_infra.deps import FlextInfraDepsDetectorRuntimeSteps
+from flext_infra.deps._detector import FlextInfraDepsDetectorRuntimeSteps
 
 
 class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
@@ -25,7 +25,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
         self._detector = detector
         self._deps = deps
 
-    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
+    def run(self, params: p.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator).
 
         Returns:
@@ -60,8 +60,8 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
 
     def _finalize_run(
         self,
-        params: m.Infra.DetectCommand,
-        report_model: m.Infra.WorkspaceDependencyReport,
+        params: p.Infra.DetectCommand,
+        report_model: p.Infra.WorkspaceDependencyReport,
         venv_bin: Path,
     ) -> p.Result[bool]:
         """Publish the typed report and return its actual dependency verdict.

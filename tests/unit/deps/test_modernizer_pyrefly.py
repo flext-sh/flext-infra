@@ -9,14 +9,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
-from flext_infra.deps import (
-    FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraExtraPathsManager,
-    FlextInfraPyprojectModernizer,
-)
+from flext_infra.deps import FlextInfraExtraPathsManager, FlextInfraPyprojectModernizer
+from flext_infra.deps.phases import FlextInfraEnsurePyreflyConfigPhase
 from tests import c, m, t, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
@@ -159,7 +154,7 @@ class TestsFlextInfraModernizerPyrefly:
             ),
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "retired_key",
         ["fallback-python-interpreter-name", "ignore-errors-in-generated-code"],
     )

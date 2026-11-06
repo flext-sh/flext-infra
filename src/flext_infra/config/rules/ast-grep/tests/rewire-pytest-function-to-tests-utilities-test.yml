@@ -12,6 +12,9 @@ valid:
     value = pytest_helpers.raises
   - |
     pytest.fail("contract broken")
+  - |
+    with u.Tests.raises(ValueError):
+        pytest.fail("contract broken")
 invalid:
   - |
     with pytest.raises(ValueError):

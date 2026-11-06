@@ -7,12 +7,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
+    from tests.unit.codemod.test_assertion_cutover import (
+        TestsFlextInfraTestAssertionCutover,
+    )
     from tests.unit.codemod.test_codemod_import_cycle_source_scan import (
         TestsFlextInfraCodemodImportCycleSourceScan,
     )
@@ -31,6 +33,9 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_module_member_import_header import (
         TestsFlextInfraCodemodModuleMemberImportHeader,
     )
+    from tests.unit.codemod.test_namespace_import_cutover import (
+        TestsFlextInfraTestNamespaceImportCutover,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -40,12 +45,14 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodemodOwnPackageRoles",
     "TestsFlextInfraCodemodOwnPackageScans",
     "TestsFlextInfraConcreteMixinShells",
+    "TestsFlextInfraTestAssertionCutover",
+    "TestsFlextInfraTestNamespaceImportCutover",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "TestsFlextInfraCodemodGeneratedModuleUtility": (
             ".test_generated_module_utility"
         ),
@@ -58,6 +65,8 @@ install_lazy_exports(
         "TestsFlextInfraCodemodOwnPackageRoles": ".test_codemod_own_package_roles",
         "TestsFlextInfraCodemodOwnPackageScans": ".test_codemod_own_package_scans",
         "TestsFlextInfraConcreteMixinShells": ".test_concrete_mixin_shells",
-    }),
+        "TestsFlextInfraTestAssertionCutover": ".test_assertion_cutover",
+        "TestsFlextInfraTestNamespaceImportCutover": ".test_namespace_import_cutover",
+    },
     public_exports=__all__,
 )

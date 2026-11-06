@@ -1,278 +1,335 @@
 # Universal rules include the flext-core foundation required by flext-infra.
 # Other project identities belong to their owning repository's overlay.
 rules:
-  - id: core-retire-generic-typing-wrappers
-    operation: retire-generic-typing-wrappers
-    source_revision: 35f2da92c92aa99be5beef560380ea79f659d901
-    phase: contract-normalization
-    pattern: '${provider}'
-    goal: '${provider}'
-    arguments:
-      provider: name=flext_core._typings.FlextTypingBase
-  # Factory migration retains named/bound logger receivers. Direct u.* collapse
-  # needs separate runtime equivalence proof and is deliberately not elected.
-  # Rope types builtin values through its ``__builtins__`` namespace; the
-  # introspected ``builtins`` extension module never equals an inferred type.
-  - id: stdlib-module-logger-factory
-    phase: contract-normalization
-    pattern: '${factory}(${name})'
-    goal: 'u.fetch_logger(${name})'
-    arguments:
-      factory: name=logging.getLogger
-      name: type=__builtins__.str
-    imports: &logging_imports
-      u: from flext_core import u
-    bindings: &logging_bindings
-      u.fetch_logger: flext_core.u.fetch_logger
-    implementation_owner: &logging_implementation [flext_core, u.fetch_logger]
-    # Numeric stdlib log(), handler management, exported and escaping logger
-    # interfaces have no proven factory translation. Keep those native.
-    receiver_methods: &logging_emissions [debug, info, warning, error, critical]
-  - id: stdlib-keyword-logger-factory
-    phase: contract-normalization
-    pattern: '${factory}(name=${name})'
-    goal: 'u.fetch_logger(${name})'
-    arguments:
-      factory: name=logging.getLogger
-      name: type=__builtins__.str
-    imports: *logging_imports
-    bindings: *logging_bindings
-    implementation_owner: *logging_implementation
-    receiver_methods: *logging_emissions
-  - id: structlog-named-logger-factory
-    phase: contract-normalization
-    pattern: '${factory}(${name})'
-    goal: 'u.fetch_logger(${name})'
-    arguments:
-      factory: name=structlog.get_logger
-      name: type=__builtins__.str
-    imports: *logging_imports
-    bindings: *logging_bindings
-    implementation_owner: *logging_implementation
-    receiver_methods: *logging_emissions
-  - id: structlog-module-logger-factory
-    phase: contract-normalization
-    pattern: '${factory}()'
-    goal: 'u.fetch_logger(__name__)'
-    arguments:
-      factory: name=structlog.get_logger
-    imports: *logging_imports
-    bindings: *logging_bindings
-    implementation_owner: *logging_implementation
-    receiver_methods: *logging_emissions
-    # A function/class-local __name__ is not a proven caller module name.
-    unshadowed_builtins: [__name__]
-  # Only literal obsolete flags can disappear without changing evaluation.
-  # Attribute access, names and calls may have effects or raise; reject the
-  # candidate before publication rather than silently discard their evaluation.
-  - id: cli-result-error-without-verbose
-    phase: contract-normalization
-    pattern: '${emit}(${result}, verbose=${verbose})'
-    goal: '${emit}(${result})'
-    arguments:
-      emit: name=flext_cli.u.Cli.commands_emit_result_error
-    drops: [verbose]
-  - id: namespace-final-constant
-    phase: constant-consumers
-    families: [c]
-    scope_kinds: [Class]
-    pattern: '${name}: ${final}[${contract}] = ${value}'
-    goal: '${name}: ClassVar[${contract}] = ${value}'
-    arguments:
-      final: name=typing.Final
-    imports:
-      ClassVar: from typing import ClassVar
-    bindings:
-      ClassVar: typing.ClassVar
-  - id: pydantic-adapter-construction
-    phase: contract-normalization
-    pattern: '${adapter}(${contract})'
-    goal: 'u.type_adapter(t.TypeForm(${contract}))'
-    arguments:
-      adapter: name=pydantic.TypeAdapter
-    imports:
-      u: from flext_core import u
-      t.TypeForm: from typing_extensions import TypeForm
-    bindings:
-      u.type_adapter: pydantic.TypeAdapter
-      t.TypeForm: typing_extensions.TypeForm
-  - id: pydantic-required-field-metadata
-    phase: contract-normalization
-    reorders_annotation: true
-    required_field: true
-    call_target: field
-    model_bases: [pydantic.BaseModel]
-    scope_kinds: [Class]
-    pattern: '${name}: ${contract} = ${field}'
-    goal: '${name}: Annotated[${contract}, ${field}]'
-    arguments:
-      field:
-        - name=pydantic.Field
-        - name=flext_core.FlextModels.Field
-    imports:
-      Annotated: from typing import Annotated
-    bindings:
-      Annotated: typing.Annotated
-  - id: pydantic-defaulted-field-metadata
-    phase: contract-normalization
-    reorders_annotation: true
-    defaulted_field: true
-    value_default: default
-    call_target: field
-    model_bases: [pydantic.BaseModel]
-    scope_kinds: [Class]
-    pattern: '${name}: ${contract} = ${field}(${default})'
-    goal: '${name}: Annotated[${contract}, ${field}()] = ${default}'
-    arguments:
-      field:
-        - name=pydantic.Field
-        - name=flext_core.FlextModels.Field
-    imports:
-      Annotated: from typing import Annotated
-    bindings:
-      Annotated: typing.Annotated
-  - id: pydantic-unset-private-attribute
-    phase: contract-normalization
-    private_attribute: true
-    call_target: field
-    model_bases: [pydantic.BaseModel]
-    scope_kinds: [Class]
-    pattern: '${name}: ${contract} = ${field}()'
-    goal: '${name}: ${contract}'
-    arguments:
-      field:
-        - name=pydantic.PrivateAttr
-        - name=flext_core.FlextModels.PrivateAttr
-  - id: pydantic-annotated-factory
-    phase: contract-normalization
-    factory_default: factory
-    reorders_annotation: true
-    model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
-    goal: '${name}: ${contract} = ${field}(default_factory=${factory})'
-    arguments:
-      annotated: name=typing.Annotated
-      field: &pydantic_field_bindings
-        - name=pydantic.Field
-        - name=flext_core.FlextModels.Field
-  - id: pydantic-annotated-default
-    phase: contract-normalization
-    value_default: default
-    reorders_annotation: true
-    model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'
-    goal: '${name}: ${contract} = ${default}'
-    arguments:
-      annotated: name=typing.Annotated
-      field: *pydantic_field_bindings
-  # Only mutable builtin factories on proven read-only contracts need repair.
-  # The canonical typed factory resolves the complete contract on first use,
-  # after enclosing owners bind; Field metadata and flags remain unchanged.
-  # ``dict`` is matched
-  # as an unshadowed builtin: inside a model body Rope can resolve the name to
-  # the inherited ``BaseModel.dict`` method.
-  - id: pydantic-annotated-empty-factory
-    phase: contract-normalization
-    factory_default: collection
-    readonly_contract: contract
-    readonly_origins: &readonly_origins
-      - collections.abc.Mapping
-      - collections.abc.Sequence
-      - collections.abc.Set
-      - typing.Mapping
-      - typing.Sequence
-      - typing.AbstractSet
-      - builtins.tuple
-      - builtins.frozenset
-      - __builtin__.tuple
-      - __builtin__.frozenset
-    model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=${collection})'
-    deferred_contract: contract
-    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
-    imports: &empty_imports
-      u: from flext_core import u
-      t.TypeForm: from typing_extensions import TypeForm
-    bindings: &empty_bindings
-      u.empty: flext_core._utilities.pydantic.FlextUtilitiesPydantic.empty
-      t.TypeForm: typing_extensions.TypeForm
-    arguments:
-      annotated: name=typing.Annotated
-      collection: &empty_collections
-        - name=__builtin__.list
-        - name=__builtin__.set
-      field: *pydantic_field_bindings
-  - id: pydantic-annotated-empty-dict-factory
-    phase: contract-normalization
-    readonly_contract: contract
-    readonly_origins: *readonly_origins
-    model_bases: [pydantic.BaseModel]
-    unshadowed_builtins: [dict]
-    pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=dict)'
-    deferred_contract: contract
-    goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
-    imports: *empty_imports
-    bindings: *empty_bindings
-    arguments:
-      annotated: name=typing.Annotated
-      field: *pydantic_field_bindings
-  - id: pydantic-empty-factory
-    phase: contract-normalization
-    factory_default: collection
-    readonly_contract: contract
-    readonly_origins: *readonly_origins
-    model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${contract} = ${field}(default_factory=${collection})'
-    deferred_contract: contract
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})))'
-    imports: *empty_imports
-    bindings: *empty_bindings
-    arguments:
-      collection: *empty_collections
-      field: *pydantic_field_bindings
-  - id: pydantic-empty-dict-factory
-    phase: contract-normalization
-    readonly_contract: contract
-    readonly_origins: *readonly_origins
-    model_bases: [pydantic.BaseModel]
-    unshadowed_builtins: [dict]
-    pattern: '${name}: ${contract} = ${field}(default_factory=dict)'
-    deferred_contract: contract
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})))'
-    imports: *empty_imports
-    bindings: *empty_bindings
-    arguments:
-      field: *pydantic_field_bindings
-  - id: pydantic-described-empty-factory
-    phase: contract-normalization
-    factory_default: collection
-    readonly_contract: contract
-    readonly_origins: *readonly_origins
-    model_bases: [pydantic.BaseModel]
-    pattern: '${name}: ${contract} = ${field}(default_factory=${collection}, description=${description})'
-    deferred_contract: contract
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})), description=${description})'
-    imports: *empty_imports
-    bindings: *empty_bindings
-    arguments:
-      collection: *empty_collections
-      field: *pydantic_field_bindings
-  - id: pydantic-described-empty-dict-factory
-    phase: contract-normalization
-    readonly_contract: contract
-    readonly_origins: *readonly_origins
-    model_bases: [pydantic.BaseModel]
-    unshadowed_builtins: [dict]
-    pattern: '${name}: ${contract} = ${field}(default_factory=dict, description=${description})'
-    deferred_contract: contract
-    goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})), description=${description})'
-    imports: *empty_imports
-    bindings: *empty_bindings
-    arguments:
-      field: *pydantic_field_bindings
-  - id: native-explicit-delegation-methods
-    operation: materialize-delegations
-    phase: contract-normalization
-    pattern: '${receiver} = ${factory}(${callback}, ${prototype})'
-    goal: '${receiver} = ${factory}(${callback}, ${prototype})'
-    arguments: {}
+- id: core-retire-generic-typing-wrappers
+  operation: retire-generic-typing-wrappers
+  source_revision: 35f2da92c92aa99be5beef560380ea79f659d901
+  phase: contract-normalization
+  pattern: '${provider}'
+  goal: '${provider}'
+  arguments:
+    provider: name=flext_core._typings.FlextTypingBase
+- id: core-rename-protocol-model-root
+  phase: contract-normalization
+  pattern: '${facade}.Model'
+  goal: '${facade}.BaseModel'
+  arguments:
+    facade:
+    - name=flext_core.p
+    - name=flext_core.protocols.FlextCoreProtocols
+- id: core-rewire-protocol-root-holder
+  phase: contract-normalization
+  pattern: '${holder}.${member}'
+  goal: 'FlextProtocolsPydantic.${member}'
+  arguments:
+    holder: name=flext_core._protocols.base.FlextProtocolsBase
+    member:
+    - Base
+    - AttributeProbe
+    - ModuleOwned
+    - ModelCopy
+  imports:
+    FlextProtocolsPydantic: from flext_core._protocols.pydantic import FlextProtocolsPydantic
+  bindings:
+    FlextProtocolsPydantic: flext_core._protocols.pydantic.FlextProtocolsPydantic
+- id: core-rewire-protocol-root-model
+  phase: contract-normalization
+  pattern: '${holder}.Model'
+  goal: 'FlextProtocolsPydantic.BaseModel'
+  arguments:
+    holder: name=flext_core._protocols.base.FlextProtocolsBase
+  imports:
+    FlextProtocolsPydantic: from flext_core._protocols.pydantic import FlextProtocolsPydantic
+  bindings:
+    FlextProtocolsPydantic: flext_core._protocols.pydantic.FlextProtocolsPydantic
+# Factory migration retains named/bound logger receivers. Direct u.* collapse
+# needs separate runtime equivalence proof and is deliberately not elected.
+# Rope types builtin values through its ``__builtins__`` namespace; the
+# introspected ``builtins`` extension module never equals an inferred type.
+- id: stdlib-module-logger-factory
+  phase: contract-normalization
+  pattern: '${factory}(${name})'
+  goal: 'u.fetch_logger(${name})'
+  arguments:
+    factory: name=logging.getLogger
+    name: type=__builtins__.str
+  imports: &logging_imports
+    u: from flext_core import u
+  bindings: &logging_bindings
+    u.fetch_logger: u.fetch_logger
+  implementation_owner: &logging_implementation [ flext_core, u.fetch_logger ]
+  # Numeric stdlib log(), handler management, exported and escaping logger
+  # interfaces have no proven factory translation. Keep those native.
+  receiver_methods: &logging_emissions [ debug, info, warning, error, critical ]
+- id: stdlib-keyword-logger-factory
+  phase: contract-normalization
+  pattern: '${factory}(name=${name})'
+  goal: 'u.fetch_logger(${name})'
+  arguments:
+    factory: name=logging.getLogger
+    name: type=__builtins__.str
+  imports: *logging_imports
+  bindings: *logging_bindings
+  implementation_owner: *logging_implementation
+  receiver_methods: *logging_emissions
+- id: structlog-named-logger-factory
+  phase: contract-normalization
+  pattern: '${factory}(${name})'
+  goal: 'u.fetch_logger(${name})'
+  arguments:
+    factory: name=structlog.get_logger
+    name: type=__builtins__.str
+  imports: *logging_imports
+  bindings: *logging_bindings
+  implementation_owner: *logging_implementation
+  receiver_methods: *logging_emissions
+- id: structlog-module-logger-factory
+  phase: contract-normalization
+  pattern: '${factory}()'
+  goal: 'u.fetch_logger(__name__)'
+  arguments:
+    factory: name=structlog.get_logger
+  imports: *logging_imports
+  bindings: *logging_bindings
+  implementation_owner: *logging_implementation
+  receiver_methods: *logging_emissions
+  # A function/class-local __name__ is not a proven caller module name.
+  unshadowed_builtins: [ __name__ ]
+# Only literal obsolete flags can disappear without changing evaluation.
+# Attribute access, names and calls may have effects or raise; reject the
+# candidate before publication rather than silently discard their evaluation.
+- id: cli-result-error-without-verbose
+  phase: contract-normalization
+  pattern: '${emit}(${result}, verbose=${verbose})'
+  goal: '${emit}(${result})'
+  arguments:
+    emit: name=u.Cli.commands_emit_result_error
+  drops: [ verbose ]
+- id: namespace-final-constant
+  phase: constant-consumers
+  families: [ c ]
+  scope_kinds: [ Class ]
+  pattern: '${name}: ${final}[${contract}] = ${value}'
+  goal: '${name}: ClassVar[${contract}] = ${value}'
+  arguments:
+    final: name=typing.Final
+  imports:
+    ClassVar: from typing import ClassVar
+  bindings:
+    ClassVar: typing.ClassVar
+- id: pydantic-adapter-construction
+  phase: contract-normalization
+  # This Pydantic wave is intentionally closed. The native planner matches both
+  # the manifest distribution and Rope module identity, so similar models remain
+  # untouched until their own declarative migration is admitted.
+  scope: &pydantic_config_models_scope
+    targets:
+    - distribution: flext-grpc
+      module: flext_grpc.config_models
+    - distribution: flext-observability
+      module: flext_observability.config_models
+    - distribution: flext-dbt-ldap
+      module: flext_dbt_ldap.config_models
+    - distribution: flext-oracle-wms
+      module: flext_oracle_wms.config_models
+  pattern: '${adapter}(${contract})'
+  goal: 'u.type_adapter(t.TypeForm(${contract}))'
+  arguments:
+    adapter: name=pydantic.TypeAdapter
+  imports:
+    u: from flext_core import u
+    t.TypeForm: from typing_extensions import TypeForm
+  bindings:
+    u.type_adapter: pydantic.TypeAdapter
+    t.TypeForm: typing_extensions.TypeForm
+- id: pydantic-required-field-metadata
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  reorders_annotation: true
+  required_field: true
+  call_target: field
+  model_bases: [ pydantic.BaseModel ]
+  scope_kinds: [ Class ]
+  pattern: '${name}: ${contract} = ${field}'
+  goal: '${name}: Annotated[${contract}, ${field}]'
+  arguments:
+    field:
+    - name=pydantic.Field
+    - name=flext_core.FlextModels.Field
+  imports:
+    Annotated: from typing import Annotated
+  bindings:
+    Annotated: typing.Annotated
+- id: pydantic-defaulted-field-metadata
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  reorders_annotation: true
+  defaulted_field: true
+  value_default: default
+  call_target: field
+  model_bases: [ pydantic.BaseModel ]
+  scope_kinds: [ Class ]
+  pattern: '${name}: ${contract} = ${field}(${default})'
+  goal: '${name}: Annotated[${contract}, ${field}()] = ${default}'
+  arguments:
+    field:
+    - name=pydantic.Field
+    - name=flext_core.FlextModels.Field
+  imports:
+    Annotated: from typing import Annotated
+  bindings:
+    Annotated: typing.Annotated
+- id: pydantic-unset-private-attribute
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  private_attribute: true
+  call_target: field
+  model_bases: [ pydantic.BaseModel ]
+  scope_kinds: [ Class ]
+  pattern: '${name}: ${contract} = ${field}()'
+  goal: '${name}: ${contract}'
+  arguments:
+    field:
+    - name=pydantic.PrivateAttr
+    - name=flext_core.FlextModels.PrivateAttr
+- id: pydantic-annotated-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  factory_default: factory
+  reorders_annotation: true
+  model_bases: [ pydantic.BaseModel ]
+  pattern: '${name}: ${annotated}[${contract}, ${field}(default_factory=${factory})]'
+  goal: '${name}: ${contract} = ${field}(default_factory=${factory})'
+  arguments:
+    annotated: name=typing.Annotated
+    field: &pydantic_field_bindings
+      - name=pydantic.Field
+      - name=flext_core.FlextModels.Field
+- id: pydantic-annotated-default
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  value_default: default
+  reorders_annotation: true
+  model_bases: [ pydantic.BaseModel ]
+  pattern: '${name}: ${annotated}[${contract}, ${field}(default=${default})]'
+  goal: '${name}: ${contract} = ${default}'
+  arguments:
+    annotated: name=typing.Annotated
+    field: *pydantic_field_bindings
+# Only mutable builtin factories on proven read-only contracts need repair.
+# The canonical typed factory resolves the complete contract on first use,
+# after enclosing owners bind; Field metadata and flags remain unchanged.
+# ``dict`` is matched
+# as an unshadowed builtin: inside a model body Rope can resolve the name to
+# the inherited ``BaseModel.dict`` method.
+- id: pydantic-annotated-empty-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  factory_default: collection
+  readonly_contract: contract
+  readonly_origins: &readonly_origins
+    - collections.abc.Mapping
+    - collections.abc.Sequence
+    - collections.abc.Set
+    - typing.Mapping
+    - typing.Sequence
+    - typing.AbstractSet
+    - builtins.tuple
+    - builtins.frozenset
+    - __builtin__.tuple
+    - __builtin__.frozenset
+  model_bases: [ pydantic.BaseModel ]
+  pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=${collection})'
+  deferred_contract: contract
+  goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
+  imports: &empty_imports
+    u: from flext_core import u
+    t.TypeForm: from typing_extensions import TypeForm
+  bindings: &empty_bindings
+    u.empty: flext_core._utilities.pydantic.FlextUtilitiesPydantic.empty
+    t.TypeForm: typing_extensions.TypeForm
+  arguments:
+    annotated: name=typing.Annotated
+    collection: &empty_collections
+      - name=__builtin__.list
+      - name=__builtin__.set
+    field: *pydantic_field_bindings
+- id: pydantic-annotated-empty-dict-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  readonly_contract: contract
+  readonly_origins: *readonly_origins
+  model_bases: [ pydantic.BaseModel ]
+  unshadowed_builtins: [ dict ]
+  pattern: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=dict)'
+  deferred_contract: contract
+  goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
+  imports: *empty_imports
+  bindings: *empty_bindings
+  arguments:
+    annotated: name=typing.Annotated
+    field: *pydantic_field_bindings
+- id: pydantic-empty-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  factory_default: collection
+  readonly_contract: contract
+  readonly_origins: *readonly_origins
+  model_bases: [ pydantic.BaseModel ]
+  pattern: '${name}: ${contract} = ${field}(default_factory=${collection})'
+  deferred_contract: contract
+  goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})))'
+  imports: *empty_imports
+  bindings: *empty_bindings
+  arguments:
+    collection: *empty_collections
+    field: *pydantic_field_bindings
+- id: pydantic-empty-dict-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  readonly_contract: contract
+  readonly_origins: *readonly_origins
+  model_bases: [ pydantic.BaseModel ]
+  unshadowed_builtins: [ dict ]
+  pattern: '${name}: ${contract} = ${field}(default_factory=dict)'
+  deferred_contract: contract
+  goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})))'
+  imports: *empty_imports
+  bindings: *empty_bindings
+  arguments:
+    field: *pydantic_field_bindings
+- id: pydantic-described-empty-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  factory_default: collection
+  readonly_contract: contract
+  readonly_origins: *readonly_origins
+  model_bases: [ pydantic.BaseModel ]
+  pattern: '${name}: ${contract} = ${field}(default_factory=${collection}, description=${description})'
+  deferred_contract: contract
+  goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})), description=${description})'
+  imports: *empty_imports
+  bindings: *empty_bindings
+  arguments:
+    collection: *empty_collections
+    field: *pydantic_field_bindings
+- id: pydantic-described-empty-dict-factory
+  phase: contract-normalization
+  scope: *pydantic_config_models_scope
+  readonly_contract: contract
+  readonly_origins: *readonly_origins
+  model_bases: [ pydantic.BaseModel ]
+  unshadowed_builtins: [ dict ]
+  pattern: '${name}: ${contract} = ${field}(default_factory=dict, description=${description})'
+  deferred_contract: contract
+  goal: '${name}: ${contract} = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${contract})), description=${description})'
+  imports: *empty_imports
+  bindings: *empty_bindings
+  arguments:
+    field: *pydantic_field_bindings
+- id: native-explicit-delegation-methods
+  operation: materialize-delegations
+  phase: contract-normalization
+  pattern: '${receiver} = ${factory}(${callback}, ${prototype})'
+  goal: '${receiver} = ${factory}(${callback}, ${prototype})'
+  arguments: {}

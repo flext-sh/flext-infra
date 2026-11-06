@@ -8,11 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import tm
+from tests import m, t, tm, u
 
 
 class TestsFlextInfraModelsDepsDetection:
@@ -65,5 +62,5 @@ class TestsFlextInfraModelsDepsDetection:
     @staticmethod
     def test_unsupported_type(tmp_path: Path) -> None:
         """Verify unsupported type."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             _ = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(str(tmp_path))

@@ -9,15 +9,12 @@ from __future__ import annotations
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Self, override
+from typing import Annotated, Self, override
 
-from flext_infra import m, r, s, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import m, p, r, s, u
 
 
-class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
+class FlextInfraTestmonDbInspector(s[p.Infra.TestmonCacheState]):
     """Checkpoint WAL, verify integrity, and compute saveability."""
 
     db_path: Annotated[Path, m.Field(description="Absolute .testmondata path.")]
@@ -98,11 +95,11 @@ class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
             msg = "testmon schema empty"
             raise RuntimeError(msg)
 
-    def _inspect_existing(self) -> p.Result[m.Infra.TestmonCacheState]:
+    def _inspect_existing(self) -> p.Result[p.Infra.TestmonCacheState]:
         """Validate one on-disk DB after pytest has closed it.
 
         Returns:
-            The resulting ``p.Result[m.Infra.TestmonCacheState]``.
+            The resulting ``p.Result[p.Infra.TestmonCacheState]``.
 
         Raises:
             FileNotFoundError: If ``not path.exists()``.
@@ -134,7 +131,7 @@ class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
             reason = "changed_saveable"
         else:
             reason = "unchanged"
-        return r[m.Infra.TestmonCacheState].ok(
+        return r[p.Infra.TestmonCacheState].ok(
             m.Infra.TestmonCacheState(
                 seed_needed=seed_needed,
                 restored_accepted=self.pre_run_digest is not None,
@@ -145,7 +142,7 @@ class FlextInfraTestmonDbInspector(s[m.Infra.TestmonCacheState]):
         )
 
     @override
-    def execute(self) -> p.Result[m.Infra.TestmonCacheState]:
+    def execute(self) -> p.Result[p.Infra.TestmonCacheState]:
         """Return typed cache state after a successful testmon-backed pytest run.
 
         Returns:

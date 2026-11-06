@@ -23,7 +23,7 @@ class FlextInfraModelsTransformers:
     class SemanticPublicationOptions(m.FrozenModel):
         """Caller-controlled gates and scope roots for one joint publication."""
 
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
             default=(),
             exclude=True,
             description="Original observations required by every publication effect",
@@ -33,7 +33,7 @@ class FlextInfraModelsTransformers:
             description="Consumer acceptance gate over the previewed view root",
         )
         plan_validator: (
-            Callable[[tuple[m.Cli.FileChange, ...]], p.Result[bool]] | None
+            Callable[[tuple[p.Cli.FileChange, ...]], p.Result[bool]] | None
         ) = m.Field(
             default=None,
             description=(
@@ -64,7 +64,9 @@ class FlextInfraModelsTransformers:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            m.Cli.AtomicFileState,
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             m.Field(description="Descriptor-authenticated file state before migration"),
         ]
         desired_content: Annotated[
@@ -95,7 +97,7 @@ class FlextInfraModelsTransformers:
 
         # Why: source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             str_strip_whitespace=False, arbitrary_types_allowed=True
         )
 
@@ -313,7 +315,7 @@ class FlextInfraModelsTransformers:
         wrapper's own docstring lines from the strip when present.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         header_start: Annotated[int, m.Field(description="First header line")]
         header_end: Annotated[int, m.Field(description="Last header line")]
@@ -339,7 +341,10 @@ class FlextInfraModelsTransformers:
             m.Field(description="Local names bound by from-import statements"),
         ]
         span: Annotated[
-            FlextInfraModelsTransformers.HeaderSpan,
+            Annotated[
+                p.Infra.HeaderSpan,
+                t.schema_for_model(lambda: FlextInfraModelsTransformers.HeaderSpan),
+            ],
             m.Field(description="Byte offsets for the header sections"),
         ]
 
@@ -352,7 +357,7 @@ class FlextInfraModelsTransformers:
         travel as one resolved contract.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         project: Annotated[
             t.Port[t.Infra.RopeProject],

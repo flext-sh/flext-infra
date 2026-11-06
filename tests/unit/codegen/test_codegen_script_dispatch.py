@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraScriptDispatchMakefile:
     """Prove per-repo extra verbs and script-dispatch WHAT normalization."""
 
@@ -23,8 +21,8 @@ class TestsFlextInfraScriptDispatchMakefile:
     def _render_root_makefile(
         tmp_path: Path,
         *,
-        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
-        script_dispatch: m.Infra.ScriptDispatchSpec | None,
+        extra_verbs: tuple[p.Infra.MakeVerbSpec, ...],
+        script_dispatch: p.Infra.ScriptDispatchSpec | None,
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
@@ -462,7 +460,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "script_dispatch",
         [
             None,
@@ -475,7 +473,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     def test_lint_and_type_paths_scan_every_configured_analyzer_dir(
         self,
         tmp_path: Path,
-        script_dispatch: m.Infra.ScriptDispatchSpec | None,
+        script_dispatch: p.Infra.ScriptDispatchSpec | None,
     ) -> None:
         """Every repo scans the configured analyzer dirs present in its checkout.
 

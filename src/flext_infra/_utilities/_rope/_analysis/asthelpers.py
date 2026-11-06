@@ -14,9 +14,11 @@ from typing import ClassVar
 from flext_cli import u
 
 from flext_infra import c, m, p, settings, t
-from flext_infra._utilities._rope.ast import FlextInfraUtilitiesRopeAst
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAst,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
@@ -322,7 +324,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         return tuple(names)
 
     @staticmethod
-    def class_info_from_source(source: str) -> Sequence[m.Infra.ClassInfo]:
+    def class_info_from_source(source: str) -> Sequence[p.Infra.ClassInfo]:
         """Return class info from the current source text without Rope resource cache.
 
         Returns:
@@ -336,7 +338,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
     @staticmethod
     def class_info_from_module(
         tree: t.Infra.AstModule,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Read top-level class facts from an existing native module tree.
 
         Returns:
@@ -354,7 +356,7 @@ class FlextInfraUtilitiesRopeAnalysisAstHelpers(FlextInfraUtilitiesRopeAst):
         )
 
     @staticmethod
-    def _class_info_from_ast(node: p.AttributeProbe) -> m.Infra.ClassInfo | None:
+    def _class_info_from_ast(node: p.AttributeProbe) -> p.Infra.ClassInfo | None:
         """Return ClassInfo for one top-level ClassDef AST node.
 
         Returns:

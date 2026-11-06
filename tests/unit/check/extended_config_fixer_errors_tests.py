@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from tests import c, tm, u
 
@@ -21,7 +19,7 @@ class TestsFlextInfraExtendedConfigFixerErrors:
     """Exercise ``FlextInfraConfigFixer`` only through its public surface."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("pyproject", "name"),
         [
             ('[tool]\npyrefly = "string"\n', "string-pyrefly"),

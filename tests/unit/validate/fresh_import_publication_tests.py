@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +23,7 @@ def _probe_publication(
     current_pkg: str | None = None,
     surface: str | None = None,
     exports: Sequence[str] = (),
-) -> m.Infra.LazyInitPlan:
+) -> p.Infra.LazyInitPlan:
     """Compose one generated-`__init__` publication probe.
 
     Returns:
@@ -52,10 +50,10 @@ def _probe_report(
     tmp_path: Path,
     *,
     packages: Sequence[str] = (),
-    publications: Sequence[m.Infra.LazyInitPlan] = (),
+    publications: Sequence[p.Infra.LazyInitPlan] = (),
     repository_roots: Sequence[Path] = (),
     runtime_root: Path,
-) -> m.Infra.ValidationReport:
+) -> p.Infra.ValidationReport:
     """Build one fresh-import report over the probe checkout.
 
     Returns:
@@ -78,7 +76,41 @@ class TestsFlextInfraFreshImportPublication:
     """Prove fresh-import verification against the real publication contract."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("linked", [False, True])
+    def test_namespace_requires_a_physical_directory_chain(
+        tmp_path: Path, suite_runtime_root: Path, *, linked: bool
+    ) -> None:
+        """Real namespace imports reject symlinked physical ancestry."""
+        source = tmp_path / c.Infra.DEFAULT_SRC_DIR
+        source.mkdir()
+        package = source / "flext_namespace_probe"
+        if linked:
+            target = tmp_path / "physical"
+            target.mkdir()
+            package.symlink_to(target, target_is_directory=True)
+        else:
+            package.mkdir()
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-namespace-probe"\nversion = "1.0"\n'
+            "[tool.hatch.build.targets.wheel]\n"
+            f'packages = ["src/{package.name}"]\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        u.Tests.declare_governed_kind(tmp_path)
+        tm.not_none(u.Infra.layout(tmp_path))
+        report = _probe_report(
+            tmp_path,
+            packages=(package.name,),
+            repository_roots=(tmp_path,),
+            runtime_root=suite_runtime_root,
+        )
+        tm.that(report.passed, eq=not linked, msg=str(report.violations))
+        if linked:
+            tm.that(report.violations[0], has="physical directory chain")
+            tm.that(report.violations[0], has="Traceback")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
         ("content", "missing_export"),
         [
             ("", False),
@@ -181,8 +213,8 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(report.violations[0], has="Traceback")
 
     @staticmethod
-    @pytest.mark.parametrize("script_group", ["scripts", "gui-scripts"])
-    @pytest.mark.parametrize("target_exists", [False, True])
+    @c.Tests.MARK.parametrize("script_group", ["scripts", "gui-scripts"])
+    @c.Tests.MARK.parametrize("target_exists", [False, True])
     def test_declared_script_failure_blocks_publication(
         tmp_path: Path,
         suite_runtime_root: Path,
@@ -271,7 +303,7 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(report.violations[0], has="Traceback")
 
     @staticmethod
-    @pytest.mark.parametrize("dependency_present", [False, True])
+    @c.Tests.MARK.parametrize("dependency_present", [False, True])
     def test_declared_consumer_catches_exports_omitted_from_plan(
         tmp_path: Path,
         suite_runtime_root: Path,
@@ -412,6 +444,7 @@ class TestsFlextInfraFreshImportPublication:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.declare_governed_kind(tmp_path)
         publication = _probe_publication(
             package,
             init_path=initializer,

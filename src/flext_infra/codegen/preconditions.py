@@ -11,9 +11,7 @@ from json import dumps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
-from flext_infra import c, config, m, p, r, workspace as workspace_services
+from flext_infra import c, config, m, p, r, u, workspace as workspace_services
 
 if TYPE_CHECKING:
     from importlib.metadata import Distribution
@@ -51,9 +49,9 @@ class FlextInfraCodegenPreconditions:
             )
         distribution = matches[0]
         direct_url = distribution.read_text(c.Infra.DISTRIBUTION_DIRECT_URL_FILE)
-        receipt: m.Infra.DirectUrlReceipt | None = None
+        receipt: p.Infra.DirectUrlReceipt | None = None
         if direct_url is not None:
-            parsed = r[m.Infra.DirectUrlReceipt].create_from_callable(
+            parsed = r[p.Infra.DirectUrlReceipt].create_from_callable(
                 partial(m.Infra.DirectUrlReceipt.model_validate_json, direct_url)
             )
             if parsed.failure:
@@ -69,7 +67,7 @@ class FlextInfraCodegenPreconditions:
             u.Cli
             .toml_read_json(lock_path)
             .flat_map(
-                lambda payload: r[m.Infra.LockedEnvironment].create_from_callable(
+                lambda payload: r[p.Infra.LockedEnvironment].create_from_callable(
                     partial(
                         m.Infra.LockedEnvironment.model_validate_json,
                         dumps(payload),
@@ -90,7 +88,7 @@ class FlextInfraCodegenPreconditions:
     def _locked_engine_current(
         distribution: Distribution,
         direct_url: str | None,
-        locked: m.Infra.LockedEnvironment,
+        locked: p.Infra.LockedEnvironment,
         *,
         distribution_name: str,
     ) -> p.Result[bool]:

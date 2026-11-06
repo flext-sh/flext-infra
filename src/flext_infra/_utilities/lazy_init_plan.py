@@ -16,7 +16,6 @@ from keyword import iskeyword
 from pathlib import Path
 
 from flext_cli import p, r, t, u
-from rope.base import exceptions
 
 from flext_infra import c, config
 from flext_infra._models._codegen import (
@@ -387,6 +386,10 @@ class FlextInfraUtilitiesLazyInitPlan:
         if facade_root and context.current_pkg == c.Infra.DIR_TESTS:
             for name, target in c.Infra.TEST_RUNTIME_ALIAS_TARGETS.items():
                 lazy_map.setdefault(name, target)
+            for name, target in cls._lazy_init_test_namespace_publics(
+                run, context
+            ).items():
+                lazy_map.setdefault(name, target)
         if not lazy_map and not eager:
             keeps = (
                 context.surface == c.Infra.DIR_TESTS
@@ -509,6 +512,15 @@ class FlextInfraUtilitiesLazyInitPlan:
             and module.file_path.parent == context.pkg_dir
             and module.file_path.name != c.Infra.INIT_PY
         )
+        if context.current_pkg == c.Infra.DIR_TESTS:
+            # The test namespace publishes the public API of src/scripts/
+            # examples and the test facades. Test modules are collection
+            # units, never namespace exports.
+            modules = [
+                (path, module_name)
+                for path, module_name in modules
+                if not path.name.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
+            ]
         for path, module_name in modules:
             if not run.model.source_project.source_query(path, "isfile"):
                 # A staged sibling plan already moved this module on disk
@@ -516,19 +528,12 @@ class FlextInfraUtilitiesLazyInitPlan:
                 # stale. Skip it — the fixed-point rerun plans the moved
                 # module under its destination name.
                 continue
-            try:
-                names = (
-                    python.python_model_exports(
-                        python.python_model_module_at(run.model, path, module_name)
-                    )
-                    or ()
+            names = (
+                python.python_model_exports(
+                    python.python_model_module_at(run.model, path, module_name)
                 )
-            except exceptions.ModuleSyntaxError:
-                # Conteúdo candidate inválido no overlay (staging do
-                # quoted-move troca conteúdos no mesmo path): falha por
-                # arquivo, nunca do run — o fixed-point rerun replaneia o
-                # módulo quando o staging assentar.
-                continue
+                or ()
+            )
             shadow = run.index.packages_by_dir.get(str(path.with_suffix("")))
             if names and shadow is not None and shadow.package_name:
                 msg = (
@@ -661,6 +666,121 @@ class FlextInfraUtilitiesLazyInitPlan:
             for candidate in (pkg_dir, *entry.descendant_child_dirs)
             if str(candidate) in run.index.packages_by_dir
         )
+
+    @classmethod
+    def _lazy_init_test_namespace_publics(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+    ) -> t.MutableLazyAliasMap:
+        """Collect the sibling public declarations the tests facade exposes.
+
+        The generated tests namespace carries the public API of the project
+        source, scripts and examples packages, so behaviour tests import only
+        ``from tests import ...``. Test-only declarations remain in the tests
+        package's own ``_<base>`` modules.
+
+        Returns:
+            The public declarations keyed by exported name.
+
+        """
+        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
+        project = entry.project_root if entry is not None else None
+        if project is None:
+            return {}
+        publics: t.MutableLazyAliasMap = {}
+        for sibling in cls._lazy_init_test_namespace_dirs(run, context, project):
+            sibling_context = cls.lazy_init_context(run, sibling)
+            if not sibling_context.importable:
+                continue
+            for name, target in cls._lazy_init_package_declarations(
+                run, sibling_context
+            ).items():
+                publics.setdefault(name, target)
+            root_init = sibling / c.Infra.INIT_PY
+            if root_init.is_file():
+                python = FlextInfraUtilitiesPythonModel
+                for name in (
+                    python.python_model_exports(
+                        python.python_model_module_at(
+                            run.model, root_init, sibling_context.current_pkg
+                        )
+                    )
+                    or ()
+                ):
+                    publics[name] = (sibling_context.current_pkg, name)
+        return publics
+
+    @staticmethod
+    def _lazy_init_test_namespace_dirs(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+        project: Path,
+    ) -> tuple[Path, ...]:
+        """Return the sibling namespaces the tests facade publishes.
+
+        Returns:
+            The source packages, ``scripts`` and ``examples`` directories.
+
+        """
+        directories = [
+            entry.package_dir
+            for entry in run.index.packages_by_dir.values()
+            if entry.project_root == project
+            and entry.package_dir != context.pkg_dir
+            and entry.package_dir.parent == project / c.Infra.DEFAULT_SRC_DIR
+        ]
+        for name in (c.Infra.DIR_SCRIPTS, c.Infra.DIR_EXAMPLES):
+            candidate = project / name
+            if (
+                str(candidate) in run.index.packages_by_dir
+                and candidate != context.pkg_dir
+            ):
+                directories.append(candidate)
+        directories.extend(
+            child
+            for child in sorted(context.pkg_dir.iterdir())
+            if child.is_dir()
+            and (child / c.Infra.INIT_PY).is_file()
+            and str(child) in run.index.packages_by_dir
+        )
+        return tuple(sorted(dict.fromkeys(directories)))
+
+    @staticmethod
+    def _lazy_init_package_declarations(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+    ) -> t.MutableLazyAliasMap:
+        """Collect a package's direct public declarations without election.
+
+        The tests facade only re-exports names a namespace publishes in
+        ``__all__``; it never reaches into a module that the namespace does not
+        declare.
+
+        Returns:
+            The declarations keyed by exported name.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
+        declarations: t.MutableLazyAliasMap = {}
+        for module in entry.modules if entry is not None else ():
+            if (
+                module.file_path.suffix != c.Infra.EXT_PYTHON
+                or module.file_path.parent != context.pkg_dir
+                or module.file_path.name == c.Infra.INIT_PY
+            ):
+                continue
+            for name in (
+                python.python_model_exports(
+                    python.python_model_module_at(
+                        run.model, module.file_path, module.module_name
+                    )
+                )
+                or ()
+            ):
+                declarations.setdefault(name, (module.module_name, name))
+        return declarations
 
     @classmethod
     def _lazy_init_add(

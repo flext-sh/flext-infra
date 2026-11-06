@@ -9,8 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from tests import c, m, p, r, tm, u
@@ -106,9 +104,9 @@ class TestsFlextInfraRecursiveFamilyFacades:
     @staticmethod
     def _project(
         workspace: p.Infra.RopeWorkspaceDsl,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         selection: tuple[Path, c.Infra.FacadeFamily] | None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Close facade cohorts through the session's public projection DSL.
 
         Returns:
@@ -120,7 +118,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
             declared_files=declared_files,
             selection=selection,
         )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(
             u.Infra.codegen_compose_file_plans(
                 (*declared_files, *outcome.files), ordered=True
             )
@@ -131,7 +129,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
         cls,
         root: Path,
         selection: tuple[Path, c.Infra.FacadeFamily] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         with infra.rope_workspace(root) as workspace:
             return FlextInfraCodegenLazyInit.plan_candidate(
                 root,
@@ -328,7 +326,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 f", {name}):", ", UnresolvedProvider):"
             ),
         )
-        with pytest.raises(TypeError, match="expected a native Rope class:"):
+        with u.Tests.raises(TypeError, match="expected a native Rope class:"):
             cls._plans(root, (destination, c.Infra.FacadeFamily.U))
         tm.fail(sentinel.exists())
 
@@ -409,7 +407,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 + f"    callback = {reference}\n    {statement}\n"
             )
             cls._write(consumer, mutated)
-            with pytest.raises(
+            with u.Tests.raises(
                 (TypeError, ValueError),
                 match=(
                     r"expected a native Rope class: facade component ancestry"
@@ -490,7 +488,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
         tm.fail(sentinel.exists())
         tm.that(
             u.Tests.run_lazy_init_probe(
-                f"from {package.name} import c, t, p, m, u\n"
+                f"from {package.name} import c, p, t, p, m, u\n"
                 "print(c.Domain.LEFT + c.Domain.RIGHT)\n"
                 "print(t.Domain.Left.__value__ is str)\n"
                 "class Left(p.Domain.Left):\n"

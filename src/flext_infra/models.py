@@ -42,15 +42,17 @@ from flext_infra._models import (
     FlextInfraModelsWorktree,
 )
 from flext_infra._models._codegen import FlextInfraCodegen
-from flext_infra._models._config import FlextInfraModelsConfig
+from flext_infra._models._config.base import FlextInfraModelsConfig
 
 
 class FlextInfraModels(FlextCliModels):
     """Merged model namespace for flext-infra domain objects."""
 
     class Infra(
+        FlextInfraCodegen,
         FlextInfraModelsCensus,
         FlextInfraModelsCheck,
+        FlextInfraModelsCodegen,
         FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
@@ -76,11 +78,10 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsWorkspaceSnapshot,
         FlextInfraModelsWorktree,
         FlextInfraModelsConfig,
-        FlextInfraCodegen,
-        FlextInfraModelsCodegen,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 
 
 m = FlextInfraModels
+
 __all__: list[str] = ["FlextInfraModels", "m"]

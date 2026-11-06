@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from flext_infra import codegen, refactor
 
 if TYPE_CHECKING:
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraPreviewWiring:
@@ -34,12 +34,12 @@ class FlextInfraPreviewWiring:
 
     def census(
         self: p.Infra.ModExecutionContext,
-        request: m.Infra.CensusInput,
-    ) -> p.Result[m.Infra.WorkspaceReport]:
+        request: p.Infra.CensusInput,
+    ) -> p.Result[p.Infra.WorkspaceReport]:
         """Run the public census with its mandatory source-view capability.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceReport]``.
+            The resulting ``p.Result[p.Infra.WorkspaceReport]``.
 
         """
         return refactor.FlextInfraRefactorCensus(
@@ -56,12 +56,12 @@ class FlextInfraPreviewWiring:
 
     def accessor_migrate(
         self,
-        request: m.Infra.AccessorMigrationInput,
-    ) -> p.Result[m.Infra.AccessorMigrationReport]:
+        request: p.Infra.AccessorMigrationInput,
+    ) -> p.Result[p.Infra.AccessorMigrationReport]:
         """Run accessor migration through the authenticated preview boundary.
 
         Returns:
-            The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
+            The resulting ``p.Result[p.Infra.AccessorMigrationReport]``.
 
         """
         return refactor.FlextInfraAccessorMigrationOrchestrator.execute_payload(
@@ -71,7 +71,7 @@ class FlextInfraPreviewWiring:
 
     def constants_quality_gate(
         self: p.Infra.ModExecutionContext,
-        request: m.Infra.CodegenCommand,
+        request: p.Infra.CodegenCommand,
     ) -> p.Result[bool]:
         """Compose constants validation with its mandatory preview capability.
 

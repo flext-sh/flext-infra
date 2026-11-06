@@ -23,6 +23,7 @@ These pages are generated from public modules and their docstrings.
 - [flext_infra.preview](preview.md)
 - [flext_infra.promoted](promoted.md)
 - [flext_infra.protocols](protocols.md)
+- [flext_infra.protocols_bootstrap](protocols_bootstrap.md)
 - [flext_infra.pytest](pytest.md)
 - [flext_infra.pytest_profile](pytest_profile.md)
 - [flext_infra.typings](typings.md)

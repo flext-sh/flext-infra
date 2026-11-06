@@ -172,6 +172,41 @@ message: >-
   JSON, YAML and CSV serialization belongs to flext-cli: use u.Cli.json_* /
   cli.json_*, u.Cli.yaml_* / cli.yaml_*, or u.Cli.csv_* / cli.csv_*.
 ---
+# A YAML file is read through its path-based owner, never by reading its text
+# and parsing the text: only the path reader names the file in its failure
+# (incident 2026-11-04: `make mod-snapshots` reported a scanner error without
+# the file). The transform chain maps each text parser to its path reader, so
+# one rule covers both parsers and both text readers.
+id: rewire-yaml-text-read-to-path-reader
+language: python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  consumers_of: flext-cli
+rule:
+  any:
+    - pattern: u.Cli.$PARSE(u.Cli.files_read_text($PATH).unwrap())
+    - pattern: u.Cli.$PARSE($PATH.read_text($$$ARGS))
+constraints:
+  PARSE:
+    regex: "^yaml_parse(?:_documents)?$"
+transform:
+  STREAM:
+    replace:
+      source: $PARSE
+      replace: "^yaml_parse_documents$"
+      by: "yaml_load_documents"
+  READER:
+    replace:
+      source: $STREAM
+      replace: "^yaml_parse$"
+      by: "yaml_safe_load"
+fix: u.Cli.$READER($PATH)
+message: >-
+  Read the YAML file through `u.Cli.$READER($PATH)`, which names the file on
+  failure, not through `u.Cli.$PARSE` of its text.
+---
 # A consumer reaches flext-cli through its facades (cli, c, m, p, t, u, s),
 # never through a concrete FlextCli<X> class. The facade extension modules of
 # a package source tree extend the flext-cli facades by inheritance and are the

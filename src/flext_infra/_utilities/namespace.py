@@ -10,12 +10,11 @@ import ast
 import operator
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import cache
-from inspect import getfile
+from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
@@ -27,12 +26,14 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeSource,
+)
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -109,6 +110,41 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     @cache
+    def core_package_exports() -> tuple[Path, Mapping[str, str]]:
+        """Read the core package directory and its published lazy map from source.
+
+        The core package is located through its import spec and its exports are
+        read statically from its generated initializer, never through the
+        package module object.
+
+        Returns:
+            The core package directory and each published name's target module.
+
+        Raises:
+            ValueError: The core package is not importable or declares its lazy
+                map indirectly.
+
+        """
+        spec = find_spec(c.Infra.PKG_CORE_UNDERSCORE)
+        locations = None if spec is None else spec.submodule_search_locations
+        if not locations:
+            msg = f"{c.Infra.PKG_CORE_UNDERSCORE} is not an importable package"
+            raise ValueError(msg)
+        core_dir = Path(next(iter(locations)))
+        targets, references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                (core_dir / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+            )
+        )
+        if references:
+            msg = f"{core_dir}: lazy map is declared through {', '.join(references)}"
+            raise ValueError(msg)
+        return core_dir, MappingProxyType({
+            name: module for module, names in targets for name in names
+        })
+
+    @staticmethod
+    @cache
     def facade_families() -> Mapping[str, m.Infra.FacadeFamily]:
         """Derive the facade families from the core package's declarations.
 
@@ -124,15 +160,33 @@ class FlextInfraUtilitiesCodegenNamespace:
             ValueError: If ``not bound``.
 
         """
-        core_dir = Path(getfile(flext_core)).parent
+        core_dir, published = FlextInfraUtilitiesCodegenNamespace.core_package_exports()
         bound: MutableMapping[str, tuple[str, str]] = {}
         for layer in config.Infra.tooling.lazy_init.import_layer_order:
-            facade = getattr(flext_core, layer, None)
-            if not isinstance(facade, type):
+            target = published.get(layer)
+            if target is None or not target.startswith("."):
                 continue
-            module = facade.__module__.rpartition(".")[2]
-            if (core_dir / f"_{module}").is_dir():
-                bound[layer] = (module, facade.__name__)
+            module = target.removeprefix(".")
+            source = core_dir / f"{module}{c.Infra.EXT_PYTHON}"
+            if not source.is_file() or not (core_dir / f"_{module}").is_dir():
+                continue
+            facade = next(
+                (
+                    statement.value.id
+                    for statement in ast.parse(
+                        source.read_text(encoding=c.DEFAULT_ENCODING)
+                    ).body
+                    if isinstance(statement, ast.Assign)
+                    and isinstance(statement.value, ast.Name)
+                    and any(
+                        isinstance(target_name, ast.Name) and target_name.id == layer
+                        for target_name in statement.targets
+                    )
+                ),
+                None,
+            )
+            if facade is not None:
+                bound[layer] = (module, facade)
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)
@@ -177,7 +231,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         )
 
     @classmethod
-    def facade_family_declared_by(cls, file_name: str) -> m.Infra.FacadeFamily:
+    def facade_family_declared_by(cls, file_name: str) -> p.Infra.FacadeFamily:
         """Return the family whose facade module is ``file_name``.
 
         Returns:
@@ -227,19 +281,9 @@ class FlextInfraUtilitiesCodegenNamespace:
                 return family
         return None
 
-    @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* is a governed root-namespace facade file.
-
-        Returns:
-            Whether *file_name* is a governed root-namespace facade file.
-
-        """
-        return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
-
     @staticmethod
     def runtime_module_names(
-        *, project_name: str, codegen: m.Infra.CodegenConfigSpec
+        *, project_name: str, codegen: p.Infra.CodegenConfigSpec
     ) -> Mapping[str, str]:
         """Resolve singleton roles to physical stems for exactly one project.
 
@@ -264,7 +308,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_name: str,
         *,
         project_name: str,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> str | None:
         """Return the sole public singleton owned by a sanctioned runtime module.
 
@@ -282,39 +326,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             ),
             None,
         )
-
-    @staticmethod
-    def ordered_namespace_exports(
-        *,
-        package_dir: Path,
-        package_name: str,
-        export_names: Sequence[str],
-    ) -> Sequence[str]:
-        """Order root-package exports with alias hierarchy preserved.
-
-        Returns:
-            The resulting ``Sequence[str]``.
-
-        """
-        _ = (package_dir, package_name)
-        ordered_unique = tuple(dict.fromkeys(export_names))
-        export_set = set(ordered_unique)
-        preferred_aliases = tuple(
-            alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
-        )
-        declared_aliases = tuple(
-            name
-            for name in ordered_unique
-            if (
-                name.islower()
-                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-                and name not in preferred_aliases
-            )
-        )
-        ordered_aliases = (*preferred_aliases, *declared_aliases)
-        alias_set = set(ordered_aliases)
-        other_exports = tuple(name for name in ordered_unique if name not in alias_set)
-        return (*other_exports, *ordered_aliases)
 
     @staticmethod
     def package_alias(*, package_name: str) -> str:
@@ -482,7 +493,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         *,
         project: p.Infra.ProjectInfo | None = None,
         rope_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.RopeProjectLayout | None:
+    ) -> p.Infra.RopeProjectLayout | None:
         """Return the canonical project layout contract for one project root.
 
         Returns:
@@ -566,7 +577,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         *,
         rope_project: t.Infra.RopeProject,
-        project_layout: m.Infra.RopeProjectLayout | None = None,
+        project_layout: p.Infra.RopeProjectLayout | None = None,
     ) -> tuple[str | None, str | None, str | None, Sequence[str]]:
         """Return (family_alias, expected_family, expected_alias, family_tokens).
 
@@ -688,7 +699,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         file_path: Path,
         *,
-        project_layout: m.Infra.RopeProjectLayout | None = None,
+        project_layout: p.Infra.RopeProjectLayout | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> str:
         """Derive the class-stem prefix for one file inside a project.
@@ -876,8 +887,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
-        project_layout: m.Infra.RopeProjectLayout | None = None,
-    ) -> m.Infra.NamespaceModulePolicy:
+        project_layout: p.Infra.RopeProjectLayout | None = None,
+    ) -> p.Infra.NamespaceModulePolicy:
         """Derive publication from existing declarations, without repair inference.
 
         Returns:
@@ -960,8 +971,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         rope_project: t.Infra.RopeProject,
         rel_path: Path | None = None,
         current_pkg: str = "",
-        project_layout: m.Infra.RopeProjectLayout | None = None,
-    ) -> m.Infra.NamespaceModulePolicy:
+        project_layout: p.Infra.RopeProjectLayout | None = None,
+    ) -> p.Infra.NamespaceModulePolicy:
         """Enrich publication declarations with repair and inherited-shape evidence.
 
         Returns:
@@ -1036,13 +1047,13 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         repository_root: Path,
         *,
-        projects: Sequence[m.Infra.ProjectInfo] | None = None,
+        projects: Sequence[p.Infra.ProjectInfo] | None = None,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[p.Infra.ProjectInfo]]``.
 
         """
         if projects is None:
@@ -1051,7 +1062,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 source_project=source_project,
             )
             if not projects_result.success:
-                return r[Sequence[m.Infra.ProjectInfo]].fail(
+                return r[Sequence[p.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed",
                 )
             discovered = projects_result.unwrap()
@@ -1068,14 +1079,14 @@ class FlextInfraUtilitiesCodegenNamespace:
                 )
             )
         )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(selected)
+        return r[Sequence[p.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def normalize_canonical_facades(
         cls,
         *,
         pkg_dir: Path,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
     ) -> None:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
@@ -1100,7 +1111,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         base_import: str,
         base_name: str,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
     ) -> None:
         """Add the canonical flext-core base to a *baseless* facade class only.
 
@@ -1237,16 +1248,16 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         *,
         project_path: Path,
-        initial_violations: Sequence[m.Infra.CensusViolation],
-        remaining_violations: Sequence[m.Infra.CensusViolation],
+        initial_violations: Sequence[p.Infra.CensusViolation],
+        remaining_violations: Sequence[p.Infra.CensusViolation],
     ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+        tuple[p.Infra.CensusViolation, ...], tuple[p.Infra.CensusViolation, ...]
     ]:
         """Split initial violations into fixed and still-skipped groups.
 
         Returns:
-            The resulting ``tuple[tuple[m.Infra.CensusViolation, ...],
-                tuple[m.Infra.CensusViolation, ...]]``.
+            The resulting ``tuple[tuple[p.Infra.CensusViolation, ...],
+                tuple[p.Infra.CensusViolation, ...]]``.
 
         """
         if not initial_violations:
@@ -1260,8 +1271,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             for violation in remaining_violations
         )
-        fixed: MutableSequence[m.Infra.CensusViolation] = []
-        skipped: MutableSequence[m.Infra.CensusViolation] = []
+        fixed: MutableSequence[p.Infra.CensusViolation] = []
+        skipped: MutableSequence[p.Infra.CensusViolation] = []
         for violation in initial_violations:
             key = cls._build_violation_key(
                 violation=violation,
@@ -1291,10 +1302,10 @@ class FlextInfraUtilitiesCodegenNamespace:
     def _build_violation_key(
         cls,
         *,
-        violation: m.Infra.CensusViolation,
+        violation: p.Infra.CensusViolation,
         project_path: Path,
         source_cache: MutableMapping[str, Sequence[str]],
-    ) -> m.Infra.ViolationKey:
+    ) -> p.Infra.ViolationKey:
         """Build violation key.
 
         Returns:

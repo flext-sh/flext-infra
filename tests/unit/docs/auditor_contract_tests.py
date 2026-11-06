@@ -6,10 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import c, m, tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraAuditorContract:
@@ -26,23 +24,23 @@ class TestsFlextInfraAuditorContract:
         tm.fail("strict_mode" in FlextInfraDocAuditor.model_fields)
 
     @staticmethod
-    @pytest.mark.parametrize("strict", [False, True])
+    @c.Tests.MARK.parametrize("strict", [False, True])
     def test_retired_strict_control_is_rejected(*, strict: bool) -> None:
         """Test retired strict control is rejected."""
-        with pytest.raises(c.ValidationError, match="strict"):
+        with u.Tests.raises(c.ValidationError, match="strict"):
             m.Infra.AuditScopeParams.model_validate({"strict": strict})
 
     @staticmethod
     def test_invalid_json_fails_at_request_ingress() -> None:
         """Test invalid json fails at request ingress."""
-        with pytest.raises(c.ValidationError, match="Invalid JSON"):
+        with u.Tests.raises(c.ValidationError, match="Invalid JSON"):
             m.Infra.AuditScopeParams.model_validate_json("{invalid json}")
 
     @staticmethod
-    @pytest.mark.parametrize("budget", [0, 5, 5.5])
+    @c.Tests.MARK.parametrize("budget", [0, 5, 5.5])
     def test_default_and_scope_budgets_are_rejected(budget: float) -> None:
         """Test default and scope budgets are rejected."""
-        with pytest.raises(c.ValidationError, match="budgets"):
+        with u.Tests.raises(c.ValidationError, match="budgets"):
             m.Infra.AuditScopeParams.model_validate({
                 "budgets": (budget, {"test-project": budget}),
             })
@@ -50,7 +48,7 @@ class TestsFlextInfraAuditorContract:
     @staticmethod
     def test_scope_budget_without_default_is_rejected() -> None:
         """Test scope budget without default is rejected."""
-        with pytest.raises(c.ValidationError, match="budgets"):
+        with u.Tests.raises(c.ValidationError, match="budgets"):
             m.Infra.AuditScopeParams.model_validate({
                 "budgets": (None, {"test-project": 3}),
             })

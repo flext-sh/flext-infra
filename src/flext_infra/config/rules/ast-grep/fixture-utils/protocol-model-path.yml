@@ -1,0 +1,8 @@
+# Fixture value of the generated `protocol-model-path` utility: the dotted
+# paths `p` publishes as a protocol and `m` as its model twin, spelled with
+# either root. The fixture protocols `Infra.RopeImportedName` and
+# `Infra.Reader` have no model twin.
+id: protocol-model-path
+language: Python
+rule:
+  regex: "^(?:p|m)\\.(?:ConfigDocument|Infra\\.FacadeFamily|Infra\\.Outer\\.Inner)$"

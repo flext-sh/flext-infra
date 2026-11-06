@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -37,7 +35,7 @@ class TestsFlextInfraDocsShared:
         report_dir = tmp_path / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
 
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             m.Infra.DocScope(name="", path=tmp_path, report_dir=report_dir)
 
     @staticmethod
@@ -80,7 +78,7 @@ class TestsFlextInfraDocsShared:
         tm.that([scope.name for scope in result.value], eq=["workspace"])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("policy", "scope_name"),
         [("", "acme-content"), ("\n[tool.flext.docs]\nenabled=false\n", "root")],
         ids=["own-root", "disabled-root-policy"],

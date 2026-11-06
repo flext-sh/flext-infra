@@ -9,10 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, codemod, m, t
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, codemod
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraBatchReplacements:
@@ -21,7 +19,7 @@ class TestsFlextInfraBatchReplacements:
     @staticmethod
     def _scanned_consumer(
         root: Path,
-    ) -> tuple[m.Infra.ModScanReport, Path]:
+    ) -> tuple[p.Infra.ModScanReport, Path]:
         """Scan a real public consumer against a locally declared rewrite.
 
         Returns:
@@ -65,7 +63,7 @@ class TestsFlextInfraBatchReplacements:
         return report, consumer
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_admitted_report_publishes_the_real_consumer(mod_workspace: Path) -> None:
         """Reuse admitted bytes through the same public CAS publisher."""
         report, consumer = TestsFlextInfraBatchReplacements._scanned_consumer(
@@ -80,8 +78,8 @@ class TestsFlextInfraBatchReplacements:
         tm.that(consumer.read_bytes(), eq=published)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("mutation", ["source-change", "source-remove"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("mutation", ["source-change", "source-remove"])
     def test_admitted_report_rejects_changed_destination(
         mod_workspace: Path,
         mutation: str,
@@ -110,7 +108,7 @@ class TestsFlextInfraBatchReplacements:
         generated: bool = False,
         replacement: bytes = b"after",
         matched: bytes = b"before",
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    ) -> p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence]:
         policy = path.parent / c.PYPROJECT_FILENAME
         if not policy.exists():
             policy.write_text(
@@ -227,11 +225,11 @@ class TestsFlextInfraBatchReplacements:
         tm.that(path.read_bytes(), eq=original)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("selected", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("selected", [False, True])
     def test_generator_evidence_never_blocks_authored_rewrites(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         selected: bool,
     ) -> None:
@@ -331,7 +329,7 @@ class TestsFlextInfraBatchReplacements:
             generated.read_bytes(), eq=sources["generated"].encode(c.DEFAULT_ENCODING)
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "changed",
         [b'value = "before"\n\n', b'value = "third-party"\n'],
     )
@@ -363,7 +361,7 @@ class TestsFlextInfraBatchReplacements:
         invalid = report.model_copy(update={"entries": (finding,)})
         tm.fail(codemod.FlextInfraModReplacements.publish(root, invalid))
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("original", "replacement", "accepted"),
         [
             (b"value = before\n", c.ParserBooleanToken.ONE, True),
@@ -472,7 +470,7 @@ class TestsFlextInfraBatchReplacements:
             eq=b'"""Demo."""\n\n\ndef t() -> None:\n    assert True\n',
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("replacement", "accepted"),
         [
             (b"from pathlib import Path\nvalue = Path('after')", True),

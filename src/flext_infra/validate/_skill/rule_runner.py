@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraValidateSkillRuleRunner:
@@ -27,7 +27,7 @@ class FlextInfraValidateSkillRuleRunner:
     def _evaluate_single_rule(
         self,
         rule_obj: Mapping[str, t.JsonValue],
-        context: m.Infra.SkillRuleEvaluationContext,
+        context: p.Infra.SkillRuleEvaluationContext,
         counts: t.MutableIntMapping,
         violations: MutableSequence[str],
     ) -> None:

@@ -15,7 +15,7 @@ from rope.refactor.restructure import Restructure
 from rope.refactor.similarfinder import Match
 from rope.refactor.wildcards import DefaultWildcard
 
-from flext_infra import m, p, t
+from flext_infra import p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 
 
@@ -40,7 +40,7 @@ class FlextInfraRopeRestructure(Restructure):
     def __init__(
         self,
         project: p.AttributeProbe,
-        request: m.Infra.RopeRestructureRequest,
+        request: p.Infra.RopeRestructureRequest,
     ) -> None:
         """Receive the current consumer's native match and import policies.
 

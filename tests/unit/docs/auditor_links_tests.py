@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from tests import m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -69,27 +67,29 @@ class TestsFlextInfraAuditorLinks:
             tm.that(len(issues), gte=0)
 
         @staticmethod
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize(
             "markdown",
             [
-                pytest.param("[link](test.md)", id="valid-links"),
-                pytest.param("[link](https://example.com)", id="external-links"),
-                pytest.param("[link](#section)", id="fragment-links"),
-                pytest.param("```\n[link](nonexistent.md)\n```", id="code-block-links"),
-                pytest.param(
+                u.Tests.param("[link](test.md)", id="valid-links"),
+                u.Tests.param("[link](https://example.com)", id="external-links"),
+                u.Tests.param("[link](#section)", id="fragment-links"),
+                u.Tests.param(
+                    "```\n[link](nonexistent.md)\n```", id="code-block-links"
+                ),
+                u.Tests.param(
                     "~~~\n[link](nonexistent.md)\n~~~", id="tilde-fence-links"
                 ),
-                pytest.param(
+                u.Tests.param(
                     "- item\n\n  ```md\n  [link](nonexistent.md)\n  ```\n",
                     id="nested-fence-links",
                 ),
-                pytest.param("Use `[link](nonexistent.md)` here.", id="inline-code"),
-                pytest.param(
+                u.Tests.param("Use `[link](nonexistent.md)` here.", id="inline-code"),
+                u.Tests.param(
                     "Use ``a ` [link](nonexistent.md)`` here.",
                     id="double-backtick-inline-code",
                 ),
-                pytest.param("[a, b]", id="should-skip-target-text"),
-                pytest.param("[some text]", id="plain-bracket-text"),
+                u.Tests.param("[a, b]", id="should-skip-target-text"),
+                u.Tests.param("[some text]", id="plain-bracket-text"),
             ],
         )
         def test_broken_link_issues_ignore_non_findings(
@@ -197,11 +197,11 @@ class TestsFlextInfraAuditorLinks:
     class TestAuditorGithubLinks:
         """Audit and repair links through real native repository facts."""
 
+        @u.Tests.fixture
         @staticmethod
-        @pytest.fixture
         def github_owner(
             tmp_path: Path,
-        ) -> m.Infra.DocsGithubRepoSpec:
+        ) -> p.Infra.DocsGithubRepoSpec:
             """Publish the declared GitHub owner of the fixture repository.
 
             Returns:
@@ -229,7 +229,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_stale_organization(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github stale organization."""
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))
@@ -250,7 +250,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_wrong_branch(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github wrong branch."""
             docs = tmp_path / "docs"
@@ -269,7 +269,7 @@ class TestsFlextInfraAuditorLinks:
 
         @staticmethod
         def test_github_rewrite_fix(
-            tmp_path: Path, github_owner: m.Infra.DocsGithubRepoSpec
+            tmp_path: Path, github_owner: p.Infra.DocsGithubRepoSpec
         ) -> None:
             """Test github rewrite fix."""
             placeholder = next(iter(u.Infra.docs_stale_github_organizations()))

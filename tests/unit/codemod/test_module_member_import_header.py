@@ -37,12 +37,24 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
 
     @staticmethod
     def _apply(repository: Path, sources: Path) -> None:
-        """Stage the project's generated rules natively and apply them twice."""
+        """Stage the project's generated rules and utilities as make mod does."""
         with u.Infra.codemod_workspace_snapshot(repository) as snapshot:
-            facts = u.Infra.codemod_package_export_facts(snapshot, repository)
             documents = {
-                **u.Infra.codemod_module_member_rules(snapshot, repository, facts),
-                **u.Infra.codemod_import_header_rules(snapshot, repository, facts),
+                **u.Infra.codemod_module_member_rules(
+                    snapshot,
+                    repository,
+                    u.Infra.codemod_package_export_facts(snapshot, repository),
+                ),
+                **u.Infra.codemod_import_header_rules(
+                    snapshot,
+                    repository,
+                    u.Infra.codemod_workspace_export_facts(snapshot, repository),
+                ),
+            }
+            utilities = {
+                **u.Infra.codemod_own_package_utilities(snapshot, repository),
+                **u.Infra.codemod_facade_package_utilities(snapshot, repository),
+                **u.Infra.codemod_package_export_utilities(snapshot, repository),
             }
         catalog = repository.parent / "catalog"
         tm.ok(
@@ -52,6 +64,13 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
             )
         )
         (catalog / "utils").mkdir(parents=True, exist_ok=True)
+        for identity, rule in utilities.items():
+            tm.ok(
+                u.Cli.yaml_dump(
+                    catalog / "utils" / f"{identity}.yml",
+                    u.Infra.codemod_native_utility_document(identity, rule),
+                )
+            )
         for identity, document in documents.items():
             tm.ok(u.Cli.yaml_dump(catalog / "rules" / f"{identity}.yml", document))
         for _pass in range(2):
@@ -94,6 +113,103 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
             ],
         )
         tm.that(rewritten, lacks="gates.DemoGate")
+
+    @staticmethod
+    def test_provider_root_object_read_imports_the_name(tmp_path: Path) -> None:
+        """``flext_core.FlextLazyMember`` becomes ``FlextLazyMember`` from its root."""
+        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
+            tmp_path
+        )
+        consumer = package / "provider.py"
+        consumer.write_text(
+            "from __future__ import annotations\n\n"
+            "import flext_core\n\n\n"
+            "class Probe:\n"
+            '    """Probe."""\n\n'
+            "    member: flext_core.FlextLazyMember | None = None\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        TestsFlextInfraCodemodModuleMemberImportHeader._apply(repository, package)
+        rewritten = consumer.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            rewritten,
+            has=[
+                "from flext_core import FlextLazyMember\n",
+                "member: FlextLazyMember | None = None",
+            ],
+        )
+        tm.that(rewritten, lacks="flext_core.FlextLazyMember")
+
+    @staticmethod
+    def test_generic_annotation_imports_its_free_member(tmp_path: Path) -> None:
+        """Generic arguments use names rather than declaring type parameters."""
+        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
+            tmp_path
+        )
+        consumer = package / "annotation.py"
+        consumer.write_text(
+            "from __future__ import annotations\n\n"
+            f"from {package.name} import gates\n\n"
+            "class Probe:\n    values: list[gates.DemoGate]\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        TestsFlextInfraCodemodModuleMemberImportHeader._apply(repository, package)
+        tm.that(
+            consumer.read_text(encoding=c.DEFAULT_ENCODING),
+            has=[
+                f"from {package.name}.gates import DemoGate\n",
+                "values: list[DemoGate]",
+            ],
+        )
+
+    @staticmethod
+    def test_type_parameter_bound_imports_its_free_member(tmp_path: Path) -> None:
+        """A PEP 695 bound is a use while its declared parameter is a binding."""
+        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
+            tmp_path
+        )
+        consumer = package / "bound.py"
+        consumer.write_text(
+            "from __future__ import annotations\n\n"
+            f"from {package.name} import gates\n\n"
+            "class Probe[T: gates.DemoGate]:\n    value: T\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        TestsFlextInfraCodemodModuleMemberImportHeader._apply(repository, package)
+        tm.that(
+            consumer.read_text(encoding=c.DEFAULT_ENCODING),
+            has=[
+                f"from {package.name}.gates import DemoGate\n",
+                "class Probe[T: DemoGate]",
+            ],
+        )
+
+    @staticmethod
+    def test_header_preserves_names_bound_by_another_owner(tmp_path: Path) -> None:
+        """Importing a free name never also imports an existing local homonym."""
+        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
+            tmp_path
+        )
+        (package / "gates" / c.Infra.INIT_PY).write_text(
+            "from .base import DemoGate\n\n"
+            "class Existing:\n    pass\n\n"
+            '__all__ = ("DemoGate", "Existing")\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        consumer = package / "binding.py"
+        consumer.write_text(
+            "from __future__ import annotations\n\n"
+            f"from {package.name} import gates\n\n"
+            "class Existing:\n    pass\n\n"
+            "class Probe:\n"
+            "    value: gates.DemoGate\n"
+            "    existing: Existing\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        TestsFlextInfraCodemodModuleMemberImportHeader._apply(repository, package)
+        rewritten = consumer.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(rewritten, has=f"from {package.name}.gates import DemoGate\n")
+        tm.that(rewritten, lacks=f"from {package.name}.gates import Existing")
 
     @staticmethod
     def test_local_homonym_of_the_child_is_never_rewritten(tmp_path: Path) -> None:

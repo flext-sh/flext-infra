@@ -14,14 +14,14 @@ from flext_cli import u
 from flext_infra import c, r, t
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsApi,
+    FlextInfraUtilitiesDocsBase,
     FlextInfraUtilitiesDocsScope,
 )
-from flext_infra._utilities._docs.base import FlextInfraUtilitiesDocsBase
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsValidate:
@@ -121,7 +121,7 @@ class FlextInfraUtilitiesDocsValidate:
         return r[Sequence[str]].ok(validated)
 
     @staticmethod
-    def docs_missing_required_paths(scope: m.Infra.DocScope) -> Sequence[str]:
+    def docs_missing_required_paths(scope: p.Infra.DocScope) -> Sequence[str]:
         """Return required docs paths that are still missing from one scope.
 
         The scope label is the only topology input: the scope builder assigns
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesDocsValidate:
         return missing
 
     @staticmethod
-    def contract_messages(scope: m.Infra.DocScope) -> Sequence[str]:
+    def contract_messages(scope: p.Infra.DocScope) -> Sequence[str]:
         """Return public API contract problems for one governed project scope.
 
         Returns:
@@ -185,7 +185,7 @@ class FlextInfraUtilitiesDocsValidate:
         return messages
 
     @staticmethod
-    def docs_write_todo(scope: m.Infra.DocScope, *, apply_mode: bool) -> p.Result[bool]:
+    def docs_write_todo(scope: p.Infra.DocScope, *, apply_mode: bool) -> p.Result[bool]:
         """Write the standard ``TODOS.md`` helper file when requested.
 
         ``r.ok(True)`` when a TODO file was written, ``r.ok(False)`` when
@@ -212,8 +212,8 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_write_validate_reports(
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
+        scope: p.Infra.DocScope,
+        report: p.Infra.DocsPhaseReport,
     ) -> None:
         """Persist the standard validate summary and markdown report."""
         _ = u.Cli.json_write(

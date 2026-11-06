@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -107,8 +107,8 @@ class FlextInfraModelsRefactorGrep:
             t.NonEmptyStr | None,
             m.Field(
                 description=(
-                    "Catalog rule this generated partition renders; selecting "
-                    "that catalog id selects every partition of it"
+                    "Catalog rule this generated partition renders; retained for "
+                    "finding provenance, never selector aliasing"
                 ),
             ),
         ] = None
@@ -176,11 +176,27 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Dependency-first provider precedence"),
         ]
         rules: Annotated[
-            tuple[FlextInfraModelsRefactorGrep.CodemodRule, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodemodRule,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactorGrep.CodemodRule
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Unique semantic rules with their elected owner"),
         ]
         rulesets: Annotated[
-            tuple[FlextInfraModelsRefactorGrep.CodemodRuleset, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CodemodRuleset,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactorGrep.CodemodRuleset
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Executable provider configs in precedence order"),
         ]
         project_rule_ids: Annotated[
@@ -307,7 +323,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationRule(m.ContractModel):
         """Declarative origin-bound accessor transformation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         source_name: Annotated[
             t.NonEmptyStr,
@@ -388,7 +404,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         lint_tools: tuple[str, ...] = m.Field(
@@ -396,16 +412,28 @@ class FlextInfraModelsRefactorGrep:
             description="Selected lint tools used for preview rendering",
         )
         automated_changes: tuple[
-            FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...
+            Annotated[
+                p.Infra.AccessorMigrationChange,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                ),
+            ],
+            ...,
         ] = m.Field(
             default_factory=tuple,
             description="Automated rewrites captured for this file",
         )
-        warnings: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationChange, ...] = (
-            m.Field(
-                default_factory=tuple,
-                description="Manual follow-up warnings for this file",
-            )
+        warnings: tuple[
+            Annotated[
+                p.Infra.AccessorMigrationChange,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Manual follow-up warnings for this file",
         )
         diff: Annotated[
             str,
@@ -431,7 +459,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]
@@ -467,7 +495,15 @@ class FlextInfraModelsRefactorGrep:
             t.IntMapping,
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ]
-        files: tuple[FlextInfraModelsRefactorGrep.AccessorMigrationFile, ...] = m.Field(
+        files: tuple[
+            Annotated[
+                p.Infra.AccessorMigrationFile,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationFile
+                ),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="Preview entries included in this report",
         )

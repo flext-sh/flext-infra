@@ -36,9 +36,9 @@ class FlextInfraDocServiceBase[TResult: t.JsonPayload = bool](
     @staticmethod
     def _propagate_phase_outcome(
         label: str,
-        result: p.Result[Sequence[m.Infra.DocsPhaseReport]],
+        result: p.Result[Sequence[p.Infra.DocsPhaseReport]],
         *,
-        failure_predicate: Callable[[m.Infra.DocsPhaseReport], bool] | None = None,
+        failure_predicate: Callable[[p.Infra.DocsPhaseReport], bool] | None = None,
     ) -> p.Result[bool]:
         """Convert a verb result into a boolean execute() outcome.
 

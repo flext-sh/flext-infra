@@ -73,6 +73,10 @@ class FlextInfraConstantsCodegenLazy:
     LAZY_BOOTSTRAP_ROOT_PACKAGE: ClassVar[str] = "flext_core"
     LAZY_BOOTSTRAP_MODULE: ClassVar[str] = "flext_core.lazy"
     "Defining module imported directly only by the bootstrap root initializer."
+    NATIVE_EXPORT_IDENTITY: ClassVar[str] = (
+        "flext_core.flextlazy_native_export::FlextTypingNativeExport"
+    )
+    "Native identity of the wrapper that republishes a native value unchanged."
 
     LINT_TOOLS: ClassVar[t.StrSequencePairTuple] = (
         # Ruff runs with NO --select override: the project's pyproject.toml

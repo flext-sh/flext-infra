@@ -11,7 +11,7 @@ import sys
 import textwrap
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawAst
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
@@ -99,7 +99,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_layer_order_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
     ) -> Sequence[tuple[int, int, Sequence[str]]]:
         """Reorder module-level imports into the formatter's isort layout.
@@ -219,7 +219,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_placement_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
     ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Hoist inline imports and move typing-only reverse imports.
@@ -299,7 +299,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_typing_runtime_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
     ) -> p.Result[Sequence[tuple[int, int, Sequence[str]]]]:
         """Promote allowed runtime reads using the existing definition-time analysis.
@@ -336,7 +336,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_promote_guard_body(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         lines: Sequence[str],
         guard: ast.If,
     ) -> p.Result[
@@ -390,7 +390,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_runtime_selected_aliases(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
     ) -> p.Result[list[ast.alias]]:
         """Select the aliases a runtime read requires, rejecting reverse edges.
@@ -420,7 +420,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_statement_edit(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         lines: Sequence[str],
         placed: MutableMapping[c.Infra.ImportPlacement, list[str]],
@@ -455,7 +455,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_alias_placement(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         alias: ast.alias,
         *,
@@ -489,7 +489,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_is_reverse(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         alias: ast.alias,
     ) -> bool:
@@ -613,7 +613,7 @@ class FlextInfraUtilitiesImportLawPlacement(
     @classmethod
     def _import_law_insertion_edits(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         runtime_lines: Sequence[str],
         typing_lines: Sequence[str],
     ) -> Sequence[tuple[int, int, Sequence[str]]]:

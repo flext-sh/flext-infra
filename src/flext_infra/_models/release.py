@@ -12,7 +12,7 @@ from typing import Annotated, Self
 
 from flext_core import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsGit,
@@ -41,7 +41,11 @@ class FlextInfraModelsRelease:
             m.Field(description="Pull-request title to validate against the protocol"),
         ] = ""
         ownership: Annotated[
-            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
+            Annotated[
+                p.Infra.GitLaneOwnershipReceipt,
+                t.schema_for_model(lambda: FlextInfraModelsGit.GitLaneOwnershipReceipt),
+            ]
+            | None,
             m.Field(
                 description="Authenticated integrated prior-state ownership receipt"
             ),
@@ -85,17 +89,22 @@ class FlextInfraModelsRelease:
         """Selected native GitHub asset metadata, before publication effects."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Native asset filename")]
-        digest: Annotated[
-            str | None,
-            m.Field(default=None, description="Native digest, if available"),
-        ] = None
+        digest: str | None = m.Field(None, description="Native digest, if available")
         state: Annotated[t.NonEmptyStr, m.Field(description="Native upload state")]
 
     class GithubReleaseAssets(m.StrictBoundaryModel):
         """Complete paginated asset inventory."""
 
         assets: Annotated[
-            tuple[FlextInfraModelsRelease.GithubReleaseAsset, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GithubReleaseAsset,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRelease.GithubReleaseAsset
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="All release assets across API pages"),
         ]
 
@@ -104,12 +113,24 @@ class FlextInfraModelsRelease:
 
         id: Annotated[t.PositiveInt, m.Field(description="Native release identifier")]
         tag_name: Annotated[t.NonEmptyStr, m.Field(description="Exact release tag")]
+        draft: Annotated[
+            bool,
+            m.Field(description="Whether the release is an unpublished draft"),
+        ]
 
     class GithubReleaseInventory(m.StrictBoundaryModel):
         """Complete paginated releases used to distinguish absence from failure."""
 
         releases: Annotated[
-            tuple[FlextInfraModelsRelease.GithubReleaseIdentity, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GithubReleaseIdentity,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRelease.GithubReleaseIdentity
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="All repository releases across API pages"),
         ]
 
@@ -215,21 +236,24 @@ class FlextInfraModelsRelease:
             m.Field(description="Build log absolute path"),
         ]
         artifacts: Annotated[
-            tuple[FlextInfraModelsRelease.BuildArtifact, ...],
+            tuple[
+                Annotated[
+                    p.Infra.BuildArtifact,
+                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildArtifact),
+                ],
+                ...,
+            ],
             m.Field(description="Validated wheel and sdist artifacts"),
         ] = ()
-        commit_oid: Annotated[
-            t.Infra.ReleaseCommitOid | None,
-            m.Field(default=None, description="Source commit object ID"),
-        ] = None
-        source_date_epoch: Annotated[
-            t.NonNegativeInt | None,
-            m.Field(default=None, description="Source commit Unix epoch"),
-        ] = None
-        source_license_sha256: Annotated[
-            t.Infra.ReleaseArtifactSha256 | None,
-            m.Field(default=None, description="Committed source LICENSE SHA-256"),
-        ] = None
+        commit_oid: t.Infra.ReleaseCommitOid | None = m.Field(
+            None, description="Source commit object ID"
+        )
+        source_date_epoch: t.NonNegativeInt | None = m.Field(
+            None, description="Source commit Unix epoch"
+        )
+        source_license_sha256: t.Infra.ReleaseArtifactSha256 | None = m.Field(
+            None, description="Committed source LICENSE SHA-256"
+        )
 
         @m.model_validator(mode="after")
         def validate_provenance(self) -> Self:
@@ -266,25 +290,20 @@ class FlextInfraModelsRelease:
             c.Infra.VersionBump,
             m.Field(description="Bump derived from merged PRs"),
         ]
-        previous_tag: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(default=None, description="Latest release tag, if any"),
-        ] = None
-        merges: Annotated[
-            tuple[str, ...],
-            m.Field(default=(), description="Merged PR subjects since previous_tag"),
-        ] = ()
-        declared: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description=(
-                    "``next`` is the declared version itself (first release, "
-                    "finalized pre-release, or a version written beyond the last "
-                    "tag): decided when it was written, still untagged"
-                ),
+        previous_tag: t.NonEmptyStr | None = m.Field(
+            None, description="Latest release tag, if any"
+        )
+        merges: tuple[str, ...] = m.Field(
+            (), description="Merged PR subjects since previous_tag"
+        )
+        declared: bool = m.Field(
+            default=False,
+            description=(
+                "``next`` is the declared version itself (first release, finalized "
+                "pre-release, or a version written beyond the last tag): decided when "
+                "it was written, still untagged"
             ),
-        ] = False
+        )
 
         @m.computed_field
         @property
@@ -321,7 +340,13 @@ class FlextInfraModelsRelease:
             m.Field(description="Total projects with non-zero exit"),
         ]
         records: Annotated[
-            tuple[FlextInfraModelsRelease.BuildRecord, ...],
+            tuple[
+                Annotated[
+                    p.Infra.BuildRecord,
+                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildRecord),
+                ],
+                ...,
+            ],
             m.Field(description="Per-project build records"),
         ] = ()
         dry_run: Annotated[bool, m.Field(description="Metadata-only build report")]

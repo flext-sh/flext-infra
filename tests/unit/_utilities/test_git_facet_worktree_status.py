@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraGitService, m
-from tests import c, tm, u
+from flext_infra import FlextInfraGitService
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraGitFacetWorktreeStatus:
@@ -86,6 +86,27 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         dirty = tm.ok(FlextInfraGitService(repository_root=real_git_repo).execute())
         tm.that(dirty.dirty, eq=True)
         tm.that(dirty.porcelain, has="dirty.txt")
+
+    @staticmethod
+    def test_service_preserves_porcelain_status_columns(real_git_repo: Path) -> None:
+        """An unstaged tracked edit retains Git's initial empty index column."""
+        changed_path = real_git_repo / "tracked.txt"
+        changed_path.write_text("committed\n", encoding="utf-8")
+        u.Tests.git_run(real_git_repo, "add", changed_path.name)
+        u.Tests.git_run(real_git_repo, "commit", "-m", "Track status protocol input")
+        changed_path.write_text("modified\n", encoding="utf-8")
+
+        report = tm.ok(FlextInfraGitService(repository_root=real_git_repo).execute())
+
+        tm.that(report.porcelain, eq=f" M {changed_path.name}")
+        tm.that(
+            report.porcelain[c.Infra.GIT_PORCELAIN_PATH_OFFSET :],
+            eq=changed_path.name,
+        )
+        identity = tm.ok(
+            u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=real_git_repo))
+        )
+        tm.that(identity.porcelain, eq=report.porcelain)
 
     @staticmethod
     def test_git_changed_paths_reports_tracked_and_untracked_files(

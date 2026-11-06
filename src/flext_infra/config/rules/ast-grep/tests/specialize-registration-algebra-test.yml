@@ -5,7 +5,7 @@ valid:
     value: p.RegisterableService
   - |
     from flext_core import p, t
-    value: t.RegisterableService[p.Model]
+    value: t.RegisterableService[p.BaseModel]
   - |
     from foreign import p, custom
     value: custom.RegisterableService

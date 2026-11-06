@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeMemberRuntime:
@@ -265,8 +263,8 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
         tm.that(process.stdout, has=marker)
 
-    @pytest.mark.parametrize("linked", [False, True])
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("linked", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_direnv_resolves_the_make_runtime_environment(
         self,
         tmp_path: Path,

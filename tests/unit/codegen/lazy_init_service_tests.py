@@ -9,14 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from flext_infra.codegen import FlextInfraCodegenLazyInit
-from tests import p
 
 
 def expect_read_only_drift(
@@ -494,7 +491,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("width_offset", [-1, 0, 1])
+    @c.Tests.MARK.parametrize("width_offset", [-1, 0, 1])
     def test_export_tuple_is_formatter_stable_at_line_width(
         tmp_path: Path,
         width_offset: int,
@@ -709,7 +706,9 @@ class TestsFlextInfraCodegenLazyInitService:
     # never write a new initializer, drop the child from the parent inventory
     # in the same pass, and a following check must be a byte fixed point.
     @staticmethod
-    @pytest.mark.parametrize("directory_name", ["typing", "done-check", "class", "123"])
+    @c.Tests.MARK.parametrize(
+        "directory_name", ["typing", "done-check", "class", "123"]
+    )
     def test_invalid_directory_is_never_a_generated_package(
         tmp_path: Path,
         directory_name: str,

@@ -32,10 +32,10 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRules,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope._analysis.sourcescan import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
 )
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
     """Render the import-layer direction law and report runtime import cycles."""
 
     @classmethod
-    def codemod_import_cycle_issues(cls, root: Path) -> tuple[m.Infra.Issue, ...]:
+    def codemod_import_cycle_issues(cls, root: Path) -> tuple[p.Infra.Issue, ...]:
         """Report every module the runtime import graph places in a cycle.
 
         The cycle is a whole-graph verdict over each governed project's
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesCodemodImportLawRules:
 
         """
         resolved = root.resolve()
-        issues: list[m.Infra.Issue] = []
+        issues: list[p.Infra.Issue] = []
         for project_root in FlextInfraUtilitiesProjectDiscovery.governed_project_roots(
             resolved
         ):

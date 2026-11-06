@@ -15,9 +15,12 @@ import ast
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p
+from flext_infra import c, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -30,7 +33,6 @@ from flext_infra._utilities._rope.runtime_types import (
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 
 
 class FlextInfraUtilitiesCodemodBindingChain:
@@ -454,7 +456,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             holder_text: str,
             line: int | None,
             name: str,
-        ) -> tuple[m.Infra.LogicalStatement, int, p.Infra.RopeScope] | None:
+        ) -> tuple[p.Infra.LogicalStatement, int, p.Infra.RopeScope] | None:
             """Prove the holder's declaration is the single reaching definition.
 
             Returns:
@@ -522,7 +524,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
         def _occurrence_is_imported(
             cls,
             module: p.Infra.RopePyModule,
-            row: m.Infra.LogicalStatement,
+            row: p.Infra.LogicalStatement,
             expression: str,
         ) -> bool:
             """Report whether the statement imports the expression into scope.
@@ -556,7 +558,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
             expression: str,
-        ) -> Sequence[tuple[m.Infra.LogicalStatement, int]]:
+        ) -> Sequence[tuple[p.Infra.LogicalStatement, int]]:
             """Collect the frame-local declarations competing with the expression.
 
             Returns:
@@ -578,7 +580,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             finder = FlextInfraUtilitiesRopeRuntimeRefactors.lexical_occurrence_finder(
                 module.pycore.project, name
             )
-            declarations: list[tuple[m.Infra.LogicalStatement, int]] = []
+            declarations: list[tuple[p.Infra.LogicalStatement, int]] = []
             seen: set[tuple[int, int]] = set()
             for occurrence in finder.find_occurrences(pymodule=module):
                 start, end = occurrence.get_primary_range()
@@ -615,7 +617,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
             cls,
             frame: tuple[p.Infra.RopePyModule, p.Infra.RopeScope],
             occurrence: p.Infra.RopeOccurrence,
-            row: m.Infra.LogicalStatement,
+            row: p.Infra.LogicalStatement,
             expression: str,
             assignment_lines: frozenset[int | None],
         ) -> bool:
@@ -675,7 +677,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
 
         @staticmethod
         def _occurrence_writes_header_name(
-            row: m.Infra.LogicalStatement,
+            row: p.Infra.LogicalStatement,
             occurrence: p.Infra.RopeOccurrence,
         ) -> bool:
             """Report whether one header occurrence writes its expression.
@@ -717,7 +719,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
         def _declaration_reaches_unconditionally(
             module: p.Infra.RopePyModule,
             scope: p.Infra.RopeScope,
-            declaration: m.Infra.LogicalStatement,
+            declaration: p.Infra.LogicalStatement,
             expression: str,
             declared_routes: Mapping[str, str] | None,
         ) -> bool:
@@ -752,7 +754,7 @@ class FlextInfraUtilitiesCodemodBindingChain:
                 return True
             if declared_routes is None or expression not in declared_routes:
                 return False
-            guards: list[m.Infra.LogicalStatement] = []
+            guards: list[p.Infra.LogicalStatement] = []
             for row in rows:
                 if row.start_offset >= declaration.start_offset:
                     break

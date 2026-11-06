@@ -9,8 +9,10 @@ from __future__ import annotations
 import shutil
 from typing import TYPE_CHECKING
 
+import flext_cli
+
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import tm, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,6 +48,15 @@ class TestsFlextInfraFreshImportCompleteness:
             ).build_report(repository_roots=(repository_root,)),
         )
         return None if report.passed else report.violations[0]
+
+    @staticmethod
+    def test_native_generic_receipt_uses_lexical_type_parameters() -> None:
+        """The real CLI report retains its own three PEP 695 parameters."""
+        tm.that(bool(m.Cli.ProcessNativeQualificationReport.__type_params__), eq=True)
+        FlextInfraValidateFreshImport.require_complete_models(
+            flext_cli,
+            flext_cli.__name__,
+        )
 
     @staticmethod
     def test_unbuildable_model_fails(

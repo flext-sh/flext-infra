@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -25,6 +24,9 @@ if TYPE_CHECKING:
     )
     from flext_infra._utilities._git.mutation_scope import (
         FlextInfraUtilitiesGitMutationScope,
+    )
+    from flext_infra._utilities._git.physical_scope import (
+        FlextInfraUtilitiesGitPhysicalScope,
     )
     from flext_infra._utilities._git.remote import FlextInfraUtilitiesGitRemote
     from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
@@ -109,6 +111,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestationEvidence",
     "FlextInfraUtilitiesGitLaneHygiene",
     "FlextInfraUtilitiesGitMutationScope",
+    "FlextInfraUtilitiesGitPhysicalScope",
     "FlextInfraUtilitiesGitRemote",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitRequirementSource",
@@ -145,11 +148,12 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraUtilitiesGitAttestation": ".attestation",
         "FlextInfraUtilitiesGitAttestationEvidence": ".attestation_evidence",
         "FlextInfraUtilitiesGitLaneHygiene": ".lane_hygiene",
         "FlextInfraUtilitiesGitMutationScope": ".mutation_scope",
+        "FlextInfraUtilitiesGitPhysicalScope": ".physical_scope",
         "FlextInfraUtilitiesGitRemote": ".remote",
         "FlextInfraUtilitiesGitRepo": ".repo",
         "FlextInfraUtilitiesGitRequirementSource": ".requirement_source",
@@ -181,6 +185,6 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitWorktreeRoots": ".worktree_roots",
         "FlextInfraUtilitiesGitWorktreeStatus": ".worktree_status",
         "FlextInfraUtilitiesGitignore": ".ignore",
-    }),
+    },
     public_exports=__all__,
 )

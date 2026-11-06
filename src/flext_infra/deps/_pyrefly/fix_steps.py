@@ -15,7 +15,7 @@ from flext_infra.deps import FlextInfraExtraPathsManager
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraDepsPyreflyFixSteps:
@@ -145,8 +145,8 @@ class FlextInfraDepsPyreflyFixSteps:
     def _sync_project_excludes(
         pyrefly: MutableMapping[str, t.JsonValue],
         *,
-        codegen: m.Infra.CodegenConfigSpec,
-        tool_config: m.Infra.ToolConfigDocument,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument,
     ) -> p.Result[Sequence[str]]:
         """Synchronize tool.pyrefly.project-excludes from YAML rules.
 

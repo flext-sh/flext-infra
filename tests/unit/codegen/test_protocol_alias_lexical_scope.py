@@ -9,8 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from flext_infra import u
-from tests import tm
+from tests import tm, u
 
 
 class TestsFlextInfraProtocolAliasLexicalScope:

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraSetupOperationBatch:
@@ -35,7 +35,7 @@ class TestsFlextInfraSetupOperationBatch:
         return root, first, second
 
     @staticmethod
-    def _report(root: Path, operation: str) -> m.Infra.WorkspaceOperationReport:
+    def _report(root: Path, operation: str) -> p.Infra.WorkspaceOperationReport:
         """Read the operation's published typed receipt.
 
         Returns:

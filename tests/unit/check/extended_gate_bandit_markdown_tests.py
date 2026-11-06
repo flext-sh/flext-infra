@@ -10,8 +10,6 @@ import shutil
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
-import pytest
-
 from flext_infra import config
 from flext_infra.gates import FlextInfraGatesBandit, FlextInfraGatesMarkdown
 from tests import c, m, tm, u
@@ -81,8 +79,8 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that({issue.code for issue in result.issues}, eq={"B101"})
 
     @staticmethod
-    @pytest.mark.parametrize("surface", config.Infra.source_scan.roots)
-    @pytest.mark.parametrize("files_only", [False, True])
+    @c.Tests.MARK.parametrize("surface", config.Infra.source_scan.roots)
+    @c.Tests.MARK.parametrize("files_only", [False, True])
     def test_bandit_findings_remain_blocking_on_every_code_surface(
         tmp_path: Path,
         surface: str,
@@ -128,7 +126,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.issues[0].code, eq=c.Infra.ToolOutcome.ERROR.value)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "report",
         [
             "{}",
@@ -219,7 +217,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.that(result.raw_output, lacks="Working...")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("markdown_text", "config_text", "findings_block", "codes"),
         [
             (HEADING_SKIP, "", True, ["MD001"]),
@@ -339,7 +337,7 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
         tm.that(inherited.issues[0].code, eq="MD013")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "owner_parts",
         [
             *sorted(
@@ -516,10 +514,14 @@ class TestsFlextInfraBanditAndMarkdownGates:
             apply_fixes=True,
         )
 
+        draft = project_dir / "draft.md"
+        draft.write_text("# Draft   \n\n[gone](missing.md)\n", encoding="utf-8")
+
         result = FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
+        tm.that(draft.read_text(encoding="utf-8").splitlines()[0], eq="# Draft")
         _ = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdown,
             tmp_path,
@@ -527,3 +529,41 @@ class TestsFlextInfraBanditAndMarkdownGates:
             passed=True,
             issues_len=0,
         )
+
+    # The rtk writer's own marker protocol (an external contract, not a
+    # FLEXT-owned value); its inner lines carry findings only rtk may repair.
+    RTK_BLOCK: ClassVar[str] = (
+        "<!-- rtk-instructions v2 -->\n"
+        "# RTK Instructions   \n"
+        "##Unspaced heading\n"
+        "<!-- /rtk-instructions -->\n"
+    )
+
+    def test_markdown_gate_never_touches_the_rtk_projected_block(
+        self, tmp_path: Path
+    ) -> None:
+        """Check masks the rtk block; fix repairs outside it, byte-identical inside."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-rtk", markdown_config="")
+        agents = project_dir / "AGENTS.md"
+        agents.write_text("# Agents\n\n" + self.RTK_BLOCK, encoding="utf-8")
+
+        _ = u.Tests.check_gate_asserting(
+            FlextInfraGatesMarkdown,
+            tmp_path,
+            project_dir,
+            passed=True,
+            issues_len=0,
+        )
+
+        agents.write_text("# Agents   \n\n" + self.RTK_BLOCK, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
+        context = m.Infra.GateContext(
+            repository_root=tmp_path,
+            reports_dir=tmp_path,
+            apply_fixes=True,
+        )
+
+        result = FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
+
+        tm.ok(result.result.passed)
+        tm.that(agents.read_text(encoding="utf-8"), eq="# Agents\n\n" + self.RTK_BLOCK)

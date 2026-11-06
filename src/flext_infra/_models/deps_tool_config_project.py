@@ -10,11 +10,12 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra._models import FlextInfraModelsDepsToolConfigProjectArtifacts
+from flext_infra import p, t
+from flext_infra._models import FlextInfraModelsProjectArtifacts
 
 
 class FlextInfraModelsDepsToolConfigProject(
-    FlextInfraModelsDepsToolConfigProjectArtifacts,
+    FlextInfraModelsProjectArtifacts,
 ):
     """Document layer composing every project-owned managed-artifact model."""
 
@@ -22,11 +23,22 @@ class FlextInfraModelsDepsToolConfigProject(
         """Optional project-owned sections present in one configuration source."""
 
         Mise: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectMiseConfig | None,
+            Annotated[
+                p.Infra.ProjectMiseConfig,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsProjectArtifacts.ProjectMiseConfig
+                ),
+            ]
+            | None,
             m.Field(description="Mise section declared by this source"),
         ] = None
         Gitignore: Annotated[
-            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectGitignoreConfig
+            Annotated[
+                p.Infra.ProjectGitignoreConfig,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsProjectArtifacts.ProjectGitignoreConfig
+                ),
+            ]
             | None,
             m.Field(description="Gitignore section declared by this source"),
         ] = None
@@ -35,7 +47,12 @@ class FlextInfraModelsDepsToolConfigProject(
         """Relevant managed-artifact slice loaded from project config files."""
 
         ManagedArtifacts: Annotated[
-            FlextInfraModelsDepsToolConfigProject.ProjectManagedArtifactsFragment,
+            p.Infra.ProjectManagedArtifactsFragment,
+            t.schema_for_model(
+                lambda: (
+                    FlextInfraModelsDepsToolConfigProject.ProjectManagedArtifactsFragment
+                )
+            ),
             m.Field(description="Project-local managed artifact configuration."),
         ]
 

@@ -8,19 +8,81 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Self
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
+from packaging.utils import canonicalize_name
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraModelsCodemod:
     """Typed contracts for native codemod scans and mutation reports."""
+
+    class RopeSignatureAddition(m.ContractModel):
+        """Required keyword propagation elected by native caller identities."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable addition identity")]
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Native qualified function declaration")
+        ]
+        parameter: Annotated[
+            t.NonEmptyStr, m.Field(description="Required keyword parameter name")
+        ]
+        annotation: Annotated[
+            t.NonEmptyStr, m.Field(description="Origin-owned annotation expression")
+        ]
+        default: str | None = m.Field(
+            default=None,
+            description="Native default expression; absent requires every caller value",
+        )
+        call_values: Annotated[
+            Mapping[str, str],
+            m.Field(description="Caller declaration identity to argument expression"),
+        ]
+
+    class RopeSignatureRemoval(m.ContractModel):
+        """Replace exact parameter references before native signature retirement."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable operation identity")]
+        target: Annotated[
+            t.NonEmptyStr, m.Field(description="Native qualified function declaration")
+        ]
+        parameter: Annotated[
+            t.NonEmptyStr, m.Field(description="Existing parameter to retire")
+        ]
+        replacement: Annotated[
+            t.NonEmptyStr, m.Field(description="Explicit native body expression")
+        ]
+
+    class RopeMethodTransfer(m.ContractModel):
+        """An existing class receiving a natively proven method declaration."""
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Stable transfer identity")]
+        destination: Annotated[
+            Sequence[t.NonEmptyStr],
+            m.Field(
+                min_length=2,
+                max_length=2,
+                description="Destination module and existing qualified class",
+            ),
+        ]
+        methods: Annotated[
+            Sequence[
+                Annotated[Sequence[t.NonEmptyStr], m.Field(min_length=2, max_length=2)]
+            ],
+            m.Field(
+                min_length=1,
+                description="Source module and qualified method pairs",
+            ),
+        ]
+        receiver_rewrites: Mapping[str, str] = m.Field(
+            default_factory=dict,
+            description=(
+                "Explicit self.member to injected receiver path for one instance method"
+            ),
+        )
 
     class ContractAdmissionOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Independent native admission selectors for one contract planning pass."""
@@ -31,6 +93,28 @@ class FlextInfraModelsCodemod:
         class_alias_only: bool = m.Field(
             default=False, description="Limit admission to class-alias contracts"
         )
+        signature_additions: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureAddition,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
+            ]
+        ] = m.Field(default=(), description="Native additions in this same source pass")
+        method_transfers: Sequence[
+            Annotated[
+                p.Infra.RopeMethodTransfer,
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
+            ]
+        ] = m.Field(default=(), description="Native transfers in this same source pass")
+        signature_removals: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureRemoval,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
+            ]
+        ] = m.Field(default=(), description="Native body and parameter retirements")
 
     class AstGrepCapture(FlextInfraModelsBase.FrozenArbitrary):
         """Authenticate an occurrence against native UTF-8 capture coordinates."""
@@ -57,25 +141,25 @@ class FlextInfraModelsCodemod:
         """Closed descriptor-authenticated sources used by occurrence admission."""
 
         states: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
         @m.field_validator("states")
         @classmethod
         def unique_inputs(
-            cls, states: tuple[m.Cli.AtomicFileState, ...]
-        ) -> tuple[m.Cli.AtomicFileState, ...]:
+            cls, states: tuple[t.Port[p.Cli.AtomicFileState], ...]
+        ) -> tuple[t.Port[p.Cli.AtomicFileState], ...]:
             """Store each authenticated input once; conflicting identities fail.
 
             Returns:
-                The resulting ``tuple[m.Cli.AtomicFileState, ...]``.
+                The resulting ``tuple[p.Cli.AtomicFileState, ...]``.
 
             Raises:
                 ValueError: If binding source snapshots disagree.
 
             """
-            indexed: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+            indexed: MutableMapping[Path, p.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
@@ -90,13 +174,12 @@ class FlextInfraModelsCodemod:
         the complete payload remains in the gate's raw scanner output.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(strict=True)
 
         file: Annotated[str, m.Field(min_length=1, description="Reported source path")]
-        rule_id: Annotated[
-            str,
-            m.Field(alias="ruleId", min_length=1, description="Native rule ID"),
-        ]
+        rule_id: str = m.Field(
+            alias="ruleId", min_length=1, description="Native rule ID"
+        )
         severity: Annotated[
             c.Infra.NativeRuleSeverity,
             m.Field(description="Native rule severity"),
@@ -104,54 +187,36 @@ class FlextInfraModelsCodemod:
         message: Annotated[str, m.Field(description="Native rule diagnostic")]
         text: Annotated[str, m.Field(description="Exact matched source text")]
         lines: Annotated[str, m.Field(description="Source lines containing the match")]
-        line: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "start", "line"),
-                description="Zero-based starting source line",
-            ),
-        ]
-        column: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "start", "column"),
-                description="Zero-based starting source column",
-            ),
-        ]
-        end_line: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "end", "line"),
-                description="Zero-based ending source line",
-            ),
-        ]
-        end_column: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "end", "column"),
-                description="Zero-based ending source column",
-            ),
-        ]
-        start_byte: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "byteOffset", "start"),
-                description="Inclusive UTF-8 byte offset",
-            ),
-        ]
-        end_byte: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                validation_alias=m.AliasPath("range", "byteOffset", "end"),
-                description="Exclusive UTF-8 byte offset",
-            ),
-        ]
+        line: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "start", "line"),
+            description="Zero-based starting source line",
+        )
+        column: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "start", "column"),
+            description="Zero-based starting source column",
+        )
+        end_line: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "end", "line"),
+            description="Zero-based ending source line",
+        )
+        end_column: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "end", "column"),
+            description="Zero-based ending source column",
+        )
+        start_byte: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "byteOffset", "start"),
+            description="Inclusive UTF-8 byte offset",
+        )
+        end_byte: int = m.Field(
+            ge=0,
+            validation_alias=m.AliasPath("range", "byteOffset", "end"),
+            description="Exclusive UTF-8 byte offset",
+        )
 
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic):
         """A validated owned-path finding in the native scanner wire format."""
@@ -193,11 +258,15 @@ class FlextInfraModelsCodemod:
         id: Annotated[t.NonEmptyStr, m.Field(description="Exact rule receipt identity")]
         operation: Annotated[
             c.Infra.FamilyFlattenOperation,
-            m.Field(description="Supported semantic family transformation"),
+            m.Field(
+                description="Supported semantic family transformation", strict=False
+            ),
         ]
         collision: Annotated[
             c.Infra.FamilyCollisionPolicy,
-            m.Field(description="Member-name collision resolution policy"),
+            m.Field(
+                description="Member-name collision resolution policy", strict=False
+            ),
         ]
 
     class RopeContractOrigin(m.ContractModel):
@@ -207,8 +276,58 @@ class FlextInfraModelsCodemod:
             description="Elected repository root, or None for packaged policy"
         )
 
-    class RopeContractRule(m.ContractModel):
-        """Identity-constrained native Rope restructuring of a Python contract."""
+    class RopeContractScopeTarget(m.ContractModel):
+        """One exact distribution and module admitted by a contract rule."""
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical PEP 503 distribution identity"),
+        ]
+        module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact dotted Python module identity"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_identity(self) -> Self:
+            if canonicalize_name(self.distribution) != self.distribution:
+                msg = (
+                    "contract scope distribution must use its canonical PEP 503 "
+                    "identity"
+                )
+                raise ValueError(msg)
+            if any(not part.isidentifier() for part in self.module.split(".")):
+                msg = "contract scope module must be a dotted Python identifier"
+                raise ValueError(msg)
+            return self
+
+    class RopeContractScope(m.ContractModel):
+        """Closed rule target set; unlisted source modules are never candidates."""
+
+        targets: Annotated[
+            Sequence[
+                Annotated[
+                    p.Infra.RopeContractScopeTarget,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractScopeTarget
+                    ),
+                ]
+            ],
+            m.Field(min_length=1, description="Exact distribution/module target pairs"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _unique_targets(self) -> Self:
+            identities = tuple(
+                (item.distribution, item.module) for item in self.targets
+            )
+            if len(identities) != len(set(identities)):
+                msg = "contract scope targets must be unique"
+                raise ValueError(msg)
+            return self
+
+    class RopeContractRuleTarget(m.ContractModel):
+        """Identity, admission scope and native pattern of one Rope contract rule."""
 
         owner_root: Path | None = m.Field(
             default=None,
@@ -223,9 +342,9 @@ class FlextInfraModelsCodemod:
         @classmethod
         def _document_origin(
             cls,
-            value: t.ValidationInput[p.Model],
+            value: t.ValidationInput[p.BaseModel],
             info: p.ValidationInfo,
-        ) -> t.ValidationInput[p.Model]:
+        ) -> t.ValidationInput[p.BaseModel]:
             """Bind operational ownership without modifying the document mapping.
 
             Returns:
@@ -260,6 +379,29 @@ class FlextInfraModelsCodemod:
             description="Explicit Git revision authenticating retired provider "
             "declarations",
         )
+        scope: (
+            Annotated[
+                p.Infra.RopeContractScope,
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeContractScope),
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            description=(
+                "Closed distribution/module admission set; absent keeps the rule "
+                "universal"
+            ),
+        )
+        annotation_only: bool = m.Field(
+            default=False,
+            description="Admit matches only inside declared type annotations",
+        )
+        annotation_member_source: t.NonEmptyStr | None = m.Field(
+            default=None,
+            description=(
+                "Exact source namespace admitted for a proven annotation member move"
+            ),
+        )
         phase: t.DocumentInput[c.Infra.SemanticCutoverPhase] = m.Field(
             default=c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
             description="Existing semantic phase owning this rule's execution",
@@ -280,6 +422,10 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(t.TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
+
+    class RopeContractRuleShape(RopeContractRuleTarget):
+        """Ancestry, capture and lexical-scope constraints of a Rope rule."""
+
         model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
@@ -333,6 +479,10 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Native module and primitive whose backend stays native",
         )
+
+    class RopeContractRule(RopeContractRuleShape):
+        """Identity-constrained native Rope restructuring of a Python contract."""
+
         receiver_methods: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded-call interface required of a factory product",
@@ -378,8 +528,59 @@ class FlextInfraModelsCodemod:
             description="Native module/member retired after receiver transfer",
         )
 
+        def _validate_annotation_member_template(self) -> None:
+            """Require a precise source template and authenticated target owner.
+
+            Raises:
+                ValueError: The annotation rule cannot prove its target member owner.
+
+            """
+            if self.annotation_member_source is None:
+                return
+            member = ".${member}"
+            target = self.goal.removesuffix(member)
+            if target.partition(".")[0] == c.Infra.FacadeFamily.M:
+                msg = (
+                    "annotation member rules cannot produce model typing; "
+                    "declare a canonical runtime-checkable protocol destination"
+                )
+                raise ValueError(msg)
+            owner = self.bindings.get(target)
+            source_owner = self.bindings.get(self.annotation_member_source)
+            valid = (
+                self.annotation_only
+                and self.operation == c.Infra.RopeContractOperation.RESTRUCTURE
+                and self.pattern == "${receiver}.${member}"
+                and self.goal.endswith(member)
+                and self.goal.count(member) == 1
+                and "${" not in target
+                and self.scope is not None
+                and all(
+                    part.isidentifier()
+                    for value in (
+                        self.annotation_member_source,
+                        target,
+                        owner or "",
+                        source_owner or "",
+                    )
+                    for part in value.split(".")
+                )
+                and owner is not None
+                and source_owner is not None
+            )
+            if not valid:
+                msg = "annotation member rules require a native source and bound target"
+                raise ValueError(msg)
+
         @m.model_validator(mode="after")
         def _validate_call_target(self) -> Self:
+            self._validate_annotation_member_template()
+            if (
+                self.annotation_only
+                and self.operation != c.Infra.RopeContractOperation.RESTRUCTURE
+            ):
+                msg = "annotation-only rules require native restructure"
+                raise ValueError(msg)
             for capture in (self.value_default, self.factory_default):
                 if capture is not None and f"${{{capture}}}" not in self.pattern:
                     msg = "native default proof must name a pattern capture"
@@ -427,9 +628,38 @@ class FlextInfraModelsCodemod:
         """The packaged semantic contract policy, validated once on input."""
 
         rules: Annotated[
-            Sequence[FlextInfraModelsCodemod.RopeContractRule],
+            Sequence[
+                Annotated[
+                    p.Infra.RopeContractRule,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractRule
+                    ),
+                ]
+            ],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
         ]
+        signature_additions: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureAddition,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
+            ]
+        ] = m.Field(default=(), description="Ordered native required keyword additions")
+        method_transfers: Sequence[
+            Annotated[
+                p.Infra.RopeMethodTransfer,
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
+            ]
+        ] = m.Field(default=(), description="Ordered native method ownership transfers")
+        signature_removals: Sequence[
+            Annotated[
+                p.Infra.RopeSignatureRemoval,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
+            ]
+        ] = m.Field(default=(), description="Ordered native parameter retirements")
 
     class ModFixtureDirectories(FlextInfraModelsBase.FrozenArbitrary):
         """Validated physical directories selected by one ast-grep owner."""

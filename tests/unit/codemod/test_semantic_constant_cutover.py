@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
@@ -23,8 +21,8 @@ class TestsFlextInfraSemanticConstantCutover:
     """Constant consumers resolve upstream bindings and cut over atomically."""
 
     @staticmethod
-    @pytest.mark.parametrize("guarded", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize(
         "upstream_import",
         [
             "from flext_core import c as core_c",
@@ -106,7 +104,7 @@ class TestsFlextInfraSemanticConstantCutover:
             tm.that(source_path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("case", ["ambiguous", "cyclic"])
+    @c.Tests.MARK.parametrize("case", ["ambiguous", "cyclic"])
     def test_constant_consumers_reject_unproven_upstream_bindings(
         tmp_path: Path,
         case: str,
@@ -139,7 +137,7 @@ class TestsFlextInfraSemanticConstantCutover:
             path.write_text(source, encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=case) as raised,
+            u.Tests.raises(ValueError, match=case) as raised,
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
@@ -151,8 +149,8 @@ class TestsFlextInfraSemanticConstantCutover:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("alias", ["c", "constants"])
-    @pytest.mark.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize("alias", ["c", "constants"])
+    @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_nonprefixed_constants_qualify_public_owners_without_value_dedupe(
         tmp_path: Path, alias: str, *, guarded: bool
     ) -> None:
@@ -315,7 +313,7 @@ class TestsFlextInfraSemanticConstantCutover:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case", ["same-value", "different-value", "identity-depth"]
     )
     def test_nonprefixed_constants_reject_competing_publications_before_writes(
@@ -361,7 +359,7 @@ class TestsFlextInfraSemanticConstantCutover:
         )
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="ambiguous public owners"),
+            u.Tests.raises(ValueError, match="ambiguous public owners"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
@@ -533,3 +531,14 @@ class TestsFlextInfraSemanticConstantCutover:
                 sources={path: source},
             )
         tm.fail(planned, has="requires exactly one declared module owner")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rule_id", ["require-uppercase-constant-name", "ban-mutable-constant-value"]
+    )
+    def test_constants_theme_selects_the_constant_consumer_phase(
+        rule_id: str,
+    ) -> None:
+        """A selected constants rule runs the consumer cutover on its own."""
+        phase = c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS
+        tm.that(c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase], has=rule_id)

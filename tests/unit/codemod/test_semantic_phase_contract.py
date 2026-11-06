@@ -30,7 +30,7 @@ class TestsFlextInfraSemanticPhaseContract:
         """Utility-owned factories preserve model defaults and JSON round-trips."""
         consumer = tmp_path / "declaration_factory_consumer.py"
         consumer.write_text(
-            "from flext_core import m, t, u\n"
+            "from flext_core import m, p, t, u\n"
             "from typing_extensions import TypeForm\n"
             "type Bag[T] = MutableSequence[T]\n"
             "class Consumer(m.ContractModel):\n"
@@ -60,7 +60,7 @@ class TestsFlextInfraSemanticPhaseContract:
             sys.modules.pop(specification.name)
 
     @staticmethod
-    @pytest.mark.parametrize("shadowed", [False, True])
+    @c.Tests.MARK.parametrize("shadowed", [False, True])
     def test_member_contextual_packages_keep_independent_owners(
         tmp_path: Path, *, shadowed: bool
     ) -> None:
@@ -316,7 +316,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(accepted, eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "variant", [c.MergeStrategy.OVERRIDE, "diamond", "static-internal"]
     )
     def test_public_utility_c3_elects_effective_owner(
@@ -349,7 +349,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.that(tuple(edit.file_path for edit in planned), eq=(path,))
             updated = planned[0].updated_source
             if variant == "static-internal":
-                tm.that(updated, has="from flext_reviewed._utilities.derived import")
+                tm.that(updated, has="from flext_reviewed_utilities import")
                 tm.that(
                     updated, has="value = FlextReviewedDerived.scalar_mapping_adapter()"
                 )
@@ -366,7 +366,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.that(source_path.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize("variant", ["masked", "internal"])
+    @c.Tests.MARK.parametrize("variant", ["masked", "internal"])
     def test_utility_owner_masks_and_context_reject_atomically(
         tmp_path: Path,
         variant: str,
@@ -402,7 +402,7 @@ class TestsFlextInfraSemanticPhaseContract:
             tm.that(source_path.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize("utilities_import", ["", "from flext_core import u\n"])
+    @c.Tests.MARK.parametrize("utilities_import", ["", "from flext_core import u\n"])
     def test_named_adapter_factories_bind_public_utilities(
         tmp_path: Path,
         utilities_import: str,
@@ -461,7 +461,9 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("binding", ["inherited", c.MergeStrategy.OVERRIDE, "mask"])
+    @c.Tests.MARK.parametrize(
+        "binding", ["inherited", c.MergeStrategy.OVERRIDE, "mask"]
+    )
     def test_contextual_utilities_resolve_real_inherited_members(
         tmp_path: Path,
         binding: str,
@@ -589,7 +591,7 @@ class TestsFlextInfraSemanticPhaseContract:
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("inherited_import", [False, True])
+    @c.Tests.MARK.parametrize("inherited_import", [False, True])
     def test_relocated_behavior_runs_through_its_real_consumer(
         tmp_path: Path,
         *,

@@ -199,7 +199,7 @@ class FlextInfraTypesBase:
     "Optional callback invoked on transformer changes."
     type PipelineHandler = Callable[
         [p.Cli.PipelineStageContext],
-        p.Result[m.Cli.PipelineStageResult],
+        p.Result[p.Cli.PipelineStageResult],
     ]
     "Stage handler contract for the flext-infra check/codegen DAG pipelines."
     type PipelineHandlerMap = Mapping[str, PipelineHandler]

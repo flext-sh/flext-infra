@@ -10,7 +10,7 @@ import time
 
 from flext_cli import cli
 
-from flext_infra import m
+from flext_infra import p
 
 
 class FlextInfraCliModProgress:
@@ -35,12 +35,12 @@ class FlextInfraCliModProgress:
         self._phase = now
 
     @staticmethod
-    def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:
+    def emit_rename(report: p.Infra.ApplyRenamesReport) -> None:
         """Show one completed CSV campaign."""
         cli.display_text(FlextInfraCliModProgress.render_rename(report))
 
     @staticmethod
-    def render_rename(report: m.Infra.ApplyRenamesReport) -> str:
+    def render_rename(report: p.Infra.ApplyRenamesReport) -> str:
         """Render native published paths and pending edit spans.
 
         Returns:

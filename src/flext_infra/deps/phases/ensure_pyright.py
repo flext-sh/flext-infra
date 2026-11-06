@@ -25,9 +25,9 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def __init__(
         self,
-        tool_config: m.Infra.ToolConfigDocument,
+        tool_config: p.Infra.ToolConfigDocument,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Initialize the phase with the canonical tool configuration."""
         self._tool_config = tool_config
@@ -37,7 +37,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         env_dir: str,
         *,
-        rules: m.Infra.PyrightConfig.PathRulesConfig | None = None,
+        rules: p.Infra.PyrightConfigPathRulesConfig | None = None,
     ) -> str:
         """Apply the configured privacy policy for each declared root category.
 
@@ -61,8 +61,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         root: str,
         extra_paths: Sequence[str],
-        rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> m.Infra.PyrightConfig.ExecutionEnvironment:
+        rules: p.Infra.PyrightConfigPathRulesConfig,
+    ) -> p.Infra.PyrightConfigExecutionEnvironment:
         """Env entry.
 
         Returns:
@@ -107,12 +107,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dirs: Sequence[str],
         source_path: str,
         project_root: str,
-        rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        rules: p.Infra.PyrightConfigPathRulesConfig,
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Envs for dirs.
 
         Returns:
-            The resulting ``Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]``.
+            The resulting ``Sequence[p.Infra.PyrightConfigExecutionEnvironment]``.
 
         """
         environments = [
@@ -151,7 +151,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         project_dir: Path | None,
         source_path: str,
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Render each authorized exception root before the broad environments.
 
         Pyright elects the first environment containing a file, so each root
@@ -162,7 +162,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         rules = self._tool_config.tools.pyright.path_rules
-        environments: MutableSequence[m.Infra.PyrightConfig.ExecutionEnvironment] = []
+        environments: MutableSequence[p.Infra.PyrightConfigExecutionEnvironment] = []
         for root, levels in u.Infra.diagnostic_exception_levels(
             self._tool_config, c.Infra.PYRIGHT, project_dir
         ):
@@ -226,7 +226,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _workspace_member_envs(
         self, repository_root: Path
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Share one analyzer while keeping member package resolution local.
 
         Returns:
@@ -234,7 +234,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         rules = self._tool_config.tools.pyright.path_rules
-        environments: list[m.Infra.PyrightConfig.ExecutionEnvironment] = []
+        environments: list[p.Infra.PyrightConfigExecutionEnvironment] = []
         for member, roots in self._workspace_member_roots(repository_root):
             source = self._project_source_path(prefix=member)
             environments.extend(
@@ -271,7 +271,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         repository_root: Path | None,
         project_dir: Path | None,
         project_roots: Sequence[str],
-    ) -> Sequence[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Return the expected execution environments.
 
         Returns:
@@ -376,7 +376,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     @staticmethod
     def _environment_payload(
-        environment: m.Infra.PyrightConfig.ExecutionEnvironment,
+        environment: p.Infra.PyrightConfigExecutionEnvironment,
     ) -> t.JsonDict:
         """Render one execution environment.
 
@@ -432,7 +432,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _expected_project_roots(
         self,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
     ) -> Sequence[str]:
         """Resolve declared directories and discovered Python include targets.
@@ -483,10 +483,10 @@ class FlextInfraEnsurePyrightConfigPhase:
     def _phase(
         self,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
         analysis_exclusions: Sequence[str] | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.PhaseConfig:
         """Build the managed pyright phase for one project context.
 
         Returns:
@@ -584,7 +584,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         payload: t.MutableJsonMapping,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         analysis_exclusions: Sequence[str] | None = None,
     ) -> Sequence[str]:
@@ -597,13 +597,12 @@ class FlextInfraEnsurePyrightConfigPhase:
             ValueError: When the pyright owner produces no native table.
 
         """
-        desired: t.MutableJsonMapping = {
-            c.Infra.TOOL: {
-                c.Infra.PYRIGHT: u.Infra.native_tool_configuration(
-                    self._tool_config, c.Infra.PYRIGHT
-                )
-            }
-        }
+        native = u.Infra.native_tool_configuration(self._tool_config, c.Infra.PYRIGHT)
+        # Operator-authorized global axioms render as level none in every
+        # project; the declaration lives once, in tools.pyright.
+        for rule in self._tool_config.tools.pyright.ruling_disabled_rules:
+            native[rule] = "none"
+        desired: t.MutableJsonMapping = {c.Infra.TOOL: {c.Infra.PYRIGHT: native}}
         u.Infra.apply_toml_phases(
             desired,
             self._phase(
@@ -634,7 +633,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         source: str,
         *,
-        context: m.Infra.PyprojectAnalyzerContext,
+        context: p.Infra.PyprojectAnalyzerContext,
     ) -> p.Result[str]:
         """Project only the analyzer table, preserving the rest of the document.
 

@@ -4,8 +4,12 @@ valid:
     def send(request: t.Tests.DispatchRequest) -> p.Result[str]: ...
   - |
     union = t.Core.Types
+  - |
+    value = self.Ldap.Tests
 invalid:
   - |
     def send(request: t.Core.Tests.DispatchRequest) -> p.Result[str]: ...
   - |
     members = (t.Core.Tests.CentralizedUnion,)
+  - |
+    u.Ldap.Tests.that(result, eq=1)

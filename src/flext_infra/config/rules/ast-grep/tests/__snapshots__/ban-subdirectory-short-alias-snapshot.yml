@@ -1,0 +1,48 @@
+id: ban-subdirectory-short-alias
+snapshots:
+  m = TestsFlextModelsNamespace.TestsFlextModelsMixins:
+    fixed: ""
+    labels:
+    - source: m = TestsFlextModelsNamespace.TestsFlextModelsMixins
+      style: primary
+      start: 0
+      end: 52
+    - source: m = TestsFlextModelsNamespace.TestsFlextModelsMixins
+      style: secondary
+      start: 0
+      end: 52
+    - source: m
+      style: secondary
+      start: 0
+      end: 1
+    - source: TestsFlextModelsNamespace.TestsFlextModelsMixins
+      style: secondary
+      start: 4
+      end: 52
+    - source: m = TestsFlextModelsNamespace.TestsFlextModelsMixins
+      style: secondary
+      start: 0
+      end: 52
+  t = FlextTypes:
+    fixed: ""
+    labels:
+    - source: t = FlextTypes
+      style: primary
+      start: 0
+      end: 14
+    - source: t = FlextTypes
+      style: secondary
+      start: 0
+      end: 14
+    - source: t
+      style: secondary
+      start: 0
+      end: 1
+    - source: FlextTypes
+      style: secondary
+      start: 4
+      end: 14
+    - source: t = FlextTypes
+      style: secondary
+      start: 0
+      end: 14

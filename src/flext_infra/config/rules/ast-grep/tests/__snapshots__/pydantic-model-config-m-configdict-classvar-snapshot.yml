@@ -3,7 +3,7 @@ snapshots:
   "class Model:\n    model_config = m.ConfigDict()\n":
     fixed: |
       class Model:
-          model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
+          model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
     labels:
     - source: model_config = m.ConfigDict()
       style: primary
@@ -22,7 +22,7 @@ snapshots:
   "class Model:\n    model_config = m.ConfigDict(frozen=True, extra='forbid')\n":
     fixed: |
       class Model:
-          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra='forbid')
+          model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra='forbid')
     labels:
     - source: model_config = m.ConfigDict(frozen=True, extra='forbid')
       style: primary
@@ -38,3 +38,22 @@ snapshots:
       style: secondary
       start: 17
       end: 73
+  "class Settings:\n    model_config = m.SettingsConfigDict(env_prefix='APP_')\n":
+    fixed: |
+      class Settings:
+          model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix='APP_')
+    labels:
+    - source: model_config = m.SettingsConfigDict(env_prefix='APP_')
+      style: primary
+      start: 20
+      end: 74
+    - source: |-
+        class Settings:
+            model_config = m.SettingsConfigDict(env_prefix='APP_')
+      style: secondary
+      start: 0
+      end: 74
+    - source: model_config = m.SettingsConfigDict(env_prefix='APP_')
+      style: secondary
+      start: 20
+      end: 74

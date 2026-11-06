@@ -414,7 +414,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
         *,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
     ) -> p.Infra.RopeProject:
         """Open a Rope view of the live tree with proposed sources overlaid.
 
@@ -463,8 +463,8 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         live: p.Infra.RopeProject,
         *,
         election: p.Infra.RopeProjectElection,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-        observations: tuple[m.Cli.AtomicFileState, ...] | None = None,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+        observations: tuple[p.Cli.AtomicFileState, ...] | None = None,
         additional_source_folders: tuple[str, ...] = (),
     ) -> p.Infra.RopeProject:
         """Open the overlay owner with captured reads and declared file effects.

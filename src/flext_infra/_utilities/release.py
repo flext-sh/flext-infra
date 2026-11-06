@@ -17,7 +17,7 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 
 
@@ -230,7 +230,7 @@ class FlextInfraUtilitiesRelease:
     def generate_notes(
         version: str,
         tag: str,
-        project_list: Sequence[m.Infra.ProjectInfo],
+        project_list: Sequence[p.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
     ) -> p.Result[bool]:
@@ -498,7 +498,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def release_identity_verdict(
-        identity: tuple[str | None, str], expectation: m.Infra.ArtifactExpectation
+        identity: tuple[str | None, str], expectation: p.Infra.ArtifactExpectation
     ) -> p.Result[bool]:
         """Prove one artifact's core metadata ``(Name, Version)`` identity.
 

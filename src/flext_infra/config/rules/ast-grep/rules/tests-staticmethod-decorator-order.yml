@@ -1,0 +1,52 @@
+# One decorator-order law for a static test method. Canonical stack, outermost
+# first:
+#
+#     fixture registration  >  @staticmethod  >  pytest marks
+#
+# - pytest owns fixture registration, so the fixture decorator wraps the
+#   `staticmethod` descriptor, never the reverse.
+# - Marks stacked above `@staticmethod` make analyzers bind the first
+#   parameter as `self`, so `@staticmethod` sits above every mark.
+#
+# The receivers are the canonical forms: a test module reaches pytest through
+# the flext-tests facades (`u.Tests.fixture`, `c.Tests.MARK`, see
+# `rewire-pytest-*`), while `conftest.py` and `tests/fixtures/**` keep the
+# tests-tier delta and name `pytest` directly. The rule therefore accepts both
+# receivers of the same two members, so it holds before and after the rewire.
+#
+# One adjacent out-of-order pair is swapped per application; the native
+# cascade repeats until the stack is ordered. `tests-method-without-self-is-static`
+# inserts `@staticmethod` directly above `def`, below any marks, and this rule
+# lifts it.
+id: tests-staticmethod-decorator-order
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: decorator
+  pattern: $FIRST
+  any:
+    - all:
+        - regex: '^@staticmethod$'
+        - precedes:
+            kind: decorator
+            pattern: $SECOND
+            regex: '^@(?:pytest|u\.Tests)\.fixture(?:\(|$)'
+    - all:
+        - regex: '^@(?:pytest\.mark|c\.Tests\.MARK)\b'
+        - precedes:
+            kind: decorator
+            pattern: $SECOND
+            regex: '^@staticmethod$'
+fix:
+  template: |-
+    $SECOND
+    $FIRST
+  expandEnd:
+    kind: decorator
+    pattern: $SECOND
+message: >-
+  Decorator order of a static test method: fixture registration outermost,
+  then @staticmethod, then pytest marks. Swap `$FIRST` and `$SECOND`.

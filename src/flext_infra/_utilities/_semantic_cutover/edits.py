@@ -11,12 +11,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverEdits:
@@ -41,7 +39,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
         )
 
     @staticmethod
-    def _finding_statement(finding: m.Infra.ModOccurrence) -> ast.stmt | None:
+    def _finding_statement(finding: p.Infra.ModOccurrence) -> ast.stmt | None:
         """Parse the single statement an ast-grep finding reports.
 
         Returns:
@@ -55,14 +53,14 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
     def _semantic_edits(
         items: Sequence[tuple[Path, str]],
         rewrite: Callable[[Path, str], t.Infra.TransformResult],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan one edit per module, preserving the first original exception.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        edits: list[m.Infra.SemanticMigrationEdit] = []
+        edits: list[p.Infra.SemanticMigrationEdit] = []
         for path, source in items:
             updated, changes = rewrite(path, source)
             if updated != source:
@@ -74,14 +72,14 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
                         changes=tuple(changes),
                     ),
                 )
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @classmethod
     def _semantic_checked_edits(
         cls,
         items: Sequence[tuple[Path, str]],
         rewrite: Callable[[Path, str], p.Result[t.Infra.TransformResult]],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Admit typed rewrites before constructing the complete coherent edits.
 
         Returns:
@@ -91,7 +89,7 @@ class FlextInfraUtilitiesSemanticCutoverEdits:
 
         def planned(
             values: Sequence[t.Infra.TransformResult],
-        ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
             ordered = iter(values)
             return cls._semantic_edits(items, lambda _path, _source: next(ordered))
 

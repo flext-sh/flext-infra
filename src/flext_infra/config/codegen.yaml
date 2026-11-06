@@ -35,6 +35,11 @@ Infra:
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
       evidence: '"heading_line_length": 200'
+    # rumdl owns every markdownlint rule (MD001-MD060) plus MD061+, and the
+    # rvben.rumdl editor extension reads .rumdl.toml: markdownlint is retired
+    # from CLI and editor alike, so its ignore projection is too.
+    - path: .markdownlintignore
+      evidence: '# @flext-regenerate: make gen'
     - .github/scripts/install-git-hooks.sh
     - .github/scripts/flext-law-loop.sh
     # The unread per-id projection of generated ast-grep utilities and rules
@@ -132,17 +137,30 @@ Infra:
       # Generated native rule documents: each renderer receives the typed
       # model of its producer and returns {rule id: native rule document}
       # (the header stage owns import-header, the catalog stage the rest).
+      # `enforce` lists every law a renderer's documents enforce: it is
+      # stamped into each document that claims none of its own (a narrower
+      # document claim must stay inside it) and claimed in the enforcement
+      # catalog, so `refactor mod --laws` selects generated rules natively.
       renderers:
+      # The letter-binding law (ADR-028 Decision 10): each removal claims the
+      # laws of the rebinding it pairs with. The family rebinding, own-letter
+      # and duplicate-origin removals claim none and receive every law below;
+      # foreign-origin and own-root claim ENFORCE-003 and ENFORCE-080;
+      # module-path claims ENFORCE-003 and ENFORCE-051.
       - name: codemod_import_header_rules
         facts: codemod_workspace_export_facts
         shapes: [ import-header ]
+        enforce: [ ENFORCE-003, ENFORCE-051, ENFORCE-080 ]
       - name: codemod_module_member_rules
         facts: codemod_package_export_facts
         shapes: [ module-member ]
       # One rule for the constants facade: an inline isinstance set equal to
       # a tuple-of-classes constant is rewired to it (one rewriter each).
+      # ENFORCE-079 (ban-inline-type-set-outside-constants names this rule as
+      # its rewrite).
       - name: codemod_type_set_rules
         shapes: [ type-set ]
+        enforce: [ ENFORCE-079 ]
       # One rule failing and rewiring every read of a compat-marked constant
       # to the new owner its warnings.deprecated marker names.
       - name: codemod_compat_rules
@@ -155,9 +173,11 @@ Infra:
         - ban-settings-config-own-facade-import
         - ban-settings-config-own-module-import
       # Facade boundary (ADR-028): a library import outside the c/t/p/m/u
-      # families; stdlib, own and FLEXT facade packages are derived.
+      # families; stdlib, own and FLEXT facade packages are derived
+      # (ENFORCE-070/093, c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE).
       - name: codemod_external_import_rules
         shapes: [ ban-external-import-outside-facade-family ]
+        enforce: [ ENFORCE-070, ENFORCE-093 ]
       # Typings boundary (ADR-028): a library type named inline outside the
       # typings family; the library set is derived like the import boundary.
       - name: codemod_library_type_rules
@@ -190,10 +210,12 @@ Infra:
         shapes: [ retire-foreign-facade-member, facade-member-wrong-layer ]
       # The catalog rules partitioned per file group (metadata.scope
       # .partition), rendered per project instead of elected as authored.
-      # Its shapes are those catalog declarations themselves.
+      # Its shapes are those catalog declarations themselves, and each
+      # partition keeps the laws its catalog declaration claims.
       - name: codemod_partitioned_rules
         facts: codemod_scope_facts
         shapes_from: codemod_partitioned_shapes
+        enforce: []
       # The import-layer direction law: one document per importing layer,
       # plus the settings-layer bounds, from each module's resolved layer.
       - name: codemod_reverse_import_rules
@@ -242,7 +264,13 @@ Infra:
       # 20260929 python-build release aged past a 7d window and re-entered
       # every python resolution, breaking the 3.13 lock-time listing.
       dependency_cooldown_days: 10
-      uv_link_mode: copy
+      # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
+      # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
+      # here, so `copy` duplicated about 1 GB per environment, twice per upg,
+      # and pushed setup past its bound under load (flext-r3rs4). uv falls back
+      # to copy with its own warning where the cache lives on another
+      # filesystem; that project then declares its measured override.
+      uv_link_mode: clone
       editable_sources: {}
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
@@ -410,6 +438,9 @@ Infra:
       # a stale or incomplete lock never blocks install, use, setup or a verb
       # (operator-ruling-2026-10-09-setup-resilient).
       mise_lockfile: true
+      # Native PATH composition must keep project-selected tools ahead of host
+      # directories, including when the inherited shared shim farm is last.
+      mise_activate_aggressive: true
       # Projection: .mise.toml [settings] lockfile_platforms. Only platforms the
       # fleet runs on: CI ubuntu-latest (linux-x64), macos-latest (macos-arm64),
       # windows-latest (windows-x64) and the alpine container proof
@@ -618,6 +649,7 @@ Infra:
       # Whole-composition prerequisites precede every other check gate.
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
+      check_prerequisite_pyrefly_workers: 4
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -644,10 +676,12 @@ Infra:
       # subproject. MakeRuffSpec fails validation without the flag. Rules
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
+      # --force-exclude: a file-scoped run (pre-commit --file) honors the
+      # project's ruff exclude exactly like the repo-wide run.
       ruff:
-        format_check: [ --preview, --check ]
-        format_apply: [ --preview ]
-        lint_check: [ --preview, --no-fix ]
+        format_check: [ --preview, --check, --force-exclude ]
+        format_apply: [ --preview, --force-exclude ]
+        lint_check: [ --preview, --no-fix, --force-exclude ]
         lint_fix: [ --preview, --fix, --unsafe-fixes ]
       # Gates whose mutating side `make fmt` drives (formatters). Their
       # read-only side runs in `make check`; `make fix` never repeats them
@@ -673,13 +707,6 @@ Infra:
       # parent directory is the superproject checkout, so a scratch "beside the
       # checkout" landed inside another repository and Git refused every test
       # fixture repository created there.
-      # Native creator identity of the runtime environment (pyvenv.cfg, written
-      # by uv). Setup recreates an environment created by another uv or Python
-      # than the declared toolchain; `uv sync` alone keeps it.
-      environment_identity:
-        marker_file: pyvenv.cfg
-        uv_key: uv
-        python_key: version_info
       # Isolated environment that runs `make upg`'s one residual flext-infra
       # step (the Mise platform-gap repair). Native uv syncs it from the
       # project's own frozen lock, the dependency group that pins flext-infra,
@@ -746,6 +773,9 @@ Infra:
       - PYTHONHOME
       - PYTHONPATH
       setup_timeout_seconds: 118
+      # The check route wall-time bound is not declared here: the Makefile
+      # render spec derives it from the largest declared budget of the check
+      # gates (gate registry), plus the runner's forced-termination grace.
       ci:
         variable: CI
         value: Y
@@ -776,10 +806,11 @@ Infra:
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
         # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # runs every pre_push row below. Local make setup installs both hooks through the
-        # declared prek runner; CI=Y installs none.
+        # CI owns the complete gate. A pre-push row that runs make check/tests over
+        # the whole tree blocks every push for minutes, so only the commit-stage
+        # incremental hook is emitted.
       pre_commit: true
-      pre_push: true
+      pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
       type_contract_rules:
@@ -885,10 +916,13 @@ Infra:
       # Private cross-repo doc-link entries (checkouts outside this public
       # registry) belong in the gitignored config/codegen.local.yaml; the
       # lookup appends local entries and resolves first match.
+      cli_output_argument: OUTPUT_FORMAT
+      cli_output_environment: FLEXT_CLI_CLI_OUTPUT_FORMAT
+      common_verb_group: development
       verbs:
       - name: setup
         description: Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only).
-        arguments: [ FLEXT ]
+        arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
@@ -899,7 +933,8 @@ Infra:
         description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
-        description: Transform declared source structure and publish the complete coherent semantic change through the shared engines.
+        arguments: [ LAWS, RULES ]
+        description: Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
       - name: fix
         description: Apply declared repairs to authored inputs through their canonical owners.
       - name: fmt
@@ -1058,6 +1093,10 @@ Infra:
       - docs/architecture/crg-reports/**
       - docs/api-reference/generated/**
       - docs/projects/generated/**
+      # Collected plan artifacts are immutable evidence with digests recorded in
+      # their own manifest; a formatter rewrite invalidates provenance and
+      # blocks generation (incident 2026-11-04, ai-hub `formats` commits).
+      - docs/plans/collected/**
       # Frozen historical evidence; formatting must not rewrite the source record.
       - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
       - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
@@ -1205,7 +1244,10 @@ Infra:
       - [ git.repositoryScanMaxDepth, 2 ]
       - [ githubPullRequests.autoRepositoryDetection, true ]
       - [ githubPullRequests.ignoreSubmodules, false ]
-      - [ markdownlint.lintWorkspaceGlobs, [ '!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**', '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**', '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}' ] ]
+      # markdownlint is retired (rvben.rumdl reads .rumdl.toml): if the
+      # extension is installed anyway, its native off switch silences it so
+      # the editor never shows a second, diverging Markdown policy.
+      - [ markdownlint.appliesTo, noFiles ]
       - [ yaml.disableSchemaDetection, [ '**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml', '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml' ] ]
       map_union_settings:
         '[python]':
@@ -1223,6 +1265,9 @@ Infra:
       - python.analysis.extraPaths
       - python.analysis.useLibraryCodeForTypes
       - ruff.nativeServer
+      # markdownlint is retired: rvben.rumdl reads .rumdl.toml in the editor.
+      - markdownlint.config
+      - markdownlint.lintWorkspaceGlobs
       stripped_map_keys:
         '[python]':
         - editor.codeActionsOnSave.source.organizeImports
@@ -1641,7 +1686,6 @@ Infra:
         - "!AGENTS.md"
         - "!codex.md"
         - "!.rumdl.toml"
-        - "!.markdownlintignore"
         - "!.shellcheckrc"
       - name: "Git configuration"
         profiles: [ workspace ]
@@ -2178,12 +2222,6 @@ Infra:
           ownership: null
         .mise.toml:
           source: base/.mise.toml.j2
-          profiles: [ workspace, standalone ]
-          ownership:
-            owner: codegen
-            policy: full
-        .markdownlintignore:
-          source: base/markdownlintignore.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen

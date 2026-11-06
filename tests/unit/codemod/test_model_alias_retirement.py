@@ -10,8 +10,6 @@ import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -68,7 +66,7 @@ class TestsFlextInfraModelAliasRetirement:
         }
 
     @staticmethod
-    @pytest.mark.parametrize("export_usage", [None, False, True])
+    @c.Tests.MARK.parametrize("export_usage", [None, False, True])
     def test_public_planner_rewires_aliases_annotations_and_runtime_identity(
         tmp_path: Path,
         *,
@@ -155,7 +153,7 @@ class TestsFlextInfraModelAliasRetirement:
         )
         tm.ok(u.Cli.process_succeeded(result.outcome))
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer",
         [
             "ESCAPE = RedundantRelay\n",
@@ -175,7 +173,7 @@ class TestsFlextInfraModelAliasRetirement:
         )
         with (
             u.Tests.authenticated_rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=r"model alias|model import"),
+            u.Tests.raises(ValueError, match=r"model alias|model import"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,

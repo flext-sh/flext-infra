@@ -11,21 +11,21 @@ from pathlib import Path
 import pytest
 
 from flext_infra import codegen, config, workspace
-from tests import c, m, t, tm, u
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("distribution", "kind"),
         [
             ("sample-library", c.Infra.ProjectKind.INTERNAL_FLEXT),
             ("acme-service", c.Infra.ProjectKind.INTERNAL),
         ],
     )
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_governed_builder_uses_project_owned_catalogue(
         tmp_path: Path,
         distribution: str,
@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         )
 
     @staticmethod
-    def _standalone_governed_plan(root: Path) -> m.Infra.CodegenPlan:
+    def _standalone_governed_plan(root: Path) -> p.Infra.CodegenPlan:
         """Plan a standalone fixture with city participation disabled.
 
         Returns:
@@ -124,7 +124,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         return u.Tests.governed_project_plan(root)
 
     @staticmethod
-    def _planned_envrc_local_entry(root: Path) -> m.Infra.CodegenFilePlan | None:
+    def _planned_envrc_local_entry(root: Path) -> p.Infra.CodegenFilePlan | None:
         """Return the planned local activation artifact.
 
         Returns:
@@ -137,7 +137,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             None,
         )
 
-    @pytest.mark.parametrize("prefix", [None, ("tracker-wrapper", "read", "beads")])
+    @c.Tests.MARK.parametrize("prefix", [None, ("tracker-wrapper", "read", "beads")])
     def test_ownership_policy_roundtrips_through_repository_identity(
         self,
         tmp_path: Path,
@@ -188,7 +188,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.fail(cwd.is_absolute())
         tm.that((root / cwd).resolve(), eq=root.resolve())
 
-    @pytest.mark.parametrize("prefix", [None, (), ("",)])
+    @c.Tests.MARK.parametrize("prefix", [None, (), ("",)])
     @staticmethod
     def test_ownership_policy_requires_a_nonempty_command(
         prefix: t.StrTuple | None,
@@ -200,7 +200,7 @@ class TestsFlextInfraCodegenBeadsProjection:
             del payload["ownership_command_prefix"]
         else:
             payload["ownership_command_prefix"] = prefix
-        with pytest.raises(ValueError, match="ownership_command_prefix"):
+        with u.Tests.raises(ValueError, match="ownership_command_prefix"):
             type(policy).model_validate(payload)
 
     @staticmethod
@@ -405,8 +405,8 @@ class TestsFlextInfraCodegenBeadsProjection:
             pytest.fail("residue-only .envrc.local must be planned for removal")
         tm.that(entry.desired_content, none=True)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("gascity_enabled", [True, False])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("gascity_enabled", [True, False])
     def test_envrc_is_storage_neutral_in_both_workspace_modes(
         self,
         tmp_path: Path,

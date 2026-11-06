@@ -11,9 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, deps
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from tests import c, e, m, t, tm, u
 
 
@@ -56,7 +55,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field", ["disable-error-code", "facade-rebind-error-codes"]
     )
     def test_selected_policy_rejects_retired_suspensions(
@@ -77,10 +76,10 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
                 "mypy": policy,
             },
         }
-        with pytest.raises(e.PydanticValidationError, match=field):
+        with u.Tests.raises(e.PydanticValidationError, match=field):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("option", "value"),
         [
             ("plugins", "pydantic.v1.mypy"),
@@ -106,17 +105,17 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
     ) -> None:
         """Generic options cannot bypass the dedicated plugin and code fields."""
         payload = self._document_payload((option, value))
-        with pytest.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
+        with u.Tests.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
-    @pytest.mark.parametrize("option", ["follow-imports", "follow_imports "])
+    @c.Tests.MARK.parametrize("option", ["follow-imports", "follow_imports "])
     def test_generic_options_reject_option_alias_collisions(self, option: str) -> None:
         """An alias cannot shadow the canonical native option from another layer."""
         payload = self._document_payload(
             ("follow_imports", "normal"),
             (option, "error"),
         )
-        with pytest.raises(e.PydanticValidationError):
+        with u.Tests.raises(e.PydanticValidationError):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     def test_generic_option_pairs_elect_the_last_complete_value(self) -> None:
@@ -155,7 +154,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             eq="arg-type, call-arg",
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "option",
         [
             'enable_error_code = "call-arg"\ncustom_option',
@@ -166,11 +165,11 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
     def test_generic_options_reject_toml_key_syntax(self, option: str) -> None:
         """A generic key is one option, never a quoted or injected TOML statement."""
         payload = self._document_payload((option, "normal"))
-        with pytest.raises(e.PydanticValidationError):
+        with u.Tests.raises(e.PydanticValidationError):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("option", "value"),
         [
             ("ignore_errors", True),
@@ -202,7 +201,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
                 "mypy": mypy,
             },
         }
-        with pytest.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
+        with u.Tests.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
@@ -246,7 +245,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
         mypy = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["mypy"])
         tm.that(mypy["mypy_path"], eq=list(expected))
         tm.that(
-            deps.FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
+            FlextInfraToolTablesPhase(tooling, codegen=codegen).apply_payload(
                 payload, path=path, mypy_search_paths=expected
             ),
             empty=True,

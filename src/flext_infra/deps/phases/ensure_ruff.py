@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
@@ -21,9 +21,9 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def __init__(
         self,
-        tool_config: m.Infra.ToolConfigDocument,
+        tool_config: p.Infra.ToolConfigDocument,
         *,
-        codegen: m.Infra.CodegenConfigSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
         """Bind the shared native policy without repository exemption overlays."""
         self._tool_config = tool_config
@@ -84,8 +84,8 @@ class FlextInfraEnsureRuffConfigPhase:
         self,
         *,
         path: Path,
-        facts: m.Infra.RuffProjectFacts,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+        facts: p.Infra.RuffProjectFacts,
+    ) -> p.Infra.PhaseConfig:
         """Build the canonical Ruff phase for one project path.
 
         Returns:

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import m, p, t
+from flext_infra import m, p, r, t
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
     FlextInfraRefactorCensusRender,
@@ -49,7 +49,7 @@ class FlextInfraRefactorCensus(
             else None
         )
 
-    def build_report(self) -> m.Infra.WorkspaceReport:
+    def build_report(self) -> p.Infra.WorkspaceReport:
         """Inventory the selected modules and assemble the census report.
 
         Returns:
@@ -58,6 +58,15 @@ class FlextInfraRefactorCensus(
         """
         with self.workspace_factory(self.repository_root, None) as rope:
             return self._collect_report(rope, source_preview=self.source_preview)
+
+    def execute(self) -> p.Result[p.Infra.WorkspaceReport]:
+        """Run the census and return the report through the result boundary.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.WorkspaceReport]``.
+
+        """
+        return r[p.Infra.WorkspaceReport].ok(self.build_report())
 
 
 __all__: list[str] = ["FlextInfraRefactorCensus"]

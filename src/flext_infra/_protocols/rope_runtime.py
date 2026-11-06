@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE - Source bootstrap legacy protocol holder.
 """Structural protocols for the external Rope runtime boundary.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -14,9 +15,9 @@ from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 if TYPE_CHECKING:
     import ast
 
-    from flext_core import p
+    from flext_core import p as core_p
 
-    from flext_infra import m, t
+    from flext_infra import p, t
 
 
 @runtime_checkable
@@ -81,22 +82,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> None: ...
 
     @runtime_checkable
-    class RopeProjectElection(Protocol):
-        """Readonly native import roots and source-selection policy."""
-
-        @property
-        def source_folders(self) -> t.StrTuple: ...
-
-        @property
-        def ignored_resources(self) -> t.StrTuple: ...
-
-        @property
-        def extension_modules(self) -> t.StrTuple: ...
-
-        @property
-        def python_path_folders(self) -> t.StrTuple: ...
-
-    @runtime_checkable
     class RopePyObject(Protocol):
         """Attributes, module identity and type provided by every native object."""
 
@@ -116,6 +101,13 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def get_type(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
+    class RopeUnresolvedBase(RopePyObject, Protocol):
+        """Native unresolved ancestry with its original evaluated base value."""
+
+        @property
+        def pyobject(self) -> FlextInfraProtocolsRopeRuntime.RopePyObject | None: ...
+
+    @runtime_checkable
     class RopeNamedObject(RopePyObject, Protocol):
         """Names and documentation owned by native classes, functions and modules."""
 
@@ -126,6 +118,14 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeClassObject(RopeNamedObject, Protocol):
         """Superclass queries supplied by native abstract classes."""
+
+        def get_metaclass(
+            self,
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyObject | None: ...
+
+        def get_bases(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopePyObject]: ...
 
         def get_mro(
             self,
@@ -201,9 +201,9 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         def __len__(self) -> int: ...
 
-        def __getitem__(self, index: int, /) -> p.AttributeProbe: ...
+        def __getitem__(self, index: int, /) -> core_p.AttributeProbe: ...
 
-        def __iter__(self) -> Iterator[p.AttributeProbe]: ...
+        def __iter__(self) -> Iterator[core_p.AttributeProbe]: ...
 
     @runtime_checkable
     class RopeBuiltinClass(Protocol):
@@ -542,6 +542,14 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeSourceBindingIndex(Protocol):
         """Native source binding index, including PEP 695 type parameters."""
 
+        def assignment_string_sequence(
+            self,
+            name: str,
+            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
+            *,
+            class_metadata: bool = False,
+        ) -> tuple[str, ...] | None: ...
+
         def import_layouts(
             self,
         ) -> tuple[FlextInfraProtocolsRopeRuntime.RopeSourceImportLayout, ...]: ...
@@ -568,14 +576,6 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             resolve_values: bool = False,
         ) -> tuple[FlextInfraProtocolsRopeRuntime.RopeSourceAssignmentLayout, ...]: ...
 
-        def assignment_string_sequence(
-            self,
-            name: str,
-            scope: FlextInfraProtocolsRopeRuntime.RopeScope | None = None,
-            *,
-            class_metadata: bool = False,
-        ) -> tuple[str, ...] | None: ...
-
         def context_at(
             self, offset: int
         ) -> FlextInfraProtocolsRopeRuntime.RopeSourceBindingContext: ...
@@ -595,21 +595,21 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         """Member lookup and class ordering bound to one captured source view."""
 
         def __call__(
-            self, qualified: str | m.Infra.SourceClassReference, /
+            self, qualified: str | p.Infra.SourceClassReference, /
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def class_order(
-            self, declarations: Sequence[m.Infra.SourceClassReference]
+            self, declarations: Sequence[p.Infra.SourceClassReference]
         ) -> t.StrTuple: ...
 
         def class_reaches(
             self,
-            declarations: Sequence[m.Infra.SourceClassReference],
-            anchors: Sequence[m.Infra.SourceClassReference],
+            declarations: Sequence[p.Infra.SourceClassReference],
+            anchors: Sequence[p.Infra.SourceClassReference],
         ) -> tuple[frozenset[str], ...]: ...
 
         def class_defers_annotations(
-            self, qualified: m.Infra.SourceClassReference
+            self, qualified: p.Infra.SourceClassReference
         ) -> bool: ...
 
     @runtime_checkable
@@ -814,7 +814,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         def get_name(self) -> str: ...
 
-        def matches(self, suspect: p.AttributeProbe, arg: Argument) -> bool: ...
+        def matches(self, suspect: core_p.AttributeProbe, arg: Argument) -> bool: ...
 
     @runtime_checkable
     class RopeDefaultWildcard(RopeWildcard[str], Protocol):

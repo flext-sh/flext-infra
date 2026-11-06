@@ -1,0 +1,68 @@
+# A model reference follows its position. A model CLASS position -- a PEP 695
+# bound (`[M: X]`), a `type[X]` argument, a `t.ModelClass[X]` argument -- is where
+# the Pydantic class API (`model_validate`, `model_fields`, `model_json_schema`)
+# is called; `t.ModelClass` is bounded by `pydantic.BaseModel` and rejects the
+# structural protocol, so the position names the native alias `t.BaseModelType`
+# (flext-core `_typings/pydantic.py`). Every other annotation position holds an
+# instance and names the structural protocol `p.BaseModel`.
+# One rule owns both directions, so a blind textual swap of either name is
+# repaired by the same fixed point. Idempotent: each rewrite leaves its arm.
+# Limit: tree-sitter-python has no PEP 696 default (`[M: X = Y]`); the bound is
+# parsed as ERROR and the default `Y` is not reached. Such a default is curated
+# with its bound, by the same law.
+id: model-type-not-protocol
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/config/rules/ast-grep/tests/**"
+  # The typings layer declares t.BaseModelType and cannot import its own facade.
+  - "**/_typings/**"
+utils:
+  # `constrained_type` is the PEP 695 bound; `type_parameter` would also match
+  # every generic subscript (`tuple[...]`, `Callable[[...], ...]`).
+  model-class-position:
+    inside:
+      any:
+        - kind: constrained_type
+        - all:
+            - kind: generic_type
+            - has:
+                kind: identifier
+                regex: ^type$
+        - pattern: t.ModelClass[$$$]
+      stopBy:
+        kind: function_definition
+  annotation:
+    inside:
+      kind: type
+      stopBy: end
+rule:
+  kind: attribute
+  pattern: $OWNER.$NAME
+  any:
+    - all:
+        - regex: ^p\.BaseModel$
+        - matches: model-class-position
+    - all:
+        - regex: ^t\.BaseModelType$
+        - matches: annotation
+        - not:
+            matches: model-class-position
+transform:
+  CLASS_ALIAS:
+    replace:
+      source: $NAME
+      replace: ^BaseModel$
+      by: t.BaseModelType
+  SWAPPED:
+    replace:
+      source: $CLASS_ALIAS
+      replace: ^BaseModelType$
+      by: p.BaseModel
+fix: $SWAPPED
+message: >-
+  A model class position (TypeVar bound, type[...], t.ModelClass[...]) names the
+  native model type t.BaseModelType; every other annotation names the
+  p.BaseModel instance protocol.

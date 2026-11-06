@@ -6,16 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import m
-from flext_infra.refactor import (
+from flext_infra import m, p
+from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraRefactorCensusCollect(
@@ -26,8 +23,8 @@ class FlextInfraRefactorCensusCollect(
 
     @staticmethod
     def project_name_for_module(
-        module: m.Infra.RopeModuleIndexEntry,
-        convention: m.Infra.RopeModuleConvention,
+        module: p.Infra.RopeModuleIndexEntry,
+        convention: p.Infra.RopeModuleConvention,
     ) -> str:
         """Resolve the project owning an inventoried module.
 
@@ -45,10 +42,10 @@ class FlextInfraRefactorCensusCollect(
     def _scan_module(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        module: m.Infra.RopeModuleIndexEntry,
-        scan_config: m.Infra.ScanConfig,
+        module: p.Infra.RopeModuleIndexEntry,
+        scan_config: p.Infra.ScanConfig,
         *,
-        findings: m.Infra.ScanFindings,
+        findings: p.Infra.ScanFindings,
     ) -> None:
         """Inventory one module, accumulating its selected objects per project.
 
@@ -81,9 +78,10 @@ class FlextInfraRefactorCensusCollect(
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
-        findings: m.Infra.ScanFindings,
-        scan_config: m.Infra.ScanConfig,
-    ) -> m.Infra.WorkspaceReport:
+        findings: p.Infra.ScanFindings,
+        scan_config: p.Infra.ScanConfig,
+        census_kinds: frozenset[str] | None = None,
+    ) -> p.Infra.WorkspaceReport:
         """Aggregate per-project inventories into the workspace census report.
 
         In dry-run the removal candidates are previewed through the gates and
@@ -116,6 +114,32 @@ class FlextInfraRefactorCensusCollect(
             project_reports = self._validated_project_reports(
                 rope, project_reports, source_preview=source_preview
             )
+        sources = {
+            Path(resource.real_path): resource.read()
+            for resource in rope.rope_project.get_python_files()
+        }
+        alias_rows, duplicate_rows, shortest_rows = self.extermination_rows(
+            sources=sources,
+            objects=tuple(
+                item
+                for entries in findings.project_objects.values()
+                for item in entries
+            ),
+            duplicates=duplicates,
+            census_kinds=census_kinds,
+        )
+        fixable_rows = tuple(
+            row for row in (*alias_rows, *duplicate_rows, *shortest_rows) if row.fixable
+        )
+        fix_plan = m.Infra.CensusFixPlan(
+            alias=tuple(row for row in alias_rows if row.fixable),
+            duplicate=tuple(row for row in duplicate_rows if row.fixable),
+            shortest_form=tuple(row for row in shortest_rows if row.fixable),
+            commands=tuple(
+                sorted({self.cure_command(row.cure) for row in fixable_rows})
+            ),
+            expected_rescan=len(fixable_rows),
+        )
         return m.Infra.WorkspaceReport(
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),
@@ -130,6 +154,10 @@ class FlextInfraRefactorCensusCollect(
                 for report in project_reports
                 for candidate in report.removal_candidates
             ),
+            alias_census=alias_rows,
+            duplicate_census=duplicate_rows,
+            shortest_form_census=shortest_rows,
+            census_fix_plan=fix_plan,
         )
 
 

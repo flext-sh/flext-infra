@@ -8,18 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod
-    @pytest.mark.parametrize("root_requires_activation", [False, True])
-    @pytest.mark.parametrize("member_requires_activation", [False, True])
+    @c.Tests.MARK.parametrize("root_requires_activation", [False, True])
+    @c.Tests.MARK.parametrize("member_requires_activation", [False, True])
     def test_manifest_load_preserves_each_activation_requirement(
         tmp_path: Path,
         *,
@@ -74,7 +72,7 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
         tm.that(loaded[0].members[0].extra_verbs, eq=(member_verb,))
 
     @staticmethod
-    def _member_ledger_identity(member: Path) -> m.Infra.WorkspaceSpec:
+    def _member_ledger_identity(member: Path) -> p.Infra.WorkspaceSpec:
         """Rewrite the member's ledger input and self-load its typed identity.
 
         Returns:

@@ -58,17 +58,17 @@ The examples below import only the aliases they consume from `flext_core`.
 The alphabet groups reusable declarations and behavior. The public root also exposes
 named capabilities and singletons with distinct responsibilities:
 
-| Surface | Responsibility | Consumer boundary |
-| --- | --- | --- |
-| `FlextCore`, `core` | Compose the foundation's registry and dispatcher services | Use the composed public facade; inject application dependencies at the application root |
-| `FlextSettings`, `settings` | Read and validate external inputs | Reuse the process singleton or an explicitly constructed isolated settings class |
-| `FlextConfig`, `config` | Load and derive typed configuration | Consume the validated owner rather than parsing the same configuration again |
-| `FlextStrictYamlConfigSource` | Supply strict YAML settings input | Configure at the settings owner; do not create a competing YAML loader |
-| `FlextContainer` | Manage explicitly named infrastructure registrations | Restrict construction and lookup to composition |
-| `FlextContext` | Carry execution context and metadata | Pass the context explicitly to the consuming boundary |
-| `FlextRegistry` | Register services, plugins and handler bindings against an explicit runtime | Preserve payload identity and registry ownership |
-| `FlextDispatcher` | Register and execute handlers and event subscribers | Preserve the Result, original callable and first failure |
-| `FlextLazy` | Install generated PEP 562 export hooks | Bootstrap infrastructure; ordinary application imports use generated package exports |
+| Surface                       | Responsibility                                                              | Consumer boundary                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `FlextCore`, `core`           | Compose the foundation's registry and dispatcher services                   | Use the composed public facade; inject application dependencies at the application root |
+| `FlextSettings`, `settings`   | Read and validate external inputs                                           | Reuse the process singleton or an explicitly constructed isolated settings class        |
+| `FlextConfig`, `config`       | Load and derive typed configuration                                         | Consume the validated owner rather than parsing the same configuration again            |
+| `FlextStrictYamlConfigSource` | Supply strict YAML settings input                                           | Configure at the settings owner; do not create a competing YAML loader                  |
+| `FlextContainer`              | Manage explicitly named infrastructure registrations                        | Restrict construction and lookup to composition                                         |
+| `FlextContext`                | Carry execution context and metadata                                        | Pass the context explicitly to the consuming boundary                                   |
+| `FlextRegistry`               | Register services, plugins and handler bindings against an explicit runtime | Preserve payload identity and registry ownership                                        |
+| `FlextDispatcher`             | Register and execute handlers and event subscribers                         | Preserve the Result, original callable and first failure                                |
+| `FlextLazy`                   | Install generated PEP 562 export hooks                                      | Bootstrap infrastructure; ordinary application imports use generated package exports    |
 
 This is a responsibility map, not a second export registry. The declaring modules'
 explicit `__all__`, native inheritance and generated public reference determine the
@@ -112,15 +112,6 @@ unexpected runtime exceptions into success or ad-hoc error dictionaries.
 ```python
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from math import isclose
 
 from flext_core import p, r
@@ -157,22 +148,6 @@ through its declared ports at composition time.
 
 ```python
 from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
-from flext_core import FlextSettings
-
-settings = FlextSettings.fetch_global()
-if not isinstance(settings.model_dump(), dict):
-    message = "Expected settings to dump to a mapping"
-    raise TypeError(message)
 ```
 
 Subprojects extend `FlextSettings` with their own `env_prefix`:
@@ -180,22 +155,13 @@ Subprojects extend `FlextSettings` with their own `env_prefix`:
 ```python
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from flext_core import FlextSettings, m
 
 
 class GreetingSettings(FlextSettings):
     """Greeting settings read from ``GREETING_*`` environment variables."""
 
-    model_config = m.SettingsConfigDict(env_prefix="GREETING_", extra="forbid")
+    model_config = m.SettingsConfigDict(env_prefix="GREETING_")
 ```
 
 Family internals may consume settings/config through the acyclic layer-zero contract.
@@ -224,15 +190,6 @@ collaborator directly through its protocol port; it does not look it up by this 
 
 ```python
 from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 
 from flext_core import FlextContainer, p
 
@@ -264,37 +221,42 @@ dispatcher migration is complete merely because this guide describes its contrac
 
 ## Logging
 
+An application elects logging policy once at its composition root. Services consume
+the runtime's `p.Logger` through `self.logger`; a function without a runtime receives
+the same port explicitly. `RuntimeBootstrapOptions.logger` retains an existing
+application logger, while `logging_options` supplies the existing structlog
+extensions without setup or a factory in each service. Settings remain the owner
+of severity, debug/trace and the `console` or `json` profile.
+
+The ordinary console shows business context without repeating callsite, thread and
+process metadata. Debug/trace retains that detail. JSON sinks and observers receive
+the complete sanitized event; console presentation never removes their fields.
+Callsite collection is skipped when no selected destination requires it. Results
+and progress remain CLI presentation rather than automatic logging rewrites.
+
+Direct bindings remain useful at application boundaries. Operation scopes restore
+prior correlation values, including when an inner operation fails:
+
 ```python
-from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
-
 from flext_core import u
 
 logger = u.fetch_logger(__name__)
-logger.info("user.created", user_id=42)
+with u.logging_scope("operation", correlation_id="request"):
+    logger.info("user.created", user_id=42)
 ```
+
+For custom destinations, the root passes
+`m.RuntimeBootstrapOptions(settings=application_settings,
+logging_options=m.StructlogOptions(handlers=(application_handler,)))` when building
+the runtime. A supplied `logger=application_logger` is preserved when the CLI
+rebinds settings. The native CLI pipeline copies the operation context at each
+thread submission; an application-owned executor needs the same per-submission
+`copy_context().run` boundary, not a shared mutable context.
 
 ## Service runtime
 
 ```python
 from __future__ import annotations
-
-from collections.abc import (
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Sequence,
-)
 
 from typing import override
 
@@ -358,8 +320,8 @@ Pydantic way the operator ruled on 2026-10-25 (tracker memory
 
 ## What flext-core must not absorb
 
-| Public capability declaration | Accepted decision |
-| --- | --- |
+| Public capability declaration                                                                                                             | Accepted decision         |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | This section directs consumers to generic workspace-analysis and structural-refactoring capabilities, not their implementation libraries. | FLEXT ADR-028 Decision 15 |
 
 - CLI frameworks and command rendering belong to `flext-cli`.

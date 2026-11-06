@@ -13,11 +13,11 @@ from os.path import commonpath
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod import (
+from flext_infra.codemod._rename import (
     FlextInfraCodemodRenameSources,
     FlextInfraCodemodRenameSymbols,
 )
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
+from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
 
 class FlextInfraApplyRenames:
@@ -25,7 +25,7 @@ class FlextInfraApplyRenames:
 
     @staticmethod
     def _identifier_campaign(
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         pairs: Sequence[tuple[str, str]],
     ) -> bool:
         """Whether this campaign changes only semantic identifier declarations.
@@ -43,7 +43,7 @@ class FlextInfraApplyRenames:
         )
 
     @staticmethod
-    def _consumer_roots(params: m.Infra.ApplyRenamesInput) -> tuple[Path, ...]:
+    def _consumer_roots(params: p.Infra.ApplyRenamesInput) -> tuple[Path, ...]:
         """Elect the complete declared composition without widening prose edits.
 
         Returns:
@@ -84,7 +84,7 @@ class FlextInfraApplyRenames:
     @classmethod
     def _definition_resource_paths(
         cls,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         pairs: Sequence[tuple[str, str]],
         project: t.Infra.RopeProject,
     ) -> set[Path]:
@@ -119,7 +119,7 @@ class FlextInfraApplyRenames:
     @classmethod
     def _symbol_edits(
         cls,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         pairs: Sequence[tuple[str, str]],
         project: p.Infra.RopeProject,
         sources: tuple[Mapping[Path, str], frozenset[Path]],
@@ -148,7 +148,7 @@ class FlextInfraApplyRenames:
     def _excluded(
         path: Path,
         source: p.Infra.WorkspaceSnapshotSource,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         exclusions: tuple[
             tuple[frozenset[str], set[Path]], frozenset[Path], frozenset[Path]
         ],
@@ -189,7 +189,7 @@ class FlextInfraApplyRenames:
     @classmethod
     def _inventory(
         cls,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         pairs: Sequence[tuple[str, str]],
         snapshot: p.Infra.WorkspaceSnapshot,
         overrides: Mapping[Path, bytes],
@@ -242,11 +242,11 @@ class FlextInfraApplyRenames:
     @classmethod
     def _plan(
         cls,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         pairs: Sequence[tuple[str, str]],
         view: tuple[p.Infra.WorkspaceSnapshot, p.Infra.RopeProject],
         overrides: Mapping[Path, bytes],
-    ) -> tuple[tuple[m.Infra.SemanticFilePlan, ...], int, int]:
+    ) -> tuple[tuple[p.Infra.SemanticFilePlan, ...], int, int]:
         """Plan one campaign pass against the snapshot and its Rope project.
 
         Returns:
@@ -293,7 +293,7 @@ class FlextInfraApplyRenames:
             Mapping[Path, Sequence[p.Infra.SourceRewrite]],
             Mapping[Path, str],
         ],
-    ) -> tuple[tuple[m.Infra.SemanticFilePlan, ...], int]:
+    ) -> tuple[tuple[p.Infra.SemanticFilePlan, ...], int]:
         """Plan every inventoried file against its authenticated bytes.
 
         Returns:
@@ -323,7 +323,7 @@ class FlextInfraApplyRenames:
         project: p.Infra.RopeProject,
         symbols: Mapping[Path, Sequence[p.Infra.SourceRewrite]],
         entry: tuple[Path, str],
-    ) -> tuple[m.Infra.SemanticFilePlan, int]:
+    ) -> tuple[p.Infra.SemanticFilePlan, int]:
         """Plan one inventoried file's edits against its authenticated bytes.
 
         Returns:
@@ -366,7 +366,7 @@ class FlextInfraApplyRenames:
 
     @staticmethod
     def _campaign_error(
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         roots: Sequence[Path],
     ) -> str | None:
         """Return the campaign validation failure message, or ``None`` when valid."""
@@ -384,10 +384,10 @@ class FlextInfraApplyRenames:
     @classmethod
     def _publish(
         cls,
-        params: m.Infra.ApplyRenamesInput,
+        params: p.Infra.ApplyRenamesInput,
         snapshot: p.Infra.WorkspaceSnapshot,
         state: tuple[tuple[Path, m.Cli.AtomicFileState], Sequence[tuple[str, str]]],
-        planned: tuple[Sequence[m.Infra.SemanticFilePlan], int],
+        planned: tuple[Sequence[p.Infra.SemanticFilePlan], int],
     ) -> p.Result[tuple[Sequence[Path], int]]:
         """Accept the previewed campaign by a clean re-scan, then publish it.
 
@@ -403,7 +403,7 @@ class FlextInfraApplyRenames:
         roots = snapshot.members
         publication_root = Path(commonpath(roots))
 
-        def verify(changes: tuple[m.Cli.FileChange, ...]) -> p.Result[bool]:
+        def verify(changes: tuple[p.Cli.FileChange, ...]) -> p.Result[bool]:
             nonlocal pending
             current = u.Cli.atomic_read_binary_file_state(csv_path, required=True)
             if current.failure:
@@ -476,22 +476,22 @@ class FlextInfraApplyRenames:
     @classmethod
     def run(
         cls,
-        params: m.Infra.ApplyRenamesInput,
-    ) -> p.Result[m.Infra.ApplyRenamesReport]:
+        params: p.Infra.ApplyRenamesInput,
+    ) -> p.Result[p.Infra.ApplyRenamesReport]:
         """Apply one declared campaign; check and verification share the planner.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ApplyRenamesReport]``.
+            The resulting ``p.Result[p.Infra.ApplyRenamesReport]``.
 
         """
         roots = cls._consumer_roots(params)
         error = cls._campaign_error(params, roots)
         if error is not None:
-            return r[m.Infra.ApplyRenamesReport].fail(error)
+            return r[p.Infra.ApplyRenamesReport].fail(error)
         csv_path = Path(params.csv).resolve()
         driver = u.Cli.atomic_read_binary_file_state(csv_path, required=True).unwrap()
         if driver.content is None:
-            return r[m.Infra.ApplyRenamesReport].fail(
+            return r[p.Infra.ApplyRenamesReport].fail(
                 f"rename CSV disappeared: {csv_path}",
             )
         pairs = FlextInfraCodemodRenameSources.pairs(
@@ -507,7 +507,7 @@ class FlextInfraApplyRenames:
                     params, snapshot, ((csv_path, driver), pairs), (plans, pending)
                 )
                 if publication.failure:
-                    return r[m.Infra.ApplyRenamesReport].from_failure(publication)
+                    return r[p.Infra.ApplyRenamesReport].from_failure(publication)
                 changed, pending = publication.value
         report = m.Infra.ApplyRenamesReport(
             preview_diff="".join(
@@ -538,7 +538,7 @@ class FlextInfraApplyRenames:
                 u.Cli.atomic_read_binary_file_state(path).unwrap() for path in changed
             ),
         )
-        return r[m.Infra.ApplyRenamesReport].ok(report)
+        return r[p.Infra.ApplyRenamesReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraApplyRenames"]

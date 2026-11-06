@@ -17,8 +17,8 @@ import tomllib
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import config, t
-from tests import tm
+from flext_infra import config
+from tests import t, tm
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _RESOLVED_IDENTITY_SEPARATOR = "~"

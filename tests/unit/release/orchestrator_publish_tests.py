@@ -9,8 +9,6 @@ from __future__ import annotations
 from json import dumps
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, t, tm, u
 
@@ -19,70 +17,9 @@ class TestsFlextInfraReleasePublish:
     """Behavior contract for the public release publish phase."""
 
     @staticmethod
-    def _built_workspace(
-        tmp_path: Path,
-        *,
-        projects: t.StrTuple = ("flext-a",),
-    ) -> tuple[Path, m.Infra.BuildReport]:
-        """Build one member and return the workspace with its verified receipt.
-
-        Returns:
-            The resulting ``tuple[Path, m.Infra.BuildReport]``.
-
-        """
-        workspace = u.Tests.create_release_workspace(
-            tmp_path,
-            project_names=(*projects, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
-            initialize_project_git=True,
-        )
-        for index, name in enumerate(projects):
-            project = workspace / name
-            tm.ok(u.Infra.replace_project_version(project, f"0.2.{index}"))
-            u.Tests.commit_git_changes(project, "declare independent member version")
-        notes = workspace / "docs" / "releases"
-        notes.mkdir(parents=True)
-        (notes / "v0.1.0.md").write_text("# Release v0.1.0\n", encoding="utf-8")
-        tm.that(
-            u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                "build",
-                "--projects",
-                ",".join(projects),
-                "--apply",
-            ),
-            eq=0,
-        )
-        report_path = (
-            u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
-            / c.Infra.RELEASE_REPORT_FILENAME
-        )
-        report = m.Infra.BuildReport.model_validate_json(
-            report_path.read_text(encoding="utf-8"),
-        )
-        for record in report.records:
-            u.Tests.git_bootstrap(
-                workspace,
-                (
-                    "update-index",
-                    "--add",
-                    "--replace",
-                    "--cacheinfo",
-                    f"160000,{record.commit_oid},{record.project}",
-                ),
-            )
-        u.Tests.git_bootstrap(
-            workspace, ("commit", "-m", "attest release member sources")
-        )
-        u.Tests.git_bootstrap(
-            workspace,
-            ("tag", c.Infra.TAG_FORMAT.format(version=report.version)),
-        )
-        return workspace, report
-
-    def test_dry_run_verifies_the_receipt_without_effects(self, tmp_path: Path) -> None:
+    def test_dry_run_verifies_the_receipt_without_effects(tmp_path: Path) -> None:
         """Receipt validation preserves the artifacts produced by a real build."""
-        workspace, report = self._built_workspace(tmp_path)
+        workspace, report = u.Tests.create_tagged_release_build(tmp_path)
         artifacts = {
             Path(artifact.path): Path(artifact.path).read_bytes()
             for record in report.records
@@ -93,9 +30,10 @@ class TestsFlextInfraReleasePublish:
         for path, content in artifacts.items():
             tm.that(path.read_bytes(), eq=content)
 
-    def test_tampered_artifact_is_refused(self, tmp_path: Path) -> None:
+    @staticmethod
+    def test_tampered_artifact_is_refused(tmp_path: Path) -> None:
         """An artifact whose bytes no longer match the receipt never leaves."""
-        workspace, report = self._built_workspace(tmp_path)
+        workspace, report = u.Tests.create_tagged_release_build(tmp_path)
         artifact = Path(report.records[0].artifacts[0].path)
         artifact.write_bytes(artifact.read_bytes() + b"\n")
 
@@ -104,12 +42,12 @@ class TestsFlextInfraReleasePublish:
             ne=0,
         )
 
+    @staticmethod
     def test_member_sources_remain_bound_after_head_and_wip_advance(
-        self,
         tmp_path: Path,
     ) -> None:
         """A workspace tag attests multiple independently versioned gitlinks."""
-        workspace, report = self._built_workspace(
+        workspace, report = u.Tests.create_tagged_release_build(
             tmp_path,
             projects=("flext-a", "flext-b"),
         )
@@ -132,13 +70,13 @@ class TestsFlextInfraReleasePublish:
                 eq="uncommitted member WIP\n",
             )
 
+    @staticmethod
     def test_retargeted_tag_refuses_receipt_before_remote_effects(
-        self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Changing a candidate gitlink cannot publish an older member receipt."""
-        workspace, report = self._built_workspace(tmp_path)
+        workspace, report = u.Tests.create_tagged_release_build(tmp_path)
         record = report.records[0]
         project = Path(record.path)
         (project / "next.txt").write_text("next candidate\n", encoding="utf-8")
@@ -162,7 +100,7 @@ class TestsFlextInfraReleasePublish:
         tm.that(output.out + output.err, has="release source commit differs from tag")
 
     @staticmethod
-    @pytest.mark.parametrize("digest", [None, "sha256:" + "a" * 64])
+    @c.Tests.MARK.parametrize("digest", [None, "sha256:" + "a" * 64])
     def test_native_asset_inventory_accepts_nullable_digest(digest: str | None) -> None:
         """GitHub's absent native digest remains explicit, not a verified hash."""
         inventory = m.Infra.GithubReleaseAssets.model_validate_json(
@@ -187,7 +125,7 @@ class TestsFlextInfraReleasePublish:
     @staticmethod
     def test_index_request_cannot_override_policy(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """The public manual route rejects a forbidden destination before receipts."""
         workspace = u.Tests.create_release_workspace(tmp_path)

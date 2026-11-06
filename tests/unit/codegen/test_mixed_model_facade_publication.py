@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, p, tm, u
 
 
-@pytest.mark.parametrize("stale_model_base", [False, True])
-@pytest.mark.parametrize("annotated", [False, True])
+@c.Tests.MARK.parametrize("stale_model_base", [False, True])
+@c.Tests.MARK.parametrize("annotated", [False, True])
 def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
     tmp_path: Path,
     native_consumer: p.Tests.NativeConsumer,
@@ -106,8 +104,8 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         "assert password.model_json_schema() == Credential.model_json_schema()\n"
         "assert password.model_dump_json() == original.model_dump_json()\n"
         "class Envelope(BaseModel):\n"
-        "    password: m.Sample.Password\n"
-        "    column: m.Sample.Column\n"
+        "    password: p.Sample.Password\n"
+        "    column: p.Sample.Column\n"
         "column = Catalog.Column(value='native-column')\n"
         "envelope = Envelope(password=password, column=column)\n"
         "assert envelope.password is password\n"
@@ -128,3 +126,59 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         ),
         eq=second,
     )
+
+
+def test_models_infra_materializes_holder_members_for_static_consumers(
+    tmp_path: Path,
+    native_consumer: p.Tests.NativeConsumer,
+) -> None:
+    """Publish ``m.Infra`` members without relying on holder MRO at type-check time."""
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    directory = package / u.Infra.facade_families()["m"].directory
+    directory.mkdir()
+    (directory / "actions.py").write_text(
+        "from pydantic import BaseModel\n"
+        "class Actions:\n"
+        "    class Operation(BaseModel):\n"
+        "        value: str\n"
+        "__all__ = ['Actions']\n",
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
+    (directory / "health.py").write_text(
+        "from pydantic import BaseModel\n"
+        "class Healths:\n"
+        "    class Health(BaseModel):\n"
+        "        value: str\n"
+        "__all__ = ['Healths']\n",
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
+    (directory / c.Infra.INIT_PY).write_text("", encoding=c.Infra.ENCODING_DEFAULT)
+    facade = package / "models.py"
+    facade.write_text(
+        "from flext_test_project._models.actions import Actions\n"
+        "from flext_test_project._models.health import Healths\n"
+        "class FlextTestProjectModels:\n"
+        "    class Infra(Actions, Healths):\n"
+        "        pass\n"
+        "m = FlextTestProjectModels\n"
+        "__all__ = ['FlextTestProjectModels', 'm']\n",
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
+
+    rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")))
+
+    tm.that(rendered, has="        Operation: TypeAlias = Actions.Operation")
+    tm.that(rendered, has="        Health: TypeAlias = Healths.Health")
+    facade.write_text(rendered, encoding=c.Infra.ENCODING_DEFAULT)
+    native_consumer(
+        f"sys.path.insert(0, {str(package.parent)!r})\n"
+        "from flext_test_project.models import m\n"
+        "from flext_test_project._models.actions import Actions\n"
+        "from flext_test_project._models.health import Healths\n"
+        "assert m.Infra.Operation is Actions.Operation\n"
+        "assert m.Infra.Health is Healths.Health\n"
+        "assert m.Infra.__dict__['Operation'] is Actions.Operation\n"
+        "assert m.Infra.__dict__['Health'] is Healths.Health\n",
+        cwd=root,
+    )
+    tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered)

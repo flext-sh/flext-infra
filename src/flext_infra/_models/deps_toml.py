@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 from flext_cli import m
 
 from flext_infra import c, t
-from flext_infra._models._config.workspace import FlextInfraModelsConfigWorkspace
+from flext_infra._models._config import FlextInfraModelsConfigWorkspace
 
 
 class FlextInfraModelsDepsToml:

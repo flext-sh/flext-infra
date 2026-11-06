@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import re as _re
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from tests import t
 
 
-class TestsFlextInfraConstantsScanMixin:
+class TestsFlextInfraConstantsScan:
     """Log and scanner fixture patterns."""
 
     LOG_NOISE_LINES: ClassVar[Sequence[str]] = (
@@ -52,4 +51,4 @@ class TestsFlextInfraConstantsScanMixin:
     SCANNER_HELLO_RE: ClassVar[t.RegexPattern] = _re.compile(r"hello", _re.MULTILINE)
 
 
-__all__: list[str] = ["TestsFlextInfraConstantsScanMixin"]
+__all__: list[str] = ["TestsFlextInfraConstantsScan"]

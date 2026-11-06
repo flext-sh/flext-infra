@@ -32,7 +32,7 @@ inheritance chain (MRO depth 13, counting the facade and the
 | 9   | `_conform/beads_routes.py`     | 125   | 73   | 16  | beads config routing                                     |
 | 10  | `_conform/docs_ownership.py`   | 87    | 43   | 9   | docs ownership mapping                                   |
 | 11  | `_conform/gitignore.py`        | 46    | 22   | 0   | gitignore deny-first rendering                           |
-| 12  | `_conform/bootstrap.py`        | 180   | 122  | 10  | base link (`s[m.Infra.CodegenResult]`), execution inputs |
+| 12  | `_conform/bootstrap.py`        | 180   | 122  | 10  | base link (`s[p.Infra.CodegenResult]`), execution inputs |
 
 Totals: 4,473 lines / 3,478 code / cyclomatic 647 (scc, this tree).
 

@@ -11,12 +11,12 @@ import tempfile
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import config, u
+from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m, p, t, tm
+from tests import c, p, t, tm, u
 
 
-class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
+class TestsFlextInfraUtilitiesWorkspaceEnv:
     """Workspace profile, ignore, and process-environment helpers."""
 
     @staticmethod
@@ -55,7 +55,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT ignore pattern whose section targets *profile*.
 
         """
-        gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
+        gitignore_sections: tuple[p.Infra.ScaffoldGitignoreSectionSpec, ...] = (
             config.Infra.codegen.gitignore_sections
         )
         return tuple(
@@ -73,8 +73,8 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT pattern whose section targets that profile.
 
         """
-        return TestsFlextInfraUtilitiesWorkspaceEnvMixin.ignore_patterns_for_profile(
-            TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root),
+        return TestsFlextInfraUtilitiesWorkspaceEnv.ignore_patterns_for_profile(
+            TestsFlextInfraUtilitiesWorkspaceEnv.repository_profile(root),
         )
 
     @staticmethod
@@ -109,4 +109,4 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
         return code == 1
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnvMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesWorkspaceEnv"]

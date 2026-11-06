@@ -11,8 +11,6 @@ from pathlib import Path
 from textwrap import indent
 from typing import Literal
 
-import pytest
-
 from flext_infra.gates import FlextInfraGatesMypy, FlextInfraGatesPyrefly
 from tests import c, m, p, tm, u
 
@@ -21,8 +19,8 @@ class TestsFlextInfraProtocolNamespaceProjection:
     """Check namespace MRO and nested contracts through a fresh public import."""
 
     @staticmethod
-    @pytest.mark.parametrize("nested", [False, True])
-    @pytest.mark.parametrize("aliased", [False, True])
+    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("aliased", [False, True])
     def test_namespace_parts_preserve_real_protocols_and_converge(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
@@ -131,9 +129,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("family", ["p", "m"])
-    @pytest.mark.parametrize("annotated", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("family", ["p", "m"])
+    @c.Tests.MARK.parametrize("annotated", [False, True])
     def test_class_aliases_project_native_owners_for_typed_consumers(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
@@ -246,9 +244,9 @@ class TestsFlextInfraProtocolNamespaceProjection:
             tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
 
     @staticmethod
-    @pytest.mark.parametrize("family", ["p", "m"])
-    @pytest.mark.parametrize("conflict", ["renamed", "losing", "annotation"])
-    @pytest.mark.parametrize("annotated", [False, True])
+    @c.Tests.MARK.parametrize("family", ["p", "m"])
+    @c.Tests.MARK.parametrize("conflict", ["renamed", "losing", "annotation"])
+    @c.Tests.MARK.parametrize("annotated", [False, True])
     def test_class_aliases_reject_unproven_owner_identity(
         tmp_path: Path,
         family: Literal["p", "m"],
@@ -311,7 +309,7 @@ class TestsFlextInfraProtocolNamespaceProjection:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("marker_base", [False, True])
+    @c.Tests.MARK.parametrize("marker_base", [False, True])
     def test_alias_only_namespace_is_not_an_interface(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,

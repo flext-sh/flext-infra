@@ -18,17 +18,14 @@ import tempfile
 import time
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import (
     FlextInfraGates,
     FlextInfraMarkdownCodeSources,
     FlextInfraMarkdownGateBase,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesMarkdownCode(FlextInfraGates):
@@ -74,7 +71,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         location: tuple[str, int],
         message: str,
-    ) -> m.Infra.Issue | None:
+    ) -> p.Infra.Issue | None:
         """Map one extracted-source finding back to its documentation location.
 
         Returns:
@@ -99,7 +96,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         origin: Mapping[str, tuple[str, int]],
         *,
         default_message: str,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Translate one ruff result into origin-mapped findings coded with this gate.
 
         Every ruff line that names an extracted source (verdict, parse error or
@@ -108,10 +105,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         as a clean pass: the tool-level error becomes the finding.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
-        issues: MutableSequence[m.Infra.Issue] = []
+        issues: MutableSequence[p.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_CODE_SOURCE_RE.search(line)
             issue = (
@@ -160,7 +157,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         }
 
     @override
-    def selected_for(self, project_dir: Path, ctx: m.Infra.GateContext) -> bool:
+    def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
         """A project with either input kind of embedded code selects the gate.
 
         Applicability is the cheap derivation of the declared input kinds:
@@ -182,10 +179,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
     def _run_extracted(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         fix: bool,
-    ) -> tuple[bool, bool, Sequence[m.Infra.Issue]]:
+    ) -> tuple[bool, bool, Sequence[p.Infra.Issue]]:
         """Run the single format operation over extracted sources.
 
         Returns ``(ran, passed, issues)``: ``ran`` is False when the project
@@ -195,10 +192,10 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         never enter the extracted tree and cannot turn into gate findings.
 
         Returns:
-            The resulting ``tuple[bool, bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, bool, Sequence[p.Infra.Issue]]``.
 
         """
-        findings: MutableSequence[m.Infra.Issue] = []
+        findings: MutableSequence[p.Infra.Issue] = []
         embedded = self._embedded_sources(project_dir, ctx.scope_facts)
         if not embedded:
             return False, False, ()
@@ -227,11 +224,16 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
                     ),
                 )
                 if format_ok:
-                    self._splice_formatted_blocks(
+                    changes = self._splice_formatted_blocks(
                         project_dir,
                         sources_dir,
                         ctx.scope_facts,
                     )
+                    if changes:
+                        u.Cli.publish_file_changes(
+                            changes,
+                            lock_path=u.Infra.mutation_lock_path(project_dir).unwrap(),
+                        ).unwrap()
                     # Docstrings are not written back: staged formatting is
                     # native success, but their unchanged sources still block.
                     findings.extend(
@@ -268,39 +270,41 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         project_dir: Path,
         sources_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> Sequence[Path]:
-        """Write formatted blocks back into docs whose round-trip recompiles cleanly.
+    ) -> Sequence[p.Cli.FileChange]:
+        """Plan formatted blocks back into docs whose round-trip recompiles cleanly.
 
         Enumeration matches the extractor exactly: only parseable non-``notest``
         blocks own a staged source, share its index, and take part in the
-        all-or-nothing splice; fragments stay byte-identical.
+        all-or-nothing splice; fragments stay byte-identical. Nothing is written
+        here: the caller publishes the whole batch in one verified effect.
 
         Returns:
-            The resulting ``Sequence[Path]``.
+            One change per rewritten document, in enumeration order.
 
         """
-        rewritten: MutableSequence[Path] = []
+        changes: MutableSequence[p.Cli.FileChange] = []
         for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
             project_dir, scope_facts
         ):
             spliced = self._splice_document(md_path, project_dir, sources_dir)
             if spliced is not None:
-                rewritten.append(spliced)
-        return rewritten
+                changes.append(spliced)
+        return changes
 
     def _splice_document(
         self,
         md_path: Path,
         project_dir: Path,
         sources_dir: Path,
-    ) -> Path | None:
-        """Write one document's formatted blocks back when its round-trip holds.
+    ) -> p.Cli.FileChange | None:
+        """Plan one document's formatted blocks back when its round-trip holds.
 
         Returns:
-            The rewritten path, or ``None`` when the document stayed identical.
+            The document's change, or ``None`` when it stayed identical.
 
         """
-        content = md_path.read_text(c.DEFAULT_ENCODING)
+        before = u.Cli.atomic_read_binary_file_state(md_path, required=True).unwrap()
+        content = (before.content or b"").decode(c.DEFAULT_ENCODING)
         relative_posix = md_path.relative_to(project_dir).as_posix()
         staged = FlextInfraMarkdownCodeSources.formattable_fences(content, md_path)
         if not staged:
@@ -323,8 +327,14 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         )
         if updated == content:
             return None
-        md_path.write_text(updated, c.DEFAULT_ENCODING)
-        return md_path
+        return m.Cli.FileChange(
+            path=md_path,
+            before=before,
+            desired_content=updated.encode(c.DEFAULT_ENCODING),
+            desired_mode=(
+                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1]
+            ),
+        )
 
     @staticmethod
     def _formatted_blocks(
@@ -357,9 +367,9 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
     def _clean_without_embedded_code(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Report examined inputs that carry no embedded code as clean.
 
         Returns:
@@ -382,8 +392,8 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Validate embedded sources read-only when documentation code exists.
 
         Returns:
@@ -406,7 +416,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         )
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Run the single mutating pass: format blocks and splice clean docs back.
 
         Returns:
@@ -420,8 +430,9 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
             msg = "repair requires apply_fixes=True and check_only=False"
             raise ValueError(msg)
         started = time.monotonic()
-        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            ran, passed, issues = self._run_extracted(project_dir, ctx, fix=True)
+        # The formatter subprocess and the round-trip checks are read-only
+        # planning; only the splice publishes, in one verified batch.
+        ran, passed, issues = self._run_extracted(project_dir, ctx, fix=True)
         if not ran:
             return self._clean_without_embedded_code(project_dir, ctx, started)
         return self._build_gate_execution(

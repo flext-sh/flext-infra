@@ -14,12 +14,11 @@ from email.parser import BytesParser
 from pathlib import Path
 from time import monotonic
 
-import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 _RUNTIME_PROBE = """
 import importlib
@@ -86,7 +85,7 @@ class TestsArtifactRuntime:
         subject: str,
         producer: Path,
         tmp_path: Path,
-        options: m.Cli.ProcessOptions,
+        options: p.Cli.ProcessOptions,
     ) -> tuple[Path, str, Sequence[str], Sequence[str]]:
         """Resolve the built repository and its governed runtime identity.
 
@@ -169,7 +168,7 @@ class TestsArtifactRuntime:
     def _built_wheel_artifact(
         uv: str,
         repository: Path,
-        options: m.Cli.ProcessOptions,
+        options: p.Cli.ProcessOptions,
         artifacts: Path,
         archive_kind: str,
     ) -> tuple[Path, bytes]:
@@ -344,9 +343,9 @@ class TestsArtifactRuntime:
         return consumer, python, consumer_options
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("subject", ["infra", "core"])
-    @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("subject", ["infra", "core"])
+    @c.Tests.MARK.parametrize("archive_kind", ["wheel", "sdist"])
     def test_artifact_runs_with_runtime_dependencies_only(
         tmp_path: Path,
         hermetic_git_environment: Mapping[str, str],

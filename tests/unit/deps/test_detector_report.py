@@ -8,19 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from tests import tm, u
+from tests import c, tm, u
 
 # Real dependency discovery provisions a consumer from external package sources.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraDepsDetectorReport:
     """Tests for ``FlextInfraDepsDetectorReport``."""
 
     @staticmethod
-    @pytest.mark.parametrize("custom", [False, True])
+    @c.Tests.MARK.parametrize("custom", [False, True])
     def test_report_path_and_real_project_identity(
         real_detector_project: Path,
         *,

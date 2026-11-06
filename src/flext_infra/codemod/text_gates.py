@@ -27,22 +27,25 @@ class FlextInfraModTextGateEngine:
     """Scan, apply, and prove the declarative sed-by-list rule cascade."""
 
     @classmethod
-    def run(cls, root: Path, *, apply: bool) -> p.Result[t.Cli.ResultValue]:
+    def run(
+        cls, root: Path, *, apply: bool, rule_ids: tuple[str, ...] = ()
+    ) -> p.Result[t.Cli.ResultValue]:
         """Replay only text rules through their authenticated transaction.
 
         Returns:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        pending = cls.scan(root, fix=apply, validate_receipts=True)
+        pending = cls.scan(root, fix=apply, validate_receipts=True, rule_ids=rule_ids)
         if pending.failure:
             return r[t.Cli.ResultValue].from_failure(pending)
-        remaining = cls.scan(root, fix=False)
+        remaining = cls.scan(root, fix=False, rule_ids=rule_ids)
         if remaining.failure:
             return r[t.Cli.ResultValue].from_failure(remaining)
         if remaining.value.findings:
             return r[t.Cli.ResultValue].fail(
                 f"mod-text has {remaining.value.findings} pending finding(s)",
+                error_data={"text": remaining.value.model_dump(mode="json")},
             )
         return r[t.Cli.ResultValue].ok(
             f"mod-text: {pending.value.actionable if apply else 0} "
@@ -50,16 +53,16 @@ class FlextInfraModTextGateEngine:
         )
 
     @classmethod
-    def load_rules(cls, root: Path) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
+    def load_rules(cls, root: Path) -> p.Result[tuple[p.Infra.ModTextRule, ...]]:
         """Load package and workspace text rules into one validated tuple.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.ModTextRule, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.ModTextRule, ...]]``.
 
         """
         snapshots = cls._catalogue_states(root.absolute())
         if snapshots.failure:
-            return r[tuple[m.Infra.ModTextRule, ...]].from_failure(snapshots)
+            return r[tuple[p.Infra.ModTextRule, ...]].from_failure(snapshots)
         return cls._rules_from_states(snapshots.value)
 
     @classmethod
@@ -95,31 +98,31 @@ class FlextInfraModTextGateEngine:
 
     @staticmethod
     def _selected_rules(
-        identity: m.Cli.AtomicFileState,
-        rules: tuple[m.Infra.ModTextRule, ...],
-    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
+        identity: p.Cli.AtomicFileState,
+        rules: tuple[p.Infra.ModTextRule, ...],
+    ) -> p.Result[tuple[p.Infra.ModTextRule, ...]]:
         """Select rules from the exact project bytes authenticated for publication.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.ModTextRule, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.ModTextRule, ...]]``.
 
         """
         if identity.content is None:
-            return r[tuple[m.Infra.ModTextRule, ...]].fail(
+            return r[tuple[p.Infra.ModTextRule, ...]].fail(
                 f"text rule project identity is absent: {identity.path}",
             )
         recovered = u.Infra.recover_live_pyproject_text(
             identity.content.decode(c.DEFAULT_ENCODING),
         )
         if recovered.failure:
-            return r[tuple[m.Infra.ModTextRule, ...]].from_failure(recovered)
+            return r[tuple[p.Infra.ModTextRule, ...]].from_failure(recovered)
         payload = u.Cli.toml_mapping_from_text(recovered.value)
         if payload is None:
-            return r[tuple[m.Infra.ModTextRule, ...]].fail(
+            return r[tuple[p.Infra.ModTextRule, ...]].fail(
                 f"text rule project identity is invalid TOML: {identity.path}",
             )
         distribution = u.Infra.project_name_from_payload(identity.path, payload)
-        return r[tuple[m.Infra.ModTextRule, ...]].ok(
+        return r[tuple[p.Infra.ModTextRule, ...]].ok(
             tuple(
                 rule
                 for rule in rules
@@ -130,11 +133,11 @@ class FlextInfraModTextGateEngine:
     @staticmethod
     def _catalogue_states(
         root: Path,
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, ...]]:
         """Capture the packaged rules and the consumer overlay exactly once.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Cli.AtomicFileState, ...]]``.
+            The resulting ``p.Result[tuple[p.Cli.AtomicFileState, ...]]``.
 
         """
         # The packaged rules live at the same sub-path of whichever SSOT
@@ -144,7 +147,7 @@ class FlextInfraModTextGateEngine:
             c.Infra.CODEMOD_TEXT_RULES_RELPATH.relative_to(c.CONFIG_DIR_NAME)
         )
         consumer = root / c.Infra.CODEMOD_TEXT_RULES_RELPATH
-        snapshots: list[m.Cli.AtomicFileState] = []
+        snapshots: list[p.Cli.AtomicFileState] = []
         for path, required in ((provider, True), (consumer, False)):
             if snapshots and path == snapshots[0].path:
                 continue
@@ -155,73 +158,73 @@ class FlextInfraModTextGateEngine:
                 continue
             snapshot = u.Cli.atomic_read_binary_file_state(path, required=required)
             if snapshot.failure:
-                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(snapshot)
+                return r[tuple[p.Cli.AtomicFileState, ...]].from_failure(snapshot)
             snapshots.append(snapshot.value)
-        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(snapshots))
+        return r[tuple[p.Cli.AtomicFileState, ...]].ok(tuple(snapshots))
 
     @classmethod
     def _rules_from_states(
         cls,
-        snapshots: tuple[m.Cli.AtomicFileState, ...],
-    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
+        snapshots: tuple[p.Cli.AtomicFileState, ...],
+    ) -> p.Result[tuple[p.Infra.ModTextRule, ...]]:
         """Compose provider rules before local rules and reject ambiguous ids.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.ModTextRule, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.ModTextRule, ...]]``.
 
         """
-        rules: list[m.Infra.ModTextRule] = []
+        rules: list[p.Infra.ModTextRule] = []
         owners: MutableMapping[str, Path] = {}
         for snapshot in snapshots:
             parsed = cls._rules_from_state(snapshot)
             if parsed.failure:
-                return r[tuple[m.Infra.ModTextRule, ...]].from_failure(parsed)
+                return r[tuple[p.Infra.ModTextRule, ...]].from_failure(parsed)
             for rule in parsed.value:
                 previous = owners.get(rule.rule_id)
                 if previous is not None:
-                    return r[tuple[m.Infra.ModTextRule, ...]].fail(
+                    return r[tuple[p.Infra.ModTextRule, ...]].fail(
                         f"duplicate text rule id {rule.rule_id} in "
                         f"{previous} and {snapshot.path}",
                     )
                 owners[rule.rule_id] = snapshot.path
                 rules.append(rule)
-        return r[tuple[m.Infra.ModTextRule, ...]].ok(tuple(rules))
+        return r[tuple[p.Infra.ModTextRule, ...]].ok(tuple(rules))
 
     @classmethod
     def _rules_from_state(
         cls,
-        snapshot: m.Cli.AtomicFileState,
-    ) -> p.Result[tuple[m.Infra.ModTextRule, ...]]:
+        snapshot: p.Cli.AtomicFileState,
+    ) -> p.Result[tuple[p.Infra.ModTextRule, ...]]:
         """Parse only the exact authenticated catalogue bytes used by the plan.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.ModTextRule, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.ModTextRule, ...]]``.
 
         """
         if snapshot.content is None:
-            return r[tuple[m.Infra.ModTextRule, ...]].ok(())
+            return r[tuple[p.Infra.ModTextRule, ...]].ok(())
         source = snapshot.path
-        rules: list[m.Infra.ModTextRule] = []
+        rules: list[p.Infra.ModTextRule] = []
         seen: set[str] = set()
         parsed = u.Cli.yaml_parse(snapshot.content.decode(c.DEFAULT_ENCODING))
         if parsed.failure:
-            return r[tuple[m.Infra.ModTextRule, ...]].from_failure(parsed)
+            return r[tuple[p.Infra.ModTextRule, ...]].from_failure(parsed)
         listing = parsed.value.get(c.Infra.CODEMOD_TEXT_RULES_KEY)
         if not isinstance(listing, list):
-            return r[tuple[m.Infra.ModTextRule, ...]].fail(
+            return r[tuple[p.Infra.ModTextRule, ...]].fail(
                 f"text rule file declares no rules list: {source}",
             )
         for raw in listing:
             rule = cls._build_rule(raw, source)
             if rule.failure:
-                return r[tuple[m.Infra.ModTextRule, ...]].from_failure(rule)
+                return r[tuple[p.Infra.ModTextRule, ...]].from_failure(rule)
             if rule.value.rule_id in seen:
-                return r[tuple[m.Infra.ModTextRule, ...]].fail(
+                return r[tuple[p.Infra.ModTextRule, ...]].fail(
                     f"duplicate text rule id {rule.value.rule_id} in {source}",
                 )
             seen.add(rule.value.rule_id)
             rules.append(rule.value)
-        return r[tuple[m.Infra.ModTextRule, ...]].ok(tuple(rules))
+        return r[tuple[p.Infra.ModTextRule, ...]].ok(tuple(rules))
 
     @staticmethod
     def _validated_entry(
@@ -417,22 +420,22 @@ class FlextInfraModTextGateEngine:
     def _build_rule(
         raw: t.JsonValue,
         source: Path,
-    ) -> p.Result[m.Infra.ModTextRule]:
+    ) -> p.Result[p.Infra.ModTextRule]:
         """Validate one raw list entry into a frozen text rule.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ModTextRule]``.
+            The resulting ``p.Result[p.Infra.ModTextRule]``.
 
         """
         entry = FlextInfraModTextGateEngine._validated_entry(raw, source)
         if entry.failure:
-            return r[m.Infra.ModTextRule].from_failure(entry)
+            return r[p.Infra.ModTextRule].from_failure(entry)
         pattern = FlextInfraModTextGateEngine._validated_pattern_fields(
             entry.value,
             source,
         )
         if pattern.failure:
-            return r[m.Infra.ModTextRule].from_failure(pattern)
+            return r[p.Infra.ModTextRule].from_failure(pattern)
         find, flags, compiled = pattern.value
         selector = FlextInfraModTextGateEngine._validated_selector_fields(
             entry.value,
@@ -440,7 +443,7 @@ class FlextInfraModTextGateEngine:
             compiled,
         )
         if selector.failure:
-            return r[m.Infra.ModTextRule].from_failure(selector)
+            return r[p.Infra.ModTextRule].from_failure(selector)
         distributions, captures, expected = selector.value
         scopes: MutableMapping[str, tuple[str, ...]] = {}
         for key in (
@@ -453,7 +456,7 @@ class FlextInfraModTextGateEngine:
             if not isinstance(declared, (list, tuple)) or any(
                 not isinstance(glob, str) or not glob.strip() for glob in declared
             ):
-                return r[m.Infra.ModTextRule].fail(
+                return r[p.Infra.ModTextRule].fail(
                     f"text rule {key} must be a list of non-empty strings in {source}",
                 )
             scopes[key] = tuple(glob for glob in declared if isinstance(glob, str))
@@ -469,17 +472,17 @@ class FlextInfraModTextGateEngine:
             **scopes,
         )
         if not rule.rule_id:
-            return r[m.Infra.ModTextRule].fail(
+            return r[p.Infra.ModTextRule].fail(
                 f"text rule requires a non-empty id in {source}",
             )
-        return r[m.Infra.ModTextRule].ok(rule)
+        return r[p.Infra.ModTextRule].ok(rule)
 
     @classmethod
     def _include_issues(
         cls,
         root: Path,
-        rules: tuple[m.Infra.ModTextRule, ...],
-    ) -> tuple[m.Infra.Issue, ...]:
+        rules: tuple[p.Infra.ModTextRule, ...],
+    ) -> tuple[p.Infra.Issue, ...]:
         """Report declared formats outside this phase's existing source contract.
 
         Returns:
@@ -507,7 +510,7 @@ class FlextInfraModTextGateEngine:
     def _source_paths(
         cls,
         root: Path,
-        rules: tuple[m.Infra.ModTextRule, ...],
+        rules: tuple[p.Infra.ModTextRule, ...],
         *,
         sources: Mapping[Path, str] | None = None,
     ) -> p.Result[tuple[Path, ...]]:
@@ -552,7 +555,7 @@ class FlextInfraModTextGateEngine:
     def _markdown_source_paths(
         cls,
         root: Path,
-        rules: tuple[m.Infra.ModTextRule, ...],
+        rules: tuple[p.Infra.ModTextRule, ...],
         sources: Mapping[Path, str] | None,
     ) -> p.Result[tuple[Path, ...]]:
         """Authenticate the explicitly elected Markdown sources.
@@ -619,9 +622,9 @@ class FlextInfraModTextGateEngine:
         root: Path,
     ) -> p.Result[
         tuple[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[p.Cli.AtomicFileState, ...],
             m.Cli.AtomicFileState,
-            tuple[m.Infra.ModTextRule, ...],
+            tuple[p.Infra.ModTextRule, ...],
         ]
     ]:
         """Authenticate the catalogues and the project identity, then elect rules.
@@ -634,18 +637,18 @@ class FlextInfraModTextGateEngine:
         if catalogues.failure:
             return r[
                 tuple[
-                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[p.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
-                    tuple[m.Infra.ModTextRule, ...],
+                    tuple[p.Infra.ModTextRule, ...],
                 ]
             ].from_failure(catalogues)
         loaded = cls._rules_from_states(catalogues.value)
         if loaded.failure:
             return r[
                 tuple[
-                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[p.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
-                    tuple[m.Infra.ModTextRule, ...],
+                    tuple[p.Infra.ModTextRule, ...],
                 ]
             ].from_failure(loaded)
         identity = u.Cli.atomic_read_binary_file_state(
@@ -655,25 +658,25 @@ class FlextInfraModTextGateEngine:
         if identity.failure:
             return r[
                 tuple[
-                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[p.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
-                    tuple[m.Infra.ModTextRule, ...],
+                    tuple[p.Infra.ModTextRule, ...],
                 ]
             ].from_failure(identity)
         selected = cls._selected_rules(identity.value, loaded.value)
         if selected.failure:
             return r[
                 tuple[
-                    tuple[m.Cli.AtomicFileState, ...],
+                    tuple[p.Cli.AtomicFileState, ...],
                     m.Cli.AtomicFileState,
-                    tuple[m.Infra.ModTextRule, ...],
+                    tuple[p.Infra.ModTextRule, ...],
                 ]
             ].from_failure(selected)
         return r[
             tuple[
-                tuple[m.Cli.AtomicFileState, ...],
+                tuple[p.Cli.AtomicFileState, ...],
                 m.Cli.AtomicFileState,
-                tuple[m.Infra.ModTextRule, ...],
+                tuple[p.Infra.ModTextRule, ...],
             ]
         ].ok((catalogues.value, identity.value, selected.value))
 
@@ -682,20 +685,20 @@ class FlextInfraModTextGateEngine:
         cls,
         root: Path,
         paths: Sequence[Path],
-        rules: tuple[m.Infra.ModTextRule, ...],
+        rules: tuple[p.Infra.ModTextRule, ...],
         *,
         fix: bool,
         sources: Mapping[Path, str] | None = None,
-    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
+    ) -> p.Result[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]:
         """Plan each elected source; the first unsafe target fails loud.
 
         Returns:
             Reported matches and the final file plans, or the first failure.
 
         """
-        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
-        entries: list[m.Infra.ModTextFinding] = []
-        plans: list[m.Infra.CodegenFilePlan] = []
+        outcome = r[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]
+        entries: list[p.Infra.ModTextFinding] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path in paths:
             relative = path.relative_to(root).as_posix()
             if not any(cls._rule_elects(rule, relative) for rule in rules):
@@ -750,22 +753,27 @@ class FlextInfraModTextGateEngine:
         *,
         sources: Mapping[Path, str] | None = None,
         validate_receipts: bool = False,
-    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
+        rule_ids: tuple[str, ...] = (),
+    ) -> p.Result[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]:
         """Plan the complete text cascade without publishing any source.
 
         Returns:
             The workspace report and its final file plans, or the first failure.
 
         """
-        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
+        outcome = r[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]
         root = root.absolute()
-        entries: list[m.Infra.ModTextFinding] = []
+        entries: list[p.Infra.ModTextFinding] = []
         files: set[Path] = set()
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         actionable = 0
         for project in u.Infra.governed_project_roots(root):
             scanned = cls._scan_project(
-                project, fix=True, sources=sources, validate_receipts=validate_receipts
+                project,
+                fix=True,
+                sources=sources,
+                validate_receipts=validate_receipts,
+                rule_ids=rule_ids,
             )
             if scanned.failure:
                 return scanned
@@ -795,22 +803,23 @@ class FlextInfraModTextGateEngine:
         *,
         fix: bool,
         validate_receipts: bool = False,
-    ) -> p.Result[m.Infra.ModTextReport]:
+        rule_ids: tuple[str, ...] = (),
+    ) -> p.Result[p.Infra.ModTextReport]:
         """Observe or publish the same complete text plan.
 
         Returns:
             The observed or published report, or the first phase failure.
 
         """
-        planned = cls.plan(root, validate_receipts=validate_receipts)
+        planned = cls.plan(root, validate_receipts=validate_receipts, rule_ids=rule_ids)
         if planned.failure:
-            return r[m.Infra.ModTextReport].from_failure(planned)
+            return r[p.Infra.ModTextReport].from_failure(planned)
         report, plans = planned.value
         if fix and plans:
             published = u.Infra.publish_codegen_plans(root, plans)
             if published.failure:
-                return r[m.Infra.ModTextReport].from_failure(published)
-        return r[m.Infra.ModTextReport].ok(report)
+                return r[p.Infra.ModTextReport].from_failure(published)
+        return r[p.Infra.ModTextReport].ok(report)
 
     @classmethod
     def _scan_project(
@@ -820,18 +829,27 @@ class FlextInfraModTextGateEngine:
         fix: bool,
         validate_receipts: bool,
         sources: Mapping[Path, str] | None = None,
-    ) -> p.Result[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]:
+        rule_ids: tuple[str, ...] = (),
+    ) -> p.Result[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]:
         """Plan one member's rules using its declared distribution identity.
 
         Returns:
             Reported matches and final file plans, or the first failure.
 
         """
-        outcome = r[tuple[m.Infra.ModTextReport, tuple[m.Infra.CodegenFilePlan, ...]]]
+        outcome = r[tuple[p.Infra.ModTextReport, tuple[p.Infra.CodegenFilePlan, ...]]]
         context = cls._elected_rules(root)
         if context.failure:
             return outcome.from_failure(context)
         _catalogues, _identity, rules = context.value
+        if rule_ids:
+            known = {rule.rule_id for rule in rules}
+            unknown = set(rule_ids) - known
+            if unknown:
+                return outcome.fail(
+                    f"unknown text rule IDs: {', '.join(sorted(unknown))}"
+                )
+            rules = tuple(rule for rule in rules if rule.rule_id in rule_ids)
         include_issues = cls._include_issues(root, rules)
         if include_issues:
             return outcome.fail(
@@ -869,8 +887,8 @@ class FlextInfraModTextGateEngine:
 
     @staticmethod
     def _validate_expected_receipts(
-        rules: tuple[m.Infra.ModTextRule, ...],
-        report: m.Infra.ModTextReport,
+        rules: tuple[p.Infra.ModTextRule, ...],
+        report: p.Infra.ModTextReport,
     ) -> None:
         """Require exact migration preconditions, including zero-match mismatches.
 
@@ -899,16 +917,16 @@ class FlextInfraModTextGateEngine:
         cls,
         source: str,
         target: str,
-        rules: tuple[m.Infra.ModTextRule, ...],
-    ) -> tuple[str, list[m.Infra.ModTextFinding], int]:
+        rules: tuple[p.Infra.ModTextRule, ...],
+    ) -> tuple[str, list[p.Infra.ModTextFinding], int]:
         """Rewrite one source text through every elected rule entry.
 
         Returns:
-            The resulting ``tuple[str, list[m.Infra.ModTextFinding], int]``.
+            The resulting ``tuple[str, list[p.Infra.ModTextFinding], int]``.
 
         """
         updated = source
-        entries: list[m.Infra.ModTextFinding] = []
+        entries: list[p.Infra.ModTextFinding] = []
         actionable = 0
         for rule in rules:
             if not cls._rule_elects(rule, target):
@@ -916,7 +934,7 @@ class FlextInfraModTextGateEngine:
             line_starts = [0]
             for line in updated.splitlines(keepends=True):
                 line_starts.append(line_starts[-1] + len(line))
-            found: list[m.Infra.ModTextFinding] = []
+            found: list[p.Infra.ModTextFinding] = []
             pattern = cls._compiled(rule)
             expand = functools.partial(
                 cls._expand_match,
@@ -936,10 +954,10 @@ class FlextInfraModTextGateEngine:
 
     @staticmethod
     def _expand_match(
-        rule: m.Infra.ModTextRule,
+        rule: p.Infra.ModTextRule,
         target: str,
         line_starts: Sequence[int],
-        found: list[m.Infra.ModTextFinding],
+        found: list[p.Infra.ModTextFinding],
         match: t.RegexMatch,
     ) -> str:
         """Record and expand one match, binding every loop value explicitly.
@@ -973,7 +991,7 @@ class FlextInfraModTextGateEngine:
         return replacement
 
     @staticmethod
-    def _rule_elects(rule: m.Infra.ModTextRule, target: str) -> bool:
+    def _rule_elects(rule: p.Infra.ModTextRule, target: str) -> bool:
         """Return whether one target path is elected by the rule globs.
 
         Returns:
@@ -987,7 +1005,7 @@ class FlextInfraModTextGateEngine:
         )
 
     @staticmethod
-    def _compiled(rule: m.Infra.ModTextRule) -> t.RegexPattern:
+    def _compiled(rule: p.Infra.ModTextRule) -> t.RegexPattern:
         """Compile one rule pattern with its declared SSOT flag names.
 
         Returns:

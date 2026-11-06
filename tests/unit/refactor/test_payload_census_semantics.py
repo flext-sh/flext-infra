@@ -9,11 +9,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import p
 from flext_infra.refactor import FlextInfraRefactorCensus
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraPayloadCensusSemantics:
@@ -48,7 +45,7 @@ class TestsFlextInfraPayloadCensusSemantics:
         tm.that(restored.definitions[0].file_path, eq=last.file_path)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("change", "expected_candidate"),
         [
             ("alias", True),

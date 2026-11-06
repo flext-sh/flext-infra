@@ -33,7 +33,7 @@ class FlextInfraInventoryService(s[bool]):
         repository_root: Path,
         *,
         output_dir: Path | None = None,
-    ) -> p.Result[m.Infra.InventoryReport]:
+    ) -> p.Result[p.Infra.InventoryReport]:
         """Build and write scripts inventory reports.
 
         Args:
@@ -48,7 +48,7 @@ class FlextInfraInventoryService(s[bool]):
         try:
             return self._generate_inventory_report(repository_root, output_dir)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.InventoryReport].fail_op("inventory generation", exc)
+            return r[p.Infra.InventoryReport].fail_op("inventory generation", exc)
 
     @staticmethod
     def _script_paths(root: Path) -> Sequence[str]:
@@ -148,11 +148,11 @@ class FlextInfraInventoryService(s[bool]):
         self,
         repository_root: Path,
         output_dir: Path | None,
-    ) -> p.Result[m.Infra.InventoryReport]:
+    ) -> p.Result[p.Infra.InventoryReport]:
         """Generate inventory reports after path resolution.
 
         Returns:
-            The resulting ``p.Result[m.Infra.InventoryReport]``.
+            The resulting ``p.Result[p.Infra.InventoryReport]``.
 
         """
         root = repository_root.resolve()
@@ -166,8 +166,8 @@ class FlextInfraInventoryService(s[bool]):
             external,
         )
         if written_result.failure:
-            return r[m.Infra.InventoryReport].from_failure(written_result)
-        return r[m.Infra.InventoryReport].ok(
+            return r[p.Infra.InventoryReport].from_failure(written_result)
+        return r[p.Infra.InventoryReport].ok(
             m.Infra.InventoryReport(
                 total_scripts=len(scripts),
                 reports_written=written_result.value,

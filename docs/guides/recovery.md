@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Broken bootstrap (the checkout's Makefile misbehaves)](#broken-bootstrap-the-checkouts-makefile-misbehaves)
+- [Protocol candidate admission](#protocol-candidate-admission)
 - [Install-mode mismatch](#install-mode-mismatch)
 - [The recovery loop](#the-recovery-loop)
 - [Orphan imports](#orphan-imports)
@@ -62,6 +63,53 @@ checkout must not require Python generation of a copied bootstrap resource or
 synthetic resolver. Missing inputs belong to explicit generation/upgrade, not an
 AWK/shell parser or automatic lifecycle operation inside setup. This target still
 requires real cold and repeated setup proof; it is not a recovery acceptance claim.
+
+## Protocol candidate admission
+
+Protocol recovery uses the same injected candidate validator as ordinary generation.
+The bootstrap planner normalizes captured source without changing live files, stages
+normalization, owner consolidation and barrel updates, then validates the exact
+normalized candidate before guarded publication. A missing execution context is an
+admission error. Failed static or cold-import validation must produce no live effects.
+Source drift requires a fresh candidate; it never authorizes reverting shared work.
+
+The source projector owns domain composition and its aggregate facade. The bootstrap
+barrel publisher only exposes declared holders; it must not append every leaf holder
+back to the aggregate, which can reverse native C3 precedence. Explicit exports are
+read through the native source binding index, including annotated `__all__` declarations.
+Generated modules are projections, not independent declaration authorities.
+
+The declared conformance module, named by
+`c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME`, contains constructor-to-port type
+assignments for the authenticated public model inventory. It constructs no records and
+uses no model annotations. The shared candidate validator checks that cohort with the
+configured native Pyrefly gate. A narrower existing Protocol can remain the owner when
+the model satisfies its required capabilities; comparing annotation strings or requiring
+identical field inventories is not an assignability proof. Runtime-checkable membership
+alone checks attribute presence and cannot replace this static proof.
+
+The shared validator rejects a missing witness beside a public models facade.
+It checks the complete witness batch in one native Pyrefly invocation, retaining
+each staged project's nearest configuration and explicit staged source roots.
+The physical runtime still owns the interpreter. Ordinary Pyrefly gate execution
+without injected source roots retains its existing project configuration.
+
+Independent native field-schema checks include the declaring class's PEP 695
+type parameters in its lexical namespace. This preserves actual generic identities;
+it neither skips generic fields nor admits an unresolved annotation name.
+
+| Owner                           | Failure mechanism                                                                                      | Required correction                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Protocol source inventory       | A top facade's MRO omits holders composed by nested namespaces                                         | Authenticate the declaring source export and native owner identity                                 |
+| Domain and aggregate projection | Existing sibling holders lose inherited contracts; flat re-publication adds conflicting ancestor bases | Preserve holder bodies and compose nearest native owners once                                      |
+| Source import completion        | Root and declaration-module imports bind the same facade twice                                         | Authenticate their identity and retain one provider                                                |
+| Native field-schema admission   | A generic field's forward reference loses its lexical type parameters                                  | Bind the actual class parameters before native schema verification; preserve unknown-name failures |
+| Native declaration retirement   | Walking every qualifier treats an unrelated full attribute chain as a use of the retiring member       | Resolve complete carrier chains while retaining dynamic-owner rejection                            |
+| Retirement resolution           | Repeated lexical resolution re-enters native inference                                                 | Memoize only within the same captured module proof, then discard the cache                         |
+
+Acceptance requires positive and negative static witnesses, cold imports of the staged
+and published artifacts, and fixed-point generation. Compilation, a completed source
+preview, or a runtime-only membership check does not establish production readiness.
 
 ## Install-mode mismatch
 

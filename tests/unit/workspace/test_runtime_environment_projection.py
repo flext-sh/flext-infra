@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.deps import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
 from tests import c, m, t, tm, u
 
 
@@ -84,7 +82,7 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         return selected, workspace
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "mode", ["standalone", "workspace", "member", "nested-member", "worktree"]
     )
     def test_editor_and_pyright_select_the_same_physical_environment(

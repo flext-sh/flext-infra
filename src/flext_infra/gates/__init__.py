@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
     from flext_infra.gates.project_module import FlextInfraGatesProjectModule
     from flext_infra.gates.pyrefly import FlextInfraGatesPyrefly
     from flext_infra.gates.pyright import FlextInfraGatesPyright
-    from flext_infra.gates.readonly_namespace import FlextInfraReadonlyNamespace
     from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
     from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
     from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
@@ -75,13 +73,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesSmells",
     "FlextInfraMarkdownCodeSources",
     "FlextInfraMarkdownGateBase",
-    "FlextInfraReadonlyNamespace",
 )
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraDuplicationEvidence": ".duplication_evidence",
         "FlextInfraDuplicationReport": ".duplication_report",
         "FlextInfraGates": ".base_gate",
@@ -111,7 +108,6 @@ install_lazy_exports(
         "FlextInfraGatesSmells": ".smells",
         "FlextInfraMarkdownCodeSources": ".markdown_code_sources",
         "FlextInfraMarkdownGateBase": ".markdown_support",
-        "FlextInfraReadonlyNamespace": ".readonly_namespace",
-    }),
+    },
     public_exports=__all__,
 )

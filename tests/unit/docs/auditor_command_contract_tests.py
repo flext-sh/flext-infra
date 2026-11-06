@@ -9,10 +9,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,11 +19,11 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def command_contract_scope(
         tmp_path: Path,
-    ) -> m.Infra.DocScope:
+    ) -> p.Infra.DocScope:
         """Declare the same repository identity in Git and the typed topology.
 
         Returns:
@@ -48,7 +46,7 @@ class TestsFlextInfraAuditorCommandContract:
 
     @staticmethod
     def test_scans_recursive_live_docs_from_typed_scope(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
     ) -> None:
         """Test scans recursive live docs from typed scope."""
         infra_test_workspace = command_contract_scope.path
@@ -87,8 +85,8 @@ class TestsFlextInfraAuditorCommandContract:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("verb_name", ["publish-preview", "archive-assets"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("verb_name", ["publish-preview", "archive-assets"])
+    @c.Tests.MARK.parametrize(
         ("declared", "expected"),
         [
             (True, ""),
@@ -97,7 +95,7 @@ class TestsFlextInfraAuditorCommandContract:
         ],
     )
     def test_audits_repository_declared_verbs(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
         verb_name: str,
         *,
         declared: bool,
@@ -129,7 +127,7 @@ class TestsFlextInfraAuditorCommandContract:
 
     @staticmethod
     def test_manifest_changes_update_the_live_contract(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
     ) -> None:
         """Test manifest changes update the live contract."""
         scope = command_contract_scope
@@ -165,9 +163,9 @@ class TestsFlextInfraAuditorCommandContract:
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize("with_guide", [False, True])
+    @c.Tests.MARK.parametrize("with_guide", [False, True])
     def test_malformed_selected_topology_blocks_with_exact_cause(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
         *,
         with_guide: bool,
     ) -> None:
@@ -184,14 +182,14 @@ class TestsFlextInfraAuditorCommandContract:
         tm.fail(loaded)
         tm.that(loaded.error, has=str(manifest))
 
-        with pytest.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
+        with u.Tests.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
         tm.that(str(caught.value), eq=loaded.error)
 
     @staticmethod
     def test_guide_projection_resolves_source_repository_contract(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
     ) -> None:
         """Test guide projection resolves source repository contract."""
         source_scope = command_contract_scope
@@ -239,7 +237,7 @@ class TestsFlextInfraAuditorCommandContract:
 
     @staticmethod
     def test_member_guides_resolve_from_the_containing_workspace(
-        command_contract_scope: m.Infra.DocScope,
+        command_contract_scope: p.Infra.DocScope,
         tmp_path: Path,
     ) -> None:
         """A member-scoped plan projects its containing workspace's guides.

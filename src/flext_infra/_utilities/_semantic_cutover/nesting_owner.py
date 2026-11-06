@@ -12,7 +12,7 @@ import typing
 from collections.abc import Mapping, MutableMapping, Sequence
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 import pytest
 from flext_cli import u
@@ -20,19 +20,16 @@ from rope.base.fscommands import file_data_to_unicode
 
 from flext_infra import c, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverNestingOwner:
@@ -298,7 +295,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _test_module_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         patterns: tuple[Sequence[str], Sequence[str]],
@@ -374,7 +371,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _derived_test_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         stem: str,
         prefix: str,
         patterns: Sequence[str],
@@ -435,6 +432,74 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
             getattr(typing, cls._tail_name(value.func), None),
             type,
         )
+
+    @classmethod
+    def _family_relocated_names(
+        cls, tree: ast.Module, file_path: Path
+    ) -> frozenset[str]:
+        """Return the module-level names the family relocation owns, not nesting.
+
+        ADR-028 Decisions 3-4: a typing declaration belongs to `t` and a
+        function to `u`. Outside its owning family such a name is relocated by
+        the ``family-declaration`` rules (typing aliases, behavior in a
+        declaration layer); nesting it under this module's own class would
+        publish it from the wrong family and hide it from that relocation.
+
+        Returns:
+            The typing names of a non-typings module and the function names of
+            a constants, typings or models module.
+
+        """
+        namespace = FlextInfraUtilitiesCodegenNamespace
+        family = namespace.facade_family_of_file(
+            file_path.name
+        ) or namespace.facade_family_of_directory(file_path.parent.name)
+        if family is None:
+            return frozenset()
+        relocated: set[str] = set()
+        if family != namespace.facade_family_of_file(c.Infra.TYPINGS_PY):
+            relocated.update(
+                name
+                for node in tree.body
+                if (name := cls._typing_binding_name(node)) is not None
+            )
+        if family not in {
+            namespace.facade_family_of_file(c.Infra.UTILITIES_PY),
+            namespace.facade_family_of_file(c.Infra.PROTOCOLS_PY),
+        }:
+            relocated.update(
+                node.name
+                for node in tree.body
+                if isinstance(node, c.Infra.AST_FUNCTION_TYPES)
+            )
+        return frozenset(relocated)
+
+    @classmethod
+    def _typing_binding_name(cls, node: ast.stmt) -> str | None:
+        """Return the name a module statement binds as a typing declaration.
+
+        Returns:
+            The PEP 695 alias, ``TypeAlias`` annotation or typing-factory
+            binding name, or ``None`` for any other statement.
+
+        """
+        if isinstance(node, ast.TypeAlias):
+            return node.name.id
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.value is not None
+            and cls._is_typing_declaration(node.value, node.annotation)
+        ):
+            return node.target.id
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and cls._is_typing_declaration(node.value, None)
+        ):
+            return node.targets[0].id
+        return None
 
     @classmethod
     def _is_pure_reference(cls, value: ast.expr) -> bool:
@@ -783,9 +848,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         bases = tuple(payloads.direct_bases(owner))
         if len(bases) != 1:
             return ()
-        preset = payloads.qualified_name(
-            project, "flext_core.m.ArbitraryTypesModel"
-        ).get_object()
+        preset = payloads.qualified_name(project, "m.ArbitraryTypesModel").get_object()
         if bases != (preset,):
             return ()
         model = payloads.identity_name(
@@ -878,7 +941,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
     @classmethod
     def _module_owner(
         cls,
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],
@@ -949,7 +1012,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
 
     @staticmethod
     def _ordinary_module_owner(
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         file_path: Path,
         classes: Mapping[str, ast.ClassDef],
         exports: frozenset[str],

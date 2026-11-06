@@ -837,7 +837,7 @@ class FlextInfraUtilitiesRopeImports:
         *,
         source_module: str,
         aliases: Sequence[str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan an own-package import without publishing or rebinding foreign names.
 
         The project declaration owns the target. Rope owns import bindings and
@@ -850,15 +850,15 @@ class FlextInfraUtilitiesRopeImports:
         entry = rope_workspace.module(file_path)
         root = entry.project_root if entry is not None else None
         if root is None:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].fail(
                 f"import owner has no declared project: {file_path}",
             )
         own = cls.package_root_import_owner(root, source_module)
         if own is None:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
         resource = rope_workspace.resource(file_path)
         if resource is None:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].fail(
                 f"import owner is not a Rope resource: {file_path}",
             )
         original = resource.read()
@@ -870,10 +870,10 @@ class FlextInfraUtilitiesRopeImports:
             aliases=aliases,
         )
         if updated.failure:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(updated)
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(updated)
         if updated.value == original:
-            return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(())
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok((
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok((
             m.Infra.SemanticMigrationEdit(
                 file_path=file_path.resolve(),
                 original_source=original,
@@ -919,7 +919,7 @@ class FlextInfraUtilitiesRopeImports:
         if consumers.failure:
             return r[str].from_failure(consumers)
         imports = cls._relocation_imports(rope_project, resource, module, endpoints)
-        changes: list[m.Infra.SourceRewrite] = []
+        changes: list[p.Infra.SourceRewrite] = []
         for declaration, provider, scope in imports:
             if any(name == "*" for name, _alias, _region in declaration.aliases):
                 admission = cls._reject_star_consumer(
@@ -1191,7 +1191,7 @@ class FlextInfraUtilitiesRopeImports:
         statement: p.Infra.RopeSourceImportLayout,
         target_module: str,
         aliases: frozenset[str],
-    ) -> p.Result[tuple[m.Infra.SourceRewrite, ...]]:
+    ) -> p.Result[tuple[p.Infra.SourceRewrite, ...]]:
         """Use native import serialization while retaining original trivia.
 
         Returns:
@@ -1200,7 +1200,7 @@ class FlextInfraUtilitiesRopeImports:
         """
         provider = statement.module_region
         if provider is None:
-            return r[tuple[m.Infra.SourceRewrite, ...]].fail(
+            return r[tuple[p.Infra.SourceRewrite, ...]].fail(
                 "Scoped relocation requires a from-import provider"
             )
         groups: list[tuple[bool, list[tuple[str, str | None]]]] = []
@@ -1211,9 +1211,9 @@ class FlextInfraUtilitiesRopeImports:
             else:
                 groups.append((selected, [(name, alias)]))
         if not groups:
-            return r[tuple[m.Infra.SourceRewrite, ...]].ok(())
+            return r[tuple[p.Infra.SourceRewrite, ...]].ok(())
         first_selected, first_names = groups[0]
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
         if first_selected:
             edits.append(
                 m.Infra.SourceRewrite(
@@ -1221,12 +1221,12 @@ class FlextInfraUtilitiesRopeImports:
                 )
             )
         if len(groups) == 1:
-            return r[tuple[m.Infra.SourceRewrite, ...]].ok(tuple(edits))
+            return r[tuple[p.Infra.SourceRewrite, ...]].ok(tuple(edits))
         begin, end = statement.region
         line = module.lines.get_line_number(begin)
         indentation = module.source_code[module.lines.get_line_start(line) : begin]
         if indentation.strip():
-            return r[tuple[m.Infra.SourceRewrite, ...]].fail(
+            return r[tuple[p.Infra.SourceRewrite, ...]].fail(
                 "Scoped relocation cannot split an inline mixed import"
             )
         # The original first group retains every comment, parenthesis and
@@ -1256,7 +1256,7 @@ class FlextInfraUtilitiesRopeImports:
                 ),
             )
         )
-        return r[tuple[m.Infra.SourceRewrite, ...]].ok(tuple(edits))
+        return r[tuple[p.Infra.SourceRewrite, ...]].ok(tuple(edits))
 
     @staticmethod
     def _persisted_import_block(
@@ -1400,18 +1400,18 @@ class FlextInfraUtilitiesRopeImports:
         *,
         rope_project: t.Infra.RopeProject,
         repository_root: Path,
-        index: m.Infra.RopeWorkspaceIndex,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        index: p.Infra.RopeWorkspaceIndex,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan absolute-form rewrites for every relative from-import.
 
         Package initializers are generated and render their own imports, so
         only authored modules are planned.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.CodegenFilePlan, ...]]``.
 
         """
-        file_plans: list[m.Infra.CodegenFilePlan] = []
+        file_plans: list[p.Infra.CodegenFilePlan] = []
         for entry in sorted(
             index.modules_by_path.values(),
             key=lambda item: str(item.file_path),
@@ -1424,21 +1424,21 @@ class FlextInfraUtilitiesRopeImports:
                 entry,
             )
             if plan_result.failure:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(
                     plan_result,
                 )
             plan_value, plan_present = plan_result.value
             if plan_present and plan_value is not None:
                 file_plans.append(plan_value)
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(file_plans))
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(file_plans))
 
     @classmethod
     def _align_entry_imports(
         cls,
         rope_project: t.Infra.RopeProject,
         repository_root: Path,
-        entry: m.Infra.RopeModuleIndexEntry,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan | None, bool]]:
+        entry: p.Infra.RopeModuleIndexEntry,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan | None, bool]]:
         """Plan the absolute-form rewrite of one indexed module's imports.
 
         Returns:
@@ -1455,7 +1455,7 @@ class FlextInfraUtilitiesRopeImports:
             else None
         )
         if resource is None:
-            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[p.Infra.CodegenFilePlan, bool]].ok((None, False))
         module_imports = FlextInfraUtilitiesRopeCore.resolve_module_imports(
             rope_project,
             resource,
@@ -1465,20 +1465,20 @@ class FlextInfraUtilitiesRopeImports:
             entry.module_name,
         )
         if not changed:
-            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[p.Infra.CodegenFilePlan, bool]].ok((None, False))
         updated_source = module_imports.get_changed_source()
         original_source = resource.read()
         if updated_source == original_source:
-            return r[tuple[m.Infra.CodegenFilePlan, bool]].ok((None, False))
+            return r[tuple[p.Infra.CodegenFilePlan, bool]].ok((None, False))
         before = u.Cli.atomic_read_binary_file_state(file_path, required=False)
         if before.failure:
-            return r[tuple[m.Infra.CodegenFilePlan | None, bool]].from_failure(before)
+            return r[tuple[p.Infra.CodegenFilePlan | None, bool]].from_failure(before)
         snapshot = before.unwrap()
         if snapshot.mode is None:
-            return r[tuple[m.Infra.CodegenFilePlan | None, bool]].fail(
+            return r[tuple[p.Infra.CodegenFilePlan | None, bool]].fail(
                 f"import source has no permission snapshot: {file_path}",
             )
-        return r[tuple[m.Infra.CodegenFilePlan, bool]].ok(
+        return r[tuple[p.Infra.CodegenFilePlan, bool]].ok(
             (
                 m.Infra.CodegenFilePlan(
                     project=repository_root,

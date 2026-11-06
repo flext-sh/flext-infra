@@ -9,9 +9,19 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c, check, m, p, r, t, u, workspace
-from flext_infra.docs import FlextInfraDocAuditor, FlextInfraDocValidator
+from flext_infra import (
+    FlextInfraGitService,
+    c,
+    check,
+    docs,
+    infra,
+    m,
+    p,
+    r,
+    t,
+    u,
+    workspace,
+)
 
 
 class FlextInfraWorkspaceRoutes:
@@ -38,7 +48,7 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _tests(
-        params: m.Infra.WorkspaceTestsRequest,
+        params: p.Infra.WorkspaceTestsRequest,
         *,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
@@ -50,9 +60,7 @@ class FlextInfraWorkspaceRoutes:
             The successful native test result or its unchanged failure.
 
         """
-        completed = flext_infra.infra.workspace_tests(
-            params, execution_mode=execution_mode
-        )
+        completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
@@ -61,7 +69,7 @@ class FlextInfraWorkspaceRoutes:
 
     @classmethod
     def _tests_full(
-        cls, params: m.Infra.WorkspaceTestsRequest
+        cls, params: p.Infra.WorkspaceTestsRequest
     ) -> p.Cli.ErasedCommandResult:
         """Run one complete native suite without Testmon or an incremental pre-run.
 
@@ -101,7 +109,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _capture_gate(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Retain the original checker process and return its unchanged status."""
         root = params.repository_root.expanduser().resolve()
@@ -111,7 +119,7 @@ class FlextInfraWorkspaceRoutes:
     @classmethod
     def _check(
         cls,
-        params: m.Infra.GateCaptureRequest,
+        params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Run every read-only validation of the check verb in one process.
 
@@ -137,7 +145,7 @@ class FlextInfraWorkspaceRoutes:
         if status:
             u.Cli.framework_exit(status)
         if complete:
-            conformed = flext_infra.infra.codegen_conform(
+            conformed = infra.codegen_conform(
                 m.Infra.CodegenConformRequest(
                     root=root,
                     scope=c.Infra.CodegenConformScope.SELF,
@@ -149,12 +157,12 @@ class FlextInfraWorkspaceRoutes:
         if not complete:
             return r[bool].ok(value=True)
         if token != make.ci.value:
-            lanes = flext_infra.FlextInfraGitService.verify_lanes(
+            lanes = FlextInfraGitService.verify_lanes(
                 m.Infra.GitLaneVerificationRequest(repo_root=root)
             )
             if lanes.failure:
                 return r[bool].from_failure(lanes)
-        for service in (FlextInfraDocValidator, FlextInfraDocAuditor):
+        for service in (docs.FlextInfraDocValidator, docs.FlextInfraDocAuditor):
             documented = service(
                 repository_root=root,
                 output_dir=make.docs.reports_dir,
@@ -166,8 +174,8 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _captured_gate_status(
-        params: m.Infra.GateCaptureRequest,
-        inputs: m.Infra.CodegenInputs,
+        params: p.Infra.GateCaptureRequest,
+        inputs: p.Infra.CodegenInputs,
     ) -> int:
         """Capture the original checker once and return its unchanged status.
 
@@ -203,7 +211,7 @@ class FlextInfraWorkspaceRoutes:
         return captured.process.raw_return_code
 
     @staticmethod
-    def release_routes() -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def release_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the release group's native model and handler bindings.
 
         Returns:
@@ -215,13 +223,13 @@ class FlextInfraWorkspaceRoutes:
                 c.Infra.VERB_RUN,
                 "Run release orchestration CLI flow",
                 m.Infra.ReleaseRunCommand,
-                flext_infra.infra.release_run,
+                infra.release_run,
                 "Release completed successfully",
             ),
         ))
 
     @classmethod
-    def workspace_routes(cls) -> tuple[m.Cli.ResultCommandRoute, ...]:
+    def workspace_routes(cls) -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the workspace group's native model and handler bindings.
 
         The routes that format their JSON payload stay explicit; every
@@ -240,10 +248,17 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
+                name="verify-lanes",
+                help_text="Read-only lane inventory, ownership census, and refusals",
+                model_cls=m.Infra.GitLaneVerificationRequest,
+                handler=FlextInfraGitService.verify_lanes,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="lane-ownership",
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
-                handler=flext_infra.FlextInfraGitService.lane_ownership,
+                handler=FlextInfraGitService.lane_ownership,
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
@@ -293,15 +308,8 @@ class FlextInfraWorkspaceRoutes:
                         "without effects"
                     ),
                     m.Infra.GitLaneVerificationRequest,
-                    flext_infra.FlextInfraGitService.verify_lane,
+                    FlextInfraGitService.verify_lane,
                     "lane stash and live integration ancestry verified",
-                ),
-                (
-                    "verify-lanes",
-                    "Read-only lane inventory, ownership census, and refusals",
-                    m.Infra.GitLaneVerificationRequest,
-                    flext_infra.FlextInfraGitService.verify_lanes,
-                    "lane inventory verified",
                 ),
                 (
                     "identity",
@@ -352,7 +360,7 @@ class FlextInfraWorkspaceRoutes:
                     "propagate",
                     "Publish this workspace's flext-infra to every member",
                     workspace.FlextInfraWorkspacePropagation,
-                    flext_infra.infra.workspace_propagate,
+                    infra.workspace_propagate,
                     None,
                 ),
             )),

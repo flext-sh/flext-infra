@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import MutableMapping, MutableSequence, Sequence
+from collections.abc import Generator, MutableMapping, MutableSequence, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from keyword import iskeyword
 from pathlib import Path
 from typing import ClassVar
@@ -23,8 +25,49 @@ from flext_infra._utilities._rope import (
 )
 
 
-class FlextInfraUtilitiesRopeRuntimeModules(
+class FlextInfraUtilitiesRopeRuntimeAliasIndices(
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
+):
+    """Retain candidate-scoped indexes for deferred annotation aliases."""
+
+    _alias_indices: ClassVar[
+        ContextVar[
+            dict[
+                p.Infra.RopeSourceModule,
+                dict[
+                    p.Infra.RopePyName, tuple[ast.TypeAlias, p.Infra.RopeScope] | None
+                ],
+            ]
+            | None
+        ]
+    ] = ContextVar("rope_annotation_alias_indices", default=None)
+
+    @classmethod
+    @contextmanager
+    def annotation_alias_context(cls) -> Generator[None]:
+        """Bind native alias identities to one candidate epoch, including nesting.
+
+        Yields:
+            A fresh index discarded even when the source pass raises.
+
+        """
+        token = cls._alias_indices.set({})
+        try:
+            yield
+        finally:
+            cls._alias_indices.reset(token)
+            cls.invalidate_annotation_alias_indices()
+
+    @classmethod
+    def invalidate_annotation_alias_indices(cls) -> None:
+        """Discard lexical conclusions when the candidate's native resolver changes."""
+        indices = cls._alias_indices.get()
+        if indices is not None:
+            indices.clear()
+
+
+class FlextInfraUtilitiesRopeRuntimeModules(
+    FlextInfraUtilitiesRopeRuntimeAliasIndices,
 ):
     """Resolve lexical identities and construct Rope module/import objects."""
 
@@ -74,17 +117,38 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
-        tree = module.get_ast()
-        declarations: list[tuple[ast.TypeAlias, p.Infra.RopeScope]] = []
-        for node in ast.walk(tree):
+        indices = cls._alias_indices.get()
+        if indices is None:
+            return cls._annotation_alias_index(module).get(supplier)
+        if module not in indices:
+            indices[module] = cls._annotation_alias_index(module)
+        return indices[module].get(supplier)
+
+    @classmethod
+    def _annotation_alias_index(
+        cls, module: p.Infra.RopeSourceModule
+    ) -> dict[p.Infra.RopePyName, tuple[ast.TypeAlias, p.Infra.RopeScope] | None]:
+        """Index exact native alias bindings once without evaluating alias values.
+
+        Returns:
+            Declaration and lexical scope by identity; ambiguous bindings stay None.
+
+        """
+        declarations: dict[
+            p.Infra.RopePyName, tuple[ast.TypeAlias, p.Infra.RopeScope] | None
+        ] = {}
+        for node in ast.walk(module.get_ast()):
             if not isinstance(node, ast.TypeAlias):
                 continue
             lexical = cls.scope_at(module, cls.source_offset(module.source_code, node))
             # TypeAlias bindings intentionally have no inferred assignment or
             # line in Rope. Only the source token's exact identity proves them.
-            if cls.resolve_symbol(lexical, node.name) is supplier:
-                declarations.append((node, lexical))
-        return declarations[0] if len(declarations) == 1 else None
+            binding = cls.resolve_symbol(lexical, node.name)
+            if binding is not None:
+                declarations[binding] = (
+                    None if binding in declarations else (node, lexical)
+                )
+        return declarations
 
     @classmethod
     def annotation_assignment_outer_type(
@@ -240,7 +304,46 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         result = cls.runtime_callable("rope.base.evaluate", "eval_str")(
             lexical, expression
         )
-        return result if isinstance(result, p.Infra.RopePyName) else None
+        if not isinstance(result, p.Infra.RopePyName):
+            return None
+        target = cls._native_export_target(result)
+        return result if target is None else target
+
+    @classmethod
+    def _native_export_target(
+        cls, binding: p.Infra.RopePyName
+    ) -> p.Infra.RopePyName | None:
+        """Follow a native-export wrapper assignment to the value it republishes.
+
+        A facade member declared as ``Name = <native export wrapper>(value)``
+        denotes ``value`` itself: the wrapper exists only to keep the native
+        callable's complete type, so both spellings are one declaration.
+
+        Returns:
+            The wrapped expression's binding, or None when ``binding`` is not the
+            sole assignment of one native-export wrapper call.
+
+        """
+        if (
+            not FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+            or len(binding.assignments) != 1
+        ):
+            return None
+        call = binding.assignments[0].ast_node
+        if not isinstance(call, ast.Call) or len(call.args) != 1 or call.keywords:
+            return None
+        module, _line = cls.definition_location(binding)
+        if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
+            return None
+        scope = cls.scope_at(module, cls.source_offset(module.source_code, call))
+        wrapper = cls.expression_name(scope, ast.unparse(call.func))
+        if (
+            wrapper is None
+            or cls.native_object_identity(wrapper.get_object())
+            != c.Infra.NATIVE_EXPORT_IDENTITY
+        ):
+            return None
+        return cls.expression_name(scope, ast.unparse(call.args[0]))
 
     @staticmethod
     def lexical_scope(scope: p.Infra.RopeScope, name: str) -> p.Infra.RopeScope | None:

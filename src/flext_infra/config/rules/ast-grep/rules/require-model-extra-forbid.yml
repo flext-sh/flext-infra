@@ -23,7 +23,7 @@ rule:
     - has:
         field: superclasses
         has:
-          regex: "^(?:[A-Za-z_][A-Za-z0-9_]*\\.)*BaseModel$"
+          regex: "^(?:(?:pydantic|m(?:\\.[A-Za-z_][A-Za-z0-9_]*)*|(?:Tests)?Flext[A-Za-z0-9_]*Models[A-Za-z0-9_]*)\\.)?BaseModel$"
     - not:
         has:
           field: superclasses

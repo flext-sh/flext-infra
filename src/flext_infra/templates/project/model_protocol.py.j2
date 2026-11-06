@@ -1,5 +1,5 @@
 {{ header }}
-"""Source-derived structural model contract.
+"""{{ module_description }}
 
 {{ copyright_notice }}
 """
@@ -12,16 +12,23 @@ if TYPE_CHECKING:
 {% endif %}
 
 
-class {{ owner }}:
-    """Own the structural model contract declared by this module."""
+class {{ owner }}{% if bases %}({{ bases | join(', ') }}){% endif %}:
+    """{{ owner_description }}"""
 
-    @runtime_checkable
-    class {{ name }}{% if type_parameters %}[{{ type_parameters | join(', ') }}]{% endif %}(Protocol):
-        """Structural data contract projected from the owning model."""
-{% if declarations %}
+{% for contract in contracts %}
+{% set indent = '    ' * (contract.depth + 1) %}
+{{ indent }}@runtime_checkable
+{{ indent }}class {{ contract.name }}{% if contract.type_parameters %}[{{ contract.type_parameters | join(', ') }}]{% endif %}({{ contract.bases | join(', ') }}):
+{{ indent }}    """{{ contract_description }}"""
+{% if contract.declarations %}
 
-{{ declarations | join('\n') | indent(8, true) }}
+{{ contract.declarations | join('\n') | indent((contract.depth + 2) * 4, true) }}
 {% endif %}
+{% endfor %}
+{% for alias in aliases %}
+
+    {{ alias }}
+{% endfor %}
 
 
 __all__: list[str] = [

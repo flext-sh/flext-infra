@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -31,7 +29,7 @@ class TestsFlextInfraCodegenLazyInitMetaclassBase:
             encoding=c.DEFAULT_ENCODING,
         )
         package_root.joinpath("typings.py").write_text(
-            "from flext_test_project._typings.meta import (\n"
+            "from flext_test_project_typings import (\n"
             "    FlextTestProjectProtocolMeta,\n"
             ")\n\n"
             "class FlextTestProjectTypings(FlextTestProjectProtocolMeta):\n"
@@ -60,7 +58,7 @@ class TestsFlextInfraCodegenLazyInitMetaclassBase:
         TestsFlextInfraCodegenLazyInitMetaclassBase._write_family(
             package_root, "type(FlextTestProjectLocal)"
         )
-        with pytest.raises(TypeError, match="Unsupported metaclass base"):
+        with u.Tests.raises(TypeError, match="Unsupported metaclass base"):
             u.Infra.runtime_evaluated_base_classes(
                 repository_root, {}, (c.Infra.PYDANTIC_MODEL_IDENTITY,)
             )

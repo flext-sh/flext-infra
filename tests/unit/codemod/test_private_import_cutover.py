@@ -10,10 +10,7 @@ import sys
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import u
-from tests import tm
+from tests import c, tm, u
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
     TestsFlextInfraPrivateImportCutoverSupport,
@@ -26,7 +23,7 @@ class TestsFlextInfraPrivateImportCutover(
     """Exercise installed and declared re-export cutovers only through ``u.Infra``."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("example_path", "consumer"),
         [
             (
@@ -102,7 +99,7 @@ class TestsFlextInfraPrivateImportCutover(
         sources = {consumer: "from flext_sample import c\nvalue = c.Profile.Value\n"}
         tm.that(self._edits(tmp_path, sources, consumer, statement), empty=True)
 
-    @pytest.mark.parametrize("bad_source_reachable", [False, True])
+    @c.Tests.MARK.parametrize("bad_source_reachable", [False, True])
     def test_installed_import_validation_follows_public_reachability(
         self,
         tmp_path: Path,
@@ -144,7 +141,7 @@ class TestsFlextInfraPrivateImportCutover(
         if bad_source_reachable:
             # flext-core's result factory catches broad runtime errors only
             # ("no IO, no import"): an invalid reachable import escapes raw.
-            with pytest.raises(
+            with u.Tests.raises(
                 ImportError,
                 match="attempted relative import beyond top-level",
             ):
@@ -218,8 +215,8 @@ class TestsFlextInfraPrivateImportCutover(
             path.write_text(source, encoding="utf-8")
         return dependency_sources
 
-    @pytest.mark.parametrize("case", ["unique", "ambiguous", "shadowed"])
-    @pytest.mark.parametrize("depth", [0, 2])
+    @c.Tests.MARK.parametrize("case", ["unique", "ambiguous", "shadowed"])
+    @c.Tests.MARK.parametrize("depth", [0, 2])
     def test_installed_facades_are_read_only_discovery_inputs(
         self,
         tmp_path: Path,
@@ -256,16 +253,16 @@ class TestsFlextInfraPrivateImportCutover(
             tm.that(edits[0].updated_source, has="from flext_sample import c")
             tm.that(edits[0].updated_source, has="profile = c.Profile.Value")
         elif case == "shadowed":
-            with pytest.raises(ValueError, match="public facade alias c is shadowed"):
+            with u.Tests.raises(ValueError, match="public facade alias c is shadowed"):
                 self._plan(tmp_path, sources, consumer, statement)
         else:
-            with pytest.raises(ValueError, match=case):
+            with u.Tests.raises(ValueError, match=case):
                 self._plan(tmp_path, sources, consumer, statement)
         for path, source in dependency_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
         tm.that(tuple(sources), eq=(consumer,))
 
-    @pytest.mark.parametrize("root_export", [False, True])
+    @c.Tests.MARK.parametrize("root_export", [False, True])
     def test_installed_declared_reexports_preserve_binding(
         self,
         tmp_path: Path,
@@ -306,7 +303,7 @@ class TestsFlextInfraPrivateImportCutover(
         for path, source in dependency_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "expected"),
         [
             (
@@ -400,7 +397,7 @@ class TestsFlextInfraPrivateImportCutover(
             tm.that(edits[0].updated_source, has=f"value = {expected}.Value")
             tm.that(edits[0].updated_source, lacks=statement)
         else:
-            with pytest.raises(
+            with u.Tests.raises(
                 ValueError,
                 match=expected or "no public facade exposes",
             ):
@@ -448,9 +445,9 @@ class TestsFlextInfraPrivateImportCutover(
         )
         return consumer, statement, sources
 
-    @pytest.mark.parametrize("package_import", [False, True])
-    @pytest.mark.parametrize("root_export", [False, True])
-    @pytest.mark.parametrize("renamed", [False, True])
+    @c.Tests.MARK.parametrize("package_import", [False, True])
+    @c.Tests.MARK.parametrize("root_export", [False, True])
+    @c.Tests.MARK.parametrize("renamed", [False, True])
     def test_declared_reexports_preserve_identity_binding_and_shadowing(
         self,
         tmp_path: Path,
@@ -529,7 +526,7 @@ class TestsFlextInfraPrivateImportCutover(
 
         tm.that(updated, has="from sample.api import Client as BoundClient")
 
-    @pytest.mark.parametrize("case", ["unexposed", "homonym", "ambiguous", "shadowed"])
+    @c.Tests.MARK.parametrize("case", ["unexposed", "homonym", "ambiguous", "shadowed"])
     def test_declared_export_resolution_rejects_unproven_or_ambiguous_targets(
         self,
         tmp_path: Path,
@@ -556,5 +553,5 @@ class TestsFlextInfraPrivateImportCutover(
             else "ambiguous"
         )
 
-        with pytest.raises(ValueError, match=expected):
+        with u.Tests.raises(ValueError, match=expected):
             self._plan(tmp_path, sources, consumer, statement)

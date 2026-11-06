@@ -8,20 +8,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 class TestsFlextInfraCodegenConformHatchHook:
     """Prove the manifest-declared Hatch hook is the only hook projection."""
 
     @staticmethod
-    def _hook_workspace(hook_path: str | Path | None) -> m.Infra.WorkspaceSpec:
+    def _hook_workspace(hook_path: str | Path | None) -> p.Infra.WorkspaceSpec:
         """Build one standalone project whose manifest owns the Hatch hook.
 
         Returns:
@@ -109,7 +107,7 @@ class TestsFlextInfraCodegenConformHatchHook:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "unsafe_path",
         [
             "/scripts/hatch_build.py",
@@ -127,7 +125,7 @@ class TestsFlextInfraCodegenConformHatchHook:
         payload = u.Tests.project_spec("unsafe-hook").model_dump()
         payload["hatch_build_hook_path"] = unsafe_path
 
-        with pytest.raises(c.ValidationError, match="safe project-relative path"):
+        with u.Tests.raises(c.ValidationError, match="safe project-relative path"):
             m.Infra.ProjectSpec.model_validate(payload)
 
     def test_hatch_build_hook_conform_reaches_pyproject_fixed_point(

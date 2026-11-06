@@ -26,24 +26,24 @@ class FlextInfraValidationCommandRoutes:
 
     @staticmethod
     def _validate_namespace_command(
-        request: m.Infra.NamespaceValidateCommand,
-    ) -> p.Result[m.Infra.ValidationReport]:
+        request: p.Infra.NamespaceValidateCommand,
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Run namespace validation through the rule engine.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         result = infra.validate_namespace(request)
         if result.failure:
-            return r[m.Infra.ValidationReport].from_failure(result)
+            return r[p.Infra.ValidationReport].from_failure(result)
         report = result.unwrap()
         if report.passed:
-            return r[m.Infra.ValidationReport].ok(report)
+            return r[p.Infra.ValidationReport].ok(report)
         details = "\n".join((report.summary, *report.violations))
-        return r[m.Infra.ValidationReport].fail(details)
+        return r[p.Infra.ValidationReport].fail(details)
 
-    validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
+    validate_command_routes: ClassVar[tuple[p.Cli.ResultCommandRoute, ...]] = (
         *tuple(
             m.Cli.ResultCommandRoute(
                 name=route_name,

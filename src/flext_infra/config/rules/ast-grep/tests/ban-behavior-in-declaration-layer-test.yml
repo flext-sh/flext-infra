@@ -15,10 +15,10 @@ valid:
         @property
         def label(self) -> str:
             return self.name
+invalid:
   - |
     def module_level() -> None:
         return None
-invalid:
   - |
     class Errors(m.BaseModel):
         def record_exception(self, error: Exception) -> None:

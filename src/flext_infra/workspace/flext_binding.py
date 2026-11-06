@@ -14,20 +14,18 @@ import os
 import sysconfig
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraBindingService:
     """Observe installed interpreter and package facts without changing sources."""
 
     @staticmethod
-    def _consumer_environment(consumer_root: Path, python: Path) -> p.Result[Path]:
+    def _consumer_environment(
+        consumer_root: Path, python: Path, *, candidate_environment: Path | None = None
+    ) -> p.Result[Path]:
         """Require a physical consumer environment while permitting base Python links.
 
         Returns:
@@ -37,7 +35,21 @@ class FlextInfraBindingService:
         context = FlextInfraWorkspaceDetector.resolution_context(consumer_root)
         if context.failure:
             return r[Path].from_failure(context)
-        environment = context.value.environment_path
+        environment = (
+            context.value.environment_path
+            if candidate_environment is None
+            else candidate_environment
+        )
+        if (
+            not environment.is_absolute()
+            or environment.name != c.Infra.ENVIRONMENT_DIRECTORY
+            or not environment.resolve().is_relative_to(
+                context.value.runtime_root.resolve()
+            )
+        ):
+            return r[Path].fail(
+                "binding candidate leaves its declared runtime ownership"
+            )
         scripts = Path(
             sysconfig.get_path(
                 "scripts",
@@ -111,17 +123,17 @@ class FlextInfraBindingService:
         consumer_root: Path,
         python: Path,
         packages: Sequence[str],
-    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+        candidate_environment: Path | None = None,
+    ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
         """Observe real package resolution and metadata in the elected Python.
 
         Returns:
             The observed package environment, or the first observation failure.
 
         """
-        result_type = r[m.Infra.PythonEnvironmentObservation]
+        result_type = r[p.Infra.PythonEnvironmentObservation]
         environment = FlextInfraBindingService._consumer_environment(
-            consumer_root,
-            python,
+            consumer_root, python, candidate_environment=candidate_environment
         )
         if environment.failure:
             return result_type.from_failure(environment)
@@ -158,7 +170,7 @@ class FlextInfraBindingService:
     @staticmethod
     def _validated_package_facts(
         environment: Path,
-        facts: m.Infra.PythonEnvironmentObservation,
+        facts: p.Infra.PythonEnvironmentObservation,
     ) -> p.Result[bool]:
         """Validate the reported facts against the elected environment.
 
@@ -196,7 +208,7 @@ class FlextInfraBindingService:
     @staticmethod
     def _confirm_stable_environment(
         environment: Path,
-        physical: m.Cli.AtomicDirectoryChainPlan,
+        physical: p.Cli.AtomicDirectoryChainPlan,
     ) -> p.Result[bool]:
         """Require the elected environment identity to survive the observation.
 

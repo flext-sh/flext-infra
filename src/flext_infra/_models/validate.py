@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
 
 
@@ -65,7 +65,10 @@ class FlextInfraModelsCore:
     class FreshImportMetadata(m.ExternalContractModel):
         """Typed entrypoint view of the published pyproject document."""
 
-        project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
+        project: Annotated[
+            p.Infra.FreshImportEntryPoints,
+            t.schema_for_model(lambda: FlextInfraModelsCore.FreshImportEntryPoints),
+        ] = m.Field(
             description="Executable metadata from the published project table",
         )
 
@@ -147,7 +150,12 @@ class FlextInfraModelsCore:
     class PytestMarkdownCollection(m.ArbitraryTypesModel):
         """Session-owned public collection-hook observations."""
 
-        eligible: MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin] = m.Field(
+        eligible: MutableSequence[
+            Annotated[
+                p.Infra.PytestMarkdownOrigin,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownOrigin),
+            ]
+        ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin]
@@ -156,7 +164,12 @@ class FlextInfraModelsCore:
             validate_default=True,
             description="Independently parsed origins",
         )
-        collected: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = m.Field(
+        collected: MutableSequence[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ]
+        ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
@@ -286,7 +299,7 @@ class FlextInfraModelsCore:
         from JSON strings; JSON serialization still publishes its string value.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         execution_mode: c.Infra.PytestExecutionMode = m.Field(
             description="Canonical test operation for this report directory",
@@ -347,10 +360,9 @@ class FlextInfraModelsCore:
         external-contract preset reads this subset and ignores the rest.
         """
 
-        report_type: Annotated[
-            str,
-            m.Field(alias="$report_type", description="Pytest event kind"),
-        ]
+        report_type: str = m.Field(
+            alias="$report_type", description="Pytest event kind"
+        )
         category: Annotated[
             str | None,
             m.Field(description="Warning category name"),
@@ -421,7 +433,7 @@ class FlextInfraModelsCore:
     class PytestWarningEvent(m.Value):
         """Warning identity captured before report-log; every warning blocks."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(strict=True)
 
         category: str = m.Field(description="Runtime warning class name")
         category_module: str = m.Field(description="Declaring warning module")
@@ -498,19 +510,33 @@ class FlextInfraModelsCore:
             default_factory=tuple,
             description="Unique node IDs with real TestReport events",
         )
-        phase_outcomes: tuple[FlextInfraModelsCore.PytestPhaseOutcome, ...] = m.Field(
+        phase_outcomes: tuple[
+            Annotated[
+                p.Infra.PytestPhaseOutcome,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestPhaseOutcome),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="Complete observed runtest outcomes, including failures",
         )
-        markdown_attempts: tuple[FlextInfraModelsCore.PytestMarkdownAttempt, ...] = (
-            m.Field(
-                default_factory=tuple,
-                description="Observed SDK execution attempts",
-            )
+        markdown_attempts: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownAttempt,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownAttempt),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Observed SDK execution attempts",
         )
-        markdown_items: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
-            default_factory=tuple, description="Executed call-phase origins"
-        )
+        markdown_items: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Executed call-phase origins")
         failed_cases: Annotated[
             Sequence[str],
             m.Field(description="Failed test labels"),
@@ -568,7 +594,10 @@ class FlextInfraModelsCore:
             description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: MutableSequence[
-            FlextInfraModelsCore.PytestMarkdownAttempt
+            Annotated[
+                p.Infra.PytestMarkdownAttempt,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownAttempt),
+            ]
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -578,16 +607,19 @@ class FlextInfraModelsCore:
             validate_default=True,
             description="Call-phase attempt observations",
         )
-        markdown_items: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = (
-            m.Field(
-                default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
-                        MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
-                    ),
+        markdown_items: MutableSequence[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ]
+        ] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
                 ),
-                validate_default=True,
-                description="Call-phase origin observations",
-            )
+            ),
+            validate_default=True,
+            description="Call-phase origin observations",
         )
         collection_failed_cases: MutableSequence[str] = m.Field(
             default_factory=list,

@@ -10,10 +10,8 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import FlextInfraCli, m
-from tests import c, tm, u
+from flext_infra import FlextInfraCli
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,9 +21,27 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
     @staticmethod
+    def test_mod_cli_rejects_unknown_rule_ids_before_application(
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """The public plural selector validates catalog IDs before applying."""
+        root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
+        result = FlextInfraCli.infra_main([
+            "refactor",
+            "mod",
+            f"--repository-root={root}",
+            "--check",
+            "--rule-ids=missing-static-rule",
+        ])
+
+        tm.that(result, ne=0)
+        tm.that(capsys.readouterr().err, has="unknown codemod rule IDs")
+
+    @staticmethod
     def test_mod_cli_accepts_repeated_typed_consumer_roots_and_rejects_missing_scope(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Repeated run roots reach the canonical action without CSV or env inputs."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -55,7 +71,7 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
         tm.that(source.read_bytes(), eq=original)
 
     @staticmethod
-    @pytest.mark.parametrize("kind", ["class", "module"])
+    @c.Tests.MARK.parametrize("kind", ["class", "module"])
     def test_native_rename_plan_captures_three_roots_before_any_effect(
         tmp_path: Path,
         kind: str,
@@ -208,7 +224,7 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
         tm.that(source.read_text(), has="class Original:")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "output_kind", ["artifact", "source", "config", "metadata", "symlink"]
     )
     def test_semantic_rename_cli_protects_governed_output_identities(

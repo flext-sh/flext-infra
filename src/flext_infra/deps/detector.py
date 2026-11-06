@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import m, p, u
+from flext_infra import p, u
 from flext_infra.deps import (
     FlextInfraDependencyDetectionService,
     FlextInfraDependencyDetectorRuntime,
@@ -19,7 +19,7 @@ class FlextInfraRuntimeDevDependencyDetector:
     log = u.fetch_logger(__name__)
 
     @classmethod
-    def execute(cls, params: m.Infra.DetectCommand) -> p.Result[bool]:
+    def execute(cls, params: p.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report.
 
         Returns:

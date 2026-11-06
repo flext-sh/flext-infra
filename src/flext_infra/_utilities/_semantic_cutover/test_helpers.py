@@ -11,8 +11,8 @@ from pathlib import Path
 
 from flext_infra import c, m, p
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities._rope.pymodule import FlextInfraUtilitiesRopeCorePyModule
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         editable = {
             path.resolve(): source
             for path, source in sources.items()
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         path: Path,
         sources: Mapping[Path, str],
         editable: frozenset[Path],
-    ) -> m.Infra.ClassMoveRequest | None:
+    ) -> p.Infra.ClassMoveRequest | None:
         """Elect the shared helper declaration one file moves under.
 
         Returns:
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         owner_context: tuple[
             p.Infra.RopeWorkspaceDsl, Mapping[Path, str], p.Infra.RopePyModule
         ],
-    ) -> m.Infra.ClassMoveRequest | None:
+    ) -> p.Infra.ClassMoveRequest | None:
         """Elect one shared class or function declaration for the utilities move.
 
         Returns:
@@ -216,7 +216,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         path: Path,
         declaration: p.Infra.RopeScope,
         letter: str,
-    ) -> m.Infra.ClassMoveRequest:
+    ) -> p.Infra.ClassMoveRequest:
         """Bind one shared declaration's move into the tests utilities owner.
 
         Returns:
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesSemanticTestHelpers(
         path: Path,
         module: p.Infra.RopePyModule,
         sources: Mapping[Path, str],
-    ) -> m.Infra.ClassMoveRequest | None:
+    ) -> p.Infra.ClassMoveRequest | None:
         """Elect pytest fixture declarations by native decorator binding identity.
 
         Returns:

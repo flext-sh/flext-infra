@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.check import FlextInfraGateRegistry
 from tests import c, m, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraConflictMarkerGate:
     """Unpublished files, source failures and native severities remain blocking."""
 
     @staticmethod
-    @pytest.mark.parametrize("conflicted", [False, True])
+    @c.Tests.MARK.parametrize("conflicted", [False, True])
     def test_sealed_inventory_checks_candidate_bytes_without_git(
         tmp_path: Path, *, conflicted: bool
     ) -> None:
@@ -56,7 +54,21 @@ class TestsFlextInfraConflictMarkerGate:
         return root
 
     @staticmethod
-    @pytest.mark.parametrize("control", c.Infra.MERGE_CONFLICT_CONTROLS)
+    def test_runtime_owner_does_not_replace_the_git_inventory(tmp_path: Path) -> None:
+        """A physical runtime and an absent candidate retain the real Git scope."""
+        root = TestsFlextInfraConflictMarkerGate._root(tmp_path)
+        gate = tm.not_none(
+            FlextInfraGateRegistry.default().create(c.Infra.CONFLICT_MARKERS, root)
+        )
+        context = m.Infra.GateContext(
+            repository_root=root, reports_dir=root, runtime_root=root
+        )
+        tm.ok(gate.check(root, context).result.passed)
+        with u.Tests.raises(ValueError, match="nonempty source inventory"):
+            gate.check(root, context.model_copy(update={"candidate_files": ()}))
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("control", c.Infra.MERGE_CONFLICT_CONTROLS)
     def test_untracked_control_line_blocks(
         tmp_path: Path, control: tuple[str, ...]
     ) -> None:
@@ -140,7 +152,7 @@ class TestsFlextInfraConflictMarkerGate:
         gate = tm.not_none(
             FlextInfraGateRegistry.default().create(c.Infra.CONFLICT_MARKERS, root)
         )
-        with pytest.raises(ValueError, match="outside the project"):
+        with u.Tests.raises(ValueError, match="outside the project"):
             gate.check_files(
                 (root / ".." / outside.name,),
                 root,
@@ -148,7 +160,7 @@ class TestsFlextInfraConflictMarkerGate:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("severity", list(c.Infra.GateSeverity))
+    @c.Tests.MARK.parametrize("severity", list(c.Infra.GateSeverity))
     def test_no_finding_severity_becomes_approval(
         severity: c.Infra.GateSeverity,
     ) -> None:

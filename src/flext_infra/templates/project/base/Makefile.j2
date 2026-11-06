@@ -1,8 +1,11 @@
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
+{% from "lifecycle_lock_recipe.j2" import lifecycle_lock_recipe -%}
 {% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, mise_staging_cleanup, mise_acquisition, mise_locked_install, toml_projection_preflight, mise_lock_changed -%}
 {% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, bootstrap_root_reader, runtime_root_reader -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
-{% set git_hook_stages = (["pre-commit"] if make.pre_commit else []) + (["pre-push"] if make.pre_push else []) %}
+{% set git_hook_stage_flags = {"pre-commit": make.pre_commit, "pre-push": make.pre_push} -%}
+{% set git_hook_stages = git_hook_stage_flags | dictsort | selectattr("1") | map(attribute="0") | list -%}
+{% set git_hook_retired_stages = git_hook_stage_flags | dictsort | rejectattr("1") | map(attribute="0") | list %}
 {# ---- Shared command bases --------------------------------------------------
    Every verb states only its delta (which gate list, which mode); the checker
    invocation, the CI gate filter, the empty-gates guard, and the fmt/fix
@@ -21,7 +24,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -209,18 +212,18 @@ override GIT_DISCOVERY_ROOT := $(shell {{ git_root_reader('"$(MAKEFILE_ROOT)"', 
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot authenticate the physical Git boundary for $(MAKEFILE_ROOT))
 endif
-override BOOTSTRAP_ROOT := $(shell {{ bootstrap_root_reader('"$(MAKEFILE_ROOT)"', true) }})
+override BOOTSTRAP_ROOT := $(shell {{ bootstrap_root_reader('"$(MAKEFILE_ROOT)"', '"$(GIT_DISCOVERY_ROOT)"', true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical bootstrap scope for $(MAKEFILE_ROOT))
 endif
 # Setup and upg provision the toolchain the native workspace reader needs, so
 # they elect the physical bootstrap scope without running that reader.
-ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg,$(MAKECMDGOALS))),)
+ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg _setup_locked _upg_locked,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
-override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', uv_tool, mise_selector, make.native_environment_unset, true) }})
+override REPOSITORY_ROOT := $(shell {{ runtime_root_reader('"$(MAKEFILE_ROOT)"', '"$(BOOTSTRAP_ROOT)"', uv_tool, make.native_environment_unset, mise_config_filename, true) }})
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
@@ -301,6 +304,9 @@ override export MISE_CEILING_PATHS := $(shell cd "$(RUNTIME_ROOT)/.." && pwd -P)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve Mise ceiling for $(RUNTIME_ROOT))
 endif
+# The locked install reads only the declared project config: a machine-local
+# override (mise.local.toml and siblings) never selects a tool outside the lock.
+override export MISE_OVERRIDE_CONFIG_FILENAMES := {{ mise_config_filename }}
 override export MISE_CONFIG_DIR := $(RUNTIME_ROOT)/.mise
 # The project manifest remains in native project scope. An optional global
 # configuration has its own explicit runtime-scoped path; when absent, Mise
@@ -395,64 +401,59 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi
-# `uv sync` keeps an environment whose interpreter still satisfies the request,
-# so one created by an older uv (or another Python) survives every setup. Setup
-# owns the runtime environment: it compares the creator identity uv recorded
-# (make.environment_identity) with the Mise-resolved uv and Python and, on any
-# divergence, recreates it through native `uv venv --clear` before the frozen
-# installation. A directory without the marker is not an environment (its
-# interpreter reports the base prefix, so an exact sync would rewrite the shared
-# Mise Python): it is recreated the same way, with native `--force`, because uv
-# refuses to clear a directory that is not a virtual environment. A current
-# environment is left untouched. uv caches each interpreter query by executable
-# path and the target binary's timestamp, which recreation does not change, so a
-# query made while the marker was absent would still report the base prefix:
-# every runtime and executor sync therefore runs with native `--refresh`, and a
-# poisoned interpreter cache never survives a sync.
-{% set identity = make.environment_identity -%}
-RECREATE_DIVERGENT_ENVIRONMENT = identity_file="$(1)/{{ identity.marker_file }}"; \
-	if [ -e "$(1)" ] && [ ! -f "$$identity_file" ]; then \
-		printf 'setup: recreating %s: no %s, so a sync would target the base interpreter\n' "$(1)" "{{ identity.marker_file }}"; \
-		$(UV) venv --clear --force --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(1)"; \
-	elif [ -f "$$identity_file" ]; then \
-		mise_bin="$(MISE)"; \
-		uv_bin="$$( "$${mise_bin}" -C "$(RUNTIME_ROOT)" which "uv" )"; \
-		declared_uv="$$( "$${uv_bin}" self version --short )"; \
-		declared_python="$$( "$${desired_python}" --version | sed "s/^Python //" )"; \
-		created_uv="$$(sed -n 's/^{{ identity.uv_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
-		created_python="$$(sed -n 's/^{{ identity.python_key }}[[:space:]]*=[[:space:]]*//p' "$$identity_file")"; \
-		if [ "$$created_uv" != "$$declared_uv" ] || [ "$$created_python" != "$$declared_python" ]; then \
-			printf 'setup: recreating %s: created by uv %s / Python %s, declared uv %s / Python %s\n' "$(1)" "$${created_uv:-<none>}" "$${created_python:-<none>}" "$$declared_uv" "$$declared_python"; \
-			$(UV) venv --clear --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$(1)"; \
+# Every installation is prepared under the existing ignored runtime state.
+# Its frozen packages, editable receipt and real consumers precede one atomic
+# publication; the displaced physical environment remains recoverable.
+PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
+	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
+	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
+		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
+	fi; \
+	mkdir -p "$$install_state"; \
+	exec 9>"$$install_lock"; flock -x 9; \
+	mv --exchange --no-copy --help >/dev/null; \
+	install_origin=; \
+	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
+	install_stage="$$(mktemp -d "$$install_state/setup.XXXXXXXX")"; \
+	install_environment="$$install_stage/{{ environment_directory }}"; \
+	trap 'install_status=$$?; trap - EXIT; if [ -n "$$install_stage" ] && { [ -z "$$install_candidate_origin" ] || [ ! -e "$$install_environment" ] || [ "$$(stat -c "%d:%i" "$$install_environment")" = "$$install_candidate_origin" ]; }; then rm -rf -- "$$install_stage"; fi; exit "$$install_status"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	printf 'setup: preparing %s for %s\n' "$$install_environment" "$$install_target"; \
+	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
+	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
+	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
+PUBLISH_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | default('pyvenv.cfg') }}"; \
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"; \
+	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null; \
+	if [ -n "$$install_origin" ]; then \
+		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
+			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
 		fi; \
-	fi
-# The runtime environment and the upgrade executor share that one rule.
-RECREATE_DIVERGENT_RUNTIME = $(call RECREATE_DIVERGENT_ENVIRONMENT,$(RUNTIME_VENV))
+		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
+		rm -rf -- "$$install_stage"; \
+		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
+	else \
+		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
+		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
+		rmdir "$$install_stage"; \
+	fi; \
+	install_stage=; trap - EXIT HUP INT TERM; \
+	flock -u 9; exec 9>&-
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(RECREATE_DIVERGENT_RUNTIME); \
+	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --requirement "{{ bootstrap_requirements }}"); \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
-		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(RUNTIME_ROOT)"; \
+		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
 	fi; \
-	$(FLEXT_EDITABLE_RECIPE)
-
-# `make setup FLEXT=<path>` (operator ruling 2026-10-24, tracker memory
-# operator-ruling-2026-10-24-setup-flext-editable-param): after the frozen
-# sync, flext-infra's typed selection owner reinstalls editable from <path>
-# every locked FLEXT distribution this environment installed that the FLEXT
-# workspace at <path> provides, and records exactly that selection in the
-# runtime's setup-operations receipt. A plain `make setup` restores the locked
-# installs and removes the receipt; CI installs only homologated frozen locks
-# and refuses FLEXT. The environment provenance gate admits an editable FLEXT
-# distribution only when that receipt names it, outside CI.
-FLEXT_EDITABLE_RECIPE = $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)")
+	env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} "$$install_python" -m flext_infra {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+	$(PUBLISH_ENVIRONMENT)
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -497,7 +498,16 @@ GOVERNED_CHECKOUTS = root="$(PROJECT_ROOT)"; \
 # section, placed first after the interpreter line: every other owner's
 # content (the Beads integration section among them) is preserved and still
 # runs after it. The pre-push section buffers Git's ref list once and hands
-# the same stdin to the sections that follow.
+# the same stdin to the sections that follow. A managed stage that is no
+# longer declared loses only setup's marked section; the hook file is
+# removed when no other owner's content remains in it.
+{#- Setup owns only its marked section: both the install and the retirement
+   pass read every other owner's content from one definition. -#}
+{% set hook_foreign_sections %}				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
+				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
+{% endset -%}
+{% set hook_backup_retirement %}			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
+{% endset %}
 INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" which prek)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then prek_binary="$$(cygpath --unix "$$prek_binary")"; fi; \
@@ -510,6 +520,21 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	for checkout in $$checkouts; do \
 		hooks_dir="$$(git -C "$$root/$$checkout" rev-parse --path-format=absolute --git-path hooks)"; \
 		mkdir -p "$$hooks_dir"; \
+{%- if git_hook_retired_stages %}
+		for stage in {{ git_hook_retired_stages | join(" ") }}; do \
+			hook="$$hooks_dir/$$stage"; \
+			if [ -e "$$hook" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook"; then \
+{{ hook_foreign_sections }}				if [ -n "$$(printf '%s' "$$others" | tr -d '[:space:]')" ]; then \
+					printf '%s\n' '\#!/bin/sh' "$$others" > "$$hook.pending"; \
+					chmod 0755 "$$hook.pending"; \
+					mv "$$hook.pending" "$$hook"; \
+				else \
+					rm -f "$$hook"; \
+				fi; \
+				printf 'setup: retired undeclared %s hook section at %s\n' "$$stage" "$$hook"; \
+			fi; \
+{{ hook_backup_retirement }}		done; \
+{%- endif %}
 		validator_path="$$(git -C "$$root/$$checkout" rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"; \
 		if [ ! -x "$$validator_path" ]; then \
 			printf 'setup: hooks skipped (no validator) checkout=%s\n' "$$checkout"; \
@@ -519,9 +544,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 			hook="$$hooks_dir/$$stage"; \
 			others=""; \
 			if [ -e "$$hook" ]; then \
-				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
-				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
-			fi; \
+{{ hook_foreign_sections }}			fi; \
 			validator='"$$(git rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"'; \
 			{ \
 				printf '%s\n' '\#!/bin/sh' "\# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); rerun make setup to refresh."; \
@@ -540,8 +563,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 			} > "$$hook.pending"; \
 			chmod 0755 "$$hook.pending"; \
 			mv "$$hook.pending" "$$hook"; \
-			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
-			printf 'setup: installed %s hook section at %s\n' "$$stage" "$$hook"; \
+{{ hook_backup_retirement }}			printf 'setup: installed %s hook section at %s\n' "$$stage" "$$hook"; \
 		done; \
 	done
 
@@ -582,8 +604,9 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # source; every lock is already written before it runs.
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call RECREATE_DIVERGENT_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$(FLEXT_INFRA_EXECUTOR_VENV)" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }} --refresh
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }}; \
+	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
@@ -700,7 +723,10 @@ ifeq ($(VERB_CONTRACT),)
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-setup: _builtin_require_github_credential _bootstrap_setup_tools
+setup:
+	+@{{ lifecycle_lock_recipe("_setup_locked") }}
+.PHONY: _setup_locked
+_setup_locked: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
@@ -712,7 +738,10 @@ endif
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
+upg:
+	+@{{ lifecycle_lock_recipe("_upg_locked") }}
+.PHONY: _upg_locked
+_upg_locked: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
 else
 upg: _builtin_require_workspace
@@ -748,8 +777,7 @@ _setup_lifecycle: _builtin_require_workspace
 # Check owns quality verdicts after provisioning.
 _setup_activated:
 	+@set -eu; \
-	case "$(strip $({{ make.ci.variable }})): $(CUSTOM_DECLARED_TARGETS) " in \
-		{{ make.ci.value }}:*) ;; \
+	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-setup "*) $(SELF_MAKE) post-setup ;; \
 	esac
 {%- if git_hook_stages %}
@@ -925,6 +953,8 @@ _builtin_clean_generated: _builtin_require_interpreter
 GEN_BUDGET_SECONDS ?= 900
 GEN_KILL_RESERVE_SECONDS ?= 30
 GEN_PROFILE ?=
+# Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
+CHECK_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
@@ -942,10 +972,15 @@ _builtin_gen_scope_all: _builtin_require_interpreter
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
 	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/{{ make.generation_profile_path }})-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
-# Structural rewrites use the target's existing semantic operation; the
-# operation performs the transformation directly (no apply mode, no rule selector).
+# Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
+# LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses
+# a run without either.
 _builtin_mod_apply: _builtin_require_environment
-	@FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.modification_profile_path }}" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"
+	@set -eu; \
+	selection=""; \
+	for law in $(strip $(LAWS)); do selection="$$selection --laws $$law"; done; \
+	for rule in $(strip $(RULES)); do selection="$$selection --rule-ids $$rule"; done; \
+	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.modification_profile_path }}" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts

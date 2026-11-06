@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m, p, r, t
+from flext_infra import p, r, t
 from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsContract,
     FlextInfraUtilitiesDocsGenerateSources,
@@ -62,15 +62,15 @@ class FlextInfraUtilitiesDocsGeneratePlan(
 
     @staticmethod
     def docs_file_plans(
-        bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        bundle: p.Infra.DocsGenerationBundle,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Snapshot targets from the canonical rendered artifact inventory.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.CodegenFilePlan, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.CodegenFilePlan, ...]]``.
 
         """
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for scoped in bundle.scopes:
             presentation_inputs = tuple(
                 state
@@ -86,9 +86,9 @@ class FlextInfraUtilitiesDocsGeneratePlan(
                     inputs=presentation_inputs,
                 )
                 if planned.failure:
-                    return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
+                    return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(planned)
                 plans.append(planned.value)
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok((
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok((
             *plans,
             *bundle.metadata_files,
         ))

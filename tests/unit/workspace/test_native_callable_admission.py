@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import pytest
-
-from tests import t, u
+from tests import c, t, u
 
 
 class TestsFlextInfraNativeCallableAdmission:
@@ -34,7 +32,7 @@ def replacement(args):
         u.Tests.run_lazy_init_probe(
             """import importlib
 import threading
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -84,7 +82,7 @@ assert module.execute() is original_hook
         )
 
     @staticmethod
-    @pytest.mark.parametrize("expression", ["value", "Consumer.offset + value"])
+    @c.Tests.MARK.parametrize("expression", ["value", "Consumer.offset + value"])
     def test_unrelated_generated_function_is_not_a_class_state_writer(
         real_python_package: t.DirectoryPath,
         expression: t.StrictStr,
@@ -111,7 +109,7 @@ def replacement(value: int) -> None:
 """,
         )
         u.Tests.run_lazy_init_probe(
-            """from flext_infra import m
+            """from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -148,7 +146,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
 from git import Git
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -172,7 +170,7 @@ assert compared.success, compared.error
         """Reading a real manifest retains its metadata ingress model identity."""
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -193,8 +191,8 @@ assert compared.success, compared.error
         )
 
     @staticmethod
-    @pytest.mark.parametrize("storage", ["dict", "slots"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("storage", ["dict", "slots"])
+    @c.Tests.MARK.parametrize(
         ("defect", "expected"),
         [("none", 7), ("state", 15), ("implementation", -1), ("replacement", 15)],
     )
@@ -248,7 +246,7 @@ class Consumer:
         )
         u.Tests.run_lazy_init_probe(
             f"""from typing import get_args, get_origin
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -296,7 +294,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "behavior",
         [
             (
@@ -343,7 +341,7 @@ assert module.call_count == before + 1 and module.accessor_calls > 0
             f"operation = {factory}\n",
         )
         u.Tests.run_lazy_init_probe(
-            f"""from flext_infra import m
+            f"""from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )

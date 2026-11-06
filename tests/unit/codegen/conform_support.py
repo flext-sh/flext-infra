@@ -21,10 +21,10 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def conform_target(
         root: Path,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         *,
         make_profile: c.Infra.MakeProfile,
-    ) -> m.Infra.RepositoryConformTarget:
+    ) -> p.Infra.RepositoryConformTarget:
         """Build the current public target without retired branch-policy fields.
 
         Returns:
@@ -42,7 +42,7 @@ class TestsFlextInfraConformSupport:
         )
 
     @staticmethod
-    def standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
+    def standalone_workspace(root: Path) -> p.Infra.WorkspaceSpec:
         """Load the smallest repository-local topology for conform tests.
 
         Returns:
@@ -53,8 +53,8 @@ class TestsFlextInfraConformSupport:
 
     @staticmethod
     def conform_in_workspace(
-        request: m.Infra.CodegenConformRequest,
-        workspace: m.Infra.WorkspaceSpec,
+        request: p.Infra.CodegenConformRequest,
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Execute one conform request against a pre-declared workspace topology.
 
@@ -76,7 +76,7 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def apply_conform_surface(
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         surface: c.Infra.CodegenConformSurface,
     ) -> None:
         """Materialize one exact public conform surface for a focused test."""
@@ -224,7 +224,7 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def check_conform_service(
         root: Path,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
     ) -> tuple[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:

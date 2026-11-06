@@ -13,8 +13,11 @@ rule:
   pattern: |
     class $NAME(m.ContractModel):
         $$$BEFORE
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore")
+        model_config: ClassVar[$CONFIG] = m.ConfigDict(extra="ignore")
         $$$AFTER
+constraints:
+  CONFIG:
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
@@ -35,8 +38,11 @@ rule:
   pattern: |
     class $NAME(m.ContractModel):
         $$$BEFORE
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
+        model_config: ClassVar[$CONFIG] = m.ConfigDict(extra="ignore", frozen=True)
         $$$AFTER
+constraints:
+  CONFIG:
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
@@ -56,12 +62,15 @@ rule:
   pattern: |
     class $NAME(m.ContractModel):
         $$$BEFORE
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True, $KEY, $$$KEYS)
+        model_config: ClassVar[$CONFIG] = m.ConfigDict(extra="ignore", frozen=True, $KEY, $$$KEYS)
         $$$AFTER
+constraints:
+  CONFIG:
+    regex: "^t\\.ConfigDict$"
 fix: |-
   class $NAME(m.ExternalContractModel):
       $$$BEFORE
-      model_config: ClassVar[m.ConfigDict] = m.ConfigDict($KEY, $$$KEYS)
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict($KEY, $$$KEYS)
       $$$AFTER
 message: >-
   Strict contract `$NAME` relaxes extra by hand beside its own config keys:

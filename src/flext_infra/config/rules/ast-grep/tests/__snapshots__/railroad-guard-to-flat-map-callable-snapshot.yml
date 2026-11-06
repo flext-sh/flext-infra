@@ -5,15 +5,14 @@ snapshots:
       def run(self) -> p.Result[str]:
           result = self._load()
           return result.flat_map(self._next_step)
+          return self._next_step(result.value)
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return r[str].from_failure(result)
-            return self._next_step(result.value)
       style: primary
-      start: 36
-      end: 164
+      start: 62
+      end: 123
     - source: p.Result[str]
       style: secondary
       start: 17
@@ -31,20 +30,112 @@ snapshots:
       style: secondary
       start: 0
       end: 164
+    - source: return self._next_step(result.value)
+      style: secondary
+      start: 128
+      end: 164
+  "def run_after_guard(self) -> p.Result[str]:\n    loaded = self._load()\n    if loaded.failure:\n        return r[str].from_failure(loaded)\n    result = self._parse(loaded.value, strict=True)\n    if result.failure:\n        return r[str].from_failure(result)\n    return self._next_step(result.value)\n":
+    fixed: |
+      def run_after_guard(self) -> p.Result[str]:
+          loaded = self._load()
+          if loaded.failure:
+              return r[str].from_failure(loaded)
+          result = self._parse(loaded.value, strict=True)
+          return result.flat_map(self._next_step)
+          return self._next_step(result.value)
+    labels:
+    - source: |-
+        if result.failure:
+                return r[str].from_failure(result)
+      style: primary
+      start: 192
+      end: 253
+    - source: p.Result[str]
+      style: secondary
+      start: 29
+      end: 42
+    - source: p.Result[str]
+      style: secondary
+      start: 29
+      end: 42
+    - source: |-
+        def run_after_guard(self) -> p.Result[str]:
+            loaded = self._load()
+            if loaded.failure:
+                return r[str].from_failure(loaded)
+            result = self._parse(loaded.value, strict=True)
+            if result.failure:
+                return r[str].from_failure(result)
+            return self._next_step(result.value)
+      style: secondary
+      start: 0
+      end: 294
+    - source: return self._next_step(result.value)
+      style: secondary
+      start: 258
+      end: 294
+  "def run_bound(self) -> p.Result[str]:\n    first = self._load()\n    if first.failure:\n        return first\n    second = self._parse(first.value)\n    return second\n":
+    fixed: |
+      def run_bound(self) -> p.Result[str]:
+          first = self._load()
+          if first.failure:
+              return first
+          return first.flat_map(self._parse)
+          return second
+    labels:
+    - source: second = self._parse(first.value)
+      style: primary
+      start: 110
+      end: 143
+    - source: p.Result[str]
+      style: secondary
+      start: 23
+      end: 36
+    - source: p.Result[str]
+      style: secondary
+      start: 23
+      end: 36
+    - source: |-
+        def run_bound(self) -> p.Result[str]:
+            first = self._load()
+            if first.failure:
+                return first
+            second = self._parse(first.value)
+            return second
+      style: secondary
+      start: 0
+      end: 161
+    - source: second = self._parse(first.value)
+      style: secondary
+      start: 110
+      end: 143
+    - source: |-
+        if first.failure:
+                return first
+      style: secondary
+      start: 67
+      end: 105
+    - source: second
+      style: secondary
+      start: 155
+      end: 161
+    - source: return second
+      style: secondary
+      start: 148
+      end: 161
   "def run_direct(self) -> r[int]:\n    result = self._load()\n    if result.failure:\n        return result\n    return parse_int(result.value)\n":
     fixed: |
       def run_direct(self) -> r[int]:
           result = self._load()
           return result.flat_map(parse_int)
+          return parse_int(result.value)
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return result
-            return parse_int(result.value)
       style: primary
-      start: 36
-      end: 137
+      start: 62
+      end: 102
     - source: r
       style: secondary
       start: 24
@@ -66,3 +157,80 @@ snapshots:
       style: secondary
       start: 0
       end: 137
+    - source: return parse_int(result.value)
+      style: secondary
+      start: 107
+      end: 137
+  "def run_sequential(self) -> p.Result[str]:\n    first = self._load()\n    if first.failure:\n        return r[str].from_failure(first)\n    second = self._parse(first.value)\n    return second.flat_map(self._next_step).map(self._normalize)\n":
+    fixed: |
+      def run_sequential(self) -> p.Result[str]:
+          first = self._load()
+          if first.failure:
+              return r[str].from_failure(first)
+          return first.flat_map(self._parse).flat_map(self._next_step).map(self._normalize)
+          return second.flat_map(self._next_step).map(self._normalize)
+    labels:
+    - source: second = self._parse(first.value)
+      style: primary
+      start: 136
+      end: 169
+    - source: p.Result[str]
+      style: secondary
+      start: 28
+      end: 41
+    - source: p.Result[str]
+      style: secondary
+      start: 28
+      end: 41
+    - source: |-
+        def run_sequential(self) -> p.Result[str]:
+            first = self._load()
+            if first.failure:
+                return r[str].from_failure(first)
+            second = self._parse(first.value)
+            return second.flat_map(self._next_step).map(self._normalize)
+      style: secondary
+      start: 0
+      end: 234
+    - source: second = self._parse(first.value)
+      style: secondary
+      start: 136
+      end: 169
+    - source: |-
+        if first.failure:
+                return r[str].from_failure(first)
+      style: secondary
+      start: 72
+      end: 131
+    - source: second
+      style: secondary
+      start: 181
+      end: 187
+    - source: flat_map
+      style: secondary
+      start: 188
+      end: 196
+    - source: second.flat_map
+      style: secondary
+      start: 181
+      end: 196
+    - source: second.flat_map(self._next_step)
+      style: secondary
+      start: 181
+      end: 213
+    - source: map
+      style: secondary
+      start: 214
+      end: 217
+    - source: second.flat_map(self._next_step).map
+      style: secondary
+      start: 181
+      end: 217
+    - source: second.flat_map(self._next_step).map(self._normalize)
+      style: secondary
+      start: 181
+      end: 234
+    - source: return second.flat_map(self._next_step).map(self._normalize)
+      style: secondary
+      start: 174
+      end: 234

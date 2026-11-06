@@ -15,9 +15,11 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
+from flext_infra import p, t
+from flext_infra._models import (
+    FlextInfraModelsMiseToolchainBase,
+    FlextInfraModelsMixins,
+)
 
 
 class FlextInfraModelsLayout:
@@ -41,7 +43,13 @@ class FlextInfraModelsLayout:
             m.Field(description="Patterns the project .gitignore must carry"),
         ] = ()
         moves: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutMoveSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.LayoutMoveSpec,
+                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutMoveSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Explicit nested source/target moves"),
         ] = ()
         archive_empty_dirs: Annotated[
@@ -154,7 +162,15 @@ class FlextInfraModelsLayout:
             ),
         ] = ()
         project_overrides: Annotated[
-            Mapping[str, FlextInfraModelsLayout.LayoutProjectOverrideSpec],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.LayoutProjectOverrideSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsLayout.LayoutProjectOverrideSpec
+                    ),
+                ],
+            ],
             m.Field(description="Per-project layout deltas keyed by project name"),
         ] = m.Field(
             default_factory=lambda: MappingProxyType[
@@ -191,7 +207,13 @@ class FlextInfraModelsLayout:
         """Per-project layout plan or apply outcome."""
 
         findings: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutFinding, ...],
+            tuple[
+                Annotated[
+                    p.Infra.LayoutFinding,
+                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutFinding),
+                ],
+                ...,
+            ],
             m.Field(description="All layout decisions for the project"),
         ] = ()
 
@@ -223,7 +245,15 @@ class FlextInfraModelsLayout:
         """Batch layout outcome across the selected projects."""
 
         reports: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutProjectReport, ...],
+            tuple[
+                Annotated[
+                    p.Infra.LayoutProjectReport,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsLayout.LayoutProjectReport
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Per-project layout outcomes"),
         ] = ()
 

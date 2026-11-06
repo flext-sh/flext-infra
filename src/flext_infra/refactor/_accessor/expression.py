@@ -10,7 +10,7 @@ import ast
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.refactor._accessor import FlextInfraRefactorAccessorOrigin
 
 if TYPE_CHECKING:
@@ -28,8 +28,8 @@ class FlextInfraRefactorAccessorExpression:
         rope_project: t.Infra.RopeProject,
         py_file: Path,
         source: str,
-        rules: Sequence[m.Infra.AccessorMigrationRule],
-    ) -> tuple[str, Sequence[m.Infra.AccessorMigrationChange]]:
+        rules: Sequence[p.Infra.AccessorMigrationRule],
+    ) -> tuple[str, Sequence[p.Infra.AccessorMigrationChange]]:
         """Plan complete expression replacements from exact member identities.
 
         Returns:
@@ -42,7 +42,7 @@ class FlextInfraRefactorAccessorExpression:
         tree = ast.parse(source, filename=str(py_file))
         resolver = FlextInfraRefactorAccessorOrigin(rope_project)
         replacements: MutableSequence[tuple[int, int, str]] = []
-        changes: MutableSequence[m.Infra.AccessorMigrationChange] = []
+        changes: MutableSequence[p.Infra.AccessorMigrationChange] = []
         imports: MutableMapping[str, str] = {}
         for node in ast.walk(tree):
             if not isinstance(node, ast.Attribute):
@@ -87,7 +87,7 @@ class FlextInfraRefactorAccessorExpression:
         py_file: Path,
         source: str,
         node: ast.Attribute,
-        rule: m.Infra.AccessorMigrationRule,
+        rule: p.Infra.AccessorMigrationRule,
     ) -> bool:
         """Prove declared member ownership, including removed inherited accessors.
 
@@ -134,7 +134,7 @@ class FlextInfraRefactorAccessorExpression:
         py_file: Path,
         source: str,
         node: ast.Attribute,
-        rule: m.Infra.AccessorMigrationRule,
+        rule: p.Infra.AccessorMigrationRule,
     ) -> tuple[int, int, str]:
         """Plan the exact source span for an owned accessor expression.
 

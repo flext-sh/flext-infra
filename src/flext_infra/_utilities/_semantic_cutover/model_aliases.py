@@ -33,7 +33,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan native consumer/import changes; generated exports remain owner-written.
 
         Returns:
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                 cls._retire(project, path, name, working)
             finally:
                 project.close()
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(
             tuple(
                 m.Infra.SemanticMigrationEdit(
                     file_path=path,
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
         lines = source.splitlines(keepends=True)
         begin = sum(map(len, lines[: owner.lineno - 1]))
         end = sum(map(len, lines[: owner.end_lineno]))
-        edits = [m.Infra.SourceRewrite(start=begin, end=end, text="")]
+        edits = [p.Infra.SourceRewrite(start=begin, end=end, text="")]
         for item in tree.body:
             if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES):
                 assign_targets = (
@@ -637,7 +637,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
             )
 
         rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            project, resource, source, quoted
+            (project, resource), source, quoted
         )
         if rewritten == source:
             return False

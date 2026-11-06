@@ -16,7 +16,7 @@ from flext_infra.refactor import FlextInfraRefactorAccessor
 
 
 class FlextInfraAccessorMigrationOrchestrator(
-    FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
+    FlextInfraProjectSelectionServiceBase[p.Infra.AccessorMigrationReport],
     m.Infra.ModuleSelectionMixin,
     m.Infra.NamespaceSelectionMixin,
     FlextInfraRefactorAccessor,
@@ -52,11 +52,11 @@ class FlextInfraAccessorMigrationOrchestrator(
         return u.Infra.selected_lint_tool_names(self.gate_names)
 
     @override
-    def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
+    def execute(self) -> p.Result[p.Infra.AccessorMigrationReport]:
         """Execute.
 
         Returns:
-            The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
+            The resulting ``p.Result[p.Infra.AccessorMigrationReport]``.
 
         """
         resolved = u.Infra.resolve_projects(
@@ -64,14 +64,14 @@ class FlextInfraAccessorMigrationOrchestrator(
             self.project_names if self.project_names is not None else (),
         )
         if resolved.failure:
-            return r[m.Infra.AccessorMigrationReport].from_failure(resolved)
+            return r[p.Infra.AccessorMigrationReport].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value),
             ),
         )
         if iter_result.failure:
-            return r[m.Infra.AccessorMigrationReport].from_failure(iter_result)
+            return r[p.Infra.AccessorMigrationReport].from_failure(iter_result)
         lint_before_totals: MutableMapping[str, int] = {}
         lint_after_totals: MutableMapping[str, int] = {}
         new_lint_error_totals: MutableMapping[str, int] = {}
@@ -95,7 +95,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 source_preview=self.source_preview,
             )
             if processed.failure:
-                return r[m.Infra.AccessorMigrationReport].from_failure(processed)
+                return r[p.Infra.AccessorMigrationReport].from_failure(processed)
         for file_report in processed.value:
             self._accumulate_lint_totals(lint_before_totals, file_report.lint_before)
             self._accumulate_lint_totals(lint_after_totals, file_report.lint_after)
@@ -130,20 +130,20 @@ class FlextInfraAccessorMigrationOrchestrator(
             relative_path=c.Infra.ACCESSOR_MIGRATION_REPORT_RELATIVE_PATH,
         )
         if published.failure:
-            return r[m.Infra.AccessorMigrationReport].from_failure(published)
-        return r[m.Infra.AccessorMigrationReport].ok(report)
+            return r[p.Infra.AccessorMigrationReport].from_failure(published)
+        return r[p.Infra.AccessorMigrationReport].ok(report)
 
     @classmethod
     def execute_payload(
         cls,
-        params: m.Infra.AccessorMigrationInput,
+        params: p.Infra.AccessorMigrationInput,
         *,
         source_preview: p.Infra.SourcePreview,
-    ) -> p.Result[m.Infra.AccessorMigrationReport]:
+    ) -> p.Result[p.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service.
 
         Returns:
-            The resulting ``p.Result[m.Infra.AccessorMigrationReport]``.
+            The resulting ``p.Result[p.Infra.AccessorMigrationReport]``.
 
         """
         result = cls(
@@ -157,9 +157,9 @@ class FlextInfraAccessorMigrationOrchestrator(
             gates=",".join(params.gates),
         ).execute()
         if result.failure:
-            return r[m.Infra.AccessorMigrationReport].from_failure(result)
+            return r[p.Infra.AccessorMigrationReport].from_failure(result)
         cli.display_text(cls.render_text(result.value))
-        return r[m.Infra.AccessorMigrationReport].ok(result.value)
+        return r[p.Infra.AccessorMigrationReport].ok(result.value)
 
 
 __all__: list[str] = ["FlextInfraAccessorMigrationOrchestrator"]

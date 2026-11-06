@@ -1,0 +1,13 @@
+id: ban-type-narrowing-guard
+valid:
+  - |
+    from typing import Protocol
+  - |
+    value: str = "value"
+invalid:
+  - |
+    from typing import TypeGuard
+  - |
+    value: TypeIs[str]
+  - |
+    assert isinstance(value, str)

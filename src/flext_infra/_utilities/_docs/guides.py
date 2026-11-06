@@ -9,11 +9,10 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectDiscovery,
@@ -24,9 +23,6 @@ from flext_infra._utilities._docs import (
     FlextInfraUtilitiesDocsGeneratePlan,
     FlextInfraUtilitiesDocsRender,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsGuides:
@@ -93,15 +89,15 @@ class FlextInfraUtilitiesDocsGuides:
     @staticmethod
     def docs_make_contract_plans(
         repository_root: Path,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan the declared catalog section against its original guide.
 
         Returns:
             The mixed-file effect, empty when undeclared, or the original failure.
 
         """
-        result = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result = r[tuple[p.Infra.CodegenFilePlan, ...]]
         owner = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(repository_root)
         if owner.failure:
             return result.from_failure(owner)
@@ -120,7 +116,7 @@ class FlextInfraUtilitiesDocsGuides:
         )
         previous = next((plan for plan in declared if plan.path == path), None)
         captured = (
-            r[m.Cli.AtomicFileState].ok(previous.before)
+            r[p.Cli.AtomicFileState].ok(previous.before)
             if previous is not None
             else u.Cli.atomic_read_binary_file_state(path, required=True)
         )
@@ -139,7 +135,7 @@ class FlextInfraUtilitiesDocsGuides:
                     path=path,
                     before=captured.value,
                     desired_content=FlextInfraUtilitiesDocsGuides._make_contract_content(
-                        source, rendered.rendered, path
+                        source, u.Cli.markdown_align_tables(rendered.rendered), path
                     ).encode(c.DEFAULT_ENCODING),
                     desired_mode=(
                         previous.desired_mode
@@ -185,8 +181,7 @@ class FlextInfraUtilitiesDocsGuides:
             body_lines = lines[heading.line :]
         body = "\n".join(body_lines).lstrip()
         header = (
-            "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-            "from the workspace root. -->\n"
+            f"{c.Infra.DOCS_PROJECTION_MARKER}\n"
             f"<!-- Source of truth: `<workspace-root>/docs/guides/{guide_name}`; "
             "adjust that workspace source, never this member projection. -->\n\n"
             f"# {project_name} - {title}\n\n"
@@ -219,7 +214,7 @@ class FlextInfraUtilitiesDocsGuides:
     def _classified_guide_sources(
         source_root: Path,
         destination_root: Path,
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
     ) -> tuple[MutableMapping[Path, str], MutableMapping[Path, str]]:
         """Read the canonical guides and their current scope projections.
 
@@ -244,7 +239,7 @@ class FlextInfraUtilitiesDocsGuides:
 
     @staticmethod
     def _owned_destinations(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         destinations: Mapping[Path, str],
     ) -> set[Path]:
         """Collect destination guides still carrying a canonical ownership header.
@@ -256,10 +251,7 @@ class FlextInfraUtilitiesDocsGuides:
         owned: set[Path] = set()
         for path, content in destinations.items():
             lines = content.splitlines()
-            generated = (
-                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-                "from the workspace root. -->"
-            )
+            generated = c.Infra.DOCS_PROJECTION_MARKER
             source_headers = {
                 (
                     f"<!-- Source of truth: `docs/guides/{path.name}`; "
@@ -284,8 +276,7 @@ class FlextInfraUtilitiesDocsGuides:
             ).partition("\n\n")[0]
             previous_ownership = ownership.replace("`<workspace-root>/", "`")
             legacy_ownership = (
-                "<!-- AUTO-GENERATED FILE — regenerate through `make gen` "
-                "from the workspace root. -->\n"
+                f"{c.Infra.DOCS_PROJECTION_MARKER}\n"
                 f"<!-- Source of truth: `docs/guides/{path.name}`; "
                 "adjust that workspace source, never this member projection. -->"
             )
@@ -300,7 +291,7 @@ class FlextInfraUtilitiesDocsGuides:
     @classmethod
     def _rendered_guide_artifacts(
         cls,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         workspace_root: Path,
         sources: Mapping[Path, str],
         destinations: Mapping[Path, str],
@@ -369,7 +360,7 @@ class FlextInfraUtilitiesDocsGuides:
     @classmethod
     def docs_project_guides_artifacts(
         cls,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         repository_root: Path,
     ) -> p.Result[tuple[t.Infra.DocsRenderedArtifactTuple, ...]]:

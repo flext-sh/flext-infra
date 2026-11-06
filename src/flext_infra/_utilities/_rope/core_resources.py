@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import c, t
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeTypes
 
 
 class FlextInfraUtilitiesRopeCoreResources:
@@ -43,7 +43,9 @@ class FlextInfraUtilitiesRopeCoreResources:
             return None
         resource = rope_project.get_resource(str(resolved_path.relative_to(root)))
         return (
-            resource if FlextInfraUtilitiesRopeRuntime.file_resource(resource) else None
+            resource
+            if FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource)
+            else None
         )
 
     @staticmethod
@@ -119,7 +121,7 @@ class FlextInfraUtilitiesRopeCoreResources:
                 (
                     resource
                     for resource in rope_project.get_python_files()
-                    if FlextInfraUtilitiesRopeRuntime.file_resource(resource)
+                    if FlextInfraUtilitiesRopeRuntimeTypes.file_resource(resource)
                 ),
                 key=operator.attrgetter("path"),
             ),

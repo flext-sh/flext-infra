@@ -7,67 +7,158 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import api, d, e, h, r, td, tf, tk, tm, x
+    from flext_tests import td, tf, tk, tm
 
-    from flext_infra import config, infra, settings
+    from flext_infra import (
+        FlextInfra,
+        FlextInfraCli,
+        FlextInfraConfig,
+        FlextInfraConstants,
+        FlextInfraFlextInfraConfig,
+        FlextInfraFlextInfraConform,
+        FlextInfraFlextInfraCprofile,
+        FlextInfraFlextInfraPreview,
+        FlextInfraFlextInfraPytest,
+        FlextInfraGitLanes,
+        FlextInfraGitService,
+        FlextInfraModels,
+        FlextInfraProjectSelectionServiceBase,
+        FlextInfraPromoted,
+        FlextInfraProtocols,
+        FlextInfraPytestProfile,
+        FlextInfraServiceBase,
+        FlextInfraSettings,
+        FlextInfraTypes,
+        FlextInfraUtilities,
+        FlextInfraVersion,
+        FlextInfraWorktreeService,
+        __author__,
+        __author_email__,
+        __description__,
+        __license__,
+        __title__,
+        __url__,
+        __version__,
+        __version_info__,
+        config,
+        d,
+        e,
+        h,
+        infra,
+        r,
+        settings,
+        x,
+    )
+    from tests._constants import TestsFlextInfraConstantsSemanticCutover
+    from tests._models import (
+        TestsFlextInfraModelsBase,
+        TestsFlextInfraModelsSemanticCutover,
+    )
+    from tests._protocols import (
+        TestsFlextInfraProtocolsBase,
+        TestsFlextInfraProtocolsSemanticCutover,
+    )
+    from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
-    from tests.constants_scan import TestsFlextInfraConstantsScanMixin
+    from tests.constants_scan import TestsFlextInfraConstantsScan
+    from tests.fixtures import (
+        TestsFlextInfraReleaseForgeMemory,
+        TestsImportedModelCollision,
+        TestsImportedModelReference,
+    )
     from tests.models import TestsFlextInfraModels, m
     from tests.protocols import TestsFlextInfraProtocols, p
+    from tests.refactor import TestsFlextInfraRefactorRopeStubs
     from tests.typings import TestsFlextInfraTypes, t
+    from tests.unit import TestsFlextInfraModelsPytestMarkdown
     from tests.utilities import TestsFlextInfraUtilities, u
-    from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
+    from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
     from tests.utilities_conform import TestsFlextInfraUtilitiesConform
-    from tests.utilities_deps import TestsFlextInfraUtilitiesDepsMixin
-    from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixtureMixin
-    from tests.utilities_fixture_project import (
-        TestsFlextInfraUtilitiesProjectFixtureMixin,
-    )
-    from tests.utilities_fixture_tooling import (
-        TestsFlextInfraUtilitiesToolingFixtureMixin,
-    )
+    from tests.utilities_deps import TestsFlextInfraUtilitiesDeps
+    from tests.utilities_fixture_docs import TestsFlextInfraUtilitiesDocsFixture
+    from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
+    from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
     from tests.utilities_fixture_workspace import (
-        TestsFlextInfraUtilitiesWorkspaceFixtureMixin,
+        TestsFlextInfraUtilitiesWorkspaceFixture,
     )
-    from tests.utilities_gates import TestsFlextInfraUtilitiesGatesMixin
-    from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
-    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGitMixin
-    from tests.utilities_promoted import TestsFlextInfraUtilitiesPromotedMixin
-    from tests.utilities_release import TestsFlextInfraUtilitiesReleaseMixin
-    from tests.utilities_toml import TestsFlextInfraUtilitiesTomlMixin
-    from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnvMixin
+    from tests.utilities_gates import TestsFlextInfraUtilitiesGates
+    from tests.utilities_git import TestsFlextInfraUtilitiesGit
+    from tests.utilities_hermetic_git import TestsFlextInfraUtilitiesHermeticGit
+    from tests.utilities_promoted import TestsFlextInfraUtilitiesPromoted
+    from tests.utilities_release import TestsFlextInfraUtilitiesRelease
+    from tests.utilities_toml import TestsFlextInfraUtilitiesToml
+    from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfra",
+    "FlextInfraCli",
+    "FlextInfraConfig",
+    "FlextInfraConstants",
+    "FlextInfraFlextInfraConfig",
+    "FlextInfraFlextInfraConform",
+    "FlextInfraFlextInfraCprofile",
+    "FlextInfraFlextInfraPreview",
+    "FlextInfraFlextInfraPytest",
+    "FlextInfraGitLanes",
+    "FlextInfraGitService",
+    "FlextInfraModels",
+    "FlextInfraProjectSelectionServiceBase",
+    "FlextInfraPromoted",
+    "FlextInfraProtocols",
+    "FlextInfraPytestProfile",
+    "FlextInfraServiceBase",
+    "FlextInfraSettings",
+    "FlextInfraTypes",
+    "FlextInfraUtilities",
+    "FlextInfraVersion",
+    "FlextInfraWorktreeService",
     "TestsFlextInfraConstants",
-    "TestsFlextInfraConstantsScanMixin",
+    "TestsFlextInfraConstantsScan",
+    "TestsFlextInfraConstantsSemanticCutover",
     "TestsFlextInfraModels",
+    "TestsFlextInfraModelsBase",
+    "TestsFlextInfraModelsPytestMarkdown",
+    "TestsFlextInfraModelsSemanticCutover",
     "TestsFlextInfraProtocols",
+    "TestsFlextInfraProtocolsBase",
+    "TestsFlextInfraProtocolsSemanticCutover",
+    "TestsFlextInfraRefactorRopeStubs",
+    "TestsFlextInfraReleaseForgeMemory",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
-    "TestsFlextInfraUtilitiesCodegenMixin",
+    "TestsFlextInfraUtilitiesCodegen",
     "TestsFlextInfraUtilitiesConform",
-    "TestsFlextInfraUtilitiesDepsMixin",
-    "TestsFlextInfraUtilitiesDocsFixtureMixin",
-    "TestsFlextInfraUtilitiesGatesMixin",
-    "TestsFlextInfraUtilitiesGitMixin",
-    "TestsFlextInfraUtilitiesHermeticGitMixin",
-    "TestsFlextInfraUtilitiesProjectFixtureMixin",
-    "TestsFlextInfraUtilitiesPromotedMixin",
-    "TestsFlextInfraUtilitiesReleaseMixin",
-    "TestsFlextInfraUtilitiesTomlMixin",
-    "TestsFlextInfraUtilitiesToolingFixtureMixin",
-    "TestsFlextInfraUtilitiesWorkspaceEnvMixin",
-    "TestsFlextInfraUtilitiesWorkspaceFixtureMixin",
-    "api",
+    "TestsFlextInfraUtilitiesDeps",
+    "TestsFlextInfraUtilitiesDocsFixture",
+    "TestsFlextInfraUtilitiesGates",
+    "TestsFlextInfraUtilitiesGit",
+    "TestsFlextInfraUtilitiesHermeticGit",
+    "TestsFlextInfraUtilitiesProjectFixture",
+    "TestsFlextInfraUtilitiesPromoted",
+    "TestsFlextInfraUtilitiesRelease",
+    "TestsFlextInfraUtilitiesSemanticCutover",
+    "TestsFlextInfraUtilitiesToml",
+    "TestsFlextInfraUtilitiesToolingFixture",
+    "TestsFlextInfraUtilitiesWorkspaceEnv",
+    "TestsFlextInfraUtilitiesWorkspaceFixture",
+    "TestsImportedModelCollision",
+    "TestsImportedModelReference",
+    "__author__",
+    "__author_email__",
+    "__description__",
+    "__license__",
+    "__title__",
+    "__url__",
+    "__version__",
+    "__version_info__",
     "c",
     "config",
     "d",
@@ -91,38 +182,78 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
+        "FlextInfra": "flext_infra",
+        "FlextInfraCli": "flext_infra",
+        "FlextInfraConfig": "flext_infra",
+        "FlextInfraConstants": "flext_infra",
+        "FlextInfraFlextInfraConfig": "flext_infra",
+        "FlextInfraFlextInfraConform": "flext_infra",
+        "FlextInfraFlextInfraCprofile": "flext_infra",
+        "FlextInfraFlextInfraPreview": "flext_infra",
+        "FlextInfraFlextInfraPytest": "flext_infra",
+        "FlextInfraGitLanes": "flext_infra",
+        "FlextInfraGitService": "flext_infra",
+        "FlextInfraModels": "flext_infra",
+        "FlextInfraProjectSelectionServiceBase": "flext_infra",
+        "FlextInfraPromoted": "flext_infra",
+        "FlextInfraProtocols": "flext_infra",
+        "FlextInfraPytestProfile": "flext_infra",
+        "FlextInfraServiceBase": "flext_infra",
+        "FlextInfraSettings": "flext_infra",
+        "FlextInfraTypes": "flext_infra",
+        "FlextInfraUtilities": "flext_infra",
+        "FlextInfraVersion": "flext_infra",
+        "FlextInfraWorktreeService": "flext_infra",
         "TestsFlextInfraConstants": ".constants",
-        "TestsFlextInfraConstantsScanMixin": ".constants_scan",
+        "TestsFlextInfraConstantsScan": ".constants_scan",
+        "TestsFlextInfraConstantsSemanticCutover": "._constants",
         "TestsFlextInfraModels": ".models",
+        "TestsFlextInfraModelsBase": "._models",
+        "TestsFlextInfraModelsPytestMarkdown": ".unit",
+        "TestsFlextInfraModelsSemanticCutover": "._models",
         "TestsFlextInfraProtocols": ".protocols",
+        "TestsFlextInfraProtocolsBase": "._protocols",
+        "TestsFlextInfraProtocolsSemanticCutover": "._protocols",
+        "TestsFlextInfraRefactorRopeStubs": ".refactor",
+        "TestsFlextInfraReleaseForgeMemory": ".fixtures",
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",
-        "TestsFlextInfraUtilitiesCodegenMixin": ".utilities_codegen",
+        "TestsFlextInfraUtilitiesCodegen": ".utilities_codegen",
         "TestsFlextInfraUtilitiesConform": ".utilities_conform",
-        "TestsFlextInfraUtilitiesDepsMixin": ".utilities_deps",
-        "TestsFlextInfraUtilitiesDocsFixtureMixin": ".utilities_fixture_docs",
-        "TestsFlextInfraUtilitiesGatesMixin": ".utilities_gates",
-        "TestsFlextInfraUtilitiesGitMixin": ".utilities_git",
-        "TestsFlextInfraUtilitiesHermeticGitMixin": ".utilities_hermetic_git",
-        "TestsFlextInfraUtilitiesProjectFixtureMixin": ".utilities_fixture_project",
-        "TestsFlextInfraUtilitiesPromotedMixin": ".utilities_promoted",
-        "TestsFlextInfraUtilitiesReleaseMixin": ".utilities_release",
-        "TestsFlextInfraUtilitiesTomlMixin": ".utilities_toml",
-        "TestsFlextInfraUtilitiesToolingFixtureMixin": ".utilities_fixture_tooling",
-        "TestsFlextInfraUtilitiesWorkspaceEnvMixin": ".utilities_workspace_env",
-        "TestsFlextInfraUtilitiesWorkspaceFixtureMixin": ".utilities_fixture_workspace",
-        "api": "flext_tests",
+        "TestsFlextInfraUtilitiesDeps": ".utilities_deps",
+        "TestsFlextInfraUtilitiesDocsFixture": ".utilities_fixture_docs",
+        "TestsFlextInfraUtilitiesGates": ".utilities_gates",
+        "TestsFlextInfraUtilitiesGit": ".utilities_git",
+        "TestsFlextInfraUtilitiesHermeticGit": ".utilities_hermetic_git",
+        "TestsFlextInfraUtilitiesProjectFixture": ".utilities_fixture_project",
+        "TestsFlextInfraUtilitiesPromoted": ".utilities_promoted",
+        "TestsFlextInfraUtilitiesRelease": ".utilities_release",
+        "TestsFlextInfraUtilitiesSemanticCutover": "._utilities",
+        "TestsFlextInfraUtilitiesToml": ".utilities_toml",
+        "TestsFlextInfraUtilitiesToolingFixture": ".utilities_fixture_tooling",
+        "TestsFlextInfraUtilitiesWorkspaceEnv": ".utilities_workspace_env",
+        "TestsFlextInfraUtilitiesWorkspaceFixture": ".utilities_fixture_workspace",
+        "TestsImportedModelCollision": ".fixtures",
+        "TestsImportedModelReference": ".fixtures",
+        "__author__": "flext_infra",
+        "__author_email__": "flext_infra",
+        "__description__": "flext_infra",
+        "__license__": "flext_infra",
+        "__title__": "flext_infra",
+        "__url__": "flext_infra",
+        "__version__": "flext_infra",
+        "__version_info__": "flext_infra",
         "c": ".constants",
         "config": "flext_infra",
-        "d": "flext_tests",
-        "e": "flext_tests",
-        "h": "flext_tests",
+        "d": "flext_infra",
+        "e": "flext_infra",
+        "h": "flext_infra",
         "infra": "flext_infra",
         "m": ".models",
         "p": ".protocols",
-        "r": "flext_tests",
+        "r": "flext_infra",
         "s": ".base",
         "settings": "flext_infra",
         "t": ".typings",
@@ -131,7 +262,7 @@ install_lazy_exports(
         "tk": "flext_tests",
         "tm": "flext_tests",
         "u": ".utilities",
-        "x": "flext_tests",
-    }),
+        "x": "flext_infra",
+    },
     public_exports=__all__,
 )

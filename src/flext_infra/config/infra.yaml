@@ -49,14 +49,13 @@ Infra:
         hashes:
           - 0a9ebc8d4e2f3e8a22848c5258033035bec17a3012ac3fea16dbaa764489eb71
           - 8b1ff4f9c191b1040b71c37f1e445ab99732911e3cd91de52838453a854d7a17
-  # A writer that finds its tree's mutation lock held waits for it, reporting
-  # the holder, and fails with the last observed holder at the deadline. The
-  # wait runs inside the caller's own budget (make gen: GEN_BUDGET_SECONDS), so
-  # the deadline stays below it and leaves the generation its own time.
+  # No operation holds a tree-wide lock: concurrent sessions run gen/mod/check
+  # on the same tree at once, and only one atomic file effect is leased at a
+  # time. A destination another writer changed between plan and publication is
+  # reconciled by replanning over the new state (rule fix-forward-collaboration),
+  # up to reconcile_attempts.
   mutation_lock:
-    wait_deadline_seconds: 300
-    poll_interval_seconds: 0.5
-    report_interval_seconds: 10
+    reconcile_attempts: 3
   source_scan:
     # tests/ and examples/ are first-class code under the same gates as src/;
     # leaving them out of the scan blinds every analyzer to half the

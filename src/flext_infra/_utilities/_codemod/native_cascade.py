@@ -15,14 +15,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import concurrent.futures
+import difflib
 import shutil
 import tempfile
 from collections.abc import Mapping
+from itertools import islice
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, settings
+from flext_infra import c, config, m, p, settings
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesMiseBinary,
@@ -55,7 +58,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         ).unwrap()
 
     @staticmethod
-    def codemod_native_eligible(rule: m.Infra.CodemodRule) -> bool:
+    def codemod_native_eligible(rule: p.Infra.CodemodRule) -> bool:
         """Whether ast-grep alone applies the rule: a fix and no engine step.
 
         Returns:
@@ -80,7 +83,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         return shape if separator else None
 
     @classmethod
-    def _stage_claims(cls, stage: m.Infra.ModStageConfig, rule_id: str) -> bool:
+    def _stage_claims(cls, stage: p.Infra.ModStageConfig, rule_id: str) -> bool:
         """Whether a native stage owns one rule id.
 
         A stage with shapes owns exactly those generated shapes; the catalog
@@ -93,20 +96,17 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         shape = cls._rule_shape(rule_id)
         if stage.shapes:
             return shape in stage.shapes
-        claimed = {
-            claimed_shape
-            for other in config.Infra.tooling.mod.phases.stages
-            for claimed_shape in other.shapes
-        }
-        return shape not in claimed
+        return not any(
+            shape in other.shapes for other in config.Infra.tooling.mod.phases.stages
+        )
 
     @classmethod
     def codemod_native_stage(
         cls,
         project: Path,
-        plan: m.Infra.CodemodRulePlan,
-        stage: m.Infra.ModStageConfig,
-    ) -> m.Infra.CodemodRuleset | None:
+        plan: p.Infra.CodemodRulePlan,
+        stage: p.Infra.ModStageConfig,
+    ) -> p.Infra.CodemodRuleset | None:
         """Write one stage's native configuration under the project's reports.
 
         The stage directory holds the elected rules the stage owns, catalog
@@ -142,8 +142,8 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
         retired = reports / f".{stage.name}-retired"
         if final.exists():
-            Path(final).replace(retired)
-        Path(staging).replace(final)
+            final.replace(retired)
+        staging.replace(final)
         if retired.exists():
             shutil.rmtree(retired)
         staged_ids = tuple(sorted(rule_ids))
@@ -169,12 +169,20 @@ class FlextInfraUtilitiesCodemodNativeCascade:
 
     @classmethod
     def _run_native_stage(
-        cls, preview: Path, binary: Path, ruleset: m.Infra.CodemodRuleset
+        cls, preview: Path, binary: Path, ruleset: p.Infra.CodemodRuleset
     ) -> None:
-        """Apply one staged ruleset with ast-grep's own ``--update-all``.
+        """Apply one staged ruleset through ``--update-all`` until it settles.
+
+        One ``--update-all`` applies a single fix per overlapping range: the
+        generated header documents all anchor on a module's first import, so
+        each run binds one more name. The stage therefore reruns until a run
+        changes no byte. Every fix of a converging ruleset removes its own
+        match, so a ruleset settles within one run per rule; a repeated
+        preview state, or a run past that bound, is an oscillation.
 
         Raises:
-            RuntimeError: If ast-grep does not exit successfully.
+            RuntimeError: If ast-grep does not exit successfully, or the
+                ruleset does not settle.
 
         """
         command = FlextInfraUtilitiesBase.ast_grep_scan_command(
@@ -183,45 +191,83 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             targets=(".",),
             update_all=True,
         )
-        executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
-        if not u.Cli.process_succeeded(executed.outcome):
-            msg = (
-                f"ast-grep native stage {ruleset.provider} failed "
-                f"(exit {executed.outcome.raw_return_code}): "
-                f"{(executed.stderr or executed.stdout).strip()}"
-            )
-            raise RuntimeError(msg)
+        current = cls._preview_contents(preview)
+        seen = {frozenset(current.items())}
+        # Why: a nested match needs one pass per nesting level, so the
+        # one-run-per-rule bound is not a fixed-point ceiling. The repeated
+        # state check still rejects a real oscillation.
+        pass_ceiling = max(len(ruleset.rule_ids) + 1, c.Infra.NATIVE_CASCADE_MAX_PASSES)
+        for _run in range(pass_ceiling):
+            executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
+            if not u.Cli.process_succeeded(executed.outcome):
+                msg = (
+                    f"ast-grep native stage {ruleset.provider} failed "
+                    f"(exit {executed.outcome.raw_return_code}): "
+                    f"{(executed.stderr or executed.stdout).strip()}"
+                )
+                raise RuntimeError(msg)
+            settled = cls._preview_contents(preview)
+            if settled == current:
+                return
+            state = frozenset(settled.items())
+            if state in seen:
+                break
+            seen.add(state)
+            current = settled
+        msg = (
+            f"ast-grep native stage {ruleset.provider} does not settle: "
+            f"{len(ruleset.rule_ids)} rule(s) keep rewriting {preview}"
+        )
+        raise RuntimeError(msg)
 
     @staticmethod
     def _run_ruff_stage(
         project: Path,
         preview: Path,
-        stage: m.Infra.ModStageConfig,
+        stage: p.Infra.ModStageConfig,
         originals: Mapping[Path, bytes],
     ) -> None:
         """Repair the selected Ruff codes on every source the cascade changed.
 
         Ruff reads each source on stdin under its live destination name, so
         the owning project's configuration decides first-party imports.
+        Independent calls use the configured lint worker bound. Results and
+        preview writes retain source order; the executor joins every worker
+        before the stage returns or propagates an error.
 
         """
-        for relative, original in originals.items():
+
+        def repair(relative: Path, original: bytes) -> p.Result[str] | None:
             path = preview / relative
             current = path.read_bytes()
             if current == original:
-                continue
-            repaired = FlextInfraUtilitiesProtectedEditLinting.ruff_select_fix(
+                return None
+            return FlextInfraUtilitiesProtectedEditLinting.ruff_select_fix(
                 project / relative,
                 current.decode(c.DEFAULT_ENCODING),
                 stage.select,
-            ).unwrap()
-            path.write_bytes(repaired.encode(c.DEFAULT_ENCODING))
+            )
+
+        workers = config.Infra.codegen.lint_snapshot_workers
+        pending = iter(originals.items())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            while batch := tuple(islice(pending, workers)):
+                futures = tuple(
+                    (relative, pool.submit(repair, relative, original))
+                    for relative, original in batch
+                )
+                for relative, future in futures:
+                    repaired = future.result()
+                    if repaired is not None:
+                        (preview / relative).write_bytes(
+                            repaired.unwrap().encode(c.DEFAULT_ENCODING)
+                        )
 
     @classmethod
     def native_cascade(
         cls,
         project: Path,
-        plan: m.Infra.CodemodRulePlan,
+        plan: p.Infra.CodemodRulePlan,
         sources: Mapping[Path, bytes],
     ) -> Mapping[Path, bytes]:
         """Run every declared stage over a staged preview to its fixed point.
@@ -272,8 +318,9 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             for relative, content in originals.items():
                 u.Cli.ensure_dir((preview / relative).parent).unwrap()
                 (preview / relative).write_bytes(content)
+            before = after = cls._preview_contents(preview)
             for _pass in range(phases.pass_cap):
-                before = cls._preview_contents(preview)
+                before = after
                 for stage, ruleset in staged:
                     if ruleset is not None:
                         cls._run_native_stage(preview, binary, ruleset)
@@ -286,9 +333,25 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                         for relative, content in after.items()
                         if originals[relative] != content
                     }
+            oscillating = sorted(
+                relative
+                for relative, content in after.items()
+                if before.get(relative) != content
+            )
+            first = oscillating[0]
+            last_pass = "".join(
+                difflib.unified_diff(
+                    before[first].decode(c.DEFAULT_ENCODING).splitlines(keepends=True),
+                    after[first].decode(c.DEFAULT_ENCODING).splitlines(keepends=True),
+                    fromfile=f"{first.as_posix()} (pass start)",
+                    tofile=f"{first.as_posix()} (pass end)",
+                )
+            )
         msg = (
             f"native cascade did not reach its fixed point within "
-            f"{phases.pass_cap} passes: {root}"
+            f"{phases.pass_cap} passes: {root}; still changing in the last "
+            f"pass: {', '.join(item.as_posix() for item in oscillating)}\n"
+            f"{last_pass}"
         )
         raise RuntimeError(msg)
 

@@ -1,0 +1,27 @@
+id: ban-test-import-outside-test-namespace
+valid:
+  - |
+    from tests import c, tm
+  - |
+    from tests import FlextCore
+  - |
+    import pytest
+  - |
+    from pathlib import Path
+  - |
+    from pydantic import BaseModel
+  - |
+    from tests._meta import import_probe
+invalid:
+  - |
+    from flext_core import FlextCore
+  - |
+    from flext_tests import tm
+  - |
+    import flext_tests
+  - |
+    from examples import ExamplesFlextCliSettings
+  - |
+    from scripts.generate_runtime import build
+  - |
+    import ai_hub

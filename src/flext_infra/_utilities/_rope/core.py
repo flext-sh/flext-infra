@@ -181,21 +181,66 @@ class FlextInfraUtilitiesRopeCore(
         )
 
     @staticmethod
-    @contextmanager
-    def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
-        """Resolve imports against the containing declared workspace, if attached.
+    def binding_projects(
+        producer: p.Infra.RopeProject,
+        projects: Sequence[p.Infra.RopeProject],
+        declaration: Path,
+    ) -> tuple[p.Infra.RopeProject, ...]:
+        """Elect the repository projects that can bind one native declaration.
 
-        Invalid workspace declarations propagate from the declaration reader.
+        ``src/`` holds a repository's public namespaces; every other child of
+        the repository root is an internal tier whose dotted names denote that
+        repository's own modules only. Another repository resolves the same
+        dotted name inside its own tier, so it never binds this declaration.
 
-        Yields:
-            A source-scoped project or its declared workspace import graph.
+        Returns:
+            The producer first, followed by every other project when public.
 
         """
-        roots = FlextInfraUtilitiesRopeCore.import_project_roots(source_root)
-        with FlextInfraUtilitiesRopeCore.open_project(
-            roots[0],
-            project_roots=roots,
-        ) as project:
+        public = declaration.resolve().is_relative_to(
+            Path(producer.root.real_path) / c.Infra.DEFAULT_SRC_DIR
+        )
+        return (
+            producer,
+            *(project for project in projects if public and project is not producer),
+        )
+
+    @staticmethod
+    @contextmanager
+    def open_import_project(source_root: Path) -> Generator[t.Infra.RopeProject]:
+        """Open the native project of the repository that owns ``source_root``.
+
+        One native project per repository (ADR-028 Decision 17): the project is
+        rooted at the owning repository, and every other repository of the
+        declared graph resolves through Rope's native ``python_path`` as a
+        provider. A workspace member, a separate workspace and a standalone
+        repository are opened the same way. Invalid workspace declarations
+        propagate from the declaration reader.
+
+        Yields:
+            The owning repository's native project.
+
+        """
+        resolved = source_root.resolve()
+        roots = FlextInfraUtilitiesRopeCore.import_project_roots(resolved)
+        owner = max(
+            (
+                root.resolve()
+                for root in roots
+                if resolved.is_relative_to(root.resolve())
+            ),
+            key=lambda root: len(root.parts),
+        )
+        with FlextInfraUtilitiesRopeCore.open_project(owner) as project:
+            for provider in roots:
+                provider_root = provider.resolve()
+                if provider_root == owner or owner.is_relative_to(provider_root):
+                    continue
+                source = provider_root / c.Infra.DEFAULT_SRC_DIR
+                project.get_prefs().add(
+                    "python_path",
+                    str(source if source.is_dir() else provider_root),
+                )
             yield project
 
     @staticmethod

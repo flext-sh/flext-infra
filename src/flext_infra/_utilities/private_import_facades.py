@@ -18,8 +18,10 @@ from importlib.util import resolve_name
 from pathlib import Path
 
 from flext_infra import c, p, t
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeRuntime,
+)
 
 
 class FlextInfraUtilitiesPrivateImportFacades:
@@ -885,30 +887,37 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     for imported in node.names
                 ):
                     break
-            elif (
-                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Name)
-                and isinstance(node.ctx, FlextInfraUtilitiesRopeAnalysis.Tree.Store)
-                and node.id == alias
-            ) or (
-                isinstance(node, FlextInfraUtilitiesRopeAnalysis.Tree.Argument)
-                and node.arg == alias
-            ):
+            elif cls._binds_alias(node, alias):
                 break
-            elif isinstance(
-                node,
-                FlextInfraUtilitiesRopeAnalysis.Tree.FunctionDef
-                | FlextInfraUtilitiesRopeAnalysis.Tree.AsyncFunctionDef
-                | FlextInfraUtilitiesRopeAnalysis.Tree.ClassDef
-                | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVar
-                | FlextInfraUtilitiesRopeAnalysis.Tree.TypeVarTuple
-                | FlextInfraUtilitiesRopeAnalysis.Tree.ParamSpec,
-            ):
-                if node.name == alias:
-                    break
         else:
             return
         msg = f"public facade alias {alias} is shadowed in {file_path}"
         raise ValueError(msg)
+
+    @staticmethod
+    def _binds_alias(node: t.Infra.RopeAstNode, alias: str) -> bool:
+        """Return whether a non-import lexical node binds ``alias``.
+
+        Returns:
+            True for a stored name, an argument, or a definition named ``alias``.
+
+        """
+        tree = FlextInfraUtilitiesRopeAnalysis.Tree
+        if isinstance(node, tree.Name):
+            return isinstance(node.ctx, tree.Store) and node.id == alias
+        if isinstance(node, tree.Argument):
+            return node.arg == alias
+        if isinstance(
+            node,
+            tree.FunctionDef
+            | tree.AsyncFunctionDef
+            | tree.ClassDef
+            | tree.TypeVar
+            | tree.TypeVarTuple
+            | tree.ParamSpec,
+        ):
+            return node.name == alias
+        return False
 
     @classmethod
     def _lexical_binding_nodes(

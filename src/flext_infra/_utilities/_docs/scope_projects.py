@@ -27,17 +27,17 @@ class FlextInfraUtilitiesDocsScopeProjects(
     def resolve_projects(
         repository_root: Path,
         names: Sequence[str],
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         """Resolve project names through repository-local topology only.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[p.Infra.ProjectInfo]]``.
 
         """
         owner = FlextInfraUtilitiesDocsScopeProjects
         discovered = owner.discover_projects(repository_root)
         if discovered.failure:
-            return r[Sequence[m.Infra.ProjectInfo]].from_failure(discovered)
+            return r[Sequence[p.Infra.ProjectInfo]].from_failure(discovered)
         projects = list(discovered.value)
         root = owner.absolute_lexical(repository_root)
         if all(project.path != root for project in projects):
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsScopeProjects(
             if root_project is not None:
                 projects.append(root_project)
         if not names:
-            return r[Sequence[m.Infra.ProjectInfo]].ok(
+            return r[Sequence[p.Infra.ProjectInfo]].ok(
                 sorted(projects, key=operator.attrgetter("name")),
             )
         by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
@@ -63,10 +63,10 @@ class FlextInfraUtilitiesDocsScopeProjects(
                 by_name.setdefault(project.path.relative_to(root).as_posix(), project)
         missing = [name for name in names if name not in by_name]
         if missing:
-            return r[Sequence[m.Infra.ProjectInfo]].fail(
+            return r[Sequence[p.Infra.ProjectInfo]].fail(
                 f"unknown projects: {', '.join(sorted(missing))}",
             )
-        return r[Sequence[m.Infra.ProjectInfo]].ok(
+        return r[Sequence[p.Infra.ProjectInfo]].ok(
             sorted((by_name[name] for name in names), key=operator.attrgetter("name")),
         )
 
@@ -101,7 +101,7 @@ class FlextInfraUtilitiesDocsScopeProjects(
         *,
         workspace_declared_repositories: frozenset[Path],
         source_project: p.Infra.RopeProject | None = None,
-    ) -> m.Infra.ProjectInfo | None:
+    ) -> p.Infra.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root.
 
         Returns:
@@ -185,23 +185,23 @@ class FlextInfraUtilitiesDocsScopeProjects(
         repository_root: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``.
 
         Returns:
-            The resulting ``p.Result[Sequence[m.Infra.ProjectInfo]]``.
+            The resulting ``p.Result[Sequence[p.Infra.ProjectInfo]]``.
 
         """
         owner = FlextInfraUtilitiesDocsScopeProjects
         if source_project is None:
             roots = owner.docs_repository_roots(repository_root)
             if roots.failure:
-                return r[Sequence[m.Infra.ProjectInfo]].from_failure(roots)
+                return r[Sequence[p.Infra.ProjectInfo]].from_failure(roots)
             repository_root = roots.value[0]
         else:
             repository_root = owner.absolute_lexical(repository_root)
             if not source_project.source_query(repository_root, "isdir"):
-                return r[Sequence[m.Infra.ProjectInfo]].fail(
+                return r[Sequence[p.Infra.ProjectInfo]].fail(
                     f"docs repository root is missing from source view: "
                     f"{repository_root}"
                 )
@@ -214,8 +214,8 @@ class FlextInfraUtilitiesDocsScopeProjects(
             repository_root,
             source_project=source_project,
         )
-        root_project: m.Infra.ProjectInfo | None = None
-        projects: list[m.Infra.ProjectInfo] = []
+        root_project: p.Infra.ProjectInfo | None = None
+        projects: list[p.Infra.ProjectInfo] = []
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
@@ -240,8 +240,8 @@ class FlextInfraUtilitiesDocsScopeProjects(
                 continue
             projects.append(project_info)
         if not projects and root_project is not None:
-            return r[Sequence[m.Infra.ProjectInfo]].ok([root_project])
-        return r[Sequence[m.Infra.ProjectInfo]].ok(projects)
+            return r[Sequence[p.Infra.ProjectInfo]].ok([root_project])
+        return r[Sequence[p.Infra.ProjectInfo]].ok(projects)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsScopeProjects"]

@@ -1058,7 +1058,7 @@ class FlextInfraWorkspaceNativeReference:
     def producer_selection(
         cls,
         entrypoint: t.Infra.NativeOperand,
-    ) -> p.Result[m.Infra.SourceClassReference]:
+    ) -> p.Result[p.Infra.SourceClassReference]:
         """Elect a source-owned callable or receiver through static lexical storage.
 
         Returns:
@@ -1075,19 +1075,19 @@ class FlextInfraWorkspaceNativeReference:
             module = value.__globals__.get("__name__")
             qualified = value.__code__.co_qualname
         else:
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 "producer selection is not a native function or source class"
             )
         if not cls._is_native(module, str):
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 "producer entrypoint has no source module"
             )
         source = FlextInfraWorkspaceEnvironmentProvenance.module_source(module)
         if source.failure:
-            return r[m.Infra.SourceClassReference].from_failure(source)
+            return r[p.Infra.SourceClassReference].from_failure(source)
         state = u.Cli.atomic_read_binary_file_state(source.value, required=True)
         if state.failure:
-            return r[m.Infra.SourceClassReference].from_failure(state)
+            return r[p.Infra.SourceClassReference].from_failure(state)
         return cls._producer_lexical_reference(module, qualified, value)
 
     @classmethod
@@ -1096,7 +1096,7 @@ class FlextInfraWorkspaceNativeReference:
         module: str,
         qualified: str,
         value: t.Infra.NativeOperand,
-    ) -> p.Result[m.Infra.SourceClassReference]:
+    ) -> p.Result[p.Infra.SourceClassReference]:
         """Resolve a physically admitted producer through native lexical storage.
 
         Returns:
@@ -1105,7 +1105,7 @@ class FlextInfraWorkspaceNativeReference:
         """
         attributes = tuple(qualified.split("."))
         if any(not component.isidentifier() for component in attributes):
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 "producer selection has no portable source declaration"
             )
         current: t.Infra.NativeOperand = sys.modules[module]
@@ -1119,7 +1119,7 @@ class FlextInfraWorkspaceNativeReference:
                 None,
             )
             if namespace is None:
-                return r[m.Infra.SourceClassReference].fail(
+                return r[p.Infra.SourceClassReference].fail(
                     "producer selection has no source-owned lexical binding: "
                     f"{qualified}",
                 )
@@ -1130,7 +1130,7 @@ class FlextInfraWorkspaceNativeReference:
             and current.__func__ is value.__func__
             and current.__self__ is value.__self__
         ):
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 f"producer callable differs from its source binding: {qualified}",
             )
         return r.ok(
@@ -1142,14 +1142,14 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         entrypoint: t.Infra.NativeOperand,
         collaborators: Sequence[t.Infra.NativeOperand],
-    ) -> p.Result[tuple[m.Infra.SourceClassReference, ...]]:
+    ) -> p.Result[tuple[p.Infra.SourceClassReference, ...]]:
         """Retain actual entrypoints, receiver types and explicitly wired ports.
 
         Returns:
             Unique lexical source references or the first admission failure.
 
         """
-        result_type = r[tuple[m.Infra.SourceClassReference, ...]]
+        result_type = r[tuple[p.Infra.SourceClassReference, ...]]
         selected: dict[tuple[str, t.StrTuple], m.Infra.SourceClassReference] = {}
         for callable_root in (entrypoint, *collaborators):
             nominated = cls.producer_selection(callable_root)
@@ -1209,7 +1209,7 @@ class FlextInfraWorkspaceNativeReference:
     def _producer_bound_reference(
         cls,
         entrypoint: MethodType,
-    ) -> p.Result[m.Infra.SourceClassReference]:
+    ) -> p.Result[p.Infra.SourceClassReference]:
         """Elect a bound invocation instead of separately nominating construction.
 
         Returns:
@@ -1220,12 +1220,12 @@ class FlextInfraWorkspaceNativeReference:
         owner = receiver if cls._is_class(receiver) else type(receiver)
         module_name = cls._type_attr("__module__", owner, type(owner))
         if not cls._is_native(module_name, str):
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 "bound producer has no native receiver module"
             )
         module = sys.modules.get(module_name)
         if module is None:
-            return r[m.Infra.SourceClassReference].fail(
+            return r[p.Infra.SourceClassReference].fail(
                 "bound producer has no native receiver module"
             )
         roots = (
@@ -1260,7 +1260,7 @@ class FlextInfraWorkspaceNativeReference:
                     )
                     if selected.success:
                         return selected
-        return r[m.Infra.SourceClassReference].fail(
+        return r[p.Infra.SourceClassReference].fail(
             "bound producer receiver has no declared lexical binding"
         )
 
@@ -2864,7 +2864,7 @@ class FlextInfraWorkspaceNativeReference:
         return tuple(rejected)
 
     @classmethod
-    def _code_evidence(cls, code: t.Infra.NativeCode) -> m.Infra.NativeCodeEvidence:
+    def _code_evidence(cls, code: t.Infra.NativeCode) -> p.Infra.NativeCodeEvidence:
         """Capture complete compiler bytes without changing code or source positions.
 
         Returns:
@@ -2887,8 +2887,8 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _code_matches(
-        observed: m.Infra.NativeCodeEvidence,
-        reference: m.Infra.NativeCodeEvidence,
+        observed: p.Infra.NativeCodeEvidence,
+        reference: p.Infra.NativeCodeEvidence,
     ) -> bool:
         """Require complete compiler identity, including stack and locals kinds.
 
@@ -2979,7 +2979,7 @@ class FlextInfraWorkspaceNativeReference:
         names: Sequence[str | m.Infra.SourceClassReference],
         *,
         paths: Sequence[tuple[Path, Path]] = (),
-    ) -> p.Result[m.Infra.NativeImportObservation]:
+    ) -> p.Result[p.Infra.NativeImportObservation]:
         """Observe one native epoch using its own physical source witnesses.
 
         Returns:
@@ -3124,7 +3124,7 @@ class FlextInfraWorkspaceNativeReference:
     def _nominate_lexical_binding(
         cls,
         context: m.Infra.NativeObservationContext,
-        nomination: m.Infra.SourceClassReference,
+        nomination: p.Infra.SourceClassReference,
         module: t.Infra.NativeOperand,
         source: Path,
     ) -> p.Result[bool]:
@@ -3167,7 +3167,7 @@ class FlextInfraWorkspaceNativeReference:
     def _nominate_module(
         cls,
         context: m.Infra.NativeObservationContext,
-        nomination: m.Infra.SourceClassReference,
+        nomination: p.Infra.SourceClassReference,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
         """Elect one physical module anchor before observing its selected bindings.
@@ -4469,7 +4469,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         context: m.Infra.NativeObservationContext,
         value: FunctionType,
-    ) -> p.Result[m.Infra.NativeFunctionObservationContext]:
+    ) -> p.Result[p.Infra.NativeFunctionObservationContext]:
         """Elect the actual function source before inspecting executable operands.
 
         Returns:
@@ -4484,21 +4484,21 @@ class FlextInfraWorkspaceNativeReference:
         if generated:
             compiled = cls._generated_function_source(context, value)
             if compiled.failure:
-                return r[m.Infra.NativeFunctionObservationContext].from_failure(
+                return r[p.Infra.NativeFunctionObservationContext].from_failure(
                     compiled
                 )
             actual_supplier, generated_operands = compiled.value
         else:
             actual_supplier = value.__globals__.get("__name__")
             if type(actual_supplier) is not str:
-                return r[m.Infra.NativeFunctionObservationContext].fail(
+                return r[p.Infra.NativeFunctionObservationContext].fail(
                     f"producer globals have no supplier identity: {context.binding}",
                 )
             module = sys.modules.get(actual_supplier)
             if module is None or (
                 not generated and value.__globals__ is not cls._module_namespace(module)
             ):
-                return r[m.Infra.NativeFunctionObservationContext].fail(
+                return r[p.Infra.NativeFunctionObservationContext].fail(
                     f"producer globals have no native supplier: {context.binding}",
                 )
         origin = context.origins.get(actual_supplier)
@@ -4507,14 +4507,14 @@ class FlextInfraWorkspaceNativeReference:
                 actual_supplier,
             )
             if observed.failure:
-                return r[m.Infra.NativeFunctionObservationContext].from_failure(
+                return r[p.Infra.NativeFunctionObservationContext].from_failure(
                     observed
                 )
             origin = context.origins[actual_supplier] = observed.value
         supplier_namespace = cls._module_namespace(sys.modules[actual_supplier])
         supplier_spec = supplier_namespace["__spec__"]
         if not cls._is_native(supplier_spec, ModuleSpec):
-            return r[m.Infra.NativeFunctionObservationContext].fail(
+            return r[p.Infra.NativeFunctionObservationContext].fail(
                 f"producer native supplier has no module spec: {actual_supplier}"
             )
         # A physical function is named by its compiled qualified name: library
@@ -4545,7 +4545,7 @@ class FlextInfraWorkspaceNativeReference:
     def _function_namespaces(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> None:
         """Observe actual closure, globals and builtins before lexical expansion."""
@@ -4605,7 +4605,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _function_class_roots(
         cls,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
     ) -> list[t.Infra.NativeType]:
         """Elect lexical and globally retained classes in the original native order.
 
@@ -4636,7 +4636,7 @@ class FlextInfraWorkspaceNativeReference:
     def _function_descriptor_edges(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
     ) -> None:
         """Queue native descriptor identities through actual lexical class ancestry."""
         class_roots = cls._function_class_roots(facts)
@@ -4669,7 +4669,7 @@ class FlextInfraWorkspaceNativeReference:
     def _enqueue_function_operands(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
     ) -> None:
         """Queue actual globals, defaults and closure operands in original order."""
         context.pending.extend(
@@ -4706,7 +4706,7 @@ class FlextInfraWorkspaceNativeReference:
     def _capture_function_evidence(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         kind: str,
     ) -> None:
         """Record complete function evidence after expanding its native graph.
@@ -4905,7 +4905,7 @@ class FlextInfraWorkspaceNativeReference:
     def _absent_edge(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         edge: str,
         name: str,
     ) -> p.Result[bool]:
@@ -4963,7 +4963,7 @@ class FlextInfraWorkspaceNativeReference:
     def _function_attribute_edges(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
         *,
         bound_receiver: t.Infra.NativeOperand | None = None,
@@ -5051,7 +5051,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _loaded_root_value(
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         instruction: Instruction,
         bound_receiver: t.Infra.NativeOperand | None,
     ) -> t.Infra.NativeOperand | None:
@@ -5148,7 +5148,7 @@ class FlextInfraWorkspaceNativeReference:
     def _loaded_native_edge(
         cls,
         context: m.Infra.NativeObservationContext,
-        facts: m.Infra.NativeFunctionObservationContext,
+        facts: p.Infra.NativeFunctionObservationContext,
         edge: str,
         value: t.Infra.NativeOperand,
         *,
@@ -5320,7 +5320,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_nominations(
         cls, names: Sequence[str | m.Infra.SourceClassReference]
-    ) -> p.Result[tuple[m.Infra.SourceClassReference, ...]]:
+    ) -> p.Result[tuple[p.Infra.SourceClassReference, ...]]:
         """Validate exactly one complete-module or lexical selection contract.
 
         Returns:
@@ -5340,12 +5340,12 @@ class FlextInfraWorkspaceNativeReference:
             or item.qualified_base
             for item in nominations
         ):
-            return r[tuple[m.Infra.SourceClassReference, ...]].fail(
+            return r[tuple[p.Infra.SourceClassReference, ...]].fail(
                 "invalid native source selection"
             )
         selected = all(item.attributes for item in nominations)
         if any(item.attributes for item in nominations) and not selected:
-            return r[tuple[m.Infra.SourceClassReference, ...]].fail(
+            return r[tuple[p.Infra.SourceClassReference, ...]].fail(
                 "mixed native selection contracts"
             )
         return r.ok(nominations)
@@ -5448,7 +5448,7 @@ class FlextInfraWorkspaceNativeReference:
     def _binding_evidence(
         context: m.Infra.NativeObservationContext,
         binding: str,
-    ) -> m.Infra.NativeBindingEvidence | None:
+    ) -> p.Infra.NativeBindingEvidence | None:
         """Index appended observations without copying or reordering their owners.
 
         Returns:
@@ -5520,7 +5520,7 @@ class FlextInfraWorkspaceNativeReference:
         names: Sequence[str | m.Infra.SourceClassReference],
         *,
         paths: Sequence[tuple[Path, Path]],
-    ) -> p.Result[m.Infra.NativeImportObservation]:
+    ) -> p.Result[p.Infra.NativeImportObservation]:
         """Observe nominated modules or lexical entrypoints without running factories.
 
         Plain module names request complete inventories through the existing
@@ -5533,7 +5533,7 @@ class FlextInfraWorkspaceNativeReference:
         context = m.Infra.NativeObservationContext(paths=tuple(paths))
         suppliers = cls._capture_native_suppliers(context)
         if suppliers.failure:
-            return r[m.Infra.NativeImportObservation].from_failure(suppliers)
+            return r[p.Infra.NativeImportObservation].from_failure(suppliers)
         scope = ContextVar[t.Infra.NativeInvocationFacts | None].get(
             cls._compilation_facts
         )
@@ -5542,17 +5542,17 @@ class FlextInfraWorkspaceNativeReference:
         )
         selected = cls._capture_nominations(names)
         if selected.failure:
-            return r[m.Infra.NativeImportObservation].from_failure(selected)
+            return r[p.Infra.NativeImportObservation].from_failure(selected)
         nominations = selected.value
         context.lexical = all(item.attributes for item in nominations)
         for nomination in nominations:
             nominated = cls._nominate_module(context, nomination, instructions)
             if nominated.failure:
-                return r[m.Infra.NativeImportObservation].from_failure(nominated)
+                return r[p.Infra.NativeImportObservation].from_failure(nominated)
         while context.pending or context.references:
             observed = cls._capture_next(context, instructions)
             if observed.failure:
-                return r[m.Infra.NativeImportObservation].from_failure(observed)
+                return r[p.Infra.NativeImportObservation].from_failure(observed)
         return r.ok(
             m.Infra.NativeImportObservation(
                 runtime=Path(sys.executable).resolve(),
@@ -5565,7 +5565,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _binding_index(
-        snapshot: m.Infra.NativeImportObservation,
+        snapshot: p.Infra.NativeImportObservation,
     ) -> p.Result[dict[str, m.Infra.NativeBindingEvidence]]:
         """Index bindings and validate aliases after rejecting duplicates.
 
@@ -5606,8 +5606,8 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _compare_epoch(
-        observed: m.Infra.NativeImportObservation,
-        reference: m.Infra.NativeImportObservation,
+        observed: p.Infra.NativeImportObservation,
+        reference: p.Infra.NativeImportObservation,
     ) -> p.Result[bool]:
         """Compare runtime, nominations and source elections before graph bodies.
 
@@ -5704,8 +5704,8 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _compare_binding_metadata(
-        item: m.Infra.NativeBindingEvidence,
-        native: m.Infra.NativeBindingEvidence,
+        item: p.Infra.NativeBindingEvidence,
+        native: p.Infra.NativeBindingEvidence,
     ) -> p.Result[bool]:
         """Compare every executable binding field before its code witness.
 
@@ -5745,10 +5745,10 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _compare_binding_code(
-        observed: m.Infra.NativeImportObservation,
-        reference: m.Infra.NativeImportObservation,
-        item: m.Infra.NativeBindingEvidence,
-        native: m.Infra.NativeBindingEvidence,
+        observed: p.Infra.NativeImportObservation,
+        reference: p.Infra.NativeImportObservation,
+        item: p.Infra.NativeBindingEvidence,
+        native: p.Infra.NativeBindingEvidence,
     ) -> p.Result[bool]:
         """Compare complete native code witnesses and retain first-delta evidence.
 
@@ -5818,8 +5818,8 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def compare(
-        observed: m.Infra.NativeImportObservation,
-        reference: m.Infra.NativeImportObservation,
+        observed: p.Infra.NativeImportObservation,
+        reference: p.Infra.NativeImportObservation,
     ) -> p.Result[bool]:
         """Compare complete native compiler witnesses without code deserialization.
 
@@ -5859,8 +5859,8 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def authored_sources_current(
         cls,
-        observed: m.Infra.NativeImportObservation,
-        inputs: Sequence[m.Cli.AtomicFileReceipt],
+        observed: p.Infra.NativeImportObservation,
+        inputs: Sequence[p.Cli.AtomicFileReceipt],
     ) -> p.Result[bool]:
         """Check authored code against pinned bytes without authenticating emissions.
 
@@ -5876,8 +5876,8 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _authored_code_units(
         cls,
-        binding: m.Infra.NativeBindingEvidence,
-        executed: m.Infra.NativeCodeEvidence,
+        binding: p.Infra.NativeBindingEvidence,
+        executed: p.Infra.NativeCodeEvidence,
         states: Mapping[Path, m.Cli.AtomicFileReceipt],
         module_spec: ModuleSpec,
     ) -> p.Result[tuple[t.Infra.NativeCode, ...]]:
@@ -5923,7 +5923,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _candidate_code_differences(
         cls,
-        executed: m.Infra.NativeCodeEvidence,
+        executed: p.Infra.NativeCodeEvidence,
         name: str,
         codes: Sequence[t.Infra.NativeCode],
     ) -> t.StrTuple:
@@ -5961,8 +5961,8 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _authored_sources_current(
         cls,
-        observed: m.Infra.NativeImportObservation,
-        inputs: Sequence[m.Cli.AtomicFileReceipt],
+        observed: p.Infra.NativeImportObservation,
+        inputs: Sequence[p.Cli.AtomicFileReceipt],
     ) -> p.Result[bool]:
         """Authenticate authored driver code before read-only reference staging.
 

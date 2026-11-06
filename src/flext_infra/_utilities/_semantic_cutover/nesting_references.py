@@ -27,7 +27,7 @@ from libcst.metadata import (
 from flext_infra import c, m, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
         def _reject_ambiguous_alias(
             self,
             expression: str,
-            declarations: Sequence[tuple[m.Infra.LogicalStatement, int]],
+            declarations: Sequence[tuple[p.Infra.LogicalStatement, int]],
         ) -> None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
             if len(declarations) > 1:
@@ -391,7 +391,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if not matches:
                 return None
             match actual:
-                case p.Infra.RopeImportedName():
+                case m.Infra.RopeImportedName():
                     provider = (
                         FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                             actual.imported_module.get_object(),
@@ -778,8 +778,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ),
         )
         edits = FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            native[0],
-            native[1],
+            native,
             source,
             transformer.type_reference,
         )

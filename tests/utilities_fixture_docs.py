@@ -11,13 +11,19 @@ from pathlib import Path
 
 from flext_infra import config
 from flext_infra.docs import FlextInfraDocGenerator
-from tests import c, m, r, tm
-from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegenMixin
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+from tests import (
+    TestsFlextInfraUtilitiesCodegen,
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesWorkspaceFixture,
+    c,
+    p,
+    r,
+    tm,
+)
 
 
-class TestsFlextInfraUtilitiesDocsFixtureMixin:
+class TestsFlextInfraUtilitiesDocsFixture:
     """Documentation and GitHub workflow workspace fixture helpers."""
 
     @staticmethod
@@ -35,7 +41,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -65,13 +71,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             f"\n[tool.uv.workspace]\nmembers = [{members}]\n" if project_names else ""
         )
         infrastructure = config.Infra.codegen.infra_repository.distribution
-        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+        infrastructure_ref = TestsFlextInfraUtilitiesProjectFixture.repository_ref(
             infrastructure
         )
         development = (
             "\n[dependency-groups]\n"
             f'dev = ["{infrastructure} @ git+{infrastructure_ref.url}@'
-            f'{TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()}"]\n'
+            f'{TestsFlextInfraUtilitiesProjectFixture.provider_branch()}"]\n'
         )
         _write(
             workspace / c.PYPROJECT_FILENAME,
@@ -99,13 +105,13 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             _write(project / "docs/architecture.md", "# Architecture\n")
             _write(project / "docs/dev.md", "# Development\n")
             _write(project / "docs/api.md", "# API\n")
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+            TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
                 project,
                 name,
             )
 
         if project_names:
-            TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
+            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -115,18 +121,18 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         # identity and is idempotent. A workspace that declares members in
         # .gitmodules must realize each member as a governed repository whose
         # origin matches the declared URL ("owner must resolve exactly once").
-        # Initialize children first so the parent's initial index records
+        # Initialize children first so the parent's index records
         # gitlinks rather than ordinary files inside the declared members.
         for name in project_names:
-            TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(
                 workspace / name,
-                origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+                origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
                     name,
                 ).url,
             )
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(
             workspace,
-            origin_url=TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
+            origin_url=TestsFlextInfraUtilitiesProjectFixture.repository_ref(
                 "workspace",
             ).url,
         )
@@ -148,7 +154,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
         """
         workspace = root / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
@@ -167,12 +173,12 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
                 ),
                 encoding="utf-8",
             )
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_member_package(
+            TestsFlextInfraUtilitiesWorkspaceFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
+            TestsFlextInfraUtilitiesWorkspaceFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -191,7 +197,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
             The resulting ``tuple[Path, FlextInfraDocGenerator]``.
 
         """
-        workspace = TestsFlextInfraUtilitiesDocsFixtureMixin.create_docs_workspace(
+        workspace = TestsFlextInfraUtilitiesDocsFixture.create_docs_workspace(
             root,
             project_names=project_names,
         )
@@ -204,7 +210,7 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def prepare_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> m.Infra.DocsGenerationBundle:
+    ) -> p.Infra.DocsGenerationBundle:
         """Freeze one docs bundle.
 
         Returns:
@@ -218,14 +224,14 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def plan_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Prepare one docs bundle and plan its files.
 
         Returns:
-            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
+            The resulting ``tuple[p.Infra.CodegenFilePlan, ...],``.
 
         """
-        bundle = TestsFlextInfraUtilitiesDocsFixtureMixin.prepare_docs_bundle(generator)
+        bundle = TestsFlextInfraUtilitiesDocsFixture.prepare_docs_bundle(generator)
         planned = generator.plan_files(bundle)
         tm.ok(planned)
         return planned.value
@@ -233,19 +239,19 @@ class TestsFlextInfraUtilitiesDocsFixtureMixin:
     @staticmethod
     def publish_docs_bundle(
         generator: FlextInfraDocGenerator,
-    ) -> tuple[m.Infra.CodegenFilePlan, ...]:
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
         """Publish one planned docs bundle through the test transaction adapter.
 
         Returns:
-            The resulting ``tuple[m.Infra.CodegenFilePlan, ...],``.
+            The resulting ``tuple[p.Infra.CodegenFilePlan, ...],``.
 
         """
-        plans = TestsFlextInfraUtilitiesDocsFixtureMixin.plan_docs_bundle(generator)
-        published = TestsFlextInfraUtilitiesCodegenMixin.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans),
+        plans = TestsFlextInfraUtilitiesDocsFixture.plan_docs_bundle(generator)
+        published = TestsFlextInfraUtilitiesCodegen.materialize_codegen_plans(
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(plans),
         )
         tm.ok(published)
         return plans
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesDocsFixtureMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesDocsFixture"]

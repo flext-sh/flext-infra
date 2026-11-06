@@ -8,18 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from tests import c, tm
+from tests import c, tm, u
 
 
 class TestsFlextInfraModRuleFixtureStaging:
     """Fixture staging follows sgconfig declarations, never the owning checkout."""
 
     @staticmethod
-    @pytest.mark.parametrize("with_utils", [False, True])
-    @pytest.mark.parametrize("regenerate_snapshots", [False, True])
+    @c.Tests.MARK.parametrize("with_utils", [False, True])
+    @c.Tests.MARK.parametrize("regenerate_snapshots", [False, True])
     def test_staging_copies_declared_trees_without_traversing_checkout(
         tmp_path: Path,
         *,
@@ -80,7 +78,7 @@ class TestsFlextInfraModRuleFixtureStaging:
         tm.that((staged / c.GIT_DIR_NAME).exists(), truth=False)
 
     @staticmethod
-    @pytest.mark.parametrize("declaration", [".", "../outside", "/outside"])
+    @c.Tests.MARK.parametrize("declaration", [".", "../outside", "/outside"])
     def test_staging_rejects_owner_wide_or_escaping_declarations(
         tmp_path: Path,
         declaration: str,
@@ -95,7 +93,7 @@ class TestsFlextInfraModRuleFixtureStaging:
         )
         staged = tmp_path / "staged"
 
-        with pytest.raises(ValueError, match="escapes or selects its owner"):
+        with u.Tests.raises(ValueError, match="escapes or selects its owner"):
             FlextInfraModGateEngine.stage_rule_fixture_root(
                 config_root=owner,
                 temp_root=staged,
@@ -104,7 +102,7 @@ class TestsFlextInfraModRuleFixtureStaging:
         tm.that(staged.exists(), truth=False)
 
     @staticmethod
-    @pytest.mark.parametrize("linked_directory", [False, True])
+    @c.Tests.MARK.parametrize("linked_directory", [False, True])
     def test_staging_rejects_declared_symlinks_before_copying(
         tmp_path: Path,
         *,
@@ -127,7 +125,7 @@ class TestsFlextInfraModRuleFixtureStaging:
             (owner / "rules" / "external.yml").symlink_to(outside / "absent.yml")
         staged = tmp_path / "staged"
 
-        with pytest.raises(ValueError, match=r"symlink|regular file or directory"):
+        with u.Tests.raises(ValueError, match=r"symlink|regular file or directory"):
             FlextInfraModGateEngine.stage_rule_fixture_root(
                 config_root=owner,
                 temp_root=staged,

@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, u
+from flext_infra import c, p, u
 from flext_infra.gates import FlextInfraGates
 
 
@@ -21,7 +21,7 @@ class FlextInfraGatesRuffGate(FlextInfraGates):
     def _check_env(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Mapping[str, str]:
         """Keep native cache writes outside authenticated source candidates.
 

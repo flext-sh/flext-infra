@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, tm, u
 
@@ -17,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
     """Behavior contract for typing-alias namespace-move rewriting."""
 
@@ -185,7 +183,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         tm.that(typings_text, lacks="type Published")
         tm.that(typings_text, has="type Payload = dict[str, int]")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "type Alias = Literal['[']",
@@ -255,7 +253,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         for path, source in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @pytest.mark.parametrize("existing_target", [False, True])
+    @c.Tests.MARK.parametrize("existing_target", [False, True])
     def test_typing_alias_cutover_preserves_all_consumer_bindings(
         self,
         tmp_path: Path,
@@ -320,7 +318,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             eq=["True"] * 9,
         )
 
-    @pytest.mark.parametrize("ambiguous_binding", [False, True])
+    @c.Tests.MARK.parametrize("ambiguous_binding", [False, True])
     def test_rejected_typing_alias_cutover_restores_every_source(
         self,
         tmp_path: Path,
@@ -351,7 +349,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         for path, source in originals.items():
             self._write_file(path, source)
 
-        with pytest.raises(RuntimeError):
+        with u.Tests.raises(RuntimeError):
             u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 names_by_file={source_file: {"Alias"}},
@@ -361,7 +359,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         for path, source in originals.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer_source",
         [
             "import demo_pkg.other\nPublished = demo_pkg.other.Value\n",
@@ -418,7 +416,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         tm.that(consumer.read_text(encoding="utf-8"), eq=consumer_source)
         tm.fail(package.joinpath("typings.py").exists())
 
-    @pytest.mark.parametrize("exposes_alias", [False, True])
+    @c.Tests.MARK.parametrize("exposes_alias", [False, True])
     def test_ancestor_star_import_uses_selected_export_identity(
         self,
         tmp_path: Path,
@@ -465,7 +463,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         tm.that(consumer.read_text(encoding="utf-8"), eq=original)
         tm.fail(package.joinpath("typings.py").exists())
 
-    @pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\f"])
+    @c.Tests.MARK.parametrize("separator", ["\u2028", "\u2029", "\f"])
     def test_typing_alias_plan_preserves_physical_lines_and_import_comments(
         self,
         tmp_path: Path,
@@ -517,7 +515,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             eq=["True"] * 3,
         )
 
-    @pytest.mark.parametrize("mixed", [False, True])
+    @c.Tests.MARK.parametrize("mixed", [False, True])
     def test_non_ascii_inline_import_plan_preserves_bytes_or_rejects(
         self,
         tmp_path: Path,
@@ -657,7 +655,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             eq=["True"] * 3,
         )
 
-    @pytest.mark.parametrize("moved_first", [False, True])
+    @c.Tests.MARK.parametrize("moved_first", [False, True])
     def test_typing_alias_mixed_import_rejects_repeated_bound_names(
         self,
         tmp_path: Path,
@@ -682,7 +680,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             path: path.read_bytes()
             for path in (source_file, package_root / "consumer.py")
         }
-        with pytest.raises(RuntimeError, match="conflicting Rope imported binding"):
+        with u.Tests.raises(RuntimeError, match="conflicting Rope imported binding"):
             u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 names_by_file={source_file: {"Alias"}},
@@ -701,8 +699,8 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             eq=["True"],
         )
 
-    @pytest.mark.parametrize("existing_target", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("existing_target", [False, True])
+    @c.Tests.MARK.parametrize(
         "consumer_source",
         [
             "import demo_pkg.service as module\nPublished = module.Alias\n",
@@ -751,7 +749,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         for path, source in originals.items():
             self._write_file(path, source)
 
-        with pytest.raises(RuntimeError, match="unsupported Rope"):
+        with u.Tests.raises(RuntimeError, match="unsupported Rope"):
             u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 names_by_file={source_file: {"Alias"}},
@@ -761,8 +759,8 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
         tm.that(typings_file.exists(), eq=existing_target)
 
-    @pytest.mark.parametrize("existing_target", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("existing_target", [False, True])
+    @c.Tests.MARK.parametrize(
         "mutation",
         [
             "__all__.append('Alias')",
@@ -791,7 +789,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             originals[destination] = "from __future__ import annotations\n"
         for path, content in originals.items():
             self._write_file(path, content)
-        with pytest.raises(RuntimeError, match="unsupported Rope"):
+        with u.Tests.raises(RuntimeError, match="unsupported Rope"):
             u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=root,
                 names_by_file={source: {"Alias"}},
@@ -800,7 +798,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
             tm.that(path.read_text(encoding="utf-8"), eq=original)
         tm.that(destination.exists(), eq=existing_target)
 
-    @pytest.mark.parametrize("scoped", [False, True])
+    @c.Tests.MARK.parametrize("scoped", [False, True])
     def test_relative_target_binding_conflict_rejects_typing_alias_cutover(
         self,
         tmp_path: Path,
@@ -829,7 +827,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingAliasMoves:
         for path, source in originals.items():
             self._write_file(path, source)
 
-        with pytest.raises(RuntimeError, match="ambiguous Rope target binding"):
+        with u.Tests.raises(RuntimeError, match="ambiguous Rope target binding"):
             u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
                 names_by_file={source_file: {"Alias"}},

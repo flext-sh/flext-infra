@@ -9,22 +9,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.codemod import FlextInfraCodemodAstScan, FlextInfraCodemodSemanticApply
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
-from tests import c, m, tm, u
+from flext_infra.transformers import FlextInfraTransformersSemantic
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraFailedInvocationProgress:
     """Failures preserve accepted progress and newer independent source states."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("copies", [1, 2])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("copies", [1, 2])
     def test_selected_apply_preserves_authenticated_module_absence(
-        mod_workspace: Path, capsys: pytest.CaptureFixture[str], copies: int
+        mod_workspace: Path, capsys: t.Tests.CaptureFixture[str], copies: int
     ) -> None:
         """Whole-module native absence survives selected token publication."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
@@ -58,10 +56,10 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.that(console, lacks="introduced whole-catalog finding occurrences")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_ast_scan_selects_two_exact_ids_without_prefix_matches(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """CSV selection elects exact rules, not regex or prefix neighbours."""
         selected = ("selection.first", "selection.second")
@@ -107,8 +105,8 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("selection", "diagnostic"),
         [
             ("missing-rule-id", "unknown codemod rule IDs"),
@@ -119,7 +117,7 @@ class TestsFlextInfraFailedInvocationProgress:
     )
     def test_ast_invalid_selection_fails_before_scan_or_effects(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         selection: str,
         diagnostic: str,
     ) -> None:
@@ -152,10 +150,10 @@ class TestsFlextInfraFailedInvocationProgress:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_ast_selected_apply_preserves_unmatched_ast_and_text_sources(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Selected authenticated fixes do not execute other rules or callbacks."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
@@ -254,11 +252,11 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.that(runtime.stderr, eq="")
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("apply", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("apply", [False, True])
     def test_default_ast_scan_and_apply_reject_warning_findings_without_fix(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         apply: bool,
     ) -> None:
@@ -306,10 +304,10 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_failed_selected_apply_keeps_native_cause_when_after_scan_fails(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A real receipt rejection retains accepted bytes and its primary cause."""
         tm.ok(u.Tests.create_python_environment(mod_workspace))
@@ -363,7 +361,7 @@ class TestsFlextInfraFailedInvocationProgress:
         tm.fail(before_paths[0].with_name("after.json").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_failed_mechanical_cycle_retains_accepted_rewrite(
         mod_workspace: Path,
     ) -> None:
@@ -409,7 +407,7 @@ class TestsFlextInfraFailedInvocationProgress:
         before = tm.ok(u.Cli.atomic_read_binary_file_state(accepted, required=True))
         stale = tm.ok(u.Cli.atomic_read_binary_file_state(unrelated, required=True))
         tm.ok(
-            FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+            FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 (
                     m.Infra.SemanticFilePlan(
                         project=mod_workspace,
@@ -429,7 +427,7 @@ class TestsFlextInfraFailedInvocationProgress:
             u.Cli.atomic_read_binary_file_state(accepted, required=True),
         )
 
-        outcome = FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+        outcome = FlextInfraTransformersSemantic.publish_semantic_file_plans(
             (
                 m.Infra.SemanticFilePlan(
                     project=mod_workspace,

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
-from tests import tm
+from tests import t, tm
 
 if TYPE_CHECKING:
-    import pytest
+    pass
 
 
 class TestsFlextInfraInfraMain:
@@ -35,7 +35,7 @@ class TestsFlextInfraInfraMain:
 
     @staticmethod
     def test_main_help_lists_core_groups(
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Test main help lists core groups."""
         tm.that(FlextInfraCli.infra_main(["--help"]), eq=0)

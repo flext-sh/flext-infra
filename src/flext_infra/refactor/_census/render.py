@@ -6,10 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from flext_infra import m
+from flext_infra import p
 
 
 class FlextInfraRefactorCensusRender:
@@ -20,7 +17,7 @@ class FlextInfraRefactorCensusRender:
     """
 
     @staticmethod
-    def _render_workspace_report(report: m.Infra.WorkspaceReport) -> str:
+    def _render_workspace_report(report: p.Infra.WorkspaceReport) -> str:
         """Render workspace census report from typed model fields.
 
         Returns:
@@ -34,6 +31,10 @@ class FlextInfraRefactorCensusRender:
             f"Unused: {report.unused_count}",
             f"Removal candidates: {report.removal_candidate_count}",
             f"Duplicate groups: {len(report.duplicates)}",
+            f"Aliases: {len(report.alias_census)}",
+            f"Duplicate declarations: {len(report.duplicate_census)}",
+            f"Shortest-form findings: {len(report.shortest_form_census)}",
+            f"Fixable rows: {report.census_fix_plan.expected_rescan}",
             f"Duration: {report.scan_duration_seconds:.2f}s",
             "",
         ]
@@ -68,10 +69,13 @@ class FlextInfraRefactorCensusRender:
                     f"@ {candidate.file_path}:{candidate.line}"
                     + (f" refs={reference_preview}" if reference_preview else ""),
                 )
+        if report.census_fix_plan.commands:
+            lines.extend(("", "Census cure commands:"))
+            lines.extend(f"- {command}" for command in report.census_fix_plan.commands)
         return "\n".join(lines)
 
     @staticmethod
-    def render_text(report: m.Infra.WorkspaceReport) -> str:
+    def render_text(report: p.Infra.WorkspaceReport) -> str:
         """Render the canonical workspace census report.
 
         Returns:

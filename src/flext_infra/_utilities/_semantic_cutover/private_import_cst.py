@@ -7,18 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import libcst as cst
 from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor, RemoveImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
-
-if TYPE_CHECKING:
-    from flext_infra import m
 
 
 class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
@@ -102,7 +99,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     class _PrivateImportTransformer(cst.CSTTransformer):
         METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 
-        def __init__(self, plan: m.Infra.PrivateImportRewritePlan) -> None:
+        def __init__(self, plan: p.Infra.PrivateImportRewritePlan) -> None:
             self.plan = plan
 
         @override
@@ -365,7 +362,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImportCst:
     def _rewrite_private_import_source(
         cls,
         source: str,
-        plan: m.Infra.PrivateImportRewritePlan,
+        plan: p.Infra.PrivateImportRewritePlan,
         *,
         runtime_public_imports: frozenset[str],
     ) -> str:

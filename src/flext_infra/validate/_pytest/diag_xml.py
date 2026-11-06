@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import MutableSequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, u
+from flext_infra import c, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,7 +70,7 @@ class FlextInfraValidatePytestDiagXml:
     @staticmethod
     def _process_testcase(
         case: p.Infra.XmlElementLike,
-        diag: m.Infra.DiagResult,
+        diag: p.Infra.DiagResult,
     ) -> tuple[float, str]:
         """Process a single testcase element; returns (seconds, label).
 
@@ -145,7 +145,7 @@ class FlextInfraValidatePytestDiagXml:
         )
 
     @staticmethod
-    def _parse_xml(junit_path: Path, diag: m.Infra.DiagResult) -> None:
+    def _parse_xml(junit_path: Path, diag: p.Infra.DiagResult) -> None:
         """Parse the required JUnit XML and populate diagnostics.
 
         Raises:

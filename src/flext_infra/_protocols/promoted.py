@@ -1,6 +1,6 @@
 """Promoted-command protocol contracts for flext-infra.
 
-Structural contracts for the frozen models in ``m.Infra.Promoted*`` — leaf
+Structural contracts for the frozen models in ``p.Infra.Promoted*`` — leaf
 code annotates with these protocols, never with the concrete models.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -13,6 +13,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from flext_cli import FlextCliProtocols
+
 
 @runtime_checkable
 class FlextInfraProtocolsPromoted(Protocol):
@@ -21,89 +23,135 @@ class FlextInfraProtocolsPromoted(Protocol):
     """flext-command registry protocol namespace."""
 
     @runtime_checkable
-    class PromotedParam(Protocol):
-        """Promoted command parameter contract."""
+    class PromotedParam(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> str: ...
+        def name(self) -> str:
+            """Parameter name."""
+            ...
 
         @property
-        def help(self) -> str: ...
+        def help(self) -> str:
+            """Parameter help text."""
+            ...
 
         @property
-        def required(self) -> bool: ...
+        def required(self) -> bool:
+            """Whether the parameter must be supplied."""
+            ...
 
         @property
-        def default(self) -> str: ...
+        def default(self) -> str:
+            """Default value applied when omitted."""
+            ...
 
         @property
-        def choices(self) -> tuple[str, ...]: ...
+        def choices(self) -> tuple[str, ...]:
+            """Accepted values; empty accepts any value."""
+            ...
 
     @runtime_checkable
-    class PromotedCommand(Protocol):
-        """Promoted command contract discovered from a script header."""
+    class PromotedCommand(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def verb(self) -> str: ...
+        def verb(self) -> str:
+            """Command verb."""
+            ...
 
         @property
-        def what(self) -> str: ...
+        def what(self) -> str:
+            """Command subject the verb acts on."""
+            ...
 
         @property
-        def domain(self) -> str: ...
+        def domain(self) -> str:
+            """Command domain grouping."""
+            ...
 
         @property
-        def summary(self) -> str: ...
+        def summary(self) -> str:
+            """One-line command summary."""
+            ...
 
         @property
-        def description(self) -> str: ...
+        def description(self) -> str:
+            """Long command description."""
+            ...
 
         @property
-        def example(self) -> str: ...
+        def example(self) -> str:
+            """Example invocation."""
+            ...
 
         @property
-        def path(self) -> Path: ...
+        def path(self) -> Path:
+            """Script that implements it."""
+            ...
 
         @property
-        def mutates(self) -> bool: ...
+        def mutates(self) -> bool:
+            """Whether the command mutates files."""
+            ...
 
         @property
-        def aliases(self) -> tuple[str, ...]: ...
+        def aliases(self) -> tuple[str, ...]:
+            """Alternate command names."""
+            ...
 
         @property
-        def params(self) -> tuple[FlextInfraProtocolsPromoted.PromotedParam, ...]: ...
+        def params(self) -> tuple[FlextInfraProtocolsPromoted.PromotedParam, ...]:
+            """Declared command parameters."""
+            ...
 
         @property
-        def rules(self) -> tuple[str, ...]: ...
+        def rules(self) -> tuple[str, ...]:
+            """Rules the command applies."""
+            ...
 
     @runtime_checkable
-    class PromotedAliasTarget(Protocol):
-        """Resolved command alias target contract."""
+    class PromotedAliasTarget(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def verb(self) -> str: ...
+        def verb(self) -> str:
+            """Target command verb."""
+            ...
 
         @property
-        def what(self) -> str: ...
+        def what(self) -> str:
+            """Target command subject."""
+            ...
 
     @runtime_checkable
-    class PromotedWorkspaceSpec(Protocol):
-        """Repository facts contract the promoted framework consumes."""
+    class PromotedWorkspaceSpec(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
-        def root(self) -> Path: ...
+        def root(self) -> Path:
+            """Repository root."""
+            ...
 
         @property
-        def scripts(self) -> Path: ...
+        def scripts(self) -> Path:
+            """Repository scripts root."""
+            ...
 
         @property
-        def local_python(self) -> Path: ...
+        def local_python(self) -> Path:
+            """Interpreter of the repository environment."""
+            ...
 
         @property
-        def submodule_script_roots(self) -> tuple[Path, ...]: ...
+        def submodule_script_roots(self) -> tuple[Path, ...]:
+            """Scripts roots of the composed submodules."""
+            ...
 
         @property
-        def consumer_scripts_root(self) -> Path | None: ...
+        def consumer_scripts_root(self) -> Path | None:
+            """Scripts root of the consuming repository."""
+            ...
 
     @runtime_checkable
     class PromotedRegistry(Protocol):

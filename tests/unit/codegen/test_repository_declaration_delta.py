@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
     """Preserve own declarations without projecting another repository's facts."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("field", "value"),
         [
             ("class_stem", "bad-name"),
@@ -41,11 +39,11 @@ class TestsFlextInfraRepositoryDeclarationDelta:
         payload = u.Tests.project_spec("identity-project").model_dump()
         payload[field] = value
 
-        with pytest.raises(ValueError, match="project declaration requires a Python"):
+        with u.Tests.raises(ValueError, match="project declaration requires a Python"):
             m.Infra.ProjectSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("field", "value"),
         [
             ("class_stem", "ProjectClass"),
@@ -92,7 +90,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
                     tm.ok(declaration.codegen is codegen)
 
     @staticmethod
-    @pytest.mark.parametrize("read_only", [False, True])
+    @c.Tests.MARK.parametrize("read_only", [False, True])
     def test_own_declarations_survive_public_model_roundtrip(
         tmp_path: Path,
         *,

@@ -6,16 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from tests import t, u
+from tests import c, t, u
 
 
 class TestsNativeObservationScaling:
     """Nested declaration inputs remain complete without repeated JSON escaping."""
 
     @staticmethod
-    @pytest.mark.parametrize("decorator", ["classmethod", "staticmethod"])
+    @c.Tests.MARK.parametrize("decorator", ["classmethod", "staticmethod"])
     def test_declared_writer_state_preserves_constant_and_code_checks(
         real_python_package: t.DirectoryPath,
         decorator: t.StrictStr,
@@ -40,7 +38,7 @@ class TestsNativeObservationScaling:
             f"    {receiver}.cache = ('different',)\n",
         )
         u.Tests.run_lazy_init_probe(
-            f"""from flext_infra import m
+            f"""from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -80,7 +78,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
             "    return Payload.value, Payload.value, Alias.value\n",
         )
         u.Tests.run_lazy_init_probe(
-            """from flext_infra import m
+            """from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -119,7 +117,7 @@ assert native.compare(before, native.capture(selection).unwrap()).failure
         )
         u.Tests.run_lazy_init_probe(
             """from pathlib import Path
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -166,7 +164,7 @@ assert native.compare(before, native.capture(selection, paths=mapping).unwrap())
             "    return module.optional if hasattr(module, 'optional') else None\n",
         )
         u.Tests.run_lazy_init_probe(
-            """from flext_infra import m
+            """from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -205,7 +203,7 @@ assert native.compare(before, native.capture(selection).unwrap()).unwrap() is Tr
             ),
         )
         u.Tests.run_lazy_init_probe(
-            f"""from flext_infra import m
+            f"""from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )
@@ -245,7 +243,7 @@ assert native.compare(deep, native.capture(large).unwrap()).failure
         u.Tests.write_package_init(root / "test_pkg", "\n".join(lines) + "\n")
         u.Tests.run_lazy_init_probe(
             """from types import CodeType
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra.workspace import (
     FlextInfraWorkspaceNativeReference as native,
 )

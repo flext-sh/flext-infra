@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
@@ -33,8 +33,8 @@ class FlextInfraGatesScanner(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Scan all Python files in ``project_dir`` and report detected issues.
 
         Returns:
@@ -79,11 +79,11 @@ class FlextInfraGatesScanner(FlextInfraGates):
         file_path: Path,
         project_dir: Path,
         rope_project: t.Infra.RopeProject,
-    ) -> Sequence[m.Infra.Issue]:
+    ) -> Sequence[p.Infra.Issue]:
         """Override in subclass to detect issues for a single file.
 
         Returns:
-            The resulting ``Sequence[m.Infra.Issue]``.
+            The resulting ``Sequence[p.Infra.Issue]``.
 
         """
         _ = file_path, project_dir, rope_project

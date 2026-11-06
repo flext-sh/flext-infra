@@ -16,9 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_cli import m, p, r, u
-
-from flext_infra import c
+from flext_infra import c, m, p, r, u
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import (
     FlextInfraModelsCodegenLazyInit,
@@ -97,6 +95,7 @@ class FlextInfraCodegenLazyInit(
                     and FlextInfraUtilitiesCodegenFilePlan.codegen_file_requires_effect(
                         plan
                     )
+                    and plan.path.parent / c.Infra.INIT_PY != destination
                     and plan.path.parent / c.Infra.INIT_PY in sources
                 }
                 files: dict[

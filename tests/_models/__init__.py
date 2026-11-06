@@ -7,20 +7,26 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
 
 if TYPE_CHECKING:
     from tests._models.base import TestsFlextInfraModelsBase
+    from tests._models.semantic_cutover import TestsFlextInfraModelsSemanticCutover
 
 
-__all__: tuple[str, ...] = ("TestsFlextInfraModelsBase",)
+__all__: tuple[str, ...] = (
+    "TestsFlextInfraModelsBase",
+    "TestsFlextInfraModelsSemanticCutover",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({"TestsFlextInfraModelsBase": ".base"}),
+    {
+        "TestsFlextInfraModelsBase": ".base",
+        "TestsFlextInfraModelsSemanticCutover": ".semantic_cutover",
+    },
     public_exports=__all__,
 )

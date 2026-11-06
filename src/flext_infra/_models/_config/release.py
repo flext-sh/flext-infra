@@ -12,8 +12,8 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra import c, p, t
+from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
 class FlextInfraModelsConfigRelease:
@@ -89,7 +89,14 @@ class FlextInfraModelsConfigRelease:
         overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec,
+                Annotated[
+                    p.Infra.ReleaseAutomationOverrideSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigRelease.ReleaseAutomationOverrideSpec
+                        )
+                    ),
+                ],
             ],
             m.Field(description="Per-distribution deviations from the shared contract"),
         ]
@@ -130,7 +137,7 @@ class FlextInfraModelsConfigRelease:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             strict=False,
             frozen=True,
             extra="forbid",
@@ -186,7 +193,15 @@ class FlextInfraModelsConfigRelease:
             ),
         ] = c.Infra.PYPI_UPLOAD_URL
         build_constraints: Annotated[
-            tuple[FlextInfraModelsConfigRelease.BuildConstraintSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.BuildConstraintSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigRelease.BuildConstraintSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(

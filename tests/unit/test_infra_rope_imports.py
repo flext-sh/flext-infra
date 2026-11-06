@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +19,7 @@ class TestsFlextInfraRopeImports:
     """Validate fail-fast behavior for Rope import utility wrappers."""
 
     @staticmethod
-    @pytest.mark.parametrize("statements", [False, True])
+    @c.Tests.MARK.parametrize("statements", [False, True])
     def test_projected_syntax_error_retains_source_resource(
         tmp_path: Path, *, statements: bool
     ) -> None:
@@ -38,7 +36,7 @@ class TestsFlextInfraRopeImports:
                 if statements
                 else u.Infra.source_import_targets
             )
-            with pytest.raises(u.Infra.rope_syntax_errors()) as rejected:
+            with u.Tests.raises(u.Infra.rope_syntax_errors()) as rejected:
                 inventory(rope.rope_project, planned, resource=resource)
             tm.that(str(rejected.value), has=f"<{resource.path}> line <3>")
             tm.that(str(rejected.value), has="unmatched ')'")
@@ -166,10 +164,10 @@ class TestsFlextInfraRopeImports:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("module_source", "expected_change"),
         [
-            pytest.param(
+            u.Tests.param(
                 (
                     "from __future__ import annotations\n\n"
                     "import os\n\n\n"
@@ -179,7 +177,7 @@ class TestsFlextInfraRopeImports:
                 False,
                 id="already-clean",
             ),
-            pytest.param(
+            u.Tests.param(
                 (
                     "from __future__ import annotations\n\n"
                     "import os\n"
@@ -215,37 +213,37 @@ class TestsFlextInfraRopeImports:
         tm.ok(result, eq=expected_change, is_=bool)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("module_source", "occurrence", "expected"),
         [
-            pytest.param(
+            u.Tests.param(
                 "from x import p\nclass A:\n    y = p.X\n", "p.X", True, id="class"
             ),
-            pytest.param(
+            u.Tests.param(
                 "from x import p\ndef f():\n    return p.Z\n",
                 "p.Z",
                 True,
                 id="function",
             ),
-            pytest.param(
+            u.Tests.param(
                 "if flag:\n    from x import p\nq = p.Y\n",
                 "p.Y",
                 False,
                 id="conditional",
             ),
-            pytest.param(
+            u.Tests.param(
                 "from x import p\nfrom y import p\nq = p.Y\n",
                 "p.Y",
                 False,
                 id="twice",
             ),
-            pytest.param(
+            u.Tests.param(
                 "def f():\n    from x import p\n    return p.Z\nq = p.Y\n",
                 "p.Y",
                 False,
                 id="local",
             ),
-            pytest.param("q = p.Y\nfrom x import p\n", "p.Y", False, id="later"),
+            u.Tests.param("q = p.Y\nfrom x import p\n", "p.Y", False, id="later"),
         ],
     )
     def test_single_module_import_binding_follows_python_scoping(

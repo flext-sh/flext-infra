@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models import (
     FlextInfraModelsGitLaneInputs,
     FlextInfraModelsGitLaneOwnership,
@@ -52,14 +52,14 @@ class FlextInfraModelsGit(
         origin: Annotated[
             str | None, m.Field(description="Native effective config origin")
         ]
-        value: Annotated[
-            str | None,
-            m.Field(
-                exclude=True, description="Private native config value for projection"
-            ),
-        ] = None
+        value: str | None = m.Field(
+            None, exclude=True, description="Private native config value for projection"
+        )
         process: Annotated[
-            m.Cli.ProcessOutcome, m.Field(description="Original native query outcome")
+            Annotated[
+                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
+            ],
+            m.Field(description="Original native query outcome"),
         ]
 
     class GitSigningIdentityReport(m.ContractModel):
@@ -84,7 +84,15 @@ class FlextInfraModelsGit(
             Path | None, m.Field(description="Declared public trust file, unread")
         ]
         observations: Annotated[
-            tuple[FlextInfraModelsGit.GitSigningConfigObservation, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GitSigningConfigObservation,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGit.GitSigningConfigObservation
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description="Native origin, scope and raw outcome for every setting"
             ),
@@ -99,11 +107,29 @@ class FlextInfraModelsGit(
             m.Field(description="Receipt capture time"),
         ]
         pull_requests: Annotated[
-            tuple[FlextInfraModelsGitLaneInputs.GitLanePullRequest, ...] | None,
+            tuple[
+                Annotated[
+                    p.Infra.GitLanePullRequest,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneInputs.GitLanePullRequest
+                    ),
+                ],
+                ...,
+            ]
+            | None,
             m.Field(description="Observed PRs; None means not selected/unknown"),
         ] = None
         beads: Annotated[
-            tuple[FlextInfraModelsGitLaneOwnership.GitLaneBead, ...] | None,
+            tuple[
+                Annotated[
+                    p.Infra.GitLaneBead,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneOwnership.GitLaneBead
+                    ),
+                ],
+                ...,
+            ]
+            | None,
             m.Field(description="Observed Beads; None means not selected/unknown"),
         ] = None
 
@@ -128,7 +154,15 @@ class FlextInfraModelsGit(
             m.Field(description="All refusals and inconclusive evidence"),
         ] = ()
         violations: Annotated[
-            tuple[FlextInfraModelsGitLaneInputs.GitLaneViolation, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GitLaneViolation,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneInputs.GitLaneViolation
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Classified violations from the single evaluator"),
         ] = ()
 
@@ -141,7 +175,15 @@ class FlextInfraModelsGit(
             m.Field(description="All stash commit identities"),
         ] = ()
         refs: Annotated[
-            tuple[FlextInfraModelsGitLaneInputs.GitLaneRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GitLaneRef,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsGitLaneInputs.GitLaneRef
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="All observed local and configured remote references"),
         ] = ()
         read_errors: Annotated[
@@ -158,6 +200,7 @@ class FlextInfraModelsGit(
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
         porcelain: Annotated[
             str,
+            t.StringConstraints(strip_whitespace=False),
             m.Field(description="Raw git status --porcelain output"),
         ]
         dirty: Annotated[bool, m.Field(description="Whether the worktree is dirty")]
@@ -230,7 +273,13 @@ class FlextInfraModelsGit(
             m.Field(description="Repository the registry was read for"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsGit.GitWorktreeEntry, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GitWorktreeEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsGit.GitWorktreeEntry),
+                ],
+                ...,
+            ],
             m.Field(description="Every registered worktree, primary first"),
         ]
         porcelain: Annotated[
@@ -261,13 +310,10 @@ class FlextInfraModelsGit(
         arbitrary pair; there is no separate pair verb.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         ancestor: Annotated[t.NonEmptyStr, m.Field(description="Candidate ancestor")]
-        descendant: Annotated[
-            t.NonEmptyStr,
-            m.Field(default="HEAD", description="Candidate descendant"),
-        ] = "HEAD"
+        descendant: t.NonEmptyStr = m.Field("HEAD", description="Candidate descendant")
 
     class GitPathPairRequest(GitRepoRequest):
         """Repository plus source/target relative paths."""
@@ -387,7 +433,7 @@ class FlextInfraModelsGit(
         Namespaces include ``refs/heads`` and ``refs/remotes/origin``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         namespace: Annotated[t.NonEmptyStr, m.Field(description="Ref namespace")]
 

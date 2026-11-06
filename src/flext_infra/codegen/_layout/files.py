@@ -69,7 +69,7 @@ class FlextInfraCodegenLayoutFiles:
         project_dir: Path,
         source: Path,
         rel: str,
-        finding: m.Infra.LayoutFinding | None = None,
+        finding: p.Infra.LayoutFinding | None = None,
     ) -> p.Result[tuple[t.Infra.LayoutStatus, str]]:
         """Move one entry under ``archive_root/<project>/`` (idempotent).
 

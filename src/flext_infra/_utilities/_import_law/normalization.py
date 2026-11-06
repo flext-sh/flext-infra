@@ -52,7 +52,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     1. Every import lives at module level; ``try/except ImportError`` guards
        become plain imports.
-    2. Imports follow the tooling layer order (settings, config, c, t, p, m,
+    2. Imports follow the tooling layer order (settings, config, c, p, t, p, m,
        u, other, base, services, api, cli): a reverse import read only in
        annotations moves under ``if TYPE_CHECKING:``; a reverse import read
        at runtime keeps its place and its finding, for manual repair.
@@ -98,9 +98,9 @@ class FlextInfraUtilitiesImportLawNormalization(
         files: Sequence[Path],
         *,
         sources: Mapping[Path, str],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites at this phase's declared result boundary.
 
         A typed failure of ``u.Infra.MOD_MODULE_FAILURE_TYPES`` born for
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             snapshot=snapshot,
         )
         if attempt.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(attempt)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(attempt)
         return attempt.value
 
     @classmethod
@@ -133,16 +133,16 @@ class FlextInfraUtilitiesImportLawNormalization(
         files: Sequence[Path],
         *,
         sources: Mapping[Path, str],
-        declared_files: tuple[m.Infra.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: p.Infra.WorkspaceSnapshot,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan import rewrites against the working sources.
 
         Returns:
             One plan per rewritten file, or the first planning failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         root = project_root.resolve()
         with ExitStack() as stack:
             source_project = FlextInfraUtilitiesRopeRuntime.snapshot_project(
@@ -278,7 +278,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             p.Infra.RopeSourceMemberResolver,
         ],
         runtime_diagnostics: MutableMapping[str, t.StrTuple] | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Normalize one elected cohort through its shared source resolver.
 
         Args:
@@ -296,8 +296,8 @@ class FlextInfraUtilitiesImportLawNormalization(
         """
         project_root, files = location
         source_project, import_graph, member_resolver = native
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        plans: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        plans: list[p.Infra.CodegenFilePlan] = []
         for path in files:
             source = sources[path]
             if source.startswith(c.Infra.AUTOGEN_HEADER):
@@ -315,7 +315,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 continue
             normalized_source = normalized.value
             before = (
-                r[m.Cli.AtomicFileState].ok(snapshot.sources[path].state)
+                r[p.Cli.AtomicFileState].ok(snapshot.sources[path].state)
                 if path in snapshot.sources
                 else FlextInfraUtilitiesCodegenFilePlan.codegen_target_snapshot(path)
             )
@@ -470,7 +470,7 @@ class FlextInfraUtilitiesImportLawNormalization(
         ],
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
-    ) -> p.Result[tuple[m.Infra.ImportLawPass | None, str]]:
+    ) -> p.Result[tuple[p.Infra.ImportLawPass | None, str]]:
         """Elect the namespace, authenticate the candidate and build one pass.
 
         Returns:
@@ -490,7 +490,7 @@ class FlextInfraUtilitiesImportLawNormalization(
             )
         )
         if located is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].ok(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].ok(
                 value=(None, source),
             )
         namespace_dir, module = located
@@ -501,23 +501,23 @@ class FlextInfraUtilitiesImportLawNormalization(
             project_root, namespace, sources=sources, source_project=inputs[2]
         )
         if root_exports is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 f"{namespace_dir} is a namespace without an owned package init",
             )
         if import_graph is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 "import normalization requires its captured runtime graph",
             )
         project = inputs[2]
         if project is None:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].fail(
+            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 "Import normalization requires its bound native source project",
             )
         candidate = cls._import_law_candidate_module(
             project, file_path, source, namespace
         )
         if candidate.failure:
-            return r[tuple[m.Infra.ImportLawPass | None, str]].from_failure(candidate)
+            return r[tuple[p.Infra.ImportLawPass | None, str]].from_failure(candidate)
         current = candidate.value
         tree = ast.parse(current, filename=str(file_path))
         parents = FlextInfraUtilitiesRopeAnalysis.ast_parent_map(tree)
@@ -555,16 +555,16 @@ class FlextInfraUtilitiesImportLawNormalization(
                 tree, parents, module, member_resolver
             ),
         )
-        return r[tuple[m.Infra.ImportLawPass | None, str]].ok(value=(state, current))
+        return r[tuple[p.Infra.ImportLawPass | None, str]].ok(value=(state, current))
 
     @classmethod
     def _import_law_refreshed_tree(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         current: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
-    ) -> m.Infra.ImportLawPass:
+    ) -> p.Infra.ImportLawPass:
         """Re-parse the evolved candidate so the next pass owns its live lines.
 
         The pass state's tree, parent map and bindings describe the source
@@ -682,7 +682,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_runtime_diagnostics(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> t.StrTuple:
         """Describe the existing classifier's reads without changing placement.
 
@@ -724,7 +724,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_one_pass(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         sources: Mapping[Path, str] | None = None,
@@ -762,7 +762,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_first_rewrite(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         sources: Mapping[Path, str] | None,
@@ -834,7 +834,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @staticmethod
     def _import_law_validate_transition(
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         candidate: str,
         edits: Sequence[tuple[int, int, Sequence[str]]],
     ) -> p.Result[bool]:
@@ -859,7 +859,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_own_family_candidate(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         source: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver | None,
@@ -883,30 +883,20 @@ class FlextInfraUtilitiesImportLawNormalization(
                 "Own-family repair requires native source identity; use make mod",
             )
         routes: dict[t.StrTuple, tuple[str, str, str]] = {}
+        upstream: dict[str, str] = {}
         for bound, (module, name) in elected.items():
-            paths = cls._import_law_consumed_facade_paths(state, bound)
-            if not paths:
-                return r[str].fail(
-                    "Own-family facade-value reads require make mod: "
-                    f"path={scope.file_path} binding={bound} "
-                    f"provider={module}.{name} "
-                    f"published_by={state.root_exports.get(name)}",
-                )
-            for path in paths:
-                route = cls._import_law_own_family_route(
-                    state,
-                    f"{module}.{name}.{'.'.join(path)}",
-                    path[-1],
-                    member_resolver=member_resolver,
-                )
-                if any(
-                    owner == route[1] and provider != route[0]
-                    for provider, owner, _ in routes.values()
-                ):
-                    return r[str].fail(
-                        "Own-family exports have competing bindings; use make mod",
-                    )
-                routes[bound, *path] = route
+            providers = cls._import_law_own_family_binding_providers(
+                state,
+                (bound, module, name),
+                routes,
+                member_resolver=member_resolver,
+            )
+            if providers.failure:
+                return r[str].from_failure(providers)
+            if providers.value and not cls._import_law_binds_from(
+                state, bound, next(iter(providers.value))
+            ):
+                upstream[bound] = next(iter(providers.value))
         cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
             scope.project_root,
@@ -915,17 +905,81 @@ class FlextInfraUtilitiesImportLawNormalization(
         ) as (project, _sources):
             return r[str].ok(
                 value=FlextInfraUtilitiesSemanticCutoverOwnMro.rewrite_own_family_members(
-                    source,
+                    (project, scope.file_path, source),
                     routes,
                     {bound: route[0] for bound, route in elected.items()},
-                    source_project=project,
-                    file_path=scope.file_path,
+                    local_module=scope.module,
+                    upstream=upstream,
                 ),
             )
 
     @classmethod
+    def _import_law_own_family_binding_providers(
+        cls,
+        state: p.Infra.ImportLawPass,
+        binding: tuple[str, str, str],
+        routes: MutableMapping[t.StrTuple, tuple[str, str, str]],
+        *,
+        member_resolver: p.Infra.RopeSourceMemberResolver,
+    ) -> p.Result[frozenset[str]]:
+        """Route every consumed facade path of one elected own-family binding.
+
+        Declaring routes are recorded in ``routes``; paths declared upstream
+        contribute the upstream package that publishes the letter.
+
+        Returns:
+            The upstream providers of the binding (at most one), or the typed
+            failure of an unroutable or ambiguous reference.
+
+        """
+        scope = state.scope
+        bound, module, name = binding
+        paths = cls._import_law_consumed_facade_paths(state, bound)
+        if not paths:
+            return r[frozenset[str]].fail(
+                "Own-family facade-value reads have no declaring route: "
+                f"path={scope.file_path} binding={bound} "
+                f"provider={module}.{name} "
+                f"published_by={state.root_exports.get(name)}",
+            )
+        providers: set[str] = set()
+        for path in paths:
+            qualified = f"{module}.{name}.{'.'.join(path)}"
+            route = cls._import_law_own_family_route(
+                state,
+                qualified,
+                path[-1],
+                member_resolver=member_resolver,
+            )
+            if route is None:
+                # Declared upstream: the route keeps the letter, bound to
+                # the upstream package that publishes it (ADR-028 D10).
+                providers.add(
+                    cls._import_law_upstream_letter_provider(
+                        state, member_resolver(qualified), name
+                    )
+                )
+                continue
+            if any(
+                owner == route[1] and provider != route[0]
+                for provider, owner, _ in routes.values()
+            ):
+                return r[frozenset[str]].fail(
+                    "Own-family exports have competing declaring owners: "
+                    f"path={scope.file_path} owner={route[1]}",
+                )
+            routes[bound, *path] = route
+        if len(providers) > 1:
+            return r[frozenset[str]].fail(
+                "Own-family upstream routes need more than one provider: "
+                f"path={scope.file_path} binding={bound} "
+                f"providers={sorted(providers)}",
+            )
+        return r[frozenset[str]].ok(value=frozenset(providers))
+
+    @classmethod
     def _import_law_own_family_imports(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> Mapping[str, tuple[str, str]]:
         """Elect root imports that the existing own-family boundary rejects.
 
@@ -968,16 +1022,21 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_own_family_route(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         qualified: str,
         member: str,
         *,
         member_resolver: p.Infra.RopeSourceMemberResolver,
-    ) -> tuple[str, str, str]:
-        """Prove a member and its exported declaring owner share native identities.
+    ) -> tuple[str, str, str] | None:
+        """Prove a member and its declaring owner share native identities.
+
+        A member declared in the module itself is spelled through its local
+        class; one declared in another module of the own package through that
+        module's family package; one declared upstream keeps the letter route.
 
         Returns:
-            Published module, declaring owner and relative member path.
+            Import target (the module itself for a local owner), declaring
+            owner and relative member path; ``None`` for an upstream member.
 
         Raises:
             ValueError: The native member or exported owner changes identity.
@@ -985,17 +1044,27 @@ class FlextInfraUtilitiesImportLawNormalization(
         """
         project = state.source_project
         if project is None:
-            message = "Own-family repair requires a native project; use make mod"
+            message = "Own-family repair requires a native project"
             raise ValueError(message)
         before = member_resolver(qualified)
-        holder, owners = cls._import_law_own_family_owner(before, state.scope.module)
-        module = holder.get_name().rpartition(".")[0]
+        holder, owners = cls._import_law_own_family_owner(before)
+        declaring = holder.get_name()
+        namespace = state.scope.namespace
+        if declaring != namespace and not declaring.startswith(f"{namespace}."):
+            return None
+        suffix = ".".join((*owners[1:], member))
+        if declaring == state.scope.module:
+            after = member_resolver(f"{declaring}.{owners[0]}.{suffix}")
+            if not FlextInfraUtilitiesRopeRuntime.same_name(before, after):
+                message = "Own-family local spelling changes native identity"
+                raise ValueError(message)
+            return declaring, owners[0], suffix
+        module = declaring.rpartition(".")[0]
         cls._import_law_own_family_publication(state, project, module, owners[0])
         exported = cls.resolve_declared_binding(
-            project, module, owners[0], state.scope.project_root, state.sources or {}
+            project, (module, owners[0]), state.scope.project_root, state.sources or {}
         )
         declared = holder.get_scope().get_defined_names().get(owners[0])
-        suffix = ".".join((*owners[1:], member))
         after = member_resolver(f"{module}.{owners[0]}.{suffix}")
         if (
             exported is None
@@ -1003,13 +1072,68 @@ class FlextInfraUtilitiesImportLawNormalization(
             or not FlextInfraUtilitiesRopeRuntime.same_name(exported, declared)
             or not FlextInfraUtilitiesRopeRuntime.same_name(before, after)
         ):
-            message = "Own-family replacement changes native identity; use make mod"
+            message = "Own-family replacement changes native identity"
             raise ValueError(message)
         return module, owners[0], suffix
 
+    @classmethod
+    def _import_law_upstream_letter_provider(
+        cls,
+        state: p.Infra.ImportLawPass,
+        binding: p.Infra.RopePyName,
+        letter: str,
+    ) -> str:
+        """Elect the upstream package that publishes the letter for a member.
+
+        The provider is the deepest enclosing package of the member's declaring
+        module whose native publication binds the letter.
+
+        Returns:
+            The upstream package name.
+
+        Raises:
+            ValueError: No enclosing package publishes the letter.
+
+        """
+        project = state.source_project
+        holder, _owners = cls._import_law_own_family_owner(binding)
+        parts = holder.get_name().split(".")
+        for size in range(len(parts) - 1, 0, -1):
+            package = ".".join(parts[:size])
+            if project is not None and cls.resolve_declared_binding(
+                project,
+                (package, letter),
+                state.scope.project_root,
+                state.sources or {},
+            ):
+                return package
+        message = (
+            f"No upstream package publishes letter {letter} for "
+            f"{holder.get_name()}: {state.scope.file_path}"
+        )
+        raise ValueError(message)
+
+    @classmethod
+    def _import_law_binds_from(
+        cls, state: p.Infra.ImportLawPass, bound: str, provider: str
+    ) -> bool:
+        """Return whether the module already binds a name from one provider.
+
+        Returns:
+            Whether an absolute ``from provider import`` binds ``bound``.
+
+        """
+        return any(
+            isinstance(node, ast.ImportFrom)
+            and not node.level
+            and node.module == provider
+            and any((alias.asname or alias.name) == bound for alias in node.names)
+            for node in cls._import_law_iter_imports(state.tree)
+        )
+
     @staticmethod
     def _import_law_own_family_owner(
-        binding: p.Infra.RopePyName, current_module: str
+        binding: p.Infra.RopePyName,
     ) -> tuple[p.Infra.RopeParsedModule, t.StrTuple]:
         """Read enclosing native class scopes at the exact declaration location.
 
@@ -1017,12 +1141,12 @@ class FlextInfraUtilitiesImportLawNormalization(
             Declaring native module and nonempty outer-to-inner class path.
 
         Raises:
-            ValueError: The declaration is unresolved, self-owned or not in a facade.
+            ValueError: The declaration is unresolved or not in a class.
 
         """
         holder, line = binding.get_definition_location()
-        if holder is None or line is None or holder.get_name() == current_module:
-            message = "Own-family repair has an unresolved or self owner; use make mod"
+        if holder is None or line is None:
+            message = "Own-family member declaration is unresolved"
             raise ValueError(message)
         scope = holder.get_scope().get_inner_scope_for_line(line)
         if scope.get_start() == line:
@@ -1032,13 +1156,13 @@ class FlextInfraUtilitiesImportLawNormalization(
             owners.append(scope.pyobject.get_name())
             scope = scope.parent
         if not owners:
-            message = "Own-family member has no declaring facade; use make mod"
+            message = "Own-family member has no declaring class"
             raise ValueError(message)
         return holder, tuple(reversed(owners))
 
     @staticmethod
     def _import_law_own_family_publication(
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         project: p.Infra.RopeProject,
         module: str,
         owner: str,
@@ -1136,7 +1260,7 @@ class FlextInfraUtilitiesImportLawNormalization(
     @classmethod
     def _import_law_outside_boundary(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         node: ast.Import | ast.ImportFrom,
         *,
         runtime_only: bool,
@@ -1159,7 +1283,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_validate_import_boundary(
-        cls, state: m.Infra.ImportLawPass
+        cls, state: p.Infra.ImportLawPass
     ) -> p.Result[bool]:
         """Reject forbidden dependencies before hoisting, deferral or routing.
 
@@ -1256,7 +1380,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def import_law_layer_zero_helper(
-        cls, state: m.Infra.ImportLawPass, target: str
+        cls, state: p.Infra.ImportLawPass, target: str
     ) -> bool:
         """Prove an own helper against the complete native candidate dependency graph.
 
@@ -1291,7 +1415,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _layer_zero_module_edges(
-        cls, state: m.Infra.ImportLawPass, module: str
+        cls, state: p.Infra.ImportLawPass, module: str
     ) -> frozenset[str] | None:
         """Resolve one module's authenticated foundation dependencies.
 
@@ -1347,7 +1471,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
     @classmethod
     def _import_law_layer_zero_edges(
-        cls, state: m.Infra.ImportLawPass, module: str, tree: ast.Module
+        cls, state: p.Infra.ImportLawPass, module: str, tree: ast.Module
     ) -> frozenset[str] | None:
         """Read native helper dependencies, including type-checking-only imports.
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 
@@ -20,14 +20,14 @@ class FlextInfraUtilitiesDocsScopeSelection:
     @staticmethod
     def _selected_project_scopes(
         repository_root: Path,
-        discovered: Sequence[m.Infra.ProjectInfo],
+        discovered: Sequence[p.Infra.ProjectInfo],
         selected_names: Sequence[str],
         output_dir: Path | str,
-    ) -> Sequence[m.Infra.DocScope]:
+    ) -> Sequence[p.Infra.DocScope]:
         """Build docs scopes for selected project names.
 
         Returns:
-            The resulting ``Sequence[m.Infra.DocScope]``.
+            The resulting ``Sequence[p.Infra.DocScope]``.
 
         Raises:
             ValueError: If a requested documentation scope does not resolve.
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
         project_by_name = FlextInfraUtilitiesDocsScopeSelection._project_by_name(
             discovered,
         )
-        scopes: list[m.Infra.DocScope] = []
+        scopes: list[p.Infra.DocScope] = []
         for name in selected_names:
             scope = FlextInfraUtilitiesDocsScopeSelection._selected_scope(
                 repository_root,
@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
         name: str,
         project_by_name: MutableMapping[str, m.Infra.ProjectInfo],
         output_dir: Path | str,
-    ) -> m.Infra.DocScope | None:
+    ) -> p.Infra.DocScope | None:
         """Build one selected scope from discovery or a local path.
 
         Returns:
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
 
     @staticmethod
     def _project_by_name(
-        discovered: Sequence[m.Infra.ProjectInfo],
+        discovered: Sequence[p.Infra.ProjectInfo],
     ) -> MutableMapping[str, m.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names.
 
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
         repository_root: Path,
         name: str,
         output_dir: Path | str,
-    ) -> m.Infra.DocScope | None:
+    ) -> p.Infra.DocScope | None:
         """Build a selected path scope when it is a local pyproject project.
 
         Returns:
@@ -159,10 +159,10 @@ class FlextInfraUtilitiesDocsScopeSelection:
     @staticmethod
     def _doc_scope(
         *,
-        project: m.Infra.ProjectInfo,
+        project: p.Infra.ProjectInfo,
         output_dir: Path | str,
         repository_root: Path,
-    ) -> m.Infra.DocScope:
+    ) -> p.Infra.DocScope:
         """Build one canonical docs scope model.
 
         Returns:
@@ -191,7 +191,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
         output_dir: Path | str,
         *,
         repository_root: Path,
-    ) -> m.Infra.DocScope:
+    ) -> p.Infra.DocScope:
         """Build docs scope for a governed project root.
 
         Returns:

@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraModTextPublication:
@@ -66,7 +64,7 @@ class TestsFlextInfraModTextPublication:
         ).unwrap()
         originals = (first.read_bytes(), second.read_bytes())
 
-        with pytest.raises(SyntaxError) as rejected:
+        with u.Tests.raises(SyntaxError) as rejected:
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.that(rejected.value.filename, eq=str(first))
         tm.that(rejected.value.text, has="value =")
@@ -162,7 +160,7 @@ class TestsFlextInfraModTextPublication:
         """A decoding failure escapes with its native cause before any effect."""
         first, second = self._publication_inputs(mod_workspace)
         second.write_bytes(b"\xff")
-        with pytest.raises(UnicodeDecodeError):
+        with u.Tests.raises(UnicodeDecodeError):
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.that(first.read_bytes(), eq=b'value = "before"\n')
@@ -198,9 +196,9 @@ class TestsFlextInfraModTextPublication:
             for rule in tm.ok(FlextInfraModTextGateEngine.load_rules(mod_workspace))
             if rule.rule_id == "malformed-second"
         )
-        with pytest.raises(SyntaxError) as expected:
+        with u.Tests.raises(SyntaxError) as expected:
             compile(f"{malformed_rule.replace}\n", str(second), "exec")
-        with pytest.raises(SyntaxError) as rejected:
+        with u.Tests.raises(SyntaxError) as rejected:
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
         tm.that(rejected.value.args, eq=expected.value.args)
         tm.that(rejected.value.filename, eq=expected.value.filename)
@@ -304,7 +302,7 @@ class TestsFlextInfraModTextPublication:
         tm.that(final.findings, eq=0)
         # This optional migration precondition deliberately does not promise
         # idempotence once the invocation has consumed its exact matches.
-        with pytest.raises(
+        with u.Tests.raises(
             RuntimeError, match=r"expected 1 finding\(s\), scan produced 0"
         ):
             FlextInfraModTextGateEngine.scan(
@@ -320,7 +318,7 @@ class TestsFlextInfraModTextPublication:
         tm.that(rewritten, lacks="serialization_lock_execute(paths, timeout)")
 
     @staticmethod
-    @pytest.mark.parametrize("fix", [False, True])
+    @c.Tests.MARK.parametrize("fix", [False, True])
     def test_scan_requires_declared_receipt_to_match_exactly(
         mod_workspace: Path,
         *,
@@ -340,7 +338,7 @@ class TestsFlextInfraModTextPublication:
             ),
         )
         original = (mod_workspace / "sample.py").read_bytes()
-        with pytest.raises(RuntimeError, match=r"expected 2 finding\(s\), scan"):
+        with u.Tests.raises(RuntimeError, match=r"expected 2 finding\(s\), scan"):
             FlextInfraModTextGateEngine.scan(
                 mod_workspace,
                 fix=fix,
@@ -393,8 +391,8 @@ class TestsFlextInfraModTextPublication:
         valid = tm.ok(FlextInfraModTextGateEngine.load_rules(mod_workspace))
         tm.ok({"first", "second"} <= {rule.rule_id for rule in valid})
 
-    @pytest.mark.parametrize("scope", ["include", "exclude"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("scope", ["include", "exclude"])
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "'src/**'",
@@ -492,7 +490,7 @@ class TestsFlextInfraModTextPublication:
             eq=0,
         )
 
-    @pytest.mark.parametrize("scopes", ["", "    include: []\n    exclude: []\n"])
+    @c.Tests.MARK.parametrize("scopes", ["", "    include: []\n    exclude: []\n"])
     def test_omitted_and_empty_scopes_preserve_typed_defaults(
         self,
         mod_workspace: Path,

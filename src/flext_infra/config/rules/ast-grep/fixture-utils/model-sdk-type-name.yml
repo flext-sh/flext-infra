@@ -1,0 +1,8 @@
+# Fixture value of the generated `model-sdk-type-name` utility: the library
+# type names `t` owns as an alias of the library object and that `p` or `m`
+# re-spells. The fixture models `ConfigDocument` and `Infra.FacadeFamily` are
+# first-party and stay with their protocol twin.
+id: model-sdk-type-name
+language: Python
+rule:
+  regex: "^(?:p|m)\\.(?:BaseModel|ConfigDict|InstanceOf|SettingsConfigDict|TypeAdapter)$"

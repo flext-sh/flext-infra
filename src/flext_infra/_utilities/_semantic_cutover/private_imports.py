@@ -10,7 +10,7 @@ import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import m, r, t
+from flext_infra import m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesPrivateImportAncestry,
@@ -26,8 +26,6 @@ from flext_infra._utilities._semantic_cutover import (
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesSemanticCutoverPrivateImports(
@@ -65,7 +63,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @staticmethod
     def _imported_public_aliases(
         node: ast.ImportFrom,
-        plan: m.Infra.PrivateImportRewritePlan,
+        plan: p.Infra.PrivateImportRewritePlan,
     ) -> set[str]:
         """Return the facade aliases one import-from statement contributes.
 
@@ -99,7 +97,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _runtime_public_aliases(
         cls,
         tree: ast.Module,
-        plan: m.Infra.PrivateImportRewritePlan,
+        plan: p.Infra.PrivateImportRewritePlan,
     ) -> frozenset[str]:
         """Return facades required outside a ``TYPE_CHECKING`` boundary.
 
@@ -119,7 +117,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     @classmethod
     def _cross_owner_statements(
         cls,
-        live_findings: Sequence[m.Infra.ModOccurrence],
+        live_findings: Sequence[p.Infra.ModOccurrence],
     ) -> tuple[str, ...]:
         """Return the cross-owner private import texts among live findings.
 
@@ -275,7 +273,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
     def _finding_import_specs(
         cls,
         root: Path,
-        live_findings: Sequence[m.Infra.ModOccurrence],
+        live_findings: Sequence[p.Infra.ModOccurrence],
         facades: Mapping[
             str,
             tuple[tuple[ast.Module, str, str, str], ...],
@@ -358,7 +356,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
+        findings: Sequence[p.Infra.ModOccurrence],
         *,
         project: p.Infra.RopeProject,
     ) -> t.Infra.PrivateImportReferences:
@@ -392,7 +390,7 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        finding: m.Infra.ModOccurrence,
+        finding: p.Infra.ModOccurrence,
     ) -> bool:
         """Reject a preflight import already moved by an earlier semantic phase.
 
@@ -425,17 +423,17 @@ class FlextInfraUtilitiesSemanticCutoverPrivateImports(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
+        findings: Sequence[p.Infra.ModOccurrence],
         *,
         project: p.Infra.RopeProject,
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan binding-aware public import rewrites.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.SemanticMigrationEdit], ...],``.
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit], ...],``.
 
         """
-        planned_edits = r[tuple[m.Infra.SemanticMigrationEdit, ...]]
+        planned_edits = r[tuple[p.Infra.SemanticMigrationEdit, ...]]
         specs, direct_specs, facades = cls._private_import_references(
             root,
             sources,

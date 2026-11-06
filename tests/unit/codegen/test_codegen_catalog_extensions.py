@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenCatalogExtensions:
@@ -46,7 +44,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         *,
         path: str,
         role: c.Infra.MakeProfile,
-    ) -> m.Infra.RepositoryRef:
+    ) -> p.Infra.RepositoryRef:
         reference = u.Tests.repository_ref(name, path=Path(path), role=role)
         is_standalone = role is c.Infra.MakeProfile.STANDALONE
         return reference.model_copy(
@@ -56,7 +54,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
     @staticmethod
     def _member_remote(
         tmp_path: Path,
-        member: m.Infra.RepositoryRef,
+        member: p.Infra.RepositoryRef,
     ) -> tuple[Path, str]:
         """Publish one governed member source as a bare provider remote.
 
@@ -101,7 +99,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
 
     @staticmethod
     def _attach_member_submodule(
-        repository_root: Path, member: m.Infra.RepositoryRef, remote: tuple[Path, str]
+        repository_root: Path, member: p.Infra.RepositoryRef, remote: tuple[Path, str]
     ) -> Path:
         """Attach the governed member submodule and publish its remote ref.
 
@@ -213,7 +211,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(line.organization, eq=provider.organization)
 
     @staticmethod
-    @pytest.mark.parametrize("group", ["dev", "codegen", "DeV", "CODEGEN"])
+    @c.Tests.MARK.parametrize("group", ["dev", "codegen", "DeV", "CODEGEN"])
     def test_flext_line_ignores_only_generated_group_occurrences(
         tmp_path: Path,
         group: str,
@@ -264,7 +262,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "groups",
         ["", "[dependency-groups]\n", '[dependency-groups]\nqa = ["authored>=1"]\n'],
     )
@@ -284,7 +282,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("group", "comment"),
         [
             ("dev", ""),
@@ -328,7 +326,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("infra_first", [False, True])
+    @c.Tests.MARK.parametrize("infra_first", [False, True])
     def test_infra_authority_preserves_distinct_distribution_refs(
         tmp_path: Path,
         *,
@@ -361,7 +359,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("requirements", "error"),
         [
             (
@@ -439,7 +437,7 @@ class TestsFlextInfraCodegenCatalogExtensions:
         tm.that(result.error, has="conflicting flext-* line sources")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "section",
         [
             None,

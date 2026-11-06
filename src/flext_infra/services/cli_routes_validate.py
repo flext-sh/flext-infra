@@ -6,148 +6,145 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from typing import ClassVar
-
-from flext_infra import c, infra, m, u
-from flext_infra.docs import (
-    FlextInfraDocAuditor,
-    FlextInfraDocBuilder,
-    FlextInfraDocCollector,
-    FlextInfraDocFixer,
-    FlextInfraDocFormatter,
-    FlextInfraDocGenerator,
-    FlextInfraDocServer,
-    FlextInfraDocValidator,
-)
-from flext_infra.maintenance import (
-    FlextInfraMaintenanceClean,
-    FlextInfraMaintenancePythonVersion,
-    FlextInfraMaintenanceSonarcloud,
-    FlextInfraMaintenanceSonarcloudIssues,
-)
-from flext_infra.services import FlextInfraValidationCommandRoutes
+from flext_infra import c, docs, infra, m, maintenance, p, services, u
+from flext_infra.docs import FlextInfraDocAuditor
 
 
-class FlextInfraValidationRoutes(FlextInfraValidationCommandRoutes):
+class FlextInfraValidationRoutes:
     """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
-    validation_routes: ClassVar[
-        MutableMapping[str, tuple[m.Cli.ResultCommandRoute, ...]]
-    ] = {
-        c.Infra.CLI_GROUP_DOCS: (
-            m.Cli.ResultCommandRoute(
-                name="collect",
-                help_text=(
-                    "Collect associated plan sources "
-                    "and publish authenticated projections"
-                ),
-                model_cls=m.Infra.DocsCollectRequest,
-                handler=FlextInfraDocCollector.collect,
-                success_message="Configured plan sources collected and published",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="generate",
-                help_text="Generate project docs through the publication transaction",
-                model_cls=m.Infra.DocsGenerateRequest,
-                handler=FlextInfraDocGenerator.execute_request,
-                success_formatter=lambda reports: (
-                    u.Cli.json_dumps(u.normalize_to_json_value(reports)).value
-                ),
-                success_message="Generated documentation committed and verified",
-            ),
-            m.Cli.ResultCommandRoute(
-                name="fmt",
-                help_text=(
-                    "Format documentation through the canonical markdown-format gate"
-                ),
-                model_cls=FlextInfraDocFormatter,
-                handler=infra.docs_format,
-                success_message="Format completed successfully",
-            ),
-            *tuple(
+    @staticmethod
+    def routes_for(group: str) -> tuple[p.Cli.ResultCommandRoute, ...]:
+        """Construct only the selected public command family.
+
+        Returns:
+            Every declared route of the selected family.
+
+        Raises:
+            KeyError: If this owner does not declare the family.
+
+        """
+        if group == c.Infra.CLI_GROUP_VALIDATE:
+            return services.FlextInfraValidationCommandRoutes.validate_command_routes
+        if group == c.Infra.CLI_GROUP_DOCS:
+            return (
                 m.Cli.ResultCommandRoute(
-                    name=route_name,
-                    help_text=help_text,
-                    model_cls=model_cls,
-                    handler=model_cls.execute_command,
-                    success_message=success_message,
-                )
-                for route_name, help_text, model_cls, success_message in (
-                    (
-                        "audit",
-                        "Audit documentation for broken links and forbidden terms",
-                        FlextInfraDocAuditor,
-                        "Audit completed successfully",
+                    name="collect",
+                    help_text=(
+                        "Collect associated plan sources "
+                        "and publish authenticated projections"
                     ),
-                    (
-                        "fix",
-                        "Fix documentation issues",
-                        FlextInfraDocFixer,
-                        "Fix completed successfully",
-                    ),
-                    (
-                        "build",
-                        "Build MkDocs sites",
-                        FlextInfraDocBuilder,
-                        "Build completed successfully",
-                    ),
-                    (
-                        "serve",
-                        "Serve one MkDocs site in dev mode (blocking preview)",
-                        FlextInfraDocServer,
-                        "Serve completed successfully",
-                    ),
-                    (
-                        "validate",
-                        "Validate documentation",
-                        FlextInfraDocValidator,
-                        "Validate completed successfully",
-                    ),
-                )
-            ),
-        ),
-        c.Infra.CLI_GROUP_MAINTENANCE: (
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_RUN,
-                help_text="Enforce Python version constraints",
-                model_cls=FlextInfraMaintenancePythonVersion,
-                handler=FlextInfraMaintenancePythonVersion.execute_command,
-                success_message="Maintenance completed",
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_CLEAN,
-                help_text=(
-                    "Report or remove declared disposables owned by this repository"
+                    model_cls=m.Infra.DocsCollectRequest,
+                    handler=docs.FlextInfraDocCollector.collect,
+                    success_message="Configured plan sources collected and published",
                 ),
-                model_cls=FlextInfraMaintenanceClean,
-                handler=FlextInfraMaintenanceClean.execute_command,
-                success_message="Clean completed",
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_SONARCLOUD_SYNC,
-                help_text=(
-                    "Write the SSOT SonarCloud issue exclusions to the server-side "
-                    "project settings (requires SONAR_TOKEN)"
+                m.Cli.ResultCommandRoute(
+                    name="generate",
+                    help_text="Generate project docs through the publication "
+                    "transaction",
+                    model_cls=m.Infra.DocsGenerateRequest,
+                    handler=docs.FlextInfraDocGenerator.execute_request,
+                    success_formatter=lambda reports: (
+                        u.Cli.json_dumps(u.normalize_to_json_value(reports)).value
+                    ),
+                    success_message="Generated documentation committed and verified",
                 ),
-                model_cls=FlextInfraMaintenanceSonarcloud,
-                handler=FlextInfraMaintenanceSonarcloud.execute_command,
-                success_message="SonarCloud issue exclusions match the SSOT",
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_SONARCLOUD_ISSUES,
-                help_text=(
-                    "Read unresolved new-code SonarCloud issues (requires SONAR_TOKEN)"
+                m.Cli.ResultCommandRoute(
+                    name="fmt",
+                    help_text=(
+                        "Format documentation through the canonical markdown-format "
+                        "gate"
+                    ),
+                    model_cls=docs.FlextInfraDocFormatter,
+                    handler=infra.docs_format,
+                    success_message="Format completed successfully",
                 ),
-                model_cls=FlextInfraMaintenanceSonarcloudIssues,
-                handler=FlextInfraMaintenanceSonarcloudIssues.execute_command,
-                success_message="SonarCloud issue search completed",
-            ),
-        ),
-        c.Infra.CLI_GROUP_VALIDATE: (
-            FlextInfraValidationCommandRoutes.validate_command_routes
-        ),
-    }
+                *tuple(
+                    m.Cli.ResultCommandRoute(
+                        name=route_name,
+                        help_text=help_text,
+                        model_cls=model_cls,
+                        handler=model_cls.execute_command,
+                        success_message=success_message,
+                    )
+                    for route_name, help_text, model_cls, success_message in (
+                        (
+                            "audit",
+                            "Audit documentation for broken links and forbidden terms",
+                            FlextInfraDocAuditor,
+                            "Audit completed successfully",
+                        ),
+                        (
+                            "fix",
+                            "Fix documentation issues",
+                            docs.FlextInfraDocFixer,
+                            "Fix completed successfully",
+                        ),
+                        (
+                            "build",
+                            "Build MkDocs sites",
+                            docs.FlextInfraDocBuilder,
+                            "Build completed successfully",
+                        ),
+                        (
+                            "serve",
+                            "Serve one MkDocs site in dev mode (blocking preview)",
+                            docs.FlextInfraDocServer,
+                            "Serve completed successfully",
+                        ),
+                        (
+                            "validate",
+                            "Validate documentation",
+                            docs.FlextInfraDocValidator,
+                            "Validate completed successfully",
+                        ),
+                    )
+                ),
+            )
+        if group == c.Infra.CLI_GROUP_MAINTENANCE:
+            return (
+                m.Cli.ResultCommandRoute(
+                    name=c.Infra.VERB_RUN,
+                    help_text="Enforce Python version constraints",
+                    model_cls=maintenance.FlextInfraMaintenancePythonVersion,
+                    handler=(
+                        maintenance.FlextInfraMaintenancePythonVersion.execute_command
+                    ),
+                    success_message="Maintenance completed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name=c.Infra.VERB_CLEAN,
+                    help_text=(
+                        "Report or remove declared disposables owned by this repository"
+                    ),
+                    model_cls=maintenance.FlextInfraMaintenanceClean,
+                    handler=maintenance.FlextInfraMaintenanceClean.execute_command,
+                    success_message="Clean completed",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name=c.Infra.VERB_SONARCLOUD_SYNC,
+                    help_text=(
+                        "Write the SSOT SonarCloud issue exclusions to the server-side "
+                        "project settings (requires SONAR_TOKEN)"
+                    ),
+                    model_cls=maintenance.FlextInfraMaintenanceSonarcloud,
+                    handler=maintenance.FlextInfraMaintenanceSonarcloud.execute_command,
+                    success_message="SonarCloud issue exclusions match the SSOT",
+                ),
+                m.Cli.ResultCommandRoute(
+                    name=c.Infra.VERB_SONARCLOUD_ISSUES,
+                    help_text=(
+                        "Read unresolved new-code SonarCloud issues (requires "
+                        "SONAR_TOKEN)"
+                    ),
+                    model_cls=maintenance.FlextInfraMaintenanceSonarcloudIssues,
+                    handler=(
+                        maintenance.FlextInfraMaintenanceSonarcloudIssues.execute_command
+                    ),
+                    success_message="SonarCloud issue search completed",
+                ),
+            )
+        raise KeyError(group)
 
 
 __all__: list[str] = ["FlextInfraValidationRoutes"]

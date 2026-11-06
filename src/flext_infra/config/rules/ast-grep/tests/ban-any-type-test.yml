@@ -1,0 +1,17 @@
+id: ban-any-type
+valid:
+  - |
+    from typing import Protocol
+  - |
+    value: str = "value"
+  - |
+    from tests import t
+    value: t.JsonMapping = {}
+invalid:
+  - |
+    from typing import Any
+  - |
+    value: Any
+  - |
+    from tests import t
+    value: t.Any

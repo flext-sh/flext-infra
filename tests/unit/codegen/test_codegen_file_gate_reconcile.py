@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 class TestsFlextInfraFileGateAndReconcileMakefile:
@@ -135,7 +133,7 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
             tm.that(body, lacks=["|| true", "-m ruff", "ast-grep scan", 'typos "'])
 
     @staticmethod
-    @pytest.mark.parametrize("selection", ["", "../outside.py", 'literal";false;.py'])
+    @c.Tests.MARK.parametrize("selection", ["", "../outside.py", 'literal";false;.py'])
     def test_public_make_file_gate_preserves_missing_runtime_failure(
         tmp_path: Path,
         selection: str,

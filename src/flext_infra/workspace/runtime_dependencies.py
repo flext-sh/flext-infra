@@ -32,16 +32,16 @@ class FlextInfraRuntimeDependencyCollector:
     def __call__(
         self,
         project_root: Path,
-        scan: m.Infra.DeptryScan,
+        scan: p.Infra.DeptryScan,
         /,
-    ) -> p.Result[m.Infra.RuntimeDependencyInputs]:
+    ) -> p.Result[p.Infra.RuntimeDependencyInputs]:
         """Bind native import findings to exact installed and locked suppliers.
 
         Returns:
             Provenance for the existing planner, never a second dependency plan.
 
         """
-        result = r[m.Infra.RuntimeDependencyInputs]
+        result = r[p.Infra.RuntimeDependencyInputs]
         if (
             scan.settings.path != project_root / c.PYPROJECT_FILENAME
             or self._python.parent != scan.venv_bin
@@ -216,19 +216,19 @@ class FlextInfraRuntimeDependencyCollector:
 
     def _collect_providers(
         self,
-        context: m.Infra.WorkspaceRuntimeContext,
-        scan: m.Infra.DeptryScan,
-        locked: m.Infra.LockedEnvironment,
+        context: p.Infra.WorkspaceRuntimeContext,
+        scan: p.Infra.DeptryScan,
+        locked: p.Infra.LockedEnvironment,
         authored: Mapping[str, str],
         metadata_paths: Sequence[Path],
-    ) -> p.Result[tuple[m.Infra.RuntimeDependencyProvider, ...]]:
+    ) -> p.Result[tuple[p.Infra.RuntimeDependencyProvider, ...]]:
         """Elect suppliers in one native pass against this operation's inputs.
 
         Returns:
             All matching authored suppliers, preserving ambiguity for the planner.
 
         """
-        result = r[tuple[m.Infra.RuntimeDependencyProvider, ...]]
+        result = r[tuple[p.Infra.RuntimeDependencyProvider, ...]]
         needed = {
             item.module
             for item in scan.report.root
@@ -244,14 +244,14 @@ class FlextInfraRuntimeDependencyCollector:
 
         def provider(
             distribution: Distribution,
-        ) -> p.Result[tuple[m.Infra.RuntimeDependencyProvider, ...]]:
+        ) -> p.Result[tuple[p.Infra.RuntimeDependencyProvider, ...]]:
             """Elect and authenticate one native distribution without another scan.
 
             Returns:
                 The required supplier collection, or its original failure.
 
             """
-            selected = r[tuple[m.Infra.RuntimeDependencyProvider, ...]]
+            selected = r[tuple[p.Infra.RuntimeDependencyProvider, ...]]
             states = self._metadata_states(distribution, context.environment_path)
             name = distribution.metadata.get("Name")
             if name is None:
@@ -300,7 +300,7 @@ class FlextInfraRuntimeDependencyCollector:
                 ),
             ))
 
-        providers: list[m.Infra.RuntimeDependencyProvider] = []
+        providers: list[p.Infra.RuntimeDependencyProvider] = []
         for distribution in u.installed_distributions(
             path=tuple(str(path) for path in metadata_paths),
         ):
@@ -315,9 +315,9 @@ class FlextInfraRuntimeDependencyCollector:
         cls,
         distribution: Distribution,
         name: str,
-        repository: m.Infra.RepositoryRef | None,
+        repository: p.Infra.RepositoryRef | None,
         runtime_root: Path,
-        receipt: m.Infra.DirectUrlReceipt | None,
+        receipt: p.Infra.DirectUrlReceipt | None,
     ) -> set[str]:
         """Combine native file modules with an authenticated editable declaration.
 
@@ -347,8 +347,8 @@ class FlextInfraRuntimeDependencyCollector:
     def _locked_package(
         distribution: Distribution,
         name: str,
-        locked: m.Infra.LockedEnvironment,
-    ) -> p.Result[m.Infra.LockedPackage]:
+        locked: p.Infra.LockedEnvironment,
+    ) -> p.Result[p.Infra.LockedPackage]:
         """Require the same unique native name and version in the captured lock.
 
         Returns:
@@ -363,26 +363,26 @@ class FlextInfraRuntimeDependencyCollector:
             and item.version == distribution.version
         )
         if len(matches) != 1:
-            return r[m.Infra.LockedPackage].fail(
+            return r[p.Infra.LockedPackage].fail(
                 f"dependency supplier lacks one exact lock entry: {name}"
             )
-        return r[m.Infra.LockedPackage].ok(matches[0])
+        return r[p.Infra.LockedPackage].ok(matches[0])
 
     @staticmethod
     def _provider_inputs(
-        context: m.Infra.WorkspaceRuntimeContext,
+        context: p.Infra.WorkspaceRuntimeContext,
         distribution: Distribution,
-        package: m.Infra.LockedPackage,
-        repository: m.Infra.RepositoryRef | None,
-        receipt_state: m.Cli.AtomicFileState,
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        package: p.Infra.LockedPackage,
+        repository: p.Infra.RepositoryRef | None,
+        receipt_state: p.Cli.AtomicFileState,
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, ...]]:
         """Authenticate the installed supplier's locked origin and editable inputs.
 
         Returns:
             Additional declaration inputs, or the original provenance failure.
 
         """
-        result = r[tuple[m.Cli.AtomicFileState, ...]]
+        result = r[tuple[p.Cli.AtomicFileState, ...]]
         name = package.name
         local_source = (
             package.source.editable
@@ -445,7 +445,7 @@ class FlextInfraRuntimeDependencyCollector:
     def _metadata_states(
         distribution: Distribution,
         environment: Path,
-    ) -> tuple[m.Cli.AtomicFileState, ...]:
+    ) -> tuple[p.Cli.AtomicFileState, ...]:
         """Capture metadata, RECORD, origin absence/presence and editable path files.
 
         Returns:

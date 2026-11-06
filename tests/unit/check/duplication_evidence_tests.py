@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.gates.duplication_evidence import FlextInfraDuplicationEvidence
-from tests import m, tm
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraDuplicationEvidence:
@@ -24,7 +22,7 @@ class TestsFlextInfraDuplicationEvidence:
         *,
         format_name: str = "python",
         mirror: bool = False,
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         files = (root / "first.py", root / "second.py")
         for path in files:
             path.write_text(source, encoding="utf-8")
@@ -82,8 +80,8 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _assess(
         root: Path,
-        report: m.Infra.JscpdReport,
-    ) -> m.Infra.DuplicationAssessment:
+        report: p.Infra.JscpdReport,
+    ) -> p.Infra.DuplicationAssessment:
         return FlextInfraDuplicationEvidence().assess(
             report,
             root,
@@ -155,7 +153,7 @@ class TestsFlextInfraDuplicationEvidence:
         tm.that(assessment.candidates[0].measures[0].lines, eq=3)
         tm.ok(assessment.candidates[0].measures[0].tokens > 0)
 
-    @pytest.mark.parametrize("format_name", ["txt", "yaml", "json"])
+    @c.Tests.MARK.parametrize("format_name", ["txt", "yaml", "json"])
     def test_data_never_gets_generic_exemption(
         self, tmp_path: Path, format_name: str
     ) -> None:
@@ -171,7 +169,7 @@ class TestsFlextInfraDuplicationEvidence:
         tm.that(assessment.candidates[0].disposition, eq=expected)
         tm.that(assessment.counts["raw_hard"], eq=1)
 
-    @pytest.mark.parametrize("failure", ["missing", "syntax", "encoding", "span"])
+    @c.Tests.MARK.parametrize("failure", ["missing", "syntax", "encoding", "span"])
     def test_unreadable_or_unparseable_source_fails_closed(
         self, tmp_path: Path, failure: str
     ) -> None:
@@ -200,19 +198,19 @@ class TestsFlextInfraDuplicationEvidence:
             raw + "\nERROR: jscpd threshold exceeded\n"
         )
         tm.that(parsed, eq=report)
-        with pytest.raises(ValueError, match="second JSON"):
+        with u.Tests.raises(ValueError, match="second JSON"):
             FlextInfraDuplicationEvidence.parse(raw + "\n{}")
 
     def test_invalid_report_is_not_an_empty_success(self, tmp_path: Path) -> None:
         """Missing statistics or mismatched inventory cannot authorize green."""
-        with pytest.raises(ValueError, match="statistics"):
+        with u.Tests.raises(ValueError, match="statistics"):
             FlextInfraDuplicationEvidence.parse('{"duplicates": []}')
         report = self._report(tmp_path, "value = calculate()\n")
         malformed = report.model_dump_json().replace('"clones":1', '"clones":2')
-        with pytest.raises(ValueError, match="clone total"):
+        with u.Tests.raises(ValueError, match="clone total"):
             FlextInfraDuplicationEvidence.parse(malformed)
 
-    @pytest.mark.parametrize("format_name", ["yaml", "json", "markdown"])
+    @c.Tests.MARK.parametrize("format_name", ["yaml", "json", "markdown"])
     def test_invalid_data_or_unmapped_format_fails_closed(
         self,
         tmp_path: Path,
@@ -256,7 +254,7 @@ class TestsFlextInfraDuplicationEvidence:
     def test_unknown_trailer_is_not_a_valid_scan(self, tmp_path: Path) -> None:
         """Unrecognized tool output requires an explicit parser contract change."""
         report = self._report(tmp_path, "value = calculate()\n")
-        with pytest.raises(ValueError, match="unrecognized console"):
+        with u.Tests.raises(ValueError, match="unrecognized console"):
             FlextInfraDuplicationEvidence.parse(
                 report.model_dump_json() + "\nunknown output"
             )
@@ -273,7 +271,7 @@ class TestsFlextInfraDuplicationEvidence:
     @staticmethod
     def _cross_root_report(
         project: Path, external: Path, source: str
-    ) -> m.Infra.JscpdReport:
+    ) -> p.Infra.JscpdReport:
         """One clone whose sides live under different declared checkout roots.
 
         Returns:

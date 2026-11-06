@@ -9,10 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraUvNativeResolution:
@@ -106,7 +104,7 @@ class TestsFlextInfraUvNativeResolution:
     @staticmethod
     def _conformed_alias_document(
         root: Path,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
     ) -> str:
         """Conform the authored alias fixture without merging dependency tiers.
 
@@ -141,7 +139,7 @@ class TestsFlextInfraUvNativeResolution:
     def _resolved_identity_lock(
         directory: Path,
         view: t.Cli.TomlDocument,
-    ) -> m.Infra.LockedEnvironment:
+    ) -> p.Infra.LockedEnvironment:
         """Write the resolution view and resolve its native identity lock.
 
         Args:
@@ -277,7 +275,7 @@ class TestsFlextInfraUvNativeResolution:
         return u.Tests.toml_mapping(resolved["source"])
 
     @staticmethod
-    @pytest.mark.parametrize("source_kind", ["path", "git"])
+    @c.Tests.MARK.parametrize("source_kind", ["path", "git"])
     def test_package_owned_runtime_source_is_resolved_natively(
         tmp_path: Path,
         source_kind: str,
@@ -329,7 +327,7 @@ class TestsFlextInfraUvNativeResolution:
         tm.that((directory / c.PYPROJECT_FILENAME).read_bytes(), eq=declared)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("identity", "expected_error"),
         [
             (

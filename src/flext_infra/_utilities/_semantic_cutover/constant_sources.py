@@ -10,8 +10,11 @@ from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_infra import c, e, m, p, t
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -21,7 +24,6 @@ from flext_infra._utilities._rope.runtime_refactors import (
 from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
 )
@@ -112,7 +114,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
     def _binding_statement_matches(
         cls,
         module: p.Infra.RopeParsedModule,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         binding: p.Infra.RopePyName,
         line: int,
     ) -> bool:

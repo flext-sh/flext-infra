@@ -308,9 +308,9 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["expected_alias", "expected_family"])
+    @c.Tests.MARK.parametrize("name", ["expected_alias", "expected_family"])
     def test_optional_annotated_none_field_keeps_constant_kind(
-        name: str, monkeypatch: pytest.MonkeyPatch
+        name: str, monkeypatch: t.Tests.MonkeyPatch
     ) -> None:
         """Classify real optional fields without importing their metadata owner."""
         module_name = "flext_infra._models._codegen.fix"
@@ -356,7 +356,7 @@ class TestsFlextInfraFacadeMemberConstraints:
         tm.that(sys.modules[module_name] is None, eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize("annotation_module", ["typing", "typing_extensions"])
+    @c.Tests.MARK.parametrize("annotation_module", ["typing", "typing_extensions"])
     def test_annotated_classification_does_not_execute_metadata(
         tmp_path: Path, annotation_module: str
     ) -> None:
@@ -386,7 +386,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "class Annotated: pass\nStrict = Annotated[str, metadata()]\n",
@@ -419,7 +419,7 @@ class TestsFlextInfraFacadeMemberConstraints:
             binding = u.Infra.require_semantic_module(
                 project.get_module(f"{package.name}.annotations")
             ).get_attributes()["Strict"]
-            with pytest.raises(ValueError, match="unknown facade member kind:"):
+            with u.Tests.raises(ValueError, match="unknown facade member kind:"):
                 u.Infra.facade_member_kind(
                     binding,
                     resolver_factory=resolver_factory,
@@ -476,10 +476,13 @@ class TestsFlextInfraFacadeMemberConstraints:
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
-                snapshot.engine, sources={}
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
             )
             _lineage, relocations, _names = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
             tm.that(relocations, empty=False)
             for owner, references in relocations.items():
@@ -508,8 +511,14 @@ class TestsFlextInfraFacadeMemberConstraints:
         """
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            resolver_factory = u.Infra.source_member_resolver_factory(
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
+            )
             _lineage, relocations, _names = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
         references = {
             reference for found in relocations.values() for reference in found
@@ -565,10 +574,21 @@ class TestsFlextInfraFacadeMemberConstraints:
         tm.that(cls._ownership_rules(), eq=first)
         project = cls._project()
         with u.Infra.codemod_workspace_snapshot(project) as snapshot:
+            sources = u.Infra.project_captured_sources(snapshot.engine)
             census = u.Infra.facade_member_census(
-                project, source_project=snapshot.engine
+                project,
+                source_project=snapshot.engine,
+                resolver_factory=u.Infra.source_member_resolver_factory(
+                    snapshot.engine, sources=sources
+                ),
             )
             tm.that(
-                u.Infra.facade_member_census(project, source_project=snapshot.engine),
+                u.Infra.facade_member_census(
+                    project,
+                    source_project=snapshot.engine,
+                    resolver_factory=u.Infra.source_member_resolver_factory(
+                        snapshot.engine, sources=sources
+                    ),
+                ),
                 eq=census,
             )

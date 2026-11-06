@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCli, m
-from tests import c, tm, u
+from flext_infra import FlextInfraCli
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import t
 
 
 class TestsFlextInfraModernizerPackagedManifest:

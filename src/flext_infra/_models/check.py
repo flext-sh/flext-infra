@@ -6,15 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsMixins
-from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
+from flext_infra._models._git import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsCheck:
@@ -44,11 +44,21 @@ class FlextInfraModelsCheck:
         """Required Bandit JSON arrays, including a clean pair of empty arrays."""
 
         results: Annotated[
-            Sequence[FlextInfraModelsCheck.BanditFinding],
+            Sequence[
+                Annotated[
+                    p.Infra.BanditFinding,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.BanditFinding),
+                ]
+            ],
             m.Field(description="Native security findings"),
         ]
         errors: Annotated[
-            Sequence[FlextInfraModelsCheck.BanditScanError],
+            Sequence[
+                Annotated[
+                    p.Infra.BanditScanError,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.BanditScanError),
+                ]
+            ],
             m.Field(description="Source files that were not audited"),
         ]
 
@@ -66,16 +76,14 @@ class FlextInfraModelsCheck:
             bool,
             m.Field(description="Stop check gates after the first failure"),
         ] = c.Infra.CHECK_FAIL_FAST_DEFAULT
-        gate_set: Annotated[
-            c.Infra.CheckGateSet,
-            m.Field(
-                alias="gate-set",
-                description=(
-                    "Gate inventory resolved at runtime when --gates is empty: "
-                    "check (CI or local partition), fix, or fmt"
-                ),
+        gate_set: c.Infra.CheckGateSet = m.Field(
+            c.Infra.CheckGateSet.CHECK,
+            alias="gate-set",
+            description=(
+                "Gate inventory resolved at runtime when --gates is empty: "
+                "check (CI or local partition), fix, or fmt"
             ),
-        ] = c.Infra.CheckGateSet.CHECK
+        )
         phase: Annotated[
             c.Infra.CheckPhase,
             m.Field(description="Primary source admission or complete checker phase"),
@@ -90,44 +98,35 @@ class FlextInfraModelsCheck:
                 ),
             ),
         ] = c.Infra.CodegenConformScope.SELF
-        reports_dir: Annotated[
-            str,
-            m.Field(
-                alias="reports-dir",
-                description="Base directory for unique invocation check reports",
-            ),
-        ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
-        check_only: Annotated[
-            bool,
-            m.Field(
-                alias="check-only",
-                description="Enable check-only mode for supported tools",
-            ),
-        ] = False
-        ruff_args: Annotated[
-            str | None,
-            m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),
-        ] = None
-        pyright_args: Annotated[
-            str | None,
-            m.Field(
-                alias="pyright-args",
-                description="Extra arguments forwarded to Pyright",
-            ),
-        ] = None
+        reports_dir: str = m.Field(
+            f"{c.Infra.REPORTS_DIR_NAME}/check",
+            alias="reports-dir",
+            description="Base directory for unique invocation check reports",
+        )
+        check_only: bool = m.Field(
+            default=False,
+            alias="check-only",
+            description="Enable check-only mode for supported tools",
+        )
+        ruff_args: str | None = m.Field(
+            None, alias="ruff-args", description="Extra arguments forwarded to Ruff"
+        )
+        pyright_args: str | None = m.Field(
+            None,
+            alias="pyright-args",
+            description="Extra arguments forwarded to Pyright",
+        )
         file: Annotated[
             str | None,
             m.Field(
                 description="One literal repository-relative file; read-only gates"
             ),
         ] = None
-        report_output: Annotated[
-            Path | None,
-            m.Field(
-                alias="report-output",
-                description="Absent invocation-owned typed summary destination",
-            ),
-        ] = None
+        report_output: Path | None = m.Field(
+            None,
+            alias="report-output",
+            description="Absent invocation-owned typed summary destination",
+        )
 
         @property
         def reports_dir_path(self) -> Path:
@@ -144,7 +143,7 @@ class FlextInfraModelsCheck:
         requires the producer's identity for each actual target, including root.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True,
             validate_default=False,
         )
@@ -156,7 +155,13 @@ class FlextInfraModelsCheck:
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
         source_identity: Annotated[
-            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            Annotated[
+                p.Infra.GitIdentityReport,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsGitIdentity.GitIdentityReport
+                ),
+            ]
+            | None,
             m.Field(description="Original exact repository identity before gates"),
         ] = None
 
@@ -225,7 +230,7 @@ class FlextInfraModelsCheck:
     class SarifLocation(m.ContractModel):
         """Native SARIF location, including the optional end of its source span."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         uri: str = m.Field(
             validation_alias=m.AliasPath("physicalLocation", "artifactLocation", "uri"),
@@ -376,7 +381,7 @@ class FlextInfraModelsCheck:
         """Exact native output paired with its atomically published runtime path."""
 
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
-            m.Field(description="Unmodified native output", exclude=True)
+            m.Field(description="Unmodified native output")
         )
         path: Path = m.Field(description="Durably published native output receipt")
 
@@ -400,7 +405,10 @@ class FlextInfraModelsCheck:
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
-        result: FlextInfraModelsCheck.GateResult = m.Field(
+        result: Annotated[
+            p.Infra.GateResult,
+            t.schema_for_model(lambda: FlextInfraModelsCheck.GateResult),
+        ] = m.Field(
             description="Gate result model",
         )
         issues: tuple[Issue, ...] = m.Field(
@@ -416,7 +424,6 @@ class FlextInfraModelsCheck:
                     "In-memory native output; persisted once at raw_receipt rather "
                     "than duplicated inside serialized execution summaries"
                 ),
-                exclude=True,
                 validate_default=True,
             )
         )
@@ -429,11 +436,20 @@ class FlextInfraModelsCheck:
             description="Native process/report verdict, independent of findings policy",
         )
         process: Annotated[
-            m.Cli.ProcessOutcome | None,
+            Annotated[
+                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
+            ]
+            | None,
             m.Field(description="Original native process, when this gate invoked one"),
         ] = None
         components: Annotated[
-            MutableMapping[str, FlextInfraModelsCheck.GateExecution],
+            MutableMapping[
+                str,
+                Annotated[
+                    p.Infra.GateExecution,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
+                ],
+            ],
             m.Field(description="Executions owned by a composite gate"),
         ] = m.Field(default_factory=dict)
         requested_components: Annotated[
@@ -484,7 +500,13 @@ class FlextInfraModelsCheck:
         dict per instance.
         """
 
-        gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
+        gates: MutableMapping[
+            str,
+            Annotated[
+                p.Infra.GateExecution,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
+            ],
+        ] = m.Field(
             default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
             description="Gate name to execution mapping",
         )
@@ -519,7 +541,13 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ProjectResult,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.ProjectResult),
+                ],
+                ...,
+            ],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -539,23 +567,17 @@ class FlextInfraModelsCheck:
     class SarifRule(m.ContractModel):
         """Compact SARIF rule descriptor."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
         id: Annotated[str, m.Field(description="Rule identifier")]
-        short_description: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("shortDescription", "text"),
-                description="Rule short description",
-            ),
-        ]
-        help_uri: Annotated[
-            str,
-            m.Field(
-                validation_alias="helpUri",
-                description="Documentation URL of the tool behind the gate",
-            ),
-        ]
+        short_description: str = m.Field(
+            validation_alias=m.AliasPath("shortDescription", "text"),
+            description="Rule short description",
+        )
+        help_uri: str = m.Field(
+            validation_alias="helpUri",
+            description="Documentation URL of the tool behind the gate",
+        )
 
         @m.model_serializer
         def _serialize(self) -> t.JsonMapping:
@@ -574,102 +596,118 @@ class FlextInfraModelsCheck:
     class SarifResult(m.ContractModel):
         """SARIF result entry."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
-        rule_id: Annotated[
-            str,
-            m.Field(validation_alias="ruleId", description="Rule identifier"),
-        ]
+        rule_id: str = m.Field(validation_alias="ruleId", description="Rule identifier")
         level: Annotated[str, m.Field(description="Result level (error/warning/note)")]
-        message: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("message", "text"),
-                description="Result message",
-            ),
-        ]
-        locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
+        message: str = m.Field(
+            validation_alias=m.AliasPath("message", "text"),
+            description="Result message",
+        )
+        locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             description="Result locations",
         )
-        related_locations: tuple[FlextInfraModelsCheck.SarifLocation, ...] = m.Field(
+        related_locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             (),
             validation_alias="relatedLocations",
             description="Native related source spans",
             validate_default=True,
         )
 
-        @m.model_serializer
-        def _serialize(self) -> t.JsonMapping:
+        @m.model_serializer(mode="wrap")
+        def _serialize(
+            self,
+            handler: Callable[
+                [p.Infra.SarifResult], Mapping[str, Sequence[t.JsonValue]]
+            ],
+        ) -> t.JsonMapping:
             """Serialize.
 
             Returns:
                 The resulting ``t.JsonMapping``.
 
             """
+            values = handler(self)
             result: t.MutableJsonMapping = {
                 "ruleId": self.rule_id,
                 "level": self.level,
                 "message": {"text": self.message},
-                "locations": [
-                    location.model_dump(by_alias=True) for location in self.locations
-                ],
+                "locations": list(values["locations"]),
             }
             if self.related_locations:
-                result["relatedLocations"] = [
-                    location.model_dump(by_alias=True)
-                    for location in self.related_locations
-                ]
+                result["relatedLocations"] = list(values["related_locations"])
             return result
 
     class SarifRun(m.ContractModel):
         """SARIF run entry."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_by_name=True)
 
-        tool_name: Annotated[
-            str,
-            m.Field(
-                validation_alias=m.AliasPath("tool", "driver", "name"),
-                description="Tool name",
-            ),
-        ]
+        tool_name: str = m.Field(
+            validation_alias=m.AliasPath("tool", "driver", "name"),
+            description="Tool name",
+        )
         information_uri: str = m.Field(
             "",
             validation_alias=m.AliasPath("tool", "driver", "informationUri"),
             description="Tool documentation URL",
             validate_default=True,
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
+        rules: tuple[
+            Annotated[
+                p.Infra.SarifRule,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifRule),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             validation_alias=m.AliasPath("tool", "driver", "rules"),
             description="Rule descriptors",
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
+        results: tuple[
+            Annotated[
+                p.Infra.SarifResult,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifResult),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="Run results",
         )
 
-        @m.model_serializer
-        def _serialize(self) -> t.JsonMapping:
+        @m.model_serializer(mode="wrap")
+        def _serialize(
+            self,
+            handler: Callable[[p.Infra.SarifRun], Mapping[str, Sequence[t.JsonValue]]],
+        ) -> t.JsonMapping:
             """Serialize.
 
             Returns:
                 The resulting ``t.JsonMapping``.
 
             """
+            values = handler(self)
             return {
                 "tool": {
                     "driver": {
                         "name": self.tool_name,
                         "informationUri": self.information_uri,
-                        "rules": [
-                            rule.model_dump(by_alias=True) for rule in self.rules
-                        ],
+                        "rules": list(values["rules"]),
                     },
                 },
-                "results": [
-                    result.model_dump(by_alias=True) for result in self.results
-                ],
+                "results": list(values["results"]),
             }
 
     class CheckReportSummary(m.ContractModel):
@@ -704,11 +742,25 @@ class FlextInfraModelsCheck:
             ),
         ] = ()
         targets: Annotated[
-            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CheckProjectTarget,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCheck.CheckProjectTarget
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Canonical project roots selected for this invocation"),
         ]
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ProjectResult,
+                    t.schema_for_model(lambda: FlextInfraModelsCheck.ProjectResult),
+                ],
+                ...,
+            ],
             m.Field(description="Only executions reached by this invocation"),
         ]
         selected_files: Annotated[
@@ -716,7 +768,16 @@ class FlextInfraModelsCheck:
             m.Field(description="File selection; empty means full-project execution"),
         ]
         global_targets: Annotated[
-            tuple[FlextInfraModelsCheck.CheckProjectTarget, ...] | None,
+            tuple[
+                Annotated[
+                    p.Infra.CheckProjectTarget,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCheck.CheckProjectTarget
+                    ),
+                ],
+                ...,
+            ]
+            | None,
             m.Field(
                 min_length=1,
                 description=(
@@ -748,7 +809,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report; serializes and validates the same JSON."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             validate_by_name=True,
             serialize_by_alias=True,
         )
@@ -764,11 +825,23 @@ class FlextInfraModelsCheck:
             description="SARIF version",
             validate_default=True,
         )
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
+        runs: tuple[
+            Annotated[
+                p.Infra.SarifRun,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifRun),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description="SARIF runs",
         )
-        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
+        properties: (
+            Annotated[
+                p.Infra.CheckReportSummary,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.CheckReportSummary),
+            ]
+            | None
+        ) = m.Field(
             None,
             description="Typed invocation targets and executions; absent is unknown",
         )

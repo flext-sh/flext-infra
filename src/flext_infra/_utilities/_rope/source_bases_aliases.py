@@ -84,13 +84,13 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         # Lazy package propagation belongs to initializers. Ordinary module
         # bindings are resolved by the lexical inventory, so their executable
         # bodies are not inputs to this package-alias reader.
-        if path.name != c.Infra.INIT_PY:
+        if path.name != c.Infra.INIT_PY or not module:
             return {}
-        # An installed provider Rope cannot name (empty dotted name) contributes
-        # no textual bindings: a standalone consumer following a lazy route into
-        # site-packages falls back to declared-binding resolution instead of
-        # failing the whole analysis on the provider's own relative exports.
-        if not module:
+        # Only an initializer that names the installer can declare a lazy
+        # route; any other one (a third-party distribution) is never handed to
+        # the semantic scope analysis below.
+        installer = "install_lazy_exports"
+        if installer not in source:
             return {}
         # The bindings are a pure function of the initializer text, so one
         # read per distinct text serves every facade render of the process.
@@ -101,15 +101,20 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         if key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
         aliases: dict[str, m.Infra.SourceClassReference] = {}
-        # A declaracao e textual: a varredura percorre o proprio texto do
-        # inicializador (epoch-proof), sem depender do indice de modulos do
-        # projeto para localizar a chamada nativa.
-        search_from = 0
-        while (call_at := source.find("install_lazy_exports", search_from)) >= 0:
-            search_from = call_at + len("install_lazy_exports")
-            mapping = cls._call_alias_source(source, call_at, parsed)
-            if mapping is None:
+        for node in ast.walk(parsed.get_ast()):
+            if not isinstance(node, ast.Call):
                 continue
+            scope = parsed.get_scope().get_inner_scope_for_line(node.lineno)
+            if scope.get_kind() != c.Infra.RopeScopeKind.MODULE or not (
+                cls._native_alias_callable(
+                    node.func,
+                    scope,
+                    ("flext_core", "flext_core.lazy"),
+                    installer,
+                )
+            ):
+                continue
+            mapping = cls._call_alias_source(source, node, parsed)
             for name, (provider, attribute) in cls._literal_exports(mapping).items():
                 resolved = cls._absolute_alias(module, provider)
                 if resolved is None:
@@ -160,82 +165,35 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
     def _call_alias_source(
         cls,
         source: str,
-        offset: int,
+        call: ast.Call,
         module: p.Infra.RopeParsedModule,
-    ) -> str | None:
+    ) -> str:
         """Return the alias-mapping argument text of one lazy-exports call.
 
         Args:
             source: Full native source text of the parsed package initializer.
-            offset: Lexical offset of the candidate call occurrence.
+            call: Native call authenticated against the SDK import binding.
             module: Authenticated native module supplying the call bindings.
 
         Returns:
-            The literal mapping source, or None when the occurrence is not a
-            lazy-exports call carrying mapping data.
+            The literal mapping source declared by the actual call argument.
+
+        Raises:
+            ValueError: The call does not declare one inspectable mapping argument.
 
         """
-        # The mapping region is derived by balancing the initializer text, not
-        # by Worder ranges: a candidate-epoch reader must not truncate the last
-        # declared export (byte/char and epoch drift are the known artifacts).
-        mapping_source = cls._balanced_braces_source(source, offset)
-        if mapping_source is None:
-            return None
-        return cls._declared_alias_mapping_source(
-            f"MappingProxyType({mapping_source})", module
-        )
-
-    @classmethod
-    def _balanced_braces_source(cls, source: str, offset: int) -> str | None:
-        """Extract the first brace-balanced literal after a lazy-exports call.
-
-        Returns:
-            The balanced ``{...}`` text, or None when the call carries none.
-
-        """
-        # Rope offsets are byte-based; the text scan is char-based, so the
-        # anchor is converted before the balanced-brace scan.
-        text_offset = len(source.encode("utf-8")[:offset].decode("utf-8", "ignore"))
-        opening = source.find("{", text_offset)
-        if opening < 0:
-            return None
-        depth = 0
-        index = opening
-        while index < len(source):
-            char = source[index]
-            if char in {'"', "'"}:
-                index = cls._string_end(source, index)
-                if index < 0:
-                    return None
-                continue
-            if char == "{":
-                depth += 1
-            elif char == "}":
-                depth -= 1
-                if depth == 0:
-                    return source[opening : index + 1]
-            index += 1
-        return None
-
-    @staticmethod
-    def _string_end(source: str, opening: int) -> int:
-        """Return the index after the string literal opening at ``opening``.
-
-        Returns:
-            The closing index, or -1 when the string never terminates.
-
-        """
-        quote = source[opening]
-        index = opening + 1
-        while index < len(source):
-            char = source[index]
-            if char == "\\":
-                index += 2
-                continue
-            if char == quote:
-                return index + 1
-            index += 1
-        return -1
+        arguments = [
+            keyword.value for keyword in call.keywords if keyword.arg == "lazy_imports"
+        ]
+        arguments.extend(call.args[2:3])
+        if len(arguments) != 1:
+            message = "Lazy exports require one declared mapping argument"
+            raise ValueError(message)
+        expression = ast.get_source_segment(source, arguments[0])
+        if expression is None:
+            message = "Lazy export mapping has no native source span"
+            raise ValueError(message)
+        return cls._declared_alias_mapping_source(expression, module)
 
     @classmethod
     def _declared_alias_mapping_source(
@@ -341,10 +299,10 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
             Whether the expression is the elected absolute native import.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
         types = FlextInfraUtilitiesRopeRuntimeTypes
+        declarations = scope.get_defined_names()
         if isinstance(expression, ast.Name):
-            binding = runtime.resolve_symbol(scope, expression)
+            binding = declarations.get(expression.id)
             if not types.imported_name(binding):
                 return False
             module = binding.imported_module
@@ -352,7 +310,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         elif isinstance(expression, ast.Attribute) and isinstance(
             expression.value, ast.Name
         ):
-            binding = runtime.resolve_symbol(scope, expression.value)
+            binding = declarations.get(expression.value.id)
             if not types.imported_module(binding):
                 return False
             module = binding

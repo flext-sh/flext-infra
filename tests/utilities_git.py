@@ -10,12 +10,12 @@ import venv
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, u
-from tests import c, m, t, tm
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
+from flext_infra import config
+from tests import c, m, t, tm, u
+from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 
 
-class TestsFlextInfraUtilitiesGitMixin:
+class TestsFlextInfraUtilitiesGit:
     """Real Git repository construction and inspection fixture helpers."""
 
     @staticmethod
@@ -41,9 +41,9 @@ class TestsFlextInfraUtilitiesGitMixin:
             The resulting ``str``.
 
         """
-        branch = TestsFlextInfraUtilitiesGitMixin.integration_branch(repo_root)
+        branch = TestsFlextInfraUtilitiesGit.integration_branch(repo_root)
         already_on_branch = (
-            TestsFlextInfraUtilitiesGitMixin.git_capture(
+            TestsFlextInfraUtilitiesGit.git_capture(
                 repo_root,
                 "branch",
                 "--show-current",
@@ -55,7 +55,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         # Why: the fixture may carry the branch locally already (the release
         # workspace renames the checkout to the provider baseline); an absent
         # branch is a legitimate answer of the ref owner, never a failed probe.
-        local_exists = TestsFlextInfraUtilitiesGitMixin.git_ref_exists(
+        local_exists = TestsFlextInfraUtilitiesGit.git_ref_exists(
             repo_root,
             f"refs/heads/{branch}",
         )
@@ -90,7 +90,7 @@ class TestsFlextInfraUtilitiesGitMixin:
     @staticmethod
     def commit_git_changes(repo_root: Path, message: str) -> None:
         """Commit the current real fixture changes with deterministic identity."""
-        TestsFlextInfraUtilitiesGitMixin.git_bootstrap(repo_root, ("add", "-A"))
+        TestsFlextInfraUtilitiesGit.git_bootstrap(repo_root, ("add", "-A"))
         tm.ok(
             u.Infra.git_commit(
                 m.Infra.GitCommitRequest(repo_root=repo_root, message=message),
@@ -125,7 +125,7 @@ class TestsFlextInfraUtilitiesGitMixin:
             The resulting ``Path``.
 
         """
-        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        bootstrap = TestsFlextInfraUtilitiesGit.git_bootstrap
         bare_remote = remote_root / "origin.git"
         bare_remote.mkdir(parents=True, exist_ok=True)
         bootstrap(bare_remote, ("init", "--bare"))
@@ -135,7 +135,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         )
         # The checkout carries the provider-declared integration branch, so the
         # bare origin publishes that same line as its default target.
-        branch = TestsFlextInfraUtilitiesGitMixin.integration_branch(repo_root)
+        branch = TestsFlextInfraUtilitiesGit.integration_branch(repo_root)
         # Initial remote construction is fixture bootstrap, not lane admission.
         bootstrap(
             repo_root,
@@ -150,7 +150,7 @@ class TestsFlextInfraUtilitiesGitMixin:
     @staticmethod
     def configure_git_identity(repository_root: Path) -> None:
         """Set deterministic repository-local identity for real Git fixtures."""
-        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        bootstrap = TestsFlextInfraUtilitiesGit.git_bootstrap
         bootstrap(
             repository_root,
             ("config", "--local", "user.email", "tests@flext.local"),
@@ -199,7 +199,7 @@ class TestsFlextInfraUtilitiesGitMixin:
                 cwd=repo_root,
                 options=m.Cli.ProcessOptions(
                     env=overrides,
-                    remove_env_keys=TestsFlextInfraUtilitiesGitMixin.isolated_git_keys(),
+                    remove_env_keys=TestsFlextInfraUtilitiesGit.isolated_git_keys(),
                 ),
             ),
         )
@@ -217,9 +217,9 @@ class TestsFlextInfraUtilitiesGitMixin:
             or (repo_root / c.Infra.GIT_DIR).is_symlink(),
             eq=False,
         )
-        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        bootstrap = TestsFlextInfraUtilitiesGit.git_bootstrap
         bootstrap(repo_root, ("init", "-b", branch))
-        TestsFlextInfraUtilitiesGitMixin.configure_git_identity(repo_root)
+        TestsFlextInfraUtilitiesGit.configure_git_identity(repo_root)
         bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, origin_url))
         identity = tm.ok(u.Infra.exact_worktree_root(repo_root))
         tm.that(identity.head_oid is None, eq=True)
@@ -243,13 +243,13 @@ class TestsFlextInfraUtilitiesGitMixin:
         remote error. This is the single owner of fixture Git identity;
         callers must not add ``origin`` themselves.
         """
-        baseline_branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider_branch()
-        bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
+        baseline_branch = TestsFlextInfraUtilitiesProjectFixture.provider_branch()
+        bootstrap = TestsFlextInfraUtilitiesGit.git_bootstrap
         bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
         bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
         bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
         declared_origin = origin_url or str(repo_root)
-        existing_origin = TestsFlextInfraUtilitiesGitMixin._read_origin_url(
+        existing_origin = TestsFlextInfraUtilitiesGit._read_origin_url(
             repo_root,
             c.Infra.GIT_ORIGIN,
         )
@@ -283,7 +283,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         """
         root = parent / name
         root.mkdir(parents=True)
-        TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(root)
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
         return root
 
     @staticmethod
@@ -295,8 +295,8 @@ class TestsFlextInfraUtilitiesGitMixin:
 
         """
         lane = parent / branch
-        _ = TestsFlextInfraUtilitiesGitMixin.git_run(repository, "branch", branch)
-        _ = TestsFlextInfraUtilitiesGitMixin.git_run(
+        _ = TestsFlextInfraUtilitiesGit.git_run(repository, "branch", branch)
+        _ = TestsFlextInfraUtilitiesGit.git_run(
             repository,
             "worktree",
             "add",
@@ -364,4 +364,4 @@ class TestsFlextInfraUtilitiesGitMixin:
         return tm.ok(u.Cli.capture(["git", *args], cwd=repo_root))
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesGitMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesGit"]

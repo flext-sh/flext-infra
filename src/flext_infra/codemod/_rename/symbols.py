@@ -19,12 +19,12 @@ from flext_infra import c, m, p, t, u
 class FlextInfraCodemodRenameSymbols:
     """Supply domain decisions and translate rename plans into Rope constraints."""
 
-    def __init__(self, decisions: Sequence[m.Infra.SemanticRenameDecision]) -> None:
+    def __init__(self, decisions: Sequence[p.Infra.SemanticRenameDecision]) -> None:
         self.decisions = tuple(decisions)
 
     def rename_decision(
-        self, declaration: m.Infra.Object
-    ) -> m.Infra.SemanticRenameDecision | None:
+        self, declaration: p.Infra.Object
+    ) -> p.Infra.SemanticRenameDecision | None:
         """Return the unique explicit decision for this introducing declaration.
 
         Returns:
@@ -47,7 +47,7 @@ class FlextInfraCodemodRenameSymbols:
     @classmethod
     def inventoried_declaration(
         cls, workspace: p.Infra.RopeWorkspaceDsl, qualified_name: str
-    ) -> m.Infra.Object:
+    ) -> p.Infra.Object:
         """Resolve an explicit identity through native bindings and actual inventory.
 
         Returns:
@@ -119,7 +119,7 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         projects: Sequence[p.Infra.RopeProject],
         sources: Mapping[Path, str],
-        decisions: Sequence[m.Infra.SemanticRenameDecision],
+        decisions: Sequence[p.Infra.SemanticRenameDecision],
     ) -> tuple[Mapping[Path, str | None], tuple[tuple[Path, Path], ...]]:
         """Compose native class/callable/module/package effects across elected roots.
 
@@ -160,7 +160,7 @@ class FlextInfraCodemodRenameSymbols:
 
     @staticmethod
     def _reject_overlapping_packages(
-        decisions: Sequence[m.Infra.SemanticRenameDecision],
+        decisions: Sequence[p.Infra.SemanticRenameDecision],
     ) -> None:
         """Require a package rename to own no other selected identity.
 
@@ -209,7 +209,7 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         projects: Sequence[p.Infra.RopeProject],
         sources: Mapping[Path, str],
-        decision: m.Infra.SemanticRenameDecision,
+        decision: p.Infra.SemanticRenameDecision,
         selected: set[tuple[Path, str]],
         effects: tuple[
             MutableMapping[Path, MutableSequence[p.Infra.SourceRewrite]],
@@ -246,10 +246,7 @@ class FlextInfraCodemodRenameSymbols:
                 msg = f"semantic rename has incompatible contract: {identity}"
                 raise ValueError(msg)
             cls._plan_native_item(
-                (
-                    producer,
-                    *[project for project in projects if project is not producer],
-                ),
+                u.Infra.binding_projects(producer, projects, Path(item.file_path)),
                 sources,
                 item,
                 decision.replacement_name,
@@ -261,7 +258,7 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         producer: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        item: m.Infra.Object,
+        item: p.Infra.Object,
         replacement: str,
     ) -> int | None:
         """Resolve the introducing identifier and reject occupied destinations.
@@ -301,7 +298,7 @@ class FlextInfraCodemodRenameSymbols:
     def _native_rename_path(
         producer: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        item: m.Infra.Object,
+        item: p.Infra.Object,
         replacement: str,
     ) -> Path:
         """Validate a module rename and elect the resource Rope renames.
@@ -375,7 +372,7 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         projects: Sequence[p.Infra.RopeProject],
         sources: Mapping[Path, str],
-        item: m.Infra.Object,
+        item: p.Infra.Object,
         replacement: str,
         effects: tuple[
             MutableMapping[Path, MutableSequence[p.Infra.SourceRewrite]],
@@ -536,9 +533,9 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        declarations: Sequence[m.Infra.Object],
+        declarations: Sequence[p.Infra.Object],
         provider: p.Infra.SemanticRenameCandidateProvider,
-    ) -> tuple[m.Infra.SemanticMigrationEdit, ...]:
+    ) -> tuple[p.Infra.SemanticMigrationEdit, ...]:
         """Compose explicit domain decisions through the existing Rope planner.
 
         Independent typing stubs enter only as declared contracts of the observed
@@ -608,7 +605,7 @@ class FlextInfraCodemodRenameSymbols:
         cls,
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
-        declaration: m.Infra.Object,
+        declaration: p.Infra.Object,
         *,
         contract: bool = False,
     ) -> tuple[str, str]:

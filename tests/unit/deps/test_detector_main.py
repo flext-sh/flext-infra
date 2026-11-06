@@ -8,19 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, config, deps, m
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, config, deps
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDepsDetectorMain:
     """Tests for ``FlextInfraDepsDetectorMain``."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.remote
-    @pytest.mark.parametrize("entrypoint", ["cli", c.ContextScope.REQUEST])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.parametrize("entrypoint", ["cli", c.ContextScope.REQUEST])
     def test_run_reports_without_mutating_the_project(
         real_detector_project: Path,
         entrypoint: str,
@@ -54,7 +52,7 @@ class TestsFlextInfraDepsDetectorMain:
     @staticmethod
     def test_main_preserves_repository_failure(tmp_path: Path) -> None:
         """Preserve the native repository error at the public CLI boundary."""
-        with pytest.raises(OSError, match="cannot open git repository"):
+        with u.Tests.raises(OSError, match="cannot open git repository"):
             FlextInfraCli.infra_main([
                 "deps",
                 "detect",
@@ -74,8 +72,8 @@ class TestsFlextInfraDepsDetectorMain:
     # binaries. This rewrites the retired "authoritative parent environment"
     # expectation to the current, intentional contract.
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.remote
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_member_without_own_venv_fails_closed_not_parent_environment(
         real_detector_project: Path,
     ) -> None:

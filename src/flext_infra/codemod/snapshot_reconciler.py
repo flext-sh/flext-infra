@@ -10,7 +10,7 @@ import stat
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodemodSnapshotReconciler:
@@ -34,7 +34,7 @@ class FlextInfraCodemodSnapshotReconciler:
         raise ValueError(msg)
 
     @classmethod
-    def fixture_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
+    def fixture_directories(cls, config_root: Path) -> p.Infra.ModFixtureDirectories:
         """Resolve only declared fixture directories without crossing symlinks.
 
         Returns:
@@ -44,7 +44,7 @@ class FlextInfraCodemodSnapshotReconciler:
         return cls._configuration_directories(config_root, fixtures=True)
 
     @classmethod
-    def scanner_directories(cls, config_root: Path) -> m.Infra.ModFixtureDirectories:
+    def scanner_directories(cls, config_root: Path) -> p.Infra.ModFixtureDirectories:
         """Resolve the native scanner's declared rule and utility directories.
 
         Returns:
@@ -59,7 +59,7 @@ class FlextInfraCodemodSnapshotReconciler:
         config_root: Path,
         *,
         fixtures: bool,
-    ) -> m.Infra.ModFixtureDirectories:
+    ) -> p.Infra.ModFixtureDirectories:
         """Read one configuration through the shared declared-directory owner.
 
         Returns:
@@ -185,6 +185,7 @@ class FlextInfraCodemodSnapshotReconciler:
     def stale_snapshots(
         cls,
         config_root: Path,
+        rule_ids: frozenset[str] | None = None,
     ) -> Sequence[str]:
         """Describe every committed snapshot projection no current test produces.
 
@@ -192,7 +193,8 @@ class FlextInfraCodemodSnapshotReconciler:
         snapshot file of a removed rule and the entry of a deleted test case.
         Both are residue of an unreviewed change, so they are reported, never
         deleted in place: ``make mod-snapshots`` regenerates the owner's
-        projections for a reviewed commit.
+        projections for a reviewed commit. ``rule_ids`` scopes the report to the
+        snapshots of a selected run; ``None`` audits the whole catalog.
 
         Returns:
             The resulting ``Sequence[str]``.
@@ -216,6 +218,8 @@ class FlextInfraCodemodSnapshotReconciler:
                 snapshot_dir.glob(f"*{c.Infra.CODEMOD_SNAPSHOT_SUFFIX}"),
             ):
                 rule_id = snapshot.name.removesuffix(c.Infra.CODEMOD_SNAPSHOT_SUFFIX)
+                if rule_ids is not None and rule_id not in rule_ids:
+                    continue
                 if rule_id not in active_rule_ids:
                     stale.append(f"{snapshot}: rule {rule_id} is not declared")
                     continue

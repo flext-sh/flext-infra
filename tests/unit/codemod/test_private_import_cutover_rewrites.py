@@ -11,10 +11,7 @@ import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import u
-from tests import tm
+from tests import c, tm, u
 from tests.unit.codemod.private_import_cutover_support import (
     TestsFlextInfraFacadeNaming,
     TestsFlextInfraPrivateImportCutoverSupport,
@@ -26,8 +23,8 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
 ):
     """Exercise facade rewrites of private imports only through ``u.Infra``."""
 
-    @pytest.mark.parametrize("nested", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize(
         "assignment",
         ["Base = Owner", "Base: type[Owner] = Owner"],
     )
@@ -114,7 +111,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             f"t = {naming.root_class}\n"
         )
         sources[consumer_path] = f"{private_import}\nowner = {naming.private_class}\n"
-        with pytest.raises(ValueError, match="ambiguous public facade references"):
+        with u.Tests.raises(ValueError, match="ambiguous public facade references"):
             self._plan(tmp_path, sources, consumer_path, private_import)
 
     def test_rewires_unique_public_facade_binding(self, tmp_path: Path) -> None:
@@ -197,7 +194,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tm.that(updated, has="    return managers")
         tm.that(updated, lacks=private_import)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer",
         [
             (
@@ -264,10 +261,10 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         )
         sources[consumer_path] = f"{private_import}\n\n{consumer}"
 
-        with pytest.raises(ValueError, match="public facade alias u is shadowed"):
+        with u.Tests.raises(ValueError, match="public facade alias u is shadowed"):
             self._plan(tmp_path, sources, consumer_path, private_import)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "class_binding",
         [
             "    u = 'attribute'\n",
@@ -303,10 +300,10 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tm.that(updated, has="return u.Sample.ServiceManagers")
         tm.that(updated, lacks=private_import)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "mode", [(True, False), (True, True), (False, False), (False, True)]
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "evaluation", "scope"),
         [
             (
@@ -492,7 +489,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             and (not annotation_scope or not future_annotations)
         )
         if rejected_capture:
-            with pytest.raises(ValueError, match="public facade alias u is shadowed"):
+            with u.Tests.raises(ValueError, match="public facade alias u is shadowed"):
                 self._plan(tmp_path, sources, consumer_path, private_import)
             return
         planned = self._plan(tmp_path, sources, consumer_path, private_import)
@@ -576,7 +573,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             f"    {private_import}\n\n"
-            "metadata: m.Metadata\n"
+            "metadata: p.Metadata\n"
         )
 
         updated = self._updated_source(tmp_path, sources, consumer_path, private_import)
@@ -684,7 +681,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
             "from typing import TYPE_CHECKING\n\n"
             "if TYPE_CHECKING:\n"
             "    from flext_sample import FlextModelsSample as m\n\n"
-            "value: m.Metadata\n"
+            "value: p.Metadata\n"
             "model: mp.BaseModel\n"
         )
 
@@ -693,7 +690,7 @@ class TestsFlextInfraPrivateImportCutoverRewrites(
         tm.that(updated.count("from flext_sample import m"), eq=1)
         tm.that(updated, lacks="FlextModelsSample as m")
         tm.that(updated, lacks=private_import)
-        tm.that(updated, has="model: m.Pydantic.BaseModel")
+        tm.that(updated, has="model: p.Pydantic.BaseModel")
 
     def test_preserves_valid_relative_private_import(self, tmp_path: Path) -> None:
         """Leave an already-relative same-owner import outside the finding set."""

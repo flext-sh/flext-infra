@@ -33,23 +33,28 @@ class FlextInfraUtilitiesProjectDiscovery(
     """Static helpers for discovering governed project roots in a workspace."""
 
     @classmethod
-    def load_refactor_config(cls, repository_root: Path) -> m.Infra.RefactorConfigSpec:
+    def load_refactor_config(cls, repository_root: Path) -> p.Infra.RefactorConfigSpec:
         """Load declared refactor configuration, propagating invalid manifests.
 
         Returns:
             The resulting ``m.Infra.RefactorConfigSpec``.
 
         """
-        packaged = m.Infra.RefactorConfigSpec(
-            project_scan_dirs=config.Infra.source_scan.roots,
+        declared = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_codegen_inputs(
+                repository_root,
+            )
+            .unwrap()
+            .spec.repository.refactor
         )
-        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_inputs(
-            repository_root,
-        ).unwrap()
-        repository = loaded.spec.repository
-        if repository.refactor is None:
-            return packaged
-        return repository.refactor
+        return (
+            declared
+            if declared is not None
+            else m.Infra.RefactorConfigSpec(
+                project_scan_dirs=config.Infra.source_scan.roots
+            )
+        )
 
     @classmethod
     def discover_project_roots(
@@ -201,7 +206,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         repository_root: Path,
         *,
         source_files: Sequence[Path] | None = None,
-        refactor_config: m.Infra.RefactorConfigSpec | None = None,
+        refactor_config: p.Infra.RefactorConfigSpec | None = None,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Sequence[str]:
         """Return one repository's Python sources and owned stub-policy paths.
@@ -839,8 +844,8 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @staticmethod
     def mutable_flext_members(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> Sequence[m.Infra.RepositoryRef]:
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> Sequence[p.Infra.RepositoryRef]:
         """Return the declared members a workspace may settle or rewrite.
 
         A member qualifies by its declaration alone: an internal FLEXT kind,
@@ -858,45 +863,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             and member.codegen is not c.Infra.CodegenKind.NONE
             and not member.read_only
         )
-
-    @staticmethod
-    def nearest_project_root(
-        repository_root: Path,
-        path: Path,
-        *,
-        source_project: p.Infra.RopeProject | None = None,
-    ) -> Path | None:
-        """Find the nearest manifest owner inside one governed repository.
-
-        Returns:
-            The resulting ``Path | None``.
-
-        """
-        boundary = repository_root.resolve()
-        candidate = path.resolve()
-        if source_project is not None and source_project.source_query(
-            candidate, "isfile"
-        ):
-            candidate = candidate.parent
-        if not candidate.is_relative_to(boundary):
-            return None
-        for parent in (candidate, *candidate.parents):
-            is_directory = (
-                parent.is_dir()
-                if source_project is None
-                else source_project.source_query(parent, "isdir")
-            )
-            if is_directory and (
-                (parent / c.PYPROJECT_FILENAME).is_file()
-                if source_project is None
-                else source_project.source_query(
-                    parent / c.PYPROJECT_FILENAME, "isfile"
-                )
-            ):
-                return parent
-            if parent == boundary:
-                return None
-        return None
 
     @classmethod
     def runtime_environment_dir(
@@ -1092,8 +1058,20 @@ class FlextInfraUtilitiesProjectDiscovery(
             The resulting ``Path``.
 
         """
-        return (
+        return cls.environment_python(
             cls.runtime_environment_dir(project_root, runtime_root=runtime_root)
+        )
+
+    @staticmethod
+    def environment_python(environment: Path) -> Path:
+        """Locate Python in one explicitly owned physical environment.
+
+        Returns:
+            Its native platform entrypoint, without changing environment ownership.
+
+        """
+        return (
+            environment
             / ("Scripts" if sys.platform == "win32" else "bin")
             / ("python.exe" if sys.platform == "win32" else c.Infra.PYTHON)
         )

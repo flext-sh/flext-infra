@@ -1,8 +1,16 @@
 # The captured alias is one of the fixture project's runtime aliases
-# (fixture-utils/local-alias.yml); an undeclared binding is one absent from
-# the module's own __all__ (utils/declared-in-module-all.yml).
+# (fixture-utils/local-alias.yml). __all__ membership is not this rule's
+# concern: a literal __all__ cannot be read by the rule (utils/declared-in-
+# module-all.yml), so the canonical `c = <class this module defines>` binding
+# is valid whatever its __all__ shape (operator decision, 2026-11-03).
 id: ban-runtime-alias-rebind
 valid:
+- |
+  from flext_core import FlextModels, m
+  class AiHubModels(FlextModels):
+      pass
+  m = AiHubModels
+  __all__ = ["AiHubModels", "m"]
 # ENFORCE-046 Pattern-A: an imported letter rebound to the consumer-named
 # class the module defines and declares.
 # A name that is no runtime alias of the project is out of scope.
@@ -11,26 +19,17 @@ valid:
       pass
   limit = FlextFooConstants
 - |
+  class FlextFooConstants:
+      pass
+  c = FlextFooConstants
+  __all__ = ["FlextFooConstants", "c"]
+- |
   from flext_core import c
   __all__ = ["c"]
 - |
   class FlextFooConstants:
       LIMIT = 3
-# Shape-level rule: string-form __all__ membership is the rope engine's
-# semantic admission (public_export_names_source) — the raw rule reports here
-# and the engine filters (bead flext-wjxd7).
 invalid:
-- |
-  from flext_core import FlextModels, m
-  class AiHubModels(FlextModels):
-      pass
-  m = AiHubModels
-  __all__ = ["AiHubModels", "m"]
-- |
-  class FlextFooConstants:
-      pass
-  c = FlextFooConstants
-  __all__ = ["FlextFooConstants"]
 - |
   class FlextFooConstants:
       pass

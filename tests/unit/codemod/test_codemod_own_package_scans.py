@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodemodOwnPackageScans:
@@ -22,8 +20,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
         """Declared packages and source roles keep strict scan boundaries."""
 
         @staticmethod
-        @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize("namespace", ["infra", "deployment_support"])
+        @c.Tests.MARK.parametrize(
             ("consumer", "target", "expected"),
             [
                 ("contracts/models.py", "contracts._models.entity", (True, True)),
@@ -59,9 +57,10 @@ class TestsFlextInfraCodemodOwnPackageScans:
                     'version = "1.0.0"\n'
                 ),
             )
-            declaration = u.Tests.project_spec(c.ContextScope.APPLICATION).model_copy(
-                update={"repository_namespace_packages": (namespace,)}
-            )
+            declaration = m.Infra.ProjectSpec.model_validate(
+                u.Tests.project_spec(c.ContextScope.APPLICATION),
+                from_attributes=True,
+            ).model_copy(update={"repository_namespace_packages": (namespace,)})
             tm.ok(
                 u.Cli.yaml_dump(
                     root / "config" / "codegen.yaml",
@@ -111,8 +110,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
             tm.that(source.read_text(encoding="utf-8"), eq=content)
 
         @staticmethod
-        @pytest.mark.parametrize("with_utilities", [False, True])
-        @pytest.mark.parametrize("constructor", ["native", "m", "t"])
+        @c.Tests.MARK.parametrize("with_utilities", [False, True])
+        @c.Tests.MARK.parametrize("constructor", ["native", "m", "t"])
         def test_adapter_construction_excludes_only_native_layer_zero_calls(
             mod_workspace: Path, *, with_utilities: bool, constructor: str
         ) -> None:
@@ -188,7 +187,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
         """Native declarations distinguish configuration from consumer helpers."""
 
         @staticmethod
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize(
             "filename",
             [
                 "configuration.py",
@@ -199,8 +198,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 "pulumi/lib/settings.py",
             ],
         )
-        @pytest.mark.parametrize("declares", [False, True])
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize("declares", [False, True])
+        @c.Tests.MARK.parametrize(
             ("provider", "base"),
             [("flext_core", "FlextConfig"), ("flext_ldap", "FlextLdapSettings")],
         )
@@ -237,7 +236,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "publisher",
@@ -382,17 +381,18 @@ class TestsFlextInfraCodemodOwnPackageScans:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("producer", [False, True])
-    @pytest.mark.parametrize("module_import", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("producer", [False, True])
+    @c.Tests.MARK.parametrize("module_import", [False, True])
     def test_own_utility_import_requires_the_declared_producer_family(
         mod_workspace: Path,
         *,
         producer: bool,
         module_import: bool,
     ) -> None:
-        """Consumer categories never borrow a real facade producer's role."""
-        family = u.Infra.facade_families()["u"]
+        """Only a letter binding in its producer family is the own-letter defect."""
+        letter = "u"
+        family = u.Infra.facade_families()[letter]
         tests_root = mod_workspace / c.Infra.DIR_TESTS
         tm.ok(u.Cli.ensure_dir(tests_root))
         tm.ok(
@@ -421,18 +421,32 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 else f"from {tests_root.name} import u\n",
             )
         )
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            documents = u.Infra.codemod_import_header_rules(
+                snapshot,
+                mod_workspace,
+                u.Infra.codemod_package_export_facts(snapshot, mod_workspace),
+            )
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        own_letter = tuple(
+            rule_id
+            for rule_id, document in documents.items()
+            if "metadata" in document
+            and {tests_root.name, letter} <= set(rule_id.split(separator))
+        )
+        tm.that(own_letter, empty=False)
         report = tm.ok(
             FlextInfraModGateEngine.scan(
                 mod_workspace,
                 fix=False,
-                selection=("ban-own-letter-import",),
+                selection=own_letter,
                 source_files=(source,),
             )
         )
-        tm.that(bool(report.entries), eq=producer)
+        tm.that(bool(report.entries), eq=producer and not module_import)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "dependencies",
         [None, (), ("pydantic; python_version < '0'",)],
     )

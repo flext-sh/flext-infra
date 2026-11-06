@@ -26,7 +26,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         *,
         config_path: Path,
         json_output_path: Path,
-    ) -> p.Result[m.Infra.DeptryScan]:
+    ) -> p.Result[p.Infra.DeptryScan]:
         """Capture one native deptry report against unchanged production trees.
 
         Callers elect the interpreter, configuration and fresh report destination;
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             Complete native findings and the states authenticating their inputs.
 
         """
-        result_type = r[m.Infra.DeptryScan]
+        result_type = r[p.Infra.DeptryScan]
         payload = cls._captured_deptry_inputs(
             project_path,
             config_path=config_path,
@@ -87,8 +87,8 @@ class FlextInfraUtilitiesDependencyDeptry:
 
     @staticmethod
     def _validated_deptry_coverage(
-        output: m.Cli.CommandOutput,
-        parsed: m.Infra.DeptryNativeReport,
+        output: p.Cli.CommandOutput,
+        parsed: p.Infra.DeptryNativeReport,
         roots: t.StrTuple,
     ) -> p.Result[int]:
         """Authenticate the native exit status and its scan coverage line.
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesDependencyDeptry:
 
     @staticmethod
     def _declared_wheel_target(
-        settings: m.Cli.AtomicFileState,
+        settings: p.Cli.AtomicFileState,
     ) -> p.Result[t.JsonMapping]:
         """Read the wheel target table from the captured settings bytes.
 
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesDependencyDeptry:
     @classmethod
     def _declared_deptry_roots(
         cls,
-        settings: m.Cli.AtomicFileState,
+        settings: p.Cli.AtomicFileState,
     ) -> p.Result[t.StrTuple]:
         """Elect deptry's roots from the wheel target the settings declare.
 
@@ -238,15 +238,15 @@ class FlextInfraUtilitiesDependencyDeptry:
     def _authenticated_deptry_sources(
         project_path: Path,
         roots: t.StrTuple,
-    ) -> p.Result[tuple[m.Cli.AtomicPhysicalTreeManifest, ...]]:
+    ) -> p.Result[tuple[p.Cli.AtomicPhysicalTreeManifest, ...]]:
         """Inventory every production root and authenticate its physical shape.
 
         Returns:
             One exact tree manifest per root, or the first authentication failure.
 
         """
-        result_type = r[tuple[m.Cli.AtomicPhysicalTreeManifest, ...]]
-        manifests: list[m.Cli.AtomicPhysicalTreeManifest] = []
+        result_type = r[tuple[p.Cli.AtomicPhysicalTreeManifest, ...]]
+        manifests: list[p.Cli.AtomicPhysicalTreeManifest] = []
         for root in roots:
             source = u.Cli.atomic_inventory_physical_tree(project_path / root)
             if source.failure:
@@ -261,7 +261,7 @@ class FlextInfraUtilitiesDependencyDeptry:
 
     @staticmethod
     def _verified_deptry_sources(
-        sources: Sequence[m.Cli.AtomicPhysicalTreeManifest],
+        sources: Sequence[p.Cli.AtomicPhysicalTreeManifest],
         *,
         moment: str,
     ) -> p.Result[bool]:
@@ -292,7 +292,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         tuple[
             m.Cli.AtomicFileState,
             t.StrTuple,
-            tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+            tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
         ]
     ]:
         """Read the deptry configuration and authenticate its declared roots.
@@ -305,7 +305,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             tuple[
                 m.Cli.AtomicFileState,
                 t.StrTuple,
-                tuple[m.Cli.AtomicPhysicalTreeManifest, ...],
+                tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
             ]
         ]
         settings = u.Cli.atomic_read_binary_file_state(config_path, required=True)
@@ -330,14 +330,14 @@ class FlextInfraUtilitiesDependencyDeptry:
         roots: t.StrTuple,
         config_path: Path,
         json_output_path: Path,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run native deptry once over the elected roots into a fresh report.
 
         Returns:
             The validated native command output, or the first execution failure.
 
         """
-        result_type = r[m.Cli.CommandOutput]
+        result_type = r[p.Cli.CommandOutput]
         before = u.Cli.atomic_read_binary_file_state(json_output_path, required=False)
         if before.failure:
             return result_type.from_failure(before)
@@ -378,14 +378,14 @@ class FlextInfraUtilitiesDependencyDeptry:
     @staticmethod
     def _parsed_deptry_report(
         json_output_path: Path,
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
         """Read and strictly parse the fresh native deptry report.
 
         Returns:
             The report file state and its validated native payload.
 
         """
-        result_type = r[tuple[m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
+        result_type = r[tuple[p.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]
         report_state = u.Cli.atomic_read_binary_file_state(
             json_output_path, required=True
         )
@@ -395,7 +395,7 @@ class FlextInfraUtilitiesDependencyDeptry:
             return result_type.fail(
                 f"deptry did not produce its native report: {json_output_path}"
             )
-        parsed = r[m.Infra.DeptryNativeReport].create_from_callable(
+        parsed = r[p.Infra.DeptryNativeReport].create_from_callable(
             partial(
                 m.Infra.DeptryNativeReport.model_validate_json,
                 report_state.value.content,
@@ -416,7 +416,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[
-        tuple[m.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
+        tuple[p.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
     ]:
         """Run deptry once and strictly parse its fresh native report.
 
@@ -451,9 +451,9 @@ class FlextInfraUtilitiesDependencyDeptry:
     @classmethod
     def _rechecked_deptry_states(
         cls,
-        settings: m.Cli.AtomicFileState,
-        report_state: m.Cli.AtomicFileState,
-        sources: Sequence[m.Cli.AtomicPhysicalTreeManifest],
+        settings: p.Cli.AtomicFileState,
+        report_state: p.Cli.AtomicFileState,
+        sources: Sequence[p.Cli.AtomicPhysicalTreeManifest],
     ) -> p.Result[bool]:
         """Re-verify the captured states and the unchanged production trees.
 

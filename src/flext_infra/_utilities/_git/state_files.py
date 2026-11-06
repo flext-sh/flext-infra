@@ -14,7 +14,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import m
+from flext_infra import m, p
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitRepo,
     FlextInfraUtilitiesGitWorktreeIO,
@@ -87,8 +87,8 @@ class FlextInfraUtilitiesGitStateFiles(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         path: Path,
-        observed: m.Infra.GitWorktreeObservedFile,
-        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
+        observed: p.Infra.GitWorktreeObservedFile,
+        allowed: Sequence[p.Infra.GitWorktreeFileState | None],
     ) -> None:
         """Hash the observed bytes and accept only an allowed captured state.
 
@@ -181,8 +181,8 @@ class FlextInfraUtilitiesGitStateFiles(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         path: Path,
-        desired: m.Infra.GitWorktreeFileState | None,
-        allowed: Sequence[m.Infra.GitWorktreeFileState | None],
+        desired: p.Infra.GitWorktreeFileState | None,
+        allowed: Sequence[p.Infra.GitWorktreeFileState | None],
     ) -> None:
 
         destination = root / path

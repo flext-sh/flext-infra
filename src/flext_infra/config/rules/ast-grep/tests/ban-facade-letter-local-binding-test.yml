@@ -1,0 +1,26 @@
+id: ban-facade-letter-local-binding
+valid:
+  - |
+    names = [entry.dn for entry in entries]
+  - |
+    for subject in subjects:
+        emit(subject)
+  - |
+    p = AlgarOudMigProtocols
+  - |
+    ordered = sorted(items, key=lambda item: order[item])
+  - |
+    value = m.Field(description="facade use is a read")
+invalid:
+  - |
+    names = [e.dn for e in entries]
+  - |
+    for s in subjects:
+        emit(s)
+  - |
+    found = any(p.match(dn) for p in patterns)
+  - |
+    ordered = sorted(items, key=lambda s: order[s])
+  - |
+    if (m := pattern.match(text)) is not None:
+        return m

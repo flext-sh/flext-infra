@@ -34,14 +34,14 @@ class FlextInfraUtilitiesRefactor:
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
 
-    _EMPTY_RULE_DELTA_OPTIONS: ClassVar[m.Infra.RuleDeltaOptions] = (
+    _EMPTY_RULE_DELTA_OPTIONS: ClassVar[p.Infra.RuleDeltaOptions] = (
         m.Infra.RuleDeltaOptions()
     )
 
     @staticmethod
     def publish_mod_native_artifact(
         root: Path, staged_path: Path
-    ) -> m.Cli.AtomicFileReceipt:
+    ) -> p.Cli.AtomicFileReceipt:
         """Retain exact scanner bytes before disposing its operation staging.
 
         Args:
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     @contextmanager
     def mod_native_readers(
-        artifacts: tuple[m.Cli.AtomicFileReceipt, ...],
+        artifacts: tuple[p.Cli.AtomicFileReceipt, ...],
     ) -> Generator[Mapping[Path, p.Cli.AtomicFileReader]]:
         """Retain one authenticated descriptor per artifact for one consumer pass.
 
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def mod_native_payload(
-        finding: m.Infra.ModScanFinding,
+        finding: p.Infra.ModScanFinding,
         readers: Mapping[Path, p.Cli.AtomicFileReader],
     ) -> t.JsonMapping:
         """Hydrate one complete native record explicitly through its retained reader.
@@ -157,9 +157,9 @@ class FlextInfraUtilitiesRefactor:
         return payload
 
     @staticmethod
-    def violations_totals[FindingT: m.Infra.ModOccurrence](
-        report: m.Infra.ModScanCounts[FindingT],
-    ) -> m.Infra.ViolationsTotals:
+    def violations_totals[FindingT: p.Infra.ModOccurrence](
+        report: p.Infra.ModScanCounts[FindingT],
+    ) -> p.Infra.ViolationsTotals:
         """Capture native totals without service behavior in data models.
 
         Returns:
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _finding_repository(
-        entry: m.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        entry: p.Infra.ModOccurrence | m.Infra.ModTextFinding,
         repository_root: Path | None,
         topology: Sequence[Path],
     ) -> str:
@@ -212,9 +212,9 @@ class FlextInfraUtilitiesRefactor:
         return owner.name
 
     @classmethod
-    def _report_occurrence_indexes[FindingT: m.Infra.ModOccurrence](
+    def _report_occurrence_indexes[FindingT: p.Infra.ModOccurrence](
         cls,
-        report: m.Infra.ModOccurrenceReport[FindingT]
+        report: p.Infra.ModOccurrenceReport[FindingT]
         | m.Infra.ModScanEvidence
         | m.Infra.ModTextReport,
         repository_root: Path | None,
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesRefactor:
             tuple[str, str], MutableMapping[tuple[str, str], int]
         ] = defaultdict(Counter)
         positions: MutableMapping[tuple[str, str], list[int]] = defaultdict(list)
-        entries: Sequence[m.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
+        entries: Sequence[p.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
             report.entries
         )
         for index, entry in enumerate(entries):
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesRefactor:
         ],
         indexes: Sequence[MutableMapping[tuple[str, str], list[int]]],
         inventory: tuple[tuple[str, str], ...],
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
         """Build the per-repository and per-rule occurrence deltas.
 
         Args:
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesRefactor:
 
         """
         before_entries, after_entries = counters
-        deltas: list[m.Infra.ViolationsRuleDelta] = []
+        deltas: list[p.Infra.ViolationsRuleDelta] = []
         for key in sorted(
             set(inventory) | before_entries.keys() | after_entries.keys()
         ):
@@ -301,16 +301,16 @@ class FlextInfraUtilitiesRefactor:
         return tuple(deltas)
 
     @staticmethod
-    def rule_deltas[FindingT: m.Infra.ModOccurrence](
-        before: m.Infra.ModOccurrenceReport[FindingT]
+    def rule_deltas[FindingT: p.Infra.ModOccurrence](
+        before: p.Infra.ModOccurrenceReport[FindingT]
         | m.Infra.ModScanEvidence
         | m.Infra.ModTextReport,
-        after: m.Infra.ModOccurrenceReport[FindingT]
+        after: p.Infra.ModOccurrenceReport[FindingT]
         | m.Infra.ModScanEvidence
         | m.Infra.ModTextReport,
         *,
-        options: m.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+        options: p.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
+    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
         """Compare the lexical occurrences of two reports of one native engine.
 
         Args:
@@ -352,9 +352,9 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _project_scope_elected(
-        stage: m.Infra.ViolationsSweepStage,
+        stage: p.Infra.ViolationsSweepStage,
         project: Path,
-        before: m.Infra.ViolationsSweepSources,
+        before: p.Infra.ViolationsSweepSources,
     ) -> bool:
         """Whether the stage repository root falls inside the audited scope.
 
@@ -386,12 +386,12 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def _engine_coverage(
         project: Path,
-        before: m.Infra.ViolationsSweepSources,
-        after: m.Infra.ViolationsSweepSources,
+        before: p.Infra.ViolationsSweepSources,
+        after: p.Infra.ViolationsSweepSources,
         lint_failures: Sequence[str],
         *,
         ast_observed: bool,
-    ) -> tuple[m.Infra.ViolationsEngineCoverage, ...]:
+    ) -> tuple[p.Infra.ViolationsEngineCoverage, ...]:
         """Build the per-engine observation coverage receipts for one project.
 
         Args:
@@ -449,9 +449,9 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def violations_audit_comparison(
         project: Path,
-        stage: m.Infra.ViolationsSweepStage,
-        inventory: m.Infra.CodemodRulePlan | None,
-    ) -> m.Infra.ViolationsSweepStage:
+        stage: p.Infra.ViolationsSweepStage,
+        inventory: p.Infra.CodemodRulePlan | None,
+    ) -> p.Infra.ViolationsSweepStage:
         """Compare native rule and collateral observations without aggregate masking.
 
         Returns:
@@ -706,9 +706,9 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def text_introduced_findings(
-        before: m.Infra.ModTextReport,
-        after: m.Infra.ModTextReport,
-    ) -> tuple[m.Infra.ModTextFinding, ...]:
+        before: p.Infra.ModTextReport,
+        after: p.Infra.ModTextReport,
+    ) -> tuple[p.Infra.ModTextFinding, ...]:
         """Consume baseline text occurrences once, never collapsing duplicates.
 
         Returns:
@@ -718,7 +718,7 @@ class FlextInfraUtilitiesRefactor:
         remaining = Counter(
             (entry.file, entry.rule_id, entry.text) for entry in before.entries
         )
-        introduced: list[m.Infra.ModTextFinding] = []
+        introduced: list[p.Infra.ModTextFinding] = []
         for entry in after.entries:
             identity = (entry.file, entry.rule_id, entry.text)
             if remaining[identity]:
@@ -770,7 +770,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def write_impact_map(
-        results: Sequence[m.Infra.Result],
+        results: Sequence[p.Infra.Result],
         output_path: Path,
     ) -> p.Result[bool]:
         """Write refactor impact map JSON to disk.
@@ -800,9 +800,9 @@ class FlextInfraUtilitiesRefactor:
         return r[bool].ok(value=True)
 
     @staticmethod
-    def mod_scan_inputs[FindingT: m.Infra.ModOccurrence](
-        report: m.Infra.ModOccurrenceReport[FindingT],
-    ) -> m.Infra.CodemodBindingSnapshot:
+    def mod_scan_inputs[FindingT: p.Infra.ModOccurrence](
+        report: p.Infra.ModOccurrenceReport[FindingT],
+    ) -> p.Infra.CodemodBindingSnapshot:
         """Union the captured finding sources once per operation.
 
         Args:
@@ -823,10 +823,10 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def publish_mod_scan_evidence(
         root: Path,
-        report: m.Infra.ModScanReport,
+        report: p.Infra.ModScanReport,
         *,
-        publication: m.Infra.ModScanPublication,
-    ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
+        publication: p.Infra.ModScanPublication,
+    ) -> p.Result[p.Infra.ModScanEvidenceReceipt]:
         """Atomically replace the complete structured evidence for one mod scan.
 
         Args:
@@ -835,7 +835,7 @@ class FlextInfraUtilitiesRefactor:
             publication: The publication declaration naming the report.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ModScanEvidenceReceipt]``.
+            The resulting ``p.Result[p.Infra.ModScanEvidenceReceipt]``.
 
         """
         evidence = FlextInfraUtilitiesRefactor.mod_scan_evidence(
@@ -848,10 +848,10 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def mod_scan_evidence(
         root: Path,
-        report: m.Infra.ModScanReport,
+        report: p.Infra.ModScanReport,
         *,
-        publication: m.Infra.ModScanPublication,
-    ) -> m.Infra.ModScanEvidence:
+        publication: p.Infra.ModScanPublication,
+    ) -> p.Infra.ModScanEvidence:
         """Normalize live scan references through the canonical closed inventory.
 
         Returns:
@@ -875,14 +875,32 @@ class FlextInfraUtilitiesRefactor:
             artifact.path: index
             for index, artifact in enumerate(report.native_artifacts)
         }
-        references: list[m.Infra.ModScanFindingReference] = []
+        references: list[p.Infra.ModScanFindingReference] = []
         for entry in report.entries:
             if entry.native_receipt is None:
                 msg = f"mod evidence finding lacks its native artifact: {entry.file}"
                 raise ValueError(msg)
             references.append(
                 m.Infra.ModScanFindingReference(
-                    **entry.model_dump(exclude_computed_fields=True),
+                    rule_file=entry.rule_file,
+                    rule_id=entry.rule_id,
+                    repository=entry.repository,
+                    catalog_digest=entry.catalog_digest,
+                    message=entry.message,
+                    module_absence=entry.module_absence,
+                    file=entry.file,
+                    source_owner=entry.source_owner,
+                    source_state=entry.source_state,
+                    range=entry.range,
+                    text=entry.text,
+                    replacement=entry.replacement,
+                    actionable=entry.actionable,
+                    classification=entry.classification,
+                    replacement_offsets=entry.replacement_offsets,
+                    severity=entry.severity,
+                    origin=entry.origin,
+                    native_record=entry.native_record,
+                    native_receipt=entry.native_receipt,
                     source_path=(
                         entry.source_state.path
                         if entry.source_state is not None
@@ -907,10 +925,10 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def publish_mod_scan_evidence_receipt(
         root: Path,
-        evidence: m.Infra.ModScanEvidence,
+        evidence: p.Infra.ModScanEvidence,
         *,
-        publication: m.Infra.ModScanPublication,
-    ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
+        publication: p.Infra.ModScanPublication,
+    ) -> p.Result[p.Infra.ModScanEvidenceReceipt]:
         """Publish the same normalized evidence used by read-only audit snapshots.
 
         Returns:
@@ -927,7 +945,7 @@ class FlextInfraUtilitiesRefactor:
             or set(evidence.totals_by_rule)
             != set(publication.rule_ids) | {entry.rule_id for entry in evidence.entries}
         ):
-            return r[m.Infra.ModScanEvidenceReceipt].fail(
+            return r[p.Infra.ModScanEvidenceReceipt].fail(
                 "normalized scan evidence differs from its publication declaration"
             )
         content = (
@@ -942,8 +960,8 @@ class FlextInfraUtilitiesRefactor:
             content,
         )
         if published.failure:
-            return r[m.Infra.ModScanEvidenceReceipt].from_failure(published)
-        return r[m.Infra.ModScanEvidenceReceipt].ok(
+            return r[p.Infra.ModScanEvidenceReceipt].from_failure(published)
+        return r[p.Infra.ModScanEvidenceReceipt].ok(
             m.Infra.ModScanEvidenceReceipt(
                 path=report_path,
                 sha256=u.Cli.sha256_bytes(content),
@@ -1000,7 +1018,7 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def publish_refactor_report_evidence(
         root: Path,
-        report: m.ContractModel | m.ArbitraryTypesModel,
+        report: p.ContractModel | m.ArbitraryTypesModel,
         *,
         relative_path: Path,
     ) -> p.Result[Path]:

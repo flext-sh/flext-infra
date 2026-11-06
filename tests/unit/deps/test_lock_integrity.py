@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
@@ -18,11 +16,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.mark.usefixtures("repository")
+@c.Tests.MARK.usefixtures("repository")
 class TestsFlextInfraDepsLockIntegrity:
     """Validate committed generated lock verification through its public model."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def repository(
         tmp_path: Path,

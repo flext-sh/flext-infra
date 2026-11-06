@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -20,7 +19,6 @@ if TYPE_CHECKING:
     from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
     from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
     from flext_infra.codemod.extract import FlextInfraCodemodExtract
-    from flext_infra.codemod.loop import FlextInfraCodemodLoop
     from flext_infra.codemod.rename import FlextInfraCodemodRename
     from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from flext_infra.codemod.snapshot_reconciler import (
@@ -36,7 +34,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
     "FlextInfraCodemodDuplicateApply",
     "FlextInfraCodemodExtract",
-    "FlextInfraCodemodLoop",
     "FlextInfraCodemodRename",
     "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
@@ -49,13 +46,12 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraApplyRenames": ".apply_renames",
         "FlextInfraCodemodAstScan": ".ast_scan",
         "FlextInfraCodemodBatchApply": ".batch_apply",
         "FlextInfraCodemodDuplicateApply": ".duplicate_apply",
         "FlextInfraCodemodExtract": ".extract",
-        "FlextInfraCodemodLoop": ".loop",
         "FlextInfraCodemodRename": ".rename",
         "FlextInfraCodemodSemanticApply": ".semantic_apply",
         "FlextInfraCodemodSnapshotReconciler": ".snapshot_reconciler",
@@ -63,6 +59,6 @@ install_lazy_exports(
         "FlextInfraModGateEngine": ".batch_gates",
         "FlextInfraModReplacements": ".batch_replacements",
         "FlextInfraModTextGateEngine": ".text_gates",
-    }),
+    },
     public_exports=__all__,
 )

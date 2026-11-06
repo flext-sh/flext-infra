@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenRenderPurityGolden:
@@ -51,7 +49,7 @@ class TestsFlextInfraCodegenRenderPurityGolden:
             ("commit", "--no-verify", "-m", "commit managed artifacts"),
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "environment",
         ["runner-clean", "host-runtime", "host-concurrent-wip"],
     )
@@ -129,6 +127,6 @@ class TestsFlextInfraCodegenRenderPurityGolden:
     def test_fixture_scaffold_year_is_the_production_ssot() -> None:
         """Fixture identity uses the same year declaration production renders."""
         year = config.Infra.codegen.scaffold.project.copyright_year
-        spec: m.Infra.ProjectSpec = u.Tests.project_spec("year-owner")
+        spec: p.Infra.ProjectSpec = u.Tests.project_spec("year-owner")
 
         tm.that(spec.year, eq=year)

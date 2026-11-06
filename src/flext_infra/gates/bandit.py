@@ -8,13 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.gates import FlextInfraGates
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGatesBandit(FlextInfraGates):
@@ -38,7 +35,7 @@ class FlextInfraGatesBandit(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: t.DirectoryPath,
-        ctx: p.Model,
+        ctx: p.BaseModel,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Read Bandit's JSON report; every reported result blocks the gate.
 

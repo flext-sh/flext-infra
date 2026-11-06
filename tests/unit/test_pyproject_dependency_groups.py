@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -19,7 +18,9 @@ from tests import c, m, p, t, tm, u
 class TestsFlextInfraPyprojectDependencyGroups:
     """Exercise the same public TOML boundary consumed by native resolution."""
 
-    @pytest.mark.parametrize("variant", ["same", "extras", "marker", "origin", "bound"])
+    @c.Tests.MARK.parametrize(
+        "variant", ["same", "extras", "marker", "origin", "bound"]
+    )
     def test_development_composition_preserves_complete_requirement_identity(
         self,
         variant: str,
@@ -98,7 +99,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
 
     @staticmethod
-    def _workspace(role: c.Infra.MakeProfile) -> m.Infra.WorkspaceSpec:
+    def _workspace(role: c.Infra.MakeProfile) -> p.Infra.WorkspaceSpec:
         return u.Tests.workspace_spec(
             u.Tests.repository_ref("workspace", role=role),
         )
@@ -141,7 +142,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             f"{groups}\n"
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
@@ -189,11 +190,11 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
         tm.that(tm.ok(self._conform(rendered, role)), eq=rendered)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "group_name",
         [str(c.Infra.DEV), str(c.Infra.DependencyGroup.CODEGEN)],
     )
@@ -259,7 +260,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
             eq=rendered,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
@@ -365,11 +366,11 @@ class TestsFlextInfraPyprojectDependencyGroups:
             )["examples"],
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
-    @pytest.mark.parametrize("variant", ["extra", "marker", "bounded", "origin"])
+    @c.Tests.MARK.parametrize("variant", ["extra", "marker", "bounded", "origin"])
     def test_internal_floor_yields_only_its_unbounded_matching_dimension(
         self,
         role: c.Infra.MakeProfile,
@@ -425,11 +426,11 @@ class TestsFlextInfraPyprojectDependencyGroups:
             eq=conformed,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
-    @pytest.mark.parametrize("name", ["dev", "codegen"])
+    @c.Tests.MARK.parametrize("name", ["dev", "codegen"])
     def test_extra_name_does_not_migrate_its_requirements_into_a_group(
         self,
         role: c.Infra.MakeProfile,
@@ -476,7 +477,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
         tm.that(tm.ok(self._conform(rendered, role)), eq=rendered)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "groups",
         [
             'dev = [{include-group = "missing"}]',
@@ -520,7 +521,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         result = self._conform(source, c.Infra.MakeProfile.STANDALONE)
         tm.ok(result.failure)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "entry",
         [
             '{"include-group" = "examples", unexpected = "value"}',
@@ -534,7 +535,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
     ) -> None:
         """The typed parser exposes malformed tables before they can be rewritten."""
         source = self._source(f"dev = [{entry}]\nexamples = []")
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match="validation errors for DependencyGroupEntries",
         ):

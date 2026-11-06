@@ -9,15 +9,23 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraCli, config, u
+from flext_infra import FlextInfraCli
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, m
-from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixtureMixin
-from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixtureMixin
-from tests.utilities_git import TestsFlextInfraUtilitiesGitMixin
+from tests import (
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToolingFixture,
+    c,
+    config,
+    m,
+    p,
+    t,
+    tm,
+    u,
+)
 
 
-class TestsFlextInfraUtilitiesReleaseMixin:
+class TestsFlextInfraUtilitiesRelease:
     """Release protocol workspace and report fixture helpers."""
 
     @staticmethod
@@ -62,13 +70,13 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         workspace.mkdir(parents=True, exist_ok=True)
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
-        TestsFlextInfraUtilitiesToolingFixtureMixin.copy_tracked_mise_seeds(root)
-        TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(root)
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
-        source = TestsFlextInfraUtilitiesProjectFixtureMixin.flext_source
-        spec = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec("workspace")
+        source = TestsFlextInfraUtilitiesProjectFixture.flext_source
+        spec = TestsFlextInfraUtilitiesProjectFixture.project_spec("workspace")
         (workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -98,7 +106,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         # Gitleaks is a codegen projection; build constraints render from the
         # typed config SSOT at release time and have no repository projection.
         gitleaks_source = (
-            TestsFlextInfraUtilitiesReleaseMixin.release_policy_root()
+            TestsFlextInfraUtilitiesRelease.release_policy_root()
             / f"{c.Infra.RELEASE_GITLEAKS_CONFIG_PATH}.j2"
         )
         rendered_gitleaks = u.Cli.template_render(gitleaks_source, config.Infra.release)
@@ -161,12 +169,12 @@ class TestsFlextInfraUtilitiesReleaseMixin:
                 "MIT License\n\nCopyright (c) FLEXT Tests\n",
                 encoding="utf-8",
             )
-            TestsFlextInfraUtilitiesProjectFixtureMixin.write_member_package(
+            TestsFlextInfraUtilitiesProjectFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
+            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -187,12 +195,12 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             locked.model_dump(mode="json", exclude_none=True),
         ).unwrap()
         if initialize_root_git:
-            TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace)
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace)
         else:
             (workspace / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         if initialize_project_git:
             for name in project_names:
-                TestsFlextInfraUtilitiesGitMixin.initialize_git_repo(workspace / name)
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace / name)
         context = FlextInfraWorkspaceDetector.resolution_context(workspace).unwrap()
         context.lock_path.parent.mkdir(parents=True, exist_ok=True)
         u.Cli.toml_write_mapping(
@@ -205,7 +213,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
     def run_release_main(
         repository_root: Path,
         *arguments: str,
-        ownership: m.Infra.GitLaneOwnershipReceipt | None = None,
+        ownership: p.Infra.GitLaneOwnershipReceipt | None = None,
     ) -> int:
         """Run the public release CLI against one real test workspace.
 
@@ -228,6 +236,75 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         ])
 
     @staticmethod
+    def create_tagged_release_build(
+        tmp_path: Path,
+        *,
+        projects: t.StrTuple = ("flext-a",),
+    ) -> tuple[Path, m.Infra.BuildReport]:
+        """Build members through the public CLI and tag their attested sources.
+
+        Returns:
+            The tagged workspace with its verified build receipt.
+
+        """
+        workspace = TestsFlextInfraUtilitiesRelease.create_release_workspace(
+            tmp_path,
+            project_names=(*projects, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+            initialize_project_git=True,
+        )
+        for index, name in enumerate(projects):
+            project = workspace / name
+            tm.ok(u.Infra.replace_project_version(project, f"0.2.{index}"))
+            TestsFlextInfraUtilitiesGit.commit_git_changes(
+                project,
+                "declare independent member version",
+            )
+        notes = workspace / "docs" / "releases"
+        notes.mkdir(parents=True)
+        (notes / "v0.1.0.md").write_text("# Release v0.1.0\n", encoding="utf-8")
+        tm.that(
+            TestsFlextInfraUtilitiesRelease.run_release_main(
+                workspace,
+                "--phase",
+                "build",
+                "--projects",
+                ",".join(projects),
+                "--apply",
+            ),
+            eq=0,
+        )
+        report_path = (
+            TestsFlextInfraUtilitiesRelease.release_report_dir(
+                workspace,
+                c.Tests.RELEASE_VERSION_BASE,
+            )
+            / c.Infra.RELEASE_REPORT_FILENAME
+        )
+        report = m.Infra.BuildReport.model_validate_json(
+            report_path.read_text(encoding="utf-8"),
+        )
+        for record in report.records:
+            TestsFlextInfraUtilitiesGit.git_bootstrap(
+                workspace,
+                (
+                    "update-index",
+                    "--add",
+                    "--replace",
+                    "--cacheinfo",
+                    f"160000,{record.commit_oid},{record.project}",
+                ),
+            )
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            workspace,
+            ("commit", "-m", "attest release member sources"),
+        )
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            workspace,
+            ("tag", c.Infra.TAG_FORMAT.format(version=report.version)),
+        )
+        return workspace, report
+
+    @staticmethod
     def run_release_build(
         repository_root: Path,
         project_name: str,
@@ -240,7 +317,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             The resulting ``int``.
 
         """
-        return TestsFlextInfraUtilitiesReleaseMixin.run_release_main(
+        return TestsFlextInfraUtilitiesRelease.run_release_main(
             repository_root,
             "--phase",
             c.Tests.RELEASE_PHASE_BUILD,
@@ -262,14 +339,14 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             The resulting ``Path``.
 
         """
-        return TestsFlextInfraUtilitiesReleaseMixin.create_release_workspace(
+        return TestsFlextInfraUtilitiesRelease.create_release_workspace(
             root,
             project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
             initialize_project_git=initialize_project_git,
         )
 
     @staticmethod
-    def release_build_report(repository_root: Path) -> m.Infra.BuildReport:
+    def release_build_report(repository_root: Path) -> p.Infra.BuildReport:
         """Read the strict build report the last build phase wrote.
 
         Returns:
@@ -277,7 +354,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
 
         """
         report_path = (
-            TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
+            TestsFlextInfraUtilitiesRelease.release_report_dir(
                 repository_root,
                 c.Tests.RELEASE_VERSION_BASE,
             )
@@ -295,7 +372,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             The resulting ``str``.
 
         """
-        return TestsFlextInfraUtilitiesReleaseMixin.release_build_log(
+        return TestsFlextInfraUtilitiesRelease.release_build_log(
             repository_root,
             c.Tests.RELEASE_VERSION_BASE,
             project_name,
@@ -324,7 +401,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
 
         """
         return (
-            TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
+            TestsFlextInfraUtilitiesRelease.release_report_dir(
                 repository_root,
                 version,
             )
@@ -344,7 +421,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
 
         """
         return (
-            TestsFlextInfraUtilitiesReleaseMixin.release_report_dir(
+            TestsFlextInfraUtilitiesRelease.release_report_dir(
                 repository_root,
                 version,
             )
@@ -353,4 +430,4 @@ class TestsFlextInfraUtilitiesReleaseMixin:
         )
 
 
-__all__: list[str] = ["TestsFlextInfraUtilitiesReleaseMixin"]
+__all__: list[str] = ["TestsFlextInfraUtilitiesRelease"]

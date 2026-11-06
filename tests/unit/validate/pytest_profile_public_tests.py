@@ -25,8 +25,10 @@ class TestsFlextInfraPytestProfile:
     """Exercise the real profiling child transport and its receipt binding."""
 
     @staticmethod
-    @pytest.mark.parametrize("handler", ["default", "raise", "return"])
-    @pytest.mark.parametrize(c.HandlerType.EVENT, ["tempfile.mkstemp", "marshal.dumps"])
+    @c.Tests.MARK.parametrize("handler", ["default", "raise", "return"])
+    @c.Tests.MARK.parametrize(
+        c.HandlerType.EVENT, ["tempfile.mkstemp", "marshal.dumps"]
+    )
     def test_sigterm_during_publication_never_reenters_snapshot(
         tmp_path: Path, handler: str, event: str
     ) -> None:
@@ -171,7 +173,7 @@ class TestsFlextInfraPytestProfile:
         tm.that(tuple(tmp_path.glob("*.pstats")), eq=(output,))
 
     @staticmethod
-    @pytest.mark.parametrize("cause", ["exception", "exit", "success"])
+    @c.Tests.MARK.parametrize("cause", ["exception", "exit", "success"])
     def test_launcher_publication_failure_preserves_first_cause(
         tmp_path: Path, cause: str
     ) -> None:
@@ -240,8 +242,8 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("interruption", ["signal", "timeout"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("interruption", ["signal", "timeout"])
     def test_native_termination_keeps_a_readable_profile_checkpoint(
         tmp_path: Path,
         interruption: str,
@@ -306,7 +308,7 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_native_profiler_owns_workload_after_startup_handoff(
         cached_runner_project: Path,
         record_property: Callable[[str, str], None],
@@ -368,7 +370,7 @@ class TestsFlextInfraPytestProfile:
             / policy.profile_suite_filename
         )
         tm.that(
-            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=c.Tests.ExitCode.OK
         )
         tm.that(
             "workload" in pstats.Stats(str(native)).get_stats_profile().func_profiles,
@@ -421,8 +423,8 @@ class TestsFlextInfraPytestProfile:
         record_property("parent_profile_hotspots", repr(hotspots))
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("termination_signal", [signal.SIGKILL, signal.SIGTERM])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("termination_signal", [signal.SIGKILL, signal.SIGTERM])
     def test_interrupted_profile_preserves_the_child_process_failure(
         cached_runner_project: Path,
         termination_signal: int,
@@ -480,8 +482,8 @@ class TestsFlextInfraPytestProfile:
             tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has="test_runtime")
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("phase", ["between_children", "suite"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("phase", ["between_children", "suite"])
     def test_parent_sigterm_publishes_bound_receipts_and_reaps_child(
         cached_runner_project: Path,
         phase: str,
@@ -573,7 +575,7 @@ class TestsFlextInfraPytestProfile:
             eq=receipt.read_bytes(),
         )
         if phase == "suite":
-            with pytest.raises(ProcessLookupError):
+            with u.Tests.raises(ProcessLookupError):
                 os.kill(int(child_pid.read_text(encoding=c.DEFAULT_ENCODING)), 0)
             tm.ok(
                 validate.FlextInfraCProfileReport(
@@ -587,8 +589,8 @@ class TestsFlextInfraPytestProfile:
             )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("publication_error", ["receipt", "context", "stderr"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("publication_error", ["receipt", "context", "stderr"])
     def test_parent_publication_error_preserves_the_child_failure(
         cached_runner_project: Path,
         publication_error: str,
@@ -687,7 +689,7 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_focused_profile_keeps_one_run_and_excludes_other_files(
         cached_runner_project: Path,
     ) -> None:
@@ -711,7 +713,7 @@ class TestsFlextInfraPytestProfile:
         )
         started_at = monotonic()
         tm.that(
-            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=c.Tests.ExitCode.OK
         )
         contexts = list(
             (cached_runner_project / runner.reports).glob("*/run-context.json"),
@@ -758,8 +760,10 @@ class TestsFlextInfraPytestProfile:
         tm.that(bound.profile_sha256, eq=u.Cli.sha256_bytes(immutable.read_bytes()))
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("target_file", [Path("../outside.py"), Path("missing.py")])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
+        "target_file", [Path("../outside.py"), Path("missing.py")]
+    )
     def test_profile_entry_rejects_invalid_focused_targets(
         cached_runner_project: Path,
         target_file: Path,
@@ -772,7 +776,7 @@ class TestsFlextInfraPytestProfile:
             / "profiles"
             / config.Infra.tooling.tools.pytest.profile_suite_filename
         )
-        with pytest.raises(RuntimeError, match=r"target_file|test target file"):
+        with u.Tests.raises(RuntimeError, match=r"target_file|test target file"):
             u.Tests.PytestRunner.profile_parent(runner, output, target_file=target_file)
         tm.that(
             list((cached_runner_project / runner.reports).glob("*/run-context.json")),
@@ -780,7 +784,7 @@ class TestsFlextInfraPytestProfile:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_pytester_children_profile_startup_and_preserve_native_exits(
         cached_runner_project: Path,
     ) -> None:
@@ -816,7 +820,7 @@ class TestsFlextInfraPytestProfile:
             / policy.profile_suite_filename
         )
         tm.that(
-            u.Tests.PytestRunner.profile_parent(runner, output), eq=pytest.ExitCode.OK
+            u.Tests.PytestRunner.profile_parent(runner, output), eq=c.Tests.ExitCode.OK
         )
         receipt = m.Infra.PytestRunContext.model_validate_json(
             output.with_suffix(".pstats.json").read_text(encoding="utf-8"),
@@ -860,12 +864,12 @@ class TestsFlextInfraPytestProfile:
         tm.ok(report.execute().failure)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("arguments", "expected_exit"),
         [
-            (("--version",), pytest.ExitCode.OK),
-            (("--flext-invalid-profile-option",), pytest.ExitCode.USAGE_ERROR),
+            (("--version",), c.Tests.ExitCode.OK),
+            (("--flext-invalid-profile-option",), c.Tests.ExitCode.USAGE_ERROR),
         ],
     )
     def test_profile_child_preserves_exit_status_and_arguments(
@@ -879,14 +883,14 @@ class TestsFlextInfraPytestProfile:
         tm.that(result.outcome.raw_return_code == expected_exit, truth=True)
         tm.that(result.outcome.timed_out, truth=False)
         tm.that(result.outcome.forwarded_signal, none=True)
-        if expected_exit == pytest.ExitCode.USAGE_ERROR:
+        if expected_exit == c.Tests.ExitCode.USAGE_ERROR:
             tm.that(arguments[0] in result.stderr, truth=True)
         tm.that(
             pstats.Stats(str(profile)).get_stats_profile().func_profiles, truth=True
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_profile_failure_exposes_the_write_error(tmp_path: Path) -> None:
         """A real profile I/O failure remains visible rather than becoming success."""
         output = tmp_path / "collection.pstats"

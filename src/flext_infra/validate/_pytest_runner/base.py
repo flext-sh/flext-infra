@@ -11,15 +11,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_infra import c, config, m, settings, t, u
+from flext_infra import c, config, m, p, s, settings, t, u
 from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
-from flext_infra.base import s
 
 
 class FlextInfraPytestRunnerBase(s[int]):
     """Own immutable inputs shared by all pytest runner phases."""
 
-    _cache_publication: m.Infra.TestmonCachePublication | None = m.PrivateAttr(
+    _cache_publication: p.Infra.TestmonCachePublication | None = m.PrivateAttr(
         default=None,
     )
 
@@ -114,7 +113,7 @@ class FlextInfraPytestRunnerBase(s[int]):
     @classmethod
     def from_project_context(
         cls,
-        context: m.Infra.WorkspaceProjectContext,
+        context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
         execution_mode: c.Infra.PytestExecutionMode = (
@@ -374,7 +373,7 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     def _declared_worker_ceiling(
         self,
-        policy: m.Infra.PytestConfig,
+        policy: p.Infra.PytestConfig,
     ) -> int | m.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
 
@@ -412,7 +411,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         numerator_text, denominator_text = (ceiling.cpu_fraction or "1/1").split("/")
         return max(1, cpu_count * int(numerator_text) // int(denominator_text))
 
-    def parallel_worker_budget(self, policy: m.Infra.PytestConfig) -> int:
+    def parallel_worker_budget(self, policy: p.Infra.PytestConfig) -> int:
         """Bound xdist by configuration, CPU, and physical memory.
 
         The per-project override map (``[project].name`` → absolute workers or

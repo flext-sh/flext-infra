@@ -6,20 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import ClassVar
 
-from flext_infra import p
+from flext_infra import p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeBase
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase):
-    """Delegate semantic matching and capture queries to Rope's native SDK."""
+    """Delegate semantic matching, capture, occurrence and word queries to Rope."""
 
     _semantic_finders: ClassVar[
         ContextVar[
@@ -84,58 +81,28 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
     ) -> tuple[tuple[int, int], ...]:
         """Resolve source regions through Rope's identity-aware pattern matcher.
 
-        Matches whose node shapes Rope cannot map to a source region (bare
-        constants) are skipped with a logged note; policy detection stays
-        authoritative and the rule simply does not rewrite that node.
-
         Returns:
             Matched character ranges from the module's immutable source snapshot.
 
+        Raises:
+            AttributeError: If native matching fails to resolve a semantic attribute.
+
         """
         finder = cls.semantic_finder(module, arguments=arguments)
-        regions: list[tuple[int, int]] = []
-
-        def region_of(match: p.Infra.RopeMatch) -> tuple[int, int]:
-            """Map one match to its source region, skipping unmappable shapes.
-
-            Returns:
-                The matched character range.
-
-            """
-            try:
-                return match.get_region()
-            except AttributeError as error:
-                resource = module.get_resource()
-                error.add_note(
-                    f"Rope semantic match skipped resource="
-                    f"{resource.path if resource else None!r} "
-                    f"pattern={pattern!r} arguments={arguments!r} "
-                    f"region={(start, end)!r}",
-                )
-                _LOGGER.warning("rope semantic match skipped: %s", error)
-                return (-1, -1)
-
         try:
-            mapped = (
-                region_of(match)
+            return tuple(
+                match.get_region()
                 for match in finder.get_matches(
                     pattern, arguments, start=start, end=end
                 )
             )
-            regions.extend(region for region in mapped if region != (-1, -1))
         except AttributeError as error:
-            # the native matcher is itself a lazy generator: it may hit the
-            # same unmappable node while iterating; regions resolved so far
-            # are kept and the skip stays visible
             resource = module.get_resource()
             error.add_note(
-                f"Rope semantic match stream skipped resource="
-                f"{resource.path if resource else None!r} "
-                f"pattern={pattern!r} arguments={arguments!r} "
-                f"region={(start, end)!r}",
+                f"Rope semantic match resource={resource.path if resource else None!r} "
+                f"pattern={pattern!r} arguments={arguments!r} region={(start, end)!r}",
             )
-            _LOGGER.warning("rope semantic match stream skipped: %s", error)
-        return tuple(regions)
+            raise
 
     @classmethod
     def semantic_finder(
@@ -206,6 +173,128 @@ class FlextInfraUtilitiesRopeRuntimeMatching(FlextInfraUtilitiesRopeRuntimeBase)
         )
         choices = (constraints,) if isinstance(constraints, str) else constraints
         return any(wildcard.matches(suspect, choice) for choice in choices)
+
+    @classmethod
+    def create_occurrence_finder(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        name: str,
+        pyname: t.Infra.RopePyName,
+        *,
+        imports: bool,
+        in_hierarchy: bool,
+    ) -> t.Infra.RopeOccurrenceFinder:
+        create_finder = cls.runtime_callable(
+            "rope.refactor.occurrences",
+            "create_finder",
+        )
+        finder = create_finder(
+            rope_project,
+            name,
+            pyname,
+            imports=imports,
+            in_hierarchy=in_hierarchy,
+        )
+        if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
+            msg = "rope occurrence finder does not satisfy p.Infra.RopeOccurrenceFinder"
+            raise TypeError(msg)
+        return finder
+
+    @classmethod
+    def lexical_occurrence_finder(
+        cls, project: p.Infra.RopeProject, name: str
+    ) -> p.Infra.RopeOccurrenceFinder:
+        """Find native lexical occurrences without last-binding inference.
+
+        Args:
+            project: The Rope project in which to search for occurrences.
+            name: The name of the variable or function to find occurrences for.
+
+        Returns:
+            The native finder for occurrences of the specified name.
+
+        Raises:
+            TypeError: If the finder violates its native Rope contract.
+
+        """
+        finder = cls.runtime_callable("rope.refactor.occurrences", "Finder")(
+            project, name
+        )
+        if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
+            message = "Rope lexical finder does not satisfy its native contract"
+            raise TypeError(message)
+        return finder
+
+    @classmethod
+    def word_primary_range(cls, source: str, offset: int) -> tuple[int, int]:
+        word_finder = cls._word_finder(source)
+        primary_range = getattr(word_finder, "get_primary_range", None)
+        if not callable(primary_range):
+            msg = "rope Worder does not expose callable get_primary_range"
+            raise TypeError(msg)
+        value = primary_range(offset)
+        match value:
+            case tuple([int() as start, int() as end]):
+                return start, end
+            case _:
+                msg = "rope Worder returned invalid primary range"
+                raise TypeError(msg)
+
+    @classmethod
+    def word_call_regions(
+        cls, source: str, region: tuple[int, int]
+    ) -> Sequence[tuple[int, int]]:
+        """Collect native call facts using one Rope word finder for the region.
+
+        Returns:
+            Distinct called-word regions, with strings and comments ignored.
+
+        Raises:
+            TypeError: When Rope cannot provide its declared word facts.
+
+        """
+        finder = cls._word_finder(source)
+        if not isinstance(finder, p.Infra.RopeWorder):
+            message = "Rope word finder does not satisfy its source fact contract"
+            raise TypeError(message)
+        regions: set[tuple[int, int]] = set()
+        offset, limit = region
+        while offset < limit:
+            start, end = finder.get_word_range(offset)
+            if start < end <= limit and finder.is_a_function_being_called(start):
+                regions.add((start, end))
+            offset = max(offset + 1, end)
+        return tuple(sorted(regions))
+
+    @classmethod
+    def word_is_function_call(cls, source: str, offset: int) -> bool:
+        """Return Rope's syntactic call fact for the primary at ``offset``.
+
+        Returns:
+            Rope's syntactic call fact for the primary at ``offset``.
+
+        Raises:
+            TypeError: If rope Worder does not expose callable
+                is_a_function_being_called; or if rope Worder returned a non-boolean
+                function-call fact.
+
+        """
+        word_finder = cls._word_finder(source)
+        is_called = getattr(word_finder, "is_a_function_being_called", None)
+        if not callable(is_called):
+            msg = "rope Worder does not expose callable is_a_function_being_called"
+            raise TypeError(msg)
+        value = is_called(offset)
+        if not isinstance(value, bool):
+            msg = "rope Worder returned a non-boolean function-call fact"
+            raise TypeError(msg)
+        return value
+
+    @classmethod
+    def _word_finder(cls, source: str) -> p.AttributeProbe:
+        return cls.runtime_callable("rope.base.worder", "Worder")(
+            source, handle_ignores=True
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeMatching"]

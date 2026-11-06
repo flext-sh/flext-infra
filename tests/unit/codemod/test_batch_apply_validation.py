@@ -10,8 +10,6 @@ import re
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli, infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
@@ -19,7 +17,7 @@ from flext_infra.codemod import (
     FlextInfraCodemodSemanticApply,
     FlextInfraModGateEngine,
 )
-from tests import c, m, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodemodBatchApplyValidation:
@@ -40,13 +38,13 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 self.validated = True
 
         @staticmethod
-        def emit_rename(report: m.Infra.ApplyRenamesReport) -> None:
+        def emit_rename(report: p.Infra.ApplyRenamesReport) -> None:
             """Accept the public campaign progress contract."""
             _ = report
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("entry", "broken"),
         [("census", True), ("pipeline", False), ("noop", False)],
     )
@@ -55,7 +53,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         entry: str,
         *,
         broken: bool,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Migrate legacy scenario inputs before exercising the public consumer."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
@@ -193,8 +191,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             tm.that(consumer.read_text(encoding=c.DEFAULT_ENCODING), eq=invalid)
             tm.that(capsys.readouterr().out, has=f"[FAIL] {c.Infra.PYREFLY}")
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "contract",
         ["t.JsonMapping", "Annotated[t.JsonMapping, None]"],
     )
@@ -249,7 +247,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
     @staticmethod
     def _report(
         path: Path, rule_id: str
-    ) -> m.Infra.ModOccurrenceReport[m.Infra.ModOccurrence]:
+    ) -> p.Infra.ModOccurrenceReport[p.Infra.ModOccurrence]:
         """Build one actionable ast-grep finding report.
 
         Returns:
@@ -274,8 +272,8 @@ class TestsFlextInfraCodemodBatchApplyValidation:
             entries=(finding,),
         )
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("outcome", ["converged", "cycle", "rejected"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("outcome", ["converged", "cycle", "rejected"])
     def test_general_syntax_candidate_is_atomic(
         self, mod_workspace: Path, outcome: str
     ) -> None:
@@ -321,7 +319,7 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 rope=rope,
             )
             if outcome != "converged":
-                with pytest.raises(
+                with u.Tests.raises(
                     RuntimeError,
                     match="|".join(
                         re.escape(message)
@@ -367,5 +365,5 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         before = self._report(tmp_path / "subject.py", "rewrite-test-utility-receiver")
         after = self._report(tmp_path / "other.py", "rewrite-test-utility-receiver")
 
-        with pytest.raises(RuntimeError, match="introduced 1 new actionable"):
+        with u.Tests.raises(RuntimeError, match="introduced 1 new actionable"):
             FlextInfraCodemodBatchApply.validate_fix_match(before, after)

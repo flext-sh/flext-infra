@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, tm, u
 from tests.unit.refactor.violations_sweep_support import (
@@ -22,7 +20,7 @@ from tests.unit.refactor.violations_sweep_support import (
 )
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraRefactorViolationsSweep(
     TestsFlextInfraRefactorViolationsSweepSupport,
 ):
@@ -66,7 +64,7 @@ class TestsFlextInfraRefactorViolationsSweep(
             eq=True,
         )
 
-    @pytest.mark.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
+    @c.Tests.MARK.parametrize("counts", [(2, 0), (2, 1), (1, 2), (0, 0)])
     def test_public_utility_deltas_preserve_native_scan_indexes_and_multiplicity(
         self, mod_workspace: Path, counts: tuple[int, ...]
     ) -> None:
@@ -87,7 +85,7 @@ class TestsFlextInfraRefactorViolationsSweep(
                     entry.classification == classification for entry in after.entries
                 ),
             )
-        with pytest.raises(ValueError, match="deferred differs"):
+        with u.Tests.raises(ValueError, match="deferred differs"):
             m.Infra.ModScanEvidence.model_validate({
                 **evidence.model_dump(
                     mode="python", exclude=set(type(evidence).model_computed_fields)

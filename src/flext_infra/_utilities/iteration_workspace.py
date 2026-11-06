@@ -27,17 +27,17 @@ class FlextInfraUtilitiesIterationWorkspace:
 
     @staticmethod
     def repository_operation_applicability(
-        target: m.Infra.WorkspaceOperationTarget,
+        target: p.Infra.WorkspaceOperationTarget,
         *,
         mutating: bool,
-    ) -> p.Result[m.Infra.WorkspaceOperationApplicability]:
+    ) -> p.Result[p.Infra.WorkspaceOperationApplicability]:
         """Read the target's own policy without reintroducing a workspace roster.
 
         Returns:
             The target's own applicability policy.
 
         """
-        result_type = r[m.Infra.WorkspaceOperationApplicability]
+        result_type = r[p.Infra.WorkspaceOperationApplicability]
         if target.managed is False:
             return result_type.ok(
                 m.Infra.WorkspaceOperationApplicability(
@@ -72,10 +72,10 @@ class FlextInfraUtilitiesIterationWorkspace:
 
     @staticmethod
     def _declared_applicability(
-        repository: m.Infra.RepositoryDeltaSpec,
+        repository: p.Infra.RepositoryDeltaSpec,
         *,
         mutating: bool,
-    ) -> m.Infra.WorkspaceOperationApplicability | None:
+    ) -> p.Infra.WorkspaceOperationApplicability | None:
         """Read the repository's own declaration for an inapplicable target.
 
         Args:
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesIterationWorkspace:
         if discovered.failure:
             return r[Sequence[Path]].from_failure(discovered)
         roots = tuple(target.root for target in discovered.value)
-        receipts: list[m.Infra.WorkspaceOperationReceipt] = []
+        receipts: list[p.Infra.WorkspaceOperationReceipt] = []
         files: list[Path] = []
         first_failure: p.Result[Sequence[Path]] | None = None
         for target in discovered.value:
@@ -211,7 +211,7 @@ class FlextInfraUtilitiesIterationWorkspace:
 
     @staticmethod
     def _operation_target_outcome(
-        target: m.Infra.WorkspaceOperationTarget,
+        target: p.Infra.WorkspaceOperationTarget,
         operation: str,
         task: Callable[[Path], p.Result[Sequence[Path]]],
         *,

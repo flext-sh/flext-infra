@@ -1,0 +1,27 @@
+# A loop, comprehension, lambda or walrus variable named like a facade letter
+# (c, d, e, h, m, p, r, s, t, u, x) shadows the module's facade binding in that
+# scope. The import-header laws read such a name as already bound, so a removed
+# foreign binding is never rebound from the package root and the module is left
+# with an undefined facade name (F821). Rename the local variable after what it
+# holds; the facade letter stays the module's single binding.
+#
+# Scope: only the binding shapes the import-header laws mis-read. Parameters of
+# `def`, `except ... as`, `with ... as` and plain assignment targets are not
+# matched here: a facade module legitimately assigns its own letter (`p = X`).
+id: ban-facade-letter-local-binding
+language: python
+severity: error
+metadata:
+  enforce: [ENFORCE-051]
+rule:
+  kind: identifier
+  regex: "^(?:c|d|e|h|m|p|r|s|t|u|x)$"
+  any:
+    - inside: {kind: for_in_clause, field: left, stopBy: end}
+    - inside: {kind: for_statement, field: left, stopBy: end}
+    - inside: {kind: lambda_parameters}
+    - inside: {kind: named_expression, field: name}
+message: >-
+  [ban-facade-letter-local-binding] A local variable named like a facade letter
+  shadows the facade binding — fix: rename the variable after the value it holds
+  (for example `entry`, `subject`, `probe`) · ref: ENFORCE-051

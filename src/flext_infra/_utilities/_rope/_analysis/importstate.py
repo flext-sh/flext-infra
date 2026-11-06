@@ -15,159 +15,20 @@ from typing import ClassVar
 from rope.base import exceptions
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope._analysis.asthelpers import (
     FlextInfraUtilitiesRopeAnalysisAstHelpers,
 )
 from flext_infra._utilities._rope._analysis.exports import (
     FlextInfraUtilitiesRopeAnalysisExports,
 )
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeAnalysisImportState:
     """Rope semantic import state, class discovery, and project-backed probes."""
-
-    @classmethod
-    def facade_class_publications(
-        cls,
-        root: Path,
-        rows: Mapping[Path, frozenset[int]],
-        *,
-        source_project: p.Infra.RopeProject,
-    ) -> frozenset[tuple[Path, int, int]]:
-        """Authenticate direct class publications using the native binding index.
-
-        Args:
-            root: The root path of the source project.
-            rows: A mapping from file paths to candidate publication line numbers.
-            source_project: The Rope project representing the source code.
-
-        Returns:
-            The exact source, row and column of each native PEP 613 publication.
-
-        Raises:
-            ValueError: The query belongs to another native source project.
-
-        """
-        selected = {path.resolve(): wanted for path, wanted in rows.items() if wanted}
-        if not selected:
-            return frozenset()
-        from_view = FlextInfraUtilitiesRopeRuntime
-        publications: set[tuple[Path, int, int]] = set()
-        project = source_project
-        if Path(project.root.real_path) != root.resolve():
-            message = "Publication query belongs to another native source project"
-            raise ValueError(message)
-        if selected:
-            declared_alias = from_view.qualified_name(
-                project, "TypeAlias", module_name="typing"
-            )
-            for path, wanted in selected.items():
-                resource = from_view.file_resource_at(project, path)
-                published = cls.published_facade_owner(project, resource)
-                if published is None:
-                    continue
-                module = from_view.require_source_module(project.get_pymodule(resource))
-                owner = module.get_attributes()[published[1]].get_object()
-                if not from_view.py_class(owner):
-                    continue
-                publications.update(
-                    cls._type_alias_publications(
-                        path,
-                        module,
-                        owner,
-                        wanted,
-                        declared_alias=declared_alias,
-                    )
-                )
-        return frozenset(publications)
-
-    @classmethod
-    def _type_alias_publications(
-        cls,
-        path: Path,
-        module: p.Infra.RopeSourceModule,
-        owner: p.Infra.RopeSourceClass,
-        wanted: frozenset[int],
-        *,
-        declared_alias: p.Infra.RopePyName,
-    ) -> set[tuple[Path, int, int]]:
-        """Collect one owner's native PEP 613 publications on wanted lines.
-
-        Returns:
-            The path, line and column of each wanted type-alias publication.
-
-        """
-        from_view = FlextInfraUtilitiesRopeRuntime
-        found: set[tuple[Path, int, int]] = set()
-        index = module.get_source_binding_index()
-        for scope in (owner.get_scope(), *owner.get_scope().get_scopes()):
-            if scope.get_kind() != c.Infra.RopeScopeKind.CLASS:
-                continue
-            for metadata in index.assignment_layouts(scope):
-                if metadata.annotation is None or not metadata.targets:
-                    continue
-                line = module.lines.get_line_number(metadata.region[0])
-                if line not in wanted:
-                    continue
-                (declaration,) = tuple(
-                    layout
-                    for layout in index.assignment_layouts(
-                        scope, name=metadata.targets[0][0], resolve_values=True
-                    )
-                    if layout.region == metadata.region
-                )
-                if declaration.annotation is None or not from_view.abstract_class(
-                    cls._publication_value(module, declaration)
-                ):
-                    continue
-                begin, end = declaration.annotation
-                annotation = from_view.expression_name(
-                    index.context_at(begin).environment,
-                    module.source_code[begin:end],
-                )
-                if annotation is None or not from_view.same_name(
-                    declared_alias, annotation
-                ):
-                    continue
-                found.add((
-                    path,
-                    line,
-                    declaration.region[0] - module.lines.get_line_start(line) + 1,
-                ))
-        return found
-
-    @staticmethod
-    def _publication_value(
-        module: p.Infra.RopeSourceModule,
-        declaration: p.Infra.RopeSourceAssignmentLayout,
-    ) -> p.Infra.RopePyObject | None:
-        """Resolve the object a class-body ``Name: TypeAlias = Value`` binds.
-
-        Python evaluates the value before binding the name, so a value spelled
-        exactly as its own target reads the module binding of that name, never
-        the class-scope assignment the binding index resolves it to.
-
-        Returns:
-            The bound object, or ``None`` when the value has no binding.
-
-        """
-        bound = (
-            declaration.value_binding.get_object()
-            if declaration.value_binding is not None
-            else None
-        )
-        if declaration.value is None or not declaration.targets:
-            return bound
-        begin, end = declaration.value
-        name = declaration.targets[0][0]
-        if module.source_code[begin:end] != name or (
-            bound is not None and FlextInfraUtilitiesRopeRuntime.abstract_class(bound)
-        ):
-            return bound
-        module_binding = module.get_scope().get_names().get(name)
-        return module_binding.get_object() if module_binding is not None else bound
 
     _SEMANTIC_STATE_CACHE: ClassVar[
         MutableMapping[tuple[str, str, str], m.Infra.ModuleSemanticState]
@@ -251,7 +112,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Return local classes plus declared and semantic imports in one pass.
 
         Uses rope's ``PyModule.get_attributes()`` for class discovery and
@@ -286,7 +147,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         return state
 
     @staticmethod
-    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+    def _empty_module_semantic_state() -> p.Infra.ModuleSemanticState:
         """Return an empty semantic state.
 
         Returns:
@@ -305,7 +166,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
         pymodule: t.Infra.RopePyModule,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Build semantic state from one resolved Rope module.
 
         Returns:
@@ -341,7 +202,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
         *,
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module.
 
         Returns:
@@ -351,7 +212,7 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
             ValueError: If Rope's superclass lineage is incomplete or cyclic.
 
         """
-        class_infos: MutableSequence[m.Infra.ClassInfo] = []
+        class_infos: MutableSequence[p.Infra.ClassInfo] = []
         tree = pymodule.get_ast()
         declared_base_counts = {
             node.name: len(node.bases)
@@ -902,14 +763,14 @@ class FlextInfraUtilitiesRopeAnalysisImportState:
     def resolve_class_info(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-    ) -> Sequence[m.Infra.ClassInfo]:
+    ) -> Sequence[p.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module.
 
         Returns:
             ClassInfo (name, line, bases) for all classes in a module.
 
         """
-        class_infos: Sequence[m.Infra.ClassInfo] = (
+        class_infos: Sequence[p.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysisImportState.resolve_module_semantic_state(
                 rope_project,
                 resource,

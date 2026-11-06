@@ -29,8 +29,8 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_identity(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitIdentityReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitIdentityReport]:
         """Return consolidated Git identity for one repository path.
 
         One call replaces 6+ separate queries. Implemented over GitPython
@@ -44,20 +44,20 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             repo = cls._repo(request.repo_root)
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
-                return r[m.Infra.GitIdentityReport].from_failure(primary)
+                return r[p.Infra.GitIdentityReport].from_failure(primary)
             report = cls._collect_identity_facts(
                 repo,
                 primary_root=primary.value,
                 requested_path=request.repo_root,
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitIdentityReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitIdentityReport].fail(
+            return r[p.Infra.GitIdentityReport].fail(
                 f"failed to resolve Git identity: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitIdentityReport].ok(report)
+        return r[p.Infra.GitIdentityReport].ok(report)
 
     @staticmethod
     def _git_head_is_unborn(repo: Repo) -> bool:
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     def exact_worktree_root(
         cls,
         requested: Path,
-    ) -> p.Result[m.Infra.GitIdentityReport]:
+    ) -> p.Result[p.Infra.GitIdentityReport]:
         """Reject Git parent discovery and unregistered nesting under a root.
 
         Promoted from the Mise workspace planner (`flext-infra` `init` needed
@@ -110,12 +110,12 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         on its own but is never the exact worktree root callers intend.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitIdentityReport]``.
+            The resulting ``p.Result[p.Infra.GitIdentityReport]``.
 
         """
         control = cls.exact_worktree_git_dir(requested)
         if control.failure:
-            return r[m.Infra.GitIdentityReport].from_failure(control)
+            return r[p.Infra.GitIdentityReport].from_failure(control)
         return cls.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
 
     @classmethod
@@ -183,10 +183,10 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
     @classmethod
     def git_is_inside_work_tree(
         cls,
-        request: m.Infra.GitRepoRequest,
+        request: p.Infra.GitRepoRequest,
         *,
         search_parent_directories: bool = True,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether ``repo_root`` sits inside a Git work tree.
 
         Three-way contract mirroring ``rev-parse --is-inside-work-tree``:
@@ -200,24 +200,24 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         """
         refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
         if refreshed.failure:
-            return r[m.Infra.GitBoolReport].from_failure(refreshed)
+            return r[p.Infra.GitBoolReport].from_failure(refreshed)
         resolved = request.repo_root.expanduser().resolve()
         try:
             # Why: same nested-path contract as git_open_repo.
             repo = Repo(resolved, search_parent_directories=search_parent_directories)
         except InvalidGitRepositoryError:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except NoSuchPathError:
-            return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
+            return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to probe Git work tree: {exc}",
                 exception=exc,
             )
         # GitPython pins a `git cat-file` child per open handle: the probe owns
         # its handle, so it is released before the report leaves the boundary.
         try:
-            return r[m.Infra.GitBoolReport].ok(
+            return r[p.Infra.GitBoolReport].ok(
                 m.Infra.GitBoolReport(
                     value=not repo.bare and repo.working_tree_dir is not None,
                 ),
@@ -302,7 +302,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         *,
         primary_root: Path,
         requested_path: Path | None = None,
-    ) -> m.Infra.GitIdentityReport:
+    ) -> p.Infra.GitIdentityReport:
         """Collect GitPython-native identity facts into one report.
 
         Returns:

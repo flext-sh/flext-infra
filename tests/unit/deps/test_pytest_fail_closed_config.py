@@ -10,11 +10,10 @@ import asyncio
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
-from flext_infra.deps import FlextInfraToolTablesPhase
+from flext_infra.deps.phases import FlextInfraToolTablesPhase
 from tests import c, t, tm, u
 
 if TYPE_CHECKING:
@@ -25,7 +24,7 @@ class TestsFlextInfraPytestFailClosedConfig:
     """Prove canonical pytest settings replace local bypasses deterministically."""
 
     @staticmethod
-    @pytest.mark.asyncio
+    @c.Tests.MARK.asyncio
     async def test_declared_async_provider_executes_coroutines() -> None:
         """Exercise the installed provider rather than merely registering a marker."""
         await asyncio.sleep(0)

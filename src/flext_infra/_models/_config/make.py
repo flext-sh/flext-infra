@@ -12,9 +12,9 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
-from flext_infra import c
+from flext_infra import c, p
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
+from flext_infra._models._config import FlextInfraModelsConfigContract
 from flext_infra._models._config.external_cache import (
     FlextInfraExternalCacheDirectorySpec,
 )
@@ -191,6 +191,39 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ] = tuple(FlextInfraConstantsConfig.MakeProfile)
+        group: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Declared help section of a repository-owned verb; present "
+                    "exactly when the repository declares verb_groups"
+                ),
+            ),
+        ] = None
+        cli: Annotated[
+            tuple[
+                Annotated[str, m.Field(pattern=r"^[a-z][a-z0-9-]*$")],
+                ...,
+            ],
+            m.Field(
+                description=(
+                    "Console script followed by its route words; the generated "
+                    "handler forwards each argument as one --<kebab> option"
+                ),
+            ),
+        ] = ()
+
+    class MakeVerbGroupSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """One ordered `make help` section of repository-owned verbs."""
+
+        name: Annotated[
+            str,
+            m.Field(pattern=r"^[a-z][a-z0-9-]*$", description="Section key"),
+        ]
+        title: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Operator-facing section heading"),
+        ]
 
     class MakeOperationSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One typed public operation and its distinct checker evidence phase."""
@@ -500,8 +533,117 @@ class FlextInfraModelsConfigMake(
                 raise ValueError(msg)
             return self
 
-    class MakeSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Complete generated Makefile public and extension contract."""
+    class MakeExecutionSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Deadlines, hooks, workflow and CI execution policy of the Make surface."""
+
+        examples_timeout_seconds: Annotated[
+            int,
+            m.Field(gt=0, le=120, description="Workspace examples process deadline"),
+        ]
+        submodule_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                le=600,
+                description="Deadline per wave of concurrent submodule clones",
+            ),
+        ]
+        submodule_jobs: Annotated[
+            int,
+            m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
+        ]
+        ruff: Annotated[
+            Annotated[
+                p.Infra.MakeRuffSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeRuffSpec),
+            ],
+            m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
+        ]
+        fmt_gates: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Gates whose mutating side `make fmt` drives (formatters). "
+                    "The read-only side runs in `make check`; `make fix` never "
+                    "repeats them (single-pass verb law)."
+                ),
+            ),
+        ] = ("markdown-format",)
+        pre_commit: Annotated[
+            Literal[True],
+            m.Field(
+                default=True,
+                description=(
+                    "Mandatory projected commit hook; local make setup installs it"
+                ),
+            ),
+        ] = True
+        pre_push: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description="Generate the pre-push stage; local make setup installs it",
+            ),
+        ] = False
+        workflow: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowStepSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(min_length=1, description="Ordered canonical validation workflow"),
+        ]
+        lifecycle_steps: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.MakeLifecycleStepSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeLifecycleStepSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                min_length=1, description="Ordered public runtime acceptance steps"
+            ),
+        ]
+        ci: Annotated[
+            Annotated[
+                p.Infra.MakeCiSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeCiSpec),
+            ],
+            m.Field(description="Config-owned CI-only environment delta"),
+        ]
+        native_environment_unset: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description="Inherited selectors excluded from native project execution"
+            ),
+        ]
+        github_credential_command: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Declared local GitHub credential command: selected once, "
+                    "outside CI, when the caller exports no GitHub token and "
+                    "its executable is installed; its failure stops the verb"
+                ),
+            ),
+        ]
+        setup_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, description="Native environment installation wall-time budget"
+            ),
+        ]
+
+    class MakeHarnessSpec(MakeExecutionSpec):
+        """Test harness, cache, receipt and profile environment of the Make surface."""
 
         class TestmonCachePolicySpec(FlextInfraModelsConfigContract.ConfigContract):
             """Declarative Actions-cache policy for the shared testmon database.
@@ -649,29 +791,6 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
-        class EnvironmentIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Creator identity recorded by the native environment creator.
-
-            Setup reads these keys from the runtime environment's marker file
-            and compares them with the Mise-resolved uv and Python. A divergent
-            creator is recreated by native ``uv venv --clear`` before the frozen
-            installation, because ``uv sync`` keeps an environment whose
-            interpreter still satisfies the request.
-            """
-
-            marker_file: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Environment-relative creator marker file"),
-            ]
-            uv_key: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Marker key holding the creating uv version"),
-            ]
-            python_key: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Marker key holding the interpreter version"),
-            ]
-
         class ExecutorEnvironmentSpec(FlextInfraModelsConfigContract.ConfigContract):
             """Isolated environment running ``make upg``'s residual flext-infra step.
 
@@ -782,89 +901,6 @@ class FlextInfraModelsConfigMake(
                         raise ValueError(msg)
                 return self
 
-        examples_timeout_seconds: Annotated[
-            int,
-            m.Field(gt=0, le=120, description="Workspace examples process deadline"),
-        ]
-        submodule_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                le=600,
-                description="Deadline per wave of concurrent submodule clones",
-            ),
-        ]
-        submodule_jobs: Annotated[
-            int,
-            m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
-        ]
-        ruff: Annotated[
-            FlextInfraModelsConfigMake.MakeRuffSpec,
-            m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
-        ]
-        fmt_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Gates whose mutating side `make fmt` drives (formatters). "
-                    "The read-only side runs in `make check`; `make fix` never "
-                    "repeats them (single-pass verb law)."
-                ),
-            ),
-        ] = ("markdown-format",)
-        pre_commit: Annotated[
-            Literal[True],
-            m.Field(
-                default=True,
-                description=(
-                    "Mandatory projected commit hook; local make setup installs it"
-                ),
-            ),
-        ] = True
-        pre_push: Annotated[
-            bool,
-            m.Field(
-                default=False,
-                description="Generate the pre-push stage; local make setup installs it",
-            ),
-        ] = False
-        workflow: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowStepSpec, ...],
-            m.Field(min_length=1, description="Ordered canonical validation workflow"),
-        ]
-        lifecycle_steps: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeLifecycleStepSpec, ...],
-            m.Field(
-                min_length=1, description="Ordered public runtime acceptance steps"
-            ),
-        ]
-        ci: Annotated[
-            FlextInfraModelsConfigMake.MakeCiSpec,
-            m.Field(description="Config-owned CI-only environment delta"),
-        ]
-        native_environment_unset: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description="Inherited selectors excluded from native project execution"
-            ),
-        ]
-        github_credential_command: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Declared local GitHub credential command: selected once, "
-                    "outside CI, when the caller exports no GitHub token and "
-                    "its executable is installed; its failure stops the verb"
-                ),
-            ),
-        ]
-        setup_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0, description="Native environment installation wall-time budget"
-            ),
-        ]
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(description="Adaptive testmon Actions cache policy"),
@@ -872,15 +908,6 @@ class FlextInfraModelsConfigMake(
         pytest_scratch: Annotated[
             PytestScratchSpec,
             m.Field(description="Scratch root declared by every pytest verb"),
-        ]
-        environment_identity: Annotated[
-            EnvironmentIdentitySpec,
-            m.Field(
-                description=(
-                    "Native creator identity setup compares with the declared "
-                    "toolchain before installing into the runtime environment"
-                )
-            ),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
@@ -924,7 +951,12 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
+            Annotated[
+                p.Infra.TestmonCachePolicySpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.TestmonCachePolicySpec
+                ),
+            ],
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -933,18 +965,64 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         mypy_cache: Annotated[
-            FlextInfraModelsConfigMake.MypyCacheSpec,
+            Annotated[
+                p.Infra.MypyCacheSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MypyCacheSpec),
+            ],
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[
-            FlextInfraModelsConfigMake.RuffCacheSpec,
+            Annotated[
+                p.Infra.RuffCacheSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.RuffCacheSpec),
+            ],
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
+
+    class MakeVerbCatalogSpec(MakeHarnessSpec):
+        """Public verb catalog, CLI routing and lifecycle policies of Make."""
+
         verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered canonical public verbs"),
+        ]
+        cli_output_argument: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Make input every CLI-routed verb accepts to select the "
+                    "CLI output format"
+                ),
+            ),
+        ]
+        cli_output_environment: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description=(
+                    "Environment variable the CLI settings owner reads as its "
+                    "output format"
+                ),
+            ),
+        ]
+        common_verb_group: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9-]*$",
+                description=(
+                    "Section key that holds the canonical and release verbs "
+                    "when a repository declares verb_groups"
+                ),
+            ),
         ]
         violations_sweep_repair_verbs: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -965,26 +1043,56 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
         clean: Annotated[
-            FlextInfraModelsConfigMake.MakeCleanSpec,
+            Annotated[
+                p.Infra.MakeCleanSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMakeClean.MakeCleanSpec
+                ),
+            ],
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            FlextInfraModelsConfigMake.MakeDocsSpec,
+            Annotated[
+                p.Infra.MakeDocsSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMakeDocs.MakeDocsSpec),
+            ],
             m.Field(description="Public documentation lifecycle policy"),
         ]
+
+    class MakeSpec(MakeVerbCatalogSpec):
+        """Complete generated Makefile public and extension contract."""
+
         custom_handler_policy: Annotated[
-            FlextInfraModelsConfigMake.CustomHandlerPolicy,
+            Annotated[
+                p.Infra.CustomHandlerPolicy,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
+                ),
+            ],
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
+                Annotated[
+                    p.Infra.CustomHandlerPolicyOverride,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
+                    ),
+                ],
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeProjectCheckGateSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeProjectCheckGateSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 default=(),
                 description=(
@@ -1000,6 +1108,15 @@ class FlextInfraModelsConfigMake(
                 description=(
                     "Requested gates that must finish across every selected "
                     "repository before the remaining gates execute"
+                ),
+            ),
+        ]
+        check_prerequisite_pyrefly_workers: Annotated[
+            t.PositiveInt,
+            m.Field(
+                description=(
+                    "Bounded Pyrefly workers for primary admission while lint "
+                    "retains its own native concurrency"
                 ),
             ),
         ]

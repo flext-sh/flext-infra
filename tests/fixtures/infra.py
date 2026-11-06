@@ -238,7 +238,7 @@ def profiling_enabled() -> Iterator[None]:
 
 
 @pytest.fixture
-def tool_config_document() -> m.Infra.ToolConfigDocument:
+def tool_config_document() -> p.Infra.ToolConfigDocument:
     """Provide ``tool_config_document``.
 
     Returns:

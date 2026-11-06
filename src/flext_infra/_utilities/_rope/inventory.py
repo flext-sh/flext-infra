@@ -39,7 +39,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         *,
         include_local_scopes: bool,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Object, ...]:
+    ) -> tuple[p.Infra.Object, ...]:
         """Return all same-file defined objects for one workspace module.
 
         Returns:
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         source = pymodule.source_code
         parameter_lines = cls._parameter_lines(rope_project, pymodule)
         constant_bindings = cls._constant_bindings(pymodule)
-        items: MutableSequence[m.Infra.Object] = []
+        items: MutableSequence[p.Infra.Object] = []
         module_scope = pymodule.get_scope()
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
@@ -104,17 +104,17 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         cls,
         scope: p.Infra.RopeScopeDsl,
         *,
-        parent_options: m.Infra.RopeInventoryRecordInput,
+        parent_options: p.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Object, ...]:
+    ) -> tuple[p.Infra.Object, ...]:
         """Scope objects.
 
         Returns:
-            The resulting ``tuple[m.Infra.Object, ...],``.
+            The resulting ``tuple[p.Infra.Object, ...],``.
 
         """
-        items: MutableSequence[m.Infra.Object] = []
+        items: MutableSequence[p.Infra.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
@@ -134,12 +134,12 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     @classmethod
     def _recorded_objects(
         cls,
-        record_options: m.Infra.RopeInventoryRecordInput,
+        record_options: p.Infra.RopeInventoryRecordInput,
         *,
         child_scope: p.Infra.RopeScopeDsl | None,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Object, ...]:
+    ) -> tuple[p.Infra.Object, ...]:
         """Return one recorded object followed by the objects of its child scope.
 
         An input that produces no record contributes nothing.
@@ -166,16 +166,16 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     def _child_scope_objects(
         cls,
         *,
-        record: m.Infra.Object,
+        record: p.Infra.Object,
         child_scope: p.Infra.RopeScopeDsl | None,
-        record_options: m.Infra.RopeInventoryRecordInput,
+        record_options: p.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Object, ...]:
+    ) -> tuple[p.Infra.Object, ...]:
         """Include nested class declarations while respecting function-local scope.
 
         Returns:
-            The resulting ``tuple[m.Infra.Object, ...],``.
+            The resulting ``tuple[p.Infra.Object, ...],``.
 
         """
         if (
@@ -196,16 +196,16 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _descend_options(
-        parent_options: m.Infra.RopeInventoryRecordInput,
-        record: m.Infra.Object,
-    ) -> m.Infra.RopeInventoryRecordInput:
+        parent_options: p.Infra.RopeInventoryRecordInput,
+        record: p.Infra.Object,
+    ) -> p.Infra.RopeInventoryRecordInput:
         """Descend options.
 
         Returns:
             The resulting ``m.Infra.RopeInventoryRecordInput``.
 
         """
-        result: m.Infra.RopeInventoryRecordInput = parent_options.model_copy(
+        result: p.Infra.RopeInventoryRecordInput = parent_options.model_copy(
             update={
                 "scope_chain": tuple(
                     part for part in record.scope_path.split(".") if part
@@ -275,10 +275,10 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     @classmethod
     def _record(
         cls,
-        options: m.Infra.RopeInventoryRecordInput,
+        options: p.Infra.RopeInventoryRecordInput,
         *,
         include_references: bool,
-    ) -> m.Infra.Object | None:
+    ) -> p.Infra.Object | None:
         """Record.
 
         Returns:
@@ -314,9 +314,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
             name=options.name,
             scope_chain=options.scope_chain,
         )
-        all_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
-        runtime_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
-        script_reference_sites: tuple[m.Infra.ReferenceSite, ...] = ()
+        all_reference_sites: tuple[p.Infra.ReferenceSite, ...] = ()
+        runtime_reference_sites: tuple[p.Infra.ReferenceSite, ...] = ()
+        script_reference_sites: tuple[p.Infra.ReferenceSite, ...] = ()
         reference_evidence_collected = False
         if include_references:
             (
@@ -368,7 +368,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     @classmethod
     def _payload_fingerprint(
         cls,
-        options: m.Infra.RopeInventoryRecordInput,
+        options: p.Infra.RopeInventoryRecordInput,
         qualified_name: str,
     ) -> str:
         """Describe native Pydantic candidates without asserting substitutability.
@@ -448,10 +448,10 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     @classmethod
     def _payload_references(
         cls,
-        options: m.Infra.RopeInventoryRecordInput,
+        options: p.Infra.RopeInventoryRecordInput,
         module: p.Infra.RopePyModule,
         scope: p.Infra.RopeScopeDsl,
-        statements: Sequence[m.Infra.LogicalStatement],
+        statements: Sequence[p.Infra.LogicalStatement],
     ) -> list[tuple[int, int, str]]:
         references: list[tuple[int, int, str]] = []
         for statement in statements:
@@ -776,7 +776,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _occurrence_search_resources(
-        options: m.Infra.RopeInventoryRecordInput,
+        options: p.Infra.RopeInventoryRecordInput,
         definition_path: Path,
         name: str,
         *,
@@ -813,7 +813,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _new_deduped_site(
-        site: m.Infra.ReferenceSite,
+        site: p.Infra.ReferenceSite,
         seen_sites: set[tuple[str, int, str]],
     ) -> bool:
         """Whether one site is new and outside ``__init__`` re-exports.
@@ -839,9 +839,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         offset: int,
         reachability_paths: frozenset[str] | None,
     ) -> tuple[
-        list[m.Infra.ReferenceSite],
-        list[m.Infra.ReferenceSite],
-        list[m.Infra.ReferenceSite],
+        list[p.Infra.ReferenceSite],
+        list[p.Infra.ReferenceSite],
+        list[p.Infra.ReferenceSite],
         bool,
     ]:
         """Retain exact all-surface evidence separately from reachability sites.
@@ -853,9 +853,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
             RuntimeError: If an occurrence lacks an absolute path or valid offset.
 
         """
-        runtime_reference_sites: list[m.Infra.ReferenceSite] = []
-        script_reference_sites: list[m.Infra.ReferenceSite] = []
-        all_reference_sites: list[m.Infra.ReferenceSite] = []
+        runtime_reference_sites: list[p.Infra.ReferenceSite] = []
+        script_reference_sites: list[p.Infra.ReferenceSite] = []
+        all_reference_sites: list[p.Infra.ReferenceSite] = []
         seen_sites: set[tuple[str, int, str]] = set()
         seen_occurrences: set[tuple[str, int]] = set()
         skipped_definition = False
@@ -932,8 +932,8 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _discard_unreferenced_definition(
-        runtime_sites: list[m.Infra.ReferenceSite],
-        script_sites: list[m.Infra.ReferenceSite],
+        runtime_sites: list[p.Infra.ReferenceSite],
+        script_sites: list[p.Infra.ReferenceSite],
         *,
         definition_path: Path,
         line: int,
@@ -955,13 +955,13 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _reference_sites(
-        options: m.Infra.RopeInventoryRecordInput,
+        options: p.Infra.RopeInventoryRecordInput,
         *,
         line: int,
     ) -> tuple[
-        tuple[m.Infra.ReferenceSite, ...],
-        tuple[m.Infra.ReferenceSite, ...],
-        tuple[m.Infra.ReferenceSite, ...],
+        tuple[p.Infra.ReferenceSite, ...],
+        tuple[p.Infra.ReferenceSite, ...],
+        tuple[p.Infra.ReferenceSite, ...],
         bool,
     ]:
         """Collect the reference sites for the symbol one record describes.

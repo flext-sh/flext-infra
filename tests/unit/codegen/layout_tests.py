@@ -9,11 +9,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraConfig, m
+from flext_infra import FlextInfraConfig
 from flext_infra.gates.layout import FlextInfraGatesLayout
-from tests import c, t, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 
 
@@ -21,7 +19,7 @@ class TestsFlextInfraCodegenLayout:
     """Test suite for the declarative project-layout engine."""
 
     @staticmethod
-    def _fresh_layout_report(project: Path) -> m.Infra.LayoutProjectReport:
+    def _fresh_layout_report(project: Path) -> p.Infra.LayoutProjectReport:
         """Load consumer-owned configuration in a new public-service process.
 
         Returns:
@@ -284,7 +282,7 @@ class TestsFlextInfraCodegenLayout:
             eq={c.Infra.GateSeverity.ERROR.value},
         )
 
-    @pytest.mark.parametrize("keep_count", [0, 1, 3])
+    @c.Tests.MARK.parametrize("keep_count", [0, 1, 3])
     def test_keep_root_files_override(self, tmp_path: Path, keep_count: int) -> None:
         """Arbitrary consumer keep-lists preserve only their declared root files."""
         self._assert_keep_override(
@@ -294,7 +292,7 @@ class TestsFlextInfraCodegenLayout:
             keep_count=keep_count,
         )
 
-    @pytest.mark.parametrize("keep_count", [0, 1, 3])
+    @c.Tests.MARK.parametrize("keep_count", [0, 1, 3])
     def test_override_resolves_by_declared_name_not_checkout_directory(
         self,
         tmp_path: Path,

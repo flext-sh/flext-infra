@@ -150,7 +150,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
     def _build_report_payload(
         self,
         files_scanned: int,
-        accumulator: m.Infra.WrapperRewriteAccumulator,
+        accumulator: p.Infra.WrapperRewriteAccumulator,
     ) -> t.JsonDict:
         """Build the canonical JSON payload from the accumulated wrapper run state.
 

@@ -5,26 +5,118 @@ snapshots:
       def run(self) -> p.Result[str]:
           result = self._load()
           return result
+          return r[str].ok(result.value)
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return r[str].from_failure(result)
-            return r[str].ok(result.value)
       style: primary
-      start: 36
+      start: 62
+      end: 123
+    - source: return r[str].ok(result.value)
+      style: secondary
+      start: 128
       end: 158
+  "def run_after_guard(self) -> p.Result[str]:\n    loaded = self._load()\n    if loaded.failure:\n        return r[str].from_failure(loaded)\n    result = self._parse(loaded.value, strict=True)\n    if result.failure:\n        return r[str].from_failure(result)\n    return r[str].ok(result.value)\n":
+    fixed: |
+      def run_after_guard(self) -> p.Result[str]:
+          loaded = self._load()
+          if loaded.failure:
+              return r[str].from_failure(loaded)
+          result = self._parse(loaded.value, strict=True)
+          return result
+          return r[str].ok(result.value)
+    labels:
+    - source: |-
+        if result.failure:
+                return r[str].from_failure(result)
+      style: primary
+      start: 192
+      end: 253
+    - source: return r[str].ok(result.value)
+      style: secondary
+      start: 258
+      end: 288
+  "def run_chain(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return result\n    return result.flat_map(self._parse).map(lambda value: value.strip())\n":
+    fixed: |
+      def run_chain(self) -> p.Result[str]:
+          result = self._load()
+          return result.flat_map(self._parse).map(lambda value: value.strip())
+          return result.flat_map(self._parse).map(lambda value: value.strip())
+    labels:
+    - source: |-
+        if result.failure:
+                return result
+      style: primary
+      start: 68
+      end: 108
+    - source: result
+      style: secondary
+      start: 120
+      end: 126
+    - source: flat_map
+      style: secondary
+      start: 127
+      end: 135
+    - source: result.flat_map
+      style: secondary
+      start: 120
+      end: 135
+    - source: result.flat_map(self._parse)
+      style: secondary
+      start: 120
+      end: 148
+    - source: map
+      style: secondary
+      start: 149
+      end: 152
+    - source: result.flat_map(self._parse).map
+      style: secondary
+      start: 120
+      end: 152
+    - source: "result.flat_map(self._parse).map(lambda value: value.strip())"
+      style: secondary
+      start: 120
+      end: 181
+    - source: "return result.flat_map(self._parse).map(lambda value: value.strip())"
+      style: secondary
+      start: 113
+      end: 181
   "def run_direct(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return result\n    return outcome.ok(result.value)\n":
     fixed: |
       def run_direct(self) -> p.Result[str]:
           result = self._load()
           return result
+          return outcome.ok(result.value)
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return result
-            return outcome.ok(result.value)
       style: primary
-      start: 43
+      start: 69
+      end: 109
+    - source: return outcome.ok(result.value)
+      style: secondary
+      start: 114
       end: 145
+  "def run_redundant(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return r[str].from_failure(result)\n    return result\n":
+    fixed: |
+      def run_redundant(self) -> p.Result[str]:
+          result = self._load()
+          return result
+          return result
+    labels:
+    - source: |-
+        if result.failure:
+                return r[str].from_failure(result)
+      style: primary
+      start: 72
+      end: 133
+    - source: result
+      style: secondary
+      start: 145
+      end: 151
+    - source: return result
+      style: secondary
+      start: 138
+      end: 151

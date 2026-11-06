@@ -7,6 +7,19 @@ valid:
         if result.failure:
             return r[int].from_failure(result)
         return r[int].ok(result.value + 1)
+  - |
+    def run_reads_guarded(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return r[str].ok(result.value.strip(result.value))
+  - |
+    def run_bound_other(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        normalized = self._normalize(result.value)
+        return r[str].ok(other)
 invalid:
   - |
     def run(self) -> p.Result[str]:
@@ -20,3 +33,19 @@ invalid:
         if result.failure:
             return result
         return outcome.ok(tuple(result.value))
+  - |
+    def run_bound(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return r[str].from_failure(result)
+        normalized = self._normalize(result.value)
+        return r[str].ok(normalized)
+  - |
+    def run_after_guard(self) -> p.Result[str]:
+        loaded = self._load()
+        if loaded.failure:
+            return r[str].from_failure(loaded)
+        result = self._parse(loaded.value, strict=True)
+        if result.failure:
+            return result
+        return r[str].ok(self._normalize(result.value))

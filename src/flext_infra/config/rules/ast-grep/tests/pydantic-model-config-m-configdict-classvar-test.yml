@@ -2,7 +2,10 @@ id: pydantic-model-config-m-configdict-classvar
 valid:
   - |
     class Model:
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+  - |
+    class Settings:
+        model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
 invalid:
   - |
     class Model:
@@ -10,3 +13,6 @@ invalid:
   - |
     class Model:
         model_config = m.ConfigDict()
+  - |
+    class Settings:
+        model_config = m.SettingsConfigDict(env_prefix='APP_')

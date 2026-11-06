@@ -6,17 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Self
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import t
-from flext_infra._models._config.artifact import FlextInfraModelsConfigArtifact
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import p, t
+from flext_infra._models._config import FlextInfraModelsConfigArtifact
 
 
 class FlextInfraModelsDocsCollection:
@@ -121,7 +117,15 @@ class FlextInfraModelsDocsCollection:
             m.Field(description="Separately authorized absolute projection owner"),
         ] = None
         sources: Annotated[
-            tuple[FlextInfraModelsDocsCollection.PlanCollectionSource, ...],
+            tuple[
+                Annotated[
+                    p.Infra.PlanCollectionSource,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsDocsCollection.PlanCollectionSource
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 strict=False,
                 description="Complete explicitly associated source inventory",
@@ -211,60 +215,61 @@ class FlextInfraModelsDocsCollection:
                 "Typed source association digest; None only before first collection"
             ),
         )
-        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
-            m.Field(
-                description="Complete source coverage from the published collection",
-            )
+        coverage: tuple[
+            Annotated[
+                p.Infra.PlanCollectionCoverage,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            description="Complete source coverage from the published collection",
         )
 
-        revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
-            m.Field(
-                default=(),
-                description="Immutable observed source revision history",
-            )
+        revisions: tuple[
+            Annotated[
+                p.Infra.PlanCollectionRevision,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            default=(),
+            description="Immutable observed source revision history",
         )
         artifacts: tuple[
-            FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact, ...
+            Annotated[
+                p.Infra.PlanCollectionOwnedArtifact,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact
+                ),
+            ],
+            ...,
         ] = m.Field(
             default=(),
             description="Digest-attested generated artifact ownership",
         )
 
-        @m.model_validator(mode="before")
-        @classmethod
-        def _ownership_before_image(
-            cls,
-            value: t.JsonPayload,
+        @m.model_validator(mode="after")
+        def _require_published_association(
+            self,
             info: p.ValidationInfo,
-        ) -> t.JsonPayload:
-            """Admit typed legacy ownership only for local collection's before-image.
+        ) -> Self:
+            """Require published proof after native JSON tuple and path validation.
 
             Returns:
-                The payload for complete native validation, not qualified evidence.
+                The validated current manifest, retaining legitimate in-process absence.
 
             Raises:
-                ValueError: If published current-format proof is explicitly null.
+                ValueError: If published association proof is null.
 
             """
-            context = info.context
-            if (
-                isinstance(context, Mapping)
-                and context.get("manifest_before_image") is True
-                and isinstance(value, dict)
-            ):
-                if "configuration_sha256" not in value and "coverage" not in value:
-                    return {
-                        **value,
-                        "configuration_sha256": None,
-                        "coverage": [],
-                    }
-                if (
-                    "configuration_sha256" in value
-                    and value["configuration_sha256"] is None
-                ):
-                    msg = "published collection manifest has null association proof"
-                    raise ValueError(msg)
-            return value
+            if info.mode == "json" and self.configuration_sha256 is None:
+                msg = "published collection manifest has null association proof"
+                raise ValueError(msg)
+            return self
 
     class PlanCollectionCoverage(m.ContractModel):
         """Observed source coverage, explicitly distinct from reconciliation."""
@@ -289,45 +294,40 @@ class FlextInfraModelsDocsCollection:
             description="Private source references without transcript contents",
         )
 
-        @m.model_validator(mode="before")
-        @classmethod
-        def _ownership_before_image(
-            cls,
-            value: t.JsonPayload,
-            info: p.ValidationInfo,
-        ) -> t.JsonPayload:
-            """Admit counts-only coverage solely as unqualified local before-state.
-
-            Returns:
-                The payload for complete native validation before source recollection.
-
-            """
-            context = info.context
-            if (
-                isinstance(context, Mapping)
-                and context.get("manifest_before_image") is True
-                and isinstance(value, dict)
-                and "source_revisions" not in value
-            ):
-                return {**value, "source_revisions": []}
-            return value
-
     class PlanCollectionBundle(m.ArbitraryTypesModel):
         """Read-only planning result consumed by the existing publisher."""
 
-        files: tuple[FlextInfraModelsConfigArtifact.CodegenFilePlan, ...] = m.Field(
-            description="Effects published through the shared publisher"
-        )
+        files: tuple[
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Effects published through the shared publisher")
         prunable_directories: tuple[Path, ...] = m.Field(
             default=(),
             description="Owned empty directories removed after publication",
         )
-        revisions: tuple[FlextInfraModelsDocsCollection.PlanCollectionRevision, ...] = (
-            m.Field(description="Latest newly observed revision per plan")
-        )
-        coverage: tuple[FlextInfraModelsDocsCollection.PlanCollectionCoverage, ...] = (
-            m.Field(description="Explicit per-source collection coverage")
-        )
+        revisions: tuple[
+            Annotated[
+                p.Infra.PlanCollectionRevision,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Latest newly observed revision per plan")
+        coverage: tuple[
+            Annotated[
+                p.Infra.PlanCollectionCoverage,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Explicit per-source collection coverage")
 
 
 __all__: list[str] = ["FlextInfraModelsDocsCollection"]

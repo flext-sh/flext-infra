@@ -1,4 +1,4 @@
-"""Authored transport for the profiled pytest child processes.
+"""Authored transport for profiled Python child processes.
 
 The bootstrap, startup and launcher behaviors own the parent-free child
 transport: every payload resolves the clock and this module from their
@@ -22,7 +22,9 @@ import traceback
 from collections.abc import Callable
 from importlib.machinery import PathFinder
 from importlib.util import find_spec, module_from_spec, spec_from_file_location
+from operator import not_
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from types import ModuleType
 from typing import ClassVar
 
@@ -82,6 +84,34 @@ class FlextInfraPytestProfileChild:
         """
         clock = cls.load_clock(clock_module)
         return clock, clock.FlextInfraPytestClock.start_profiler()
+
+    @classmethod
+    def source(cls, clock_module: str, source: str, output: str) -> None:
+        """Run the actual probe as an owned script under the process profiler."""
+        clock = cls.load_clock(clock_module)
+        with NamedTemporaryFile(
+            mode="w", encoding="utf-8", suffix=".py", delete_on_close=False
+        ) as script:
+            script.write(source)
+            script.flush()
+            clock.FlextInfraPytestClock.profile_operation(
+                lambda: runpy.run_path(script.name, run_name="__main__"),
+                Path(output),
+                is_failure=not_,
+            )
+
+    @classmethod
+    def source_stub(cls, clock_module: str) -> str:
+        """Render the native stdin-source profiler with deferred source inputs.
+
+        Returns:
+            The parent-free payload accepting source and output substitutions.
+
+        """
+        return cls._stub(
+            f"child.{cls.__name__}.{cls.source.__name__}"
+            f"({clock_module!r}, {{source!r}}, {{output!r}})"
+        )
 
     @classmethod
     def startup(

@@ -27,15 +27,15 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def git_capture_index_file(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> p.Result[m.Infra.GitIndexFileState]:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Result[p.Infra.GitIndexFileState]:
         """Read one stage-zero entry and its immutable blob without staging.
 
         Returns:
             The exact preimage, or typed absence for an untracked file.
 
         """
-        result_type = r[m.Infra.GitIndexFileState]
+        result_type = r[p.Infra.GitIndexFileState]
         try:
             captured = cls._capture_index_state(request)
         except (GitCommandError, OSError, ValueError, AssertionError) as exc:
@@ -45,8 +45,8 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _capture_index_state(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> m.Infra.GitIndexFileState:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Infra.GitIndexFileState:
         """Read the stage-zero entry and blob, or absence for an untracked path.
 
         Returns:
@@ -74,8 +74,8 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def git_retire_index_file(
         cls,
-        request: m.Infra.GitIndexRetirementRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitIndexRetirementRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Retire an exact entry after reading it under Git's native write lock.
 
         Only the index lock's unpublished replacement is discarded on failure.
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
         try:
             return cls._retire_index_locked(request)
         except (GitCommandError, OSError, ValueError, AssertionError) as exc:
-            return r[m.Infra.GitBoolReport].fail_op(
+            return r[p.Infra.GitBoolReport].fail_op(
                 "retire managed artifact index entry",
                 exc,
             )
@@ -96,8 +96,8 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def _retire_index_locked(
         cls,
-        request: m.Infra.GitIndexRetirementRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitIndexRetirementRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Replace the locked index projection with the exact retired entry set.
 
         Returns:
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
                 after planning, or the locked index has no captured bytes.
 
         """
-        result_type = r[m.Infra.GitBoolReport]
+        result_type = r[p.Infra.GitBoolReport]
         relative = cls._retirable_relative_path(request)
         index_path = cls._git_index_path(request.repo_root)
         entries = FlextInfraUtilitiesGitStateSnapshot.state_snapshot_index(
@@ -150,7 +150,7 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
 
     @staticmethod
     def _retirable_relative_path(
-        request: m.Infra.GitIndexRetirementRequest,
+        request: p.Infra.GitIndexRetirementRequest,
     ) -> Path:
         """Return the index-relative path, rejecting absolute or traversing input.
 
@@ -169,7 +169,7 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
 
     @staticmethod
     def _write_index_replacement(
-        request: m.Infra.GitIndexRetirementRequest,
+        request: p.Infra.GitIndexRetirementRequest,
         index_path: Path,
         descriptor: int,
         content: bytes,
@@ -200,114 +200,114 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
     @classmethod
     def git_init(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Initialize a new Git repository at ``repo_root``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             Repo.init(request.repo_root).close()
         except (OSError, ValueError, InvalidGitRepositoryError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"git init failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_checkout_restore(
         cls,
-        request: m.Infra.GitRepoRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Restore tracked paths via ``git checkout -- .``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             repo.git.checkout("--", ".")
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"git checkout restore failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_mv_path(
         cls,
-        request: m.Infra.GitPathPairRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitPathPairRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Move a tracked path with ``git mv``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             repo.index.move([request.source, request.target])
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git mv failed: {exc}", exception=exc)
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+            return r[p.Infra.GitBoolReport].fail(f"git mv failed: {exc}", exception=exc)
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_rm_cached(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Untrack a path with ``git rm --cached``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             repo.index.remove([request.relative_path], cached=True, r=True, f=True)
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"git rm --cached failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_rm_path(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Remove a tracked path with ``git rm``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             repo.index.remove([request.relative_path], cached=False, r=True, f=True)
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git rm failed: {exc}", exception=exc)
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+            return r[p.Infra.GitBoolReport].fail(f"git rm failed: {exc}", exception=exc)
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_is_tracked(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Return whether a relative path is git-tracked.
 
         Returns:
@@ -318,19 +318,19 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
             repo = cls._repo(request.repo_root)
             listed = repo.git.ls_files("-z", "--", request.relative_path)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to check tracked status: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(
+        return r[p.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=bool(listed.strip())),
         )
 
     @classmethod
     def git_path_has_history(
         cls,
-        request: m.Infra.GitRelativePathRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitRelativePathRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Report whether any native repository ref contains the declared path.
 
         Returns:
@@ -346,19 +346,19 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
                 )
                 present = next(history, None) is not None
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"failed to inspect path history: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(
+        return r[p.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=present),
         )
 
     @classmethod
     def git_add_paths(
         cls,
-        request: m.Infra.GitPathsRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Stage multiple paths via ``git add --force``.
 
         The sole caller is the release stamp stage: it stages exactly the
@@ -369,30 +369,30 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
         silently drop a proven produced path from the release commit.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             repo.git.add("--force", "--", *request.paths)
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"git add failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_restore_paths(
         cls,
-        request: m.Infra.GitCheckoutPathsRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
+        request: p.Infra.GitCheckoutPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
         """Restore tracked paths via ``git checkout --``.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitBoolReport]``.
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
 
         """
         try:
@@ -402,36 +402,36 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
             else:
                 repo.git.checkout("--", ".")
         except GitCommandError as exc:
-            return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
+            return r[p.Infra.GitBoolReport].fail(
                 f"git restore failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
     def git_commit(
         cls,
-        request: m.Infra.GitCommitRequest,
-    ) -> p.Result[m.Infra.GitOidReport]:
+        request: p.Infra.GitCommitRequest,
+    ) -> p.Result[p.Infra.GitOidReport]:
         """Create a commit with the staged tree, gated by the repository hooks.
 
         Returns:
-            The resulting ``p.Result[m.Infra.GitOidReport]``.
+            The resulting ``p.Result[p.Infra.GitOidReport]``.
 
         """
         try:
             repo = cls._repo(request.repo_root)
             commit = repo.index.commit(request.message)
         except (GitCommandError, HookExecutionError) as exc:
-            return r[m.Infra.GitOidReport].fail(str(exc), exception=exc)
+            return r[p.Infra.GitOidReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(
+            return r[p.Infra.GitOidReport].fail(
                 f"git commit failed: {exc}",
                 exception=exc,
             )
-        return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
+        return r[p.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitSemanticPaths"]

@@ -6,7 +6,7 @@ id: pytest-run-context-receiver-port
 language: python
 severity: error
 files:
-  - "src/flext_infra/validate/_pytest_runner/execution.py"
+- "src/flext_infra/validate/_pytest_runner/execution.py"
 utils:
   pytest-runner-method-body:
     kind: block
@@ -17,32 +17,30 @@ utils:
         regex: "^FlextInfraPytestRunnerExecution$"
 rule:
   all:
-    - pattern:
-        context: "def f(*, run_context_receiver: Callable[[m.Infra.PytestRunContext], None] | None = None): ..."
-        selector: typed_default_parameter
-    - inside:
-        kind: parameters
-        inside:
-          kind: function_definition
-          has:
-            field: name
-            regex: "^(execute|_execute_testmon)$"
-          inside:
-            any:
-              - matches: pytest-runner-method-body
-              - kind: decorated_definition
-                inside:
-                  matches: pytest-runner-method-body
-    - inside:
-        stopBy: end
-        kind: module
+  - pattern:
+      context: "def f(*, run_context_receiver: Callable[[p.Infra.PytestRunContext], None] | None = None): ..."
+      selector: typed_default_parameter
+  - inside:
+      kind: parameters
+      inside:
+        kind: function_definition
         has:
-          stopBy: end
-          pattern: |
-            if TYPE_CHECKING:
-                from flext_infra import p
+          field: name
+          regex: "^(execute|_execute_testmon)$"
+        inside:
+          any:
+          - matches: pytest-runner-method-body
+          - kind: decorated_definition
+            inside:
+              matches: pytest-runner-method-body
+  - inside:
+      stopBy: end
+      kind: module
+      has:
+        stopBy: end
+        pattern: |
+          if TYPE_CHECKING:
+              from flext_infra import p
 fix: "run_context_receiver: p.Infra.PytestRunContextReceiver | None = None"
 message: >-
-  Inject the named pytest receipt port through p.Infra, preserving the existing
-  PytestRunContext payload and optional observer semantics. The protocol is
-  declared in FlextInfraProtocolsCheck and exposed by the generated facade MRO.
+  Inject the named pytest receipt port through p.Infra, preserving the existing PytestRunContext payload and optional observer semantics. The protocol is declared in FlextInfraProtocolsCheck and exposed by the generated facade MRO.

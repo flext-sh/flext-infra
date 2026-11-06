@@ -9,14 +9,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.codegen._fixer import FlextInfraCodegenFixerPasses
 from flext_infra.refactor import FlextInfraNamespaceEnforcer
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
@@ -35,8 +33,8 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         self,
         project: p.Infra.ProjectInfo,
         *,
-        enforce_namespace: Callable[[str], m.Infra.WorkspaceEnforcementReport],
-    ) -> m.Infra.AutoFixResult:
+        enforce_namespace: Callable[[str], p.Infra.WorkspaceEnforcementReport],
+    ) -> p.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.
 
         Returns:
@@ -71,17 +69,21 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         self,
         *,
         projects: Sequence[p.Infra.ProjectInfo] | None = None,
-    ) -> Sequence[m.Infra.AutoFixResult]:
+    ) -> Sequence[p.Infra.AutoFixResult]:
         """Run auto-fix on selected projects.
 
         Returns:
-            The resulting ``Sequence[m.Infra.AutoFixResult]``.
+            The resulting ``Sequence[p.Infra.AutoFixResult]``.
 
         """
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            discovered = tuple(u.Infra.projects(self.repository_root).unwrap())
+            discovered = tuple(
+                project
+                for project in u.Infra.projects(self.repository_root).unwrap()
+                if (project.path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            )
             scope = frozenset(self.project_names or ())
             selected_projects = (
                 tuple(p for p in discovered if p.path.name in scope)
@@ -90,7 +92,7 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
             )
         enforcer = FlextInfraNamespaceEnforcer(repository_root=self.repository_root)
 
-        def enforce_namespace(project_name: str) -> m.Infra.WorkspaceEnforcementReport:
+        def enforce_namespace(project_name: str) -> p.Infra.WorkspaceEnforcementReport:
             return enforcer.enforce(
                 apply=True,
                 project_names=(project_name,),

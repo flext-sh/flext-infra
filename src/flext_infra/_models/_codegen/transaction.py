@@ -13,6 +13,7 @@ from typing import Annotated, Literal, Self
 
 from flext_cli import m, t
 
+from flext_infra import p
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 from flext_infra._models._git import FlextInfraModelsGitWorktreeState
@@ -26,13 +27,22 @@ class FlextInfraModelsCodegenTransaction:
         """One managed file change plus its governed ownership metadata."""
 
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[
+                Annotated[
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
+                ],
+                ...,
+            ],
             m.Field(
-                exclude=True,
                 description="Original read-only observations consumed by this effect",
             ),
         ] = ()
         project: Annotated[Path, m.Field(description="Physical owning project root")]
+        move_source: Annotated[
+            Path | None,
+            m.Field(description="Original source retired by this native resource move"),
+        ] = None
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),
@@ -78,6 +88,19 @@ class FlextInfraModelsCodegenTransaction:
             if self.path.suffix == ".pyi" and self.desired_content is not None:
                 msg = f"first-party .pyi publication is forbidden: {self.path}"
                 raise ValueError(msg)
+            move_source = self.move_source
+            move_escapes = move_source is not None and (
+                not move_source.is_absolute()
+                or not move_source.is_relative_to(self.project)
+            )
+            if move_source is not None and (
+                move_escapes
+                or move_source == self.path
+                or self.before.content is not None
+                or self.desired_content is None
+            ):
+                msg = "native move provenance requires a distinct absent destination"
+                raise ValueError(msg)
             if self.index_before is not None and (
                 self.tracking != "runtime-local"
                 or self.index_before.path.is_absolute()
@@ -103,11 +126,32 @@ class FlextInfraModelsCodegenTransaction:
             default=None, description="Declared source modes preserved during staging"
         )
         declared_files: tuple[
-            FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                ),
+            ],
+            ...,
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
+        inputs: tuple[
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
+            ...,
+        ] = m.Field(
             default=(),
             description="Original source observations whose layouts join the closure",
+        )
+        import_edges: t.Port[Mapping[Path, tuple[frozenset[str], frozenset[str]]]] = (
+            m.Field(
+                default_factory=lambda: MappingProxyType[
+                    Path, tuple[frozenset[str], frozenset[str]]
+                ]({}),
+                description=(
+                    "Captured runtime and typing import facts retained by reference"
+                ),
+            )
         )
         snapshot: (
             t.Port[FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot] | None
@@ -118,6 +162,29 @@ class FlextInfraModelsCodegenTransaction:
                 "the closure instead of a second read and parse"
             ),
         )
+
+        @m.model_validator(mode="after")
+        def observed_import_inputs(self) -> Self:
+            """Require original witnesses for every retained source import fact.
+
+            Returns:
+                This validated source-admission request.
+
+            Raises:
+                ValueError: If original witnesses conflict or an import fact
+                    has no original source witness.
+
+            """
+            observed: dict[Path, m.Cli.AtomicFileState] = {}
+            for state in self.inputs:
+                previous = observed.setdefault(state.path, state)
+                if previous != state:
+                    message = f"conflicting original source witnesses: {state.path}"
+                    raise ValueError(message)
+            if self.import_edges.keys() - observed.keys():
+                message = "captured import facts require original source witnesses"
+                raise ValueError(message)
+            return self
 
     class StageSourcePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Pinned project closure and desired bytes for effect-free validation."""
@@ -130,9 +197,12 @@ class FlextInfraModelsCodegenTransaction:
         roots: tuple[Path, ...] = m.Field(
             description="Discovered project roots covering the pinned source closure"
         )
-        inputs: tuple[m.Cli.AtomicFileState, ...] = m.Field(
-            description="Exact source and configuration observations"
-        )
+        inputs: tuple[
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
+            ...,
+        ] = m.Field(description="Exact source and configuration observations")
         updates: Mapping[Path, str | None] = m.Field(
             description=(
                 "Desired sources keyed by live destination; None retires an artifact"
@@ -143,23 +213,41 @@ class FlextInfraModelsCodegenTransaction:
             description="Desired file-effect modes derived from original move sources",
         )
         declared_files: tuple[
-            FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
+            Annotated[
+                p.Infra.CodegenFilePlan,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                ),
+            ],
+            ...,
         ] = m.Field(
             default=(),
             description=(
                 "Original file/absence witnesses with the current desired effects"
             ),
         )
-        layouts: tuple[FlextInfraModelsCodegenLazyInit.RopeProjectLayout, ...] = (
-            m.Field(
-                description="Original project layouts in the desired import closure",
-            )
+        layouts: tuple[
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            description="Original project layouts in the desired import closure",
         )
         workspace_packages: tuple[str, ...] = m.Field(
             description="Original elected workspace namespaces",
         )
         candidate_layouts: tuple[
-            FlextInfraModelsCodegenLazyInit.RopeProjectLayout, ...
+            Annotated[
+                p.Infra.RopeProjectLayout,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
+                ),
+            ],
+            ...,
         ] = m.Field(
             description="Prospective import closure of the authenticated declarations",
         )
@@ -170,7 +258,12 @@ class FlextInfraModelsCodegenTransaction:
     class SemanticSourcePlan(m.ImmutableValueModel):
         """Authenticated source campaign independent of explicit rename intent."""
 
-        candidate: FlextInfraModelsCodegenTransaction.StageSourcePlan = m.Field(
+        candidate: Annotated[
+            p.Infra.StageSourcePlan,
+            t.schema_for_model(
+                lambda: FlextInfraModelsCodegenTransaction.StageSourcePlan
+            ),
+        ] = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )
         consumer_roots: tuple[Path, ...] = m.Field(

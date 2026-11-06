@@ -10,7 +10,7 @@ import ast
 import operator
 from collections.abc import Mapping, Sequence
 
-from flext_infra import c, m
+from flext_infra import c, p
 from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolicy
 
 
@@ -147,7 +147,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
         return False
 
     @classmethod
-    def _import_law_annotation_ids(cls, state: m.Infra.ImportLawPass) -> frozenset[int]:
+    def _import_law_annotation_ids(cls, state: p.Infra.ImportLawPass) -> frozenset[int]:
         """Return the ids of every node inside a non-evaluated annotation.
 
         Function argument and return annotations and module-level variable
@@ -242,7 +242,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     @classmethod
     def _import_law_collect_plain_namespace_annotations(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         ids: set[int],
     ) -> None:
         """Collect annotations only for positively proven namespace classes."""
@@ -288,7 +288,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     @classmethod
     def _import_law_runtime_uses(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         name: str,
     ) -> bool:
         """Return whether one binding is read anywhere at runtime.
@@ -308,7 +308,7 @@ class FlextInfraUtilitiesImportLawAst(FlextInfraUtilitiesImportLawPolicy):
     @classmethod
     def _import_law_runtime_reads(
         cls,
-        state: m.Infra.ImportLawPass,
+        state: p.Infra.ImportLawPass,
         name: str,
     ) -> tuple[ast.Name, ...]:
         """Locate runtime reads for both placement and causal diagnostics.

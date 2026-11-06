@@ -86,9 +86,14 @@ dev = [
   {{ flext_requirement(item) }},
 {% endfor %}
 ]
-{% if cli_module %}
+{% if cli_module or console_scripts %}
 [project.scripts]
+{% if cli_module %}
 {{ dist }} = "{{ package_name }}.cli:{{ class_stem }}Cli.main"
+{% endif %}
+{% for script in console_scripts %}
+{{ script.name }} = "{{ script.target }}"
+{% endfor %}
 {% endif %}
 {% if repository %}
 

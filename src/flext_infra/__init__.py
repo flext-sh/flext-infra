@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -41,7 +40,7 @@ if TYPE_CHECKING:
     from flext_infra.models import FlextInfraModels, m
     from flext_infra.preview import FlextInfraFlextInfraPreview
     from flext_infra.promoted import FlextInfraPromoted
-    from flext_infra.protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+    from flext_infra.protocols import FlextInfraProtocols, p
     from flext_infra.pytest import FlextInfraFlextInfraPytest
     from flext_infra.pytest_profile import FlextInfraPytestProfile
     from flext_infra.typings import FlextInfraTypes, t
@@ -65,7 +64,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraPromoted",
     "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
     "FlextInfraPytestProfile",
     "FlextInfraServiceBase",
     "FlextInfraSettings",
@@ -100,7 +98,7 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfra": ".api",
         "FlextInfraCli": ".cli",
         "FlextInfraConfig": "._config",
@@ -116,7 +114,6 @@ install_lazy_exports(
         "FlextInfraProjectSelectionServiceBase": ".base_selection",
         "FlextInfraPromoted": ".promoted",
         "FlextInfraProtocols": ".protocols",
-        "FlextInfraProtocolsBase": ".protocols",
         "FlextInfraPytestProfile": ".pytest_profile",
         "FlextInfraServiceBase": ".base",
         "FlextInfraSettings": "._settings",
@@ -145,7 +142,7 @@ install_lazy_exports(
         "t": ".typings",
         "u": ".utilities",
         "x": "flext_cli",
-    }),
+    },
     public_exports=__all__,
 )
 

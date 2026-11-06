@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
@@ -67,7 +65,7 @@ class TestsFlextInfraRopeContractDocumentIngress:
             ]
         }
 
-        with pytest.raises(TypeError, match="validated catalog origin"):
+        with u.Tests.raises(TypeError, match="validated catalog origin"):
             u.Cli.config_decode(document, m.Infra.RopeContractRules)
 
         declared_root: t.JsonMapping = {
@@ -81,7 +79,7 @@ class TestsFlextInfraRopeContractDocumentIngress:
                 }
             ]
         }
-        with pytest.raises(m.ValidationError, match="operational owner root"):
+        with u.Tests.raises(m.ValidationError, match="operational owner root"):
             u.Cli.config_decode(
                 declared_root,
                 m.Infra.RopeContractRules,

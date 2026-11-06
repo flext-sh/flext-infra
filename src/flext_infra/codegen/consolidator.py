@@ -93,8 +93,8 @@ class FlextInfraCodegenConsolidator(s[str]):
         rope_project: p.Infra.RopeProject,
         python_file: Path,
         value_map: Mapping[str, str],
-        project_layout: m.Infra.RopeProjectLayout,
-    ) -> m.Infra.ConsolidationOutcome:
+        project_layout: p.Infra.RopeProjectLayout,
+    ) -> p.Infra.ConsolidationOutcome:
         """Scan and consolidate one Python file against the constants map.
 
         Returns:
@@ -200,7 +200,7 @@ class FlextInfraCodegenConsolidator(s[str]):
         rope_project: t.Infra.RopeProject,
         python_file: Path,
         value_map: Mapping[str, str],
-    ) -> m.Infra.ConsolidatorScannedFile | None:
+    ) -> p.Infra.ConsolidatorScannedFile | None:
         """Scan file.
 
         Returns:
@@ -226,18 +226,18 @@ class FlextInfraCodegenConsolidator(s[str]):
 
     @staticmethod
     def _match_assignments(
-        symbols: Sequence[m.Infra.SymbolInfo],
+        symbols: Sequence[p.Infra.SymbolInfo],
         # Use the canonical scalar sequence alias directly.
         source_lines: Sequence[str],
         value_to_ref: Mapping[str, str],
-    ) -> Sequence[tuple[m.Infra.SymbolInfo, str, str]]:
+    ) -> Sequence[tuple[p.Infra.SymbolInfo, str, str]]:
         """Match assignments.
 
         Returns:
-            The resulting ``Sequence[tuple[m.Infra.SymbolInfo, str, str]]``.
+            The resulting ``Sequence[tuple[p.Infra.SymbolInfo, str, str]]``.
 
         """
-        matches: MutableSequence[tuple[m.Infra.SymbolInfo, str, str]] = []
+        matches: MutableSequence[tuple[p.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             # Widen the validated constrained int for indexing.
             line_number: int = symbol.line
@@ -263,7 +263,7 @@ class FlextInfraCodegenConsolidator(s[str]):
     def _apply_and_validate(
         cls,
         rope_project: t.Infra.RopeProject,
-        scanned: m.Infra.ConsolidatorScannedFile,
+        scanned: p.Infra.ConsolidatorScannedFile,
         py_file: Path,
         workspace: Path,
         pkg_name: str,

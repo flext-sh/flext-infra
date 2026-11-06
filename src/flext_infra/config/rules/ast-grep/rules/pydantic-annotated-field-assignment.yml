@@ -1,0 +1,32 @@
+# Pydantic's annotated metadata form does not expose field-specifier metadata to
+# static model constructors. Metadata that controls the public field name,
+# serialization, exclusion, or mutability therefore belongs in the assigned
+# ``m.Field(...)`` value. Descriptive and constraint-only metadata remains valid
+# inside ``Annotated`` and is deliberately outside this rule.
+id: pydantic-annotated-field-assignment-metadata
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+rule:
+  all:
+    # Python's annotated declarations are assignment nodes even when their
+    # right-hand side is absent. Keep the declaration pattern as the capture
+    # owner because ast-grep fixes can only interpolate its bound variables.
+    - kind: assignment
+    - pattern: "$NAME: Annotated[$TYPE, m.Field($$$ARGS)]"
+    # A pre-existing assignment needs a distinct rewrite that retains its RHS
+    # as a Field default; never discard it in this structural migration.
+    - not:
+        pattern: "$NAME: Annotated[$TYPE, m.Field($$$ARGS)] = $RHS"
+    - regex: '(?s).*(?:alias|validation_alias|serialization_alias|exclude|frozen)\s*='
+constraints:
+  NAME:
+    regex: "^[a-z][a-z0-9_]*$"
+fix: "$NAME: $TYPE = m.Field($$$ARGS)"
+message: >-
+  Declare Pydantic field metadata that controls aliases, serialization,
+  exclusion, or mutability by assignment (`name: T = m.Field(...)`), not in
+  `Annotated[...]`, so static model constructors retain the field contract.

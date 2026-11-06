@@ -143,9 +143,14 @@ class TestsFlextInfraLazyInitRuntime:
                 tm.ok(bool(u.Infra.public_export_names_source(native)))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("immutable_name", ["MappingProxyType", "Immutable"])
+    @c.Tests.MARK.parametrize(
         ("declarations", "mapping_argument"),
         [
+            (
+                "",
+                '{"Exported": (".provider", "Declared")}',
+            ),
             (
                 "",
                 'MappingProxyType({"Exported": (".provider", "Declared")})',
@@ -187,17 +192,28 @@ class TestsFlextInfraLazyInitRuntime:
         ],
     )
     def test_native_alias_inventory_matches_the_runtime_initializer(
-        tmp_path: Path, declarations: str, mapping_argument: str
+        tmp_path: Path,
+        declarations: str,
+        mapping_argument: str,
+        immutable_name: str,
     ) -> None:
         """Named and inline maps preserve their actual exported attribute."""
         repository, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = (
-            "from types import MappingProxyType\n"
+            f"from types import MappingProxyType as {immutable_name}\n"
             "from flext_core import build_lazy_import_map, install_lazy_exports\n"
-            + declarations
+            '# install_lazy_exports({"Comment": "unrelated"}) — Unicode anchor\n'
+            '_TEXT = \'install_lazy_exports({"Text": "unrelated"})\'\n'
+            "def deferred():\n"
+            '    install_lazy_exports(__name__, globals(), {"Deferred": "unrelated"})\n'
+            + declarations.replace("MappingProxyType", immutable_name)
             + '__all__ = ("Exported",)\n'
             + "__getattr__ = install_lazy_exports(\n"
-            + f"    __name__, globals(), {mapping_argument}, public_exports=__all__\n"
+            + (
+                "    __name__, globals(), "
+                f"{mapping_argument.replace('MappingProxyType', immutable_name)}, "
+                "public_exports=__all__\n"
+            )
             + ")[0]\n"
         )
         initializer = package / c.Infra.INIT_PY
@@ -222,6 +238,7 @@ class TestsFlextInfraLazyInitRuntime:
                 project=workspace.rope_project,
                 pymodule=module,
             )
+            tm.that(tuple(bindings), eq=("Exported",))
             tm.that(bindings["Exported"].target, eq=f"{package.name}.provider")
             tm.that(bindings["Exported"].attributes, eq=("Declared",))
             tm.that(
@@ -270,14 +287,14 @@ class TestsFlextInfraLazyInitRuntime:
         tm.ok(u.Cli.atomic_write_text_file(initializer, source))
         with (
             infra.rope_workspace(repository) as workspace,
-            pytest.raises(ValueError, match="Cyclic lazy alias mapping declaration"),
+            u.Tests.raises(ValueError, match="Cyclic lazy alias mapping declaration"),
         ):
             u.Infra.lazy_export_bindings(
                 package.name, initializer, source, project=workspace.rope_project
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected"),
         [
             ("class Root:\n    __all__ = ('Root',)\n", ("Root",)),
@@ -318,7 +335,7 @@ class TestsFlextInfraLazyInitRuntime:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("imported_alias", "published_alias"),
         [(False, False), (True, False), (True, True)],
     )
@@ -379,6 +396,7 @@ class TestsFlextInfraLazyInitRuntime:
         TestsFlextInfraLazyInitRuntime._assert_generated_exports(repository, generated)
         initializer = testing / c.Infra.INIT_PY
         source = initializer.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(source, lacks="MappingProxyType")
         tm.that(
             any(
                 item.level == 0
@@ -473,7 +491,7 @@ class TestsFlextInfraLazyInitRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "ownership",
         [
             "single",
@@ -561,8 +579,11 @@ class TestsFlextInfraLazyInitRuntime:
             *(str(path.relative_to(repository)) for path in sources),
         )
         if ownership == "module-only":
-            with pytest.raises(ValueError, match="Module used as a class base"):
-                u.Infra.render_utility_facade(package, family="m")
+            original = facade.read_bytes()
+            rejected = tm.not_none(u.Infra.render_utility_facade(package, family="m"))
+            tm.fail(rejected, has="Module used as a class base")
+            tm.ok(isinstance(rejected.exception, ValueError))
+            tm.that(facade.read_bytes(), eq=original)
             return
         rendered = tm.ok(
             tm.not_none(u.Infra.render_utility_facade(package, family="m"))
@@ -627,7 +648,7 @@ class TestsFlextInfraLazyInitRuntime:
         tm.that(rendered, has="FlextTestsModels.Tests")
 
     @staticmethod
-    @pytest.mark.parametrize("family", ["c", "m"])
+    @c.Tests.MARK.parametrize("family", ["c", "m"])
     def test_competing_declared_publishers_keep_their_exact_diagnostic(
         tmp_path: Path, family: Literal["c", "m"]
     ) -> None:
@@ -689,9 +710,9 @@ class TestsFlextInfraLazyInitRuntime:
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         roots = u.Tests.runtime_evaluated_roots()
-        with pytest.raises(ValueError, match="Unresolved planned base"):
+        with u.Tests.raises(ValueError, match="Unresolved planned base"):
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
-        with pytest.raises(
+        with u.Tests.raises(
             AssertionError, match="cannot import name 'FlextPlannedErrors'"
         ):
             u.Tests.run_lazy_init_probe(
@@ -770,7 +791,7 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.DEFAULT_ENCODING,
         )
         roots = u.Tests.runtime_evaluated_roots()
-        with pytest.raises(ValueError, match="Unresolved planned base"):
+        with u.Tests.raises(ValueError, match="Unresolved planned base"):
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
         planned = {
             plan.path.resolve(): plan.desired_content.decode(c.DEFAULT_ENCODING)

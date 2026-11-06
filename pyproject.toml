@@ -32,6 +32,7 @@ dependencies = [
   "mkdocs>=1.6.1",
   "mypy>=2.3.1",
   "packaging>=26.3",
+  "pydantic>=2.14.1,<3",
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
@@ -189,7 +190,7 @@ optional_dependencies_dev_groups = []
 allow_redefinition = true
 check_untyped_defs = true
 disable_error_code = ["call-arg", "prop-decorator"]
-exclude = "(?s:(?:.+/)?[^/]*\\.bak)\\Z|(?s:(?:.+/)?[^/]*\\.egg\\-info/.*)\\Z|(?s:(?:.+/)?[^/]*\\.orig)\\Z|(?s:(?:.+/)?[^/]*\\.rej)\\Z|(?s:(?:.+/)?[^/]*\\.swp)\\Z|(?s:(?:.+/)?\\.agents\\-sync\\-home/.*)\\Z|(?s:(?:.+/)?\\.agents/.*)\\Z|(?s:(?:.+/)?\\.archive/.*)\\Z|(?s:(?:.+/)?\\.beads/.*)\\Z|(?s:(?:.+/)?\\.benchmarks/.*)\\Z|(?s:(?:.+/)?\\.bkp/.*)\\Z|(?s:(?:.+/)?\\.cache/.*)\\Z|(?s:(?:.+/)?\\.claude/.*)\\Z|(?s:(?:.+/)?\\.codex/.*)\\Z|(?s:(?:.+/)?\\.cursor/.*)\\Z|(?s:(?:.+/)?\\.gemini/.*)\\Z|(?s:(?:.+/)?\\.git/.*)\\Z|(?s:(?:.+/)?\\.hypothesis/.*)\\Z|(?s:(?:.+/)?\\.kilo/.*)\\Z|(?s:(?:.+/)?\\.mypy_cache/.*)\\Z|(?s:(?:.+/)?\\.omo/.*)\\Z|(?s:(?:.+/)?\\.opencode/.*)\\Z|(?s:(?:.+/)?\\.pylance_cache/.*)\\Z|(?s:(?:.+/)?\\.pyrefly_cache/.*)\\Z|(?s:(?:.+/)?\\.pytest_cache/.*)\\Z|(?s:(?:.+/)?\\.reports/.*)\\Z|(?s:(?:.+/)?\\.ruff_cache/.*)\\Z|(?s:(?:.+/)?\\.serena/.*)\\Z|(?s:(?:.+/)?\\.snapshots/.*)\\Z|(?s:(?:.+/)?\\.test\\-tmp/.*)\\Z|(?s:(?:.+/)?\\.tmp/.*)\\Z|(?s:(?:.+/)?\\.tox/.*)\\Z|(?s:(?:.+/)?\\.venv\\.[^/]*/.*)\\Z|(?s:(?:.+/)?\\.venv/.*)\\Z|(?s:(?:.+/)?\\.vscode/.*)\\Z|(?s:(?:.+/)?\\.worktrees/.*)\\Z|(?s:(?:.+/)?__pycache__/.*)\\Z|(?s:(?:.+/)?__pyrefly_virtual__/.*)\\Z|(?s:(?:.+/)?_tmp_[^/]*/.*)\\Z|(?s:(?:.+/)?build/.*)\\Z|(?s:(?:.+/)?dist\\-packages/.*)\\Z|(?s:(?:.+/)?dist/.*)\\Z|(?s:(?:.+/)?htmlcov/.*)\\Z|(?s:(?:.+/)?incoming/.*)\\Z|(?s:(?:.+/)?legado/.*)\\Z|(?s:(?:.+/)?node_modules/.*)\\Z|(?s:(?:.+/)?reports/.*)\\Z|(?s:(?:.+/)?site\\-packages/.*)\\Z|(?s:(?:.+/)?site/.*)\\Z|(?s:(?:.+/)?target/.*)\\Z|(?s:(?:.+/)?tests/fixtures/.*)\\Z|(?s:(?:.+/)?venv/.*)\\Z"
+exclude = "(?s:(?:.+/)?[^/]*\\.bak)\\Z|(?s:(?:.+/)?[^/]*\\.egg\\-info/.*)\\Z|(?s:(?:.+/)?[^/]*\\.orig)\\Z|(?s:(?:.+/)?[^/]*\\.rej)\\Z|(?s:(?:.+/)?[^/]*\\.swp)\\Z|(?s:(?:.+/)?\\.agents\\-sync\\-home/.*)\\Z|(?s:(?:.+/)?\\.agents/.*)\\Z|(?s:(?:.+/)?\\.archive/.*)\\Z|(?s:(?:.+/)?\\.beads/.*)\\Z|(?s:(?:.+/)?\\.benchmarks/.*)\\Z|(?s:(?:.+/)?\\.bkp/.*)\\Z|(?s:(?:.+/)?\\.cache/.*)\\Z|(?s:(?:.+/)?\\.claude/.*)\\Z|(?s:(?:.+/)?\\.codex/.*)\\Z|(?s:(?:.+/)?\\.cursor/.*)\\Z|(?s:(?:.+/)?\\.gemini/.*)\\Z|(?s:(?:.+/)?\\.git/.*)\\Z|(?s:(?:.+/)?\\.hypothesis/.*)\\Z|(?s:(?:.+/)?\\.kilo/.*)\\Z|(?s:(?:.+/)?\\.mypy_cache/.*)\\Z|(?s:(?:.+/)?\\.omo/.*)\\Z|(?s:(?:.+/)?\\.opencode/.*)\\Z|(?s:(?:.+/)?\\.pylance_cache/.*)\\Z|(?s:(?:.+/)?\\.pyrefly_cache/.*)\\Z|(?s:(?:.+/)?\\.pytest_cache/.*)\\Z|(?s:(?:.+/)?\\.reports/.*)\\Z|(?s:(?:.+/)?\\.ruff_cache/.*)\\Z|(?s:(?:.+/)?\\.serena/.*)\\Z|(?s:(?:.+/)?\\.snapshots/.*)\\Z|(?s:(?:.+/)?\\.test\\-tmp/.*)\\Z|(?s:(?:.+/)?\\.tmp/.*)\\Z|(?s:(?:.+/)?\\.tox/.*)\\Z|(?s:(?:.+/)?\\.venv\\.[^/]*/.*)\\Z|(?s:(?:.+/)?\\.venv/.*)\\Z|(?s:(?:.+/)?\\.vscode/.*)\\Z|(?s:(?:.+/)?\\.worktrees/.*)\\Z|(?s:(?:.+/)?__pycache__/.*)\\Z|(?s:(?:.+/)?__pyrefly_virtual__/.*)\\Z|(?s:(?:.+/)?_tmp_[^/]*/.*)\\Z|(?s:(?:.+/)?build/.*)\\Z|(?s:(?:.+/)?dist\\-packages/.*)\\Z|(?s:(?:.+/)?dist/.*)\\Z|(?s:(?:.+/)?htmlcov/.*)\\Z|(?s:(?:.+/)?incoming/.*)\\Z|(?s:(?:.+/)?legado/.*)\\Z|(?s:(?:.+/)?node_modules/.*)\\Z|(?s:(?:.+/)?reports/.*)\\Z|(?s:(?:.+/)?site\\-packages/.*)\\Z|(?s:(?:.+/)?site/.*)\\Z|(?s:(?:.+/)?target/.*)\\Z|(?s:(?:.+/)?tests/fixtures/.*)\\Z|(?s:(?:.+/)?venv/.*)\\Z|(?s:\\.github/agents/.*)\\Z|(?s:\\.github/hooks/.*)\\Z|(?s:\\.github/instructions/.*)\\Z|(?s:\\.github/skills/.*)\\Z"
 explicit_package_bases = true
 extra_checks = true
 follow_imports = "normal"
@@ -271,6 +272,10 @@ project-excludes = [
   "**/target/**",
   "**/tests/fixtures/**",
   "**/venv/**",
+  ".github/agents/**",
+  ".github/hooks/**",
+  ".github/instructions/**",
+  ".github/skills/**",
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
@@ -414,6 +419,10 @@ exclude = [
   "**/target/**",
   "**/tests/fixtures/**",
   "**/venv/**",
+  ".github/agents/**",
+  ".github/hooks/**",
+  ".github/instructions/**",
+  ".github/skills/**",
 ]
 extraPaths = ["src", "."]
 include = ["conftest.py", "src", "tests"]
@@ -540,6 +549,10 @@ extend-exclude = [
   "**/target/**",
   "**/tests/fixtures/**",
   "**/venv/**",
+  ".github/agents/**",
+  ".github/hooks/**",
+  ".github/instructions/**",
+  ".github/skills/**",
 ]
 fix = false
 line-length = 88
@@ -558,20 +571,9 @@ quote-style = "double"
 skip-magic-trailing-comma = false
 
 [tool.ruff.lint]
-extend-safe-fixes = [
-  "relative-imports",
-  "typing-only-first-party-import",
-  "camelcase-imported-as-lowercase",
-]
+extend-safe-fixes = ["relative-imports", "camelcase-imported-as-lowercase"]
 extend-select = ["missing-blank-line-after-last-section"]
-ignore = [
-  "missing-trailing-comma",
-  "non-empty-init-module",
-  "runtime-import-in-type-checking-block",
-  "typing-only-first-party-import",
-  "typing-only-standard-library-import",
-  "typing-only-third-party-import",
-]
+ignore = ["TC", "missing-trailing-comma", "non-empty-init-module"]
 select = ["ALL"]
 unfixable = [
   "multi-value-repeated-key-literal",
@@ -603,149 +605,25 @@ msg = "Use cli.render_table from flext_cli."
 [tool.ruff.lint.flake8-tidy-imports.banned-api.typer]
 msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
 
-[tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-base-classes = [
-  "flext_cli.FlextCli",
-  "flext_cli.FlextCliConfig",
-  "flext_cli.m.ArbitraryTypesModel",
-  "flext_cli.m.BaseModel",
-  "flext_cli.m.BaseSettings",
-  "flext_cli.m.Cli.FileChange",
-  "flext_cli.m.ContractModel",
-  "flext_cli.m.ExternalContractModel",
-  "flext_cli.m.FlexibleModel",
-  "flext_cli.m.FrozenModel",
-  "flext_cli.m.ImmutableValueModel",
-  "flext_cli.m.RootModel",
-  "flext_cli.m.StrictModel",
-  "flext_cli.m.Value",
-  "flext_core.FlextService",
-  "flext_core.FlextSettings",
-  "flext_core.m.ArbitraryTypesModel",
-  "flext_core.m.ContractModel",
-  "flext_core.m.ExternalContractModel",
-  "flext_core.m.FrozenModel",
-  "flext_core.m.RootModel",
-  "flext_core.m.StrictBoundaryModel",
-  "flext_infra.FlextInfraProjectSelectionServiceBase",
-  "flext_infra._models.FlextInfraModelsBase.CommandContext",
-  "flext_infra._models.FlextInfraModelsBase.FrozenArbitrary",
-  "flext_infra._models.FlextInfraModelsMixins.AbsoluteFilePathTextMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ErrorDetailMixin",
-  "flext_infra._models.FlextInfraModelsMixins.FilePathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ModuleSelectionMixin",
-  "flext_infra._models.FlextInfraModelsMixins.NamespaceSelectionMixin",
-  "flext_infra._models.FlextInfraModelsMixins.NestedClassPathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.NonNegativeLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.PositiveLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectEntryNameMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectNameMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ProjectNamesListMixin",
-  "flext_infra._models.FlextInfraModelsMixins.RepositoryRootPathMixin",
-  "flext_infra._models.FlextInfraModelsMixins.RequiredNonNegativeLineMixin",
-  "flext_infra._models.FlextInfraModelsMixins.ScopeMixin",
-  "flext_infra._models.FlextInfraModelsMixins.VersionTagMixin",
-  "flext_infra._models.FlextInfraModelsMixins.WriteMixin",
-  "flext_infra._models._codegen.FlextInfraModelsCodegenTransaction.SemanticSourcePlan",
-  "flext_infra._models._codegen.pipeline.CodegenCommand",
-  "flext_infra._models._config.FlextInfraModelsConfigContract.ConfigContract",
-  "flext_infra._models._config.artifact.CodegenArtifactScopeSpec",
-  "flext_infra._models._config.artifact.CodegenGenerateRequest",
-  "flext_infra._models._config.contexts.MakeCommandContext",
-  "flext_infra._models._config.contract.ConfigContract",
-  "flext_infra._models._config.contract.DocsAuditOverridesSpec",
-  "flext_infra._models._config.contract.FlextInfraModelsConfigContract.ConfigContract",
-  "flext_infra._models._config.external_cache.FlextInfraExternalCacheDirectorySpec.Directory",
-  "flext_infra._models._config.make.MakeOperationSpec",
-  "flext_infra._models._config.templates.ManagedFileOwnership",
-  "flext_infra._models._config.templates.TemplateDeclarationSpec",
-  "flext_infra._models._config.workspace.CandidateDependenciesSpec",
-  "flext_infra._models._config.workspace.DependencyGroupDeclarations",
-  "flext_infra._models._config.workspace.FlextInfraModelsConfigWorkspace.DependencyGroupDeclarations",
-  "flext_infra._models.base.FrozenArbitrary",
-  "flext_infra._models.codegen_render.MkdocsRenderContext",
-  "flext_infra._models.codemod.AstGrepDiagnostic",
-  "flext_infra._models.docs.DocsPageContext",
-  "flext_infra._models.docs.DocsProjectIndexContext",
-  "flext_infra._models.duplication.DuplicationClassification",
-  "flext_infra._models.gates.GateExecutionFacts",
-  "flext_infra._models.git.GitRemoteRequest",
-  "flext_infra._models.git.GitRepoRequest",
-  "flext_infra._models.mise_toolchain_base.FlextInfraModelsMiseToolchainBase.SchemaRecord",
-  "flext_infra._models.mixins.FilePathMixin",
-  "flext_infra._models.mixins.PositiveLineMixin",
-  "flext_infra._models.mixins.ScopeMixin",
-  "flext_infra._models.refactor.CensusOptions",
-  "flext_infra._models.release.ReleaseOptions",
-  "flext_infra._models.scan.ModOccurrence",
-  "flext_infra._models.scan.ModOccurrenceReport",
-  "flext_infra._models.scan.ModScanCounts",
-  "flext_infra._models.scan.ModScanFinding",
-  "flext_infra._models.workspace.NativeImportObservation",
-  "flext_infra._models.workspace.WorkspaceRequest",
-  "flext_infra.base.s",
-  "flext_infra.base_selection.FlextInfraProjectSelectionServiceBase",
-  "flext_infra.codegen.FlextInfraCodegenExecution",
-  "flext_infra.codegen._conform.artifact_render.FlextInfraCodegenConformArtifactRender",
-  "flext_infra.codegen._conform.bootstrap.FlextInfraCodegenConformBootstrap",
-  "flext_infra.codegen._conform.context_render.FlextInfraCodegenConformContextRender",
-  "flext_infra.codegen._conform.editor.FlextInfraCodegenConformEditor",
-  "flext_infra.codegen._conform.execute.FlextInfraCodegenConformExecute",
-  "flext_infra.codegen._conform.existing_plan.FlextInfraCodegenConformExistingPlan",
-  "flext_infra.codegen._conform.file_plans.FlextInfraCodegenConformFilePlans",
-  "flext_infra.codegen._conform.plan.FlextInfraCodegenConformPlan",
-  "flext_infra.codegen._conform.pyproject_policy.FlextInfraCodegenConformPyprojectPolicy",
-  "flext_infra.codegen._conform.scaffold_plan.FlextInfraCodegenConformScaffoldPlan",
-  "flext_infra.codegen.execution.FlextInfraCodegenExecution",
-  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerBase",
-  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerDocument",
-  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerRun",
-  "flext_infra.deps._modernizer.FlextInfraPyprojectModernizerTooling",
-  "flext_infra.docs.FlextInfraDocServiceBase",
-  "flext_infra.m.ImmutableValueModel",
-  "flext_infra.m.Infra.ModuleSelectionMixin",
-  "flext_infra.m.Infra.NamespaceSelectionMixin",
-  "flext_infra.m.Infra.ReleaseOptions",
-  "flext_infra.m.Value",
-  "flext_infra.maintenance.FlextInfraMaintenanceSonarcloudClient",
-  "flext_infra.refactor.FlextInfraRefactorCensus",
-  "flext_infra.refactor.FlextInfraRefactorCensusCollect",
-  "flext_infra.refactor.FlextInfraRefactorCensusRemoval",
-  "flext_infra.refactor._census.FlextInfraRefactorCensusCollectHelpers",
-  "flext_infra.release.FlextInfraReleaseReleaseArtifact",
-  "flext_infra.release.FlextInfraReleaseReleaseBoundary",
-  "flext_infra.release.FlextInfraReleaseReleaseBuild",
-  "flext_infra.release.FlextInfraReleaseReleaseMetadata",
-  "flext_infra.release.FlextInfraReleaseReleaseProject",
-  "flext_infra.release.FlextInfraReleaseReleasePublish",
-  "flext_infra.release.FlextInfraReleaseReleaseSource",
-  "flext_infra.release._release.FlextInfraReleaseReleasePlan",
-  "flext_infra.release.release.FlextInfraReleaseRelease",
-  "flext_infra.s",
-  "flext_infra.services.FlextInfraCliDispatchService",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerBase",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerCommand",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerExecution",
-  "flext_infra.validate._pytest_runner.FlextInfraPytestRunnerReports",
-  "flext_infra.workspace._rope.FlextInfraWorkspaceRopeQuery",
-  "flext_tests.FlextTestsServiceBase",
-  "pydantic.BaseModel",
-]
-
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
 known-first-party = ["flext_infra"]
 split-on-trailing-comma = false
 
-[tool.ruff.lint.pep8-naming]
-ignore-names = ["Ldif"]
+[tool.ruff.lint.per-file-ignores]
+"**/_protocols/pydantic.py" = ["too-many-arguments"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.pylint]
-allow-dunder-method-names = ["__base__", "__bases__"]
+allow-dunder-method-names = [
+  "__base__",
+  "__bases__",
+  "__get_pydantic_core_schema__",
+  "__get_pydantic_json_schema__",
+]
 
 [tool.tomlsort]
 all = true
@@ -775,7 +653,7 @@ constraint-dependencies = [
   "uv>=0.13.4",
 ]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-link-mode = "copy"
+link-mode = "clone"
 override-dependencies = [
   "rope @ git+https://github.com/marlon-costa-dc/rope.git@5ebf6d5c477fbf8fc66191bd991a27ca1b9eed7a",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",

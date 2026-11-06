@@ -22,9 +22,9 @@ class FlextInfraCheckWorkspaceCheckReports:
 
     @staticmethod
     def _project_summary(
-        summary: m.Infra.CheckReportSummary,
-        target: m.Infra.CheckProjectTarget,
-    ) -> m.Infra.CheckReportSummary:
+        summary: p.Infra.CheckReportSummary,
+        target: p.Infra.CheckProjectTarget,
+    ) -> p.Infra.CheckReportSummary:
         """Bind one exact target to its ordered result before judging completeness.
 
         Returns:
@@ -42,7 +42,7 @@ class FlextInfraCheckWorkspaceCheckReports:
     @classmethod
     def _generate_markdown(
         cls,
-        summary: m.Infra.CheckReportSummary,
+        summary: p.Infra.CheckReportSummary,
         timestamp: str,
     ) -> str:
         """Render reached results and missing executions from one typed inventory.
@@ -62,7 +62,7 @@ class FlextInfraCheckWorkspaceCheckReports:
             "## Summary",
             "",
             "| Project | Status | Findings |",
-            "|---|---:|---:|",
+            "| --- |---:|---:|",
         ]
         for target in summary.targets:
             project_summary = cls._project_summary(summary, target)
@@ -124,9 +124,9 @@ class FlextInfraCheckWorkspaceCheckReports:
 
     @staticmethod
     def _publish_invocation_summary(
-        summary: m.Infra.CheckReportSummary,
-        before: m.Cli.AtomicFileState,
-    ) -> m.Cli.AtomicFileState:
+        summary: p.Infra.CheckReportSummary,
+        before: p.Cli.AtomicFileState,
+    ) -> p.Cli.AtomicFileState:
         """Advance this invocation's exact report target from its read state.
 
         Returns:
@@ -141,10 +141,10 @@ class FlextInfraCheckWorkspaceCheckReports:
     @classmethod
     def _generate_sarif(
         cls,
-        results: Sequence[m.Infra.ProjectResult],
+        results: Sequence[p.Infra.ProjectResult],
         gates: Sequence[str],
-        summary: m.Infra.CheckReportSummary,
-    ) -> m.Infra.SarifReport:
+        summary: p.Infra.CheckReportSummary,
+    ) -> p.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results.
 
         Returns:
@@ -152,7 +152,7 @@ class FlextInfraCheckWorkspaceCheckReports:
 
         """
         rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
-        sarif_results: list[m.Infra.SarifResult] = []
+        sarif_results: list[p.Infra.SarifResult] = []
         for project in results:
             for gate in gates:
                 execution = project.gates.get(gate)
@@ -185,7 +185,7 @@ class FlextInfraCheckWorkspaceCheckReports:
         })
 
     @staticmethod
-    def _sarif_issue(issue: m.Infra.Issue, rule_id: str) -> m.Infra.SarifResult:
+    def _sarif_issue(issue: p.Infra.Issue, rule_id: str) -> p.Infra.SarifResult:
         """Render one occurrence while retaining its native severity.
 
         Returns:
@@ -219,7 +219,7 @@ class FlextInfraCheckWorkspaceCheckReports:
     def _write_reports(
         cls,
         report_base: Path,
-        summary: m.Infra.CheckReportSummary,
+        summary: p.Infra.CheckReportSummary,
     ) -> p.Result[bool]:
         """Publish this invocation's Markdown and SARIF without console repetition.
 
@@ -252,7 +252,7 @@ class FlextInfraCheckWorkspaceCheckReports:
         cls,
         report_base: Path,
         outcome: p.Infra.WorkspaceLoopOutcome,
-        summary: m.Infra.CheckReportSummary,
+        summary: p.Infra.CheckReportSummary,
     ) -> None:
         """Print the terminal summary once, without republishing unchanged reports."""
         results = outcome.results

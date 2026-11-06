@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
@@ -18,12 +16,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraSingleClassExportRuntime:
     """Exercise the real catalog, publication and Python import boundaries."""
 
     @staticmethod
-    @pytest.mark.parametrize("surface", tuple(c.Infra.NON_PUBLIC_LAZY_ROOTS))
+    @c.Tests.MARK.parametrize("surface", tuple(c.Infra.NON_PUBLIC_LAZY_ROOTS))
     def test_internal_source_is_published_through_its_lazy_package(
         tmp_path: Path,
         surface: str,
@@ -86,11 +84,13 @@ class TestsFlextInfraSingleClassExportRuntime:
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "project_name",
         ["flext-outer-sample", "flext-connector-example"],
     )
-    @pytest.mark.parametrize("scope_kind", ["standalone", "workspace", "nested-member"])
+    @c.Tests.MARK.parametrize(
+        "scope_kind", ["standalone", "workspace", "nested-member"]
+    )
     def test_canonical_source_is_published_for_an_external_consumer(
         tmp_path: Path,
         project_name: str,

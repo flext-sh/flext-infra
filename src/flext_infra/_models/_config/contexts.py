@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config import (
     FlextInfraModelsConfigBeads,
@@ -30,7 +30,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Shared command identity required by every generated Make surface."""
 
         release_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(
                 description="Release phase commands elected by repository capability"
             ),
@@ -45,7 +51,15 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-declared public examples module"),
         ] = None
         workspace_repositories: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigRepository.RepositoryRef
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered workspace subproject records"),
         ] = ()
         environment_imports: Annotated[
@@ -55,7 +69,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         pytest: Annotated[
-            FlextInfraModelsDepsToolConfig.PytestConfig,
+            Annotated[
+                p.Infra.PytestConfig,
+                t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
+            ],
             m.Field(description="Typed pytest execution policy"),
         ]
         environment_directory: Annotated[
@@ -79,12 +96,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(exclude=True, description="Original declarations consumed here"),
         ]
 
-    class MakefileRenderSpec(MakeCommandContext):
-        """Typed render input for an existing repository Makefile."""
+    class MakefileProjectRenderSpec(MakeCommandContext):
+        """Bootstrap evidence and repository topology rendered into the Makefile."""
 
         bootstrap_requirements: Annotated[
             Path,
@@ -128,6 +145,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[str, ...],
             m.Field(description="Declared workspace subproject paths"),
         ] = ()
+
+    class MakefileToolchainRenderSpec(MakefileProjectRenderSpec):
+        """Toolchain, lock and environment declarations rendered into the Makefile."""
+
         uv_link_mode: Annotated[
             t.NonEmptyStr,
             m.Field(description="Configured uv installation link mode"),
@@ -161,6 +182,15 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Committed Mise lock of every governed repository"),
         ] = c.Infra.MISE_LOCK_FILENAME
+        mise_config_filename: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Only project Mise config the locked bootstrap loads; a "
+                    "machine-local override never enters a locked install"
+                ),
+            ),
+        ] = c.Infra.MISE_TOML_FILENAME
         uv_lock_filename: Annotated[
             t.NonEmptyStr,
             m.Field(description="Committed native uv lock of the runtime root"),
@@ -179,6 +209,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Python minor line the environment syncs against"),
         ]
+
+    class MakefileRenderSpec(MakefileToolchainRenderSpec):
+        """Typed render input for an existing repository Makefile."""
+
         make: Annotated[
             FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -191,6 +225,30 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        verb_groups: Annotated[
+            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            m.Field(description="Ordered `make help` sections; empty is flat"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _require_common_verb_group(self) -> Self:
+            """Declare the canonical verbs' section whenever sections exist.
+
+            Returns:
+                The validated render context.
+
+            Raises:
+                ValueError: When sections omit ``make.common_verb_group``.
+
+            """
+            names = {group.name for group in self.verb_groups}
+            if names and self.make.common_verb_group not in names:
+                msg = (
+                    "verb_groups must declare the canonical section "
+                    f"{self.make.common_verb_group!r}: {sorted(names)}"
+                )
+                raise ValueError(msg)
+            return self
 
         makefile_custom_include: Annotated[
             t.NonEmptyStr,
@@ -211,6 +269,16 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         timeout_kill_after_seconds: Annotated[
             int,
             m.Field(gt=0, description="Forced-termination grace period"),
+        ]
+        check_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description=(
+                    "Make check wall-time bound derived from the largest "
+                    "declared budget of the gates it runs"
+                ),
+            ),
         ]
 
     class MakeRenderContext(MakeCommandContext):
@@ -293,15 +361,20 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ""
 
-    class ProjectRenderContext(FlextInfraModelsConfigContract.ConfigContract):
-        """Complete typed input consumed by project scaffold templates."""
+    class ProjectRenderRuntimeContext(FlextInfraModelsConfigContract.ConfigContract):
+        """Distribution, tooling runtime and integration of a rendered project."""
 
         dist: t.NonEmptyStr = m.Field(description="Project distribution identity")
         make_profile: c.Infra.MakeProfile = m.Field(
             description="Selected repository Make profile"
         )
         uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
-        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext = m.Field(
+        tooling_runtime: Annotated[
+            p.Infra.ToolingRuntimeContext,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
+            ),
+        ] = m.Field(
             description="Resolved tooling document required by project metadata"
         )
 
@@ -316,7 +389,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
         docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            Annotated[
+                p.Infra.DocsAuditOverridesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                ),
+            ],
             m.Field(
                 description="Repository-owned documentation audit declarations",
             ),
@@ -334,7 +412,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         workspace_integration: Annotated[
-            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Declared integration provider and branch written into the "
@@ -344,74 +428,28 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = None
 
-        @m.computed_field
-        @property
-        def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name.
-
-            Returns:
-                The resulting ``str``.
-
-            """
-            return f"{self.dist.upper().replace('-', '_')}_"
-
-        @property
-        def _config_base(self) -> FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec:
-            """ENFORCE-042 config base selected from declared requirements.
-
-            The fleet-converged ``_config.py`` inherits only the project's frozen
-            config capability base, independently of runtime settings. The base
-            is a property of the target's own dependencies, never a per-project
-            hand choice: the
-            first entry of ``scaffold.project.config_bases`` whose distribution
-            target depends on (its runtime requirements or its upstream).
-
-            Raises:
-                ValueError: If scaffold.project.config_bases declares no base for the
-                    declared requirements of.
-
-            """
-            depended = {
-                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
-                for requirement in self.project_dependencies
-            } | {t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(self.upstream)}
-            for base in self.scaffold.project.config_bases:
-                if base.distribution in depended:
-                    return base
-            msg = (
-                "scaffold.project.config_bases declares no base for the "
-                f"declared requirements of {self.dist}: {sorted(depended)}"
-            )
-            raise ValueError(msg)
-
-        @m.computed_field
-        @property
-        def config_base_class(self) -> str:
-            """Config base class composed by the generated ``_config.py``.
-
-            Returns:
-                The resulting ``str``.
-
-            """
-            return self._config_base.class_name
-
-        @m.computed_field
-        @property
-        def config_base_module(self) -> str:
-            """Import module exposing ``config_base_class``.
-
-            Returns:
-                The resulting ``str``.
-
-            """
-            return self._config_base.module
+    class ProjectRenderDependencyContext(ProjectRenderRuntimeContext):
+        """Scaffold, dependency, tooling and ownership of a rendered project."""
 
         scaffold: Annotated[
-            FlextInfraModelsConfigScaffold.ScaffoldSpec,
+            Annotated[
+                p.Infra.ScaffoldSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigScaffold.ScaffoldSpec),
+            ],
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
-            tuple[FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ScaffoldGitignoreSectionSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 min_length=1,
                 description=(
@@ -428,7 +466,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
-            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
+            Annotated[
+                p.Infra.ToolConfigDocument,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
+                ),
+            ],
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -436,13 +479,23 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads: Annotated[
-            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
+                ),
+            ]
+            | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         ownership_command_prefix: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Configured Beads ownership command"),
         ]
+
+    class ProjectRenderPackageContext(ProjectRenderDependencyContext):
+        """Package identity, namespace and entry points of a rendered project."""
+
         canonical_project_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical PEP 621 project name"),
@@ -538,6 +591,23 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ]
+        console_scripts: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.ConsoleScriptSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional console scripts; see the ProjectSpec namesake."
+                ),
+            ),
+        ] = ()
         runtime_dependency_overlay: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -549,6 +619,72 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 ),
             ),
         ] = ()
+
+    class ProjectRenderContext(ProjectRenderPackageContext):
+        """Complete typed input consumed by project scaffold templates."""
+
+        @m.computed_field
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name.
+
+            Returns:
+                The resulting ``str``.
+
+            """
+            return f"{self.dist.upper().replace('-', '_')}_"
+
+        @property
+        def _config_base(self) -> FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec:
+            """ENFORCE-042 config base selected from declared requirements.
+
+            The fleet-converged ``_config.py`` inherits only the project's frozen
+            config capability base, independently of runtime settings. The base
+            is a property of the target's own dependencies, never a per-project
+            hand choice: the
+            first entry of ``scaffold.project.config_bases`` whose distribution
+            target depends on (its runtime requirements or its upstream).
+
+            Raises:
+                ValueError: If scaffold.project.config_bases declares no base for the
+                    declared requirements of.
+
+            """
+            depended = {
+                t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
+                for requirement in self.project_dependencies
+            } | {t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(self.upstream)}
+            for base in self.scaffold.project.config_bases:
+                if base.distribution in depended:
+                    return base
+            msg = (
+                "scaffold.project.config_bases declares no base for the "
+                f"declared requirements of {self.dist}: {sorted(depended)}"
+            )
+            raise ValueError(msg)
+
+        @m.computed_field
+        @property
+        def config_base_class(self) -> str:
+            """Config base class composed by the generated ``_config.py``.
+
+            Returns:
+                The resulting ``str``.
+
+            """
+            return self._config_base.class_name
+
+        @m.computed_field
+        @property
+        def config_base_module(self) -> str:
+            """Import module exposing ``config_base_class``.
+
+            Returns:
+                The resulting ``str``.
+
+            """
+            return self._config_base.module
+
         description: Annotated[
             t.NonEmptyStr,
             m.Field(description="Project description"),

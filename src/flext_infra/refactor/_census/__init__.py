@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import install_lazy_exports
@@ -37,7 +36,7 @@ __all__: tuple[str, ...] = (
 install_lazy_exports(
     __name__,
     globals(),
-    MappingProxyType({
+    {
         "FlextInfraRefactorCensusCollect": ".collect",
         "FlextInfraRefactorCensusCollectHelpers": ".collect_helpers",
         "FlextInfraRefactorCensusFilters": ".filters",
@@ -45,6 +44,6 @@ install_lazy_exports(
         "FlextInfraRefactorCensusProject": ".project",
         "FlextInfraRefactorCensusRemoval": ".removal",
         "FlextInfraRefactorCensusRender": ".render",
-    }),
+    },
     public_exports=__all__,
 )

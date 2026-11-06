@@ -14,7 +14,7 @@ from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
 from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
-from flext_infra.services._codegen.vscode import FlextInfraCodegenVscode
+from flext_infra.services._codegen import FlextInfraCodegenVscode
 
 
 class FlextInfraCodegenConformEditor(
@@ -44,9 +44,9 @@ class FlextInfraCodegenConformEditor(
 
     def _editor_manifest(
         self,
-        target: m.Infra.RepositoryConformTarget,
-        codegen: m.Infra.CodegenConfigSpec,
-        captured: m.Cli.AtomicFileState,
+        target: p.Infra.RepositoryConformTarget,
+        codegen: p.Infra.CodegenConfigSpec,
+        captured: p.Cli.AtomicFileState,
     ) -> p.Result[str]:
         """Render the analyzer table against the project manifest.
 
@@ -84,62 +84,41 @@ class FlextInfraCodegenConformEditor(
 
     def _plan_existing_editor(
         self,
-        target: m.Infra.RepositoryConformTarget,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[Sequence[m.Infra.CodegenFilePlan]]:
-        """Bind all editor projections to the declarations read in this request.
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
+        """Bind editor projections to the declarations read in this request.
 
         Returns:
             The atomic publisher's ordinary governed file plans.
 
         """
-        result_type = r[Sequence[m.Infra.CodegenFilePlan]]
+        result_type = r[Sequence[p.Infra.CodegenFilePlan]]
         loaded = u.Infra.load_codegen_inputs(target.root)
         if loaded.failure:
             return result_type.from_failure(loaded)
         codegen = loaded.value.spec
-        destinations = self._editor_destinations(codegen)
-        original = self._editor_snapshots(target.root, destinations)
+        selected = self._editor_destinations(codegen)
+        original = self._editor_snapshots(target.root, selected)
         if original.failure:
             return result_type.from_failure(original)
-        manifest = self._editor_manifest(
-            target, codegen, original.value[c.PYPROJECT_FILENAME]
-        )
-        if manifest.failure:
-            return result_type.from_failure(manifest)
-        settings = self.render_vscode_settings(
-            target.root, spec=codegen.vscode, codegen=codegen
-        )
-        if settings.failure:
-            return result_type.from_failure(settings)
-        ignored = u.Infra.render_project_gitignore(
-            codegen,
-            profile=target.make_profile,
-            project_name=target.repository.name,
-            workspace=workspace,
-            project_dir=target.root,
-        )
-        if ignored.failure:
-            return result_type.from_failure(ignored)
-        plans: list[m.Infra.CodegenFilePlan] = []
+        plans: list[p.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_file_specs:
             relative = managed.path.as_posix()
-            if relative not in destinations:
+            if relative not in selected:
                 continue
-            content = (
-                manifest.value
-                if relative == c.PYPROJECT_FILENAME
-                else (
-                    ignored.value if relative == c.Infra.GITIGNORE else settings.value
-                )
+            content = self._editor_content(
+                target, workspace, codegen, relative, original.value[relative]
             )
+            if content.failure:
+                return result_type.from_failure(content)
             plans.append(
                 m.Infra.CodegenFilePlan(
                     project=target.root,
                     path=target.root / relative,
                     before=original.value[relative],
-                    desired_content=content.encode(c.DEFAULT_ENCODING),
+                    desired_content=content.value.encode(c.DEFAULT_ENCODING),
                     desired_mode=managed.mode,
                     owner=managed.owner,
                     policy=managed.policy,
@@ -147,6 +126,34 @@ class FlextInfraCodegenConformEditor(
                 )
             )
         return result_type.ok(tuple(plans))
+
+    def _editor_content(
+        self,
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        relative: str,
+        before: p.Cli.AtomicFileState,
+    ) -> p.Result[str]:
+        """Render the one editor projection owned by ``relative``.
+
+        Returns:
+            The canonical text of that destination.
+
+        """
+        if relative == c.PYPROJECT_FILENAME:
+            return self._editor_manifest(target, codegen, before)
+        if relative == c.Infra.GITIGNORE:
+            return u.Infra.render_project_gitignore(
+                codegen,
+                profile=target.make_profile,
+                project_name=target.repository.name,
+                workspace=workspace,
+                project_dir=target.root,
+            )
+        return self.render_vscode_settings(
+            target.root, spec=codegen.vscode, codegen=codegen
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenConformEditor"]

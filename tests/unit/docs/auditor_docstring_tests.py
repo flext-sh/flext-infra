@@ -12,15 +12,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class TestsFlextInfraAuditorDocstring:
@@ -100,7 +96,7 @@ __all__ = ["documented_fn", "undocumented_fn"]
 
         tm.that(coverage.checked, eq=0)
         tm.that(coverage.documented, eq=0)
-        tm.that(coverage.percent, eq=pytest.approx(100.0))
+        tm.that(coverage.percent, eq=u.Tests.approx(100.0))
 
     @staticmethod
     def test_root_scope_has_no_coverage_metric(tmp_path: Path) -> None:

@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import infra, m
+from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
-from tests import c, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodegenCiMatrixSupport:
@@ -80,10 +78,10 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             )
         return root
 
-    @pytest.fixture(scope="class")
+    @u.Tests.fixture(scope="class")
     @staticmethod
     def rendered_project(
-        tmp_path_factory: pytest.TempPathFactory,
+        tmp_path_factory: t.Tests.TempPathFactory,
     ) -> Path:
         """Render one fresh internal_flext project for the class's read-only cases.
 

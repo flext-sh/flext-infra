@@ -91,7 +91,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         self,
         project_dir: Path,
         repository_root: Path,
-    ) -> p.Result[m.Infra.StubAnalysisReport]:
+    ) -> p.Result[p.Infra.StubAnalysisReport]:
         """Analyze a project for missing typed dependencies.
 
         Runs mypy for hints and pyrefly for missing imports, then
@@ -108,7 +108,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         try:
             return self._analyze_project(project_dir, repository_root)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.StubAnalysisReport].fail(
+            return r[p.Infra.StubAnalysisReport].fail(
                 f"typed dependency analysis failed for {project_dir.name}: {exc}",
                 exception=exc,
             )
@@ -117,7 +117,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         self,
         repository_root: Path,
         project_dirs: Sequence[Path] | None = None,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Validate typed dependency supply chain across projects.
 
         Args:
@@ -131,7 +131,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         try:
             return self._build_typed_dependency_report(repository_root, project_dirs)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.ValidationReport].fail_op(
+            return r[p.Infra.ValidationReport].fail_op(
                 "typed dependency validation",
                 exc,
             )
@@ -168,28 +168,28 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         self,
         project_dir: Path,
         repository_root: Path,
-    ) -> p.Result[m.Infra.StubAnalysisReport]:
+    ) -> p.Result[p.Infra.StubAnalysisReport]:
         """Analyze one project after path resolution.
 
         Returns:
-            The resulting ``p.Result[m.Infra.StubAnalysisReport]``.
+            The resulting ``p.Result[p.Infra.StubAnalysisReport]``.
 
         """
         del repository_root
         proj = project_dir.resolve()
         mypy_result = self._run_mypy_hints(proj)
         if mypy_result.failure:
-            return r[m.Infra.StubAnalysisReport].from_failure(mypy_result)
+            return r[p.Infra.StubAnalysisReport].from_failure(mypy_result)
         mypy_hints = mypy_result.value
         pyrefly_result = self._run_pyrefly_missing(proj)
         if pyrefly_result.failure:
-            return r[m.Infra.StubAnalysisReport].from_failure(pyrefly_result)
+            return r[p.Infra.StubAnalysisReport].from_failure(pyrefly_result)
         missing_imports = pyrefly_result.value
         internal, unresolved = self._classify_missing_imports(
             missing_imports,
             proj.name,
         )
-        return r[m.Infra.StubAnalysisReport].ok(
+        return r[p.Infra.StubAnalysisReport].ok(
             m.Infra.StubAnalysisReport(
                 project=proj.name,
                 mypy_hints=list(mypy_hints),
@@ -251,21 +251,21 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         self,
         repository_root: Path,
         project_dirs: Sequence[Path] | None,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Build the workspace typed-dependency validation report.
 
         Returns:
-            The resulting ``p.Result[m.Infra.ValidationReport]``.
+            The resulting ``p.Result[p.Infra.ValidationReport]``.
 
         """
         root = repository_root.resolve()
         if not root.is_dir():
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 f"typed dependency workspace does not exist: {root}",
             )
         projects = project_dirs or self._discover_typed_projects(root)
         violations = self._typed_dependency_violations(projects, root)
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=not violations,
                 violations=violations,

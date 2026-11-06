@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig
-from tests import c, m, tm, u
+from tests import c, e, m, tm, u
 
 
 class TestsFlextInfraConfigLocalOverrides:
@@ -56,6 +56,25 @@ class TestsFlextInfraConfigLocalOverrides:
             inputs.spec.loc_cap.max_lines,
             eq=baseline.Infra.codegen.loc_cap.max_lines,
         )
+
+    @staticmethod
+    def test_packaged_prerequisite_worker_policy_is_required_and_inherited(
+        tmp_path: Path,
+    ) -> None:
+        """Repository codegen parsing retains the explicit packaged worker policy."""
+        baseline = FlextInfraConfig.fetch_global().Infra.codegen.make
+        inherited = tm.ok(u.Infra.load_codegen_inputs(tmp_path)).spec.make
+        tm.that(
+            inherited.check_prerequisite_pyrefly_workers,
+            eq=baseline.check_prerequisite_pyrefly_workers,
+        )
+        payload = baseline.model_dump(exclude_computed_fields=True)
+        payload.pop("check_prerequisite_pyrefly_workers")
+        with u.Tests.raises(
+            e.PydanticValidationError,
+            match="check_prerequisite_pyrefly_workers",
+        ):
+            m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     def test_empty_mypy_overlay_keeps_selected_global_policy(

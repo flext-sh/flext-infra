@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.gates import FlextInfraGatesRuffLint
 from tests import c, m, tm, u
@@ -46,7 +44,7 @@ class TestsFlextInfraLazyInitGeneration:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "class Original: pass\ns = Original\n",
@@ -205,7 +203,7 @@ class TestsFlextInfraLazyInitGeneration:
         tm.that(u.Tests.generated_init(services), has='"DemoRunner": ".runner"')
 
     @staticmethod
-    @pytest.mark.parametrize("width_offset", [-1, 0, 1])
+    @c.Tests.MARK.parametrize("width_offset", [-1, 0, 1])
     def test_wrapped_contracts_are_formatter_fixed_points(
         tmp_path: Path, width_offset: int
     ) -> None:

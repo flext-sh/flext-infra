@@ -77,7 +77,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     def _propagate_members(
         self,
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: p.Infra.WorkspaceSpec,
         revision: str,
     ) -> p.Result[bool]:
         """Propagate mutable internal FLEXT projections without resolving locks.
@@ -95,8 +95,8 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     def _propagate_external_consumer(
         self,
-        workspace: m.Infra.WorkspaceSpec,
-        consumer: m.Infra.ExternalConsumerSpec,
+        workspace: p.Infra.WorkspaceSpec,
+        consumer: p.Infra.ExternalConsumerSpec,
         revision: str,
     ) -> p.Result[bool]:
         """Advance one external consumer's lane through its own make verbs.
@@ -147,7 +147,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     @staticmethod
     def _settle_external_consumer(
-        consumer: m.Infra.ExternalConsumerSpec,
+        consumer: p.Infra.ExternalConsumerSpec,
     ) -> p.Result[bool]:
         """Run the consumer's declared canonical verbs once, in order.
 
@@ -187,8 +187,8 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     def _write_external_body(
         self,
-        workspace: m.Infra.WorkspaceSpec,
-        consumer: m.Infra.ExternalConsumerSpec,
+        workspace: p.Infra.WorkspaceSpec,
+        consumer: p.Infra.ExternalConsumerSpec,
         revision: str,
     ) -> p.Result[Path]:
         """Write the external consumer's pull-request body under the reports.
@@ -213,8 +213,8 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     def _propagate_member(
         self,
-        workspace: m.Infra.WorkspaceSpec,
-        member: m.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        member: p.Infra.RepositoryRef,
         revision: str,
     ) -> p.Result[bool]:
         """Publish one member's settled projections, then return it to its base.
@@ -271,8 +271,8 @@ class FlextInfraWorkspacePropagation(s[bool]):
 
     def _write_body(
         self,
-        workspace: m.Infra.WorkspaceSpec,
-        member: m.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        member: p.Infra.RepositoryRef,
         revision: str,
     ) -> p.Result[Path]:
         """Write the member's pull-request body under the workspace reports.

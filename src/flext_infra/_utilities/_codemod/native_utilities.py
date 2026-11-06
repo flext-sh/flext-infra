@@ -20,10 +20,9 @@ import shutil
 import sys
 import tempfile
 import time
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from functools import cache
-from importlib.metadata import packages_distributions
 from pathlib import Path
 from types import MappingProxyType
 
@@ -205,41 +204,44 @@ class FlextInfraUtilitiesCodemodNative:
             The import packages whose distributions the closure contains.
 
         """
+        if not (root / c.PYPROJECT_FILENAME).is_file():
+            return frozenset()
         project = FlextInfraUtilitiesCodemodRules.project_requirements(
             root,
         ).unwrap()
         if not project[1]:
             return frozenset()
-        return cls._runtime_modules_of(tuple(project[1]))
+        return cls._runtime_modules_of(root.resolve(), tuple(project[1]))
 
     @staticmethod
     @cache
-    def _runtime_modules_of(requirements: tuple[str, ...]) -> frozenset[str]:
-        """Resolve the import packages of one requirement set, once per process.
+    def _runtime_modules_of(
+        root: Path, requirements: tuple[str, ...]
+    ) -> frozenset[str]:
+        """Resolve the import packages of one requirement set, once per root.
 
-        Installed metadata is a fact of the one owning runtime environment for
-        the life of the process, so every plan, gate and render of the
-        invocation shares the one closure its direct requirements select.
+        Installed metadata is a fact of the TARGET repository's own runtime
+        environment, observed through its own interpreter; the invoking
+        interpreter is never read. Every plan, gate and render of one
+        repository shares the one closure its direct requirements select.
 
         Returns:
             The import packages whose distributions the closure contains.
 
         """
         progress = FlextInfraUtilitiesImportLaw.codemod_progress
+        owner = FlextInfraUtilitiesCodemodRules
         progress(f"runtime distributions start requirements={len(requirements)}")
-        distributions = (
-            FlextInfraUtilitiesCodemodRules.codemod_environment_distributions()
-        )
+        environment = owner.codemod_target_environment(root).unwrap()
+        distributions = owner.codemod_target_distributions(root).unwrap()
         progress(f"runtime distributions finish distributions={len(distributions)}")
         progress("runtime dependency closure start")
-        closure = FlextInfraUtilitiesCodemodRules.codemod_runtime_closure(
-            requirements,
-            distributions,
-        )
+        closure = owner.codemod_runtime_closure(requirements, distributions)
         progress(f"runtime dependency closure finish distributions={len(closure)}")
-        progress("runtime import package metadata start")
-        owner = FlextInfraUtilitiesCodemodNative
-        packages = owner.codemod_installed_import_packages()
+        packages = {
+            module: frozenset(canonicalize_name(name) for name in providers)
+            for module, providers in environment.package_distributions.items()
+        }
         progress(f"runtime import package metadata finish packages={len(packages)}")
         selected: set[str] = set()
         due = 0.0
@@ -254,36 +256,24 @@ class FlextInfraUtilitiesCodemodNative:
         progress(f"runtime imports finish modules={len(selected)}")
         return frozenset(selected)
 
-    @staticmethod
-    @cache
-    def codemod_installed_import_packages() -> Mapping[str, frozenset[str]]:
-        """Map each installed import package to its canonical distributions.
-
-        Installed metadata is a fact of the interpreter environment, fixed for
-        the life of the process, so it is read once; a project's runtime
-        closure over it is still computed per call.
-
-        Returns:
-            Import package to the canonical names of its distributions.
-
-        """
-        return MappingProxyType({
-            module: frozenset(canonicalize_name(name) for name in providers)
-            for module, providers in packages_distributions().items()
-        })
-
     @classmethod
     def codemod_native_generated(
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
-    ) -> m.Infra.CodemodNativeGenerated:
-        """Render every generated utility, then every rule document, in memory.
+        spec: p.Infra.CodegenAstGrepSpec,
+        *,
+        rule_ids: Sequence[str] | None = None,
+    ) -> p.Infra.CodemodNativeGenerated:
+        """Render the generated file scopes, rule documents and utilities in memory.
 
-        Renderers run after the producers because rendered rules reference the
-        generated utilities through ``matches``. Only ``make mod`` consumes
-        them: its native cascade stages them; nothing is projected to disk.
+        Without a selection everything is rendered. An exact selection of rule
+        ids (authored or generated) renders only what those rules read: the
+        scope producers when a selected renderer or catalog rule consumes file
+        scopes, the selected renderers' documents, and the utility producers
+        when a selected document references a utility it does not declare.
+        Only ``make mod`` consumes them: its native cascade stages them;
+        nothing is projected to disk.
 
         The rendering is a pure function of the member's sources, its manifest
         and the declared spec, so the injected snapshot keeps one rendering
@@ -294,32 +284,164 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         root = project.resolve()
-        key = (root, cls._generated_key(snapshot, root, spec))
+        key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
         if rendered is None:
-            scopes = cls.codemod_native_scopes(snapshot, root, spec.scopes)
+            catalog = (
+                ()
+                if rule_ids is None
+                else cls._selected_catalog_documents(root, rule_ids)
+            )
+            scopes: Mapping[str, t.StrTuple] = (
+                cls.codemod_native_scopes(snapshot, root, spec.scopes)
+                if rule_ids is None
+                or cls._selection_consumes_scopes(spec, rule_ids, catalog)
+                else MappingProxyType({})
+            )
+            rules = cls.codemod_native_rules(
+                snapshot,
+                root,
+                spec,
+                rule_ids=rule_ids,
+                facts={
+                    c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
+                        scopes=scopes
+                    )
+                },
+            )
+            required = (
+                None
+                if rule_ids is None
+                else cls._referenced_generated_utilities((*catalog, *rules.values()))
+            )
+            utilities: Mapping[str, t.JsonMapping] = (
+                MappingProxyType({})
+                if required is not None and not required
+                else cls.native_utilities(
+                    snapshot, root, spec.producers, required=required
+                )
+            )
             rendered = m.Infra.CodemodNativeGenerated(
-                utilities=cls.native_utilities(snapshot, root, spec.producers),
-                rules=cls.codemod_native_rules(
-                    snapshot,
-                    root,
-                    spec,
-                    facts={
-                        c.Infra.CODEMOD_SCOPE_FACTS: m.Infra.CodemodScopeFacts(
-                            scopes=scopes
-                        )
-                    },
-                ),
-                scopes=scopes,
+                utilities=utilities, rules=rules, scopes=scopes
             )
             snapshot.codemod_renderings[key] = rendered
         return rendered
 
     @staticmethod
+    def _selected_catalog_documents(
+        root: Path, rule_ids: Sequence[str]
+    ) -> tuple[t.JsonMapping, ...]:
+        """Read the authored catalog documents of an exact rule selection.
+
+        Generated identities are not catalog rules and yield nothing here;
+        their renderers produce them.
+
+        Returns:
+            The authored document of every selected catalog rule.
+
+        """
+        selected = frozenset(rule_ids)
+        owner = FlextInfraUtilitiesCodemodRules
+        plan = owner.codemod_compose_rule_plan(root, {root: None}).unwrap()
+        documents: dict[Path, Sequence[t.JsonMapping]] = {}
+        for ruleset in plan.rulesets:
+            owner.codemod_catalog_rules(
+                ruleset.provider, ruleset.config, documents=documents
+            ).unwrap()
+        return tuple(
+            document
+            for rule in plan.rules
+            if rule.id in selected
+            for document in documents[rule.resource.resolve()]
+            if document.get("id") == rule.id
+        )
+
+    @classmethod
+    def _selection_consumes_scopes(
+        cls,
+        spec: p.Infra.CodegenAstGrepSpec,
+        rule_ids: Sequence[str],
+        catalog: Sequence[t.JsonMapping],
+    ) -> bool:
+        """Whether an exact rule selection reads the project's file scopes.
+
+        The file-scope producers are rope-backed and dominate a rendering, so
+        they run only for a consumer the selection names: a selected renderer
+        whose declared facts are the scope facts, or a selected catalog rule
+        that declares ``metadata.scope``. A selection of any other rule ids
+        reads no scope.
+
+        Returns:
+            Whether a selected rule consumes file scopes.
+
+        """
+        selected = frozenset(rule_ids)
+        if any(
+            entry.facts == c.Infra.CODEMOD_SCOPE_FACTS
+            and cls._renderer_selects_rule_ids(entry, selected)
+            for entry in spec.renderers
+        ):
+            return True
+        return any(
+            isinstance(metadata := document.get("metadata"), Mapping)
+            and metadata.get(c.Infra.CODEMOD_SCOPE_METADATA_KEY) is not None
+            for document in catalog
+        )
+
+    @classmethod
+    def _referenced_generated_utilities(
+        cls, documents: Sequence[t.JsonMapping]
+    ) -> frozenset[str]:
+        """Collect the utilities selected rule documents call outside their own.
+
+        A native ``matches`` reference resolves to a utility the document
+        declares itself (``utils``) or to one a provider publishes; the
+        producers emit the latter, so only these identities need producing.
+
+        Returns:
+            Every non-local utility identity the documents reference.
+
+        """
+        return frozenset().union(
+            *(
+                cls._matched_utilities(document).difference(
+                    local if isinstance(local := document.get("utils"), Mapping) else ()
+                )
+                for document in documents
+            )
+        )
+
+    @classmethod
+    def _matched_utilities(cls, value: t.JsonValue | t.JsonMapping) -> frozenset[str]:
+        """Collect every utility identity a native rule references by ``matches``.
+
+        Returns:
+            The identities named by ``matches`` anywhere under the value.
+
+        """
+        if isinstance(value, Mapping):
+            found: set[str] = set()
+            for key, item in value.items():
+                if key == "matches":
+                    found.update(
+                        (item,)
+                        if isinstance(item, str)
+                        else tuple(item)
+                        if isinstance(item, Mapping)
+                        else ()
+                    )
+                found.update(cls._matched_utilities(item))
+            return frozenset(found)
+        if isinstance(value, list):
+            return frozenset().union(*(cls._matched_utilities(item) for item in value))
+        return frozenset()
+
+    @staticmethod
     def _generated_key(
         snapshot: p.Infra.WorkspaceSnapshot,
         root: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
+        rule_ids: Sequence[str] | None,
     ) -> str:
         """Digest every input a generated rendering reads, from the snapshot.
 
@@ -329,6 +451,16 @@ class FlextInfraUtilitiesCodemodNative:
         """
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         digest = hashlib.sha256(spec.model_dump_json().encode(c.DEFAULT_ENCODING))
+        digest.update(b"\0")
+        selected_ids: t.JsonValue = (
+            None if rule_ids is None else list[t.JsonValue](sorted(rule_ids))
+        )
+        digest.update(
+            u.Cli
+            .json_dumps(selected_ids, sort_keys=True)
+            .unwrap()
+            .encode(c.DEFAULT_ENCODING)
+        )
         manifest = root / c.PYPROJECT_FILENAME
         for path in (
             *((manifest,) if manifest.is_file() else ()),
@@ -347,7 +479,7 @@ class FlextInfraUtilitiesCodemodNative:
     @classmethod
     def codemod_scope_facts(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
-    ) -> m.Infra.CodemodScopeFacts:
+    ) -> p.Infra.CodemodScopeFacts:
         """Compute the project's file scopes as the facts of scoped renderers.
 
         A generation computes them once and seeds every renderer with them.
@@ -425,7 +557,7 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         *,
         rule_ids: Sequence[str] | None = None,
-    ) -> p.Result[m.Infra.CodemodRulePlan]:
+    ) -> p.Result[p.Infra.CodemodRulePlan]:
         """Build the sole executable rule plan for check and mutation.
 
         The caller injects its single repository snapshot. The public workspace
@@ -433,23 +565,94 @@ class FlextInfraUtilitiesCodemodNative:
         and scopes never merge with a sibling's project plan.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodemodRulePlan]``.
+            The resulting ``p.Result[p.Infra.CodemodRulePlan]``.
 
         """
         spec = config.Infra.codegen.ast_grep
         root = snapshot.workspace_root.resolve()
         if snapshot.members != (root,):
-            return r[m.Infra.CodemodRulePlan].fail(
+            return r[p.Infra.CodemodRulePlan].fail(
                 "codemod rule planning requires one repository-owned snapshot"
             )
-        provider = cls.codemod_generated_provider(snapshot, root, spec)
+        if rule_ids is not None:
+            if not rule_ids or any(not rule_id.strip() for rule_id in rule_ids):
+                return r[p.Infra.CodemodRulePlan].fail(
+                    "codemod rule selection requires non-empty exact rule IDs",
+                )
+            if len(frozenset(rule_ids)) != len(rule_ids):
+                return r[p.Infra.CodemodRulePlan].fail(
+                    "duplicate codemod rule IDs in selection",
+                )
+        provider = cls.codemod_generated_provider(
+            snapshot, root, spec, rule_ids=rule_ids
+        )
         return FlextInfraUtilitiesCodemodRules.codemod_compose_rule_plan(
             root, {root: provider}, rule_ids=rule_ids
         )
 
+    @classmethod
+    def codemod_law_rule_ids(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        laws: frozenset[str],
+    ) -> p.Result[t.StrTuple]:
+        """Expand a theme's laws into this repository's exact planned rule ids.
+
+        The repository's authored catalogs elect their rules (owner and
+        consumer scopes applied); an elected rule belongs to the theme when
+        its ``enforce`` intersects ``laws``. Generated rules belong to it by
+        the laws their documents claim, rendered only by the renderers whose
+        declared laws, or the catalog laws of the authored rules they render
+        (partitions), intersect ``laws``. The ids feed the existing exact
+        selection, so the theme's plan is the plan those ids compose.
+
+        Returns:
+            The theme's rule ids in plan order, empty when the repository
+            plans no rule of the theme, or the first composition failure.
+
+        """
+        outcome = r[t.StrTuple]
+        root = snapshot.workspace_root.resolve()
+        owner = FlextInfraUtilitiesCodemodRules
+        composed = owner.codemod_compose_rule_plan(root, {root: None})
+        if composed.failure:
+            return outcome.from_failure(composed)
+        catalog: dict[str, frozenset[str]] = {}
+        for ruleset in composed.value.rulesets:
+            parsed = owner.codemod_catalog_rules(ruleset.provider, ruleset.config)
+            if parsed.failure:
+                return outcome.from_failure(parsed)
+            catalog.update({rule.id: frozenset(rule.enforce) for rule in parsed.value})
+        generated = cls._rendered_rules(
+            snapshot,
+            root,
+            tuple(
+                entry
+                for entry in config.Infra.codegen.ast_grep.renderers
+                if laws.intersection(
+                    frozenset(entry.enforce).union(
+                        *(
+                            catalog.get(shape, ())
+                            for shape in cls._renderer_shapes(entry)
+                        )
+                    )
+                )
+            ),
+            None,
+            lambda _rule_id, claimed: bool(laws.intersection(claimed)),
+        )
+        return outcome.ok((
+            *(
+                rule.id
+                for rule in composed.value.rules
+                if laws.intersection(rule.enforce)
+            ),
+            *generated,
+        ))
+
     @staticmethod
     def codemod_fixture_resources(
-        plan: m.Infra.CodemodRulePlan,
+        plan: p.Infra.CodemodRulePlan,
     ) -> tuple[Path, ...]:
         """Return the authored rule files whose catalogs own rule fixtures.
 
@@ -473,7 +676,9 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
+        *,
+        rule_ids: Sequence[str] | None = None,
     ) -> tuple[str, Path] | None:
         """Materialize the project's rendered rules as one native provider root.
 
@@ -494,7 +699,9 @@ class FlextInfraUtilitiesCodemodNative:
             OSError: If ``not final.is_dir()``.
 
         """
-        rendered = cls.codemod_native_generated(snapshot, project, spec)
+        rendered = cls.codemod_native_generated(
+            snapshot, project, spec, rule_ids=rule_ids
+        )
         if not rendered.rules and not rendered.utilities and not rendered.scopes:
             return None
         files: dict[Path, t.JsonMapping] = {
@@ -606,8 +813,8 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        entry: m.Infra.CodegenAstGrepRendererSpec,
-        facts: dict[str, p.Model],
+        entry: p.Infra.CodegenAstGrepRendererSpec,
+        facts: dict[str, p.BaseModel],
     ) -> Mapping[str, t.JsonMapping]:
         """Run one renderer, passing its facts model computed once per generation.
 
@@ -635,7 +842,7 @@ class FlextInfraUtilitiesCodemodNative:
                 msg = f"ast-grep facts producer is not declared: {entry.facts}"
                 raise TypeError(msg)
             model = producer(snapshot, project)
-            if not isinstance(model, p.Model):
+            if not isinstance(model, p.BaseModel):
                 msg = f"ast-grep facts producer returned no model: {entry.facts}"
                 raise TypeError(msg)
             facts[entry.facts] = model
@@ -645,7 +852,7 @@ class FlextInfraUtilitiesCodemodNative:
 
     @classmethod
     def _renderer_shapes(
-        cls, entry: m.Infra.CodegenAstGrepRendererSpec
+        cls, entry: p.Infra.CodegenAstGrepRendererSpec
     ) -> frozenset[str]:
         """Read a renderer's registered shapes, declared or derived.
 
@@ -673,16 +880,50 @@ class FlextInfraUtilitiesCodemodNative:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        spec: m.Infra.CodegenAstGrepSpec,
+        spec: p.Infra.CodegenAstGrepSpec,
         *,
-        facts: Mapping[str, p.Model] | None = None,
+        facts: Mapping[str, p.BaseModel] | None = None,
+        rule_ids: Sequence[str] | None = None,
     ) -> Mapping[str, t.JsonMapping]:
         """Run every registered renderer and merge its rule documents by id.
 
-        ``facts`` seeds facts models the generation already computed.
+        ``facts`` seeds facts models the generation already computed. Every
+        document carries its renderer's declared laws (``_law_document``).
 
         Returns:
             Every generated native rule document keyed by its rule id.
+
+        """
+        selected = None if rule_ids is None else frozenset(rule_ids)
+        return cls._rendered_rules(
+            snapshot,
+            project,
+            tuple(
+                entry
+                for entry in spec.renderers
+                if selected is None or cls._renderer_selects_rule_ids(entry, selected)
+            ),
+            facts,
+            lambda rule_id, _claimed: selected is None or rule_id in selected,
+        )
+
+    @classmethod
+    def _rendered_rules(
+        cls,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        project: Path,
+        entries: Sequence[p.Infra.CodegenAstGrepRendererSpec],
+        facts: Mapping[str, p.BaseModel] | None,
+        keep: Callable[[str, frozenset[str]], bool],
+    ) -> Mapping[str, t.JsonMapping]:
+        """Render the given renderers and keep the documents ``keep`` admits.
+
+        ``keep`` receives each validated rule id and the laws its stamped
+        document claims, so an exact id selection and a law selection share
+        one rendering and validation path.
+
+        Returns:
+            The kept native rule documents keyed by their rule id.
 
         Raises:
             ValueError: If a rule id repeats, names an unregistered shape, or
@@ -690,8 +931,8 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        computed: dict[str, p.Model] = dict(facts or {})
-        for entry in spec.renderers:
+        computed: dict[str, p.BaseModel] = dict(facts or {})
+        for entry in entries:
             with cls._producer_progress(entry.name, project):
                 rendered = cls.codemod_native_render(snapshot, project, entry, computed)
             shapes = cls._renderer_shapes(entry)
@@ -709,8 +950,76 @@ class FlextInfraUtilitiesCodemodNative:
                 if document.get("id") != rule_id:
                     msg = f"ast-grep rule document id disagrees with {rule_id}"
                     raise ValueError(msg)
-                documents[rule_id] = document
+                claimed = cls._law_document(entry, document)
+                if keep(rule_id, claimed[1]):
+                    documents[rule_id] = claimed[0]
         return MappingProxyType(dict(sorted(documents.items())))
+
+    @staticmethod
+    def _law_document(
+        entry: p.Infra.CodegenAstGrepRendererSpec, document: t.JsonMapping
+    ) -> tuple[t.JsonMapping, frozenset[str]]:
+        """Stamp the renderer's laws on a document that claims none of its own.
+
+        A renderer declares every law its documents enforce; a document that
+        claims a narrower set of them keeps its own. A renderer that declares
+        none renders authored catalog rules, whose documents carry theirs.
+
+        Returns:
+            The document with its law claim, and the laws it claims.
+
+        Raises:
+            ValueError: If a document claims a law its renderer does not declare.
+
+        """
+        key = c.Infra.CODEMOD_RULE_ENFORCE_KEY
+        metadata = document.get("metadata")
+        declared: dict[str, t.JsonValue] = (
+            dict(metadata) if isinstance(metadata, Mapping) else {}
+        )
+        claimed = declared.get(key)
+        laws = (
+            frozenset(law for law in claimed if isinstance(law, str))
+            if isinstance(claimed, list)
+            else frozenset[str]()
+        )
+        if entry.enforce and not laws.issubset(entry.enforce):
+            msg = (
+                f"ast-grep renderer {entry.name} document {document.get('id')} "
+                f"claims undeclared laws: {', '.join(sorted(laws))}"
+            )
+            raise ValueError(msg)
+        if claimed is not None or not entry.enforce:
+            return document, laws
+        stamped = list[t.JsonValue](entry.enforce)
+        return (
+            {**document, "metadata": {**declared, key: stamped}},
+            frozenset(entry.enforce),
+        )
+
+    @classmethod
+    def _renderer_selects_rule_ids(
+        cls,
+        entry: p.Infra.CodegenAstGrepRendererSpec,
+        rule_ids: frozenset[str],
+    ) -> bool:
+        """Whether an exact generated identity belongs to one renderer.
+
+        A generated identity qualifies its registered shape. A bare shape is a
+        catalog partition alias, so it is left for exact-plan validation to
+        reject rather than expanding into every rendered partition.
+
+        Returns:
+            Whether the renderer owns an exact selected generated identity.
+
+        """
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        shapes = {
+            rule_id.partition(separator)[0]
+            for rule_id in rule_ids
+            if separator in rule_id
+        }
+        return bool(shapes.intersection(cls._renderer_shapes(entry)))
 
     @classmethod
     def native_utilities(
@@ -718,11 +1027,18 @@ class FlextInfraUtilitiesCodemodNative:
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
         producers: Sequence[str],
+        *,
+        required: frozenset[str] | None = None,
     ) -> Mapping[str, t.JsonMapping]:
-        """Run every registered producer and merge its utilities by id.
+        """Run the registered producers in order and merge their utilities by id.
+
+        ``required`` names the utilities a selection references: production
+        stops once every required utility, and every utility those reference
+        in turn, is emitted, so an exact selection never pays for producers it
+        does not read. ``None`` runs every producer.
 
         Returns:
-            Every utility document keyed by its utility id.
+            The produced utility documents keyed by their utility id.
 
         Raises:
             TypeError: If a producer is not a declared utility producer.
@@ -731,7 +1047,10 @@ class FlextInfraUtilitiesCodemodNative:
         """
         documents: dict[str, t.JsonMapping] = {}
         adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        pending = None if required is None else set(required)
         for name in producers:
+            if pending is not None and pending.issubset(documents):
+                break
             producer = getattr(cls, name, None)
             if not callable(producer):
                 msg = f"ast-grep utility producer is not declared: {name}"
@@ -747,6 +1066,8 @@ class FlextInfraUtilitiesCodemodNative:
                 documents[utility_id] = cls.codemod_native_utility_document(
                     utility_id, rule
                 )
+                if pending is not None and utility_id in pending:
+                    pending.update(cls._matched_utilities(rule))
         return MappingProxyType(dict(sorted(documents.items())))
 
 

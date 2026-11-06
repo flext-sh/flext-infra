@@ -21,16 +21,16 @@ class FlextInfraTransformersSemanticPublication:
     @classmethod
     def publish_semantic_artifact_plans(
         cls,
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         repository_root: Path,
-        options: m.Infra.SemanticPublicationOptions | None = None,
+        options: p.Infra.SemanticPublicationOptions | None = None,
         publish: bool = True,
     ) -> p.Result[tuple[Path, ...]]:
         """Compose declared projections, then publish or report pending effects.
 
-        A declared validator accepts the previewed candidate tree before any
-        live destination changes.
+        A declared validator accepts the normalized candidate before any live
+        destination changes. Publication receives those same admitted bytes.
 
         Returns:
             Published paths, the paths a publication would change when
@@ -43,45 +43,33 @@ class FlextInfraTransformersSemanticPublication:
         )
         if composed.failure:
             return r[tuple[Path, ...]].from_failure(composed)
+        if (
+            not publish
+            and selected.validator is None
+            and selected.plan_validator is None
+        ):
+            return cls._pending_paths(composed.value)
+        changes = u.Infra.normalized_codegen_changes(composed.value)
+        if changes.failure:
+            return r[tuple[Path, ...]].from_failure(changes)
+        accepted = (
+            selected.plan_validator(changes.value)
+            if selected.plan_validator is not None
+            else cls._previewed_acceptance(changes.value, repository_root, selected)
+        )
+        if accepted.failure:
+            return r[tuple[Path, ...]].from_failure(accepted)
         if not publish:
             return cls._pending_paths(composed.value)
-        if selected.validator is not None or selected.plan_validator is not None:
-            accepted = cls._accepted_candidate(
-                composed.value, repository_root, selected
-            )
-            if accepted.failure:
-                return r[tuple[Path, ...]].from_failure(accepted)
-        return u.Infra.publish_codegen_plans(repository_root, composed.value)
-
-    @staticmethod
-    def _accepted_candidate(
-        plans: Sequence[m.Infra.CodegenFilePlan],
-        repository_root: Path,
-        options: m.Infra.SemanticPublicationOptions,
-    ) -> p.Result[bool]:
-        """Preview the normalized candidate and run the consumer validator on it.
-
-        Returns:
-            Acceptance of the previewed candidate, or the first preview or
-            validator failure.
-
-        """
-        if options.validator is None and options.plan_validator is None:
-            return r[bool].ok(value=True)
-        changes = u.Infra.normalized_codegen_changes(plans)
-        if changes.failure:
-            return r[bool].from_failure(changes)
-        if options.plan_validator is not None:
-            return options.plan_validator(changes.value)
-        return FlextInfraTransformersSemanticPublication._previewed_acceptance(
-            changes.value, repository_root, options
+        return u.Infra.publish_normalized_codegen_plans(
+            repository_root, composed.value, changes.value
         )
 
     @staticmethod
     def _previewed_acceptance(
-        changes: tuple[m.Cli.FileChange, ...],
+        changes: tuple[p.Cli.FileChange, ...],
         repository_root: Path,
-        options: m.Infra.SemanticPublicationOptions,
+        options: p.Infra.SemanticPublicationOptions,
     ) -> p.Result[bool]:
         """Run the view-root validator on the previewed candidate tree.
 
@@ -135,11 +123,11 @@ class FlextInfraTransformersSemanticPublication:
     @classmethod
     def publish_semantic_file_plans(
         cls,
-        plans: Sequence[m.Infra.SemanticFilePlan],
+        plans: Sequence[p.Infra.SemanticFilePlan],
         *,
         repository_root: Path,
-        options: m.Infra.SemanticPublicationOptions | None = None,
-        codegen: m.Infra.CodegenConfigSpec | None = None,
+        options: p.Infra.SemanticPublicationOptions | None = None,
+        codegen: p.Infra.CodegenConfigSpec | None = None,
     ) -> p.Result[tuple[Path, ...]]:
         """Publish every changed semantic file plan.
 
@@ -158,9 +146,9 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def plan_semantic_file_plans(
-        plans: Sequence[m.Infra.SemanticFilePlan],
-        codegen: m.Infra.CodegenConfigSpec | None = None,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        plans: Sequence[p.Infra.SemanticFilePlan],
+        codegen: p.Infra.CodegenConfigSpec | None = None,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Convert every changed semantic plan into one owned codegen file plan.
 
         A generated source outside the declared template inventory requires
@@ -170,8 +158,8 @@ class FlextInfraTransformersSemanticPublication:
             The concrete codegen file plans, or the first rejected plan.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        files: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        files: list[p.Infra.CodegenFilePlan] = []
         template_sources = u.Infra.codegen_template_sources(
             config.Infra.codegen if codegen is None else codegen,
         )
@@ -209,7 +197,7 @@ class FlextInfraTransformersSemanticPublication:
         edits: Sequence[p.Infra.SemanticMigrationEdit],
         *,
         owner: str,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Bind each final edit to its destination's current state, once.
 
         The owning project is elected inside ``root`` only: a dependency module
@@ -219,8 +207,8 @@ class FlextInfraTransformersSemanticPublication:
             One plan per edit, or the first destination read failure.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
-        files: list[m.Infra.CodegenFilePlan] = []
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
+        files: list[p.Infra.CodegenFilePlan] = []
         for edit in edits:
             before = u.Infra.codegen_target_snapshot(edit.file_path)
             if before.failure:
@@ -245,7 +233,7 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _pending_paths(
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
     ) -> p.Result[tuple[Path, ...]]:
         """Report the destinations a publication of ``plans`` would change.
 
@@ -270,12 +258,12 @@ class FlextInfraTransformersSemanticPublication:
 
     @staticmethod
     def _with_projections(
-        plans: Sequence[m.Infra.CodegenFilePlan],
+        plans: Sequence[p.Infra.CodegenFilePlan],
         repository_root: Path,
         projection_roots: tuple[Path, ...],
         *,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Join the lazy-init projections the planned sources require.
 
         Each declared workspace projects its own roots: a cross-root campaign
@@ -286,7 +274,7 @@ class FlextInfraTransformersSemanticPublication:
             The semantic plans plus their projections, or the first conflict.
 
         """
-        result_type = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         admitted = result_type.create_from_callable(
             lambda: u.Infra.codegen_compose_file_plans(plans, inputs=inputs)
         )

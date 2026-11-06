@@ -9,17 +9,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, FlextInfraGitService, config, m, workspace
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, FlextInfraGitService, config, workspace
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraGitLaneHygiene:
     """Preserve incoming census intents under the canonical fresh-base contract."""
 
     @staticmethod
-    def _declared_base(tmp_path: Path) -> m.Infra.GitLaneVerificationRequest:
+    def _declared_base(tmp_path: Path) -> p.Infra.GitLaneVerificationRequest:
         """Create a real remote whose integration is available and demonstrably live.
 
         Returns:
@@ -44,7 +42,7 @@ class TestsFlextInfraGitLaneHygiene:
     def test_clean_repository_passes(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Only the declared integration remains; dormant sources are not probed."""
         request = cls._declared_base(tmp_path)
@@ -81,7 +79,7 @@ class TestsFlextInfraGitLaneHygiene:
     def test_every_violation_class_is_listed(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Stashes, all merged refs, orphans and clean linked lanes surface."""
         request = cls._declared_base(tmp_path / "primary")
@@ -147,7 +145,7 @@ class TestsFlextInfraGitLaneHygiene:
         publish: bool = True,
         integrate: bool = True,
         large: bool = False,
-    ) -> m.Infra.GitLaneOwnershipRequest:
+    ) -> p.Infra.GitLaneOwnershipRequest:
         """Retain actual native layers through the existing checkpoint owners.
 
         Returns:
@@ -203,7 +201,7 @@ class TestsFlextInfraGitLaneHygiene:
     def test_receipt_producer_preserves_shared_layers(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Authenticated historical ownership does not require clean current work."""
         request = cls._retained_ownership(tmp_path)
@@ -253,7 +251,7 @@ class TestsFlextInfraGitLaneHygiene:
         )
 
     @classmethod
-    @pytest.mark.parametrize("missing", ["publication", "integration", "scope"])
+    @c.Tests.MARK.parametrize("missing", ["publication", "integration", "scope"])
     def test_receipt_requires_actual_prior_proof(
         cls, tmp_path: Path, missing: str
     ) -> None:
@@ -267,7 +265,7 @@ class TestsFlextInfraGitLaneHygiene:
         tm.fail(FlextInfraGitService.lane_ownership(request))
 
     @classmethod
-    @pytest.mark.parametrize("forged", ["tip", "reference", "metadata"])
+    @c.Tests.MARK.parametrize("forged", ["tip", "reference", "metadata"])
     def test_receipt_rejects_forged_native_identity(
         cls, tmp_path: Path, forged: str
     ) -> None:
@@ -299,7 +297,7 @@ class TestsFlextInfraGitLaneHygiene:
         tm.fail(result)
 
     @classmethod
-    @pytest.mark.parametrize("selection", ["native", "missing", "shell-data"])
+    @c.Tests.MARK.parametrize("selection", ["native", "missing", "shell-data"])
     def test_version_recipe_consumes_only_native_receipt(
         cls, tmp_path: Path, selection: str
     ) -> None:

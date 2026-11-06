@@ -10,13 +10,11 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import infra, p
+from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codemod import FlextInfraCodemodSemanticApply, FlextInfraModGateEngine
-from flext_infra.transformers import FlextInfraTransformersSemanticPublication
-from tests import c, m, r, tm, u
+from flext_infra.transformers import FlextInfraTransformersSemantic
+from tests import c, m, p, r, tm, u
 from tests.unit.codemod.declaration_relocation_support import (
     TestsFlextInfraDeclarationRelocationSupport,
 )
@@ -26,7 +24,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
     """Exercise guarded, grouped, and composed declaration relocation cutovers."""
 
     @staticmethod
-    @pytest.mark.parametrize("guard", ["TYPE_CHECKING", "Checking"])
+    @c.Tests.MARK.parametrize("guard", ["TYPE_CHECKING", "Checking"])
     def test_unrelated_type_checking_guard_refuses_without_mutation(
         tmp_path: Path,
         guard: str,
@@ -44,7 +42,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         origin.write_text(sources[origin], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
+            u.Tests.raises(ValueError, match=r"unresolved/outer dependency.*Amount"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -55,7 +53,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("refused", ["destination", "exposure"])
+    @c.Tests.MARK.parametrize("refused", ["destination", "exposure"])
     def test_concurrent_destination_edit_refuses_the_whole_batch(
         tmp_path: Path,
         refused: str,
@@ -153,7 +151,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
     @staticmethod
-    @pytest.mark.parametrize("accepted", [False, True])
+    @c.Tests.MARK.parametrize("accepted", [False, True])
     def test_public_group_cutover_is_accepted_or_recovers_on_consumer_rejection(
         tmp_path: Path,
         *,
@@ -175,7 +173,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             )
         target = next(path for path in sources if path.parent.name == "_models")
         package = target.parent.parent
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for edit in edits:
             before = tm.ok(
                 u.Cli.atomic_read_binary_file_state(edit.file_path, required=True)
@@ -222,7 +220,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
                 return r[bool].from_failure(result)
             return r[bool].ok(u.Cli.process_succeeded(result.value.outcome))
 
-        result = FlextInfraTransformersSemanticPublication.publish_semantic_file_plans(
+        result = FlextInfraTransformersSemantic.publish_semantic_file_plans(
             plans,
             repository_root=root,
             options=m.Infra.SemanticPublicationOptions(
@@ -294,7 +292,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("nested_local", [False, True])
+    @c.Tests.MARK.parametrize("nested_local", [False, True])
     def test_validator_and_computed_field_runtime_preserved(
         tmp_path: Path,
         *,
@@ -372,7 +370,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         path.write_text(sources[path], encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=expected),
+            u.Tests.raises(ValueError, match=expected),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
@@ -419,7 +417,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_uncomposed_model_owner_preserves_findings_and_failed_publication(
         tmp_path: Path,
     ) -> None:
@@ -476,7 +474,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("split", [False, True])
+    @c.Tests.MARK.parametrize("split", [False, True])
     def test_public_preset_dependency_moves_without_self_facade_cycle(
         tmp_path: Path,
         *,
@@ -560,7 +558,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @staticmethod
-    @pytest.mark.parametrize("competing", [False, True])
+    @c.Tests.MARK.parametrize("competing", [False, True])
     def test_composed_preset_identity_resolves_local_model_owner(
         tmp_path: Path,
         *,

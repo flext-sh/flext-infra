@@ -9,14 +9,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, t
+from flext_infra import config
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
-from tests import c, m, r, tm, u
+from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -133,9 +131,9 @@ class TestsFlextInfraDocsGenerator:
         return workspace, package, declared
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("selected_projects", [None, (".",), ("flext-a",)])
-    @pytest.mark.parametrize("project_name", ["workspace", config.Infra.name])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("selected_projects", [None, (".",), ("flext-a",)])
+    @c.Tests.MARK.parametrize("project_name", ["workspace", config.Infra.name])
     def test_workspace_package_api_and_member_docs_share_one_transaction(
         tmp_path: Path,
         selected_projects: Sequence[str] | None,
@@ -465,7 +463,7 @@ class TestsFlextInfraDocsGenerator:
         tm.that(page, lacks="::: flext_a options:")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_generated_directive_builds_with_real_mkdocstrings(
         tmp_path: Path,
     ) -> None:
@@ -505,7 +503,7 @@ class TestsFlextInfraDocsGenerator:
     @staticmethod
     def test_generated_bundle_is_accepted_by_real_markdown_formatter(
         tmp_path: Path,
-        request: pytest.FixtureRequest,
+        request: t.Tests.FixtureRequest,
     ) -> None:
         """Generated prose and directives already match the provisioned formatter."""
         workspace, generator = u.Tests.docs_workspace_generator(
@@ -628,7 +626,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(initial),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(initial),
         )
         tm.ok(published)
 
@@ -662,7 +660,7 @@ class TestsFlextInfraDocsGenerator:
             eq=True,
         )
         published = u.Tests.materialize_codegen_plans(
-            r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans),
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(stale_plans),
         )
         tm.ok(published)
         tm.fail(stale.exists())
@@ -709,5 +707,5 @@ class TestsFlextInfraDocsGenerator:
         """Test docs url scheme rejects http."""
         target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
 
-        with pytest.raises(ValueError, match="use HTTPS"):
+        with u.Tests.raises(ValueError, match="use HTTPS"):
             u.Infra.docs_url_scheme(target)

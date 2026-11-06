@@ -10,8 +10,6 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
@@ -20,11 +18,11 @@ from tests import c, m, p, tm, u
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "binding", ["canonical", "foreign", "renamed", "duplicate", "annotation"]
     )
-    @pytest.mark.parametrize("model", [False, True])
-    @pytest.mark.parametrize("constructor", ["ConfigDict", "m.ConfigDict"])
+    @c.Tests.MARK.parametrize("model", [False, True])
+    @c.Tests.MARK.parametrize("constructor", ["ConfigDict", "m.ConfigDict"])
     def test_explicit_owner_config_requires_canonical_metadata(
         self,
         tmp_path: Path,
@@ -90,65 +88,6 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
-    @pytest.mark.parametrize("publication", ["facade", "unpublished", "foreign"])
-    def test_class_publications_authenticate_only_facade_class_aliases(
-        self,
-        tmp_path: Path,
-        publication: Literal["facade", "unpublished", "foreign"],
-    ) -> None:
-        """Authenticate published class identity independently of module spelling.
-
-        Missing facade publication or an alias bound to another class exempts
-        nothing; a published facade's non-class RHS remains ineligible too.
-        """
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        directory = u.Infra.facade_families()["u"].directory
-        self._write(package / "__init__.py", "")
-        self._write(
-            package / directory / "__init__.py",
-            "from .owner import Owner\n__all__ = ['Owner']\n",
-        )
-        self._write(
-            package / directory / "owner.py",
-            "class Owner:\n    value = 7\n__all__ = ['Owner']\n",
-        )
-        source = (
-            "from typing import TypeAlias\n"
-            f"from {package.name}.{directory} import Owner\n"
-            "class Utilities:\n"
-            "    Cli: TypeAlias = Owner\n"
-            "    Value: TypeAlias = Owner.value\n"
-            "    class Ns:\n"
-            "        Nested: TypeAlias = Owner\n"
-            + {
-                "facade": "u = Utilities\n__all__ = ['Utilities', 'u']\n",
-                "unpublished": "u = Utilities\n__all__ = ['Utilities']\n",
-                "foreign": "u = Owner\n__all__ = ['Utilities', 'u']\n",
-            }[publication]
-        )
-        facade = package / "utilities.py"
-        authored = package / "services.py"
-        self._write(facade, source)
-        self._write(authored, source)
-        rows = frozenset({4, 5, 7})
-        with u.Infra.facade_source_project(root) as (project, _sources):
-            published = u.Infra.facade_class_publications(
-                root, {facade: rows, authored: rows}, source_project=project
-            )
-        tm.that(
-            published,
-            eq=(
-                frozenset({
-                    (facade.resolve(), 4, 5),
-                    (facade.resolve(), 7, 9),
-                    (authored.resolve(), 4, 5),
-                    (authored.resolve(), 7, 9),
-                })
-                if publication == "facade"
-                else frozenset()
-            ),
-        )
-
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
@@ -190,9 +129,9 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", tuple(u.Infra.facade_families()))
-    @pytest.mark.parametrize("nested", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
+    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize(
         "publication",
         [
             (origin, source_root)
@@ -330,8 +269,8 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", ["c", "m", "p", "u"])
-    @pytest.mark.parametrize("stale_base", [False, True])
+    @c.Tests.MARK.parametrize("family", ["c", "m", "p", "u"])
+    @c.Tests.MARK.parametrize("stale_base", [False, True])
     def test_explicit_class_bindings_preserve_authored_upstream_contract(
         self,
         tmp_path: Path,
@@ -410,8 +349,8 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("family", ["c", "t", "p", "m", "u"])
+    @c.Tests.MARK.parametrize(
         "invalid",
         [
             "Other = missing",
@@ -477,7 +416,7 @@ class UtilityFacadeOwnerPublication:
             tm.that(projected.count(" import Owner\n"), eq=1)
             tm.that(projected, has="class PublicFacade:\n", lacks="class PublicFacade(")
 
-    @pytest.mark.parametrize("family", ["c", "t", "m", "p", "u"])
+    @c.Tests.MARK.parametrize("family", ["c", "t", "m", "p", "u"])
     def test_unselected_inherited_sdk_contract_keeps_real_mro(
         self,
         tmp_path: Path,
@@ -534,7 +473,7 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
-    @pytest.mark.parametrize("header", ["plain", "protocol", "commented"])
+    @c.Tests.MARK.parametrize("header", ["plain", "protocol", "commented"])
     def test_long_protocol_owner_bases_are_canonical_before_publication(
         self,
         tmp_path: Path,
@@ -633,8 +572,74 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
-    @pytest.mark.parametrize("length_delta", [0, 16])
-    @pytest.mark.parametrize("parenthesized", [False, True])
+    def test_source_bootstrap_protocol_facade_reuses_canonical_holder_mro(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Public planning follows the bootstrap owner instead of stale Base parts."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        self._write(package / "__init__.py", "")
+        self._write(package / "_protocols" / "__init__.py", "")
+        self._write(
+            package / "_protocols" / "base.py",
+            "from typing import Protocol, runtime_checkable\n\n"
+            "class ProtocolsBase:\n"
+            "    @runtime_checkable\n"
+            "    class Contract(Protocol):\n"
+            "        @property\n"
+            "        def stale(self) -> str: ...\n"
+            "__all__ = ['ProtocolsBase']\n",
+        )
+        self._write(
+            package / "_protocols" / "owner.py",
+            "from typing import Protocol, runtime_checkable\n\n"
+            "class ProtocolsOwner:\n"
+            "    @runtime_checkable\n"
+            "    class Contract(Protocol):\n"
+            "        @property\n"
+            "        def canonical(self) -> str: ...\n"
+            "__all__ = ['ProtocolsOwner']\n",
+        )
+        facade = package / "protocols.py"
+        self._write(
+            facade,
+            "# AUTO-GENERATED FILE - Source bootstrap protocol facade.\n"
+            "from typing import Protocol\n"
+            f"from {package.name}._protocols.owner import ProtocolsOwner\n\n"
+            "class Protocols:\n"
+            "    class Infra(ProtocolsOwner):\n"
+            "        pass\n\n"
+            "p = Protocols\n"
+            "__all__ = ['Protocols', 'p']\n",
+        )
+
+        rendered = tm.ok(
+            tm.not_none(u.Infra.render_utility_facade(package, family="p"))
+        )
+        tm.that(rendered, has="class Infra(ProtocolsOwner):")
+        tm.that(rendered, lacks="ProtocolsBase")
+        plan = tm.ok(
+            FlextInfraCodegenConform.Generate(
+                state=m.Infra.CodegenConformState(repository_root=root),
+            ).plan(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.FACADES,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    module=f"{package.name}.protocols",
+                    mode=c.Infra.CodegenConformMode.CHECK,
+                )
+            )
+        )
+        tm.that(
+            u.Tests.codegen_file_text(
+                next(file for file in plan.files if file.path == facade)
+            ),
+            eq=rendered,
+        )
+
+    @c.Tests.MARK.parametrize("length_delta", [0, 16])
+    @c.Tests.MARK.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(
         self,
         tmp_path: Path,

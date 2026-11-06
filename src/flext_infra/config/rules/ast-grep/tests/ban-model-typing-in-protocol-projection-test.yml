@@ -1,0 +1,24 @@
+id: ban-model-typing-in-protocol-projection
+valid:
+- |
+  class Holder(Protocol):
+      value: p.Infra.Payload
+- |
+  class Holder(Protocol):
+      marker: Literal["m.Field is payload text"]
+- |
+  class Holder(Protocol):
+      def receive(self, value: Annotated[str, "metadata"]) -> m.Infra.Payload: ...
+- |
+  class Model(m.Value):
+      value: Annotated[str, m.Field(description="model metadata")]
+- |
+  class Holder(Protocol):
+      state: p.Cli.AtomicFileState
+invalid:
+- |
+  class Holder(Protocol):
+      value: Annotated[str, m.Field(description="leaked")]
+- |
+  class Holder(Protocol):
+      state: FlextInfraModelsWorkspace.WorkspaceRuntimeContext

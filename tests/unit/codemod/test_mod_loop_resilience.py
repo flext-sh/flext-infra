@@ -9,11 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, e, infra, m, p, r
+from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraCodemodBatchApply
-from tests import c, t, tm, u
+from tests import c, e, m, p, r, t, tm, u
 
 
 class _RecordingProgress:
@@ -27,7 +25,7 @@ class _RecordingProgress:
         """Record one progress line."""
         self.messages.append(message)
 
-    def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+    def emit_rename(self, report: p.Infra.ApplyRenamesReport) -> None:
         """Record one rename campaign summary."""
         self.messages.append(f"rename occurrences={report.occurrences}")
 
@@ -46,11 +44,11 @@ class _ExternalWriterPhase:
     def plan(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Rewrite the target on disk during the first plan only.
 
         Returns:
@@ -61,12 +59,12 @@ class _ExternalWriterPhase:
         self.calls += 1
         if self.calls == 1:
             _ = self.target.write_text(self.content, encoding="utf-8")
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(())
+        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
 
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Publish nothing standalone.
@@ -79,7 +77,7 @@ class _ExternalWriterPhase:
         return r[bool].ok(value=False)
 
 
-def _rewrite(path: Path, desired: str) -> m.Infra.CodegenFilePlan:
+def _rewrite(path: Path, desired: str) -> p.Infra.CodegenFilePlan:
     """Plan one real rewrite against the module's current physical state.
 
     Returns:
@@ -109,11 +107,11 @@ class _OneModuleFailsPhase:
     def plan(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Fail on the bad module while in scope, else span bad and partner.
 
         Returns:
@@ -121,7 +119,7 @@ class _OneModuleFailsPhase:
 
         """
         del root, preflight, rope_workspace
-        result = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result = r[tuple[p.Infra.CodegenFilePlan, ...]]
         if self.bad in sources:
             failure = e.OperationError(
                 f"cannot plan {self.bad.name}",
@@ -138,7 +136,7 @@ class _OneModuleFailsPhase:
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Publish nothing standalone.
@@ -164,11 +162,11 @@ class _IndependentFixPhase:
     def plan(
         self,
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Repair the target until it carries the desired source.
 
         Returns:
@@ -176,7 +174,7 @@ class _IndependentFixPhase:
 
         """
         del root, preflight, rope_workspace
-        result = r[tuple[m.Infra.CodegenFilePlan, ...]]
+        result = r[tuple[p.Infra.CodegenFilePlan, ...]]
         if sources.get(self.target) == self.desired:
             return result.ok(())
         return result.ok((_rewrite(self.target, self.desired),))
@@ -184,7 +182,7 @@ class _IndependentFixPhase:
     @staticmethod
     def apply(
         root: Path,
-        preflight: m.Infra.ModScanReport,
+        preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> p.Result[bool]:
         """Publish nothing standalone.
@@ -273,7 +271,7 @@ class TestsFlextInfraModLoopResilience:
     """External drift and one module's failure never abort the mod loop."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_external_drift_discards_iteration_and_adopts_disk(
         tmp_path: Path,
     ) -> None:
@@ -291,14 +289,13 @@ class TestsFlextInfraModLoopResilience:
             [
                 message
                 for message in progress.messages
-                if "discarded after external change" in message
-                and str(alpha) in message
+                if "observed external change" in message and str(alpha) in message
             ],
             empty=False,
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_module_failure_quarantines_only_that_module(
         tmp_path: Path,
     ) -> None:

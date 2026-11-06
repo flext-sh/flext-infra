@@ -1,0 +1,14 @@
+id: ban-subdirectory-short-alias
+valid:
+- |
+  def build() -> None:
+      m = 1
+- |
+  class TestsFlextModelsNamespace:
+      m = 1
+- "__all__: list[str] = ['TestsFlextModelsMixins']"
+- "mixins = TestsFlextModelsNamespace.TestsFlextModelsMixins"
+- "m: int"
+invalid:
+- "m = TestsFlextModelsNamespace.TestsFlextModelsMixins"
+- "t = FlextTypes"

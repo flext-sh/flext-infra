@@ -11,11 +11,9 @@ from typing import TYPE_CHECKING
 
 from flext_cli import cli
 
-from flext_infra import c, m, r, u
-from flext_infra.codemod import (
-    FlextInfraCodemodLoopPhaseImportNormalization,
-    FlextInfraModGateEngine,
-)
+from flext_infra import c, m, p, r, u
+from flext_infra.codemod import FlextInfraModGateEngine
+from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
 from flext_infra.refactor import (
     FlextInfraNamespaceRelocationCascade,
     FlextInfraRefactorNamespace,
@@ -24,7 +22,7 @@ from flext_infra.refactor import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 class FlextInfraNamespaceEnforcer(
@@ -47,7 +45,7 @@ class FlextInfraNamespaceEnforcer(
         project_names: Sequence[str] | None = None,
         module: str | None = None,
         gates: Sequence[str] | None = None,
-    ) -> m.Infra.WorkspaceEnforcementReport:
+    ) -> p.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
         Args:
@@ -90,7 +88,16 @@ class FlextInfraNamespaceEnforcer(
         scoped = frozenset(
             path for paths in files_by_project.values() for path in paths
         )
-        with u.Infra.codemod_workspace_snapshot(self._repository_root) as snapshot:
+        plan_root = (
+            self._repository_root / project_names[0]
+            if project_names
+            and len(project_names) == 1
+            and (self._repository_root / project_names[0]).is_dir()
+            else project_roots[0]
+            if len(project_roots) == 1
+            else self._repository_root
+        )
+        with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
             before_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         source_files = tuple(sorted(scoped)) if module is not None else None
         before = FlextInfraModGateEngine.scan(
@@ -212,7 +219,7 @@ class FlextInfraNamespaceEnforcer(
         ]
 
     @staticmethod
-    def render_text(report: m.Infra.WorkspaceEnforcementReport) -> str:
+    def render_text(report: p.Infra.WorkspaceEnforcementReport) -> str:
         """Render a workspace enforcement report as plain text.
 
         Returns:
@@ -261,12 +268,12 @@ class FlextInfraNamespaceEnforcer(
     @classmethod
     def execute_command(
         cls,
-        params: m.Infra.RefactorNamespaceEnforceInput,
-    ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
+        params: p.Infra.RefactorNamespaceEnforceInput,
+    ) -> p.Result[p.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceEnforcementReport]``.
+            The resulting ``p.Result[p.Infra.WorkspaceEnforcementReport]``.
 
         """
         enforcer = cls(repository_root=params.repository_root)
@@ -283,13 +290,13 @@ class FlextInfraNamespaceEnforcer(
             relative_path=c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH,
         )
         if published.failure:
-            return r[m.Infra.WorkspaceEnforcementReport].from_failure(published)
+            return r[p.Infra.WorkspaceEnforcementReport].from_failure(published)
         has_violations: bool = report.has_violations
         if has_violations:
-            return r[m.Infra.WorkspaceEnforcementReport].fail(
+            return r[p.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found",
             )
-        return r[m.Infra.WorkspaceEnforcementReport].ok(report)
+        return r[p.Infra.WorkspaceEnforcementReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcer"]

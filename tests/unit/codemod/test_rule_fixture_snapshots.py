@@ -11,8 +11,6 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
@@ -25,9 +23,9 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     def _elected_rule(self, tmp_path: Path, name: str) -> tuple[str, frozenset[str]]:
         """Read the catalog rule a fixture file declares and its elected identities.
 
-        A partitioned catalog rule is elected through the partitions the
-        project's generated provider renders; selecting its catalog id
-        selects every one of them.
+        A partitioned catalog rule records the concrete partitions the
+        project's generated provider renders. Each partition is selected by
+        its own concrete identity; the catalog id is not a selector alias.
 
         Args:
             tmp_path: Provisioned workspace root consuming the provider.
@@ -59,7 +57,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(elected, empty=False)
         return declared.id, elected
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_protocol_candidates_require_native_semantic_admission(
         self, tmp_path: Path
     ) -> None:
@@ -120,8 +118,14 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         ):
             source = imports + declarations
             tm.ok(u.Cli.atomic_write_text_file(sample, source))
+            tm.fail(
+                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=(rule_id,)),
+                has="unknown codemod rule IDs",
+            )
             report = tm.ok(
-                FlextInfraModGateEngine.scan(tmp_path, fix=False, selection=(rule_id,))
+                FlextInfraModGateEngine.scan(
+                    tmp_path, fix=False, selection=tuple(elected)
+                )
             )
             names: list[str] = []
             with u.Infra.mod_native_readers(report.native_artifacts) as readers:
@@ -141,8 +145,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(sorted(names), eq=sorted(expected))
             tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("scenario", "expected"),
         [("red", ["FixtureModels"]), ("green", ...)],
     )
@@ -170,8 +174,12 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             encoding=c.DEFAULT_ENCODING
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
+        tm.fail(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=(rule_id,)),
+            has="unknown codemod rule IDs",
+        )
         report = tm.ok(
-            FlextInfraModGateEngine.scan(root, fix=False, selection=(rule_id,))
+            FlextInfraModGateEngine.scan(root, fix=False, selection=tuple(elected))
         )
         names: list[str] = []
         with u.Infra.mod_native_readers(report.native_artifacts) as readers:
@@ -188,7 +196,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(names, eq=expected)
         tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
-    @pytest.mark.parametrize("relative_catalog", ["policy", "nested/native/policy"])
+    @c.Tests.MARK.parametrize("relative_catalog", ["policy", "nested/native/policy"])
     def test_native_snapshots_follow_declared_catalog_root(
         self,
         tmp_path: Path,
@@ -222,7 +230,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             _ = ast.parse(fixed)
         tm.fail((tmp_path / c.Infra.CODEMOD_CONFIG_RELPATH).exists())
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "rule_id",
         [
             "rewire-test-assert-truth",
@@ -231,7 +239,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             "rewire-test-assert-instance-message",
         ],
     )
-    @pytest.mark.parametrize("value", [1, None])
+    @c.Tests.MARK.parametrize("value", [1, None])
     def test_assert_snapshot_preserves_native_guard_execution(
         self, rule_id: str, value: int | None
     ) -> None:
@@ -276,7 +284,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(converted.stdout, eq=original.stdout)
         tm.that(converted.stderr, eq=original.stderr)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_contract_review_fixtures_preserve_assertions_and_syntax(
         self,
         tmp_path: Path,
@@ -333,7 +341,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(published, eq=source)
             _ = ast.parse(published)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_tautology_detection_preserves_runtime_and_unrelated_fixes(
         self, installed_dependency_path: Path
     ) -> None:
@@ -412,9 +420,9 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(after.detection_only, eq=before.detection_only)
             tm.that(after.entries[0].replacement, eq=None)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("operator", ["==", "!="])
-    @pytest.mark.parametrize("verdict", [True, False])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("operator", ["==", "!="])
+    @c.Tests.MARK.parametrize("verdict", [True, False])
     def test_native_assertions_preserve_comparison_evaluation(
         self,
         tmp_path: Path,
@@ -470,7 +478,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             tm.that(outcome.exit_code, eq=0, msg=outcome.stderr)
             tm.that(outcome.stderr, eq="")
 
-    @pytest.mark.parametrize("collection", ["dict", c.Action.LIST])
+    @c.Tests.MARK.parametrize("collection", ["dict", c.Action.LIST])
     def test_typing_collection_fixes_preserve_runtime_values(
         self,
         tmp_path: Path,
@@ -574,7 +582,8 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         catalogs = tuple(
             ruleset.config.parent
             for ruleset in plan.rulesets
-            if ruleset.config.is_relative_to(root)
+            if ruleset.provider != c.Infra.CODEMOD_GENERATED_PROVIDER
+            and ruleset.config.is_relative_to(root)
         )
         tm.that(len(catalogs), eq=1)
         return catalogs[0]
@@ -722,7 +731,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
     def test_selected_rule_preserves_unselected_owner_snapshots(
         self, tmp_path: Path
     ) -> None:
-        """Fixture validity belongs to the full catalog, not execution election."""
+        """A selected run never rewrites a sibling owner's committed snapshots."""
         rule = self._owner(tmp_path)
         other = rule.with_name("other.yml")
         tm.ok(
@@ -767,6 +776,44 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             empty=True,
         )
         tm.that(snapshot.read_bytes(), eq=before)
+
+    def test_sibling_fixture_drift_never_blocks_a_selected_run(
+        self, tmp_path: Path
+    ) -> None:
+        """Only the selected rules are proven; a drifted sibling fails its own run."""
+        rule = self._owner(tmp_path)
+        other = rule.with_name("other.yml")
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                other,
+                rule.read_text(encoding=c.DEFAULT_ENCODING).replace(
+                    "id: demo",
+                    "id: other",
+                ),
+            ),
+        )
+        fixture = self._catalog(tmp_path) / "tests"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                fixture / "other-test.yml",
+                (fixture / "demo-test.yml")
+                .read_text(encoding=c.DEFAULT_ENCODING)
+                .replace("id: demo", "id: other"),
+            ),
+        )
+        tm.ok(
+            FlextInfraModGateEngine.refresh_rule_snapshots(
+                tmp_path,
+                (rule, other),
+                apply=True,
+            ),
+        )
+        self._snapshot(tmp_path, "other").unlink()
+
+        tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
+        tm.fail(
+            FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule, other)),
+        )
 
     def test_refresh_records_what_verification_then_accepts(
         self,
@@ -839,7 +886,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(self._snapshot(tmp_path).read_text(encoding="utf-8"), has="qux(1)")
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
 
-    @pytest.mark.parametrize("residue", ["removed-rule", "deleted-case"])
+    @c.Tests.MARK.parametrize("residue", ["removed-rule", "deleted-case"])
     def test_snapshot_residue_fails_verification_until_refreshed(
         self,
         tmp_path: Path,
@@ -883,7 +930,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         tm.that(changes, eq=(expected,))
         tm.ok(FlextInfraModGateEngine.validate_rule_fixtures(tmp_path, (rule,)))
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_public_refresh_route_dry_run_fails_until_applied(
         self,
         installed_dependency_path: Path,

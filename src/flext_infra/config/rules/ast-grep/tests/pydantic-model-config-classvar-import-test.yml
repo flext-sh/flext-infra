@@ -4,7 +4,7 @@ valid:
     from typing import ClassVar
 
     class Model:
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
   - |
     class Other:
         model_config = m.ConfigDict()

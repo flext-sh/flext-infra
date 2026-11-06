@@ -58,10 +58,10 @@ class TestsFlextInfraFacadeMemberRelocation:
             "computed = u.computed_field\n"
         )
         canonical.write_text(
-            "from flext_core import m, t, u\n" + body, encoding="utf-8"
+            "from flext_core import m, p, t, u\n" + body, encoding="utf-8"
         )
         derived.write_text(
-            "from flext_core import m, t, u as parent\n"
+            "from flext_core import m, p, t, u as parent\n"
             "class Derived(parent):\n    pass\nu = Derived\n" + body,
             encoding="utf-8",
         )
@@ -78,10 +78,13 @@ class TestsFlextInfraFacadeMemberRelocation:
         # letter binds it and the receiver binds no object or the identical one.
         with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
             resolver_factory = u.Infra.source_member_resolver_factory(
-                snapshot.engine, sources={}
+                snapshot.engine,
+                sources=u.Infra.project_captured_sources(snapshot.engine),
             )
             _lineage, references, _names = u.Infra.facade_member_census(
-                mod_workspace, source_project=snapshot.engine
+                mod_workspace,
+                source_project=snapshot.engine,
+                resolver_factory=resolver_factory,
             )
             owners = {
                 name: u.Infra.facade_member_owner(
@@ -150,7 +153,7 @@ class TestsFlextInfraFacadeMemberRelocation:
         """Overrides, custom owners, missing targets and guarded imports fail closed."""
         cases = (
             (
-                "from flext_core import m, u as parent\n"
+                "from flext_core import m, p, u as parent\n"
                 "class Derived(parent):\n    PrivateAttr = print\nu = Derived\n"
             ),
             "from flext_core import m\nclass Custom:\n    pass\nu = Custom\n",
@@ -159,9 +162,9 @@ class TestsFlextInfraFacadeMemberRelocation:
                 "    PrivateAttr = print\nm = Custom\n"
             ),
             "from flext_core import u\n",
-            "from flext_core import m, u as parent\nu = parent\nu = parent\n",
-            "from flext_core import m, u\nu.PrivateAttr = print\n",
-            "from flext_core import m, u\nm.PrivateAttr = print\n",
+            "from flext_core import m, p, u as parent\nu = parent\nu = parent\n",
+            "from flext_core import m, p, u\nu.PrivateAttr = print\n",
+            "from flext_core import m, p, u\nm.PrivateAttr = print\n",
             (
                 "from flext_core import m as parent, u\n"
                 "class Derived(parent):\n    PrivateAttr = None\nm = Derived\n"
@@ -174,8 +177,14 @@ class TestsFlextInfraFacadeMemberRelocation:
                 "from typing import TYPE_CHECKING\nfrom flext_core import m\n"
                 "if TYPE_CHECKING:\n    from flext_core import u\n"
             ),
-            "from flext_core import m, u\ndef probe(u):\n    return u.PrivateAttr()\n",
-            "from flext_core import m, u\ndef probe(m):\n    return u.PrivateAttr()\n",
+            (
+                "from flext_core import m, p, u\ndef probe(u):\n    return "
+                "u.PrivateAttr()\n"
+            ),
+            (
+                "from flext_core import m, p, u\ndef probe(m):\n    return "
+                "u.PrivateAttr()\n"
+            ),
         )
         paths: list[Path] = []
         for index, prefix in enumerate(cases):
@@ -215,7 +224,7 @@ class TestsFlextInfraFacadeMemberRelocation:
         """Protected type arguments, literals and bare markers retain their bytes."""
         path = mod_workspace / "annotations.py"
         source = (
-            "from typing import Annotated, Literal\nfrom flext_core import m, t, u\n"
+            "from typing import Annotated, Literal\nfrom flext_core import m, p, t, u\n"
             "def validate(value):\n    return value\n"
             "eligible = Annotated[str, u.BeforeValidator(validate)]\n"
             "label = 'u.BeforeValidator(validate)'\n"

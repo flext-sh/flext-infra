@@ -12,7 +12,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra._utilities import FlextInfraUtilitiesLintRecipes
-from flext_infra._utilities._rope.source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
@@ -20,7 +20,7 @@ from flext_infra._utilities._semantic_cutover import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesSemanticCutoverModuleLayout(
@@ -33,8 +33,8 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        findings: Sequence[p.Infra.ModOccurrence],
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Move each reported top-level statement after the module's last one.
 
         A finding names its statement by the text the rule matched, so the
@@ -76,8 +76,8 @@ class FlextInfraUtilitiesSemanticCutoverModuleLayout(
         cls,
         root: Path,
         sources: Mapping[Path, str],
-        findings: Sequence[m.Infra.ModOccurrence],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+        findings: Sequence[p.Infra.ModOccurrence],
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Move each reported docstring's notice paragraph after its other text.
 
         Returns:

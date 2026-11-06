@@ -11,18 +11,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config
+from flext_infra import check, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenRepositoryRootScope:
     """Tests for ``FlextInfraCodegenRepositoryRootScope``."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("project_name", "authored_root"),
         [("flext-alpha", "automation"), ("flext-beta", "quality_tools")],
     )
@@ -93,7 +91,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         tm.fail(u.Infra.codegen_file_requires_effect(second))
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_selected_member_mod_text_owns_its_real_workspace_scope(
         tmp_path: Path,
     ) -> None:
@@ -322,6 +320,33 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             tm.that(output, has=local_body)
             tm.that(output, lacks="--verb")
 
+    def test_repository_root_check_projects_profiled_total_timeout(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Project the typed check deadline, profiling, and child-stop grace once."""
+        repository_root = self._render_root_makefile(tmp_path)
+        execution = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--dry-run", "_builtin-check"],
+                cwd=repository_root,
+                options=m.Cli.ProcessOptions(remove_env_keys=("MAKEFLAGS",)),
+            ),
+        )
+        tm.ok(u.Cli.process_succeeded(execution.outcome))
+        make = config.Infra.codegen.make
+        gate_budget = check.FlextInfraGateRegistry(
+            project_gates=make.project_check_gates,
+        ).check_budget_seconds(make.check_gates_default, (repository_root,))
+        expected = (
+            "FLEXT_INFRA_PROFILE=1 "
+            f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{make.check_profile_path}" '
+            f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM "
+            f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s "
+            f"{gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s"
+        )
+        tm.that(execution.stdout + execution.stderr, has=expected)
+
     def test_repository_root_declares_member_propagation(self, tmp_path: Path) -> None:
         """The workspace profile declares propagate through the workspace CLI."""
         repository_root = self._render_root_makefile(tmp_path)
@@ -361,7 +386,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan: m.Infra.CodegenPlan = tm.ok(
+        plan: p.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform.Generate(
                 repository_root=repository_root,
                 state=m.Infra.CodegenConformState(

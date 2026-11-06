@@ -239,7 +239,7 @@ class TestsFlextInfraRuleCatalogCache:
         )
         native_consumer(
             """
-from flext_infra import m, u
+from flext_infra import m, p, u
 
 expected = m.Infra.CodemodRule.model_validate_json(
     Path(sys.argv[2]).read_text(encoding="utf-8")

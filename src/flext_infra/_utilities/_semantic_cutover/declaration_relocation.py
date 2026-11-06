@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import builtins
+import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from textwrap import dedent, indent
@@ -18,8 +19,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeImports,
+    FlextInfraUtilitiesRopeStructure,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -32,7 +36,6 @@ from flext_infra._utilities._rope.runtime_types import (
 from flext_infra._utilities._rope.source_bases_aliases import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
 )
-from flext_infra._utilities._rope.structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
     FlextInfraUtilitiesSemanticCutoverEdits,
@@ -66,6 +69,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         if rule.owner_root is None:
             return repository_root
+        if rule.owner_root.is_relative_to(repository_root):
+            # The catalogue already names a project inside this workspace; the
+            # upward search would resolve the enclosing superproject instead.
+            return rule.owner_root
         owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             repository_root,
             rule.owner_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH,
@@ -81,7 +88,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan every resolvable relocation; unresolved owners are findings.
 
         Returns:
@@ -89,14 +96,14 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
 
         """
         edits, _findings = cls._declaration_relocation_outcome(workspace, sources)
-        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(edits)
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(edits)
 
     @classmethod
     def declaration_relocation_findings(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
-    ) -> tuple[m.Infra.DeclarationRelocationFinding, ...]:
+    ) -> tuple[p.Infra.DeclarationRelocationFinding, ...]:
         """Return one finding per payload declaration whose owner is unresolved.
 
         Returns:
@@ -112,15 +119,15 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
     ) -> tuple[
-        tuple[m.Infra.SemanticMigrationEdit, ...],
-        tuple[m.Infra.DeclarationRelocationFinding, ...],
+        tuple[p.Infra.SemanticMigrationEdit, ...],
+        tuple[p.Infra.DeclarationRelocationFinding, ...],
     ]:
         project = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
             workspace.rope_project,
             sources,
         )
         working = dict(sources)
-        findings: list[m.Infra.DeclarationRelocationFinding] = []
+        findings: list[p.Infra.DeclarationRelocationFinding] = []
         unresolved: set[tuple[Path, str, str]] = set()
         try:
             working, import_findings = cls._declaration_import_rewrites(
@@ -254,7 +261,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         sources: Mapping[Path, str],
     ) -> tuple[
         MutableMapping[Path, str],
-        tuple[m.Infra.DeclarationRelocationFinding, ...],
+        tuple[p.Infra.DeclarationRelocationFinding, ...],
     ]:
         """Rebind declarations only to identity-proven external public exports.
 
@@ -270,7 +277,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         root = Path(project.root.real_path)
         proposed = dict(sources)
-        findings: list[m.Infra.DeclarationRelocationFinding] = []
+        findings: list[p.Infra.DeclarationRelocationFinding] = []
         graph, _modules = layers.snapshot_import_graph(
             project,
             resources=tuple(
@@ -333,7 +340,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             Path,
             Mapping[Path, str],
         ],
-        findings: list[m.Infra.DeclarationRelocationFinding],
+        findings: list[p.Infra.DeclarationRelocationFinding],
     ) -> MutableMapping[str, tuple[str, str]]:
         project, path, _source, namespace, runtime, root, sources = context
         exports: MutableMapping[str, tuple[str, str]] = {}
@@ -448,7 +455,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             project,
             FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource),
         )
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         lines = cls._source_lines(source)
         for statement in imports.imports:
             information = statement.import_info
@@ -539,7 +546,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         sources: Mapping[Path, str],
     ) -> p.Infra.RopePyName | None:
         return FlextInfraUtilitiesImportLaw.resolve_declared_binding(
-            project, module_name, alias_name, root, sources
+            project, (module_name, alias_name), root, sources
         )
 
     @classmethod
@@ -872,7 +879,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         )
         if not orphaned:
             return proposed
-        rewrites: list[m.Infra.SourceRewrite] = []
+        rewrites: list[p.Infra.SourceRewrite] = []
         lines = cls._source_lines(proposed)
         for statement in runtime.module_imports_for_pymodule(project, after).imports:
             information = statement.import_info
@@ -973,7 +980,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         source: str,
         declaration: tuple[Path, p.Infra.RopeScope, p.Infra.RopePyName],
         expression: str,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
             project,
@@ -981,7 +988,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 resource, resource.path
             ),
         )
-        changes: list[m.Infra.SourceRewrite] = []
+        changes: list[p.Infra.SourceRewrite] = []
         finder = FlextInfraUtilitiesRopeRuntimeRefactors.create_occurrence_finder(
             project,
             declaration[1].pyobject.get_name(),
@@ -1057,7 +1064,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         identity: tuple[p.Infra.RopePyName, str],
         *,
         protected: tuple[int, int] | None,
-    ) -> tuple[m.Infra.SourceRewrite, ...]:
+    ) -> tuple[p.Infra.SourceRewrite, ...]:
         binding, expression = identity
         types = FlextInfraUtilitiesSemanticFamilyTypeReferences
         module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
@@ -1067,7 +1074,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
             ),
         )
         lines = cls._source_lines(source)
-        edits: list[m.Infra.SourceRewrite] = []
+        edits: list[p.Infra.SourceRewrite] = []
 
         def replace(lexical: p.Infra.RopeScope, value: str) -> str | None:
             runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1411,7 +1418,11 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                 expression = expression.removesuffix(" is True").strip()
                 conditions.append((
                     statement.indent,
-                    runtime.same_name(
+                    all(
+                        part.isidentifier() and not keyword.iskeyword(part)
+                        for part in expression.split(".")
+                    )
+                    and runtime.same_name(
                         guard,
                         runtime.expression_name(module.get_scope(), expression),
                     ),

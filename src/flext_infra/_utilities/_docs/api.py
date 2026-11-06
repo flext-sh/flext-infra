@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._pyproject.conform import (
-    FlextInfraUtilitiesPyprojectConform,
+from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAnalysis,
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope.analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesDocsApi:
@@ -949,7 +949,7 @@ class FlextInfraUtilitiesDocsApi:
         contract: t.JsonMapping,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> Sequence[m.Infra.AuditIssue]:
+    ) -> Sequence[p.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings.
 
         Returns:
@@ -979,7 +979,7 @@ class FlextInfraUtilitiesDocsApi:
         contract: t.JsonMapping,
         *,
         rope_project: p.Infra.RopeProject,
-    ) -> m.Infra.DocstringCoverage:
+    ) -> p.Infra.DocstringCoverage:
         """Aggregate docstring coverage over every public target.
 
         ``percent`` is computed here (behavior lives in ``u``); the model is a

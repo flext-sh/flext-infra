@@ -141,7 +141,7 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
     def apply_toml_phases(
         cls,
         payload: t.MutableJsonMapping,
-        *phases: m.Infra.DepsToml.PhaseConfig,
+        *phases: p.Infra.PhaseConfig,
     ) -> Sequence[str]:
         """Apply declarative phases in order and return one flat change list.
 
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
     def _apply_toml_phase(
         cls,
         payload: t.MutableJsonMapping,
-        phase: m.Infra.DepsToml.PhaseConfig,
+        phase: p.Infra.PhaseConfig,
         *,
         parent_path: Sequence[str],
     ) -> Sequence[str]:

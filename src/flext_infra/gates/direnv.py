@@ -14,14 +14,12 @@ import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraGatesDirenv(FlextInfraGates):
@@ -44,8 +42,8 @@ class FlextInfraGatesDirenv(FlextInfraGates):
     @staticmethod
     def _contract_issue(
         file: str,
-        violation: m.Infra.EnvironmentContractViolation,
-    ) -> m.Infra.Issue:
+        violation: p.Infra.EnvironmentContractViolation,
+    ) -> p.Infra.Issue:
         """Render one typed contract violation as a gate issue.
 
         Returns:
@@ -65,8 +63,8 @@ class FlextInfraGatesDirenv(FlextInfraGates):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run the static contracts, then the activation smoke.
 
         Returns:
@@ -152,7 +150,7 @@ class FlextInfraGatesDirenv(FlextInfraGates):
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """One marker dir drives the base flow; the smoke targets the root.
 
@@ -171,7 +169,7 @@ class FlextInfraGatesDirenv(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Activate the workspace environment for one no-op command.
@@ -188,12 +186,12 @@ class FlextInfraGatesDirenv(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Pass only on a zero-exit activation.
 
         Returns:
-            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
         """
         _ = project_dir, ctx

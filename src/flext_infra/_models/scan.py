@@ -14,14 +14,13 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, p
+from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsCodemod,
     FlextInfraModelsMixins,
-    FlextInfraModelsRefactorGrep,
 )
 
 
@@ -65,7 +64,12 @@ class FlextInfraModelsScan:
 
         file_path: Annotated[Path, m.Field(description="Path to the scanned file")]
         violations: Annotated[
-            Sequence[FlextInfraModelsScan.ScanViolation],
+            Sequence[
+                Annotated[
+                    p.Infra.ScanViolation,
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ScanViolation),
+                ]
+            ],
             m.Field(description="Violations found in the file"),
         ] = m.Field(default_factory=tuple)
         detector_name: Annotated[
@@ -145,7 +149,10 @@ class FlextInfraModelsScan:
             m.Field(description="Writable authority for the finding source"),
         ] = "authored"
         source_state: Annotated[
-            m.Cli.AtomicFileState | None,
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ]
+            | None,
             m.Field(
                 exclude=True,
                 description="Live source snapshot; evidence stores its input once",
@@ -168,11 +175,15 @@ class FlextInfraModelsScan:
             c.Infra.ModScanFindingClass,
             m.Field(description="Rule mutability and byte-change classification"),
         ]
-        replacement_offsets: FlextInfraModelsScan.ModReplacementOffsets | None = (
-            m.Field(
-                default=None,
-                description="Native byte span for the proposed replacement",
-            )
+        replacement_offsets: (
+            Annotated[
+                p.Infra.ModReplacementOffsets,
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModReplacementOffsets),
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            description="Native byte span for the proposed replacement",
         )
 
     class ModScanFinding(ModOccurrence):
@@ -187,11 +198,11 @@ class FlextInfraModelsScan:
             default=c.Infra.ModFindingOrigin.AST_GREP,
             description="Syntax scan or owned inventory admission",
         )
-        native_record: FlextInfraModelsScan.ModNativeRecord = m.Field(
+        native_record: t.Port[p.Infra.ModNativeRecord] = m.Field(
             description="Authenticated range and digest of the complete finding record"
         )
         native_receipt: Annotated[
-            m.Cli.AtomicFileReceipt | None,
+            t.Port[p.Cli.AtomicFileReceipt] | None,
             m.Field(
                 exclude=True, description="Shared native artifact; persisted by index"
             ),
@@ -205,7 +216,13 @@ class FlextInfraModelsScan:
             m.Field(description="Physical scan roots for logical catalog projects"),
         ] = None
         inventory: Annotated[
-            Mapping[Path, m.Cli.AtomicFileState],
+            Mapping[
+                Path,
+                Annotated[
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
+                ],
+            ],
             m.Field(description="Exact sources captured before the native scan"),
         ]
         repository_roots: Annotated[
@@ -213,7 +230,20 @@ class FlextInfraModelsScan:
             m.Field(description="Governed roots in nearest-owner precedence"),
         ]
         authenticated: Annotated[
-            MutableMapping[str, t.Port[p.Result[tuple[Path, m.Cli.AtomicFileState]]]],
+            MutableMapping[
+                str,
+                t.Port[
+                    p.Result[
+                        tuple[
+                            Path,
+                            Annotated[
+                                p.Cli.AtomicFileState,
+                                t.schema_for_model(lambda: m.Cli.AtomicFileState),
+                            ],
+                        ]
+                    ]
+                ],
+            ],
             m.Field(description="One authentication per file"),
         ] = m.Field(default_factory=dict)
         repositories: Annotated[
@@ -238,7 +268,7 @@ class FlextInfraModelsScan:
     class ModScanCounts[FindingT: ModOccurrence](m.ArbitraryTypesModel):
         """Authenticated findings are the sole source of serialized scan counts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         entries: Annotated[
             tuple[FindingT, ...],
@@ -307,13 +337,13 @@ class FlextInfraModelsScan:
             default=None,
             description="Explicit original source selection, when supplied",
         )
-        rule_plan: FlextInfraModelsRefactorGrep.CodemodRulePlan | None = m.Field(
+        rule_plan: t.Port[p.Infra.CodemodRulePlan] | None = m.Field(
             default=None, description="Actual rule plan consumed by the native scan"
         )
-        catalog_states: tuple[m.Cli.AtomicFileState, ...] | None = m.Field(
+        catalog_states: tuple[t.Port[p.Cli.AtomicFileState], ...] | None = m.Field(
             default=None, description="Original rule and configuration input snapshots"
         )
-        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             description="Complete authenticated native output inventory"
         )
 
@@ -369,7 +399,10 @@ class FlextInfraModelsScan:
         """Outcome of one joint mod iteration over the current source state."""
 
         report: Annotated[
-            FlextInfraModelsScan.ModScanReport,
+            Annotated[
+                p.Infra.ModScanReport,
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanReport),
+            ],
             m.Field(description="Scan of the post-iteration sources"),
         ]
         phase_states: Annotated[
@@ -381,7 +414,11 @@ class FlextInfraModelsScan:
             m.Field(description="Captured inputs another actor changed on disk"),
         ] = ()
         quarantined: Annotated[
-            FlextInfraModelsScan.ModModuleQuarantine | None,
+            Annotated[
+                p.Infra.ModModuleQuarantine,
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModModuleQuarantine),
+            ]
+            | None,
             m.Field(description="Module whose attributed failure voided the plan"),
         ] = None
 
@@ -468,14 +505,20 @@ class FlextInfraModelsScan:
             m.Field(description="Files containing findings"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsScan.ModTextFinding, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ModTextFinding,
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ModTextFinding),
+                ],
+                ...,
+            ],
             m.Field(description="Every validated text finding in stable order"),
         ]
 
     class ModScanEvidence(ModScanCounts[ModScanFindingReference]):
         """Complete replace-on-run evidence for one public mod scan."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         schema_version: Annotated[
             int,
@@ -490,7 +533,7 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
-        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
+        native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             min_length=1,
             description=(
                 "Durable native artifacts stored once for all occurrence references"
@@ -581,7 +624,10 @@ class FlextInfraModelsScan:
         path: Annotated[Path, m.Field(description="Published evidence destination")]
         sha256: Annotated[t.NonEmptyStr, m.Field(description="Published byte digest")]
         evidence: Annotated[
-            FlextInfraModelsScan.ModScanEvidence,
+            Annotated[
+                p.Infra.ModScanEvidence,
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidence),
+            ],
             m.Field(description="Exact structured evidence that was published"),
         ]
 

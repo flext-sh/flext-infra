@@ -56,8 +56,8 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def project_notice_identity(
         project_root: Path,
-        declared: m.Infra.ProjectSpec | None,
-        scaffold: m.Infra.ScaffoldProjectSpec,
+        declared: p.Infra.ProjectSpec | None,
+        scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> p.Result[tuple[str, str, int]]:
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         *,
         module: Path | None = None,
         source_project: p.Infra.RopeProject | None = None,
-        declaration_inputs: m.Infra.RepositoryDeclarationInputs | None = None,
+        declaration_inputs: p.Infra.RepositoryDeclarationInputs | None = None,
     ) -> str:
         """Render the copyright notice of the project that owns ``pkg_dir``.
 
@@ -1477,7 +1477,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _line_wrap_cuts(
         text: str,
-        literal: m.Infra.LineWrapLiteral,
+        literal: p.Infra.LineWrapLiteral,
         column: int,
         limit: int,
     ) -> Sequence[int]:
@@ -1525,7 +1525,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
     @staticmethod
     def _line_wrap_pieces(
         text: str,
-        literal: m.Infra.LineWrapLiteral,
+        literal: p.Infra.LineWrapLiteral,
         cuts: Sequence[int],
     ) -> Sequence[str]:
         """Split one literal at the given offsets into closed literals.
@@ -1548,7 +1548,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         cls,
         tokens: Sequence[tokenize.TokenInfo],
         number: int,
-    ) -> Sequence[m.Infra.LineWrapLiteral]:
+    ) -> Sequence[p.Infra.LineWrapLiteral]:
         """Return each single-quoted single-line string literal of one line.
 
         Returns:
@@ -1556,7 +1556,7 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
 
         """
         depths = cls._line_wrap_bracket_depths(tokens, number)
-        literals: list[m.Infra.LineWrapLiteral] = []
+        literals: list[p.Infra.LineWrapLiteral] = []
         for start, end, head in cls._line_wrap_spans(tokens, number):
             body = head.lstrip("rRbBuUfFtT")
             quote = body[:1]

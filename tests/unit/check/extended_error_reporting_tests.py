@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.__version__ import FlextInfraVersion
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -105,10 +103,10 @@ class TestsFlextInfraGateErrorReporting:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_workspace_checker_emits_ruff_stderr_without_findings(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A native formatter error retains its blocking diagnostic and receipt."""
         project_dir = u.Tests.mk_project(
@@ -152,10 +150,10 @@ class TestsFlextInfraGateErrorReporting:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_workspace_security_error_publishes_verbatim_receipt(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Native source excerpts stay in the receipt while issues remain public."""
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -220,7 +218,7 @@ class TestsFlextInfraGateErrorReporting:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_workspace_preserves_unowned_receipt_destination(
         tmp_path: Path,
     ) -> None:
@@ -258,10 +256,10 @@ class TestsFlextInfraGateErrorReporting:
         tm.ok(blocked_receipt.is_dir())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_workspace_checker_emits_mypy_plugin_traceback(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Mypy's real plugin loader failure survives structured-output parsing."""
         project_dir = u.Tests.mk_project(
@@ -309,7 +307,7 @@ class TestsFlextInfraGateErrorReporting:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("readme", "config_text", "expected"),
         [
             ("# Project\n", "[broken\n", [f"{c.Infra.RUMDL} exited with code"]),
@@ -318,7 +316,7 @@ class TestsFlextInfraGateErrorReporting:
     )
     def test_workspace_checker_emits_real_markdown_failure(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         readme: str,
         config_text: str,
         expected: Sequence[str],

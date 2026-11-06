@@ -11,8 +11,6 @@ import tarfile
 import zipfile
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli, config
 from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -217,7 +215,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             else {}
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_root_data_dir_stays_selected(self, infra_git_repo: Path) -> None:
         """A declared root directory reaches the wheel through native selection."""
         self._prepare_project(
@@ -236,7 +234,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             eq=f"{package_name}/{FIXTURE_DISTRIBUTION_DATA_DIR}",
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_undeclared_governance_config_stays_out_of_archives(
         self,
         infra_git_repo: Path,
@@ -255,7 +253,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             eq=False,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_existing_infrastructure_dir_reaches_both_archives(
         self,
         infra_git_repo: Path,
@@ -280,7 +278,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         )
         tm.ok("infra" in self._sdist_include(infra_git_repo))
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_repository_namespace_retains_its_import_path(
         self,
         infra_git_repo: Path,
@@ -343,7 +341,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             with stream:
                 tm.that(stream.read(), eq=source.read_bytes())
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_undeclared_infrastructure_dir_stays_out_of_archives(
         self,
         infra_git_repo: Path,
@@ -358,7 +356,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.fail("infra" in self._wheel_force_include(infra_git_repo))
         tm.fail("infra" in self._sdist_include(infra_git_repo))
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_in_package_defaults_ship_once_without_forced_package_copy(
         self,
         infra_git_repo: Path,
@@ -435,7 +433,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             )
             tm.fail(f"{package_name}/{c.PYPROJECT_FILENAME}" in names)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_file_keeps_sibling_governance_out(
         self,
         infra_git_repo: Path,
@@ -464,8 +462,8 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         tm.fail(catalog in self._sdist_force_include(infra_git_repo))
         tm.fail("config" in self._sdist_include(infra_git_repo))
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "declarations",
         [
             ("../outside",),
@@ -484,11 +482,11 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             packaged_data_paths=declarations,
         )
         before = (infra_git_repo / c.PYPROJECT_FILENAME).read_bytes()
-        with pytest.raises(ValueError, match="packaged data"):
+        with u.Tests.raises(ValueError, match="packaged data"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_missing_data_fails_before_effects(self, infra_git_repo: Path) -> None:
         """A missing declared file cannot silently disappear from distributions."""
         self._prepare_project(
@@ -497,11 +495,11 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             packaged_data_paths=("absent/catalog.yaml",),
         )
         before = (infra_git_repo / c.PYPROJECT_FILENAME).read_bytes()
-        with pytest.raises(FileNotFoundError, match="packaged data"):
+        with u.Tests.raises(FileNotFoundError, match="packaged data"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_collision_fails_before_effects(
         self,
         infra_git_repo: Path,
@@ -513,12 +511,12 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             packaged_data_paths=("config",),
         )
         before = (infra_git_repo / c.PYPROJECT_FILENAME).read_bytes()
-        with pytest.raises(ValueError, match="collides"):
+        with u.Tests.raises(ValueError, match="collides"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "link_kind",
         ["external", "transitive", "cycle", "dangling"],
     )
@@ -549,11 +547,11 @@ class TestsFlextInfraCodegenPackagedDataWheel:
         else:
             (data / "external").symlink_to(external)
         before = (infra_git_repo / c.PYPROJECT_FILENAME).read_bytes()
-        with pytest.raises((ValueError, FileNotFoundError)):
+        with u.Tests.raises((ValueError, FileNotFoundError)):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(), eq=before)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_real_archives_preserve_data_selection(self, infra_git_repo: Path) -> None:
         """Direct wheel, sdist and rebuilt wheel carry the same selected bytes."""
         catalog = "config/deployment.yaml"
@@ -664,7 +662,7 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             tm.fail(ignored in members)
             tm.fail("config/workspace.yaml" in members)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_scaffold_validates_data_against_planned_files(
         self,
         tmp_path: Path,

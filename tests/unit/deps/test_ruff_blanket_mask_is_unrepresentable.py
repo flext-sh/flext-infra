@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from flext_infra import config, m, t
-from tests import c, tm, u
+from flext_infra import config
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
     """Named exemptions and blanket masks are equally unrepresentable."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field",
         ["authorized-exceptions", "ignore", "per-file-ignores"],
     )
@@ -29,7 +27,7 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             exclude_computed_fields=True,
         )
         payload[field] = []
-        with pytest.raises(m.ValidationError, match=field):
+        with u.Tests.raises(m.ValidationError, match=field):
             m.Infra.RuffLintConfig.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
 
     @staticmethod
@@ -42,11 +40,11 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             exclude_computed_fields=True,
         )
         payload["informative-rules"] = list[t.JsonValue]()
-        with pytest.raises(m.ValidationError, match="informative-rules"):
+        with u.Tests.raises(m.ValidationError, match="informative-rules"):
             m.Infra.RuffConfig.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("self_owned", [False, True])
+    @c.Tests.MARK.parametrize("self_owned", [False, True])
     def test_rule_owners_reject_unknown_or_self_owned_gates(
         *, self_owned: bool
     ) -> None:
@@ -61,7 +59,7 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             if self_owned
             else ",".join(sorted(c.Infra.ALLOWED_GATES)),
         }
-        with pytest.raises(m.ValidationError, match="distinct registered owners"):
+        with u.Tests.raises(m.ValidationError, match="distinct registered owners"):
             m.Infra.RuffLintConfig.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
 
     @staticmethod
@@ -73,5 +71,5 @@ class TestsFlextInfraRuffBlanketMaskIsUnrepresentable:
             exclude_computed_fields=True,
         )
         del payload["rule-owners"]
-        with pytest.raises(m.ValidationError, match="rule-owners"):
+        with u.Tests.raises(m.ValidationError, match="rule-owners"):
             m.Infra.RuffLintConfig.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))

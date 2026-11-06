@@ -1,12 +1,35 @@
 id: config-dict-from-constants
 snapshots:
+  "from flext_cli import c, m, t\nfrom typing import ClassVar\nclass Settings:\n    model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix=\"APP_\")\n":
+    fixed: |
+      from flext_cli import c, m, t
+      from typing import ClassVar
+      class Settings:
+          model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
+    labels:
+    - source: "model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix=\"APP_\")"
+      style: primary
+      start: 78
+      end: 164
+    - source: from flext_cli import c, m, t
+      style: secondary
+      start: 0
+      end: 29
+    - source: |
+        from flext_cli import c, m, t
+        from typing import ClassVar
+        class Settings:
+            model_config: ClassVar[c.SettingsConfigDict] = c.SettingsConfigDict(env_prefix="APP_")
+      style: secondary
+      start: 0
+      end: 165
   "from flext_ldap import m\nfrom typing import ClassVar\nfrom algar_sample import c\nclass C:\n    model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)\n":
     fixed: |
       from flext_ldap import m
       from typing import ClassVar
       from algar_sample import c
       class C:
-          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+          model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
     labels:
     - source: "model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra=\"forbid\", frozen=True)"
       style: primary
@@ -30,7 +53,7 @@ snapshots:
       from sample import c, m, p, t
       from typing import ClassVar
       class D:
-          model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True,
+          model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True,
           extra="forbid",)
     labels:
     - source: |-

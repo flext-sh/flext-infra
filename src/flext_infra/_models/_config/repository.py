@@ -9,15 +9,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from keyword import iskeyword
 from pathlib import Path, PureWindowsPath
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import c, t
-from flext_infra._models._config.beads import FlextInfraModelsConfigBeads
-from flext_infra._models._config.contract import FlextInfraModelsConfigContract
-from flext_infra._models._config.make import FlextInfraModelsConfigMake
-from flext_infra._models._config.templates import FlextInfraModelsConfigTemplates
+from flext_infra import c, p, t
+from flext_infra._models._config import (
+    FlextInfraModelsConfigBeads,
+    FlextInfraModelsConfigContract,
+    FlextInfraModelsConfigMake,
+    FlextInfraModelsConfigTemplates,
+)
 
 
 class FlextInfraModelsConfigRepository:
@@ -48,10 +50,8 @@ class FlextInfraModelsConfigRepository:
             raise ValueError(msg)
         return value
 
-    class ProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Deterministic project metadata required to materialize a new tree."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid")
+    class ProjectIdentitySpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Source, naming, namespace and authorship identity of a scaffolded project."""
 
         flext_source: Annotated[
             t.NonEmptyStr | None,
@@ -109,6 +109,12 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Author display name"),
         ]
         author_email: Annotated[t.NonEmptyStr, m.Field(description="Author email")]
+
+    class ProjectSpec(ProjectIdentitySpec):
+        """Deterministic project metadata required to materialize a new tree."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
@@ -199,6 +205,24 @@ class FlextInfraModelsConfigRepository:
                 ),
             ),
         ] = True
+        console_scripts: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.ConsoleScriptSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                default=(),
+                description=(
+                    "Console scripts this repository ships beside the default "
+                    "cli script, each rendered into [project.scripts]."
+                ),
+            ),
+        ] = ()
         runtime_dependency_overlay: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -286,13 +310,11 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Optional provider base URL override"),
         ] = None
 
-    class RepositoryRef(FlextInfraModelsConfigContract.ConfigContract):
-        """One declared repository and its immutable Git origin contract."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+    class RepositoryRefIdentity(FlextInfraModelsConfigContract.ConfigContract):
+        """Identity, location, topology and governance kind of a repository."""
 
         inputs: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True, description="Original identity and policy observations"
             ),
@@ -345,6 +367,12 @@ class FlextInfraModelsConfigRepository:
                 ),
             ),
         ]
+
+    class RepositoryRef(RepositoryRefIdentity):
+        """One declared repository and its immutable Git origin contract."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
         codegen: Annotated[
             c.Infra.CodegenKind,
             m.Field(description="Repository code-generation policy"),
@@ -401,7 +429,13 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = None
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Additional public Make verbs this repository dispatches "
@@ -410,7 +444,13 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraModelsConfigRepository.ScriptDispatchSpec | None,
+            Annotated[
+                p.Infra.ScriptDispatchSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.ScriptDispatchSpec
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Opt-in script command-framework routing for non-builtin "
@@ -418,14 +458,63 @@ class FlextInfraModelsConfigRepository:
                 ),
             ),
         ] = None
+        verb_groups: Annotated[
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbGroupSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
+                    ),
+                ],
+                ...,
+            ],
+            m.Field(
+                description=(
+                    "Ordered `make help` sections; empty keeps one flat listing "
+                    "and then no verb may name a section"
+                ),
+            ),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _require_declared_verb_groups(self) -> Self:
+            """Bind every repository verb to exactly one declared section.
+
+            Returns:
+                The validated repository reference.
+
+            Raises:
+                ValueError: On a duplicate section, a verb naming an undeclared
+                    section, or a verb without a section while sections exist.
+
+            """
+            names = [group.name for group in self.verb_groups]
+            if len(names) != len(set(names)):
+                msg = f"{self.name}: duplicate verb_groups: {names}"
+                raise ValueError(msg)
+            for verb in self.extra_verbs:
+                if (verb.group is None) != (not names) or (
+                    verb.group is not None and verb.group not in names
+                ):
+                    msg = (
+                        f"{self.name}: verb {verb.name} group={verb.group!r} "
+                        f"must name one of the declared verb_groups {names}"
+                    )
+                    raise ValueError(msg)
+            return self
 
     class RepositoryConformTarget(FlextInfraModelsConfigContract.ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            FlextInfraModelsConfigRepository.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.RepositoryRef
+                ),
+            ],
             m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
@@ -439,11 +528,17 @@ class FlextInfraModelsConfigRepository:
             ),
         ]
         vscode_spec: Annotated[
-            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
+            Annotated[
+                p.Infra.CodegenVscodeSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
+                ),
+            ]
+            | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
-            tuple[m.Cli.AtomicFileState, ...],
+            tuple[t.Port[p.Cli.AtomicFileState], ...],
             m.Field(
                 exclude=True, description="Exact consulted editor declaration inputs"
             ),
@@ -453,11 +548,23 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
+                ),
+            ]
+            | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         project: Annotated[
-            FlextInfraModelsConfigRepository.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigRepository.ProjectSpec
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Declared project metadata of the manifest, when the "
@@ -495,6 +602,24 @@ class FlextInfraModelsConfigRepository:
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+
+    class ConsoleScriptSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """One declared console script entry point of a repository."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                description="Console script name in [project.scripts]",
+            ),
+        ]
+        target: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Za-z_][\w.]*:[A-Za-z_][\w.]*$",
+                description="Entry point reference module:attribute",
+            ),
+        ]
 
     class ScriptDispatchSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""

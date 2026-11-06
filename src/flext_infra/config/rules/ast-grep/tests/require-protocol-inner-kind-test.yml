@@ -10,7 +10,7 @@ valid:
             class Base(ABC):
                 pass
 
-            class Issue(p.Model, Protocol):
+            class Issue(p.BaseModel, Protocol):
                 code: str
 invalid:
   - |

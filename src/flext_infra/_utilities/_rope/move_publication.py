@@ -33,7 +33,8 @@ class FlextInfraUtilitiesRopeMovePublication:
         """Retarget proven installer literals without rebuilding their module.
 
         Rope move owns executable imports. Native binding metadata selects only
-        the canonical installer and MappingProxyType wrapper. Literal changes
+        the canonical installer and optional native MappingProxyType wrapper.
+        Literal changes
         preserve keys, attributes, comments and all unrelated source bytes.
 
         Returns:
@@ -120,34 +121,34 @@ class FlextInfraUtilitiesRopeMovePublication:
     def _mapping_entries(
         mapping: p.Infra.RopeSourceStringMapping,
     ) -> p.Result[tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]]:
-        """Admit only literal mappings wrapped by the native MappingProxyType.
+        """Read literals, optionally enclosed by the native MappingProxyType.
 
         Returns:
             The literal mapping entries, or the typed admission refusal.
 
         """
+        result_type = r[
+            tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
+        ]
         entries = mapping.entries
         if entries is None:
-            return r[
-                tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
-            ].fail("Lazy publication move requires a literal mapping")
-        if len(mapping.wrapper_bindings) != 1:
-            return r[
-                tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
-            ].fail("Lazy publication move requires MappingProxyType")
-        wrapper = mapping.wrapper_bindings[0]
+            return result_type.fail("Lazy publication move requires a literal mapping")
+        wrappers = mapping.wrapper_bindings
+        if not wrappers:
+            return result_type.ok(entries)
+        if len(wrappers) != 1:
+            return result_type.fail("Lazy publication move requires one native wrapper")
+        wrapper = wrappers[0]
         if not (
             FlextInfraUtilitiesRopeRuntimeTypes.imported_name(wrapper)
             and wrapper.imported_name == "MappingProxyType"
             and wrapper.imported_module.module_name == "types"
             and wrapper.imported_module.level == 0
         ):
-            return r[
-                tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
-            ].fail("Lazy publication move requires the native MappingProxyType")
-        return r[
-            tuple[tuple[str, tuple[str, ...], tuple[tuple[int, int], ...]], ...]
-        ].ok(entries)
+            return result_type.fail(
+                "Lazy publication move requires the native MappingProxyType"
+            )
+        return result_type.ok(entries)
 
     @classmethod
     def _mapping_edits(

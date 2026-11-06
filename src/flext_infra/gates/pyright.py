@@ -10,13 +10,11 @@ import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraGatesPyright(FlextInfraGates):
@@ -26,13 +24,15 @@ class FlextInfraGatesPyright(FlextInfraGates):
     gate_name: ClassVar[str] = "Pyright"
     can_fix: ClassVar[bool] = False
     requires_python_targets: ClassVar[bool] = True
-    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
+    # The umbrella run analyzes the whole workspace (measured 744s on
+    # 2026-11-05); the member-scale TIMEOUT_LONG bound killed it as interrupted.
+    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_UMBRELLA
 
     @override
     def _get_check_dirs(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> Sequence[str]:
         """Use the project pyright config as SSOT when it exists.
 
@@ -48,7 +48,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Run Pyright on the workspace interpreter with its JSON report.
@@ -93,7 +93,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Grade Pyright's JSON report together with its own summary counts.
 
@@ -106,7 +106,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
             return False, (
                 self._command_error_issue(result, c.Infra.PYRIGHT, str(project_dir)),
             )
-        validated: p.Result[m.Infra.PyrightReport] = u.validate_value(
+        validated: p.Result[p.Infra.PyrightReport] = u.validate_value(
             m.Infra.PyrightReport,
             result.stdout,
             from_json=True,

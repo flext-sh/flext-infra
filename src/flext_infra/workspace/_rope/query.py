@@ -17,8 +17,16 @@ from typing import ClassVar
 from flext_infra import c, m, p, s, t, u
 
 
-class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
+class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
+
+    semantic_rename_planner: t.Port[p.Infra.NativeSemanticRenamePlanner] | None = (
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Application-owned native rename planner",
+        )
+    )
 
     _rope_repository_root: Path = m.PrivateAttr()
     _rope_project: t.Infra.RopeProject | None = m.PrivateAttr(
@@ -32,7 +40,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
     _view_project: t.Infra.RopeProject | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
-    _workspace_index: m.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
+    _workspace_index: p.Infra.RopeWorkspaceIndex | None = m.PrivateAttr(
         default_factory=lambda: None,
     )
     _resource_cache: MutableMapping[str, t.Infra.RopeFile | None] = m.PrivateAttr(
@@ -58,7 +66,13 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
 
     @property
     def snapshot(self) -> p.Infra.WorkspaceSnapshot:
-        """The run snapshot: the injected one, or one this session opens once."""
+        """Retain structural inventory with the repository's native source owners.
+
+        An injected engine keeps its election and lifetime. Otherwise the
+        repository root elects sources within the enclosing structural root;
+        sibling inventory members remain dependency lookups. Failed snapshot
+        initialization closes this session's entered resources.
+        """
         snapshot = self._snapshot
         if snapshot is None:
             root = (
@@ -66,26 +80,34 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
                 if self._rope_project is None
                 else Path(self._rope_project.root.real_path)
             )
-            scope = ExitStack()
-            snapshot = scope.enter_context(
-                u.Infra.workspace_snapshot(
-                    root,
-                    tuple(
-                        dict.fromkeys((
-                            root,
-                            *(
-                                member
-                                for member in u.Infra.discover_rope_project_roots(
-                                    root, source_project=self._rope_project
-                                )
-                                if member.is_relative_to(root)
-                            ),
-                        ))
+            with ExitStack() as scope:
+                source_project: p.Infra.RopeProject | None = self._rope_project
+                if source_project is None:
+                    source_project = scope.enter_context(
+                        u.Infra.workspace_overlay_project(
+                            root, (self.repository_root.resolve(),)
+                        )
+                    )
+                snapshot = scope.enter_context(
+                    u.Infra.workspace_snapshot(
+                        root,
+                        tuple(
+                            dict.fromkeys((
+                                root,
+                                *(
+                                    member
+                                    for member in u.Infra.discover_rope_project_roots(
+                                        root, source_project=self._rope_project
+                                    )
+                                    if member.is_relative_to(root)
+                                ),
+                            ))
+                        ),
+                        source_project=source_project,
                     ),
                 )
-            )
-            self._snapshot_scope = scope
-            self._snapshot = snapshot
+                self._snapshot_scope = scope.pop_all()
+                self._snapshot = snapshot
         return snapshot
 
     @property
@@ -102,7 +124,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         return rope_project
 
     @property
-    def workspace_index(self) -> m.Infra.RopeWorkspaceIndex:
+    def workspace_index(self) -> p.Infra.RopeWorkspaceIndex:
         """Cached workspace index for the shared Rope project."""
         workspace_index = self._workspace_index
         if workspace_index is None:
@@ -165,7 +187,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
             self._resource_for(file_path),
         )
 
-    def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
+    def module(self, file_path: Path) -> p.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path.
 
         Returns:
@@ -181,12 +203,12 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         )
         if raw is None:
             return None
-        validated: m.Infra.RopeModuleIndexEntry = (
+        validated: p.Infra.RopeModuleIndexEntry = (
             m.Infra.RopeModuleIndexEntry.model_validate(raw)
         )
         return validated
 
-    def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
+    def package(self, package_dir: Path) -> p.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory.
 
         Returns:
@@ -202,7 +224,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         )
         if raw is None:
             return None
-        validated: m.Infra.RopePackageIndexEntry = (
+        validated: p.Infra.RopePackageIndexEntry = (
             m.Infra.RopePackageIndexEntry.model_validate(raw)
         )
         return validated
@@ -211,7 +233,7 @@ class FlextInfraWorkspaceRopeQuery(s[m.Infra.RopeWorkspaceSession]):
         self,
         *,
         project_names: Sequence[str] | None = None,
-    ) -> Sequence[m.Infra.RopeModuleIndexEntry]:
+    ) -> Sequence[p.Infra.RopeModuleIndexEntry]:
         """Return path-sorted module entries, optionally only the named projects'.
 
         Returns:

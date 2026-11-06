@@ -3,22 +3,22 @@ id: test-assert-tm-binding-required
 # matchers exists (utils/tm-imported-from-flext.yml): there the tm rewrites
 # repair it instead.
 valid:
-  - tm.that(condition, truth=True)
-  - |
-    def consume(value: str | None) -> str:
-        assert value is not None
-        return value.upper()
-  - |
-    def consume(value: str | int) -> str:
-        assert isinstance(value, str)
-        return value.upper()
-  - assert value is None
-  - assert observed == expected, details()
-  - |
-    from tests import tm
-    assert left == right
+- tm.that(condition, truth=True)
+- |
+  def consume(value: str | None) -> str:
+      assert value is not None
+      return value.upper()
+- |
+  def consume(value: str | int) -> str:
+      assert isinstance(value, str)
+      return value.upper()
+- assert value is None
+- assert observed == expected, details()
+- |
+  from tests import p, tm
+  assert left == right
 invalid:
-  - assert condition
-  - |
-    from other_library import tm
-    assert left == right
+- assert condition
+- |
+  from other_library import tm
+  assert left == right

@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import ast
 import re
+import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_cli import u
 from packaging.utils import canonicalize_name
 
 from flext_infra import FlextInfraConfig, c, config, m, p, t
@@ -30,6 +30,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesImportLaw,
+    FlextInfraUtilitiesPytest,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import (
@@ -43,10 +44,8 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
+    FlextInfraUtilitiesRopeRuntimeTypes,
     FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
-from flext_infra._utilities._rope._analysis import (
-    FlextInfraUtilitiesRopeAnalysisExports,
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
@@ -94,6 +93,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(
             project.absolute()
         )
+        if not own:
+            return {}
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
                 tuple(aliases[own])
@@ -105,7 +106,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     def codemod_imported_export_utilities(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[str, t.JsonMapping]:
-        """Package export: an imported name its import's root package declares.
+        """Package exports: what an import of a package's members may rebind to.
 
         Per-repository resolution law: a package's declared exports come from
         this project's own indexed tree only. A reached package whose tree
@@ -113,50 +114,128 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         export fact; installed environments are never consulted, where
         divergent member libraries would leak into the rule.
 
+        The import law (docs guide "Imports and family composition"): a
+        public name is imported from a package whose generated initializer
+        exports it. ``owning-package-export`` pairs each name with the exact
+        package whose ``__all__`` declares it; ``package-published-import``
+        marks the module path of an import statement that its parent package
+        publishes entirely, the one fact the deep-import rewrite reads.
+
         Returns:
-            The ``package-export`` and ``owning-package-export`` utility rules
-            of the project.
+            The ``package-published-import`` and ``owning-package-export``
+            utility rules of the project.
 
         """
-        root = project.absolute().resolve()
-        initializers = {
-            path.parts[path.parts.index(c.Infra.DEFAULT_SRC_DIR) + 1]: path
-            for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
-                snapshot, root
-            )
-            if path.name == c.Infra.INIT_PY and c.Infra.DEFAULT_SRC_DIR in path.parts
-        }
-        exports: dict[str, frozenset[str]] = {}
-        for package in FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
+        facts = FlextInfraUtilitiesCodemodNativePackage.codemod_package_export_facts(
             snapshot, project
-        ):
-            initializer = initializers.get(package)
-            if initializer is None:
-                continue
-            exports[package] = frozenset(
-                FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
-                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                        snapshot.engine,
-                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
-                            snapshot.engine, initializer
-                        ),
-                    ),
-                )
-            )
-        # The import law (docs guide "Imports and family composition"): a
-        # public name is imported from a package whose generated initializer
-        # exports its declaring module, so `owning-package-export` pairs each
-        # name with the exact package whose `__all__` declares it.
-        owned = FlextInfraUtilitiesCodemodNativePackage.codemod_package_export_facts(
-            snapshot, project
-        ).exports
+        )
         return {
-            c.Infra.CODEMOD_PACKAGE_EXPORT_UTILITY: cls._fact_imported_from(exports),
+            c.Infra.CODEMOD_PACKAGE_PUBLISHED_IMPORT_UTILITY: (
+                cls._fact_package_published_import(facts)
+            ),
             c.Infra.CODEMOD_OWNING_PACKAGE_EXPORT_UTILITY: cls._fact_imported_from(
-                {package: frozenset(names) for package, names in owned.items()},
+                {package: frozenset(names) for package, names in facts.exports.items()},
                 exact=True,
             ),
         }
+
+    @classmethod
+    def _fact_package_published_import(
+        cls, facts: p.Infra.CodemodPackageExportsFacts
+    ) -> t.JsonMapping:
+        """Match the module path a parent package publishes the whole import of.
+
+        One branch per package that has an initializer: it matches the module
+        path of a ``from <package>.<module> import ...`` statement when every
+        imported name is in the package's published ``__all__`` and no sibling
+        import in the same file from another module of that package imports
+        an unpublished name. Both conditions are all-or-nothing, so the whole
+        header of a package's members moves together or stays untouched. A
+        package without an initializer publishes nothing and a child that is
+        itself a package is a legal import target, so neither is a branch.
+
+        Returns:
+            A native rule over the module-path ``dotted_name`` node.
+
+        """
+        branches: list[t.JsonValue] = []
+        for package, children in sorted(facts.modules.items()):
+            published = tuple(
+                name for name in facts.exports.get(package, ()) if name.isidentifier()
+            )
+            modules = tuple(
+                f"{package}.{leaf}"
+                for leaf in children
+                if f"{package}.{leaf}" not in facts.exports
+            )
+            if not published or not modules:
+                continue
+            unpublished: t.JsonDict = {
+                "any": [
+                    {
+                        "all": [
+                            {"kind": "dotted_name"},
+                            {
+                                "not": {
+                                    "inside": {
+                                        "kind": "import_from_statement",
+                                        "field": "module_name",
+                                    }
+                                }
+                            },
+                            {"not": cls._fact_exact_names(published)},
+                        ]
+                    },
+                    {
+                        "all": [
+                            {"kind": "aliased_import"},
+                            {
+                                "not": {
+                                    "has": {
+                                        "field": "name",
+                                        **cls._fact_exact_names(published),
+                                    }
+                                }
+                            },
+                        ]
+                    },
+                    {"kind": "wildcard_import"},
+                ]
+            }
+            branches.append({
+                **cls._fact_exact_names(modules),
+                "inside": {
+                    "kind": "import_from_statement",
+                    "field": "module_name",
+                    "all": [
+                        {"not": {"has": unpublished}},
+                        {
+                            "inside": {
+                                "kind": "module",
+                                "stopBy": "end",
+                                "not": {
+                                    "has": {
+                                        "stopBy": "end",
+                                        "kind": "import_from_statement",
+                                        "all": [
+                                            {
+                                                "has": {
+                                                    "field": "module_name",
+                                                    **cls._fact_exact_names(modules),
+                                                }
+                                            },
+                                            {"has": unpublished},
+                                        ],
+                                    }
+                                },
+                            }
+                        },
+                    ],
+                },
+            })
+        if not branches:
+            return {"regex": c.Infra.CODEMOD_NEVER_MATCH_REGEX}
+        return {"kind": "dotted_name", "any": branches}
 
     @classmethod
     def codemod_compose_module_utilities(
@@ -304,6 +383,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         root = project.resolve()
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
+            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+                return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
         order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
@@ -431,7 +512,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
     def _class_stem_scope(
         path: Path,
         root: Path,
-        layout: m.Infra.RopeProjectLayout,
+        layout: p.Infra.RopeProjectLayout,
         namespaces: Sequence[str],
     ) -> str:
         """Name the class-stem group of one module.
@@ -595,47 +676,44 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             for module, (path, _text) in sources.items()
         }
         scopes: dict[str, set[str]] = {}
-        with (
-            FlextInfraUtilitiesRopeCore.open_project(root) as rope,
-            rope.frozen_layout(),
+        rope = snapshot.engine
+        reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
+            rope,
+            sources,
+            tuple(
+                m.Infra.SourceClassReference(
+                    target=modules[relative],
+                    attributes=tuple(qualified.split(".")),
+                    qualified_base=f"{modules[relative]}.{qualified}",
+                )
+                for relative, qualified, _selector in questions
+            ),
+            tuple(
+                m.Infra.SourceClassReference(
+                    target=identity.rpartition(".")[0],
+                    attributes=(identity.rpartition(".")[2],),
+                    qualified_base=identity,
+                )
+                for identity in (
+                    c.Infra.PYDANTIC_MODEL_IDENTITY,
+                    c.Infra.PYDANTIC_SETTINGS_IDENTITY,
+                )
+            ),
+        )
+        for (relative, qualified, selector), anchors in zip(
+            questions, reached, strict=True
         ):
-            reached = FlextInfraUtilitiesRopeSourceBasesRuntime.source_class_reaches(
-                rope,
-                sources,
-                tuple(
-                    m.Infra.SourceClassReference(
-                        target=modules[relative],
-                        attributes=tuple(qualified.split(".")),
-                        qualified_base=f"{modules[relative]}.{qualified}",
-                    )
-                    for relative, qualified, _selector in questions
-                ),
-                tuple(
-                    m.Infra.SourceClassReference(
-                        target=identity.rpartition(".")[0],
-                        attributes=(identity.rpartition(".")[2],),
-                        qualified_base=identity,
-                    )
-                    for identity in (
-                        c.Infra.PYDANTIC_MODEL_IDENTITY,
-                        c.Infra.PYDANTIC_SETTINGS_IDENTITY,
-                    )
-                ),
-            )
-            for (relative, qualified, selector), anchors in zip(
-                questions, reached, strict=True
+            if c.Infra.PYDANTIC_MODEL_IDENTITY not in anchors:
+                continue
+            if selector.startswith(c.Infra.CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX) and (
+                c.Infra.PYDANTIC_SETTINGS_IDENTITY in anchors
+                or FlextInfraUtilitiesDeclarationPayload.payload_body(
+                    rope, root / relative, qualified
+                )
+                is None
             ):
-                if c.Infra.PYDANTIC_MODEL_IDENTITY not in anchors:
-                    continue
-                if selector.startswith(c.Infra.CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX) and (
-                    c.Infra.PYDANTIC_SETTINGS_IDENTITY in anchors
-                    or FlextInfraUtilitiesDeclarationPayload.payload_body(
-                        rope, root / relative, qualified
-                    )
-                    is None
-                ):
-                    continue
-                scopes.setdefault(selector, set()).add(relative)
+                continue
+            scopes.setdefault(selector, set()).add(relative)
         return {
             selector: tuple(sorted(found)) for selector, found in sorted(scopes.items())
         }
@@ -686,7 +764,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         that library whose runtime object the letter owns, by the facade
         member policy. ``generic-specialization`` matches an alias name the
         ``p`` facade of a reached facade package declares as a specialization
-        of the same-named ``t`` generic.
+        of the same-named ``t`` generic. ``protocol-model-path`` matches a
+        dotted path ``p`` publishes as a protocol and ``m`` as its model twin;
+        ``model-sdk-type-name`` matches a library type name ``t`` owns that
+        ``p`` or ``m`` re-spells.
 
         Returns:
             Every requested utility keyed by its identity.
@@ -695,8 +776,15 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         utilities: dict[str, t.JsonMapping] = {}
         prefix = c.Infra.CODEMOD_LIBRARY_MEMBER_OWNER_UTILITY_PREFIX
         specialization = c.Infra.CODEMOD_GENERIC_SPECIALIZATION_UTILITY
-        # Both request families share one catalog read.
-        references = cls._catalog_references((prefix, specialization))
+        model_path = c.Infra.CODEMOD_PROTOCOL_MODEL_PATH_UTILITY
+        sdk_type = c.Infra.CODEMOD_MODEL_SDK_TYPE_UTILITY
+        # Every request family shares one catalog read.
+        references = cls._catalog_references((
+            prefix,
+            specialization,
+            model_path,
+            sdk_type,
+        ))
         requested: dict[str, list[str]] = {}
         selectors: list[tuple[str, str, str]] = []
         for identity in references:
@@ -712,11 +800,17 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             for library, letters in requested.items()
         }
         for identity, library, letter in selectors:
-            utilities[identity] = cls._fact_exact_names(members[library][letter])
+            utilities[identity] = cls._fact_exact_names(
+                cls._published_members(library, letter, members[library][letter])
+            )
         if any(identity.startswith(specialization) for identity in references):
             utilities[specialization] = cls._fact_exact_names(
                 cls._specialized_aliases(snapshot, project)
             )
+        if model_path in references:
+            utilities[model_path] = cls._fact_protocol_model_paths(snapshot, project)
+        if sdk_type in references:
+            utilities[sdk_type] = cls._fact_model_sdk_type_names(snapshot, project)
         artifact_roots = config.Infra.codegen.exclusions.scenario_data_roots
         alternatives = "|".join(
             r"[/\\.]".join(re.escape(part) for part in Path(root).parts)
@@ -730,6 +824,30 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             )
         }
         return utilities
+
+    @staticmethod
+    def _published_members(
+        library: str, letter: str, classified: t.StrTuple
+    ) -> t.StrTuple:
+        """Keep the classified members that the library's published surface carries.
+
+        The kind classification says which letter would own a member; the
+        letter only publishes what its owner declares. For the function
+        letter, flext-infra's ``u.Infra.<Library>`` surface is that owner, so
+        a function the owner leaves unpublished (its name belongs to another
+        member of the facade) is never a rewrite target. A library or letter
+        without such an owner publishes by classification alone.
+
+        Returns:
+            The classified names the owner publishes, or all when none owns.
+
+        """
+        owner = FlextInfraUtilitiesPytest.Pytest
+        function_letter = config.Infra.tooling.facade_members.owners["function"]
+        if letter != function_letter or library != owner.__name__.lower():
+            return classified
+        published = frozenset(name for name in dir(owner) if not name.startswith("_"))
+        return tuple(name for name in classified if name in published)
 
     @classmethod
     def codemod_implementation_scopes(
@@ -773,6 +891,225 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 )
             )
         return scopes
+
+    @classmethod
+    def _fact_protocol_model_paths(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.JsonMapping:
+        """Match a dotted path ``p`` publishes as a protocol and ``m`` as its model.
+
+        A protocol member is structural and never constructs; the model at the
+        same path in the same facade package is the constructor. The fact is
+        proven per reached facade package from the native source of both
+        letters: a path counts only when no reached package publishes the
+        protocol without a model at that path, so a rewrite never guesses.
+        Both letters spell the same twin, so one fact serves the rewrite toward
+        the model (a construction names ``m``) and toward the protocol (a type
+        position names ``p``).
+
+        Returns:
+            A native ``regex`` rule over the text of a ``p``- or ``m``-rooted
+            dotted path.
+
+        """
+        letters = (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.M)
+        project_source = snapshot.engine
+        resolver_factory = (
+            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
+                project_source,
+                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
+                    project_source
+                ),
+            )
+        )
+        modeled: set[str] = set()
+        unmodeled: set[str] = set()
+        for package in FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
+            snapshot, project
+        ):
+            facades = FlextInfraUtilitiesFacadeMembers.facade_source_classes(
+                package, letters, source_project=project_source
+            )
+            protocols, models = (facades.get(letter) for letter in letters)
+            if protocols is None:
+                continue
+            for path, model, orphan in cls._facade_class_pairs(protocols, models):
+                if orphan or (
+                    model is not None
+                    and (
+                        FlextInfraUtilitiesFacadeMembers.class_kind(
+                            model,
+                            resolver_factory=resolver_factory,
+                            source_project=project_source,
+                        )
+                        is c.Infra.FacadeMemberKind.MODEL
+                    )
+                ):
+                    modeled.add(path)
+                else:
+                    unmodeled.add(path)
+        listed = sorted(modeled - unmodeled)
+        if not listed:
+            return {"regex": c.Infra.CODEMOD_NEVER_MATCH_REGEX}
+        alternatives = "|".join(re.escape(path) for path in listed)
+        roots = "|".join(re.escape(letter) for letter in letters)
+        return {"regex": rf"^(?:{roots})\.(?:{alternatives})$"}
+
+    @classmethod
+    def _fact_model_sdk_type_names(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> t.JsonMapping:
+        """Match a library type name ``t`` owns that ``p`` or ``m`` re-spells.
+
+        The ``t`` family declares each library type once, as an alias of the
+        library object (``type ConfigDict = pydantic.ConfigDict``); a type
+        position reads that alias, never the protocol or model letter that
+        re-publishes the name. A name counts when a reached facade package's
+        ``t`` publishes an alias whose native origin lies in a module that is
+        neither the standard library nor a reached FLEXT facade package, and
+        the same package's ``p`` or ``m`` publishes the same name. An alias of
+        a first-party type, of a union or of a standard-library generic stays
+        with its own twin. The set is read from the native source of the
+        letters, never listed.
+
+        Returns:
+            A native ``regex`` rule over the text of a ``p``- or ``m``-rooted
+            library type name.
+
+        """
+        owner = c.Infra.FacadeFamily.T
+        spellings = (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.M)
+        project_source = snapshot.engine
+        packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages(
+            snapshot, project
+        )
+        first_party = frozenset((
+            *sys.stdlib_module_names,
+            *config.Infra.tooling.lazy_init.stdlib_backports,
+            *packages,
+        ))
+        names: set[str] = set()
+        for package in packages:
+            facades = FlextInfraUtilitiesFacadeMembers.facade_source_classes(
+                package, (owner, *spellings), source_project=project_source
+            )
+            typings = facades.get(owner)
+            if typings is None:
+                continue
+            respelled = {
+                name
+                for letter in spellings
+                if letter in facades
+                for name in FlextInfraUtilitiesFacadeMembers.facade_source_members(
+                    facades[letter], source_project=project_source
+                )
+            }
+            published = FlextInfraUtilitiesFacadeMembers.facade_source_members(
+                typings, source_project=project_source
+            )
+            names.update(
+                name
+                for name, binding in published.items()
+                if name in respelled
+                and cls._library_alias(
+                    binding, source_project=project_source, first_party=first_party
+                )
+            )
+        if not names:
+            return {"regex": c.Infra.CODEMOD_NEVER_MATCH_REGEX}
+        alternatives = "|".join(re.escape(name) for name in sorted(names))
+        roots = "|".join(re.escape(letter) for letter in spellings)
+        return {"regex": rf"^(?:{roots})\.(?:{alternatives})$"}
+
+    @staticmethod
+    def _library_alias(
+        binding: p.Infra.RopePyName,
+        *,
+        source_project: p.Infra.RopeProject,
+        first_party: frozenset[str],
+    ) -> bool:
+        """Prove a ``t`` member aliases one object a library declares.
+
+        Returns:
+            Whether the alias resolves natively to a module outside
+            ``first_party``; a union, a missing alias or an unresolved origin
+            is not a library alias.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        alias = runtime.annotation_alias_definition(binding)
+        if alias is None:
+            return False
+        declaration, scope = alias
+        if isinstance(declaration.value, ast.BinOp):
+            return False
+        origin = runtime.annotation_origin(source_project, declaration.value, scope)
+        if origin is None:
+            return False
+        module, _line = runtime.definition_location(origin)
+        return (
+            module is not None
+            and module.get_name().partition(".")[0] not in first_party
+        )
+
+    @classmethod
+    def _facade_class_pairs(
+        cls,
+        protocols: p.Infra.RopeClassObject,
+        models: p.Infra.RopeClassObject | None,
+    ) -> Sequence[tuple[str, p.Infra.RopeClassObject | None, bool]]:
+        """Pair every nested class of the protocol facade with its model path twin.
+
+        The walk descends the published ``p`` namespaces; the ``m`` class at the
+        same dotted path is resolved segment by segment, absent when any
+        segment is not a class. A public ``m`` class whose name ``p`` does not
+        publish at that level is an orphan path: ``p`` cannot resolve it, so a
+        ``p`` construction there names the ``m`` class.
+
+        Returns:
+            Each dotted class path with its ``m`` class (or ``None``) and
+            whether only ``m`` publishes it.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        pairs: list[tuple[str, p.Infra.RopeClassObject | None, bool]] = []
+        pending: list[
+            tuple[
+                str,
+                p.Infra.RopeClassObject,
+                p.Infra.RopeClassObject | None,
+                frozenset[int],
+            ]
+        ] = [("", protocols, models, frozenset({id(protocols)}))]
+        while pending:
+            prefix, protocol, model, lineage = pending.pop()
+            twins = {} if model is None else model.get_attributes()
+            published = protocol.get_attributes()
+            pairs.extend(
+                (f"{prefix}{name}", None, True)
+                for name, twin in twins.items()
+                if name not in published
+                and not name.startswith("_")
+                and types.abstract_class(twin.get_object())
+            )
+            for name, binding in published.items():
+                nested = binding.get_object()
+                if name.startswith("_") or not types.abstract_class(nested):
+                    continue
+                if id(nested) in lineage:
+                    continue
+                twin = twins.get(name)
+                twin_class = None if twin is None else twin.get_object()
+                path = f"{prefix}{name}"
+                counterpart = twin_class if types.abstract_class(twin_class) else None
+                pairs.append((path, counterpart, False))
+                pending.append((
+                    f"{path}.",
+                    nested,
+                    counterpart,
+                    lineage | {id(nested)},
+                ))
+        return tuple(pairs)
 
     @staticmethod
     def _specialized_aliases(
@@ -846,7 +1183,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
     @staticmethod
     def _infra_catalog() -> tuple[
-        Sequence[m.Infra.CodemodRule],
+        Sequence[p.Infra.CodemodRule],
         Mapping[Path, Sequence[t.JsonMapping]],
     ]:
         """Read the packaged catalog's validated rules and parsed documents.
@@ -871,7 +1208,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        facts: m.Infra.CodemodScopeFacts,
+        facts: p.Infra.CodemodScopeFacts,
     ) -> Mapping[str, t.JsonMapping]:
         """Render every partitioned catalog rule over the project's file groups.
 
@@ -984,6 +1321,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
+            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+                return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
         packages = FlextInfraUtilitiesCodemodNativePackage.codemod_facade_packages
@@ -991,7 +1330,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             package: (
                 frozenset(layout.runtime_aliases)
                 if package == own
-                else frozenset(u.runtime_alias_names(package))
+                else FlextInfraUtilitiesCodemodNativePackage.codemod_provider_aliases(
+                    snapshot, package
+                )
             )
             for package in packages(snapshot, root)
         }

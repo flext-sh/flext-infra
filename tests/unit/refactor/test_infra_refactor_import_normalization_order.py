@@ -10,15 +10,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests import c, tm, u
+from tests import c, p, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import p
 
 
 class TestsFlextInfraRefactorImportNormalizationOrder(

@@ -10,19 +10,16 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m, u
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm
+from tests import c, m, tm, u
 
 
 class TestsSemanticExecutionRoles:
     """Native role evidence, not entrypoint spelling, controls applicability."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("surface", ["src", "tests", "scripts", "examples"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("surface", ["src", "tests", "scripts", "examples"])
     def test_all_owned_surfaces_use_the_same_native_rule_contracts(
         mod_workspace: Path, surface: str
     ) -> None:
@@ -98,14 +95,14 @@ class TestsSemanticExecutionRoles:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "flags", [("-I",), ("-S",), ("-I", "-S"), ("-I", "-S", "-P")]
     )
     def test_isolated_role_does_not_accept_caller_interpreter_policy(
         flags: Sequence[str],
     ) -> None:
         """Flags are derived from the shared role, never independently promised."""
-        with pytest.raises(ValueError, match="python_flags"):
+        with u.Tests.raises(ValueError, match="python_flags"):
             m.Cli.PythonScriptExecution.model_validate_json(
                 json.dumps({
                     "module": "role_probe.entrypoint",

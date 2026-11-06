@@ -10,13 +10,77 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraLazyInitOwnership:
     """Validate public owner boundaries, collisions and native identity."""
+
+    @staticmethod
+    def test_root_regeneration_does_not_inherit_its_stale_publication(
+        tmp_path: Path,
+    ) -> None:
+        """A generated root cannot resurrect its removed API-module export."""
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        retired = "retired_publication"
+        package.joinpath("api.py").write_text(
+            "from pathlib import Path\n__all__ = ('Path',)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        package.joinpath(c.Infra.INIT_PY).write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from typing import TYPE_CHECKING\n"
+            "if TYPE_CHECKING:\n"
+            f"    from {package.name}.api import {retired}\n"
+            f"__all__ = ({retired!r},)\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                "import importlib\nfrom pathlib import Path\n"
+                f"package = importlib.import_module({package.name!r})\n"
+                f"print({retired!r} in package.__all__)\n"
+                "print(package.Path is Path)\n",
+                python_paths=(str(package.parent),),
+                cwd=repository,
+            ),
+            eq=["False", "True"],
+        )
+
+    @staticmethod
+    def test_staticmethod_reexport_retains_assignment_owner(tmp_path: Path) -> None:
+        """Resolve an explicit imported descriptor without requiring Rope inference."""
+        repository, package = u.Tests.demo_lazy_init_workspace(tmp_path)
+        package.joinpath("operations.py").write_text(
+            "class Operations:\n"
+            "    @staticmethod\n"
+            "    def execute() -> str:\n"
+            "        return 'executed'\n\n"
+            "execute = Operations.execute\n"
+            "__all__ = ['execute']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        package.joinpath("aggregate.py").write_text(
+            "from .operations import execute\n__all__ = ['execute']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+
+        tm.that(u.Tests.run_lazy_init(repository), eq=0)
+        generated = u.Tests.generated_init(package)
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                f"from {package.name} import execute\n"
+                f"from {package.name}.operations import execute as owner\n"
+                "assert execute is owner\nprint(execute())\n",
+                python_paths=(str(package.parent), *sys.path),
+                cwd=repository,
+            ),
+            eq=["executed"],
+        )
+        tm.that(u.Tests.run_lazy_init(repository, check_only=True), eq=0)
+        tm.that(u.Tests.generated_init(package), eq=generated)
 
     @staticmethod
     def test_root_rejects_symbols_from_deep_descendant_packages(
@@ -53,7 +117,7 @@ class TestsFlextInfraLazyInitOwnership:
                 "from flext_demo import services\n"
                 "from flext_demo.services import http\n"
                 "from flext_demo.services.http import FlextDemoHttpTransport\n"
-                "from flext_demo.services.http.transport import "
+                "from flext_demo.services.http import "
                 "FlextDemoHttpTransport as owner\n"
                 "from flext_tests import tm\n"
                 "assert services is flext_demo.services\n"
@@ -77,7 +141,7 @@ class TestsFlextInfraLazyInitOwnership:
     @staticmethod
     def test_independent_packages_accept_same_export_name_without_warnings(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A public name belongs to its package, not a workspace-wide census."""
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
@@ -102,7 +166,7 @@ class TestsFlextInfraLazyInitOwnership:
     @staticmethod
     def test_unpublished_module_homonyms_do_not_compete_for_exports(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Independent implementation declarations need no global renaming."""
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
@@ -118,10 +182,10 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(captured.out + captured.err, lacks="WARN:")
 
     @staticmethod
-    @pytest.mark.parametrize("export_names", [("Shared",), ("Shared", "Other")])
+    @c.Tests.MARK.parametrize("export_names", [("Shared",), ("Shared", "Other")])
     def test_duplicate_public_export_fails_before_generation(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         export_names: Sequence[str],
     ) -> None:
         """Two owners of one public name stop the phase before any file plan.
@@ -198,7 +262,7 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(after, lacks='"c"')
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "modules",
         [("holder_part_01", "holder_part_99"), ("api", "_api")],
     )
@@ -323,7 +387,7 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(tuple(path.read_bytes() for path in initializers), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "modules",
         [("holder_part_99", "holder_part_01"), ("foundation", "runtime")],
     )

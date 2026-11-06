@@ -76,22 +76,22 @@ snapshots:
       style: secondary
       start: 6
       end: 15
-  "class TestsFlextInfraUtilitiesTomlMixin:\n    class TomlReaderSequence(p.Infra.TomlReader):\n        pass\n":
+  "class TestsFlext:\n    class TomlReaderSequence(p.Infra.TomlReader):\n        pass\n":
     labels:
     - source: |-
         class TomlReaderSequence(p.Infra.TomlReader):
                 pass
       style: primary
-      start: 45
-      end: 103
+      start: 22
+      end: 80
     - source: p.Infra.TomlReader
       style: secondary
-      start: 70
-      end: 88
+      start: 47
+      end: 65
     - source: p.Infra.TomlReader
       style: secondary
-      start: 70
-      end: 88
+      start: 47
+      end: 65
   "class _StubClient:\n    pass\n":
     labels:
     - source: |-

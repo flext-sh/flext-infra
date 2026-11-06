@@ -7,10 +7,10 @@ invalid:
 id: target-ldap-test-public-sink-facades
 valid:
 - from tests import m, p, tm
-- from tests import tm
+- from tests import p, tm
 invalid:
 - |
-  from tests import tm
+  from tests import p, tm
   def consume(sink: Sinks.FlextModelsTargetLdap.BaseSink) -> None: pass
 ---
 id: target-ldap-test-public-target-type

@@ -8,19 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraMakeCredentialRedaction:
     """Exercise native Git configuration and generated public Make targets."""
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "upg", "status"])
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg", "status"])
     def test_credential_rewrite_is_rejected_before_effects_without_disclosure(
         tmp_path: Path,
         verb: str,

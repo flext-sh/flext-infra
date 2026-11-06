@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGitSemanticLane:
     """Own the lane every repository publication shares (release, propagation)."""
 
     @classmethod
-    def _verified_lane_base(cls, request: m.Infra.GitLaneRequest) -> p.Result[Path]:
+    def _verified_lane_base(cls, request: p.Infra.GitLaneRequest) -> p.Result[Path]:
         """Require a clean checkout on the lane base and return the repo root.
 
         Returns:
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesGitSemanticLane:
     @classmethod
     def _git_produce_lane(
         cls,
-        request: m.Infra.GitLaneRequest,
+        request: p.Infra.GitLaneRequest,
         produce: Callable[[], p.Result[bool]],
     ) -> p.Result[bool]:
         """Enter the lane, produce, and commit; restore base when a step fails.
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesGitSemanticLane:
     @classmethod
     def git_publish_lane(
         cls,
-        request: m.Infra.GitLaneRequest,
+        request: p.Infra.GitLaneRequest,
         produce: Callable[[], p.Result[bool]],
     ) -> p.Result[bool]:
         """Carry what ``produce`` writes from ``base`` to a pull request on ``branch``.
@@ -144,7 +144,7 @@ class FlextInfraUtilitiesGitSemanticLane:
         )
 
     @classmethod
-    def _git_discard_empty_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_discard_empty_lane(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Return to ``base`` and remove the lane branch that carries nothing.
 
         Returns:
@@ -162,7 +162,7 @@ class FlextInfraUtilitiesGitSemanticLane:
         return r[bool].ok(value=False)
 
     @classmethod
-    def _git_enter_lane(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_enter_lane(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Continue the lane where it exists (local then remote), else start at HEAD.
 
         Returns:
@@ -203,7 +203,7 @@ class FlextInfraUtilitiesGitSemanticLane:
         ).map(lambda _report: True)
 
     @classmethod
-    def _git_commit_produced(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Commit exactly the paths the status lists; nothing produced commits nothing.
 
         Returns:
@@ -235,7 +235,7 @@ class FlextInfraUtilitiesGitSemanticLane:
         ).map(lambda _report: True)
 
     @classmethod
-    def _git_open_pull_request(cls, request: m.Infra.GitLaneRequest) -> p.Result[bool]:
+    def _git_open_pull_request(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Push the lane, then open its pull request or refresh the open one.
 
         Returns:

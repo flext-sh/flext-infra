@@ -38,8 +38,8 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     def check_union(
         self,
         project_dirs: Sequence[Path],
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Keep the generated-configuration gap loud for its own project.
 
         A project without the generated configuration forms its own union
@@ -58,8 +58,8 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     def check(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+        ctx: p.Infra.GateContext,
+    ) -> p.Infra.GateExecution:
         """Run ``rumdl fmt --check`` against the generated rule set.
 
         Returns:
@@ -86,7 +86,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     def _build_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         check_dirs: Sequence[str],
     ) -> Sequence[str]:
         """Build the read-only ``rumdl fmt --check`` pass.
@@ -102,10 +102,10 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     def _execute_check_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
         started: float,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Check projected files through their view; the rest in one disk pass.
 
         A file with a declared projected block is formatted from its lint view
@@ -119,7 +119,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         projected = self._projected_targets(project_dir, targets)
         if not projected:
             return super()._execute_check_command(project_dir, ctx, targets, started)
-        executions: list[m.Infra.GateExecution] = []
+        executions: list[p.Infra.GateExecution] = []
         plain = tuple(target for target in targets if target not in projected)
         if plain:
             executions.append(
@@ -157,7 +157,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
             project_dir, "fmt", (), "--stdin", "--stdin-filename", target
         )
 
-    def _unformatted_issue(self, file: str) -> m.Infra.Issue:
+    def _unformatted_issue(self, file: str) -> p.Infra.Issue:
         """Report one file the formatter would rewrite.
 
         Returns:
@@ -176,7 +176,7 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
     def _build_fix_command(
         self,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         targets: Sequence[str],
     ) -> Sequence[str]:
         """Build the single mutating pass: ``rumdl fmt``.
@@ -193,8 +193,8 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         self,
         result: p.Cli.CommandOutput,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> tuple[bool, Sequence[m.Infra.Issue]]:
+        ctx: p.Infra.GateContext,
+    ) -> tuple[bool, Sequence[p.Infra.Issue]]:
         """Parse ``rumdl fmt --check``: one finding per file it would rewrite.
 
         The check pass prints a unified diff per file it would rewrite; the
@@ -203,13 +203,13 @@ class FlextInfraGatesMarkdownFormat(FlextInfraMarkdownGateBase):
         mutating pass prints no diff, so neither yields a finding here.
 
         Returns:
-            The resulting ``tuple[bool, Sequence[m.Infra.Issue]]``.
+            The resulting ``tuple[bool, Sequence[p.Infra.Issue]]``.
 
         """
         del ctx
         old_header, new_header = c.Infra.MARKDOWN_FORMAT_DIFF_HEADERS
         lines = result.stdout.splitlines()
-        issues: MutableSequence[m.Infra.Issue] = [
+        issues: MutableSequence[p.Infra.Issue] = [
             self._unformatted_issue(current.removeprefix(old_header))
             for current, following in itertools.pairwise(lines)
             if current.startswith(old_header)

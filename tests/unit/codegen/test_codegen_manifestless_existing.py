@@ -9,19 +9,17 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, e, m, p, t, tm, u
+from tests import c, e, p, t, tm, u
 
 
 # Exemplar: conform materializes a full managed tree on disk, so the render
 # itself dominates the runtime. The class carries the config-owned slow budget
 # (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
 # ceiling, so a real hang still aborts at the declared wall.
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenManifestlessExisting:
     """Tests for ``FlextInfraCodegenManifestlessExisting``."""
 
@@ -283,7 +281,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
     def plan_surface(
         root: Path,
         what: c.Infra.CodegenConformSurface,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the ``what`` surface of ``root`` in check mode.
 
         Returns:
@@ -328,7 +326,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "license_id",
         config.Infra.codegen.scaffold.project.supported_licenses,
     )

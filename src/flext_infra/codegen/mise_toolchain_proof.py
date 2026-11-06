@@ -63,7 +63,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
 
     @staticmethod
     def _locked_entry(
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         lock: t.JsonMapping,
     ) -> p.Result[t.JsonMapping]:
         """The single ``[[tools."<key>"]]`` table the lock holds for the tool.
@@ -90,7 +90,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     @classmethod
     def lock_identity(
         cls,
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
     ) -> p.Result[tuple[str, str]]:
@@ -135,7 +135,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
 
     @staticmethod
     def _contained_binary(
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         root: Path,
         binary: Path,
     ) -> p.Result[Path]:
@@ -168,7 +168,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
 
     @staticmethod
     def _reported_version(
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         version: str,
         executable: Path,
         install_root: Path,
@@ -212,7 +212,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     @classmethod
     def installation(
         cls,
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         version: str,
         location: tuple[Path, Path],
         *,
@@ -246,7 +246,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     @classmethod
     def _contained_tool_resources(
         cls,
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         root: Path,
     ) -> p.Result[bool]:
         """Require every declared probe resource to exist inside its tool root.
@@ -267,7 +267,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     @classmethod
     def prove(
         cls,
-        entry: m.Infra.MiseToolEntry,
+        entry: p.Infra.MiseToolEntry,
         lock: t.JsonMapping,
         platform_name: str,
         location: tuple[Path, Path],
@@ -316,7 +316,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
 
     def _prove_declared(
         self,
-        options: m.Infra.MiseToolchainProofOptions,
+        options: p.Infra.MiseToolchainProofOptions,
     ) -> p.Result[str]:
         """Prove one declared tool against the real Mise resolution.
 
@@ -359,16 +359,16 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
 
     def _external_probe_context(
         self,
-        options: m.Infra.MiseToolchainProofOptions,
+        options: p.Infra.MiseToolchainProofOptions,
         version: str,
-    ) -> p.Result[tuple[m.Infra.MiseToolEntry, Path | None, str]]:
+    ) -> p.Result[tuple[p.Infra.MiseToolEntry, Path | None, str]]:
         """Resolve the declared external probe owner, root and version.
 
         Returns:
             The probe entry, its optional install root, and the probe version.
 
         """
-        result_type = r[tuple[m.Infra.MiseToolEntry, Path | None, str]]
+        result_type = r[tuple[p.Infra.MiseToolEntry, Path | None, str]]
         entry = options.entry
         if entry.version_probe.tool is None:
             return result_type.ok((entry, None, version))
@@ -546,7 +546,7 @@ class FlextInfraCodegenMiseToolchainProof(FlextInfraCodegenExecution[bool]):
     def _prove_runtime(
         self,
         lock: t.JsonMapping,
-        python_entry: m.Infra.MiseToolEntry,
+        python_entry: p.Infra.MiseToolEntry,
         mise_binary: Path,
         platform_name: str,
     ) -> p.Result[bool]:

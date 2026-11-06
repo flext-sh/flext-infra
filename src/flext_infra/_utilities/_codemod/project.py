@@ -31,8 +31,10 @@ from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodNativePackage,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-from flext_infra._utilities._rope.core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeRuntime,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -230,8 +232,8 @@ class FlextInfraUtilitiesCodemodProject(
         cls,
         root: Path,
         paths: Sequence[Path],
-        rules: Sequence[m.Infra.CodemodRule],
-    ) -> tuple[m.Infra.AstGrepOwnedPathDiagnostic, ...]:
+        rules: Sequence[p.Infra.CodemodRule],
+    ) -> tuple[p.Infra.AstGrepOwnedPathDiagnostic, ...]:
         """Admit owned-path policy from the shared inventory, without parsing bytes.
 
         Returns:
@@ -724,27 +726,27 @@ class FlextInfraUtilitiesCodemodProject(
     @classmethod
     def parse_namespace_validation(
         cls,
-        validation: p.Result[m.Infra.ValidationReport],
+        validation: p.Result[p.Infra.ValidationReport],
         root: Path,
-    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
+    ) -> p.Result[tuple[p.Infra.CensusViolation, ...]]:
         """Convert the engine-backed namespace report into census violations.
 
         A violation is fixable when its rule declares a token fix or a rope
         relocation in the project's rule plan.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.CensusViolation, ...]]``.
+            The resulting ``p.Result[tuple[p.Infra.CensusViolation, ...]]``.
 
         Raises:
             ValueError: If namespace violation does not follow the report format.
 
         """
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
+            return r[tuple[p.Infra.CensusViolation, ...]].from_failure(validation)
         with cls.codemod_workspace_snapshot(root) as snapshot:
             planned = cls.codemod_rule_plan(snapshot)
         if planned.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(planned)
+            return r[tuple[p.Infra.CensusViolation, ...]].from_failure(planned)
         repairable = frozenset(
             rule.id
             for rule in planned.value.rules
@@ -757,7 +759,7 @@ class FlextInfraUtilitiesCodemodProject(
                 for rule_id in rule_ids
             }
         )
-        parsed: list[m.Infra.CensusViolation] = []
+        parsed: list[p.Infra.CensusViolation] = []
         for violation in validation.value.violations:
             match = c.Infra.VIOLATION_PATTERN.match(violation)
             if match is None:
@@ -775,7 +777,7 @@ class FlextInfraUtilitiesCodemodProject(
                     fixable=match.group("rule") in repairable,
                 ),
             )
-        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
+        return r[tuple[p.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodProject"]

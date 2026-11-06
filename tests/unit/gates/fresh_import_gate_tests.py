@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m
 from flext_infra.gates.fresh_import import FlextInfraGatesFreshImport
-from tests import c, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +31,7 @@ class TestsFlextInfraFreshImportGate:
         return project
 
     @staticmethod
-    def _execution(project: Path) -> m.Infra.GateExecution:
+    def _execution(project: Path) -> p.Infra.GateExecution:
         """Run the gate over one checkout.
 
         Returns:

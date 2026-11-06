@@ -8,20 +8,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, infra, m, p
+from flext_infra import config, infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
+    FlextInfraModGateEngine,
+)
+from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
-    FlextInfraModGateEngine,
 )
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, tm, u
+from tests import c, m, p, tm, u
 
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
 _SOURCE_NAME = _FIRST_RENAME.source_name
@@ -39,7 +39,7 @@ class _RecordingProgress:
         """Record one progress line."""
         self.messages.append(message)
 
-    def emit_rename(self, report: m.Infra.ApplyRenamesReport) -> None:
+    def emit_rename(self, report: p.Infra.ApplyRenamesReport) -> None:
         """Record one rename campaign summary."""
         self.messages.append(f"rename occurrences={report.occurrences}")
 
@@ -119,7 +119,7 @@ def _apply_accessor(project: Path, *, callback: bool) -> p.Result[bool]:
     """
     if not callback:
 
-        def automated(report: m.Infra.AccessorMigrationReport) -> bool:
+        def automated(report: p.Infra.AccessorMigrationReport) -> bool:
             return bool(report.automated_change_count)
 
         return infra.accessor_migrate(
@@ -194,7 +194,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(changed.failure)
         tm.ok(changed.value)
-        protocols_file = service_file.parent / "protocols.py"
+        protocols_file = service_file.parent / "_protocols" / "service.py"
         tm.ok(protocols_file.exists())
         tm.that(
             protocols_file.read_text(encoding="utf-8"),
@@ -224,7 +224,7 @@ class TestsFlextInfraCodemodLoopPhases:
         tm.that(foreign_source, has=f"def {_SOURCE_NAME}(")
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_accessor_candidate_closes_declaration_and_consumer(
         tmp_path: Path,
         *,
@@ -250,7 +250,7 @@ class TestsFlextInfraCodemodLoopPhases:
         tm.that(foreign.read_bytes(), eq=foreign_before)
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_accessor_rejection_precedes_both_shared_mutations(
         tmp_path: Path,
         *,
@@ -278,7 +278,7 @@ class TestsFlextInfraCodemodLoopPhases:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_protected_accessor_publication_returns_failure(
         tmp_path: Path,
         *,
@@ -325,7 +325,7 @@ class TestsFlextInfraCodemodLoopPhases:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_batch_loop_runs_callback_phases_to_the_fixed_point(
         tmp_path: Path,
     ) -> None:
@@ -354,7 +354,7 @@ class TestsFlextInfraCodemodLoopPhases:
 
         tm.fail(result.failure)
         tm.that(
-            (service_file.parent / "protocols.py").exists(),
+            (service_file.parent / "_protocols" / "service.py").exists(),
             eq=True,
         )
         legacy_source = legacy_file.read_text(encoding="utf-8")

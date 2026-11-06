@@ -9,19 +9,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 # Real dependency discovery provisions a consumer from external package sources.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraDepsDetectorReportFlags:
     """Tests for ``FlextInfraDepsDetectorReportFlags``."""
 
     @staticmethod
-    @pytest.mark.parametrize("no_fail", [False, True])
+    @c.Tests.MARK.parametrize("no_fail", [False, True])
     def test_real_dependency_and_environment_issues_respect_no_fail(
         real_detector_project: Path,
         *,

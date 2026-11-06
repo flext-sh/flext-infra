@@ -10,8 +10,6 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
@@ -24,8 +22,8 @@ class TestsFlextInfraSelfFacadeCutover:
     """Preserve eager execution, lexical bindings and standalone consumers."""
 
     @staticmethod
-    @pytest.mark.parametrize("auxiliary", ["scripts", "examples"])
-    @pytest.mark.parametrize("alias", ["u", "parent_tools"])
+    @c.Tests.MARK.parametrize("auxiliary", ["scripts", "examples"])
+    @c.Tests.MARK.parametrize("alias", ["u", "parent_tools"])
     def test_census_keeps_only_proven_forwarded_composition(
         tmp_path: Path, auxiliary: str, alias: str
     ) -> None:
@@ -123,7 +121,7 @@ class TestsFlextInfraSelfFacadeCutover:
             tm.that(evidence.stdout.strip(), eq="forwarded composition accepted")
 
     @staticmethod
-    @pytest.mark.parametrize("failure", ["call", "escape", "unknown", "cycle"])
+    @c.Tests.MARK.parametrize("failure", ["call", "escape", "unknown", "cycle"])
     def test_census_rejects_unresolved_uses_beside_a_composition_base(
         tmp_path: Path, failure: str
     ) -> None:
@@ -171,7 +169,7 @@ class TestsFlextInfraSelfFacadeCutover:
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=r"self-facade|cyclic facade"),
+            u.Tests.raises(ValueError, match=r"self-facade|cyclic facade"),
         ):
             FlextInfraCodemodSemanticApply.census_constants(
                 root,
@@ -247,8 +245,8 @@ class TestsFlextInfraSelfFacadeCutover:
         tm.that(result.stdout.strip(), eq="external declaration accepted")
 
     @staticmethod
-    @pytest.mark.parametrize("tier", ["private", "public", "examples"])
-    @pytest.mark.parametrize("mutable", [False, True])
+    @c.Tests.MARK.parametrize("tier", ["private", "public", "examples"])
+    @c.Tests.MARK.parametrize("mutable", [False, True])
     def test_declaring_model_receiver_preserves_default_factory(
         tmp_path: Path,
         tier: str,
@@ -274,7 +272,7 @@ class TestsFlextInfraSelfFacadeCutover:
             module = f"{tier}.models"
         source = (
             "from __future__ import annotations\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             f"type Bag[T] = t.{'MutableSequence' if mutable else 'Sequence'}[T]\n"
             "class Consumer(m.ContractModel):\n"
             '    """Consumer-owned collection declaration."""\n'
@@ -330,9 +328,9 @@ class TestsFlextInfraSelfFacadeCutover:
         tm.that(output.stdout.strip(), eq="declaration contract accepted")
 
     @staticmethod
-    @pytest.mark.parametrize("tier", ["_models", "models", "examples"])
-    @pytest.mark.parametrize("reference", ["u", "tools", "namespace.u", "u.Domain"])
-    @pytest.mark.parametrize("stateful", [False, True])
+    @c.Tests.MARK.parametrize("tier", ["_models", "models", "examples"])
+    @c.Tests.MARK.parametrize("reference", ["u", "tools", "namespace.u", "u.Domain"])
+    @c.Tests.MARK.parametrize("stateful", [False, True])
     def test_model_utility_calls_bind_only_lazy_static_owners(
         tmp_path: Path, tier: str, reference: str, *, stateful: bool
     ) -> None:
@@ -405,7 +403,7 @@ class TestsFlextInfraSelfFacadeCutover:
             path.write_text(source, encoding="utf-8")
         with infra.rope_workspace(root) as rope:
             if stateful:
-                with pytest.raises(ValueError, match="requires facade dispatch"):
+                with u.Tests.raises(ValueError, match="requires facade dispatch"):
                     u.Infra.plan_semantic_cutover(
                         c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                         rope_workspace=rope,
@@ -482,7 +480,7 @@ class TestsFlextInfraSelfFacadeCutover:
         consumer = package / "models.py"
         source = (
             "from __future__ import annotations\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             "class Outer:\n"
             "    class Child(m.ContractModel):\n"
             "        value: str\n"
@@ -554,7 +552,7 @@ class TestsFlextInfraSelfFacadeCutover:
             "from typing import Protocol, runtime_checkable\n"
             "from pydantic import (BaseModel, ConfigDict, Field, "
             "PydanticSchemaGenerationError)\n"
-            "from flext_core import m, t\n"
+            "from flext_core import m, p, t\n"
             "@runtime_checkable\n"
             "class Capability(Protocol):\n    value: str\n"
             "STRICT_REJECTED = False\n"
@@ -607,7 +605,7 @@ class TestsFlextInfraSelfFacadeCutover:
         tm.that(result.stdout.strip(), eq="declaring-policy-proven")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "from {package} import u\n",
@@ -714,7 +712,7 @@ class TestsFlextInfraSelfFacadeCutover:
         tm.that(output.stdout.strip(), eq="consumer contract accepted")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("method", "body", "expected"),
         [
             (
@@ -767,7 +765,7 @@ class TestsFlextInfraSelfFacadeCutover:
             path.write_text(content, encoding="utf-8")
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=expected),
+            u.Tests.raises(ValueError, match=expected),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,

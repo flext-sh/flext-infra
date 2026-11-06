@@ -563,8 +563,7 @@ class FlextInfraUtilitiesFacadeMembers:
             )
             resolved = FlextInfraUtilitiesImportLaw.resolve_declared_binding(
                 source_project,
-                provider.get_name(),
-                binding.imported_name,
+                (provider.get_name(), binding.imported_name),
                 Path(source_project.root.real_path),
                 {},
             )
@@ -946,7 +945,11 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def facade_member_census(
-        cls, project: Path, *, source_project: p.Infra.RopeProject
+        cls,
+        project: Path,
+        *,
+        source_project: p.Infra.RopeProject,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
     ) -> tuple[
         t.StrTuple,
         Mapping[str, frozenset[str]],
@@ -965,20 +968,13 @@ class FlextInfraUtilitiesFacadeMembers:
         package, the project's package and every package its facades inherit
         from, so a consumer relocates inherited duplicates too. A facade whose
         ancestry cannot be proven from source fails here, loudly.
+        The caller binds the member resolver to this same source view.
 
         Returns:
             The lineage packages, the references by owner letter and the
             project's duplicate names by declaring letter.
 
         """
-        resolver_factory = (
-            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                source_project,
-                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
-                    source_project
-                ),
-            )
-        )
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         lineage = cls.facade_member_lineage(
@@ -1173,7 +1169,7 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @staticmethod
     def facade_census_root(
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
     ) -> Path:
@@ -1199,7 +1195,7 @@ class FlextInfraUtilitiesFacadeMembers:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the retirement and wrong-layer rules, one document per letter.
 
@@ -1300,23 +1296,21 @@ class FlextInfraUtilitiesFacadeMembers:
 
     @classmethod
     def facade_misplaced_members(
-        cls, package: str, *, source_project: p.Infra.RopeProject
+        cls,
+        package: str,
+        *,
+        source_project: p.Infra.RopeProject,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
     ) -> Mapping[str, frozenset[str]]:
         """Collect each letter's members whose owner binds nothing under the name.
+
+        The caller shares its member resolver for this unchanged source view.
 
         Returns:
             The misplaced member names by declaring letter; empty for a
             package that declares no facade receivers.
 
         """
-        resolver_factory = (
-            FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
-                source_project,
-                sources=FlextInfraUtilitiesWorkspaceSnapshot.project_captured_sources(
-                    source_project
-                ),
-            )
-        )
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
         facades = cls.facade_source_classes(
             package, letters, source_project=source_project
@@ -1347,7 +1341,7 @@ class FlextInfraUtilitiesFacadeMembers:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         project: Path,
-        census: m.Infra.FacadeCensus,
+        census: p.Infra.FacadeCensus,
     ) -> Mapping[str, t.JsonMapping]:
         """Render the one rule relocating every foreign facade reference.
 

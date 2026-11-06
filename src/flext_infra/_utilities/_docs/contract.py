@@ -16,7 +16,7 @@ from markdown import Markdown
 from markdown.extensions.toc import slugify
 from pymdownx.superfences import SuperFencesCodeExtension
 
-from flext_infra import c, m, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -26,8 +26,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsContract:
@@ -164,7 +162,7 @@ class FlextInfraUtilitiesDocsContract:
         return slugify(text, "-")
 
     @staticmethod
-    def _contract_headings(content: str, depth: str) -> m.Infra.DocsRenderedToc:
+    def _contract_headings(content: str, depth: str) -> p.Infra.DocsRenderedToc:
         """Parse real headings through the same Markdown extensions as MkDocs.
 
         Returns:
@@ -232,7 +230,7 @@ class FlextInfraUtilitiesDocsContract:
 
     @staticmethod
     def _contract_toc_items(
-        tokens: Sequence[m.Infra.DocsTocToken],
+        tokens: Sequence[p.Infra.DocsTocToken],
         items: MutableSequence[str],
         depth: int = 0,
     ) -> None:
@@ -332,12 +330,12 @@ class FlextInfraUtilitiesDocsContract:
         content: bytes | None,
         *,
         desired_mode: int | None,
-        inputs: tuple[m.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        inputs: tuple[p.Cli.AtomicFileState, ...] = (),
+    ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Plan one exact docs artifact without publishing it.
 
         Returns:
-            The resulting ``p.Result[m.Infra.CodegenFilePlan]``.
+            The resulting ``p.Result[p.Infra.CodegenFilePlan]``.
 
         """
         if (
@@ -347,17 +345,17 @@ class FlextInfraUtilitiesDocsContract:
             or ".." in path.parts
             or not path.is_relative_to(project)
         ):
-            return r[m.Infra.CodegenFilePlan].fail(
+            return r[p.Infra.CodegenFilePlan].fail(
                 f"unsafe docs publication target: {path}",
             )
         if (content is None) != (desired_mode is None):
-            return r[m.Infra.CodegenFilePlan].fail(
+            return r[p.Infra.CodegenFilePlan].fail(
                 f"docs desired bytes and mode differ: {path}",
             )
         before = FlextInfraUtilitiesCodegenFilePlan.codegen_target_snapshot(path)
         if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
-        return r[m.Infra.CodegenFilePlan].ok(
+            return r[p.Infra.CodegenFilePlan].from_failure(before)
+        return r[p.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 project=project,
                 path=path,
@@ -376,7 +374,7 @@ class FlextInfraUtilitiesDocsContract:
         content: str,
         *,
         apply: bool,
-    ) -> m.Infra.GeneratedFile:
+    ) -> p.Infra.GeneratedFile:
         """Write generated content only when needed and allowed.
 
         This imperative helper belongs to non-generation docs fixers. Generated

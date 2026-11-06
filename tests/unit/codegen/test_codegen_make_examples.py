@@ -8,19 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeExamples:
     """Exercise the public Make route and the typed declaration boundary."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "module",
         [
             "",
@@ -37,11 +35,11 @@ class TestsFlextInfraCodegenMakeExamples:
         """Module input cannot inject Make or shell source or traverse directories."""
         payload = u.Tests.repository_ref("fixture-project").model_dump()
         payload["examples_module"] = module
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             _ = m.Infra.RepositoryRef.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_contract_is_public_even_when_examples_directory_exists(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -69,7 +67,7 @@ class TestsFlextInfraCodegenMakeExamples:
         tm.that(tuple(sorted(root.rglob("*"))), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("declared", [False, True])
+    @c.Tests.MARK.parametrize("declared", [False, True])
     def test_absent_entrypoint_fails_before_activation_and_hooks(
         tmp_path: Path,
         *,

@@ -9,10 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Self, override
 
-from flext_cli import m, p, r
+from flext_cli import m, r
 from flext_core import FlextService
 
-from flext_infra import c, settings
+from flext_infra import c, p, settings
 from flext_infra._base import FlextInfraBasePayload
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._protocols import FlextInfraProtocolsBase
@@ -48,8 +48,8 @@ class FlextInfraServiceBase[TDomainResult](
 
     def _filtered_projects(
         self,
-        projects: Sequence[FlextInfraProtocolsBase.ProjectInfo],
-    ) -> Sequence[FlextInfraProtocolsBase.ProjectInfo]:
+        projects: Sequence[p.Infra.ProjectInfo],
+    ) -> Sequence[p.Infra.ProjectInfo]:
         """Apply the comma-separated ``project_filter`` when one is configured.
 
         Returns:

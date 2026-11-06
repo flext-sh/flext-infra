@@ -19,9 +19,11 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesGenerationInventory,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesMarkdownTooling,
     FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
@@ -39,13 +41,14 @@ from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 class FlextInfraUtilitiesCodegen(
-    FlextInfraUtilitiesBase,
     FlextInfraConfigMakeContract,
     FlextInfraUtilitiesCodegenFacades,
     FlextInfraUtilitiesCodegenFilePlan,
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesGenerationInventory,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesMarkdownTooling,
     FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
@@ -58,6 +61,7 @@ class FlextInfraUtilitiesCodegen(
     FlextInfraUtilitiesVersioning,
     FlextInfraUtilitiesWorkspaceInventory,
     FlextInfraUtilitiesWorkspaceManifest,
+    FlextInfraUtilitiesBase,
 ):
     """Compose the source helpers consumed by the generation operation."""
 
@@ -80,7 +84,7 @@ class FlextInfraUtilitiesCodegen(
         )
 
     @staticmethod
-    def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
+    def envrc_render_spec() -> p.Infra.EnvrcRenderSpec:
         """Return the sole typed context every generated ``.envrc`` renders from.
 
         Returns:
@@ -98,7 +102,7 @@ class FlextInfraUtilitiesCodegen(
     @staticmethod
     def generate_test_module_skeleton(
         *,
-        context: m.Infra.TestModuleSkeletonRenderContext,
+        context: p.Infra.TestModuleSkeletonRenderContext,
     ) -> str:
         """Render one canonical test facade skeleton from its validated context.
 

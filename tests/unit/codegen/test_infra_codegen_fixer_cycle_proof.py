@@ -14,14 +14,12 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenFixer
-from tests import m, tm, u
+from tests import c, p, tm, u
 
 
-def _reports_import_cycle(result: m.Infra.AutoFixResult) -> bool:
+def _reports_import_cycle(result: p.Infra.AutoFixResult) -> bool:
     """Return whether one auto-fix result reports an IMPORT-CYCLE skip."""
     return any(
         violation.rule == "IMPORT-CYCLE" for violation in result.violations_skipped
@@ -33,14 +31,22 @@ def _fix_workspace(
     tmp_path: Path,
     project: Path,
     package_name: str,
-) -> Sequence[m.Infra.AutoFixResult]:
+    session_runtime: p.Tests.SessionRuntime,
+) -> Sequence[p.Infra.AutoFixResult]:
     """Provision one codegen checkout and return the fixer's workspace results.
 
     Returns:
-        The resulting ``Sequence[m.Infra.AutoFixResult]``.
+        The resulting ``Sequence[p.Infra.AutoFixResult]``.
 
     """
     u.Tests.declare_workspace_projects(tmp_path, (project.name,))
+    tm.ok(
+        u.Tests.create_python_environment(
+            project,
+            dependency_projects=u.Tests.python_dependency_projects(project),
+            session_runtime=session_runtime,
+        ),
+    )
     u.Tests.provision_checkout(project)
     return FlextInfraCodegenFixer(repository_root=tmp_path).fix_workspace(
         projects=[
@@ -60,12 +66,14 @@ class TestsFlextInfraCodegenFixerCycleProof:
     def test_missing_repository_propagates_discovery_failure(tmp_path: Path) -> None:
         """A missing repository cannot produce a successful empty fix report."""
         missing = tmp_path / "missing"
-        with pytest.raises(RuntimeError, match=str(missing)):
+        with u.Tests.raises(RuntimeError, match=str(missing)):
             FlextInfraCodegenFixer(repository_root=missing).fix_workspace()
 
     @staticmethod
-    @pytest.mark.slow
-    def test_auto_fix_flags_modules_in_a_runtime_cycle(tmp_path: Path) -> None:
+    @c.Tests.MARK.slow
+    def test_auto_fix_flags_modules_in_a_runtime_cycle(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """Two modules importing each other are both flagged as cycle members."""
         project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
@@ -80,6 +88,7 @@ class TestsFlextInfraCodegenFixerCycleProof:
             tmp_path=tmp_path,
             project=project,
             package_name="cycle_pkg",
+            session_runtime=session_runtime,
         )
         flagged = {
             violation.module
@@ -91,8 +100,10 @@ class TestsFlextInfraCodegenFixerCycleProof:
         tm.that(flagged, has="cycle_pkg.beta")
 
     @staticmethod
-    @pytest.mark.slow
-    def test_auto_fix_passes_an_acyclic_tree(tmp_path: Path) -> None:
+    @c.Tests.MARK.slow
+    def test_auto_fix_passes_an_acyclic_tree(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """A tree without cycles records no IMPORT-CYCLE violation."""
         project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
@@ -107,6 +118,7 @@ class TestsFlextInfraCodegenFixerCycleProof:
             tmp_path=tmp_path,
             project=project,
             package_name="clean_pkg",
+            session_runtime=session_runtime,
         )
         tm.that([result for result in results if _reports_import_cycle(result)], eq=[])
 
