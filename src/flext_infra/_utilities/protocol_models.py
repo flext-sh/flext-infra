@@ -1273,6 +1273,9 @@ class FlextInfraUtilitiesModelsProtocol:
                         ("*" if isinstance(parameter, ast.TypeVarTuple) else "")
                         + parameter.name
                         for parameter in node.type_params
+                        if isinstance(
+                            parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec
+                        )
                     )
                     checks.append((
                         f"{model_facade}{model.removeprefix('m')}",
@@ -1728,18 +1731,26 @@ class FlextInfraUtilitiesModelsProtocol:
 
             Raises:
                 ValueError: If a direct base has no native class binding.
+                TypeError: If a native base lacks the class contract.
 
             """
             part_classes: list[p.Infra.RopePyObject] = []
             for expression in declaration.bases:
                 binding = self.resolve_symbol(owner.get_scope(), expression)
-                if binding is None or not self.py_class(binding.get_object()):
+                native_class = None if binding is None else binding.get_object()
+                if native_class is None or not self.py_class(native_class):
                     msg = (
                         f"model domain base has no native class binding: "
                         f"{model_sibling}:{ast.unparse(expression)}"
                     )
                     raise ValueError(msg)
-                for ancestor in binding.get_object().get_mro():
+                if not isinstance(native_class, p.Infra.RopeClassObject):
+                    msg = (
+                        f"model domain base lacks the native class contract: "
+                        f"{model_sibling}:{ast.unparse(expression)}"
+                    )
+                    raise TypeError(msg)
+                for ancestor in native_class.get_mro():
                     ancestor_module = ancestor.get_module()
                     ancestor_resource = (
                         ancestor_module.get_resource()
