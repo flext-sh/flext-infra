@@ -187,9 +187,7 @@ class FlextInfraToolTablesPhase:
             operations=(m.Infra.DepsToml.SetOp(key=path[-1], value=payload),),
         )
 
-    def _mypy_phase(
-        self, mypy_search_paths: Sequence[str]
-    ) -> p.Infra.PhaseConfig:
+    def _mypy_phase(self, mypy_search_paths: Sequence[str]) -> p.Infra.PhaseConfig:
         """Combine native options with the Mypy execution policy.
 
         Returns:

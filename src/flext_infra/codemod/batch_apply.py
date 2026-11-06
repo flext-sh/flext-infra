@@ -1216,6 +1216,18 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             return outcome.from_failure(semantic_preflight)
         original = u.Infra.candidate_python_sources(syntax, seed.candidate.inputs)
         working = self._planning_sources(syntax)
+        # Why: the candidate carries every staged Python file, but the
+        # semantic cutover edits only the governed source inventory. Scenario
+        # data and ignored artifacts are not edit targets, and their presence
+        # makes a closed Rope observation reject the plan.
+        governed = {
+            (root / target).resolve() for target in u.Infra.ast_grep_scan_targets(root)
+        }
+        working = {
+            path: source
+            for path, source in working.items()
+            if path.resolve() in governed
+        }
         graph.bind_candidate(
             declared_files=FlextInfraCodemodSemanticApply.planning_file_plans(
                 root, syntax, working
