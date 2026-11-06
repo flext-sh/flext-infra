@@ -369,6 +369,49 @@ class TestsFlextInfraSemanticConstantCutover:
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod
+    def test_inherited_namespace_publication_elects_the_declaring_owner(
+        tmp_path: Path,
+    ) -> None:
+        """A namespace extending another re-exposes its members; it never owns them."""
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="signal-hub", package_name="signal_hub"
+        )
+        family = package / "_constants"
+        family.mkdir()
+        consumer = package / "consumer.py"
+        sources = {
+            family / "base.py": "class Chosen:\n    TOKEN = 'domain-value'\n",
+            package / c.Infra.INIT_PY: "from .constants import c\n__all__ = ['c']\n",
+            package / c.Infra.CONSTANTS_PY: (
+                f"from {package.name}._constants.base import Chosen\n"
+                "class SignalHubConstants:\n"
+                "    class SignalHub(Chosen):\n"
+                "        pass\n"
+                "    class Tests(SignalHub):\n"
+                "        pass\n"
+                "c = SignalHubConstants\n__all__ = ['SignalHubConstants', 'c']\n"
+            ),
+            consumer: (
+                f"from {package.name}._constants.base import Chosen\n"
+                "value = Chosen.TOKEN\n"
+            ),
+        }
+        for path, source in sources.items():
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        with infra.rope_workspace(root) as rope:
+            edits = tm.ok(
+                u.Infra.plan_semantic_cutover(
+                    c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                    rope_workspace=rope,
+                    sources=sources,
+                )
+            )
+        rewritten = {edit.file_path: edit.updated_source for edit in edits}
+        tm.that(rewritten, has=consumer)
+        tm.that(rewritten[consumer], has="c.SignalHub.TOKEN")
+        tm.that(rewritten[consumer], lacks="c.Tests")
+
+    @staticmethod
     def test_annotations_and_nesting_complete_in_one_atomic_cutover(
         tmp_path: Path,
     ) -> None:
