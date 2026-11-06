@@ -1071,7 +1071,12 @@ class FlextInfraModelsConfigArtifact(
             # unsound for ignore files: repeating `.beads/*` after an
             # intervening `!.beads/` is what keeps the directory scanned, so
             # dropping the repeat silently un-ignores its contents.
-            sections.extend(scaffold_sections)
+            sections.extend(
+                FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec.model_validate(
+                    section
+                )
+                for section in scaffold_sections
+            )
             # Derived artifacts are appended as their own trailing section: an
             # ignore file is evaluated in order, so injecting them into the
             # first section would place them before any `!` negation the policy
@@ -1128,7 +1133,13 @@ class FlextInfraModelsConfigArtifact(
             return tuple(
                 FlextInfraModelsConfigTemplates.ManagedFileSpec(
                     path=Path(entry.destination),
-                    **entry.ownership.model_dump(exclude_computed_fields=True),
+                    owner=entry.ownership.owner,
+                    tracking=entry.ownership.tracking,
+                    policy=entry.ownership.policy,
+                    mode=entry.ownership.mode,
+                    conflict_sections=entry.ownership.conflict_sections,
+                    preserve_project_keys=entry.ownership.preserve_project_keys,
+                    overwrite_project_keys=entry.ownership.overwrite_project_keys,
                 )
                 for entry in self.templates.entries
                 if entry.ownership is not None
