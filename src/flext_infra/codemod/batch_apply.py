@@ -488,13 +488,15 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _merge_wave(
         plans: dict[Path, m.Infra.SemanticFilePlan],
         inputs: MutableMapping[Path, m.Cli.AtomicFileState],
-        wave: Sequence[p.Infra.SemanticFilePlan],
+        wave: Sequence[m.Infra.SemanticFilePlan],
     ) -> None:
         """Fold one wave into the plans, keeping each file's first witness."""
         for plan in wave:
             original = plans.get(plan.path)
             if original is None:
-                inputs.setdefault(plan.path, plan.before)
+                inputs.setdefault(
+                    plan.path, m.Cli.AtomicFileState.model_validate(plan.before)
+                )
                 plans[plan.path] = plan.model_copy(update={"before": inputs[plan.path]})
                 continue
             plans[plan.path] = plan.model_copy(
