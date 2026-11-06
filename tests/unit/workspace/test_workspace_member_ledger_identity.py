@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
 
@@ -18,8 +16,8 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
     """Prove parent and member identities remain in their own coordinates."""
 
     @staticmethod
-    @pytest.mark.parametrize("root_requires_activation", [False, True])
-    @pytest.mark.parametrize("member_requires_activation", [False, True])
+    @c.Tests.MARK.parametrize("root_requires_activation", [False, True])
+    @c.Tests.MARK.parametrize("member_requires_activation", [False, True])
     def test_manifest_load_preserves_each_activation_requirement(
         tmp_path: Path,
         *,

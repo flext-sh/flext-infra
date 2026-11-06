@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.gates.markdown_code import FlextInfraGatesMarkdownCode
 from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
 from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -65,7 +63,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         (project_dir / "README.md").write_text(content, encoding="utf-8")
         return project_dir
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "force_color", [c.ParserBooleanToken.ZERO, c.ParserBooleanToken.ONE]
     )
     def test_format_gate_reports_unformatted_markdown(
@@ -230,8 +228,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("gate_id", [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT])
-    @pytest.mark.parametrize("repair", [False, True])
+    @c.Tests.MARK.parametrize("gate_id", [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT])
+    @c.Tests.MARK.parametrize("repair", [False, True])
     def test_missing_native_configuration_is_attributed_to_its_project(
         tmp_path: Path, gate_id: str, *, repair: bool
     ) -> None:
@@ -356,7 +354,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("unformatted", [False, True])
+    @c.Tests.MARK.parametrize("unformatted", [False, True])
     def test_code_gate_fix_preserves_docstring_findings(
         tmp_path: Path,
         *,

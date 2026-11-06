@@ -175,7 +175,7 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
     @runtime_checkable
-    class RepositoryDeltaSpec(CandidateDependenciesSpec, Protocol):
+    class RepositoryDeltaAnalysisSpec(CandidateDependenciesSpec, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -226,6 +226,10 @@ class FlextInfraProtocolsConfigWorkspace:
         ) -> FlextInfraProtocolsConfigWorkspace.RefactorConfigSpec | None:
             """Own refactor file-selection declaration."""
             ...
+
+    @runtime_checkable
+    class RepositoryDeltaSpec(RepositoryDeltaAnalysisSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def beads_enabled(self) -> bool:

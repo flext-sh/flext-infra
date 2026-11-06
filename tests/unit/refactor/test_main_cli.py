@@ -11,16 +11,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 from types import CodeType
-from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import FlextInfraCli, infra, m
+from flext_infra import FlextInfraCli, infra
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests import c, r, t, tm, u
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from tests import c, m, p, r, t, tm, u
 
 
 @dataclasses.dataclass(frozen=True)
@@ -440,7 +434,7 @@ class TestsFlextInfraRefactorMainCli:
         result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("kinds", "rules", "families"),
         [
             (("function",), ("unused",), None),

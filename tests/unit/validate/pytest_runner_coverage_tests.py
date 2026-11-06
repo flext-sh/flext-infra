@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraPytestRunnerCoverage:
     """Exercise the real coverage pass and its published accounting."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_coverage_verb_publishes_artifact_without_testmon(
         cached_runner_project: Path,
     ) -> None:
@@ -59,7 +57,7 @@ class TestsFlextInfraPytestRunnerCoverage:
         tm.fail(tm.not_none(runner.testmon_db).exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_failed_coverage_suite_preserves_original_failure_and_accounting(
         cached_runner_project: Path,
     ) -> None:

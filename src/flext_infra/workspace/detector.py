@@ -10,8 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, config, m, p, r, settings, u
-from flext_infra.base import s
+from flext_infra import c, config, m, p, r, s, settings, u
 from flext_infra.workspace import FlextInfraWorkspaceGovernance
 
 

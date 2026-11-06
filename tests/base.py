@@ -8,9 +8,15 @@ from __future__ import annotations
 
 from flext_tests import FlextTestsServiceBase
 
+from flext_infra import FlextInfraServiceBase
+from tests import p
 
-class TestsFlextInfraServiceBase(FlextTestsServiceBase):
-    """Infra test service base composed directly from flext-tests."""
+
+class TestsFlextInfraServiceBase[TDomainResult: p.Base = p.Base](
+    FlextTestsServiceBase[TDomainResult],
+    FlextInfraServiceBase[TDomainResult],
+):
+    """Infra test service base: flext-tests runtime over the infra service contract."""
 
     # NOTE (multi-agent, flext-wkii.17.14): flext-tests is the sole owner of
     # settings bootstrap behavior; this project adds no forwarding override.

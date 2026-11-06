@@ -1170,7 +1170,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            composed, resource, text, replacement, module=before_module
+            (composed, resource), text, replacement, module=before_module
         )
         if binding is not None:
             rewritten, elected = runtime.import_binding(
@@ -1394,7 +1394,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             seen.add(key)
 
         FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            project, resource, text, validate
+            (project, resource), text, validate
         )
         if seen != set(required):
             msg = f"module relocation lost original quoted type positions: {path}"

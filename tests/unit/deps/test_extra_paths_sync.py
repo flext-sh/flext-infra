@@ -10,8 +10,6 @@ import dataclasses
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraExtraPathsManager
 from tests import c, tf, tm, u
@@ -43,7 +41,7 @@ class SyncOneEdgeScenario:
 class TestsFlextInfraDepsExtraPathsSync:
     """Behavior contract for test_extra_paths_sync."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def pyright_content() -> str:
         """Provide minimal Pyright configuration content.
@@ -70,7 +68,7 @@ class TestsFlextInfraDepsExtraPathsSync:
             repository_root=repository_root or _TEST_REPOSITORY_ROOT,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "scenario",
         [
             SyncScenario("project", project_dirs=["proj"]),
@@ -139,7 +137,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         result = self._manager(tmp_path).sync_extra_paths(project_dirs=[project])
         tm.ok(result, eq=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("mode", "argv", "expected_exit"),
         [
             ("root", ["extra_paths.py"], 0),
@@ -181,7 +179,7 @@ class TestsFlextInfraDepsExtraPathsSync:
             eq=expected_exit,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "scenario",
         [
             SyncOneEdgeScenario("nonexistent", dry_run=True),

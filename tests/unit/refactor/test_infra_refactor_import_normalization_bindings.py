@@ -9,11 +9,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m
 from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseImportNormalization
-from tests import c, tm, u
+from tests import c, m, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -51,7 +48,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
 
     @classmethod
-    @pytest.mark.parametrize("letter", sorted(u.Infra.facade_families()))
+    @c.Tests.MARK.parametrize("letter", sorted(u.Infra.facade_families()))
     def test_missing_reverse_runtime_letter_is_not_synthesized(
         cls, tmp_path: Path, letter: str
     ) -> None:
@@ -68,7 +65,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             package, {name: f".{family.module}" for name, family in families.items()}
         )
         for name in higher:
-            with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+            with u.Tests.raises(ValueError, match="forbidden reverse namespace import"):
                 u.Infra.normalize_import_source(
                     project_root=project,
                     file_path=package / families[letter].directory / "declaration.py",
@@ -351,7 +348,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         before = tm.ok(u.Cli.run(command, cwd=project, options=options))
         tm.that(u.Cli.process_succeeded(before.outcome), eq=True, msg=before.stderr)
         tm.that(before.stdout.strip(), eq="first provider second provider")
-        with pytest.raises(RuntimeError, match="conflicting inline import providers"):
+        with u.Tests.raises(RuntimeError, match="conflicting inline import providers"):
             FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
                 project, (consumer,)
             )
@@ -360,7 +357,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         tm.that(after.stdout, eq=before.stdout)
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected"),
         [
             (
@@ -432,7 +429,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "module_name",
         ["_config", "_settings", "_models/provider"],
     )
@@ -477,7 +474,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         )
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer",
         [
             "def consume():\n    return s()\n",
@@ -490,7 +487,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "def consume():\n    return [s for s in [s()]][0]\n",
         ],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "local_body",
         [
             (
@@ -703,14 +700,14 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
             "    return m.render(value)\n"
         )
         target.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with pytest.raises(ValueError, match="local facade changes consumed member"):
+        with u.Tests.raises(ValueError, match="local facade changes consumed member"):
             u.Infra.normalize_import_source(
                 project_root=project, file_path=target, source=source
             )
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @classmethod
-    @pytest.mark.parametrize("typing_edge", [False, True])
+    @c.Tests.MARK.parametrize("typing_edge", [False, True])
     def test_lazy_publication_and_typing_edge_are_not_runtime_cycles(
         cls, tmp_path: Path, *, typing_edge: bool
     ) -> None:

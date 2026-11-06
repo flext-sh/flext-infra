@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import check, config
 from tests import c, m, tm, u
 
@@ -22,13 +20,13 @@ class TestsFlextInfraCheckReportProgress:
     """Observe real native receipts and interrupted aggregate reports."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "first_has_python",
         [True, False],
         ids=["completed-first", "zero-applicable-first"],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "typed_targets",
         [False, True],
         ids=["string-projects", "typed-targets"],
@@ -206,7 +204,7 @@ class TestsFlextInfraCheckReportProgress:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_root_and_same_named_member_keep_distinct_native_receipts(
         tmp_path: Path,
     ) -> None:

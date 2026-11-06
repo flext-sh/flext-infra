@@ -12,8 +12,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from shlex import quote
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
@@ -23,8 +21,8 @@ class TestsFlextInfraRenderProvenance:
     """Rendered Make controls execute the installed, metadata-owned namespace."""
 
     @staticmethod
-    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
-    @pytest.mark.parametrize("ci_context", [False, True])
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_controller_ignores_undeclared_and_caller_sources(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],

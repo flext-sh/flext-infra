@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from packaging.requirements import Requirement
 
 from flext_infra import FlextInfraConfig
@@ -27,8 +26,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
 ):
     """Tests for ``FlextInfraPyprojectConformTopologySources``."""
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("source_matches", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("source_matches", [False, True])
     def test_modern_candidate_declaration_reaches_the_existing_requirement_owner(
         self,
         tmp_path: Path,
@@ -152,8 +151,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         return root, workspace, candidate
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("duplicate", ["distribution", "repository"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("duplicate", ["distribution", "repository"])
     def test_modern_candidate_declaration_rejects_ambiguous_sources(
         tmp_path: Path,
         duplicate: str,
@@ -196,7 +195,7 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.ok(loaded.failure)
         tm.that(loaded.error or "", has="must be unique")
 
-    @pytest.mark.parametrize("package", [False, True])
+    @c.Tests.MARK.parametrize("package", [False, True])
     def test_packaged_root_renders_workspace_source_without_self_override(
         self, *, package: bool
     ) -> None:

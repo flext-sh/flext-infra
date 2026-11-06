@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import re as _re
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from tests import t
 
 
 class TestsFlextInfraConstantsScan:

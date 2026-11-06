@@ -11,10 +11,8 @@ import signal
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraUtilitiesResourceLimits:
@@ -57,7 +55,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             tm.ok(any(path.is_file() for path in cache.rglob("*")))
 
     @staticmethod
-    @pytest.mark.requires_engine("mypy")
+    @c.Tests.MARK.requires_engine("mypy")
     def test_mypy_command_checks_source_with_memory_and_time_limits(
         tmp_path: Path,
     ) -> None:
@@ -78,8 +76,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.ok(u.Cli.process_succeeded(result.value.outcome))
 
     @staticmethod
-    @pytest.mark.requires_engine("mypy")
-    @pytest.mark.slow
+    @c.Tests.MARK.requires_engine("mypy")
+    @c.Tests.MARK.slow
     def test_mypy_profile_records_the_real_checker(tmp_path: Path) -> None:
         """Profile the real checker without changing its incremental workload."""
         project = u.Tests.mypy_workload(tmp_path)
@@ -137,9 +135,9 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    @pytest.mark.requires_engine("mypy")
-    @pytest.mark.slow
-    @pytest.mark.parametrize("scenario", ["assignment", "SIGINT", "SIGTERM"])
+    @c.Tests.MARK.requires_engine("mypy")
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("scenario", ["assignment", "SIGINT", "SIGTERM"])
     def test_mypy_profile_preserves_failure_and_interruption(
         tmp_path: Path,
         scenario: str,
@@ -188,7 +186,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("ceiling", [False, True])
+    @c.Tests.MARK.parametrize("ceiling", [False, True])
     def test_mypy_budget_resolves_the_project_tooling_overlay(
         tmp_path: Path,
         *,
@@ -249,7 +247,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             encoding="utf-8",
         )
 
-        with pytest.raises(ValueError, match="exceeds the fleet ceiling"):
+        with u.Tests.raises(ValueError, match="exceeds the fleet ceiling"):
             u.Infra.mypy_runner_timeout_for_project(tmp_path)
 
     @staticmethod
@@ -274,10 +272,10 @@ class TestsFlextInfraUtilitiesResourceLimits:
             config_file=project.config_file,
             workspace=tmp_path,
         )
-        with pytest.raises(FileNotFoundError, match="managed workspace interpreter"):
+        with u.Tests.raises(FileNotFoundError, match="managed workspace interpreter"):
             u.Infra.mypy_command(invocation)
         tm.ok(u.Tests.create_python_environment(tmp_path))
-        with pytest.raises(FileNotFoundError, match="managed workspace checker"):
+        with u.Tests.raises(FileNotFoundError, match="managed workspace checker"):
             u.Infra.mypy_command(invocation)
 
     @staticmethod
@@ -299,13 +297,13 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.that(result.value.stderr, has="Extra inputs are not permitted")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("scenario", "expected"),
         [
             ("exit", 7),
             # Real interpreter startup and controlled group cleanup use the
             # existing integration-harness budget, not the default case budget.
-            pytest.param("deadline", 124, marks=pytest.mark.slow),
+            u.Tests.param("deadline", 124, marks=c.Tests.MARK.slow),
             # The checker may use different nonzero exit codes while reporting
             # the same bounded allocation failure through its public output.
             ("memory", None),
@@ -366,8 +364,8 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("leader_exits", "expected"),
         [(True, 7), (False, c.Infra.PROCESS_TIMEOUT_EXIT_CODE)],
     )
@@ -376,7 +374,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         *,
         leader_exits: bool,
         expected: int,
-        request: pytest.FixtureRequest,
+        request: t.Tests.FixtureRequest,
     ) -> None:
         """Kill a TERM-resistant descendant after leader exit or deadline."""
         limit = u.Tests.mypy_deadline_limit()
@@ -471,7 +469,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     def test_mypy_resource_contract_rejects_non_positive_limits() -> None:
         """Reject invalid external configuration before spawning a process."""
         invalid: int = 0
-        with pytest.raises(ValueError, match="greater than 0"):
+        with u.Tests.raises(ValueError, match="greater than 0"):
             m.Infra.MypyResourceLimit(memory_limit_mb=invalid, timeout_seconds=invalid)
 
     @staticmethod
@@ -488,17 +486,17 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "invalid_value",
         [
             # Each case spawns a real interpreter that imports the full
             # package tree before the boundary rejects the text, so they run
             # on the integration-harness budget like the deadline scenario
             # above, never on the default case budget.
-            pytest.param("", marks=pytest.mark.slow),
-            pytest.param("1024.0", marks=pytest.mark.slow),
-            pytest.param("-1", marks=pytest.mark.slow),
-            pytest.param(" 1024", marks=pytest.mark.slow),
+            u.Tests.param("", marks=c.Tests.MARK.slow),
+            u.Tests.param("1024.0", marks=c.Tests.MARK.slow),
+            u.Tests.param("-1", marks=c.Tests.MARK.slow),
+            u.Tests.param(" 1024", marks=c.Tests.MARK.slow),
         ],
     )
     def test_mypy_resource_limit_rejects_non_integer_environment(
@@ -529,7 +527,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
     @staticmethod
     def test_mypy_resource_contract_rejects_memory_above_ceiling() -> None:
         """Reject a configured limit above the canonical hard ceiling."""
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match=f"less than or equal to {c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT}",
         ):
@@ -539,7 +537,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("exit_code", "timed_out"),
         [
             (0, True),
@@ -584,7 +582,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.that(diagnostic, lacks=["LOG:", "TRACE:"])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "exit_code",
         [1, 2, c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 1],
     )
@@ -611,7 +609,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         tm.that(diagnostic, is_=None)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("exit_code", "forwarded_signal", "signal_number"),
         [
             (-signal.SIGSEGV, None, signal.SIGSEGV),

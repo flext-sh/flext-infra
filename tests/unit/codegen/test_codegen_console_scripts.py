@@ -9,12 +9,10 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 class TestsFlextInfraCodegenConsoleScripts:
@@ -61,7 +59,7 @@ class TestsFlextInfraCodegenConsoleScripts:
     @staticmethod
     def test_console_script_target_rejects_a_non_entry_point_reference() -> None:
         """A target without module:attribute shape fails model validation."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.ConsoleScriptSpec.model_validate(
                 {"name": "demo-hook", "target": "not an entry point"},
             )

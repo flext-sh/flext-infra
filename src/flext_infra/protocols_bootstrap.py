@@ -1,11 +1,13 @@
 """Normalize legacy Pydantic syntax out of protocol source modules.
 
-Source inventory and planning import only the Python standard library.
-Publication delegates to the native file-change owner under the shared scope lock.
+Source inventory, planning and this entrypoint import only the Python standard
+library. Guarded publication lives in
+``flext_infra._utilities.protocol_publication`` and loads on first use, so
+this module stays importable before the package exists.
 
 Run it before the public CLI when legacy protocol source prevents package import::
 
-    python -P src/flext_infra/_protocols_bootstrap.py ROOT -- codegen generate
+    python -P src/flext_infra/protocols_bootstrap.py ROOT -- codegen generate
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,18 +22,16 @@ import itertools
 import operator
 import sys
 import tomllib
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, override
-
-from flext_cli import u
-
-from flext_infra import m
-from flext_infra._utilities._git import FlextInfraUtilitiesGitPhysicalScope
+from typing import TYPE_CHECKING, Protocol, TypeIs, override
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import FlextInfraCli
+    from flext_infra._utilities.protocol_publication import (
+        FlextInfraUtilitiesProtocolPublication,
+    )
 
 
 _SOURCE_BOOTSTRAP_MARKER = "# AUTO-GENERATED FILE - Source bootstrap"
@@ -47,6 +47,8 @@ _FIELD_ASSIGNMENT_KEYWORDS = _FIELD_ALIAS_KEYWORDS | frozenset({
     "exclude",
 })
 _PYDANTIC_MODEL_BASES = frozenset({"BaseSettings", "Value"})
+_PARTITION_MIN_PARTS = 2
+_LAZY_EXPORT_MAPPING_INDEX = 2
 
 
 @dataclass(frozen=True)
@@ -64,7 +66,7 @@ def _is_protocol_base(node: ast.expr) -> bool:
     )
 
 
-def _is_pydantic_field(node: ast.expr) -> bool:
+def _is_pydantic_field(node: ast.expr) -> TypeIs[ast.Call]:
     return (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
@@ -1093,6 +1095,134 @@ def _direct_field_alias_patches(
     return [annotation_patch, _Patch(end, end, f" = {ast.unparse(value)}")]
 
 
+type _AliasEntry = tuple[ast.expr, tuple[ast.keyword, ...], ast.stmt]
+
+
+def _suite_aliases(
+    statements: Sequence[ast.stmt],
+    visible: Mapping[str, _AliasEntry],
+    inherited_alias_names: set[str],
+) -> tuple[dict[str, _AliasEntry], set[str]]:
+    """Collect alias declarations visible inside one statement suite.
+
+    Returns:
+        The alias metadata by name and every declared alias name.
+
+    """
+    aliases = dict(visible)
+    alias_names = set(inherited_alias_names) | set(aliases)
+    for statement in statements:
+        binding = _type_alias_binding(statement)
+        if binding is None:
+            continue
+        alias_names.add(binding[0])
+        normalized = _annotated_alias_metadata(binding[1])
+        if normalized is not None:
+            aliases[binding[0]] = (*normalized, statement)
+    return aliases, alias_names
+
+
+def _suite_model_names(statements: Sequence[ast.stmt]) -> set[str]:
+    """Return the Pydantic model classes declared directly in one suite.
+
+    Returns:
+        The resulting ``set[str]``.
+
+    """
+    models: set[str] = set()
+    protocols: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for statement in statements:
+            if not isinstance(statement, ast.ClassDef):
+                continue
+            if any(_is_protocol_base(base) for base in statement.bases):
+                protocols.add(statement.name)
+                continue
+            if statement.name in models or _is_protocol_class(statement, protocols):
+                continue
+            if any(_pydantic_model_base(base, models) for base in statement.bases):
+                models.add(statement.name)
+                changed = True
+    return models
+
+
+def _model_field_patches(
+    field: ast.AnnAssign,
+    aliases: Mapping[str, _AliasEntry],
+    alias_names: set[str],
+    offsets: Sequence[int],
+    used_aliases: dict[int, ast.expr],
+) -> list[_Patch]:
+    """Plan alias-metadata repairs for one model field.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    """
+    reference = _field_alias_reference(field.annotation)
+    if reference is None or reference[0] not in alias_names:
+        direct = _direct_field_alias_patches(field, offsets)
+        if direct:
+            return direct
+    patches: list[_Patch] = []
+    if field.value is not None:
+        normalized_value = _field_without_redundant_default(field.value)
+        if normalized_value is not None:
+            patches.append(
+                _Patch(*_span(field.value, offsets), ast.unparse(normalized_value))
+            )
+    if reference is None or reference[0] not in aliases:
+        return patches
+    value, keywords, declaration = aliases[reference[0]]
+    patches.append(
+        _Patch(
+            *_span(field.annotation, offsets),
+            ast.unparse(
+                _field_annotation_with_alias_metadata(field.annotation, keywords)
+            ),
+        )
+    )
+    used_aliases[id(declaration)] = value
+    return patches
+
+
+def _visit_model_suite(
+    statements: Sequence[ast.stmt],
+    visible: Mapping[str, _AliasEntry],
+    inherited_alias_names: set[str],
+    offsets: Sequence[int],
+    used_aliases: dict[int, ast.expr],
+) -> list[_Patch]:
+    """Plan field repairs for one suite and every nested class suite.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    """
+    aliases, alias_names = _suite_aliases(statements, visible, inherited_alias_names)
+    models = _suite_model_names(statements)
+    field_patches: list[_Patch] = []
+    for statement in statements:
+        if not isinstance(statement, ast.ClassDef):
+            continue
+        if statement.name in models:
+            for field in statement.body:
+                if isinstance(field, ast.AnnAssign):
+                    field_patches.extend(
+                        _model_field_patches(
+                            field, aliases, alias_names, offsets, used_aliases
+                        )
+                    )
+        field_patches.extend(
+            _visit_model_suite(
+                statement.body, aliases, alias_names, offsets, used_aliases
+            )
+        )
+    return field_patches
+
+
 def _model_alias_patches(source: str, filename: str) -> list[_Patch]:
     """Plan field-only repairs for alias metadata in one local model module.
 
@@ -1103,84 +1233,12 @@ def _model_alias_patches(source: str, filename: str) -> list[_Patch]:
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     used_aliases: dict[int, ast.expr] = {}
-    field_patches: list[_Patch] = []
-
-    def visit_suite(
-        statements: Sequence[ast.stmt],
-        visible: Mapping[str, tuple[ast.expr, tuple[ast.keyword, ...], ast.stmt]],
-        inherited_alias_names: set[str],
-    ) -> None:
-        aliases = dict(visible)
-        alias_names = set(inherited_alias_names) | set(aliases)
-        for statement in statements:
-            binding = _type_alias_binding(statement)
-            if binding is None:
-                continue
-            alias_names.add(binding[0])
-            normalized = _annotated_alias_metadata(binding[1])
-            if normalized is not None:
-                aliases[binding[0]] = (*normalized, statement)
-        models: set[str] = set()
-        protocols: set[str] = set()
-        changed = True
-        while changed:
-            changed = False
-            for statement in statements:
-                if not isinstance(statement, ast.ClassDef):
-                    continue
-                if any(_is_protocol_base(base) for base in statement.bases):
-                    protocols.add(statement.name)
-                    continue
-                if statement.name in models or _is_protocol_class(statement, protocols):
-                    continue
-                if any(_pydantic_model_base(base, models) for base in statement.bases):
-                    models.add(statement.name)
-                    changed = True
-        for statement in statements:
-            if not isinstance(statement, ast.ClassDef):
-                continue
-            if statement.name in models:
-                for field in statement.body:
-                    if not isinstance(field, ast.AnnAssign):
-                        continue
-                    reference = _field_alias_reference(field.annotation)
-                    direct = (
-                        []
-                        if reference is not None and reference[0] in alias_names
-                        else _direct_field_alias_patches(field, offsets)
-                    )
-                    if direct:
-                        field_patches.extend(direct)
-                        continue
-                    normalized_value = _field_without_redundant_default(field.value)
-                    if normalized_value is not None:
-                        field_patches.append(
-                            _Patch(
-                                *_span(field.value, offsets),
-                                ast.unparse(normalized_value),
-                            )
-                        )
-                    if reference is None or reference[0] not in aliases:
-                        continue
-                    value, keywords, declaration = aliases[reference[0]]
-                    field_patches.append(
-                        _Patch(
-                            *_span(field.annotation, offsets),
-                            ast.unparse(
-                                _field_annotation_with_alias_metadata(
-                                    field.annotation, keywords
-                                )
-                            ),
-                        )
-                    )
-                    used_aliases[id(declaration)] = value
-            visit_suite(statement.body, aliases, alias_names)
-
-    visit_suite(tree.body, {}, set())
+    field_patches = _visit_model_suite(tree.body, {}, set(), offsets, used_aliases)
     alias_patches = [
-        _Patch(*_span(node.value, offsets), ast.unparse(value))
+        _Patch(*_span(binding[1], offsets), ast.unparse(value))
         for node in ast.walk(tree)
-        if (_binding := _type_alias_binding(node)) is not None
+        if isinstance(node, ast.stmt)
+        and (binding := _type_alias_binding(node)) is not None
         and (value := used_aliases.get(id(node))) is not None
     ]
     return [*field_patches, *alias_patches]
@@ -1207,7 +1265,7 @@ def normalize_model_alias_tree(repository_root: Path) -> tuple[Path, ...]:
     """
     root = repository_root.expanduser().resolve(strict=True)
     manifest = root / "pyproject.toml"
-    package = _declared_protocol_package(root, manifest.read_text(encoding="utf-8"))
+    package = declared_protocol_package(root, manifest.read_text(encoding="utf-8"))
     package_root = root / "src" / Path(*package.split("."))
     if not package_root.is_dir():
         return ()
@@ -1224,7 +1282,7 @@ def normalize_model_alias_tree(repository_root: Path) -> tuple[Path, ...]:
     return tuple(changed)
 
 
-def _declared_protocol_package(root: Path, manifest_source: str) -> str:
+def declared_protocol_package(root: Path, manifest_source: str) -> str:
     """Read the selected source package from its original project declaration.
 
     Returns:
@@ -1247,42 +1305,6 @@ def _declared_protocol_package(root: Path, manifest_source: str) -> str:
         )
         raise ValueError(message)
     return name
-
-
-def _normalization_sources(
-    root: Path, sources: Mapping[Path, str]
-) -> Mapping[Path, str]:
-    """Plan protocol normalization from one captured project declaration.
-
-    Returns:
-        Only the protocol modules whose normalized source differs.
-
-    """
-    package = _declared_protocol_package(root, sources[root / "pyproject.toml"])
-    directory = root / "src" / Path(*package.split(".")) / "_protocols"
-    result: dict[Path, str] = {}
-    for path, content in sources.items():
-        if not path.is_relative_to(directory) or path.name == "__init__.py":
-            continue
-        normalized = normalize_protocol_source(
-            content, package_name=package, filename=str(path)
-        )
-        if normalized != content:
-            result[path] = normalized
-    return result
-
-
-def normalize_protocol_tree(repository_root: Path) -> tuple[Path, ...]:
-    """Normalize the declared protocol family through native guarded publication.
-
-    Returns:
-        The source paths changed by this normalization candidate.
-
-    """
-    root = repository_root.expanduser().resolve(strict=True)
-    return _publish_protocol_sources(
-        root, lambda sources: _normalization_sources(root, sources)
-    )
 
 
 def _protocol_contract_signature(node: ast.ClassDef) -> str:
@@ -1366,32 +1388,18 @@ def is_source_bootstrap_owned(
     ) or (contract is not None and ast.get_docstring(contract) in contract_docstrings)
 
 
-def consolidate_protocol_owners(
-    repository_root: Path, planned_sources: Mapping[Path, str]
-) -> tuple[Path, ...]:
-    """Retire equivalent legacy contracts displaced by projected source owners.
-
-    The model projection is the authoritative identity/path inventory.  It may
-    relocate a contract from an old aggregate holder such as ``Base`` to the
-    protocol module mirroring its declaring model.  A same-named declaration in
-    any other holder is safe to remove only when its structural contract is
-    identical. Source-bootstrap-owned holders are projections, so their stale
-    declarations yield to the canonical model-path contract; an authored
-    divergence remains an explicit admission error.
+def _canonical_protocol_contracts(
+    root: Path, protocol_root: Path, planned_sources: Mapping[Path, str]
+) -> dict[str, tuple[Path, str]]:
+    """Elect the canonical contract of every mirrored model entity.
 
     Returns:
-        The resulting ``tuple[Path, ...]``.
+        The canonical owner path and signature by protocol name.
 
     Raises:
-        ValueError: If competing canonical protocol contracts; or if incompatible legacy
-            protocol contract.
+        ValueError: If competing canonical protocol contracts.
 
     """
-    root = repository_root.expanduser().resolve()
-    package = _declared_protocol_package(
-        root, (root / "pyproject.toml").read_text(encoding="utf-8")
-    )
-    protocol_root = root / "src" / Path(*package.split(".")) / "_protocols"
     canonical: dict[str, tuple[Path, str]] = {}
     declarations: dict[Path, frozenset[str]] = {}
     for relative, source in planned_sources.items():
@@ -1417,59 +1425,104 @@ def consolidate_protocol_owners(
                     f"{member.name}: {previous[0]} and {path}"
                 )
                 raise ValueError(msg)
+    return canonical
 
+
+def _retired_member_patches(
+    path: Path,
+    holder: ast.ClassDef,
+    canonical: Mapping[str, tuple[Path, str]],
+    offsets: Sequence[int],
+) -> list[_Patch]:
+    """Plan removal of legacy holder members displaced by canonical owners.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    Raises:
+        ValueError: If incompatible legacy protocol contract.
+
+    """
+    retired_members: list[ast.ClassDef] = []
+    for member in (node for node in holder.body if isinstance(node, ast.ClassDef)):
+        elected = canonical.get(member.name)
+        if elected is None:
+            continue
+        canonical_path, signature = elected
+        actual = _protocol_contract_signature(member)
+        if actual != signature and not is_source_bootstrap_owned(path, member):
+            msg = (
+                "incompatible legacy protocol contract "
+                f"{holder.name}.{member.name}: {path}; canonical owner "
+                f"{canonical_path}"
+            )
+            raise ValueError(msg)
+        retired_members.append(member)
+    remaining = [
+        statement
+        for statement in holder.body
+        if statement not in retired_members
+        and not (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Constant)
+            and isinstance(statement.value.value, str)
+        )
+    ]
+    patches: list[_Patch] = []
+    for index, member in enumerate(retired_members):
+        start_line = min([
+            member.lineno,
+            *(decorator.lineno for decorator in member.decorator_list),
+        ])
+        patches.append(
+            _Patch(
+                offsets[start_line - 1],
+                _span(member, offsets)[1],
+                " " * (holder.col_offset + 4) + "pass"
+                if not remaining and index == 0
+                else "",
+            )
+        )
+    return patches
+
+
+def consolidate_protocol_owners(
+    repository_root: Path, planned_sources: Mapping[Path, str]
+) -> tuple[Path, ...]:
+    """Retire equivalent legacy contracts displaced by projected source owners.
+
+    The model projection is the authoritative identity/path inventory.  It may
+    relocate a contract from an old aggregate holder such as ``Base`` to the
+    protocol module mirroring its declaring model.  A same-named declaration in
+    any other holder is safe to remove only when its structural contract is
+    identical. Source-bootstrap-owned holders are projections, so their stale
+    declarations yield to the canonical model-path contract; an authored
+    divergence remains an explicit admission error.
+
+    Returns:
+        The resulting ``tuple[Path, ...]``.
+
+    """
+    root = repository_root.expanduser().resolve()
+    package = declared_protocol_package(
+        root, (root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    protocol_root = root / "src" / Path(*package.split(".")) / "_protocols"
+    canonical = _canonical_protocol_contracts(root, protocol_root, planned_sources)
+    canonical_owners = {owner for owner, _ in canonical.values()}
     changed: list[Path] = []
     for path in sorted(protocol_root.rglob("*.py")):
-        if path.name == "__init__.py" or path in {
-            owner for owner, _ in canonical.values()
-        }:
+        if path.name == "__init__.py" or path in canonical_owners:
             continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
         offsets = _line_offsets(source)
-        patches: list[_Patch] = []
-        for holder in (node for node in tree.body if isinstance(node, ast.ClassDef)):
-            retired_members: list[ast.ClassDef] = []
-            for member in (
-                node for node in holder.body if isinstance(node, ast.ClassDef)
-            ):
-                elected = canonical.get(member.name)
-                if elected is None:
-                    continue
-                canonical_path, signature = elected
-                actual = _protocol_contract_signature(member)
-                if actual != signature and not is_source_bootstrap_owned(path, member):
-                    msg = (
-                        "incompatible legacy protocol contract "
-                        f"{holder.name}.{member.name}: {path}; canonical owner "
-                        f"{canonical_path}"
-                    )
-                    raise ValueError(msg)
-                retired_members.append(member)
-            remaining = [
-                statement
-                for statement in holder.body
-                if statement not in retired_members
-                and not (
-                    isinstance(statement, ast.Expr)
-                    and isinstance(statement.value, ast.Constant)
-                    and isinstance(statement.value.value, str)
-                )
-            ]
-            for index, member in enumerate(retired_members):
-                start_line = min([
-                    member.lineno,
-                    *(decorator.lineno for decorator in member.decorator_list),
-                ])
-                patches.append(
-                    _Patch(
-                        offsets[start_line - 1],
-                        _span(member, offsets)[1],
-                        " " * (holder.col_offset + 4) + "pass"
-                        if not remaining and index == 0
-                        else "",
-                    )
-                )
+        patches = [
+            patch
+            for holder in tree.body
+            if isinstance(holder, ast.ClassDef)
+            for patch in _retired_member_patches(path, holder, canonical, offsets)
+        ]
         if patches:
             updated = _apply_patches(source, patches)
             ast.parse(updated, filename=str(path))
@@ -1503,9 +1556,14 @@ def merge_class_lineages[TIdentity: str | tuple[str, str]](
             heads = tuple(
                 dict.fromkeys(sequence[0] for sequence in sequences if sequence)
             )
+            conflicts = tuple(
+                (head, sequence[0])
+                for head in heads
+                for sequence in sequences
+                if sequence and head in sequence[1:]
+            )
             failure.add_note(
-                f"blocked_c3_heads={heads}; precedence_conflicts="
-                f"{tuple((head, sequence[0]) for head in heads for sequence in sequences if sequence and head in sequence[1:])}"
+                f"blocked_c3_heads={heads}; precedence_conflicts={conflicts}"
             )
             raise failure
         result.append(candidate)
@@ -1646,14 +1704,131 @@ def _family_declaring_module(
     return candidates[0] if candidates else None
 
 
-def _holder_base_names(
+def _import_from_bindings(
+    statement: ast.ImportFrom,
+    prefix: str,
+    module: str,
+    package_root: Path,
+    sources: Mapping[Path, str],
+) -> dict[str, str]:
+    """Resolve the declared origin of every name bound by one ``from`` import.
+
+    Returns:
+        The origin identity by bound name.
+
+    """
+    provider = statement.module or ""
+    if statement.level:
+        provider = importlib.util.resolve_name(
+            "." * statement.level + provider,
+            f"{prefix}{module}".rpartition(".")[0],
+        )
+    exports = (
+        _existing_protocol_exports(package_root, sources=sources)
+        if provider == prefix
+        else {}
+    )
+    bindings: dict[str, str] = {}
+    for imported in statement.names:
+        if imported.name in exports:
+            origin = f"{prefix}{exports[imported.name]}.{imported.name}"
+        else:
+            declaring = _family_declaring_module(
+                package_root, prefix, provider, imported.name, sources=sources
+            )
+            origin = (
+                f"{declaring}.{imported.name}"
+                if declaring is not None
+                else f"{provider}.{imported.name}"
+            )
+        bindings[imported.asname or imported.name] = origin
+    return bindings
+
+
+def _statement_bindings(
+    statement: ast.stmt, prefix: str, module: str
+) -> dict[str, str | None]:
+    """Return the names one non-``from`` module statement binds.
+
+    Returns:
+        The origin identity by bound name, ``None`` for local values.
+
+    """
+    bindings: dict[str, str | None] = {}
+    if isinstance(statement, ast.Import):
+        for imported in statement.names:
+            root_name = imported.name.partition(".")[0]
+            bindings[imported.asname or root_name] = (
+                imported.name if imported.asname else root_name
+            )
+    elif isinstance(statement, ast.ClassDef):
+        bindings[statement.name] = f"{prefix}{module}.{statement.name}"
+    elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        bindings[statement.name] = None
+    elif isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+        targets = (
+            statement.targets
+            if isinstance(statement, ast.Assign)
+            else (statement.target,)
+        )
+        for target in targets:
+            for name in ast.walk(target):
+                if isinstance(name, ast.Name):
+                    bindings[name.id] = None
+    return bindings
+
+
+def _holder_bindings(
     node: ast.ClassDef,
-    holders: Mapping[str, str],
     tree: ast.Module,
     module: str,
     package_root: Path,
     *,
     sources: Mapping[Path, str],
+) -> dict[str, str | None]:
+    """Collect the module bindings visible at one class-definition statement.
+
+    Returns:
+        The origin identity by bound name, ``None`` for local values.
+
+    """
+    prefix = f"{package_root.parent.name}._protocols"
+    bindings: dict[str, str | None] = {}
+    for statement in tree.body:
+        if statement is node:
+            break
+        if isinstance(statement, ast.ImportFrom):
+            bindings.update(
+                _import_from_bindings(statement, prefix, module, package_root, sources)
+            )
+        else:
+            bindings.update(_statement_bindings(statement, prefix, module))
+    return bindings
+
+
+def _base_reference(base: ast.expr) -> tuple[str, tuple[str, ...]] | None:
+    """Split one class base into its root name and attribute path.
+
+    Returns:
+        The root name and attribute parts, or ``None`` for other expressions.
+
+    """
+    expression = base.value if isinstance(base, ast.Subscript) else base
+    parts: list[str] = []
+    while isinstance(expression, ast.Attribute):
+        parts.append(expression.attr)
+        expression = expression.value
+    if isinstance(expression, ast.Name):
+        return expression.id, tuple(reversed(parts))
+    return None
+
+
+def _holder_base_names(
+    node: ast.ClassDef,
+    holders: Mapping[str, str],
+    module: str,
+    package_root: Path,
+    bindings: Mapping[str, str | None],
 ) -> tuple[str, ...]:
     """Authenticate source bases at their class-definition statement.
 
@@ -1666,81 +1841,25 @@ def _holder_base_names(
     """
     prefix = f"{package_root.parent.name}._protocols"
     identities = {f"{prefix}{target}.{name}": name for name, target in holders.items()}
-    bindings: dict[str, str | None] = {}
-    for statement in tree.body:
-        if statement is node:
-            break
-        if isinstance(statement, ast.ImportFrom):
-            provider = statement.module or ""
-            if statement.level:
-                provider = importlib.util.resolve_name(
-                    "." * statement.level + provider,
-                    f"{prefix}{module}".rpartition(".")[0],
-                )
-            exports = (
-                _existing_protocol_exports(package_root, sources=sources)
-                if provider == prefix
-                else {}
-            )
-            for imported in statement.names:
-                declaring = (
-                    _family_declaring_module(
-                        package_root, prefix, provider, imported.name, sources=sources
-                    )
-                    if imported.name not in exports
-                    else None
-                )
-                origin = (
-                    f"{prefix}{exports[imported.name]}.{imported.name}"
-                    if imported.name in exports
-                    else f"{declaring}.{imported.name}"
-                    if declaring is not None
-                    else f"{provider}.{imported.name}"
-                )
-                bindings[imported.asname or imported.name] = origin
-        elif isinstance(statement, ast.Import):
-            for imported in statement.names:
-                bindings[imported.asname or imported.name.partition(".")[0]] = (
-                    imported.name
-                    if imported.asname
-                    else imported.name.partition(".")[0]
-                )
-        elif isinstance(statement, ast.ClassDef):
-            bindings[statement.name] = f"{prefix}{module}.{statement.name}"
-        elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            bindings[statement.name] = None
-        elif isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else (statement.target,)
-            )
-            for target in targets:
-                for name in ast.walk(target):
-                    if isinstance(name, ast.Name):
-                        bindings[name.id] = None
     names: list[str] = []
     standard = {
         f"{ancestor.__module__}.{ancestor.__qualname__}"
         for ancestor in Protocol.__mro__
     }
     for base in node.bases:
-        expression = base.value if isinstance(base, ast.Subscript) else base
-        parts: list[str] = []
-        while isinstance(expression, ast.Attribute):
-            parts.append(expression.attr)
-            expression = expression.value
-        if not isinstance(expression, ast.Name):
+        reference = _base_reference(base)
+        if reference is None:
             message = (
                 f"protocol base is not a declared identity: "
                 f"{module}:{ast.unparse(base)}"
             )
             raise ValueError(message)
-        if expression.id == "object" and expression.id not in bindings and not parts:
+        root_name, parts = reference
+        if root_name == "object" and root_name not in bindings and not parts:
             names.append("builtins.object")
             continue
-        origin = bindings.get(expression.id)
-        identity = ".".join((origin, *reversed(parts))) if origin is not None else ""
+        origin = bindings.get(root_name)
+        identity = ".".join((origin, *parts)) if origin is not None else ""
         if isinstance(base, ast.Subscript) and identity not in standard:
             message = (
                 f"protocol base specialization is unproved: "
@@ -1760,19 +1879,19 @@ def _holder_base_names(
     return tuple(names) or ("builtins.object",)
 
 
-def _aggregate_protocol_holders(
+def _protocol_holder_modules(
     package_root: Path,
     holders: Sequence[tuple[str, str]],
     *,
     sources: Mapping[Path, str],
-) -> tuple[tuple[str, str], ...]:
-    """Elect nearest declared owners and prove their composition through C3.
+) -> dict[str, str]:
+    """Merge existing and planned holder owners, rejecting competing modules.
 
     Returns:
-        Source-ordered maximal holders without redundant ancestor bases.
+        The owning module by holder name.
 
     Raises:
-        ValueError: A source owner, import or class precedence is incompatible.
+        ValueError: A holder has competing source owners.
 
     """
     modules: dict[str, str] = {}
@@ -1781,6 +1900,24 @@ def _aggregate_protocol_holders(
             message = f"protocol holder has competing source owners: {name}"
             raise ValueError(message)
         modules[name] = module
+    return modules
+
+
+def _protocol_holder_graph(
+    package_root: Path,
+    modules: Mapping[str, str],
+    *,
+    sources: Mapping[Path, str],
+) -> dict[str, tuple[str, ...]]:
+    """Build the declared base graph of every holder and of ``Protocol``.
+
+    Returns:
+        The declared base identities by holder identity.
+
+    Raises:
+        ValueError: A holder has no local module or declaration.
+
+    """
     graph: dict[str, tuple[str, ...]] = {}
     for holder, module in modules.items():
         path = _protocol_module_path(package_root, module, sources=sources)
@@ -1799,40 +1936,83 @@ def _aggregate_protocol_holders(
         if declaration is None:
             message = f"protocol holder is missing its declaration: {holder} -> {path}"
             raise ValueError(message)
+        bindings = _holder_bindings(
+            declaration, tree, module, package_root, sources=sources
+        )
         graph[holder] = _holder_base_names(
-            declaration, modules, tree, module, package_root, sources=sources
+            declaration, modules, module, package_root, bindings
         )
     for ancestor in Protocol.__mro__:
         graph[f"{ancestor.__module__}.{ancestor.__qualname__}"] = tuple(
             f"{base.__module__}.{base.__qualname__}" for base in ancestor.__bases__
         )
-    linearized: dict[str, tuple[str, ...]] = {}
+    return graph
 
-    def lineage(holder: str, active: frozenset[str] = frozenset()) -> tuple[str, ...]:
-        if holder in linearized:
-            return linearized[holder]
-        if holder in active:
-            message = f"cyclic protocol holder inheritance: {holder}"
-            raise ValueError(message)
-        if holder not in graph:
-            message = f"protocol holder ancestry is unresolved: {holder}"
-            raise ValueError(message)
-        bases = graph[holder]
-        parents = tuple(lineage(base, active | {holder}) for base in bases)
-        linearized[holder] = (
-            holder,
-            *merge_class_lineages(
-                (*parents, bases),
-                message=f"protocol holder has inconsistent C3 ancestry: {holder}",
-            ),
-        )
+
+def _holder_lineage(
+    holder: str,
+    graph: Mapping[str, tuple[str, ...]],
+    linearized: dict[str, tuple[str, ...]],
+    active: frozenset[str] = frozenset(),
+) -> tuple[str, ...]:
+    """Linearize one holder ancestry through C3, memoized in ``linearized``.
+
+    Returns:
+        The holder followed by its C3-ordered ancestors.
+
+    Raises:
+        ValueError: The ancestry is cyclic or unresolved.
+
+    """
+    if holder in linearized:
         return linearized[holder]
+    if holder in active:
+        message = f"cyclic protocol holder inheritance: {holder}"
+        raise ValueError(message)
+    if holder not in graph:
+        message = f"protocol holder ancestry is unresolved: {holder}"
+        raise ValueError(message)
+    bases = graph[holder]
+    parents = tuple(
+        _holder_lineage(base, graph, linearized, active | {holder}) for base in bases
+    )
+    linearized[holder] = (
+        holder,
+        *merge_class_lineages(
+            (*parents, bases),
+            message=f"protocol holder has inconsistent C3 ancestry: {holder}",
+        ),
+    )
+    return linearized[holder]
 
+
+def _aggregate_protocol_holders(
+    package_root: Path,
+    holders: Sequence[tuple[str, str]],
+    *,
+    sources: Mapping[Path, str],
+) -> tuple[tuple[str, str], ...]:
+    """Elect nearest declared owners and prove their composition through C3.
+
+    Source owners, imports and class precedence are validated by the holder
+    module, graph and lineage helpers, which raise ``ValueError`` on conflict.
+
+    Returns:
+        Source-ordered maximal holders without redundant ancestor bases.
+
+    """
+    modules = _protocol_holder_modules(package_root, holders, sources=sources)
+    graph = _protocol_holder_graph(package_root, modules, sources=sources)
+    linearized: dict[str, tuple[str, ...]] = {}
     selected = tuple(holder for holder, _module in holders)
-    inherited = {base for holder in selected for base in lineage(holder)[1:]}
+    inherited = {
+        base
+        for holder in selected
+        for base in _holder_lineage(holder, graph, linearized)[1:]
+    }
     nearest = tuple(holder for holder in selected if holder not in inherited)
     merge_class_lineages(
-        (*[lineage(holder) for holder in nearest], nearest),
+        (*[_holder_lineage(holder, graph, linearized) for holder in nearest], nearest),
         message="aggregate protocol holders have inconsistent C3 precedence",
     )
     return tuple((holder, modules[holder]) for holder in nearest)
@@ -1906,6 +2086,52 @@ def _partition_owner_name(holder: str, module_name: str) -> str:
     return holder[: -len(suffix)]
 
 
+def _partition_owner_text(
+    package_root: Path, domain: str, owner: str, members: Sequence[tuple[str, str]]
+) -> tuple[str, str]:
+    """Render the member imports and class header of one partition owner.
+
+    Returns:
+        The import block and the rendered owner class.
+
+    """
+    imports = "\n".join(
+        f"from {package_root.parent.name}._protocols{module} import {holder}"
+        for holder, module in members
+    )
+    bases = ",\n        ".join(holder for holder, _module in members)
+    rendered_class = (
+        f"class {owner}(\n"
+        f"    {bases},\n"
+        "):\n"
+        f'    """Canonical structural contracts for the {domain} domain."""\n'
+    )
+    return imports, rendered_class
+
+
+def _partition_owner_patches(
+    source: str,
+    tree: ast.Module,
+    existing: ast.ClassDef,
+    imports: str,
+    rendered_class: str,
+) -> list[_Patch]:
+    """Plan the import insertion and header rewrite of a baseless owner.
+
+    Returns:
+        The resulting ``list[_Patch]``.
+
+    """
+    offsets = _line_offsets(source)
+    line_start = offsets[existing.lineno - 1]
+    header_end = source.encode("utf-8").index(b":", line_start) + 1
+    insertion = _import_insertion_offset(tree, offsets)
+    return [
+        _Patch(insertion, insertion, f"\n{imports}\n"),
+        _Patch(line_start, header_end, rendered_class.rstrip("\n")),
+    ]
+
+
 def _render_partition_owner(
     package_root: Path,
     relative_directory: Path,
@@ -1931,16 +2157,8 @@ def _render_partition_owner(
     owner = _partition_owner_name(members[0][0], members[0][1].rsplit(".", 1)[-1])
     owner_module = "." + ".".join((*relative_directory.parent.parts, domain))
     owner_path = package_root.joinpath(*relative_directory.parent.parts, f"{domain}.py")
-    imports = "\n".join(
-        f"from {package_root.parent.name}._protocols{module} import {holder}"
-        for holder, module in members
-    )
-    bases = ",\n        ".join(holder for holder, _module in members)
-    rendered_class = (
-        f"class {owner}(\n"
-        f"    {bases},\n"
-        "):\n"
-        f'    """Canonical structural contracts for the {domain} domain."""\n'
+    imports, rendered_class = _partition_owner_text(
+        package_root, domain, owner, members
     )
     if not owner_path.exists() and owner_path not in sources:
         sources[owner_path] = (
@@ -1966,29 +2184,20 @@ def _render_partition_owner(
         msg = f"canonical protocol partition owner is missing {owner}: {owner_path}"
         raise ValueError(msg)
     member_names = tuple(holder for holder, _module in members)
-    existing_bases = tuple(
-        base.id for base in existing.bases if isinstance(base, ast.Name)
-    )
     if existing.bases:
-        if not set(member_names).issubset(existing_bases):
+        if not set(member_names).issubset(
+            base.id for base in existing.bases if isinstance(base, ast.Name)
+        ):
             msg = (
                 f"canonical protocol partition owner has incompatible bases: "
                 f"{owner_path}"
             )
             raise ValueError(msg)
         return owner, owner_module
-    offsets = _line_offsets(source)
-    line_start = offsets[existing.lineno - 1]
-    header_end = source.encode("utf-8").index(b":", line_start) + 1
-    insertion = _import_insertion_offset(tree, offsets)
-    updated = _apply_patches(
+    sources[owner_path] = _apply_patches(
         source,
-        [
-            _Patch(insertion, insertion, f"\n{imports}\n"),
-            _Patch(line_start, header_end, rendered_class.rstrip("\n")),
-        ],
+        _partition_owner_patches(source, tree, existing, imports, rendered_class),
     )
-    sources[owner_path] = updated
     return owner, owner_module
 
 
@@ -2005,7 +2214,9 @@ def _plan_partition_owners(
     by_directory: dict[Path, list[tuple[str, str]]] = {}
     for holder, module in holders:
         relative = Path(*module[1:].split("."))
-        if len(relative.parts) < 2 or not relative.parent.name.startswith("_"):
+        if len(
+            relative.parts
+        ) < _PARTITION_MIN_PARTS or not relative.parent.name.startswith("_"):
             continue
         by_directory.setdefault(relative.parent, []).append((holder, module))
     owners: list[tuple[str, str]] = []
@@ -2034,6 +2245,32 @@ def _protocol_module_path(
     return package_init if package_init in sources or package_init.is_file() else None
 
 
+def _lazy_export_mapping(node: ast.AST) -> ast.Dict | None:
+    """Return the native dictionary passed to ``install_lazy_exports``.
+
+    Returns:
+        The ``MappingProxyType`` dictionary literal, or ``None`` for other nodes.
+
+    """
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "install_lazy_exports"
+        and len(node.args) > _LAZY_EXPORT_MAPPING_INDEX
+    ):
+        return None
+    proxy = node.args[_LAZY_EXPORT_MAPPING_INDEX]
+    if not (
+        isinstance(proxy, ast.Call)
+        and isinstance(proxy.func, ast.Name)
+        and proxy.func.id == "MappingProxyType"
+        and proxy.args
+    ):
+        return None
+    contents = proxy.args[0]
+    return contents if isinstance(contents, ast.Dict) else None
+
+
 def _existing_protocol_exports(
     protocol_root: Path, *, sources: Mapping[Path, str]
 ) -> dict[str, str]:
@@ -2043,8 +2280,7 @@ def _existing_protocol_exports(
         The resulting ``dict[str, str]``.
 
     Raises:
-        ValueError: If protocol barrel is not source-bootstrap-owned; or if protocol
-            export mapping is not a native dictionary declaration.
+        ValueError: If protocol barrel is not source-bootstrap-owned.
 
     """
     initializer = protocol_root / "__init__.py"
@@ -2056,28 +2292,16 @@ def _existing_protocol_exports(
         msg = f"protocol barrel is not source-bootstrap-owned: {initializer}"
         raise ValueError(msg)
     tree = ast.parse(source, filename=str(initializer))
-    mapping = next(
+    contents = next(
         (
-            node.args[2]
+            mapping
             for node in ast.walk(tree)
-            if isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "install_lazy_exports"
-            and len(node.args) >= 3
-            and isinstance(node.args[2], ast.Call)
-            and isinstance(node.args[2].func, ast.Name)
-            and node.args[2].func.id == "MappingProxyType"
-            and node.args[2].args
-            and isinstance(node.args[2].args[0], ast.Dict)
+            if (mapping := _lazy_export_mapping(node)) is not None
         ),
         None,
     )
-    if mapping is None:
+    if contents is None:
         return {}
-    contents = mapping.args[0]
-    if not isinstance(contents, ast.Dict):
-        message = "protocol export mapping is not a native dictionary declaration"
-        raise ValueError(message)
     exports: dict[str, str] = {}
     for key, value in zip(contents.keys, contents.values, strict=True):
         if not (
@@ -2374,130 +2598,20 @@ def _protocol_source(path: Path, *, sources: Mapping[Path, str]) -> str:
     return sources[path] if path in sources else path.read_text(encoding="utf-8")
 
 
-def _publish_protocol_sources(
-    root: Path,
-    planner: Callable[[Mapping[Path, str]], Mapping[Path, str]],
-    *,
-    package_name: str | None = None,
-) -> tuple[Path, ...]:
-    """Capture a cold source candidate and publish with native CAS and one lock.
+def _publication() -> type[FlextInfraUtilitiesProtocolPublication]:
+    """Resolve the guarded publication owner on first use.
+
+    The bootstrap core stays importable before the package exists; the
+    facade publication capabilities load when the script route first
+    needs them, keeping this module's stdlib-only inventory contract.
 
     Returns:
-        The changed source paths from the canonical file-change publisher.
-
-    Raises:
-        ValueError: A physical source, membership or destination lacks its witness.
+        The publication owner class.
 
     """
-    root = root.resolve(strict=True)
-    lock_path = FlextInfraUtilitiesGitPhysicalScope.lock_path(root)
-    with u.Cli.file_changes_lock(lock_path):
-        manifest = root / "pyproject.toml"
-        states = {
-            manifest: u.Cli.atomic_read_binary_file_state(
-                manifest, required=package_name is None
-            ).unwrap()
-        }
-        if package_name is None:
-            if states[manifest].content is None:
-                message = f"project declaration is absent: {manifest}"
-                raise ValueError(message)
-            package_name = _declared_protocol_package(
-                root, states[manifest].content.decode("utf-8")
-            )
-        package_root = root / "src" / Path(*package_name.split("."))
-        directory = package_root / "_protocols"
-        inventories: list[p.Cli.AtomicDirectoryInventory] = []
-        pending = [directory]
-        destinations = {directory / "__init__.py", package_root / "protocols.py"}
-        while pending:
-            current = pending.pop()
-            inventory = u.Cli.inventory_physical_directory(current)
-            inventories.append(inventory)
-            for entry in inventory.entries:
-                path = current / entry.name
-                if entry.kind == "directory":
-                    if entry.name != "__pycache__":
-                        pending.append(path)
-                elif entry.kind != "file":
-                    message = f"protocol source is not a physical regular entry: {path}"
-                    raise ValueError(message)
-                elif path.suffix == ".py":
-                    states[path] = u.Cli.atomic_read_binary_file_state(
-                        path, required=True
-                    ).unwrap()
-            if current != directory and current.name.startswith("_"):
-                destinations.add(current / "__init__.py")
-                destinations.add(
-                    current.parent / f"{current.name.removeprefix('_')}.py"
-                )
-        for path in destinations:
-            if path not in states:
-                states[path] = u.Cli.atomic_read_binary_file_state(path).unwrap()
-        sources = {
-            path: state.content.decode("utf-8")
-            for path, state in states.items()
-            if state.content is not None
-        }
-        planned = planner(sources)
-        if any(path not in states for path in planned):
-            message = "protocol source plan has an uncaptured destination"
-            raise ValueError(message)
-        for inventory in inventories:
-            if u.Cli.inventory_physical_directory(inventory.root.path) != inventory:
-                message = f"protocol source membership changed: {inventory.root.path}"
-                raise ValueError(message)
-        changes = tuple(
-            m.Cli.FileChange(
-                path=path,
-                before=state,
-                desired_content=planned[path].encode("utf-8")
-                if path in planned
-                else state.content,
-                desired_mode=(state.mode if state.mode is not None else 0o644)
-                if path in planned
-                else state.mode,
-            )
-            for path, state in states.items()
-        )
-        return u.Cli.publish_file_changes(
-            changes, lock_path=lock_path, nonsecret_source_paths=tuple(planned)
-        ).unwrap()
-
-
-def publish_protocol_facades(repository_root: Path) -> tuple[Path, ...]:
-    """Publish the source-only plan without importing the target protocol facade.
-
-    Returns:
-        The native guarded receipt, including only changed paths.
-
-    """
-    root = repository_root.resolve(strict=True)
-    return _publish_protocol_sources(
-        root,
-        lambda sources: plan_protocol_facades(root, declared_sources=sources),
-        package_name="flext_infra",
-    )
-
-
-def publish_protocol_family_inits(repository_root: Path) -> tuple[Path, ...]:
-    """Publish the missing family initializers of the declared protocol package.
-
-    Returns:
-        The native guarded receipt, including only changed paths.
-
-    """
-    root = repository_root.resolve(strict=True)
-    return _publish_protocol_sources(
-        root,
-        lambda sources: plan_protocol_family_inits(
-            root,
-            package_name=_declared_protocol_package(
-                root, sources[root / "pyproject.toml"]
-            ),
-            declared_sources=sources,
-        ),
-    )
+    return importlib.import_module(
+        "flext_infra._utilities.protocol_publication"
+    ).FlextInfraUtilitiesProtocolPublication
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -2515,26 +2629,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         msg = "protocol bootstrap requires a repository root"
         raise ValueError(msg)
     root = Path(arguments[0]).resolve()
-    initialized = publish_protocol_family_inits(root)
+    publication = _publication()
+    initialized = publication.publish_protocol_family_inits(root)
     model_changed = normalize_model_alias_tree(root)
-    changed = normalize_protocol_tree(root)
+    changed = publication.normalize_protocol_tree(root)
     if (
-        _declared_protocol_package(
+        declared_protocol_package(
             root, (root / "pyproject.toml").read_text(encoding="utf-8")
         )
         == "flext_infra"
     ):
-        publish_protocol_facades(root)
-    print(f"normalized model alias fields: {len(model_changed)}")
-    print(f"normalized protocol modules: {len(changed)}")
-    print(f"published protocol family initializers: {len(initialized)}")
+        publication.publish_protocol_facades(root)
+    sys.stdout.write(f"normalized model alias fields: {len(model_changed)}\n")
+    sys.stdout.write(f"normalized protocol modules: {len(changed)}\n")
+    sys.stdout.write(f"published protocol family initializers: {len(initialized)}\n")
     if len(arguments) == 1:
         return 0
     command = arguments[2:] if arguments[1] == "--" else arguments[1:]
     sys.path.insert(0, str(root / "src"))
-    from flext_infra import FlextInfraCli
-
-    return FlextInfraCli.infra_main(command)
+    cli: type[FlextInfraCli] = importlib.import_module("flext_infra").FlextInfraCli
+    return cli.infra_main(command)
 
 
 if __name__ == "__main__":

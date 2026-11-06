@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, m, p, tm, u
@@ -19,7 +17,7 @@ class TestsFlextInfraSourceOwnership:
     """Exercise the native source reader through its public planning facade."""
 
     @staticmethod
-    @pytest.mark.parametrize("width", ["short", "wrapped"])
+    @c.Tests.MARK.parametrize("width", ["short", "wrapped"])
     def test_future_local_exports_keep_the_elected_package_resource(
         tmp_path: Path, installed_dependency_path: Path, width: str
     ) -> None:
@@ -78,7 +76,7 @@ class TestsFlextInfraSourceOwnership:
             tm.fail(package.exists())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "surface",
         [
             c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -159,7 +157,7 @@ class TestsFlextInfraSourceOwnership:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("nested", [False, True])
     def test_dependency_membership_is_not_project_ownership(
         tmp_path: Path, *, nested: bool
     ) -> None:

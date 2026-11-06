@@ -11,12 +11,9 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-import pytest
-
-import flext_infra
 from flext_infra import config
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
-from tests import c, m, p, tm, u
+from tests import c, infra, m, p, tm, u
 
 
 class TestsFlextInfraClassNestingSuiteScope:
@@ -61,7 +58,7 @@ class TestsFlextInfraClassNestingSuiteScope:
             The published module source.
 
         """
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             edits = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.CLASS_NESTING,
@@ -133,7 +130,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         return result.stdout
 
     @staticmethod
-    @pytest.mark.parametrize("existing", [False, True])
+    @c.Tests.MARK.parametrize("existing", [False, True])
     def test_native_functions_collect_and_execute_after_nesting(
         tmp_path: Path,
         *,
@@ -222,7 +219,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "@pytest.fixture\ndef injected():\n    return 1\n",
@@ -240,7 +237,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
             tmp_path, source
         )
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,
@@ -302,7 +299,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "member",
         [
             "    def setup_method(self):\n        pass\n",
@@ -331,7 +328,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         root, path = TestsFlextInfraClassNestingSuiteScope._test_workspace(
             tmp_path, source
         )
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,
@@ -371,7 +368,7 @@ class TestsFlextInfraClassNestingSuiteScope:
         _alias, module_name, _owner_name = cls._models_owner()
         module_path = package_root / f"{module_name}.py"
         module_path.write_text(source, encoding=c.Infra.ENCODING_DEFAULT)
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,
@@ -582,12 +579,12 @@ class TestsFlextInfraClassNestingSuiteScope:
                 entries=(),
             )
         )
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             applied = FlextInfraCodemodSemanticApply.apply(
                 root,
                 report,
                 rope,
-                workspace_factory=flext_infra.infra.rope_workspace,
+                workspace_factory=infra.rope_workspace,
             )
         tm.fail(applied, has=f"{owner_name}: LIMIT")
         tm.that(path.read_text(encoding=c.Infra.ENCODING_DEFAULT), eq=source)

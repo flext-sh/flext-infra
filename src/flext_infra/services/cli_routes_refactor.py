@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import cli
@@ -69,6 +70,30 @@ class FlextInfraRefactorRoutes:
             )
 
     @staticmethod
+    def _module_move_target(
+        request: p.Infra.ModuleMoveCommand,
+        root: Path,
+        source: Path,
+    ) -> Path | None:
+        """Resolve the declared destination file of a module move.
+
+        Returns:
+            The destination file, or ``None`` when no destination is declared.
+
+        Raises:
+            FileNotFoundError: If the selected destination directory is absent.
+
+        """
+        if request.destination_file is not None:
+            return (root / request.destination_file).resolve()
+        if request.destination_directory is None:
+            return None
+        directory = (root / request.destination_directory).resolve()
+        if not directory.is_dir():
+            raise FileNotFoundError(directory)
+        return directory / source.name
+
+    @staticmethod
     def execute_move_module(
         request: p.Infra.ModuleMoveCommand,
     ) -> p.Result[t.Cli.ResultValue]:
@@ -89,14 +114,8 @@ class FlextInfraRefactorRoutes:
                 msg = "module move requires the native repository owner root"
                 raise ValueError(msg)
             source = (root / request.source_file).resolve()
-            if request.destination_file is not None:
-                target = (root / request.destination_file).resolve()
-            elif request.destination_directory is not None:
-                directory = (root / request.destination_directory).resolve()
-                if not directory.is_dir():
-                    raise FileNotFoundError(directory)
-                target = directory / source.name
-            else:
+            target = FlextInfraRefactorRoutes._module_move_target(request, root, source)
+            if target is None:
                 return r[t.Cli.ResultValue].fail(
                     "module move requires one validated destination"
                 )

@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from markdown import Markdown
 
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,7 +27,7 @@ class TestsFlextInfraDocsGeneratorInternals:
         tm.that(u.Infra.contract_anchorize(""), eq="")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "heading",
         ["Contrato público", "Composição de serviços", "Žlutý kůň", "Test--Case"],
     )

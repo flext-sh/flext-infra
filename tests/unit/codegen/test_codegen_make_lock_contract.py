@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
+from flext_infra import config
+from tests import c, p, r, tm, u
 
-from flext_infra import config, p
-from tests import c, r, tm, u
-
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeLockContract:

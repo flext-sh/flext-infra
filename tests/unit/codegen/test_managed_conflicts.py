@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m, u
-from tests import c, tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraManagedConflictRecovery:
@@ -69,7 +66,7 @@ class TestsFlextInfraManagedConflictRecovery:
         tm.that(tm.ok(u.Infra.pyproject_regeneration_source(recovered)), eq=recovered)
 
     @staticmethod
-    @pytest.mark.parametrize("render_owned", [True, False])
+    @c.Tests.MARK.parametrize("render_owned", [True, False])
     def test_overlay_preserves_inline_custom_and_replaces_entire_owned_subtree(
         *,
         render_owned: bool,
@@ -121,9 +118,9 @@ class TestsFlextInfraManagedConflictRecovery:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("closing_quotes", [0, 1, 2])
-    @pytest.mark.parametrize("delimiter", ['"""', "'''"])
-    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
+    @c.Tests.MARK.parametrize("closing_quotes", [0, 1, 2])
+    @c.Tests.MARK.parametrize("delimiter", ['"""', "'''"])
+    @c.Tests.MARK.parametrize("newline", ["\n", "\r\n"])
     def test_tooling_regeneration_preserves_custom_multiline_values(
         delimiter: str,
         newline: str,

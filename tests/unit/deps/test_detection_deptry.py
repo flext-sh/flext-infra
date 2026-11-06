@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
@@ -19,7 +17,7 @@ class TestsFlextInfraDepsDetectionDeptry:
     """Exercise native deptry against real project declarations and sources."""
 
     @staticmethod
-    @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
+    @c.Tests.MARK.parametrize("namespace", ["infra", "deployment_support"])
     def test_shipped_namespace_imports_establish_runtime_usage(
         tmp_path: Path,
         namespace: str,
@@ -228,7 +226,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("with_src", [False, True])
+    @c.Tests.MARK.parametrize("with_src", [False, True])
     def test_missing_configuration_is_a_failure(
         tmp_path: Path, *, with_src: bool
     ) -> None:

@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, p, tm, u
 
 
-@pytest.mark.parametrize("stale_model_base", [False, True])
-@pytest.mark.parametrize("annotated", [False, True])
+@c.Tests.MARK.parametrize("stale_model_base", [False, True])
+@c.Tests.MARK.parametrize("annotated", [False, True])
 def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
     tmp_path: Path,
     native_consumer: p.Tests.NativeConsumer,

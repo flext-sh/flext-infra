@@ -11,8 +11,6 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -266,7 +264,7 @@ class TestsFlextInfraReleaseDag:
             )
 
         @staticmethod
-        @pytest.mark.parametrize("target", ["build", "wheel", "sdist"])
+        @c.Tests.MARK.parametrize("target", ["build", "wheel", "sdist"])
         def test_hatch_exclusion_cannot_cancel_declared_source(
             tmp_path: Path,
             target: str,

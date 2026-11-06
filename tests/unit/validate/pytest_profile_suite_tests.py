@@ -10,8 +10,6 @@ import pstats
 from math import isfinite
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, validate
 from tests import c, m, tm, u
 
@@ -20,7 +18,7 @@ class TestsFlextInfraPytestProfileSuite:
     """Exercise collection and complete-suite profile evidence."""
 
     @staticmethod
-    @pytest.mark.parametrize("complete", [False, True])
+    @c.Tests.MARK.parametrize("complete", [False, True])
     def test_collection_profile_preserves_pytest_arguments(
         cached_runner_project: Path,
         *,
@@ -151,8 +149,8 @@ class TestsFlextInfraPytestProfileSuite:
         tm.that(report.execute().failure, truth=True)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("profile_collection", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("profile_collection", [False, True])
     def test_complete_suite_persists_cache_and_zero_diagnostic_evidence(
         cached_runner_project: Path,
         *,

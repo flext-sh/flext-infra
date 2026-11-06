@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, tm, u
 
@@ -22,7 +20,7 @@ class TestsFlextInfraModelFieldsCutover:
     """Migration preserves rejection semantics and reaches a stable source."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "access",
         [
             'getattr(candidate, "model_fields", None)',
@@ -129,7 +127,7 @@ class TestsFlextInfraModelFieldsCutover:
         tm.fail(result, has="conflicts with a local binding")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "from another import type\n",
@@ -162,7 +160,7 @@ class TestsFlextInfraModelFieldsCutover:
         tm.fail(result)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "body",
         [
             (

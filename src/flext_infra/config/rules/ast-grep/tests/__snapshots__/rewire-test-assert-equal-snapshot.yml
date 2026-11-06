@@ -1,5 +1,31 @@
 id: rewire-test-assert-equal
 snapshots:
+  "from tests import tm\nassert (\n    \"a long expected fragment\"\n    == observed\n)\n":
+    fixed: |
+      from tests import tm
+      tm.that("a long expected fragment", eq=observed)
+    labels:
+    - source: |-
+        assert (
+            "a long expected fragment"
+            == observed
+        )
+      style: primary
+      start: 21
+      end: 78
+    - source: from tests import tm
+      style: secondary
+      start: 0
+      end: 20
+    - source: |
+        from tests import tm
+        assert (
+            "a long expected fragment"
+            == observed
+        )
+      style: secondary
+      start: 0
+      end: 79
   "from tests import tm\nassert left == right\n":
     fixed: |
       from tests import tm

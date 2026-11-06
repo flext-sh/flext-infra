@@ -694,14 +694,16 @@ class FlextInfraGates:
         msg = f"{type(self).__name__}._parse_check_output() must be implemented"
         raise NotImplementedError(msg)
 
-    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
-        """Timeout for the check command. Override for long-running tools.
+    def check_budget_seconds(self, project_dir: Path) -> int:
+        """Declared wall-time budget of this gate's check run for one project.
+
+        Override for a tool whose budget depends on the project.
 
         Returns:
-            The resulting ``int``.
+            The runner timeout the gate admits for ``project_dir``.
 
         """
-        _ = project_dir, ctx
+        _ = project_dir
         return self.check_timeout
 
     def _check_report_path(
@@ -1065,7 +1067,7 @@ class FlextInfraGates:
             RuntimeError: If ``result.failure``.
 
         """
-        run_timeout, deadline = self._runner_limits(self._check_timeout(cwd, ctx))
+        run_timeout, deadline = self._runner_limits(self.check_budget_seconds(cwd))
         result = self._runner.run_raw(
             cmd,
             cwd=cwd,

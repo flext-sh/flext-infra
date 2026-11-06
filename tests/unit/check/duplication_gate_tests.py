@@ -9,15 +9,13 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, t
+from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
-@pytest.mark.usefixtures("_ci_context")
+@c.Tests.MARK.usefixtures("_ci_context")
 class TestsFlextInfraDuplicationGate:
     """Exercise observable gate behavior with the real setup-provisioned tool.
 
@@ -25,7 +23,7 @@ class TestsFlextInfraDuplicationGate:
     host a unit test never reaches, so it is typed NOT EXECUTED there.
     """
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def _ci_context() -> Generator[None]:
         ci = config.Infra.codegen.make.ci

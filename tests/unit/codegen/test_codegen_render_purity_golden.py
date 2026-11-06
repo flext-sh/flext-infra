@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, p, tm, u
@@ -51,7 +49,7 @@ class TestsFlextInfraCodegenRenderPurityGolden:
             ("commit", "--no-verify", "-m", "commit managed artifacts"),
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "environment",
         ["runner-clean", "host-runtime", "host-concurrent-wip"],
     )

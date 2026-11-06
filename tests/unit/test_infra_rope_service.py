@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-import flext_infra
-from tests import c, m, t, tm, u
+from tests import c, infra, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +26,7 @@ class TestsFlextInfraInfraRopeService:
         source_path = package / "query_owner.py"
         source = "class QueryOwner:\n    pass\n"
         source_path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with flext_infra.infra.rope_workspace(root) as workspace:
+        with infra.rope_workspace(root) as workspace:
             project = workspace.rope_project
             resource = tm.not_none(workspace.resource(source_path))
             tm.ok(resource is workspace.resource(source_path))
@@ -45,11 +42,11 @@ class TestsFlextInfraInfraRopeService:
             workspace.refresh(preserve_indexes=True)
             tm.ok(project is workspace.rope_project)
             tm.that(workspace.source(source_path), eq=source)
-            with pytest.raises(FileNotFoundError):
+            with u.Tests.raises(FileNotFoundError):
                 workspace.source(package / "missing_query_owner.py")
 
     @staticmethod
-    @pytest.mark.parametrize("same_root", [False, True])
+    @c.Tests.MARK.parametrize("same_root", [False, True])
     def test_sibling_scopes_keep_their_root_and_independent_lifetime(
         rope_sibling_scopes: tuple[tuple[Path, Path], tuple[Path, Path]],
         *,
@@ -61,14 +58,10 @@ class TestsFlextInfraInfraRopeService:
             consumer_root, consumer = producer_root, producer
         source = producer / "owned.py"
         source.write_text("class Owner:\n    pass\n", encoding=c.DEFAULT_ENCODING)
-        with flext_infra.infra.rope_workspace(
-            producer_root, producer_root.parent
-        ) as outer:
+        with infra.rope_workspace(producer_root, producer_root.parent) as outer:
             before = tuple(item.name for item in outer.objects(source))
             tm.that(before, has="Owner")
-            with flext_infra.infra.rope_workspace(
-                consumer_root, producer_root.parent
-            ) as inner:
+            with infra.rope_workspace(consumer_root, producer_root.parent) as inner:
                 tm.that(inner.repository_root, eq=consumer_root)
                 tm.that(outer.repository_root, eq=producer_root)
                 tm.not_none(inner.resource(consumer / "__init__.py"))
@@ -78,7 +71,7 @@ class TestsFlextInfraInfraRopeService:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("include_local_scopes", [False, True])
+    @c.Tests.MARK.parametrize("include_local_scopes", [False, True])
     def test_workspace_dsl_keeps_nested_declarations_without_function_locals(
         tmp_path: Path,
         *,
@@ -104,7 +97,7 @@ class TestsFlextInfraInfraRopeService:
             "    return FunctionLocal\n"
         )
         path.write_text(source, encoding="utf-8")
-        with flext_infra.infra.rope_workspace(root) as workspace:
+        with infra.rope_workspace(root) as workspace:
             objects = workspace.objects(
                 path,
                 include_local_scopes=include_local_scopes,
@@ -188,7 +181,7 @@ class TestsFlextInfraInfraRopeService:
             The resulting ``tuple[str, ...],``.
 
         """
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             return tuple(
                 rope.exports(
                     module_path,
@@ -197,7 +190,7 @@ class TestsFlextInfraInfraRopeService:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "symbol", "documented"),
         [
             ("from .sibling import Public\n", "Public", False),
@@ -241,7 +234,7 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that(rope.repository_root, eq=repository_root.resolve())
             tm.that(rope.workspace_index.package_dirs, has=package_root)
             tm.that(rope.module(module_path), none=False)
@@ -279,7 +272,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             exports = rope.exports(
                 module_path,
                 export_options=m.Infra.ExportOptions.model_validate({
@@ -357,7 +350,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.DEFAULT_ENCODING,
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             tm.that(rope.workspace_index.package_dirs, has=examples_root)
             module = rope.module(module_path)
             tm.that(module, none=False)
@@ -378,7 +371,7 @@ class TestsFlextInfraInfraRopeService:
             docstring="Models.",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             state = rope.semantic(module_path)
             tm.that(
                 any(
@@ -389,7 +382,7 @@ class TestsFlextInfraInfraRopeService:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("family_alias", sorted(u.Infra.facade_families()))
+    @c.Tests.MARK.parametrize("family_alias", sorted(u.Infra.facade_families()))
     def test_class_nesting_cutover_uses_declared_family_owner(
         tmp_path: Path,
         family_alias: str,
@@ -410,7 +403,7 @@ class TestsFlextInfraInfraRopeService:
             extra_class_names=(extra_class_name,),
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             owner = rope.convention(module_path).module_policy.expected_family
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
@@ -451,7 +444,7 @@ class TestsFlextInfraInfraRopeService:
             workspace_scope = call_root == monorepo_root
             expected_root = monorepo_root if workspace_scope else repository_root
             expected_projects = {expected_root.resolve()}
-            with flext_infra.infra.rope_workspace(call_root) as rope:
+            with infra.rope_workspace(call_root) as rope:
                 tm.that(rope.rope_repository_root, eq=expected_root.resolve())
                 tm.that(
                     {entry.project_root for entry in rope.modules()},
@@ -467,7 +460,7 @@ class TestsFlextInfraInfraRopeService:
                     )
                     tm.not_none(dependency.get_attribute("FlextModelsDemo"))
 
-        with flext_infra.infra.rope_workspace(repository_root, monorepo_root) as rope:
+        with infra.rope_workspace(repository_root, monorepo_root) as rope:
             source_module = u.Infra.resolve_pymodule(
                 rope.rope_project,
                 tm.not_none(rope.resource(module_path)),
@@ -488,7 +481,7 @@ class TestsFlextInfraInfraRopeService:
             self._paired_namespace_projects(projects_root)
         )
 
-        with flext_infra.infra.rope_workspace(package_root) as rope:
+        with infra.rope_workspace(package_root) as rope:
             tm.that(rope.rope_repository_root, eq=project_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},
@@ -517,7 +510,7 @@ class TestsFlextInfraInfraRopeService:
         )
         u.Tests.declare_workspace_projects(ancestor, (declared_root.name,))
 
-        with flext_infra.infra.rope_workspace(package_root) as rope:
+        with infra.rope_workspace(package_root) as rope:
             tm.that(rope.rope_repository_root, eq=project_root.resolve())
 
     @staticmethod
@@ -530,7 +523,7 @@ class TestsFlextInfraInfraRopeService:
         (unowned_parent / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         scratch.mkdir()
 
-        with flext_infra.infra.rope_workspace(scratch) as rope:
+        with infra.rope_workspace(scratch) as rope:
             tm.that(rope.rope_repository_root, eq=scratch.resolve())
             tm.that(rope.modules(), eq=())
 
@@ -556,7 +549,7 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             exports = rope.exports(
                 fixture_module,
                 export_options=m.Infra.ExportOptions.model_validate({

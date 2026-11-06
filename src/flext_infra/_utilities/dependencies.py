@@ -142,14 +142,14 @@ class FlextInfraUtilitiesDependencies(
     def _declared_runtime_requirements(
         scan: p.Infra.DeptryScan,
         document: t.JsonMapping,
-    ) -> p.Result[m.Infra.DepsToml.MemberRequirements]:
+    ) -> p.Result[p.Infra.MemberRequirements]:
         """Read the project table into its typed requirement declarations.
 
         Returns:
             The validated member requirements, or the declaration failure.
 
         """
-        result_type = r[m.Infra.DepsToml.MemberRequirements]
+        result_type = r[p.Infra.MemberRequirements]
         project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
         if project is None:
             return result_type.fail(
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesDependencies(
     @staticmethod
     def _runtime_selections(
         scan: p.Infra.DeptryScan,
-        declarations: m.Infra.DepsToml.MemberRequirements,
+        declarations: p.Infra.MemberRequirements,
         suppliers: tuple[tuple[p.Infra.RuntimeDependencyProvider, Requirement], ...],
         *,
         development_only: t.StrTuple,
@@ -298,32 +298,39 @@ class FlextInfraUtilitiesDependencies(
             )
             if unchanged.failure:
                 return r[bool].from_failure(unchanged)
-            if plan.before.content is None:
-                return r[bool].fail(
-                    f"dependency declaration is absent: {plan.before.path}"
-                )
-            document = u.Cli.toml_parse_text(
-                plan.before.content.decode(c.DEFAULT_ENCODING)
-            )
-            if document is None:
-                return r[bool].fail(
-                    f"invalid dependency declaration: {plan.before.path}"
-                )
-            project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
-            if project is None:
-                return r[bool].fail(
-                    f"project declaration is absent: {plan.before.path}"
-                )
-            changed = u.Cli.toml_sync_string_list(
-                project, c.Infra.DEPENDENCIES, plan.dependencies
-            )
-            if changed:
-                u.Cli.atomic_write_binary_file_guarded(
-                    plan.before,
-                    document.as_string().encode(c.DEFAULT_ENCODING),
-                    permission_mode=plan.before.mode,
-                ).unwrap()
-            return r[bool].ok(changed)
+            return cls._sync_runtime_dependency_declaration(plan)
+
+    @staticmethod
+    def _sync_runtime_dependency_declaration(
+        plan: p.Infra.RuntimeDependencyPlan,
+    ) -> p.Result[bool]:
+        """Write the calculated runtime list into the verified declaration.
+
+        The caller holds the publication lease and has verified every source
+        state the plan was calculated from.
+
+        Returns:
+            Whether the original target declaration changed.
+
+        """
+        if plan.before.content is None:
+            return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
+        document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
+        if document is None:
+            return r[bool].fail(f"invalid dependency declaration: {plan.before.path}")
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        if project is None:
+            return r[bool].fail(f"project declaration is absent: {plan.before.path}")
+        changed = u.Cli.toml_sync_string_list(
+            project, c.Infra.DEPENDENCIES, plan.dependencies
+        )
+        if changed:
+            u.Cli.atomic_write_binary_file_guarded(
+                plan.before,
+                document.as_string().encode(c.DEFAULT_ENCODING),
+                permission_mode=plan.before.mode,
+            ).unwrap()
+        return r[bool].ok(changed)
 
     @staticmethod
     def project_dev_groups_from_payload(

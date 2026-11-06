@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
@@ -25,7 +23,7 @@ class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     @staticmethod
-    @pytest.mark.parametrize("mode", ["basic", c.ParserBooleanToken.OFF])
+    @c.Tests.MARK.parametrize("mode", ["basic", c.ParserBooleanToken.OFF])
     def test_native_options_cannot_weaken_strict_analysis(
         tool_config_document: p.Infra.ToolConfigDocument,
         mode: str,
@@ -43,7 +41,7 @@ class TestsFlextInfraDepsModernizerPyright:
                 ),
             },
         }
-        with pytest.raises(e.PydanticValidationError, match="strict"):
+        with u.Tests.raises(e.PydanticValidationError, match="strict"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
@@ -463,7 +461,7 @@ class TestsFlextInfraDepsModernizerPyright:
             ],
         )
 
-    @pytest.mark.parametrize("is_root", [False, True])
+    @c.Tests.MARK.parametrize("is_root", [False, True])
     def test_package_parent_environment_preserves_strict_included_namespace(
         self,
         tmp_path: Path,
@@ -630,9 +628,9 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("local_environment", [False, True])
-    @pytest.mark.parametrize("complete", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("local_environment", [False, True])
+    @c.Tests.MARK.parametrize("complete", [False, True])
+    @c.Tests.MARK.parametrize(
         ("project_name", "authored_and_planned"),
         [
             ("flext-alpha", ("automation", "future_checks")),

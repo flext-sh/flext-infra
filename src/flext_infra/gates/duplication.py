@@ -81,7 +81,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 if part
             ),
         )
-        assessment: p.Infra.DuplicationAssessment | None = None
+        assessment: m.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
             assessment_failures, assessment = self._publish_assessment(
                 (report, overrides.value),
@@ -144,7 +144,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             The parsed report, its issues, and whether the tool itself failed.
 
         """
-        report: p.Infra.JscpdReport | None = None
+        report: m.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
                 report = FlextInfraDuplicationEvidence.parse(scan.stdout)

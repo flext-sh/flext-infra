@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.version import Version
 
@@ -90,7 +89,7 @@ class TestsFlextInfraModernizerFloorOwner:
         tm.that(self._run(modernizer_workspace), eq=0)
         tm.that(path.read_text(encoding="utf-8"), eq=rendered)
 
-    @pytest.mark.parametrize("section", ["runtime", "development"])
+    @c.Tests.MARK.parametrize("section", ["runtime", "development"])
     def test_invalid_requirement_leaves_the_target_untouched(
         self,
         modernizer_workspace: Path,
@@ -111,7 +110,7 @@ class TestsFlextInfraModernizerFloorOwner:
         )
         before = path.read_bytes()
 
-        with pytest.raises(InvalidRequirement):
+        with u.Tests.raises(InvalidRequirement):
             self._run(modernizer_workspace)
 
         tm.that(path.read_bytes(), eq=before)

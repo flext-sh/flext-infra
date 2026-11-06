@@ -110,7 +110,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
     @lru_cache(maxsize=8)
     def codemod_target_environment(
         root: Path,
-    ) -> p.Result[m.Infra.PythonEnvironmentObservation]:
+    ) -> p.Result[p.Infra.PythonEnvironmentObservation]:
         """Observe the TARGET repository's own provisioned Python environment.
 
         The rule plan of a repository is elected against that repository's
@@ -126,7 +126,7 @@ class FlextInfraUtilitiesCodemodRulesDistributions:
             reported prefix.
 
         """
-        outcome = r[m.Infra.PythonEnvironmentObservation]
+        outcome = r[p.Infra.PythonEnvironmentObservation]
         discovery = FlextInfraUtilitiesProjectDiscovery
         environment = discovery.runtime_environment_dir(root)
         python = discovery.environment_python(environment)

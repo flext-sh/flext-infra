@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import c, r, tm, u
@@ -22,9 +20,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
-    pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
+    pytestmark = c.Tests.MARK.usefixtures("_clear_make_ci_token")
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def _clear_make_ci_token() -> Iterator[None]:
         with u.Tests.env_vars_context(vars_to_clear=(c.Infra.PYTEST_ENV_CI,)):

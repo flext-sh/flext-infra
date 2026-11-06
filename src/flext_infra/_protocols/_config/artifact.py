@@ -445,7 +445,7 @@ class FlextInfraProtocolsConfigArtifact:
             ...
 
     @runtime_checkable
-    class CodegenConfigSpec(CodegenArtifactScopeSpec, Protocol):
+    class CodegenEngineSpec(CodegenArtifactScopeSpec, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -515,6 +515,10 @@ class FlextInfraProtocolsConfigArtifact:
         def toolchain(self) -> FlextInfraProtocolsMiseToolchain.ToolchainSpec:
             """Exact generated toolchain."""
             ...
+
+    @runtime_checkable
+    class CodegenCiSpec(CodegenEngineSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def github_actions(
@@ -591,6 +595,10 @@ class FlextInfraProtocolsConfigArtifact:
             """Fleet SonarCloud automatic-analysis scope policy."""
             ...
 
+    @runtime_checkable
+    class CodegenWorkspaceSpec(CodegenCiSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
         def infra_repository(
             self,
@@ -637,6 +645,10 @@ class FlextInfraProtocolsConfigArtifact:
             engine and the layout quality gate.
             """
             ...
+
+    @runtime_checkable
+    class CodegenConfigSpec(CodegenWorkspaceSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def analyzer_exclude_globs(self) -> tuple[str, ...]:

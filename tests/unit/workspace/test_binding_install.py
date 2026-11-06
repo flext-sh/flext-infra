@@ -10,8 +10,6 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
-
 from tests import c, m, tm, u
 
 
@@ -19,9 +17,9 @@ class TestsFlextInfraBindingInstall:
     """Exercise the generator checkout against the provisioned public SDK."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("attached", [False, True])
-    @pytest.mark.parametrize("origin_case", ["compiler", "nested", "valid"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("origin_case", ["compiler", "nested", "valid"])
     def test_checkout_generator_consumes_the_provisioned_public_sdk(
         *,
         attached: bool,

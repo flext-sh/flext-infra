@@ -10,10 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from flext_infra import u
-from tests import tm
+from tests import c, tm, u
 
 
 class TestsFlextInfraDeferredSelfReferenceNormalizer:
@@ -81,9 +78,9 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
             "        pass\n"
         )
         rebuild = "class Model:\n    pass\n\nModel.model_rebuild()\n"
-        with pytest.raises(ValueError, match="ambiguous self-qualified annotation"):
+        with u.Tests.raises(ValueError, match="ambiguous self-qualified annotation"):
             u.Infra.normalize_deferred_self_references(ambiguous)
-        with pytest.raises(ValueError, match="model_rebuild is prohibited"):
+        with u.Tests.raises(ValueError, match="model_rebuild is prohibited"):
             u.Infra.normalize_deferred_self_references(rebuild)
 
     @staticmethod
@@ -101,7 +98,7 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
         tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             '_Kind = Literal["one", "two"]',
@@ -149,7 +146,7 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
         tm.that(u.Infra.normalize_deferred_self_references(source), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         ["_Kind: object", "class Other:\n        _Kind = str"],
     )
@@ -165,7 +162,7 @@ class TestsFlextInfraDeferredSelfReferenceNormalizer:
             "        kind: Models._Kind\n"
         )
 
-        with pytest.raises(ValueError, match="ambiguous self-qualified annotation"):
+        with u.Tests.raises(ValueError, match="ambiguous self-qualified annotation"):
             u.Infra.normalize_deferred_self_references(source)
 
     @staticmethod

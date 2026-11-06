@@ -22,7 +22,7 @@ import pytest
 from flext_infra import config
 from tests import c, t, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 _MEMBER = "fixture-member"
 
@@ -30,7 +30,7 @@ _MEMBER = "fixture-member"
 class TestsFlextInfraGenRespectsInvocationScope:
     """`gen` delegates the complete composition through exactly one root."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def rendered_makefile(
         tmp_path: Path,
@@ -100,7 +100,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
         tm.that(project_scoped, has="_builtin_gen_all")
         tm.that(mixed, eq={})
 
-    @pytest.mark.parametrize("members", [(), (_MEMBER,)])
+    @c.Tests.MARK.parametrize("members", [(), (_MEMBER,)])
     def test_gen_has_one_codegen_owner(
         self, tmp_path: Path, members: t.StrTuple
     ) -> None:

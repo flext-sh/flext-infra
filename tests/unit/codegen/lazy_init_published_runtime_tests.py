@@ -10,8 +10,6 @@ import difflib
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
@@ -166,7 +164,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("same_named_export", [False, True])
+    @c.Tests.MARK.parametrize("same_named_export", [False, True])
     def test_child_package_preserves_export_ownership(
         tmp_path: Path,
         *,
@@ -276,7 +274,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("absent", [False, True])
+    @c.Tests.MARK.parametrize("absent", [False, True])
     def test_public_generation_repairs_existing_and_absent_initializers(
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
@@ -370,7 +368,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("cyclic", [False, True])
+    @c.Tests.MARK.parametrize("cyclic", [False, True])
     def test_public_generation_rejects_authored_import_failures_before_publication(
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
@@ -478,7 +476,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
             "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with infra.rope_workspace(repository) as rope, pytest.raises(SyntaxError):
+        with infra.rope_workspace(repository) as rope, u.Tests.raises(SyntaxError):
             rope.layout(repository)
 
     @staticmethod

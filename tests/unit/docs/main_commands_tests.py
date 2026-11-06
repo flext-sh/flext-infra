@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import pytest
 from mkdocs.exceptions import Abort, ConfigurationError
 
 from flext_infra.docs import (
@@ -19,17 +18,17 @@ from flext_infra.docs import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
 )
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDocsMainCommands:
     """Public service execution tests for docs commands."""
 
     @staticmethod
-    @pytest.mark.parametrize("invalid_navigation", [False, True])
+    @c.Tests.MARK.parametrize("invalid_navigation", [False, True])
     def test_native_mkdocs_strict_build_preserves_its_warning_failure(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         invalid_navigation: bool,
     ) -> None:
@@ -62,7 +61,7 @@ class TestsFlextInfraDocsMainCommands:
         previous_level = logger.level
         previous_propagate = logger.propagate
         if invalid_navigation:
-            with pytest.raises(Abort, match="strict mode") as caught:
+            with u.Tests.raises(Abort, match="strict mode") as caught:
                 u.Infra.docs_run_mkdocs(scope)
             tm.ok(caught.value.__traceback__ is not None)
             tm.that(capsys.readouterr().err, has="missing.md")
@@ -184,7 +183,7 @@ class TestsFlextInfraDocsMainCommands:
         workspace = u.Tests.create_docs_workspace(tmp_path)
         (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
 
-        with pytest.raises(ConfigurationError, match="parsing the configuration"):
+        with u.Tests.raises(ConfigurationError, match="parsing the configuration"):
             FlextInfraDocBuilder(repository_root=workspace).execute()
 
     @staticmethod

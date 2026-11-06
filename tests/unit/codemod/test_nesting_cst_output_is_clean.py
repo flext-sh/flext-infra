@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-import flext_infra
-from tests import c, tm, u
+from tests import c, infra, tm, u
 
 
 class TestsFlextInfraNestingCutoverOutput:
@@ -48,7 +45,7 @@ class TestsFlextInfraNestingCutoverOutput:
             extra_class_names=(f"{owner_name}Member",),
         )
 
-        with flext_infra.infra.rope_workspace(repository_root) as rope:
+        with infra.rope_workspace(repository_root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,
@@ -118,7 +115,7 @@ class TestsFlextInfraNestingCutoverOutput:
         tm.ok(linted)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("existing_owner", "documented"), [(False, False), (True, False), (True, True)]
     )
     def test_member_trivia_moves_with_code_not_classvar_payload(
@@ -161,7 +158,7 @@ class TestsFlextInfraNestingCutoverOutput:
             )
         )
         tm.ok(u.Cli.atomic_write_text_file(module, source))
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             planned = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.CLASS_NESTING,
@@ -197,7 +194,7 @@ class TestsFlextInfraNestingCutoverOutput:
         tm.that(emitted, has="# Import-only contract.\nfrom functools")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "owner_body"),
         [
             ("type Self[Self] = tuple[Self]\n", "    pass\n"),
@@ -215,7 +212,7 @@ class TestsFlextInfraNestingCutoverOutput:
         module = package / "generic_scopes.py"
         source = declaration + "\nclass Holder:\n" + owner_body
         tm.ok(u.Cli.atomic_write_text_file(module, source))
-        with flext_infra.infra.rope_workspace(root) as rope:
+        with infra.rope_workspace(root) as rope:
             planned = u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
                 rope_workspace=rope,

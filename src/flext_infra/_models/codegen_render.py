@@ -134,8 +134,10 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 self.documentation_language
             )
 
-    class GithubWorkflowRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Typed input consumed by generated GitHub workflow templates."""
+    class GithubWorkflowProjectRenderSpec(
+        FlextInfraModelsConfigContract.ConfigContract
+    ):
+        """Release, distribution, branch and toolchain inputs of a rendered workflow."""
 
         publishes_release: Annotated[
             bool,
@@ -225,6 +227,10 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             ],
             m.Field(description="Canonical workflow command contract"),
         ]
+
+    class GithubWorkflowRenderSpec(GithubWorkflowProjectRenderSpec):
+        """Typed input consumed by generated GitHub workflow templates."""
+
         workspace_repositories: Annotated[
             tuple[
                 Annotated[

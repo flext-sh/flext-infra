@@ -28,7 +28,7 @@ class TestsFlextInfraGateAcceptance:
             m.Infra.GateAttestationPredicate.model_fields["schema_version"].default,
             eq=c.Infra.GateAttestationSchema.V3,
         )
-        with pytest.raises(ValueError, match="is not a valid"):
+        with u.Tests.raises(ValueError, match="is not a valid"):
             c.Infra.GateAttestationSchema("https://flext.sh/attestations/gates/v2")
         required = m.Infra.GateCommandEvidence.model_json_schema()["required"]
         for field in (
@@ -50,7 +50,7 @@ class TestsFlextInfraGateAcceptance:
             intent.model_dump_json(round_trip=True),
         )
         tm.that(restored, eq=intent)
-        with pytest.raises(ValueError, match="exactly one producer intent"):
+        with u.Tests.raises(ValueError, match="exactly one producer intent"):
             m.Infra.GateExecutionIntent()
 
     @staticmethod
@@ -100,7 +100,7 @@ class TestsFlextInfraGateAcceptance:
             lint.model_dump_json(by_alias=True, exclude_computed_fields=True),
         )
         tm.that(restored.model_dump(), eq=lint.model_dump())
-        with pytest.raises(ValueError, match="fix-recipe-residual"):
+        with u.Tests.raises(ValueError, match="fix-recipe-residual"):
             type(lint).model_validate_json(
                 tm.ok(
                     u.Cli.json_dumps({
@@ -124,11 +124,11 @@ class TestsFlextInfraGateAcceptance:
             exclude_computed_fields=True,
         )
         payload["bandit"] = {"authorized-exceptions": list[t.JsonValue]()}
-        with pytest.raises(m.ValidationError, match="bandit"):
+        with u.Tests.raises(m.ValidationError, match="bandit"):
             type(tools).model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("verdict", [False, True])
+    @c.Tests.MARK.parametrize("verdict", [False, True])
     def test_execution_params_round_trip_preserves_independent_verdict(
         tmp_path: Path,
         *,
@@ -216,13 +216,13 @@ class TestsFlextInfraGateAcceptance:
             )
         payload = execution.model_dump(mode="json", exclude_computed_fields=True)
         payload["issues"] = [{**issue.model_dump(mode="json"), "line": "invalid"}]
-        with pytest.raises(m.ValidationError, match="line"):
+        with u.Tests.raises(m.ValidationError, match="line"):
             m.Infra.GateExecution.model_validate_json(tm.ok(u.Cli.json_dumps(payload)))
 
     @staticmethod
     def test_execution_params_rejects_invalid_native_outcome(tmp_path: Path) -> None:
         """An unknown native outcome cannot cross the validated model boundary."""
-        with pytest.raises(ValueError, match="outcome"):
+        with u.Tests.raises(ValueError, match="outcome"):
             m.Infra.GateExecutionParams.model_validate({
                 "project_dir": tmp_path,
                 "verdict": True,
@@ -233,7 +233,7 @@ class TestsFlextInfraGateAcceptance:
             })
 
     @staticmethod
-    @pytest.mark.parametrize("broken", [False, True])
+    @c.Tests.MARK.parametrize("broken", [False, True])
     def test_generic_fix_preserves_native_clean_or_error(
         tmp_path: Path,
         *,
@@ -273,7 +273,7 @@ class TestsFlextInfraGateAcceptance:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("fail_fast", [False, True])
+    @c.Tests.MARK.parametrize("fail_fast", [False, True])
     def test_failed_gate_preserves_only_executed_native_verdicts(
         tmp_path: Path,
         *,
@@ -315,7 +315,7 @@ class TestsFlextInfraGateAcceptance:
             tm.that(receipt.read_text(encoding="utf-8").strip(), empty=False)
 
     @staticmethod
-    @pytest.mark.parametrize("residual", [False, True])
+    @c.Tests.MARK.parametrize("residual", [False, True])
     def test_native_fix_accepts_only_postrepair_clean_state(
         tmp_path: Path,
         *,
@@ -421,7 +421,7 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
-    @pytest.mark.parametrize("residual", [False, True])
+    @c.Tests.MARK.parametrize("residual", [False, True])
     def test_markdown_fix_verifies_remaining_native_diagnostics(
         tmp_path: Path,
         *,
@@ -452,8 +452,8 @@ class TestsFlextInfraGateAcceptance:
         tm.that(source.read_text(encoding="utf-8"), lacks="# Title   ")
 
     @staticmethod
-    @pytest.mark.parametrize("check_only", [False, True])
-    @pytest.mark.parametrize("residual", [False, True])
+    @c.Tests.MARK.parametrize("check_only", [False, True])
+    @c.Tests.MARK.parametrize("residual", [False, True])
     def test_fix_literal_selection_preserves_unselected_source(
         tmp_path: Path,
         *,
@@ -501,7 +501,7 @@ class TestsFlextInfraGateAcceptance:
         tm.fail(gate.check(project, context).result.passed)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "gate_id",
         sorted(
             gate_id

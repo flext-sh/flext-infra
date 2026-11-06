@@ -10,8 +10,6 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u
@@ -22,7 +20,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
     """Prove lazy-init describes effects without owning publication."""
 
     @staticmethod
-    @pytest.mark.parametrize("injected", [False, True])
+    @c.Tests.MARK.parametrize("injected", [False, True])
     def test_planned_initializer_publishes_without_touching_authored_tests(
         tmp_path: Path,
         *,
@@ -167,7 +165,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
         tm.that(consumer.stdout.strip(), eq=f"{value} {value}")
 
-    @pytest.mark.parametrize("family", ["m", "p", "u"])
+    @c.Tests.MARK.parametrize("family", ["m", "p", "u"])
     def test_facade_plan_selects_declared_family_and_only_requested_module(
         self,
         tmp_path: Path,
@@ -209,7 +207,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source, has="retained = 'unchanged'")
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def seed_conform_scope_repositories(
         tmp_path: Path,
@@ -304,8 +302,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("scope", tuple(c.Infra.CodegenConformScope))
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("scope", tuple(c.Infra.CodegenConformScope))
     def test_lazy_planning_owns_exact_conform_repositories(
         scope: c.Infra.CodegenConformScope,
         seed_conform_scope_repositories: tuple[Path, Path, list[Path]],
@@ -350,8 +348,8 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that({path: path.read_bytes() for path in before}, eq=before)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("scope", tuple(c.Infra.CodegenConformScope))
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("scope", tuple(c.Infra.CodegenConformScope))
     def test_lazy_publication_owns_exact_conform_repositories(
         scope: c.Infra.CodegenConformScope,
         seed_conform_scope_repositories: tuple[Path, Path, list[Path]],
@@ -426,7 +424,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(init_path.read_bytes(), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("injected", [False, True])
+    @c.Tests.MARK.parametrize("injected", [False, True])
     def test_multi_root_epoch_elects_same_named_packages_by_physical_owner(
         tmp_path: Path,
         *,
@@ -477,7 +475,7 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.fail(service.plan_files(), has="target module is ambiguous")
 
     @staticmethod
-    @pytest.mark.parametrize("failed_first", [False, True])
+    @c.Tests.MARK.parametrize("failed_first", [False, True])
     def test_target_ambiguity_survives_candidate_planning_failure(
         tmp_path: Path,
         *,

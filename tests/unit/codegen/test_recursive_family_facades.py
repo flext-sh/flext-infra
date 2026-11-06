@@ -9,8 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenLazyInit
 from tests import c, m, p, r, tm, u
@@ -328,7 +326,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 f", {name}):", ", UnresolvedProvider):"
             ),
         )
-        with pytest.raises(TypeError, match="expected a native Rope class:"):
+        with u.Tests.raises(TypeError, match="expected a native Rope class:"):
             cls._plans(root, (destination, c.Infra.FacadeFamily.U))
         tm.fail(sentinel.exists())
 
@@ -409,7 +407,7 @@ class TestsFlextInfraRecursiveFamilyFacades:
                 + f"    callback = {reference}\n    {statement}\n"
             )
             cls._write(consumer, mutated)
-            with pytest.raises(
+            with u.Tests.raises(
                 (TypeError, ValueError),
                 match=(
                     r"expected a native Rope class: facade component ancestry"

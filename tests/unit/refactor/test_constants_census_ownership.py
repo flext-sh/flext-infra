@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, tm, u
 
@@ -118,7 +116,7 @@ class TestsFlextInfraConstantsCensusOwnership:
         )
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="ambiguous facade family directories"),
+            u.Tests.raises(ValueError, match="ambiguous facade family directories"),
         ):
             _ = workspace.objects(
                 path,
@@ -127,7 +125,7 @@ class TestsFlextInfraConstantsCensusOwnership:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("nested", [False, True])
     def test_exported_constants_keep_their_declared_family(
         tmp_path: Path,
         *,
@@ -169,7 +167,7 @@ class TestsFlextInfraConstantsCensusOwnership:
             tm.that(item.expected_tier, eq=family.suffix)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "relative_module",
         [
             "_utilities/base.py",
@@ -178,7 +176,7 @@ class TestsFlextInfraConstantsCensusOwnership:
             "service.py",
         ],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("typing_import", "name", "annotation"),
         [
             ("from typing import ClassVar", "PROTOCOL_TOKEN", "ClassVar[str]"),

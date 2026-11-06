@@ -338,7 +338,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         raw_output = ""
         issues: tuple[p.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: p.Infra.DeptryScan | None = None
+        scan: m.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)

@@ -13,8 +13,6 @@ import signal
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraFlextInfraPytest
 from tests import c, tm, u
 
@@ -66,7 +64,7 @@ class TestsFlextInfraCProfileInterruption:
         tm.ok(u.Cli.process_succeeded(result.outcome), msg=result.stderr)
 
     @staticmethod
-    @pytest.mark.parametrize("status", [0, 7])
+    @c.Tests.MARK.parametrize("status", [0, 7])
     def test_public_command_retains_status_and_profile(
         tmp_path: Path, status: int
     ) -> None:
@@ -92,7 +90,7 @@ class TestsFlextInfraCProfileInterruption:
         def command() -> int:
             raise failure
 
-        with pytest.raises(RuntimeError) as raised:
+        with u.Tests.raises(RuntimeError) as raised:
             FlextInfraFlextInfraPytest.profile_command(
                 command, tmp_path / "missing" / "command.pstats"
             )
@@ -101,8 +99,8 @@ class TestsFlextInfraCProfileInterruption:
         tm.fail((tmp_path / "missing").exists())
 
     @staticmethod
-    @pytest.mark.usefixtures("profiling_enabled")
-    @pytest.mark.parametrize("handler", ["default", "raise", "return", "ignore"])
+    @c.Tests.MARK.usefixtures("profiling_enabled")
+    @c.Tests.MARK.parametrize("handler", ["default", "raise", "return", "ignore"])
     def test_cli_termination_replaces_stale_report_and_preserves_previous_run(
         tmp_path: Path,
         handler: str,

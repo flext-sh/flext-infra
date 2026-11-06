@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
@@ -20,7 +18,7 @@ class TestsFlextInfraAuditorCodeblocks:
     """Regression tests for docs codeblock and exported-docstring auditing."""
 
     @staticmethod
-    @pytest.mark.parametrize("first_party", ["flext_infra", "pydantic"])
+    @c.Tests.MARK.parametrize("first_party", ["flext_infra", "pydantic"])
     def test_codeblocks_use_the_declared_scope_configuration(
         tmp_path: Path,
         first_party: str,
@@ -135,7 +133,7 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.that(issues[0].issue_type, eq="python_codeblock")
         tm.that(issues[0].file, eq="docs/broken.md")
 
-        with pytest.raises(RuntimeError, match="Ruff could not fix"):
+        with u.Tests.raises(RuntimeError, match="Ruff could not fix"):
             u.Infra.fix_python_codeblocks(
                 scope, path=broken, content=broken.read_text(encoding="utf-8")
             )

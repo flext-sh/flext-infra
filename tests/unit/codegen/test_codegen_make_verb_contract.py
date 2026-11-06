@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
@@ -18,7 +16,7 @@ from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 class TestsFlextInfraCodegenMakeVerbContract:
     """The generated contract mode runs no prerequisite, hook or handler."""
 
-    pytestmark = pytest.mark.slow
+    pytestmark = c.Tests.MARK.slow
 
     @staticmethod
     def test_catalog_help_and_contracts_preserve_files(
@@ -99,7 +97,7 @@ class TestsFlextInfraCodegenMakeVerbContract:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("verb", "selector"),
         [
             ("upg", "OPTIONS=Y"),

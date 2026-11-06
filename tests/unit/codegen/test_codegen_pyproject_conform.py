@@ -10,8 +10,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, t, tm, u
@@ -161,7 +159,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         tm.fail((root / "uv.lock").exists())
         tm.fail((parent / "uv.lock").exists())
 
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_global_constraints_apply_without_direct_runtime_requirements(
         self,
         profile: c.Infra.MakeProfile,
@@ -216,7 +214,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         )
 
     @staticmethod
-    @pytest.mark.parametrize("live_readme", [None, "docs/consumer.md"])
+    @c.Tests.MARK.parametrize("live_readme", [None, "docs/consumer.md"])
     def test_custom_metadata_preserves_authored_absence(
         live_readme: t.StrippedStr | None,
     ) -> None:
@@ -277,7 +275,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         tm.that(second, eq=first)
 
     @staticmethod
-    @pytest.mark.parametrize("invalid_surface", ["rendered", "live"])
+    @c.Tests.MARK.parametrize("invalid_surface", ["rendered", "live"])
     def test_overlay_retains_native_toml_failure_context(
         invalid_surface: str,
     ) -> None:
@@ -339,7 +337,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("table_path", "key", "expected"),
         [
             (
@@ -417,7 +415,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         )
         tm.that(tm.ok(u.Infra.overlay_preserved(rendered, first)), eq=first)
 
-    @pytest.mark.parametrize("declare_optional", [False, True])
+    @c.Tests.MARK.parametrize("declare_optional", [False, True])
     def test_deptry_dev_groups_follow_declared_optional_groups(
         self,
         *,
@@ -514,7 +512,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             eq=original["optional-dependencies"],
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "role",
         [
             c.Infra.MakeProfile.STANDALONE,

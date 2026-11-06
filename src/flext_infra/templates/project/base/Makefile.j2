@@ -3,7 +3,9 @@
 {% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, mise_staging_cleanup, mise_acquisition, mise_locked_install, toml_projection_preflight, mise_lock_changed -%}
 {% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, bootstrap_root_reader, runtime_root_reader -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
-{% set git_hook_stages = (["pre-commit"] if make.pre_commit else []) + (["pre-push"] if make.pre_push else []) %}
+{% set git_hook_stage_flags = {"pre-commit": make.pre_commit, "pre-push": make.pre_push} -%}
+{% set git_hook_stages = git_hook_stage_flags | dictsort | selectattr("1") | map(attribute="0") | list -%}
+{% set git_hook_retired_stages = git_hook_stage_flags | dictsort | rejectattr("1") | map(attribute="0") | list %}
 {# ---- Shared command bases --------------------------------------------------
    Every verb states only its delta (which gate list, which mode); the checker
    invocation, the CI gate filter, the empty-gates guard, and the fmt/fix
@@ -22,7 +24,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -428,7 +430,8 @@ PUBLISH_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | d
 			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
 		fi; \
 		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		printf 'setup: published %s; previous environment retained at %s\n' "$$install_target" "$$install_environment"; \
+		rm -rf -- "$$install_stage"; \
+		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
 	else \
 		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
 		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
@@ -441,10 +444,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
 		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
@@ -495,7 +498,16 @@ GOVERNED_CHECKOUTS = root="$(PROJECT_ROOT)"; \
 # section, placed first after the interpreter line: every other owner's
 # content (the Beads integration section among them) is preserved and still
 # runs after it. The pre-push section buffers Git's ref list once and hands
-# the same stdin to the sections that follow.
+# the same stdin to the sections that follow. A managed stage that is no
+# longer declared loses only setup's marked section; the hook file is
+# removed when no other owner's content remains in it.
+{#- Setup owns only its marked section: both the install and the retirement
+   pass read every other owner's content from one definition. -#}
+{% set hook_foreign_sections %}				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
+				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
+{% endset -%}
+{% set hook_backup_retirement %}			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
+{% endset %}
 INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" which prek)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then prek_binary="$$(cygpath --unix "$$prek_binary")"; fi; \
@@ -508,6 +520,21 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 	for checkout in $$checkouts; do \
 		hooks_dir="$$(git -C "$$root/$$checkout" rev-parse --path-format=absolute --git-path hooks)"; \
 		mkdir -p "$$hooks_dir"; \
+{%- if git_hook_retired_stages %}
+		for stage in {{ git_hook_retired_stages | join(" ") }}; do \
+			hook="$$hooks_dir/$$stage"; \
+			if [ -e "$$hook" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook"; then \
+{{ hook_foreign_sections }}				if [ -n "$$(printf '%s' "$$others" | tr -d '[:space:]')" ]; then \
+					printf '%s\n' '\#!/bin/sh' "$$others" > "$$hook.pending"; \
+					chmod 0755 "$$hook.pending"; \
+					mv "$$hook.pending" "$$hook"; \
+				else \
+					rm -f "$$hook"; \
+				fi; \
+				printf 'setup: retired undeclared %s hook section at %s\n' "$$stage" "$$hook"; \
+			fi; \
+{{ hook_backup_retirement }}		done; \
+{%- endif %}
 		validator_path="$$(git -C "$$root/$$checkout" rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"; \
 		if [ ! -x "$$validator_path" ]; then \
 			printf 'setup: hooks skipped (no validator) checkout=%s\n' "$$checkout"; \
@@ -517,9 +544,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 			hook="$$hooks_dir/$$stage"; \
 			others=""; \
 			if [ -e "$$hook" ]; then \
-				others="$$(sed -e '/^\# BEGIN FLEXT-INFRA SETUP/,/^\# END FLEXT-INFRA SETUP/d' -e '1{/^\#!/d;}' "$$hook")"; \
-				if printf '%s\n' "$$others" | grep -q 'Generated by make setup (flext-infra)'; then others=""; fi; \
-			fi; \
+{{ hook_foreign_sections }}			fi; \
 			validator='"$$(git rev-parse --show-toplevel)/.github/scripts/validate-git-hook.sh"'; \
 			{ \
 				printf '%s\n' '\#!/bin/sh' "\# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); rerun make setup to refresh."; \
@@ -538,8 +563,7 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 			} > "$$hook.pending"; \
 			chmod 0755 "$$hook.pending"; \
 			mv "$$hook.pending" "$$hook"; \
-			if [ -e "$$hook.backup" ] && grep -q 'Generated by make setup (flext-infra)' "$$hook.backup"; then rm -f "$$hook.backup"; fi; \
-			printf 'setup: installed %s hook section at %s\n' "$$stage" "$$hook"; \
+{{ hook_backup_retirement }}			printf 'setup: installed %s hook section at %s\n' "$$stage" "$$hook"; \
 		done; \
 	done
 
@@ -581,7 +605,7 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
 SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }} --refresh; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }}; \
 	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects

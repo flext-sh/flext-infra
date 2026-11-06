@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from tests import m, tm
+from tests import m, tm, u
 
 
 class TestsFlextInfraModelsPytestMarkdown:
@@ -44,7 +42,7 @@ class TestsFlextInfraModelsPytestMarkdown:
     @staticmethod
     def test_markdown_collection_validates_nested_origins() -> None:
         """Mutable defaults do not weaken validation of supplied observations."""
-        with pytest.raises(ValueError, match="start_line"):
+        with u.Tests.raises(ValueError, match="start_line"):
             m.Infra.PytestMarkdownCollection.model_validate(
                 {
                     "eligible": [

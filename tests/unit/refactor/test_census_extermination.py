@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.refactor import FlextInfraRefactorCensus
-from tests import m, tm
+from tests import m, p, tm
 
 
 class TestsFlextInfraCensusExtermination:
@@ -21,7 +21,7 @@ class TestsFlextInfraCensusExtermination:
         name: str,
         kind: str = "assignment",
         module_name: str = "demo.module",
-    ) -> m.Infra.Object:
+    ) -> p.Infra.Object:
         """Build one census object for the synthetic source.
 
         Returns:

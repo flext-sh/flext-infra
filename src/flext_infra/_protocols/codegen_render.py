@@ -181,7 +181,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class GithubWorkflowRenderSpec(
+    class GithubWorkflowProjectRenderSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
@@ -265,6 +265,10 @@ class FlextInfraProtocolsCodegenRender:
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
             """Canonical workflow command contract."""
             ...
+
+    @runtime_checkable
+    class GithubWorkflowRenderSpec(GithubWorkflowProjectRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def workspace_repositories(

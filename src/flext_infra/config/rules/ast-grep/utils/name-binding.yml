@@ -3,11 +3,17 @@
 # an `as` target, a scope declaration, a type parameter or a match capture.
 # The generated import-header and module-member shapes embed this rule as
 # their local utility to decide whether a name is already bound; every
-# other occurrence of an identifier is a use.
+# other occurrence of an identifier is a use. The imported name of an
+# aliased import (`u` in `from flext_ldap import u as ul`) binds only its
+# alias, never itself.
 id: name-binding
 language: python
 rule:
   kind: identifier
+  not:
+    inside:
+      kind: dotted_name
+      inside: {kind: aliased_import, field: name}
   any:
     - inside: {kind: import_from_statement, stopBy: end}
     - inside: {kind: import_statement, stopBy: end}

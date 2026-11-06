@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli, codegen, config
 from tests import c, tm, u
 
@@ -21,7 +19,7 @@ class TestsFlextInfraWorkflowDocumentContract:
     """Generated workflows contain executable jobs in valid YAML documents."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_generated_workflows_publish_the_complete_declared_surface(
         tmp_path: Path,
     ) -> None:

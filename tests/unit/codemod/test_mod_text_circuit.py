@@ -9,11 +9,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, infra, m
+from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraModTextGateEngine:
@@ -209,21 +207,21 @@ class TestsFlextInfraModTextGateEngine:
                 "    replace: 'after'\n",
             )
         )
-        with pytest.raises(SyntaxError):
+        with u.Tests.raises(SyntaxError):
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=False)
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
-        with pytest.raises(SyntaxError) as raised:
+        with u.Tests.raises(SyntaxError) as raised:
             infra.mod_text(
                 m.Infra.ModTextCommand(repository_root=mod_workspace, apply=True)
             )
         tm.that(raised.value.filename, eq=str(invalid))
         tm.that(invalid.read_text(encoding="utf-8"), eq=malformed)
-        with pytest.raises(SyntaxError):
+        with u.Tests.raises(SyntaxError):
             FlextInfraModTextGateEngine.plan(mod_workspace)
         tm.that(valid.read_text(encoding="utf-8"), eq='value = "before"\n')
 
     @staticmethod
-    @pytest.mark.parametrize("change", ["remove", "change", "add"])
+    @c.Tests.MARK.parametrize("change", ["remove", "change", "add"])
     def test_foreign_source_changes_do_not_veto_owned_publication(
         mod_workspace: Path, change: str
     ) -> None:
@@ -472,7 +470,7 @@ class TestsFlextInfraModTextGateEngine:
         )
         before = source.read_bytes()
 
-        with pytest.raises(ValueError, match="capture keyword expected"):
+        with u.Tests.raises(ValueError, match="capture keyword expected"):
             FlextInfraModTextGateEngine.scan(mod_workspace, fix=True)
 
         tm.that(source.read_bytes(), eq=before)

@@ -11,8 +11,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -133,8 +131,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             (package / c.Infra.INIT_PY).unlink()
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("failure", ["root-source", "member-package"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("failure", ["root-source", "member-package"])
     def test_repository_failure_stops_planning_with_its_cause(
         tmp_path: Path,
         failure: str,
@@ -194,7 +192,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_public_bootstrap_rewrites_own_pyproject_and_repeats(
         tmp_path: Path,
     ) -> None:
@@ -319,7 +317,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         })
         tm.that(target.path, eq=Path())
         for invalid in ("", " ", Path.cwd()):
-            with pytest.raises(m.ValidationError):
+            with u.Tests.raises(m.ValidationError):
                 m.Infra.CandidateBootstrapTargetSpec.model_validate({
                     "path": invalid,
                     "what": c.Infra.CodegenConformSurface.MAKEFILE,
@@ -380,7 +378,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         tm.that(result.error, has="candidate bootstrap targets are not declared")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_duplicate_target_worktree_is_rejected_without_publication(
         tmp_path: Path,
     ) -> None:
@@ -467,7 +465,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         return observed.strip()
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_initializer_surface_recovers_without_touching_module_source(
         self,
         tmp_path: Path,
@@ -532,7 +530,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=generated,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_complete_generation_is_refused_before_publication(
         self,
         tmp_path: Path,
@@ -564,7 +562,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
     # Real conform transactions over a fixture repository (several full plans
     # per case): integration-scale, so it runs in the slow phase under its
     # per-item bound (rules/workflow/gate-budget.md), never a raised limit.
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_invalid_second_target_preserves_first_and_allows_retry(
         self,
         tmp_path: Path,
@@ -582,7 +580,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         original = second_declaration.read_text(encoding="utf-8")
         second_declaration.write_text("invalid: [\n", encoding="utf-8")
 
-        with pytest.raises(u.Yaml.YAMLError):
+        with u.Tests.raises(u.Yaml.YAMLError):
             infra.bootstrap_candidate(
                 m.Infra.CandidateBootstrapCommand(repository_root=source),
             )
@@ -597,7 +595,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_two_targets_reach_one_repeatable_fixed_point(self, tmp_path: Path) -> None:
         """A successful campaign publishes both and repeats without drift."""
         source, first, second = self._campaign(tmp_path)
@@ -634,7 +632,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=True,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_makefile_bootstrap_does_not_parse_corrupt_tooling(
         self,
         tmp_path: Path,
@@ -663,7 +661,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             eq=before,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_check_only_reports_drift_without_publication(self, tmp_path: Path) -> None:
         """A check does not enter the recoverable writer or change a target."""
         source, first, _ = self._campaign(tmp_path)
@@ -684,7 +682,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_docs_config_conflict_recovers_from_declared_template(
         tmp_path: Path,
     ) -> None:
@@ -713,8 +711,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("conflict_section", ["tool", "dependency-groups"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("conflict_section", ["tool", "dependency-groups"])
     def test_pyproject_bootstrap_uses_declared_candidate_surface(
         tmp_path: Path,
         conflict_section: str,

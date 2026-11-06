@@ -8,12 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
+from tests import c, m, p, r, tm, u
 
-from flext_infra import p
-from tests import c, m, r, tm, u
-
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraCodegenUpgWorkspace:

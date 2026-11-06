@@ -823,7 +823,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
             return None
 
         FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            project, resource, source, quoted
+            (project, resource), source, quoted
         )
 
     @classmethod

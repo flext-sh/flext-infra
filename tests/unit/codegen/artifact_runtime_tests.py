@@ -14,7 +14,6 @@ from email.parser import BytesParser
 from pathlib import Path
 from time import monotonic
 
-import pytest
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -344,9 +343,9 @@ class TestsArtifactRuntime:
         return consumer, python, consumer_options
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("subject", ["infra", "core"])
-    @pytest.mark.parametrize("archive_kind", ["wheel", "sdist"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("subject", ["infra", "core"])
+    @c.Tests.MARK.parametrize("archive_kind", ["wheel", "sdist"])
     def test_artifact_runs_with_runtime_dependencies_only(
         tmp_path: Path,
         hermetic_git_environment: Mapping[str, str],

@@ -12,9 +12,9 @@ import re
 from collections.abc import MutableSequence
 
 from flext_infra import c
-from flext_infra._protocols_bootstrap import annotation_reference_only
 from flext_infra._utilities import FlextInfraUtilitiesTransformerHeaderParser
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.protocols_bootstrap import annotation_reference_only
 
 
 class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):

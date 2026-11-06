@@ -11,8 +11,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
@@ -25,7 +23,7 @@ _SECOND_RECEIVER = 2
 _MIN_CHANGED_FILES = 2
 
 
-@pytest.mark.usefixtures("campaign_runtime")
+@c.Tests.MARK.usefixtures("campaign_runtime")
 class TestsFlextInfraApplyRenames:
     """Campaigns change declared sources, preserve drivers, and prove convergence."""
 
@@ -52,14 +50,14 @@ class TestsFlextInfraApplyRenames:
     def test_imported_model_reference_rejects_receiver_collision() -> None:
         """A locally bound public receiver rejects the complete rewrite."""
         fixture = Path(__file__).parents[2] / "fixtures" / "imported_model_collision.py"
-        with pytest.raises(ValueError, match="public import receiver is shadowed"):
+        with u.Tests.raises(ValueError, match="public import receiver is shadowed"):
             u.Infra.retarget_imported_names(
                 fixture.read_text(encoding=c.DEFAULT_ENCODING),
                 "flext_infra",
                 ("models.FlextInfraModels", "m"),
             )
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def campaign_runtime(
         tmp_path: Path,
@@ -286,10 +284,10 @@ class TestsFlextInfraApplyRenames:
         return root, python, projects, packages, provider, unrelated.read_bytes()
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "authority", ["workspace", "member", "standalone", "external"]
     )
-    @pytest.mark.parametrize(c.ContextScope.OPERATION, ["class", "module"])
+    @c.Tests.MARK.parametrize(c.ContextScope.OPERATION, ["class", "module"])
     def test_provider_rename_reaches_all_native_consumer_scopes(
         tmp_path: Path,
         authority: str,
@@ -446,7 +444,7 @@ class TestsFlextInfraApplyRenames:
             tm.ok(u.Cli.process_succeeded(checked.outcome))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("old", "new"),
         [
             ("is_semantic_clone", "semantic_clone"),
@@ -543,7 +541,7 @@ class TestsFlextInfraApplyRenames:
         tm.that(definer.read_text(), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("failure", "error"),
         [
             ("collision", "destination is occupied"),
@@ -607,7 +605,7 @@ class TestsFlextInfraApplyRenames:
             u.Infra.open_project(
                 mod_workspace, project_roots=(mod_workspace,)
             ) as project,
-            pytest.raises(ValueError, match=error),
+            u.Tests.raises(ValueError, match=error),
         ):
             FlextInfraCodemodRename.plan_candidates(
                 project, {path: source}, (declaration,), provider
@@ -678,7 +676,7 @@ class TestsFlextInfraApplyRenames:
         tm.that(second.files_changed, eq=0)
         tm.that(second.occurrences, eq=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("rows", "error"),
         [
             ("from,to\ncampaign_token,new\n", "header must be exactly"),
@@ -700,7 +698,7 @@ class TestsFlextInfraApplyRenames:
         target = self._seed(mod_workspace)
         original = target.read_bytes()
         (mod_workspace / "renames.csv").write_text(rows, encoding="utf-8")
-        with pytest.raises(ValueError, match=error):
+        with u.Tests.raises(ValueError, match=error):
             FlextInfraApplyRenames.run(self._request(mod_workspace, apply=True))
         tm.that(target.read_bytes(), eq=original)
 
@@ -895,7 +893,7 @@ class TestsFlextInfraApplyRenames:
         request = self._request(mod_workspace, apply=True).model_copy(
             update={"bindings": {"": ("definer.Public",)}},
         )
-        with pytest.raises(ValueError, match="no declared current public owner"):
+        with u.Tests.raises(ValueError, match="no declared current public owner"):
             FlextInfraApplyRenames.run(request)
         tm.that(target.read_bytes(), eq=before)
 

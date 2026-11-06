@@ -9,9 +9,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
-from tests import p, tm, u
+from tests import c, p, tm, u
 
 
 class TestsProtocolHolderComposition:
@@ -278,7 +276,7 @@ class TestsProtocolHolderComposition:
         )
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("authored_scope", "equivalent"),
         [
             ("        @property\n        def root(self) -> str: ...\n", True),
@@ -299,7 +297,7 @@ class TestsProtocolHolderComposition:
         before = authored_path.read_text(encoding="utf-8")
         with u.Infra.facade_source_project(root) as binding:
             if not equivalent:
-                with pytest.raises(ValueError, match="non-equivalent public Protocol"):
+                with u.Tests.raises(ValueError, match="non-equivalent public Protocol"):
                     u.Infra.protocol_model_sources_from_source(root, binding[0])
                 tm.that(authored_path.read_text(encoding="utf-8"), eq=before)
                 return
@@ -327,7 +325,7 @@ class TestsProtocolHolderComposition:
         )
 
     @classmethod
-    @pytest.mark.parametrize("upstream", [None, ("flext_cli", "FlextCliProtocols")])
+    @c.Tests.MARK.parametrize("upstream", [None, ("flext_cli", "FlextCliProtocols")])
     def test_copy_port_base_derives_from_facade_composition(
         cls, tmp_path: Path, upstream: tuple[str, str] | None
     ) -> None:

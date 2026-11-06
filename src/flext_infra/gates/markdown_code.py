@@ -270,7 +270,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         project_dir: Path,
         sources_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> Sequence[m.Cli.FileChange]:
+    ) -> Sequence[p.Cli.FileChange]:
         """Plan formatted blocks back into docs whose round-trip recompiles cleanly.
 
         Enumeration matches the extractor exactly: only parseable non-``notest``
@@ -282,7 +282,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
             One change per rewritten document, in enumeration order.
 
         """
-        changes: MutableSequence[m.Cli.FileChange] = []
+        changes: MutableSequence[p.Cli.FileChange] = []
         for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
             project_dir, scope_facts
         ):
@@ -296,7 +296,7 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         md_path: Path,
         project_dir: Path,
         sources_dir: Path,
-    ) -> m.Cli.FileChange | None:
+    ) -> p.Cli.FileChange | None:
         """Plan one document's formatted blocks back when its round-trip holds.
 
         Returns:

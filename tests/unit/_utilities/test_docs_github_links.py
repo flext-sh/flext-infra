@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import tm, u
 
 
 class TestsFlextInfraUtilitiesDocsGithubLinks:
     """Exercise Git identity, branch rewriting, and local existence evidence."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def docs_repository(
         tmp_path: Path,

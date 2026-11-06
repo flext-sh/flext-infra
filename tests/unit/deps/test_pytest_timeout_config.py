@@ -6,18 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
 from flext_infra import config
-from tests import c, tm
+from tests import c, tm, u
 
 
 class TestsFlextInfraPytestTimeoutConfig:
     """Prove the operator caps and relational policy at the typed SSOT."""
 
     @staticmethod
-    @pytest.mark.parametrize("distribution", ["load", "loadscope"])
-    @pytest.mark.parametrize("reorder", [False, True])
+    @c.Tests.MARK.parametrize("distribution", ["load", "loadscope"])
+    @c.Tests.MARK.parametrize("reorder", [False, True])
     def test_native_scheduling_policy_round_trips(
         distribution: str,
         *,
@@ -45,7 +43,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["loadscope-reorder"] = c.ParserBooleanToken.FALSE
 
-        with pytest.raises(c.ValidationError, match="valid boolean"):
+        with u.Tests.raises(c.ValidationError, match="valid boolean"):
             type(policy).model_validate(payload)
 
     @staticmethod
@@ -60,7 +58,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         tm.that(round_tripped, eq=policy)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         (
             "slow_timeout_seconds",
             "run_timeout_seconds",
@@ -99,7 +97,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         tm.that(round_tripped, eq=arbitrary_policy)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field",
         ["slow-timeout-seconds", "run-timeout-seconds", "termination-grace-seconds"],
     )
@@ -109,11 +107,11 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload[field] = 0
 
-        with pytest.raises(c.ValidationError, match="greater than"):
+        with u.Tests.raises(c.ValidationError, match="greater than"):
             type(policy).model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         c.MergeStrategy.OVERRIDE,
         [
             "-o",
@@ -130,7 +128,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["standard-addopts"] = [override]
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError,
             match="pytest runtime policy options are derived from typed fields",
         ):
@@ -147,7 +145,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["run-timeout-seconds"] = policy.slow_suite_stop_reserve_seconds
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError,
             match="pytest run timeout must exceed the suite stop reserve",
         ):
@@ -167,7 +165,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["slow-timeout-seconds"] = policy.run_timeout_seconds
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError, match="pytest slow timeout must be less than run timeout"
         ):
             type(policy).model_validate(payload)
@@ -181,7 +179,7 @@ class TestsFlextInfraPytestTimeoutConfig:
             config.Infra.name: policy.run_timeout_seconds,
         }
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError,
             match="run-timeout-overrides",
         ):
@@ -194,14 +192,14 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["progress-args"] = ["-q"]
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError,
             match="pytest progress args must expose verbose item progress",
         ):
             type(policy).model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "argument",
         [
             "tests",
@@ -226,7 +224,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["report-args"] = [argument]
 
-        with pytest.raises(
+        with u.Tests.raises(
             c.ValidationError,
             match="pytest reporting args must not override runner-owned policy",
         ):

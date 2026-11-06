@@ -1349,6 +1349,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if source is not None:
             cmd = (
                 *tuple(item for item in cmd if item != str(py_file)),
+                # Why: a candidate stdin snapshot must honor the destination
+                # project's exclude policy; Ruff applies exclusions to stdin
+                # only under --force-exclude, and excluded trees are not this
+                # gate's to judge.
+                *(
+                    ("--force-exclude",)
+                    if tool_name == c.Infra.RUFF and "--force-exclude" not in cmd
+                    else ()
+                ),
                 "--stdin-filename",
                 str(py_file),
                 "-",

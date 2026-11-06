@@ -10,6 +10,30 @@ valid:
         return r[int].from_failure(result)
     else:
         return r[int].ok(result.value + 1)
+  - |
+    def run_other_receiver(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return other.map(self._normalize)
+  - |
+    def run_receiver_in_argument(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return result.map(lambda value: (value, result.error))
+  - |
+    def run_eager_argument(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return result.map(self._normalizer())
+  - |
+    def run_failure_path_combinator(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return result.map_error(self._describe)
 invalid:
   - |
     def run(self) -> p.Result[str]:
@@ -23,3 +47,24 @@ invalid:
         if result.failure:
             return result
         return outcome.ok(result.value)
+  - |
+    def run_redundant(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return r[str].from_failure(result)
+        return result
+  - |
+    def run_chain(self) -> p.Result[str]:
+        result = self._load()
+        if result.failure:
+            return result
+        return result.flat_map(self._parse).map(lambda value: value.strip())
+  - |
+    def run_after_guard(self) -> p.Result[str]:
+        loaded = self._load()
+        if loaded.failure:
+            return r[str].from_failure(loaded)
+        result = self._parse(loaded.value, strict=True)
+        if result.failure:
+            return r[str].from_failure(result)
+        return r[str].ok(result.value)

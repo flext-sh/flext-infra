@@ -13,10 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate import FlextInfraValidateLazyMapFreshness
-from tests import m, p, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +23,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraLazyMapFreshness:
     """Wrapper semantics: runs the check-only generator and formats the report."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def v() -> FlextInfraValidateLazyMapFreshness:
         """Shared validator instance.
@@ -68,7 +66,7 @@ class TestsFlextInfraLazyMapFreshness:
     # Why (suite budget): full-suite xdist can stall durable atomic writes
     # beyond the default case timeout while the lazy-init harness publishes files.
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_stale_generated_lazy_map_fails_report(
         tmp_path: Path,
         v: FlextInfraValidateLazyMapFreshness,

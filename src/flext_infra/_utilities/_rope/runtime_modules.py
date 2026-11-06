@@ -306,11 +306,11 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         )
         if not isinstance(result, p.Infra.RopePyName):
             return None
-        target = cls.native_export_target(result)
+        target = cls._native_export_target(result)
         return result if target is None else target
 
     @classmethod
-    def native_export_target(
+    def _native_export_target(
         cls, binding: p.Infra.RopePyName
     ) -> p.Infra.RopePyName | None:
         """Follow a native-export wrapper assignment to the value it republishes.

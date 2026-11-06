@@ -9,12 +9,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,7 +58,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         target = pkg / "consumer.py"
         source = b"from __future__ import annotations\nimport os as operating\n"
         target.write_bytes(source)
-        with pytest.raises(ValueError, match="requires one owned module"):
+        with u.Tests.raises(ValueError, match="requires one owned module"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
                 apply=True,
                 module=f"{pkg.name}.missing",
@@ -144,7 +141,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.fail((pkg / "typings.py").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
         tmp_path: Path,
     ) -> None:
@@ -375,88 +372,95 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         for path, source in enforced_sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @staticmethod
-    def test_namespace_enforcer_publishes_the_report_receipt(
-        tmp_path: Path,
-    ) -> None:
-        """The command payload publishes the structured receipt under ``.reports``."""
-        workspace, _project, _pkg = u.Tests.namespace_workspace(tmp_path)
-        u.Tests.provision_checkout(workspace)
+    class TestsReportReceipt:
+        """Report receipts and report-mode findings of the namespace enforcer."""
 
-        result = FlextInfraNamespaceEnforcer.execute_command(
-            m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
-        )
+        @staticmethod
+        def test_namespace_enforcer_publishes_the_report_receipt(
+            tmp_path: Path,
+        ) -> None:
+            """The command payload publishes the structured receipt in ``.reports``."""
+            workspace, _project, _pkg = u.Tests.namespace_workspace(tmp_path)
+            u.Tests.provision_checkout(workspace)
 
-        receipt = (workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH).resolve()
-        tm.ok(receipt.exists())
-        published = json.loads(receipt.read_text(encoding="utf-8"))
-        tm.that(published["workspace"], eq=str(workspace))
-        tm.that(published["projects"], empty=False)
-        tm.that(result.failure, eq=published["has_violations"])
+            result = FlextInfraNamespaceEnforcer.execute_command(
+                m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
+            )
 
-    @staticmethod
-    def test_namespace_enforcer_report_mode_fails_on_findings_after_publishing(
-        tmp_path: Path,
-    ) -> None:
-        """Remaining catalog findings fail the verdict; the receipt is published.
+            receipt = (
+                workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+            ).resolve()
+            tm.ok(receipt.exists())
+            published = json.loads(receipt.read_text(encoding="utf-8"))
+            tm.that(published["workspace"], eq=str(workspace))
+            tm.that(published["projects"], empty=False)
+            tm.that(result.failure, eq=published["has_violations"])
 
-        A gate fails on every finding it counts: the report pass publishes the
-        structured receipt first, then returns the failure naming the
-        violations instead of a green verdict carrying them.
-        """
-        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
-        _ = (pkg / "service.py").write_text(
-            "from __future__ import annotations\n"
-            "from typing import Protocol\n\n"
-            "class ServiceContract(Protocol):\n"
-            '    """Service contract awaiting relocation."""\n'
-            "\n"
-            "    def run(self) -> str:\n"
-            '        """Run the contract."""\n'
-            "        ...\n",
-            encoding="utf-8",
-        )
-        u.Tests.provision_checkout(workspace)
+        @staticmethod
+        def test_namespace_enforcer_report_mode_fails_on_findings_after_publishing(
+            tmp_path: Path,
+        ) -> None:
+            """Remaining catalog findings fail the verdict; the receipt is published.
 
-        result = FlextInfraNamespaceEnforcer.execute_command(
-            m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
-        )
+            A gate fails on every finding it counts: the report pass publishes the
+            structured receipt first, then returns the failure naming the
+            violations instead of a green verdict carrying them.
+            """
+            workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
+            _ = (pkg / "service.py").write_text(
+                "from __future__ import annotations\n"
+                "from typing import Protocol\n\n"
+                "class ServiceContract(Protocol):\n"
+                '    """Service contract awaiting relocation."""\n'
+                "\n"
+                "    def run(self) -> str:\n"
+                '        """Run the contract."""\n'
+                "        ...\n",
+                encoding="utf-8",
+            )
+            u.Tests.provision_checkout(workspace)
 
-        tm.fail(result, has="Namespace violations found")
-        receipt = (workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH).resolve()
-        published = json.loads(receipt.read_text(encoding="utf-8"))
-        tm.ok(published["projects"][0]["relocation_findings"] > 0)
-        tm.ok(published["has_violations"])
+            result = FlextInfraNamespaceEnforcer.execute_command(
+                m.Infra.RefactorNamespaceEnforceInput(repository_root=workspace),
+            )
 
-    @staticmethod
-    def test_namespace_enforcer_reports_detection_only_findings_separately(
-        tmp_path: Path,
-    ) -> None:
-        """Detection-only residue remains visible without inflating relocations."""
-        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
-        _ = (pkg / "service.py").write_text(
-            "from __future__ import annotations\n"
-            "import logging\n"
-            "from typing import Protocol\n\n"
-            "logger = logging.getLogger(__name__)\n\n"
-            "class ServiceContract(Protocol):\n"
-            '    """Service contract under relocation."""\n'
-            "\n"
-            "    def run(self) -> str:\n"
-            '        """Run the contract."""\n'
-            "        ...\n",
-            encoding="utf-8",
-        )
-        u.Tests.provision_checkout(workspace)
+            tm.fail(result, has="Namespace violations found")
+            receipt = (
+                workspace / c.Infra.NAMESPACE_ENFORCE_REPORT_RELATIVE_PATH
+            ).resolve()
+            published = json.loads(receipt.read_text(encoding="utf-8"))
+            tm.ok(published["projects"][0]["relocation_findings"] > 0)
+            tm.ok(published["has_violations"])
 
-        report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
-            apply=True,
-        )
+        @staticmethod
+        def test_namespace_enforcer_reports_detection_only_findings_separately(
+            tmp_path: Path,
+        ) -> None:
+            """Detection-only residue remains visible without inflating relocations."""
+            workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
+            _ = (pkg / "service.py").write_text(
+                "from __future__ import annotations\n"
+                "import logging\n"
+                "from typing import Protocol\n\n"
+                "logger = logging.getLogger(__name__)\n\n"
+                "class ServiceContract(Protocol):\n"
+                '    """Service contract under relocation."""\n'
+                "\n"
+                "    def run(self) -> str:\n"
+                '        """Run the contract."""\n'
+                "        ...\n",
+                encoding="utf-8",
+            )
+            u.Tests.provision_checkout(workspace)
 
-        tm.that(report.projects[0].relocation_findings, eq=0)
-        tm.ok(report.projects[0].has_violations)
-        tm.ok(any(row.after for row in report.projects[0].rule_deltas))
-        tm.ok((pkg / "_protocols" / "service.py").exists())
+            report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
+                apply=True,
+            )
+
+            tm.that(report.projects[0].relocation_findings, eq=0)
+            tm.ok(report.projects[0].has_violations)
+            tm.ok(any(row.after for row in report.projects[0].rule_deltas))
+            tm.ok((pkg / "_protocols" / "service.py").exists())
 
     @staticmethod
     def test_namespace_enforcer_apply_clears_the_pending_relocations(
@@ -516,7 +520,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         u.Tests.declare_workspace_projects(workspace, ("healthy-proj", "broken-proj"))
         u.Tests.provision_checkout(workspace)
 
-        with pytest.raises(TypeError, match="must be a boolean"):
+        with u.Tests.raises(TypeError, match="must be a boolean"):
             FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(apply=True)
 
         tm.fail((healthy_pkg / "_protocols" / "service.py").exists())
@@ -647,7 +651,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(FlextInfraNamespaceEnforcer.render_text(published), has=rule_id)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_namespace_workspace_counts_bracket_all_projects_without_double_counting(
         tmp_path: Path,
     ) -> None:

@@ -11,8 +11,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from tests import c, m, t, tm, u
 
@@ -21,7 +19,7 @@ class TestsFlextInfraModernizerSourceReferences:
     """External consumers retain their backend, branch and dependency semantics."""
 
     @staticmethod
-    @pytest.mark.parametrize("transport", ["https://", "ssh://git@"])
+    @c.Tests.MARK.parametrize("transport", ["https://", "ssh://git@"])
     def test_public_source_migration_preserves_external_contract(
         tmp_path: Path,
         transport: str,

@@ -9,8 +9,6 @@ from __future__ import annotations
 import runpy
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, tm, u
 
 
@@ -18,10 +16,10 @@ class TestsFlextInfraNativeSignatureRemoval:
     """Native plans retain actual calls, annotations and repeatability."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "target", "replacement"),
         [
-            pytest.param(
+            u.Tests.param(
                 "import inspect\n"
                 "def build(value: str, index: str, suffix: str = '!') -> str:\n"
                 "    return value + index + suffix\n"
@@ -34,7 +32,7 @@ class TestsFlextInfraNativeSignatureRemoval:
                 "'b'",
                 id="middle-positional-and-keyword-callers",
             ),
-            pytest.param(
+            u.Tests.param(
                 "import inspect\n"
                 "from rope.base.pyobjectsdef import PyModule\n"
                 "class Owner:\n"

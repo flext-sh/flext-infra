@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +21,7 @@ class TestsFlextInfraExtendedProjectRunners:
     # Why (suite budget): full-suite xdist can stall durable atomic report writes
     # beyond the default case timeout while the nested checker publishes reports.
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_run_projects_records_requested_gates(
         real_python_package: Path,
     ) -> None:
@@ -45,7 +43,7 @@ class TestsFlextInfraExtendedProjectRunners:
         tm.fail("format" in set(result.value[0].gates))
 
     @staticmethod
-    @pytest.mark.parametrize("gate_method", ["lint", "format"])
+    @c.Tests.MARK.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(
         gate_method: str,
         real_python_package: Path,

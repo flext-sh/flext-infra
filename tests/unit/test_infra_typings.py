@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, t, tm, u
 
@@ -43,11 +41,11 @@ class TestsFlextInfraTypingsInfra:
         tm.ok(u.json_list_adapter() is u.json_list_adapter())
         tm.ok(u.json_value_adapter() is u.json_value_adapter())
         tm.ok(u.str_sequence_adapter() is u.str_sequence_adapter())
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             u.json_mapping_adapter().validate_python(["not", "a", "mapping"])
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             u.json_value_adapter().validate_python(Path("not-json"))
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             u.str_sequence_adapter().validate_python([{"not": "a string"}])
 
     @staticmethod
@@ -87,7 +85,7 @@ class TestsFlextInfraTypingsInfra:
     @staticmethod
     def test_container_mapping_adapter_rejects_nested_mapping() -> None:
         """Test container mapping adapter rejects nested mapping."""
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
                 "root": Path("/var/lib/flext"),
                 "settings": {"enabled": True},

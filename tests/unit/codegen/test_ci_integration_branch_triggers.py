@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, p, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCiIntegrationBranchTriggers:
@@ -130,7 +128,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "template_source",
         [
             entry.source
@@ -188,7 +186,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.fail(contract.custom)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_ci_and_hook_share_the_check_and_test_workflow(
         profile: c.Infra.MakeProfile,
     ) -> None:
@@ -255,7 +253,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_ci_preserves_original_execution_receipts_on_every_outcome(
         profile: c.Infra.MakeProfile,
     ) -> None:
@@ -528,7 +526,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(len(set(receipts)), eq=len(receipts))
 
     @staticmethod
-    @pytest.mark.parametrize("missing", ["setup", "audit", "check", "test"])
+    @c.Tests.MARK.parametrize("missing", ["setup", "audit", "check", "test"])
     def test_typed_approval_rejects_missing_stages(missing: str) -> None:
         """A truncated workflow cannot become an approval contract."""
         owner = config.Infra.codegen.make
@@ -536,7 +534,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         payload["workflow"] = [
             step.model_dump() for step in owner.workflow if step.verb != missing
         ]
-        with pytest.raises(ValueError, match="workflow"):
+        with u.Tests.raises(ValueError, match="workflow"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
@@ -545,5 +543,5 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         owner = config.Infra.codegen.make
         payload = owner.model_dump(exclude=set(type(owner).model_computed_fields))
         payload["pre_commit"] = False
-        with pytest.raises(ValueError, match="pre_commit"):
+        with u.Tests.raises(ValueError, match="pre_commit"):
             m.Infra.MakeSpec.model_validate(payload)

@@ -3,6 +3,7 @@
 <!-- TOC START -->
 
 - [Broken bootstrap (the checkout's Makefile misbehaves)](#broken-bootstrap-the-checkouts-makefile-misbehaves)
+- [Protocol candidate admission](#protocol-candidate-admission)
 - [Install-mode mismatch](#install-mode-mismatch)
 - [The recovery loop](#the-recovery-loop)
 - [Orphan imports](#orphan-imports)

@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, gates, m, u
-from tests import c, tm
+from flext_infra import config, gates
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,7 +19,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
     """Literal files retain native scope; discovery retains artifact exclusions."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_literal_excluded_stub_preserves_native_scope_and_config(
         real_python_package: Path,
         suite_runtime_root: Path,
@@ -93,7 +91,7 @@ class TestsFlextInfraPyreflyExplicitTargets:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_explicit_targets_keep_configured_excludes(
         real_python_package: Path,
         suite_runtime_root: Path,

@@ -8,3 +8,9 @@ invalid:
 - |
   from tests import tm
   assert left not in right
+- |
+  from tests import tm
+  assert (
+      "a long expected fragment"
+      not in observed
+  )

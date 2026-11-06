@@ -459,14 +459,8 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
-    class ToolchainSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
-        """Language-runtime and native-tool versions shared by generated projects.
-
-        Native tools use moving ``latest`` selectors; Python retains its
-        required major.minor runtime line. Only ``make upg`` resolves the
-        selectors and writes mise.lock; setup installs frozen from that lock.
-        Python linters and type checkers remain owned by pyproject manifests.
-        """
+    class ToolchainUvSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
+        """Python line, cooldown and uv resolution policy of the fleet toolchain."""
 
         python_version: Annotated[
             t.NonEmptyStr,
@@ -563,6 +557,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+
+    class ToolchainSpec(ToolchainUvSpec):
+        """Language-runtime and native-tool versions shared by generated projects.
+
+        Native tools use moving ``latest`` selectors; Python retains its
+        required major.minor runtime line. Only ``make upg`` resolves the
+        selectors and writes mise.lock; setup installs frozen from that lock.
+        Python linters and type checkers remain owned by pyproject manifests.
+        """
+
         mise_lockfile: Annotated[
             bool,
             m.Field(

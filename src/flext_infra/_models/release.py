@@ -113,6 +113,10 @@ class FlextInfraModelsRelease:
 
         id: Annotated[t.PositiveInt, m.Field(description="Native release identifier")]
         tag_name: Annotated[t.NonEmptyStr, m.Field(description="Exact release tag")]
+        draft: Annotated[
+            bool,
+            m.Field(description="Whether the release is an unpublished draft"),
+        ]
 
     class GithubReleaseInventory(m.StrictBoundaryModel):
         """Complete paginated releases used to distinguish absence from failure."""

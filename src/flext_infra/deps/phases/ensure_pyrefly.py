@@ -33,7 +33,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         *,
         context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.PhaseConfig:
         """Build the canonical pyrefly phase definition.
 
         Returns:

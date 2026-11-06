@@ -10,10 +10,8 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import infra, m
-from tests import c, tm, u
+from flext_infra import infra
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraApiAliasCutover:
@@ -60,7 +58,7 @@ class TestsFlextInfraApiAliasCutover:
         return root, sources
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("statement", "base", "expected"),
         [
             ("from sample_pkg import s", "s", "FlextSampleService"),
@@ -149,7 +147,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(u.Cli.process_succeeded(outcome.outcome))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("consumer", "reason"),
         [
             (
@@ -173,7 +171,7 @@ class TestsFlextInfraApiAliasCutover:
         )
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=reason),
+            u.Tests.raises(ValueError, match=reason),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.COMPAT_ALIAS,
@@ -187,14 +185,14 @@ class TestsFlextInfraApiAliasCutover:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("owner_file", "owner_module"),
         [
             ("api.py", "flext_sample.api"),
             ("models.py", "flext_sample.models"),
         ],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "consumer_source",
         [
             "from {owner_module} import sample\n\nfacade = sample\n",
@@ -259,7 +257,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.that(by_path[consumer], lacks="import sample")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("module", "receiver"),
         [
             ("flext_sample.api as sample_api", "sample_api"),
@@ -362,7 +360,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.ok(converged, eq=())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("consumer_source", "diagnostic"),
         [
             (
@@ -476,7 +474,7 @@ class TestsFlextInfraApiAliasCutover:
         tm.fail(planned, has=diagnostic)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("module_import", "receiver"),
         [
             ("import flext_sample.api as sample_api", "sample_api"),
@@ -485,7 +483,7 @@ class TestsFlextInfraApiAliasCutover:
             ("import flext_sample.api", "flext_sample.api"),
         ],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "reflection",
         [
             'getattr(sample_api, "sample")',

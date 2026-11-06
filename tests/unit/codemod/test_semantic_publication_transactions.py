@@ -11,8 +11,6 @@ import threading
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codemod, infra, transformers, workspace
 from tests import c, m, p, r, tm, u
 
@@ -244,7 +242,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
 
-    @pytest.mark.parametrize("unchanged", [False, True])
+    @c.Tests.MARK.parametrize("unchanged", [False, True])
     def test_stub_retirement_and_consumer_annotations_publish_together(
         self,
         mod_workspace: Path,
@@ -372,7 +370,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
         tm.fail(rejected)
 
     @staticmethod
-    @pytest.mark.parametrize("raises", [False, True])
+    @c.Tests.MARK.parametrize("raises", [False, True])
     def test_no_effect_publication_retains_validator_failure(
         mod_workspace: Path,
         *,
@@ -399,7 +397,7 @@ class TestsFlextInfraSemanticPublicationTransactions:
 
         options = m.Infra.SemanticPublicationOptions(validator=reject)
         if raises:
-            with pytest.raises(RuntimeError) as raised:
+            with u.Tests.raises(RuntimeError) as raised:
                 publication.publish_semantic_file_plans(
                     (), repository_root=mod_workspace, options=options
                 )
@@ -412,8 +410,8 @@ class TestsFlextInfraSemanticPublicationTransactions:
             tm.ok(rejected.exception is failure)
         tm.that(path.read_text(encoding="utf-8"), eq=source)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("rejected", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("rejected", [False, True])
     def test_unchanged_semantic_entry_validates_generated_public_consumer(
         self,
         tmp_path: Path,

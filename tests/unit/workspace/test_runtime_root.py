@@ -10,8 +10,6 @@ import os
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
@@ -21,7 +19,7 @@ class TestsFlextInfraRuntimeRoot:
     """The execution context elects exactly one lock and environment owner."""
 
     @staticmethod
-    @pytest.mark.parametrize("malformed_parent_git", [False, True])
+    @c.Tests.MARK.parametrize("malformed_parent_git", [False, True])
     def test_python_parent_does_not_invent_a_containing_git_owner(
         tmp_path: Path,
         *,
@@ -78,7 +76,7 @@ class TestsFlextInfraRuntimeRoot:
         tm.that(observed.runtime_root, eq=root.resolve())
 
     @staticmethod
-    @pytest.mark.parametrize("excluded", [False, True])
+    @c.Tests.MARK.parametrize("excluded", [False, True])
     def test_native_monorepo_owner_retains_the_requested_project(
         tmp_path: Path,
         *,
@@ -131,7 +129,7 @@ class TestsFlextInfraRuntimeRoot:
         tm.that(observed.runtime_root, eq=child.resolve())
 
     @staticmethod
-    @pytest.mark.parametrize("association", ["member", "excluded", "own-workspace"])
+    @c.Tests.MARK.parametrize("association", ["member", "excluded", "own-workspace"])
     def test_native_membership_controls_a_nested_clone(
         tmp_path: Path,
         association: str,
@@ -170,7 +168,7 @@ class TestsFlextInfraRuntimeRoot:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("attached", [False, True])
+    @c.Tests.MARK.parametrize("attached", [False, True])
     def test_resolution_view_preserves_physical_environment(
         tmp_path: Path,
         *,
@@ -238,7 +236,7 @@ class TestsFlextInfraRuntimeRoot:
         tm.that(observed.runtime, eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize("ci", [False, True])
+    @c.Tests.MARK.parametrize("ci", [False, True])
     def test_attached_member_runtime_owner(
         tmp_path: Path,
         *,
@@ -283,7 +281,7 @@ class TestsFlextInfraRuntimeRoot:
             u.Tests.restore_env(policy.variable, original)
 
     @staticmethod
-    @pytest.mark.parametrize("ci", [False, True])
+    @c.Tests.MARK.parametrize("ci", [False, True])
     def test_standalone_runtime_owner(
         tmp_path: Path,
         *,
@@ -342,7 +340,7 @@ class TestsFlextInfraRuntimeRoot:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "invalid",
         ["", "malformed", "duplicate", "cycle", "foreign"],
     )
@@ -379,7 +377,7 @@ class TestsFlextInfraRuntimeRoot:
             ),
             desired_mode=0o644,
         )
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match=rf"{re.escape(c.PYPROJECT_FILENAME)}' not found"
         ):
             u.Infra.workspace_dependency_order(tmp_path, (consumer, provider))
@@ -390,7 +388,7 @@ class TestsFlextInfraRuntimeRoot:
                 "cycle": "cyclic dependency graph",
                 "foreign": "planned manifest has no owning payload",
             }
-            with pytest.raises(ValueError, match=messages[invalid]):
+            with u.Tests.raises(ValueError, match=messages[invalid]):
                 u.Infra.workspace_dependency_order(
                     tmp_path,
                     (consumer, provider),

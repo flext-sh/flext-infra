@@ -281,16 +281,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 return family
         return None
 
-    @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* is a governed root-namespace facade file.
-
-        Returns:
-            Whether *file_name* is a governed root-namespace facade file.
-
-        """
-        return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
-
     @staticmethod
     def runtime_module_names(
         *, project_name: str, codegen: p.Infra.CodegenConfigSpec
@@ -336,39 +326,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             ),
             None,
         )
-
-    @staticmethod
-    def ordered_namespace_exports(
-        *,
-        package_dir: Path,
-        package_name: str,
-        export_names: Sequence[str],
-    ) -> Sequence[str]:
-        """Order root-package exports with alias hierarchy preserved.
-
-        Returns:
-            The resulting ``Sequence[str]``.
-
-        """
-        _ = (package_dir, package_name)
-        ordered_unique = tuple(dict.fromkeys(export_names))
-        export_set = set(ordered_unique)
-        preferred_aliases = tuple(
-            alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
-        )
-        declared_aliases = tuple(
-            name
-            for name in ordered_unique
-            if (
-                name.islower()
-                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-                and name not in preferred_aliases
-            )
-        )
-        ordered_aliases = (*preferred_aliases, *declared_aliases)
-        alias_set = set(ordered_aliases)
-        other_exports = tuple(name for name in ordered_unique if name not in alias_set)
-        return (*other_exports, *ordered_aliases)
 
     @staticmethod
     def package_alias(*, package_name: str) -> str:
