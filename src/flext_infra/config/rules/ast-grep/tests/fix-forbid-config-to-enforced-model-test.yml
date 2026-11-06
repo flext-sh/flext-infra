@@ -1,0 +1,36 @@
+id: fix-forbid-config-to-enforced-model
+valid:
+- |
+  from flext_core import m
+
+  class Input(m.BaseModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", strict=True)
+
+      name: str = m.Field(description="name")
+- |
+  from flext_core import m
+
+  class Input(m.BaseModel, Mixin):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
+      name: str = m.Field(description="name")
+- |
+  from flext_core import m
+
+  class Input(m.BaseModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+- |
+  class Input(m.BaseModel):
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
+      name: str = m.Field(description="name")
+invalid:
+- |
+  from flext_core import m
+
+  class Input(m.BaseModel):
+      """Input."""
+
+      model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
+
+      name: str = m.Field(description="name")

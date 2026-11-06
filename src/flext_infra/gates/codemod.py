@@ -199,7 +199,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
 
     def _scan_ruleset(
         self,
-        scope: tuple[Path, m.Infra.GateContext, Path, frozenset[str]],
+        scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
         ruleset: p.Infra.CodemodRuleset,
         targets: Sequence[str],
         sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],

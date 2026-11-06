@@ -9,8 +9,19 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c, check, docs, m, p, r, t, u, workspace
+from flext_infra import (
+    FlextInfraGitService,
+    c,
+    check,
+    docs,
+    infra,
+    m,
+    p,
+    r,
+    t,
+    u,
+    workspace,
+)
 
 
 class FlextInfraWorkspaceRoutes:
@@ -49,9 +60,7 @@ class FlextInfraWorkspaceRoutes:
             The successful native test result or its unchanged failure.
 
         """
-        completed = flext_infra.infra.workspace_tests(
-            params, execution_mode=execution_mode
-        )
+        completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
@@ -136,7 +145,7 @@ class FlextInfraWorkspaceRoutes:
         if status:
             u.Cli.framework_exit(status)
         if complete:
-            conformed = flext_infra.infra.codegen_conform(
+            conformed = infra.codegen_conform(
                 m.Infra.CodegenConformRequest(
                     root=root,
                     scope=c.Infra.CodegenConformScope.SELF,
@@ -148,7 +157,7 @@ class FlextInfraWorkspaceRoutes:
         if not complete:
             return r[bool].ok(value=True)
         if token != make.ci.value:
-            lanes = flext_infra.FlextInfraGitService.verify_lanes(
+            lanes = FlextInfraGitService.verify_lanes(
                 m.Infra.GitLaneVerificationRequest(repo_root=root)
             )
             if lanes.failure:
@@ -214,7 +223,7 @@ class FlextInfraWorkspaceRoutes:
                 c.Infra.VERB_RUN,
                 "Run release orchestration CLI flow",
                 m.Infra.ReleaseRunCommand,
-                flext_infra.infra.release_run,
+                infra.release_run,
                 "Release completed successfully",
             ),
         ))
@@ -239,10 +248,17 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
+                name="verify-lanes",
+                help_text="Read-only lane inventory, ownership census, and refusals",
+                model_cls=m.Infra.GitLaneVerificationRequest,
+                handler=FlextInfraGitService.verify_lanes,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="lane-ownership",
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
-                handler=flext_infra.FlextInfraGitService.lane_ownership,
+                handler=FlextInfraGitService.lane_ownership,
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
@@ -292,15 +308,8 @@ class FlextInfraWorkspaceRoutes:
                         "without effects"
                     ),
                     m.Infra.GitLaneVerificationRequest,
-                    flext_infra.FlextInfraGitService.verify_lane,
+                    FlextInfraGitService.verify_lane,
                     "lane stash and live integration ancestry verified",
-                ),
-                (
-                    "verify-lanes",
-                    "Read-only lane inventory, ownership census, and refusals",
-                    m.Infra.GitLaneVerificationRequest,
-                    flext_infra.FlextInfraGitService.verify_lanes,
-                    "lane inventory verified",
                 ),
                 (
                     "identity",
@@ -351,7 +360,7 @@ class FlextInfraWorkspaceRoutes:
                     "propagate",
                     "Publish this workspace's flext-infra to every member",
                     workspace.FlextInfraWorkspacePropagation,
-                    flext_infra.infra.workspace_propagate,
+                    infra.workspace_propagate,
                     None,
                 ),
             )),

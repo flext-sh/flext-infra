@@ -10,8 +10,6 @@ import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -59,7 +57,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
     """
 
     @staticmethod
-    @pytest.mark.parametrize("publishes_result", [False, True])
+    @c.Tests.MARK.parametrize("publishes_result", [False, True])
     def test_authored_parent_only_serves_its_published_inherited_letters(
         tmp_path: Path, *, publishes_result: bool
     ) -> None:
@@ -114,7 +112,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("renamed_checkout", [False, True])
+    @c.Tests.MARK.parametrize("renamed_checkout", [False, True])
     def test_declared_alias_identity_survives_checkout_rename(
         tmp_path: Path,
         *,
@@ -204,7 +202,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         tm.that((child / c.Infra.INIT_PY).read_bytes(), eq=first)
         probe = (
-            "from flext_bootstrap_child.consumer import execute\n"
+            "from flext_bootstra_child import execute\n"
             "import flext_bootstrap_child as generated\n"
             "from flext_core import r\n"
             "print(generated.r is r)\n"
@@ -404,7 +402,7 @@ class TestsFlextInfraLazyInitAliasInheritance:
 
         # Planning runs once and exposes the first failure with its traceback;
         # nothing converts it into a result on the way out.
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match=(
                 "lazy-init: declared facade parent 'flext_ghost_parent_zzz'"

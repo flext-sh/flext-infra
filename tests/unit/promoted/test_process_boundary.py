@@ -17,7 +17,7 @@ from typing import Final
 
 import pytest
 
-from tests import c, t
+from tests import c, t, u
 
 
 @dataclasses.dataclass(frozen=True)
@@ -190,7 +190,7 @@ raise SystemExit(
             stderr_read=stderr_read,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_run_streams_stdout_and_stderr_before_child_completion(
         self,
         tmp_path: Path,
@@ -232,7 +232,7 @@ raise SystemExit(
                 os.kill(probe.pid, signal.SIGKILL)
                 os.waitpid(probe.pid, 0)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_run_returns_exact_nonzero_exit_status(self, tmp_path: Path) -> None:
         """Return the child's raw nonzero code without normalization.
 
@@ -247,7 +247,7 @@ raise SystemExit(
         if exit_code != self.NONZERO_EXIT:
             pytest.fail(f"expected {self.NONZERO_EXIT}, got {exit_code}")
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_run_sigint_terminates_child_without_residual_process(
         self,
         tmp_path: Path,
@@ -281,7 +281,7 @@ raise SystemExit(
             os.killpg(pid, signal.SIGINT)
             if self._wait_status(pid) == 0:
                 pytest.fail("SIGINT was normalized to success")
-            with pytest.raises(ProcessLookupError):
+            with u.Tests.raises(ProcessLookupError):
                 os.kill(child, 0)
             reaped = True
         finally:

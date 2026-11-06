@@ -33,18 +33,8 @@ class FlextInfraProtocolsConfigStatic:
         """Structural data contract projected from the owning model."""
 
         @property
-        def wait_deadline_seconds(self) -> t.PositiveFloat:
-            """Longest wait before failing with the last holder."""
-            ...
-
-        @property
-        def poll_interval_seconds(self) -> t.PositiveFloat:
-            """Interval between read-only lock availability polls."""
-            ...
-
-        @property
-        def report_interval_seconds(self) -> t.PositiveFloat:
-            """Interval between progress lines naming the holder."""
+        def reconcile_attempts(self) -> t.NonNegativeInt:
+            """Replans after another writer changed a destination."""
             ...
 
     @runtime_checkable

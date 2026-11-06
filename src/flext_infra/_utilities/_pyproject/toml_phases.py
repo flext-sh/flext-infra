@@ -186,7 +186,7 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
     @staticmethod
     def _apply_toml_operation(
         table: t.MutableJsonMapping,
-        operation: p.Infra.DepsToml.SetOp
+        operation: m.Infra.DepsToml.SetOp
         | m.Infra.DepsToml.ListOp
         | m.Infra.DepsToml.RemoveOp,
     ) -> Sequence[tuple[Sequence[str], str]]:

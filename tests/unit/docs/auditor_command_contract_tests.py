@@ -9,8 +9,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, tm, u
 
@@ -21,7 +19,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraAuditorCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def command_contract_scope(
         tmp_path: Path,
@@ -87,8 +85,8 @@ class TestsFlextInfraAuditorCommandContract:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("verb_name", ["publish-preview", "archive-assets"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("verb_name", ["publish-preview", "archive-assets"])
+    @c.Tests.MARK.parametrize(
         ("declared", "expected"),
         [
             (True, ""),
@@ -165,7 +163,7 @@ class TestsFlextInfraAuditorCommandContract:
         tm.that(u.Infra.docs_command_contract_issues(scope), eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize("with_guide", [False, True])
+    @c.Tests.MARK.parametrize("with_guide", [False, True])
     def test_malformed_selected_topology_blocks_with_exact_cause(
         command_contract_scope: p.Infra.DocScope,
         *,
@@ -184,7 +182,7 @@ class TestsFlextInfraAuditorCommandContract:
         tm.fail(loaded)
         tm.that(loaded.error, has=str(manifest))
 
-        with pytest.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
+        with u.Tests.raises(ValueError, match=re.escape(loaded.error or "")) as caught:
             u.Infra.docs_command_contract_issues(scope)
 
         tm.that(str(caught.value), eq=loaded.error)

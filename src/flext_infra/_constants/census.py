@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import builtins
+from collections.abc import Mapping
 from enum import StrEnum, unique
+from types import MappingProxyType
 from typing import ClassVar
 
 
@@ -55,6 +57,59 @@ class FlextInfraConstantsCensus:
         UNUSED = "unused"
         WRONG_TIER = "wrong_tier"
         CONSTANT_CONSUMERS = "constant-consumers"
+        COMPAT_ALIAS = "compat-alias"
+        ALIAS_CHAIN = "alias-chain"
+        DUPLICATE_DECLARATION = "duplicate-declaration"
+        BLOAT_WRAPPER = "bloat-wrapper"
+
+    CENSUS_ALIAS_SELECTORS: ClassVar[frozenset[str]] = frozenset({
+        "alias",
+        CensusRule.COMPAT_ALIAS,
+        CensusRule.ALIAS_CHAIN,
+    })
+    "Extermination kinds selecting compatibility-alias rows."
+    CENSUS_DUPLICATE_SELECTORS: ClassVar[frozenset[str]] = frozenset({
+        "duplicate",
+        CensusRule.DUPLICATE_DECLARATION,
+    })
+    "Extermination kinds selecting duplicate-declaration rows."
+    CENSUS_SHORTEST_SELECTORS: ClassVar[frozenset[str]] = frozenset({
+        "shortest",
+        "ceremony",
+        CensusRule.BLOAT_WRAPPER,
+    })
+    "Extermination kinds selecting shortest-form rows."
+    CENSUS_ALIAS_CURE: ClassVar[str] = "ban-compat-alias"
+    "Owned cure of a compatibility alias: the compat-alias semantic cutover."
+    CENSUS_DUPLICATE_CURE: ClassVar[str] = "duplicate-apply"
+    "Owned cure of an identity-proven duplicate: the mod duplicate phase."
+    CENSUS_MANUAL_CURE: ClassVar[str] = "manual-review"
+    "Rows without an owned automatic cure."
+    CENSUS_CURE_COMMANDS: ClassVar[Mapping[str, str]] = MappingProxyType({
+        "ban-compat-alias": "make mod RULES=ban-compat-alias",
+        "duplicate-apply": "make mod",
+    })
+    "Individual validation command of each owned cure."
+    CENSUS_MIN_REPEATED_EXPORTS: ClassVar[int] = 2
+    "Occurrences that make one ``__all__`` entry a duplicate."
+    CENSUS_FAMILY_NAMES: ClassVar[frozenset[str]] = frozenset({
+        "c",
+        "t",
+        "p",
+        "m",
+        "u",
+        "e",
+        "s",
+        "h",
+        "d",
+        "r",
+        "x",
+    })
+    "Canonical facade family letters; rebinding one to an own class is lawful."
+    CENSUS_ENTRYPOINT_NAMES: ClassVar[frozenset[str]] = frozenset({"main"})
+    "Console entrypoint callables that may forward to the CLI owner."
+    CENSUS_FAMILY_ALIAS_KIND: ClassVar[str] = "family-import-alias"
+    "Import alias of another package's facade family (largest fleet deviation)."
 
     CENSUS_UNSUPPORTED_SIMPLE_REMOVAL_CODE: ClassVar[str] = (
         "CENSUS_UNSUPPORTED_SIMPLE_REMOVAL"

@@ -56,7 +56,9 @@ class FlextInfraModelsDocsGeneration:
         projects: tuple[
             Annotated[
                 p.Infra.DocsCatalogEntry,
-                t.schema_for_model(FlextInfraModelsDocsGeneration.DocsCatalogEntry),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDocsGeneration.DocsCatalogEntry
+                ),
             ],
             ...,
         ] = m.Field(description="Generated first-party project references")
@@ -64,7 +66,7 @@ class FlextInfraModelsDocsGeneration:
             Annotated[
                 p.Infra.DocsDependencyReference,
                 t.schema_for_model(
-                    FlextInfraModelsDocsGeneration.DocsDependencyReference
+                    lambda: FlextInfraModelsDocsGeneration.DocsDependencyReference
                 ),
             ],
             ...,
@@ -91,7 +93,9 @@ class FlextInfraModelsDocsGeneration:
         declared_files: tuple[
             Annotated[
                 p.Infra.CodegenFilePlan,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
+                ),
             ],
             ...,
         ] = m.Field(
@@ -121,7 +125,7 @@ class FlextInfraModelsDocsGeneration:
             Annotated[
                 p.Infra.CodegenBootstrapSource,
                 t.schema_for_model(
-                    FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
+                    lambda: FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
                 ),
             ]
             | None
@@ -250,7 +254,7 @@ class FlextInfraModelsDocsGeneration:
         scope: Annotated[
             Annotated[
                 p.Infra.DocScope,
-                t.schema_for_model(FlextInfraModelsDocsGeneration.DocScope),
+                t.schema_for_model(lambda: FlextInfraModelsDocsGeneration.DocScope),
             ],
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
@@ -259,7 +263,7 @@ class FlextInfraModelsDocsGeneration:
                 Annotated[
                     p.Infra.DocsRenderedArtifact,
                     t.schema_for_model(
-                        FlextInfraModelsDocsGeneration.DocsRenderedArtifact
+                        lambda: FlextInfraModelsDocsGeneration.DocsRenderedArtifact
                     ),
                 ],
                 ...,
@@ -275,7 +279,7 @@ class FlextInfraModelsDocsGeneration:
                 Annotated[
                     p.Infra.DocsScopeArtifacts,
                     t.schema_for_model(
-                        FlextInfraModelsDocsGeneration.DocsScopeArtifacts
+                        lambda: FlextInfraModelsDocsGeneration.DocsScopeArtifacts
                     ),
                 ],
                 ...,
@@ -285,7 +289,9 @@ class FlextInfraModelsDocsGeneration:
         metadata_files: tuple[
             Annotated[
                 p.Infra.CodegenFilePlan,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
+                ),
             ],
             ...,
         ] = m.Field(default=(), description="Owned metadata published with this render")

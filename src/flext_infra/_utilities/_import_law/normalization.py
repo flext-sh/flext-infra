@@ -885,51 +885,18 @@ class FlextInfraUtilitiesImportLawNormalization(
         routes: dict[t.StrTuple, tuple[str, str, str]] = {}
         upstream: dict[str, str] = {}
         for bound, (module, name) in elected.items():
-            paths = cls._import_law_consumed_facade_paths(state, bound)
-            if not paths:
-                return r[str].fail(
-                    "Own-family facade-value reads have no declaring route: "
-                    f"path={scope.file_path} binding={bound} "
-                    f"provider={module}.{name} "
-                    f"published_by={state.root_exports.get(name)}",
-                )
-            providers: set[str] = set()
-            for path in paths:
-                qualified = f"{module}.{name}.{'.'.join(path)}"
-                route = cls._import_law_own_family_route(
-                    state,
-                    qualified,
-                    path[-1],
-                    member_resolver=member_resolver,
-                )
-                if route is None:
-                    # Declared upstream: the route keeps the letter, bound to
-                    # the upstream package that publishes it (ADR-028 D10).
-                    providers.add(
-                        cls._import_law_upstream_letter_provider(
-                            state, member_resolver(qualified), name
-                        )
-                    )
-                    continue
-                if any(
-                    owner == route[1] and provider != route[0]
-                    for provider, owner, _ in routes.values()
-                ):
-                    return r[str].fail(
-                        "Own-family exports have competing declaring owners: "
-                        f"path={scope.file_path} owner={route[1]}",
-                    )
-                routes[bound, *path] = route
-            if len(providers) > 1:
-                return r[str].fail(
-                    "Own-family upstream routes need more than one provider: "
-                    f"path={scope.file_path} binding={bound} "
-                    f"providers={sorted(providers)}",
-                )
-            if providers and not cls._import_law_binds_from(
-                state, bound, next(iter(providers))
+            providers = cls._import_law_own_family_binding_providers(
+                state,
+                (bound, module, name),
+                routes,
+                member_resolver=member_resolver,
+            )
+            if providers.failure:
+                return r[str].from_failure(providers)
+            if providers.value and not cls._import_law_binds_from(
+                state, bound, next(iter(providers.value))
             ):
-                upstream[bound] = next(iter(providers))
+                upstream[bound] = next(iter(providers.value))
         cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
             scope.project_root,
@@ -938,15 +905,77 @@ class FlextInfraUtilitiesImportLawNormalization(
         ) as (project, _sources):
             return r[str].ok(
                 value=FlextInfraUtilitiesSemanticCutoverOwnMro.rewrite_own_family_members(
-                    source,
+                    (project, scope.file_path, source),
                     routes,
                     {bound: route[0] for bound, route in elected.items()},
-                    source_project=project,
-                    file_path=scope.file_path,
                     local_module=scope.module,
                     upstream=upstream,
                 ),
             )
+
+    @classmethod
+    def _import_law_own_family_binding_providers(
+        cls,
+        state: p.Infra.ImportLawPass,
+        binding: tuple[str, str, str],
+        routes: MutableMapping[t.StrTuple, tuple[str, str, str]],
+        *,
+        member_resolver: p.Infra.RopeSourceMemberResolver,
+    ) -> p.Result[frozenset[str]]:
+        """Route every consumed facade path of one elected own-family binding.
+
+        Declaring routes are recorded in ``routes``; paths declared upstream
+        contribute the upstream package that publishes the letter.
+
+        Returns:
+            The upstream providers of the binding (at most one), or the typed
+            failure of an unroutable or ambiguous reference.
+
+        """
+        scope = state.scope
+        bound, module, name = binding
+        paths = cls._import_law_consumed_facade_paths(state, bound)
+        if not paths:
+            return r[frozenset[str]].fail(
+                "Own-family facade-value reads have no declaring route: "
+                f"path={scope.file_path} binding={bound} "
+                f"provider={module}.{name} "
+                f"published_by={state.root_exports.get(name)}",
+            )
+        providers: set[str] = set()
+        for path in paths:
+            qualified = f"{module}.{name}.{'.'.join(path)}"
+            route = cls._import_law_own_family_route(
+                state,
+                qualified,
+                path[-1],
+                member_resolver=member_resolver,
+            )
+            if route is None:
+                # Declared upstream: the route keeps the letter, bound to
+                # the upstream package that publishes it (ADR-028 D10).
+                providers.add(
+                    cls._import_law_upstream_letter_provider(
+                        state, member_resolver(qualified), name
+                    )
+                )
+                continue
+            if any(
+                owner == route[1] and provider != route[0]
+                for provider, owner, _ in routes.values()
+            ):
+                return r[frozenset[str]].fail(
+                    "Own-family exports have competing declaring owners: "
+                    f"path={scope.file_path} owner={route[1]}",
+                )
+            routes[bound, *path] = route
+        if len(providers) > 1:
+            return r[frozenset[str]].fail(
+                "Own-family upstream routes need more than one provider: "
+                f"path={scope.file_path} binding={bound} "
+                f"providers={sorted(providers)}",
+            )
+        return r[frozenset[str]].ok(value=frozenset(providers))
 
     @classmethod
     def _import_law_own_family_imports(

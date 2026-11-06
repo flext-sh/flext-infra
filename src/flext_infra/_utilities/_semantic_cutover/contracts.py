@@ -58,10 +58,14 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities._semantic_cutover.model_field_contracts import (
+    FlextInfraUtilitiesSemanticModelFieldContracts,
+)
 
 
 class FlextInfraUtilitiesSemanticContracts(
-    FlextInfraUtilitiesSemanticCutoverModelFields
+    FlextInfraUtilitiesSemanticCutoverModelFields,
+    FlextInfraUtilitiesSemanticModelFieldContracts,
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
@@ -126,7 +130,18 @@ class FlextInfraUtilitiesSemanticContracts(
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[t.Infra.RopeSourcePath, str],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
-        """Return source-authenticated edits for the normalization phase's rules."""
+        """Return source-authenticated edits for the normalization phase's rules.
+
+        Returns:
+            The resulting semantic migration edits.
+
+        """
+        computed = cls.plan_computed_model_field_contracts(workspace, sources)
+        if computed.failure:
+            return computed
+        working: dict[t.Infra.RopeSourcePath, str] = dict(sources)
+        for edit in computed.value:
+            working[edit.file_path] = edit.updated_source
         additions: list[p.Infra.RopeSignatureAddition] = []
         removals: list[p.Infra.RopeSignatureRemoval] = []
         transfers: list[p.Infra.RopeMethodTransfer] = []
@@ -136,9 +151,9 @@ class FlextInfraUtilitiesSemanticContracts(
             signature_removals=removals,
             method_transfers=transfers,
         )
-        return cls.plan_contract_rules(
+        standard = cls.plan_contract_rules(
             workspace,
-            sources,
+            working,
             tuple(
                 rule
                 for rule in rules
@@ -150,6 +165,28 @@ class FlextInfraUtilitiesSemanticContracts(
                 method_transfers=transfers,
             ),
         )
+        if standard.failure:
+            return standard
+        for edit in standard.value:
+            working[edit.file_path] = edit.updated_source
+        all_edits: list[p.Infra.SemanticMigrationEdit] = []
+        for path, original in sources.items():
+            if working.get(path) != original:
+                changes: list[str] = []
+                for edit in (*computed.value, *standard.value):
+                    if edit.file_path == path:
+                        changes.extend(edit.changes)
+                all_edits.append(
+                    m.Infra.SemanticMigrationEdit(
+                        file_path=path,
+                        original_source=original,
+                        updated_source=working[path],
+                        changes=tuple(
+                            dict.fromkeys(changes or ("contract normalization",))
+                        ),
+                    )
+                )
+        return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(tuple(all_edits))
 
     @staticmethod
     def declared_contract_rules(

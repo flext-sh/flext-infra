@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraGitSweepSemantics:
@@ -259,7 +256,7 @@ class TestsFlextInfraGitSweepSemantics:
             u.Infra.git_verify_worktree_checkpoint_publication(checkpoint, publication)
         )
 
-    @pytest.mark.parametrize("changed", ["source", "receipt", "remote"])
+    @c.Tests.MARK.parametrize("changed", ["source", "receipt", "remote"])
     def test_recovery_alias_refuses_changed_evidence_without_source_effects(
         self,
         tmp_path: Path,

@@ -13,8 +13,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli, config
 from flext_infra.services import FlextInfraCliRouteService
 from tests import c, m, t, tm, u
@@ -196,7 +194,7 @@ class TestsFlextInfraCodegenMain:
     # Exemplar: every test here spawns a fresh interpreter to prove the real
     # `python -m flext_infra` entry point. That import chain, not the assertion,
     # dominates the runtime, so the class opts into the config-owned slow budget.
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     class TestsMainEntryPoint:
         """Tests for the centralized process entrypoint."""
 

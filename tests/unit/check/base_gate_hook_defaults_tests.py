@@ -15,15 +15,11 @@ import sys
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
-import pytest
-
-from flext_infra import config, gates, m, p, u
-from tests import c, p, tm
+from flext_infra import config, gates
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class TestsFlextInfraGateHookDefaults:
@@ -365,7 +361,7 @@ class TestsFlextInfraGateHookDefaults:
                 has=f"PROBE\t\t{self._KEPT_VALUE}\t{self._MARKER_VALUE}",
             )
             tm.that(execution.raw_output, lacks="forced")
-            with pytest.raises(ValueError, match="native report rejected"):
+            with u.Tests.raises(ValueError, match="native report rejected"):
                 self._ValidateOverride(project).check(project, context)
 
     def test_inherited_timeout_allows_a_short_command(self, tmp_path: Path) -> None:
@@ -387,7 +383,7 @@ class TestsFlextInfraGateHookDefaults:
         tm.that(execution.raw_output, lacks="FINISHED")
         tm.that(execution.result.duration, lt=10)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         c.ContextScope.OPERATION, ["check", "skip", "fix", "failed-fix"]
     )
     def test_returned_execution_already_has_its_native_receipt(
@@ -418,7 +414,7 @@ class TestsFlextInfraGateHookDefaults:
         tm.that(state.content, eq=execution.raw_output.encode("utf-8"))
         tm.that(execution.model_dump(mode="json"), lacks="raw_output")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("apply_fixes", "check_only"), [(False, False), (True, True)]
     )
     def test_repair_refuses_a_different_operation_before_effects(
@@ -429,7 +425,7 @@ class TestsFlextInfraGateHookDefaults:
         context = self._context(project, reports).model_copy(
             update={"apply_fixes": apply_fixes, "check_only": check_only}
         )
-        with pytest.raises(ValueError, match="repair requires"):
+        with u.Tests.raises(ValueError, match="repair requires"):
             self._FixProbe(project).fix(project, context)
         tm.fail(
             (reports / f"probe{config.Infra.tooling.raw_check_receipt_suffix}").exists()
@@ -443,7 +439,7 @@ class TestsFlextInfraGateHookDefaults:
         blocker = project / "not-a-directory"
         blocker.write_text("occupied", encoding="utf-8")
         ctx = self._context(project, blocker / "reports")
-        with pytest.raises(OSError, match="not-a-directory"):
+        with u.Tests.raises(OSError, match="not-a-directory"):
             self._Probe(project).check(project, ctx)
 
     def test_unimplemented_parser_identifies_the_concrete_gate(
@@ -451,7 +447,7 @@ class TestsFlextInfraGateHookDefaults:
     ) -> None:
         """The instance hook remains polymorphic and names the missing override."""
         project, reports = self._project(tmp_path)
-        with pytest.raises(
+        with u.Tests.raises(
             NotImplementedError, match=r"_MissingParser\._parse_check_output"
         ):
             self._MissingParser(project).check(project, self._context(project, reports))

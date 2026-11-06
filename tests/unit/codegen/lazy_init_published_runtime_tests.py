@@ -10,8 +10,6 @@ import difflib
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
@@ -166,7 +164,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("same_named_export", [False, True])
+    @c.Tests.MARK.parametrize("same_named_export", [False, True])
     def test_child_package_preserves_export_ownership(
         tmp_path: Path,
         *,
@@ -276,7 +274,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("absent", [False, True])
+    @c.Tests.MARK.parametrize("absent", [False, True])
     def test_public_generation_repairs_existing_and_absent_initializers(
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
@@ -310,7 +308,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         child = package / "child"
         child.mkdir()
         child.joinpath("api.py").write_text(
-            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "from flext_sourc_only import FlextSourceOnlyApi\n"
             "class FlextSourceOnlyChild(FlextSourceOnlyApi):\n"
             '    """Authored child using the real public parent."""\n'
             "__all__ = ('FlextSourceOnlyChild',)\n",
@@ -356,7 +354,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
                 "import sys\nimport flext_source_only as package\n"
                 "print('flext_source_only.api' not in sys.modules)\n"
                 "print('flext_source_only.child.api' not in sys.modules)\n"
-                "from flext_source_only.api import FlextSourceOnlyApi\n"
+                "from flext_sourc_only import FlextSourceOnlyApi\n"
                 "print(package.FlextSourceOnlyApi is FlextSourceOnlyApi)\n"
                 "print(issubclass(package.child.FlextSourceOnlyChild, "
                 "FlextSourceOnlyApi))\n"
@@ -370,7 +368,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("cyclic", [False, True])
+    @c.Tests.MARK.parametrize("cyclic", [False, True])
     def test_public_generation_rejects_authored_import_failures_before_publication(
         tmp_path: Path,
         session_runtime: p.Tests.SessionRuntime,
@@ -401,7 +399,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
         child = package / "child"
         child.mkdir()
         (child / "api.py").write_text(
-            "from flext_source_only.api import FlextSourceOnlyApi\n"
+            "from flext_sourc_only import FlextSourceOnlyApi\n"
             "class FlextSourceOnlyChild:\n    pass\n"
             "__all__ = ('FlextSourceOnlyChild',)\n",
             encoding=c.DEFAULT_ENCODING,
@@ -478,7 +476,7 @@ class TestsFlextInfraLazyInitPublishedRuntime:
             "<<<<<<< HEAD\n=======\n>>>>>>> incoming\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        with infra.rope_workspace(repository) as rope, pytest.raises(SyntaxError):
+        with infra.rope_workspace(repository) as rope, u.Tests.raises(SyntaxError):
             rope.layout(repository)
 
     @staticmethod

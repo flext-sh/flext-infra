@@ -1,0 +1,39 @@
+# Import law (canonical aliases only): the generated `tests/__init__.py`
+# publishes the canonical aliases (`c`, `m`, `p`, `t`, `u`, `tm`, `api`,
+# namespace modules and public names). A test module reads those names
+# verbatim; `from tests import c as tc` or `import tests as t` creates a
+# second, module-local vocabulary that bypasses the generated contract.
+#
+# The semantic test-namespace cutover strips the alias and renames every
+# reference to the canonical name, so this rule is fixed by `make mod`.
+id: ban-test-namespace-alias
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  any:
+    - all:
+        - kind: import_from_statement
+        - has:
+            field: module_name
+            regex: '^tests$'
+        - has:
+            stopBy: end
+            kind: aliased_import
+    - all:
+        - kind: import_statement
+        - has:
+            stopBy: end
+            kind: aliased_import
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: '^tests$'
+message: >-
+  Non-canonical alias for the generated test namespace. Read the canonical
+  name published by `tests/__init__.py`; the semantic cutover strips the alias
+  and renames its references.
+metadata:
+  enforce: [ENFORCE-119]

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraWorktreeService
 from tests import c, m, p, tm, u
 
@@ -50,7 +48,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             apply_changes=True,
         ).execute()
 
-    @pytest.mark.parametrize("base", ["--help", "-C", "--upload-pack=payload"])
+    @c.Tests.MARK.parametrize("base", ["--help", "-C", "--upload-pack=payload"])
     def test_option_like_base_fails_before_lane_mutation(
         self,
         tmp_path: Path,
@@ -87,7 +85,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             reason="Ref 'missing/base' did not resolve",
         )
 
-    @pytest.mark.parametrize("entry", ["epic", "container"])
+    @c.Tests.MARK.parametrize("entry", ["epic", "container"])
     def test_symlinked_epic_topology_fails_closed(
         self,
         tmp_path: Path,
@@ -131,7 +129,7 @@ class TestsFlextInfraWorktreeSecurityBoundaries:
             if epic.is_symlink():
                 epic.unlink()
 
-    @pytest.mark.parametrize("epic", ["unregistered", "foreign"])
+    @c.Tests.MARK.parametrize("epic", ["unregistered", "foreign"])
     def test_child_add_under_an_unowned_epic_is_refused(
         self,
         tmp_path: Path,

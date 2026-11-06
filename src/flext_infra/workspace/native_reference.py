@@ -2274,7 +2274,7 @@ class FlextInfraWorkspaceNativeReference:
         seen: frozenset[int] = frozenset(),
         *,
         construction: bool = False,
-        context: p.Infra.NativeObservationContext | None = None,
+        context: m.Infra.NativeObservationContext | None = None,
         binding: str = "",
     ) -> str:
         """Serialize one structural observation without recursively escaping JSON.
@@ -2326,7 +2326,7 @@ class FlextInfraWorkspaceNativeReference:
         seen: frozenset[int],
         *,
         construction: bool,
-        context: p.Infra.NativeObservationContext | None = None,
+        context: m.Infra.NativeObservationContext | None = None,
         binding: str = "",
     ) -> t.JsonValue:
         """Observe native slots as JSON data without authored accessors.
@@ -2359,7 +2359,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: Iterable[t.Infra.NativeOperand],
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2409,7 +2409,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2444,7 +2444,7 @@ class FlextInfraWorkspaceNativeReference:
     def _code_value(
         cls,
         value: t.Infra.NativeCode,
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
     ) -> t.JsonValue:
         """Observe code through the same complete native compiler witness.
 
@@ -2461,7 +2461,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2507,7 +2507,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2590,7 +2590,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2647,7 +2647,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
     ) -> list[t.JsonValue]:
         """Observe interpreter-owned dictionaries and slots in native MRO order.
@@ -2701,7 +2701,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: p.Infra.NativeObservationContext | None,
+        context: m.Infra.NativeObservationContext | None,
         binding: str,
     ) -> t.JsonValue:
         """Authenticate full instance storage or its registered native singleton.
@@ -5288,7 +5288,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @classmethod
     def _capture_native_suppliers(
-        cls, context: p.Infra.NativeObservationContext
+        cls, context: m.Infra.NativeObservationContext
     ) -> p.Result[bool]:
         """Elect original interpreter suppliers before accepting any nomination.
 

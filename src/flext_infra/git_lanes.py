@@ -205,13 +205,13 @@ class FlextInfraGitLanes:
             if wire.failure:
                 return r[p.Infra.GitLaneEvidence].from_failure(wire)
             pull_requests = u.type_adapter(
-                tuple[p.Infra.GitLanePullRequest, ...],
+                tuple[m.Infra.GitLanePullRequest, ...],
             ).validate_json(wire.value)
         if request.read_beads:
             wire = cls._selected_beads(request.repo_root)
             if wire.failure:
                 return r[p.Infra.GitLaneEvidence].from_failure(wire)
-            beads = u.type_adapter(tuple[p.Infra.GitLaneBead, ...]).validate_json(
+            beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
         evidence = m.Infra.GitLaneEvidence(
@@ -397,16 +397,16 @@ class FlextInfraGitLanes:
     ) -> str | None:
         """Classify unique work only with correlated owner and activity evidence.
 
+        Unselected PR evidence is not a refusal: the inventory already records
+        it as NOT EXECUTED, so classification continues with the Bead evidence.
+
         Returns:
             An exact refusal, or None for a legitimate declared lane/open PR.
 
         """
         branch = cls._lane_branch(reference)
         if evidence.pull_requests is None:
-            return (
-                f"inconclusive unique ref: {reference} oid={oid}; "
-                "PR ownership evidence NOT EXECUTED (not selected)"
-            )
+            return cls._bead_ref(request, evidence, reference, oid)
         pull_requests = tuple(
             pr for pr in evidence.pull_requests if pr.head_ref_name == branch
         )
@@ -424,15 +424,15 @@ class FlextInfraGitLanes:
     ) -> str | None:
         """Classify no-PR work only with observed, repository-scoped Bead data.
 
+        Unselected Bead evidence classifies nothing: its absence is a typed NOT
+        EXECUTED inventory record, never a failure of the run.
+
         Returns:
             A known-owner classification or an explicit inconclusive source state.
 
         """
         if evidence.beads is None:
-            return (
-                f"inconclusive unique ref: {reference} oid={oid}; "
-                "Beads ownership evidence NOT EXECUTED (not selected)"
-            )
+            return None
         branch = cls._lane_branch(reference)
         owners = cls._ownership(evidence, branch, None)
         worktrees = u.Infra.git_list_worktrees(

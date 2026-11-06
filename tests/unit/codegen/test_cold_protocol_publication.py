@@ -10,9 +10,7 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra._protocols_bootstrap import plan_protocol_facades
+from flext_infra.protocols_bootstrap import plan_protocol_facades
 from tests import p, tm, u
 
 
@@ -51,7 +49,7 @@ class TestsColdProtocolPublication:
     @staticmethod
     def _bootstrap(root: Path) -> p.Cli.CommandOutput:
         entrypoint = (
-            Path(__file__).parents[3] / "src/flext_infra/_protocols_bootstrap.py"
+            Path(__file__).parents[3] / "src/flext_infra/protocols_bootstrap.py"
         )
         return tm.ok(
             u.Cli.run_raw(
@@ -91,7 +89,8 @@ class TestsColdProtocolPublication:
                         "from flext_infra.protocols import p\n"
                         "assert is_protocol(p.Infra.Receipt)\n"
                         "assert isinstance(Path.cwd(), p.Infra.Receipt)\n"
-                        "assert p.Infra.__bases__[0].__name__ == 'FlextInfraProtocolsChild'\n"
+                        "assert p.Infra.__bases__[0].__name__ == "
+                        "'FlextInfraProtocolsChild'\n"
                     ),
                 ),
                 cwd=root,
@@ -117,7 +116,8 @@ class TestsColdProtocolPublication:
                     "-c",
                     (
                         "import sys\nfrom pathlib import Path\n"
-                        "from flext_infra._protocols_bootstrap import publish_protocol_facades\n"
+                        "from flext_infra.protocols_bootstrap import "
+                        "publish_protocol_facades\n"
                         f"root = Path({str(root)!r})\n"
                         f"source = Path({str(source)!r})\n"
                         "mutated = False\n"
@@ -125,12 +125,14 @@ class TestsColdProtocolPublication:
                         "    global mutated\n"
                         "    if not mutated and event == 'pathlib.Path.rglob':\n"
                         "        mutated = True\n"
-                        "        source.write_text(source.read_text() + '# observed external edit\\n')\n"
+                        "        source.write_text(source.read_text() + '# observed "
+                        "external edit\\n')\n"
                         "sys.addaudithook(change)\n"
                         "try:\n    publish_protocol_facades(root)\n"
                         "except ValueError as error:\n"
                         "    assert 'changed' in str(error)\n"
-                        "else:\n    raise AssertionError('changed input was accepted')\n"
+                        "else:\n    raise AssertionError('changed input was "
+                        "accepted')\n"
                         "assert mutated\n"
                     ),
                 ),
@@ -165,7 +167,7 @@ class TestsColdProtocolPublication:
                 encoding="utf-8",
             )
         before = {path: path.read_bytes() for path in (root / "src").rglob("*.py")}
-        with pytest.raises(ValueError, match="inconsistent C3"):
+        with u.Tests.raises(ValueError, match="inconsistent C3"):
             plan_protocol_facades(root)
         tm.that({path: path.read_bytes() for path in before}, eq=before)
         (protocols / "left.py").unlink()
@@ -178,5 +180,5 @@ class TestsColdProtocolPublication:
             ),
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="authenticated runtime declaration"):
+        with u.Tests.raises(ValueError, match="authenticated runtime declaration"):
             plan_protocol_facades(root)

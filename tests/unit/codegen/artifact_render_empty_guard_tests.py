@@ -9,8 +9,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, e, m, p, tm, u
@@ -153,7 +151,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(destination.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("publishes_contract", [False, True])
+    @c.Tests.MARK.parametrize("publishes_contract", [False, True])
     def test_source_plan_seals_installed_family_root_imports(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,

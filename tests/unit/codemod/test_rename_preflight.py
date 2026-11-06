@@ -9,18 +9,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m, u
 from flext_infra.codemod import FlextInfraApplyRenames
-from tests import tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraRenamePreflight:
     """Observe real native rename events without replacing publication owners."""
 
     @staticmethod
-    @pytest.mark.parametrize("enum_value", [False, True])
+    @c.Tests.MARK.parametrize("enum_value", [False, True])
     def test_target_override_rejects_the_campaign_before_text_publication(
         mod_workspace: Path,
         *,
@@ -51,7 +48,7 @@ class TestsFlextInfraRenamePreflight:
         consumer.write_text(original, encoding="utf-8")
         guide = mod_workspace / "guide.md"
         guide.write_text("Old\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="overrides the declared destination"):
+        with u.Tests.raises(ValueError, match="overrides the declared destination"):
             FlextInfraApplyRenames.run(
                 m.Infra.ApplyRenamesInput(
                     csv=str(driver),

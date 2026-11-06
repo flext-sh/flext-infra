@@ -9,10 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m, p, u
-from tests import c, p, tm
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenFilePlanState:
@@ -36,7 +33,7 @@ class TestsFlextInfraCodegenFilePlanState:
             tm.reject(state.error)
         return state.value
 
-    @pytest.mark.parametrize("content", [b"", b'name = "demo"\n', b"\xff\n"])
+    @c.Tests.MARK.parametrize("content", [b"", b'name = "demo"\n', b"\xff\n"])
     def test_equal_binary_content_is_not_drift(
         self,
         tmp_path: Path,
@@ -53,7 +50,7 @@ class TestsFlextInfraCodegenFilePlanState:
 
         tm.that(differs, eq=False)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "desired_content"),
         [
             (b'name = "demo"\n', b'name = "other"\n'),
@@ -127,7 +124,7 @@ class TestsFlextInfraCodegenFilePlanState:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "content", [b"", b"def load() -> bytes: ...\n", b"invalid [\n"]
     )
     def test_stub_output_is_rejected_at_the_plan_model(
@@ -138,7 +135,7 @@ class TestsFlextInfraCodegenFilePlanState:
         target = tmp_path / "boundary.pyi"
         target.write_bytes(content)
         before = tm.ok(u.Cli.atomic_read_binary_file_state(target, required=True))
-        with pytest.raises(m.ValidationError, match=r"\.pyi publication is forbidden"):
+        with u.Tests.raises(m.ValidationError, match=r"\.pyi publication is forbidden"):
             m.Infra.CodegenFilePlan(
                 project=tmp_path,
                 path=target,
@@ -187,7 +184,7 @@ class TestsFlextInfraCodegenFilePlanState:
         tm.that(tmp_path.is_dir(), eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["py.typed", "typings.py", "protocols.py"])
+    @c.Tests.MARK.parametrize("name", ["py.typed", "typings.py", "protocols.py"])
     def test_legitimate_typing_surfaces_remain_publishable(
         tmp_path: Path,
         name: str,
@@ -214,7 +211,7 @@ class TestsFlextInfraCodegenFilePlanState:
         )
         tm.that(target.read_bytes(), eq=content)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "desired_content"),
         [
             (b'name = "demo"', b'name = "demo"\n'),
@@ -261,10 +258,10 @@ class TestsFlextInfraCodegenFilePlanState:
         tm.that(report, has="desired=0o755")
 
     @staticmethod
-    @pytest.mark.parametrize("limit", [0, -1])
+    @c.Tests.MARK.parametrize("limit", [0, -1])
     def test_drift_report_rejects_non_positive_limit(limit: int) -> None:
         """Test drift report rejects non positive limit."""
-        with pytest.raises(ValueError, match="limit must be positive"):
+        with u.Tests.raises(ValueError, match="limit must be positive"):
             u.Infra.codegen_file_drift_report(
                 (),
                 limit=limit,

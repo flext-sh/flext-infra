@@ -274,8 +274,9 @@ class FlextInfraUtilitiesDependencies(
     ) -> p.Result[bool]:
         """Publish only the calculated runtime list against unchanged source states.
 
-        The caller owns the repository mutation lease. Locks remain owned by upg.
-        Unresolved import suppliers reject the plan before any publication work.
+        This owner holds its own publication lease, so a caller never wraps the
+        scan, the plan and the write in one long lock. Unresolved import
+        suppliers reject the plan before any publication work.
 
         Returns:
             Whether the original target declaration changed.
@@ -286,13 +287,32 @@ class FlextInfraUtilitiesDependencies(
                 "runtime import requires one authored, installed, locked supplier: "
                 + ", ".join(plan.unresolved_modules),
             )
-        u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
-        unchanged = cls._verified_deptry_sources(
-            plan.source,
-            moment="before publication",
-        )
-        if unchanged.failure:
-            return r[bool].from_failure(unchanged)
+        lease = u.Infra.mutation_lock_path(plan.before.path.parent)
+        if lease.failure:
+            return r[bool].from_failure(lease)
+        with u.Cli.file_changes_lock(lease.value):
+            u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
+            unchanged = cls._verified_deptry_sources(
+                plan.source,
+                moment="before publication",
+            )
+            if unchanged.failure:
+                return r[bool].from_failure(unchanged)
+            return cls._sync_runtime_dependency_declaration(plan)
+
+    @staticmethod
+    def _sync_runtime_dependency_declaration(
+        plan: p.Infra.RuntimeDependencyPlan,
+    ) -> p.Result[bool]:
+        """Write the calculated runtime list into the verified declaration.
+
+        The caller holds the publication lease and has verified every source
+        state the plan was calculated from.
+
+        Returns:
+            Whether the original target declaration changed.
+
+        """
         if plan.before.content is None:
             return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
         document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))

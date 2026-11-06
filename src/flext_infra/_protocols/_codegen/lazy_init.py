@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -18,8 +18,7 @@ from flext_infra._protocols import FlextInfraProtocolsMixins
 from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsBase
+    from flext_infra import c, t
     from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 
 
@@ -126,7 +125,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def modules(
             self,
-        ) -> Mapping[
+        ) -> MutableMapping[
             FlextInfraTypesRopeNative.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
         ]:
@@ -188,7 +187,7 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
-        def action(self) -> FlextInfraConstantsBase.LazyInitAction:
+        def action(self) -> c.Infra.LazyInitAction:
             """Action selected for this package."""
             ...
 
@@ -371,16 +370,14 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
-        def plans(
-            self,
-        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
+        def plans(self) -> dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
             """Decided plans, children first."""
             ...
 
         @property
         def contexts(
             self,
-        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
+        ) -> dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
             """Package contexts by directory."""
             ...
 

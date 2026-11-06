@@ -67,6 +67,7 @@ class FlextInfraConstantsCodegen(
         frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = SELF_SCOPE_SURFACES | frozenset((
         FlextInfraConstantsConfig.CodegenConformSurface.MAKEFILE,
+        FlextInfraConstantsConfig.CodegenConformSurface.MARKDOWN,
         FlextInfraConstantsConfig.CodegenConformSurface.PYPROJECT,
         FlextInfraConstantsConfig.CodegenConformSurface.EDITOR,
     ))
@@ -99,18 +100,6 @@ class FlextInfraConstantsCodegen(
     JOURNAL_NAME: ClassVar[str] = "flext-infra-codegen-transaction-journal.json"
 
     JOURNAL_MODE: ClassVar[int] = 0o600
-
-    JOURNAL_LEASE_WAIT_SECONDS: ClassVar[float] = 1800.0
-    """Bounded polite wait for a held lease before failing loud.
-
-    A legitimate fleet ``make gen`` holds the lease for minutes; an immediate
-    non-blocking refusal turned ordinary concurrent traffic into a spurious
-    ``JournalLeaseTimeoutError``. The wait is bounded so a truly
-    wedged holder still fails loud instead of hanging forever.
-    """
-
-    JOURNAL_LEASE_POLL_SECONDS: ClassVar[float] = 1.0
-    """Polling interval while waiting for a held journal lease."""
 
     TRANSACTION_DIR_PREFIX: ClassVar[str] = "transaction-"
 
@@ -148,7 +137,7 @@ class FlextInfraConstantsCodegen(
     PROTOCOL_GENERATED_STEM: ClassVar[str] = "generated_models"
     """Module stem of a generated protocol mirror (``<stem>_<route token>``)."""
     VIOLATION_PATTERN: ClassVar[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>[a-z0-9][a-z0-9-]*)\]\s+"
+        r"\[(?P<rule>[A-Za-z0-9][A-Za-z0-9_.:,\-]*)\]\s+"
         r"(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
     )
     "Regex to parse violation strings: [rule-id] path:line — message."
@@ -160,10 +149,8 @@ class FlextInfraConstantsCodegen(
         rf"[0-9]+(\.[0-9]+){{{MISE_RELEASE_COMPONENT_COUNT - 1}}}"
     )
     "Resolved-release grammar consumed by Python and generated shell boundaries."
-    CODEGEN_TRANSACTION_LOCK_FILENAME: ClassVar[str] = "flext-infra-codegen.lock"
-    "Worktree-specific administrative lock for complete generation."
-    CODEGEN_TRANSACTION_LOCK_MODE: ClassVar[int] = 0o600
-    "Owner-private mode required for the generation lock."
+    LOCK_FILE_SUFFIX: ClassVar[str] = ".lock"
+    "Suffix of every lease file, which a disposable-target sweep never removes."
 
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: ClassVar[str] = ".reports/codegen/constants-quality-gate"

@@ -10,8 +10,6 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra, settings
 from tests import c, m, tm, u
 
@@ -37,10 +35,10 @@ def _provision_edited_sample(
     return project_config, py_file, original, updated
 
 
-@pytest.mark.usefixtures("provisioned_workspace")
+@c.Tests.MARK.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
-    @pytest.mark.parametrize("mode", ["empty", "malformed", "signal", "timeout"])
+    @c.Tests.MARK.parametrize("mode", ["empty", "malformed", "signal", "timeout"])
     def test_native_lint_failure_never_becomes_a_diagnostic_zero(
         tmp_path: Path,
         mode: str,
@@ -113,7 +111,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.ok(recovered[c.Infra.RUFF].output is not None)
 
     @staticmethod
-    @pytest.mark.parametrize("inherited", [False, True])
+    @c.Tests.MARK.parametrize("inherited", [False, True])
     def test_valid_configuration_changes_reobserve_unchanged_source(
         tmp_path: Path,
         *,
@@ -163,7 +161,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             tm.fail(u.Cli.process_succeeded(receipt.output.outcome))
         tm.that(u.Infra.lint_new_errors(snapshot, snapshot), eq={})
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def provisioned_workspace(
         tmp_path: Path,
@@ -176,7 +174,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         u.Tests.provision_checkout(tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
+    @c.Tests.MARK.parametrize(c.ProcessingMode.BATCH, [False, True])
     def test_callback_failure_preserves_written_source(
         tmp_path: Path,
         *,
@@ -218,7 +216,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
                     ),
                 )
 
-        with pytest.raises(
+        with u.Tests.raises(
             RuntimeError, match="protected edit callback failed"
         ) as caught:
             protected_write()
@@ -226,7 +224,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
     @staticmethod
-    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
+    @c.Tests.MARK.parametrize(c.ProcessingMode.BATCH, [False, True])
     def test_invalid_ruff_configuration_reports_failure_and_preserves_source(
         tmp_path: Path,
         *,
@@ -271,8 +269,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=updated)
 
     @staticmethod
-    @pytest.mark.parametrize(c.ProcessingMode.BATCH, [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(c.ProcessingMode.BATCH, [False, True])
+    @c.Tests.MARK.parametrize(
         ("introduced", "nonfixable"),
         [(False, False), (True, False), (True, True)],
     )
@@ -374,7 +372,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(commands["pyrefly"], has=str(config_path))
 
     @staticmethod
-    @pytest.mark.parametrize("gate", [c.Infra.RUFF, c.Infra.MYPY])
+    @c.Tests.MARK.parametrize("gate", [c.Infra.RUFF, c.Infra.MYPY])
     def test_preview_source_writes_preserves_live_sources(
         source_preview_workspace: tuple[Path, Path],
         gate: str,
@@ -458,7 +456,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             compile(content, str(candidate), "exec")
             return content
 
-        with pytest.raises(SyntaxError) as raised:
+        with u.Tests.raises(SyntaxError) as raised:
             preview.preview_sources(
                 tmp_path,
                 {py_file.resolve(): invalid},
@@ -494,7 +492,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         self._assert_protected_source_write(tests_dir / "test_placeholder.py", tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize("collectable", [False, True])
+    @c.Tests.MARK.parametrize("collectable", [False, True])
     def test_protected_source_write_reports_failed_test_validation(
         tmp_path: Path,
         *,

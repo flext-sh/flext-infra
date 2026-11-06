@@ -53,7 +53,9 @@ class FlextInfraModelsConfigRender(FlextInfraModelsConfigSonarcloud):
                 Annotated[
                     p.Infra.SonarcloudIssueExclusionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
+                        lambda: (
+                            FlextInfraModelsConfigSonarcloud.SonarcloudIssueExclusionSpec
+                        )
                     ),
                 ],
                 ...,

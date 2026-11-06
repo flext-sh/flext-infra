@@ -12,7 +12,6 @@ from keyword import iskeyword
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
-import flext_core
 from flext_cli import m, u
 
 from flext_infra import c, p, t
@@ -47,7 +46,7 @@ class FlextInfraModelsConfigTemplates:
             Mapping[str, t.JsonMapping],
             m.Field(description="VS Code objects union-merged over project settings"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(Mapping[str, t.JsonMapping]),
+            default_factory=u.empty(Mapping[str, t.JsonMapping]),
             validate_default=True,
         )
 
@@ -66,7 +65,7 @@ class FlextInfraModelsConfigTemplates:
             Mapping[str, tuple[str, ...]],
             m.Field(description="Retired keys inside language-specific setting maps"),
         ] = m.Field(
-            default_factory=flext_core.u.empty(Mapping[str, tuple[str, ...]]),
+            default_factory=u.empty(Mapping[str, tuple[str, ...]]),
             validate_default=True,
         )
 
@@ -267,7 +266,7 @@ class FlextInfraModelsConfigTemplates:
             Annotated[
                 p.Infra.ManagedFileOwnership,
                 t.schema_for_model(
-                    FlextInfraModelsConfigTemplates.ManagedFileOwnership
+                    lambda: FlextInfraModelsConfigTemplates.ManagedFileOwnership
                 ),
             ]
             | None,
@@ -440,7 +439,7 @@ class FlextInfraModelsConfigTemplates:
             Annotated[
                 p.Infra.TemplateDeclarationSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
+                    lambda: FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
                 ),
             ],
         ] = m.Field(
@@ -565,7 +564,9 @@ class FlextInfraModelsConfigTemplates:
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,
@@ -581,7 +582,9 @@ class FlextInfraModelsConfigTemplates:
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,

@@ -15,7 +15,6 @@ from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsM
 
 if TYPE_CHECKING:
     from flext_infra import t
-    from flext_infra._typings import FlextInfraTypesRope
 
 
 class FlextInfraProtocolsRopeMove:
@@ -26,7 +25,7 @@ class FlextInfraProtocolsRopeMove:
         """Structural data contract projected from the owning model."""
 
         @property
-        def rope_project(self) -> FlextInfraTypesRope.RopeProject:
+        def rope_project(self) -> t.Infra.RopeProject:
             """Active Rope project that owns both files."""
             ...
 
@@ -45,7 +44,7 @@ class FlextInfraProtocolsRopeMove:
             ...
 
         @property
-        def declaration(self) -> FlextInfraTypesRope.RopePyName:
+        def declaration(self) -> t.Infra.RopePyName:
             """Original Rope identity of the moved declaration."""
             ...
 

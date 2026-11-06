@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import p, u
+from flext_infra import m, p, u
 from flext_infra.gates import FlextInfraGates
 
 
@@ -85,7 +85,7 @@ class FlextInfraGatesProjectModule(FlextInfraGates):
             ._parsed_gate_execution(project_dir, ctx, result, started)
             .model_copy(
                 update={
-                    "process": p.Cli.ProcessOutcome.model_validate(
+                    "process": m.Cli.ProcessOutcome.model_validate(
                         result.outcome, from_attributes=True
                     )
                 }

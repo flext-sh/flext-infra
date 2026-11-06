@@ -11,9 +11,9 @@ import tempfile
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import config, u
+from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, p, t, tm
+from tests import c, p, t, tm, u
 
 
 class TestsFlextInfraUtilitiesWorkspaceEnv:

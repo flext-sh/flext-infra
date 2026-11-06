@@ -1,0 +1,15 @@
+id: ban-test-relative-import
+valid:
+  - |
+    from tests import c
+  - |
+    from flext_core import FlextCore
+  - |
+    import pytest
+invalid:
+  - |
+    from . import c
+  - |
+    from ..fixtures import Sandbox
+  - |
+    from .constants import c

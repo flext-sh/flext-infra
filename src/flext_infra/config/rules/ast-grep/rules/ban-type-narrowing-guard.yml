@@ -1,0 +1,34 @@
+# Strong typing: type narrowing (TypeGuard, TypeIs or assert isinstance)
+# re-derives a type the declarations already own. Declare the protocol/model
+# in `p`/`m` and consume it directly.
+id: ban-type-narrowing-guard
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  enforce: [ENFORCE-125]
+rule:
+  any:
+    - kind: import_from_statement
+      all:
+        - has:
+            field: module_name
+            regex: '^typing(?:_extensions)?$'
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: '^(?:TypeGuard|TypeIs)$'
+    - kind: type
+      regex: '\b(?:TypeGuard|TypeIs)\b'
+    - kind: assert_statement
+      has:
+        stopBy: end
+        kind: call
+        has:
+          field: function
+          regex: '^isinstance$'
+message: >-
+  Type narrowing (TypeGuard, TypeIs or assert isinstance) re-derives a type the
+  declarations already own. Declare the protocol/model in `p`/`m` and consume
+  it directly.

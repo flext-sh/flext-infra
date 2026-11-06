@@ -34,7 +34,9 @@ class FlextInfraModelsDepsToolConfigProjectMise:
                 Annotated[
                     p.Infra.ProjectMiseTool,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool
+                        lambda: (
+                            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool
+                        )
                     ),
                 ],
             ],

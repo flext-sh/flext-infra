@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.gates.direnv import FlextInfraGatesDirenv
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 from tests import c, p, tm, u
@@ -131,7 +129,7 @@ class TestsFlextInfraDirenvGate:
             tm.that(violations, eq=())
 
         @staticmethod
-        @pytest.mark.parametrize("prefix", ["${HOME}", "$HOME", "~"])
+        @c.Tests.MARK.parametrize("prefix", ["${HOME}", "$HOME", "~"])
         def test_home_targets_validated_only_when_resolving(
             tmp_path: Path,
             prefix: str,
@@ -146,7 +144,7 @@ class TestsFlextInfraDirenvGate:
             tm.that(violations, eq=())
 
         @staticmethod
-        @pytest.mark.parametrize("prefix", ["${HOME}", "$HOME", "~"])
+        @c.Tests.MARK.parametrize("prefix", ["${HOME}", "$HOME", "~"])
         def test_home_targets_resolve_against_the_real_home(
             tmp_path: Path,
             prefix: str,

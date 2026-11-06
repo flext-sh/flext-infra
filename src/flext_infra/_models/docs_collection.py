@@ -121,7 +121,7 @@ class FlextInfraModelsDocsCollection:
                 Annotated[
                     p.Infra.PlanCollectionSource,
                     t.schema_for_model(
-                        FlextInfraModelsDocsCollection.PlanCollectionSource
+                        lambda: FlextInfraModelsDocsCollection.PlanCollectionSource
                     ),
                 ],
                 ...,
@@ -219,7 +219,7 @@ class FlextInfraModelsDocsCollection:
             Annotated[
                 p.Infra.PlanCollectionCoverage,
                 t.schema_for_model(
-                    FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
                 ),
             ],
             ...,
@@ -231,7 +231,7 @@ class FlextInfraModelsDocsCollection:
             Annotated[
                 p.Infra.PlanCollectionRevision,
                 t.schema_for_model(
-                    FlextInfraModelsDocsCollection.PlanCollectionRevision
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
                 ),
             ],
             ...,
@@ -243,7 +243,7 @@ class FlextInfraModelsDocsCollection:
             Annotated[
                 p.Infra.PlanCollectionOwnedArtifact,
                 t.schema_for_model(
-                    FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionOwnedArtifact
                 ),
             ],
             ...,
@@ -300,7 +300,9 @@ class FlextInfraModelsDocsCollection:
         files: tuple[
             Annotated[
                 p.Infra.CodegenFilePlan,
-                t.schema_for_model(FlextInfraModelsConfigArtifact.CodegenFilePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
+                ),
             ],
             ...,
         ] = m.Field(description="Effects published through the shared publisher")
@@ -312,7 +314,7 @@ class FlextInfraModelsDocsCollection:
             Annotated[
                 p.Infra.PlanCollectionRevision,
                 t.schema_for_model(
-                    FlextInfraModelsDocsCollection.PlanCollectionRevision
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionRevision
                 ),
             ],
             ...,
@@ -321,7 +323,7 @@ class FlextInfraModelsDocsCollection:
             Annotated[
                 p.Infra.PlanCollectionCoverage,
                 t.schema_for_model(
-                    FlextInfraModelsDocsCollection.PlanCollectionCoverage
+                    lambda: FlextInfraModelsDocsCollection.PlanCollectionCoverage
                 ),
             ],
             ...,

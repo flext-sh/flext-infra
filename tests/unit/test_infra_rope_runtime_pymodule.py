@@ -10,8 +10,6 @@ import sys
 from contextlib import ExitStack, closing
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
@@ -24,7 +22,7 @@ class TestsFlextInfraRopeRuntimePymodule:
     """Validate the module predicate over rope modules and packages."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("package_name", "export", "owner"),
         [
             ("flext_core", "r", "flext_core.result.FlextResult"),
@@ -76,7 +74,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 )
             ) as project,
         ):
-            with pytest.raises(
+            with u.Tests.raises(
                 u.Infra.exception_type("rope.base.exceptions", "ModuleSyntaxError")
             ) as error:
                 u.Infra.qualified_name(
@@ -104,8 +102,8 @@ class TestsFlextInfraRopeRuntimePymodule:
         ).get_name()
 
     @staticmethod
-    @pytest.mark.parametrize("reuse_binding", [False, True])
-    @pytest.mark.parametrize("admitted", [False, True])
+    @c.Tests.MARK.parametrize("reuse_binding", [False, True])
+    @c.Tests.MARK.parametrize("admitted", [False, True])
     def test_contract_restructuring_preserves_identity_and_import_bindings(
         tmp_path: Path,
         *,
@@ -167,7 +165,7 @@ class TestsFlextInfraRopeRuntimePymodule:
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
 
     @staticmethod
-    @pytest.mark.parametrize("package", [False, True])
+    @c.Tests.MARK.parametrize("package", [False, True])
     def test_selected_source_resource_preserves_native_public_scope(
         tmp_path: Path,
         *,
@@ -192,7 +190,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("captured", [False, True])
+    @c.Tests.MARK.parametrize("captured", [False, True])
     def test_relative_lookup_preserves_native_folder_and_missing_module(
         tmp_path: Path,
         *,
@@ -240,7 +238,7 @@ class TestsFlextInfraRopeRuntimePymodule:
                 eq="PublishedContract",
             )
             tm.that(project.find_relative_module("missing", folder, 1), none=True)
-            with pytest.raises(u.Infra.rope_unresolved_error_types()):
+            with u.Tests.raises(u.Infra.rope_unresolved_error_types()):
                 project.get_relative_module("missing", folder, 1)
 
     @staticmethod
@@ -362,7 +360,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             tm.not_none(u.Infra.resolve_module_imports(project, resource))
 
     @staticmethod
-    @pytest.mark.parametrize("regular_package", [False, True])
+    @c.Tests.MARK.parametrize("regular_package", [False, True])
     def test_module_precedes_namespace_but_not_regular_package(
         tmp_path: Path,
         *,
@@ -452,13 +450,13 @@ class TestsFlextInfraRopeRuntimePymodule:
                 admitted = u.Infra.require_semantic_module(native)
                 tm.that(admitted is native)
                 tm.not_none(admitted.get_attributes().get(member))
-            with pytest.raises(TypeError, match="native semantic module"):
+            with u.Tests.raises(TypeError, match="native semantic module"):
                 u.Infra.require_semantic_module(plain_resource)
-            with pytest.raises(TypeError, match="non-parsed module"):
+            with u.Tests.raises(TypeError, match="non-parsed module"):
                 u.Infra.require_parsed_module(project.get_module("builtins"))
 
     @staticmethod
-    @pytest.mark.parametrize("ambiguous", [False, True])
+    @c.Tests.MARK.parametrize("ambiguous", [False, True])
     def test_native_definition_token_identity(
         tmp_path: Path, *, ambiguous: bool
     ) -> None:
@@ -473,7 +471,7 @@ class TestsFlextInfraRopeRuntimePymodule:
             module = u.Infra.resolve_pymodule(project, project.get_resource(path.name))
             binding = module.get_attribute("value")
             if ambiguous:
-                with pytest.raises(RuntimeError, match="definition binding token"):
+                with u.Tests.raises(RuntimeError, match="definition binding token"):
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,

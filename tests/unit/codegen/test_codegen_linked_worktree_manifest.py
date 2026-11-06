@@ -8,17 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import infra, m
+from flext_infra import infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
 # the config-owned slow budget instead of weakening the global timeout.
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenLinkedWorktreeManifest:
     """Keep topology inputs and writes owned by the repository being conformed."""
 
@@ -107,15 +105,15 @@ class TestsFlextInfraCodegenLinkedWorktreeManifest:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("beads_content", "expected_error"),
         [
-            pytest.param(
+            u.Tests.param(
                 None,
                 "missing required repository-local Beads configuration",
                 id="missing",
             ),
-            pytest.param(
+            u.Tests.param(
                 "version: [\nworkspace: invalid\n",
                 "YAML parse error",
                 id="malformed",

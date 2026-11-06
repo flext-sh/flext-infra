@@ -1,0 +1,22 @@
+# Import law (absolute only): every import under a tests tree is absolute.
+# Relative imports make a test depend on the package layout it happens to be
+# collected from and bypass the generated `tests` namespace. The law binds
+# authored test modules, conftest and the test-only `_<base>` implementation
+# modules alike.
+#
+# Detection only: the semantic import cutover rewrites the relative target to
+# its absolute generated-namespace spelling.
+id: ban-test-relative-import
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: import_from_statement
+  regex: '^from\s+\.'
+message: >-
+  Relative import under the tests tree. Use an absolute `from tests import ...`
+  name; every test import is absolute.
+metadata:
+  enforce: [ENFORCE-118]

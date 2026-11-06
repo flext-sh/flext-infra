@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, tm, u
 
 
@@ -17,8 +15,8 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     """Exercise native verification and publication with authenticated file reads."""
 
     @staticmethod
-    @pytest.mark.parametrize("reverse", [False, True])
-    @pytest.mark.parametrize("drift", [False, True])
+    @c.Tests.MARK.parametrize("reverse", [False, True])
+    @c.Tests.MARK.parametrize("drift", [False, True])
     def test_noop_carrier_and_complete_reordering_keep_publication_guard(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[
@@ -96,7 +94,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
             tm.that(file.path.read_bytes(), eq=file.before.content)
 
     @staticmethod
-    @pytest.mark.parametrize("drift", [False, True])
+    @c.Tests.MARK.parametrize("drift", [False, True])
     def test_deleted_carrier_preserves_survivor_and_shared_input_guard(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[

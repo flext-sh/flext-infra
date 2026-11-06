@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -17,10 +18,8 @@ from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
     from flext_infra._protocols._config import FlextInfraProtocolsConfigScaffold
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsConfigTemplates:
@@ -31,7 +30,7 @@ class FlextInfraProtocolsConfigTemplates:
         """Structural data contract projected from the owning model."""
 
         @property
-        def settings(self) -> FlextInfraTypesBase.SettingsPairs:
+        def settings(self) -> t.Infra.SettingsPairs:
             """Ordered VS Code key/value pairs; the last key wins."""
             ...
 
@@ -184,7 +183,7 @@ class FlextInfraProtocolsConfigTemplates:
             ...
 
         @property
-        def enforce(self) -> FlextInfraTypesBase.EnforcementIds:
+        def enforce(self) -> t.Infra.EnforcementIds:
             """Enforcement law ids the generated projection itself enforces."""
             ...
 
@@ -194,7 +193,7 @@ class FlextInfraProtocolsConfigTemplates:
             ...
 
         @property
-        def profiles(self) -> tuple[FlextInfraConstantsConfig.MakeProfile, ...]:
+        def profiles(self) -> tuple[c.Infra.MakeProfile, ...]:
             """Profiles that consume the artifact."""
             ...
 
@@ -253,6 +252,16 @@ class FlextInfraProtocolsConfigTemplates:
             t.NonEmptyStr, FlextInfraProtocolsConfigTemplates.TemplateDeclarationSpec
         ]:
             """Ordered template bodies keyed by destination."""
+            ...
+
+        @cached_property
+        def entries(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigTemplates.TemplateEntrySpec, ...]:
+            """Structural member projected from the owning model.
+
+            Expose the typed consumer view, validated once per catalog instance.
+            """
             ...
 
         @property

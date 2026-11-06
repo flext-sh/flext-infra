@@ -30,13 +30,15 @@ class FlextInfraModelsProjectArtifacts(
         Mise: Annotated[
             p.Infra.ProjectMiseConfig,
             t.schema_for_model(
-                FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig
+                lambda: FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig
             ),
             m.Field(description="Mise additions owned by the current project."),
         ]
         Gitignore: Annotated[
             p.Infra.ProjectGitignoreConfig,
-            t.schema_for_model(FlextInfraModelsProjectGitignore.ProjectGitignoreConfig),
+            t.schema_for_model(
+                lambda: FlextInfraModelsProjectGitignore.ProjectGitignoreConfig
+            ),
             m.Field(description="Ignore patterns owned by the current project."),
         ]
 
@@ -47,7 +49,9 @@ class FlextInfraModelsProjectArtifacts(
             Annotated[
                 p.Infra.ProjectManagedArtifactsConfig,
                 t.schema_for_model(
-                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig
+                    lambda: (
+                        FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsConfig
+                    )
                 ),
             ],
             m.Field(description="Composed managed-artifact configuration."),
@@ -68,7 +72,9 @@ class FlextInfraModelsProjectArtifacts(
             Annotated[
                 p.Infra.ProjectManagedArtifactsResolution,
                 t.schema_for_model(
-                    FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution
+                    lambda: (
+                        FlextInfraModelsProjectArtifacts.ProjectManagedArtifactsResolution
+                    )
                 ),
             ],
             m.Field(description="Managed artifacts parsed from those exact sources."),

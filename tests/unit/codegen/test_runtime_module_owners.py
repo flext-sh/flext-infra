@@ -10,8 +10,6 @@ import sys
 from itertools import permutations
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from tests import c, t, tm, u
 from tests.unit.codegen.test_codegen_ci_matrix import TestsFlextInfraCodegenCiMatrix
@@ -21,7 +19,7 @@ class TestsFlextInfraRuntimeModuleOwners:
     """Resolve declarations through the same strict layers as generation."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "roles",
         [
             {"unknown": "configuration"},
@@ -111,8 +109,8 @@ class TestsFlextInfraRuntimeModuleOwners:
                     )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(c.MergeStrategy.OVERRIDE, [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(c.MergeStrategy.OVERRIDE, [False, True])
     def test_generated_owners_keep_lazy_singletons_for_every_import_order(
         tmp_path: Path, *, override: bool
     ) -> None:

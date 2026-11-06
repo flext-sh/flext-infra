@@ -111,6 +111,7 @@ class FlextInfraConstantsConfig:
         FACADES = "facades"
         LAZY_INIT = "lazy-init"
         MAKEFILE = "makefile"
+        MARKDOWN = "markdown"
         MISE_CONFIG = "mise-config"
         PYPROJECT = "pyproject"
         WORKFLOWS = "workflows"

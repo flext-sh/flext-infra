@@ -177,8 +177,14 @@ class TestsFlextInfraFacadeMemberRelocation:
                 "from typing import TYPE_CHECKING\nfrom flext_core import m\n"
                 "if TYPE_CHECKING:\n    from flext_core import u\n"
             ),
-            "from flext_core import m, p, u\ndef probe(u):\n    return u.PrivateAttr()\n",
-            "from flext_core import m, p, u\ndef probe(m):\n    return u.PrivateAttr()\n",
+            (
+                "from flext_core import m, p, u\ndef probe(u):\n    return "
+                "u.PrivateAttr()\n"
+            ),
+            (
+                "from flext_core import m, p, u\ndef probe(m):\n    return "
+                "u.PrivateAttr()\n"
+            ),
         )
         paths: list[Path] = []
         for index, prefix in enumerate(cases):

@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c, tm
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,7 +88,7 @@ class TestsFlextInfraScanner:
     def test_scan_invalid_inputs(self, tmp_path: Path) -> None:
         """Empty includes fail and invalid enum payload is rejected at validation."""
         tm.fail(self._scanner().scan(tmp_path, pattern="x", includes=[]))
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             _ = FlextInfraTextPatternScanner.model_validate({
                 "pattern": "x",
                 "match": "invalid",

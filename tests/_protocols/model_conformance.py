@@ -22,3 +22,8 @@ if TYPE_CHECKING:
         value: (TestsFlextInfraModels.Tests.PytestDiagOptions),
     ) -> TestsFlextInfraProtocols.Tests.PytestDiagOptions:
         return value
+
+    def model_protocol_3(
+        value: (TestsFlextInfraModels.Tests.SemanticCutoverScenario),
+    ) -> TestsFlextInfraProtocols.Tests.SemanticCutoverScenario:
+        return value

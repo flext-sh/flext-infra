@@ -11,10 +11,8 @@ import sys
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import infra, m, p, u
-from tests import c, p, tm
+from flext_infra import infra
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,7 +49,7 @@ class TestsFlextInfraFacadeBaseCutover:
             ")\n"
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("statement", "base", "rebind"),
         [
             ("from parent_pkg import m", "m", "m = ChildModels"),
@@ -255,7 +253,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             eq={"m": self.PARENT_CLASS},
         )
 
-    @pytest.mark.parametrize("consumer", ["workspace", "member"])
+    @c.Tests.MARK.parametrize("consumer", ["workspace", "member"])
     def test_facade_classes_read_a_declared_sibling_without_installation(
         self,
         tmp_path: Path,
@@ -386,7 +384,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
 
         tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("guard_import", "guard"),
         [
             ("from typing import TYPE_CHECKING", "TYPE_CHECKING"),
@@ -427,7 +425,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             eq={"m": self.PARENT_CLASS},
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "runtime_binding",
         [
             "from .models import {owner}, m\n",
@@ -460,7 +458,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
 
         tm.that(updated, has=f"class ChildModels({self.PARENT_CLASS}):")
 
-    @pytest.mark.parametrize("after_lazy_map", [False, True])
+    @c.Tests.MARK.parametrize("after_lazy_map", [False, True])
     def test_runtime_self_import_still_fails_with_lazy_publication(
         self,
         tmp_path: Path,
@@ -481,7 +479,7 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
 
         tm.fail(self._plan(tmp_path, sources, child), has="cyclic facade binding")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "last_binding",
         [
             "m = {owner}\n",

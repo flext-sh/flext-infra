@@ -10,10 +10,10 @@ snapshots:
       style: primary
       start: 41
       end: 52
-    - source: "[M: p.BaseModel]"
+    - source: "M: p.BaseModel"
       style: secondary
-      start: 37
-      end: 53
+      start: 38
+      end: 52
   "from flext_core import p, t\ndef schema(model: type[p.BaseModel]) -> None:\n    model.model_json_schema()\n":
     fixed: |
       from flext_core import p, t
@@ -24,9 +24,13 @@ snapshots:
       style: primary
       start: 51
       end: 62
-    - source: "[p.BaseModel]"
+    - source: type
       style: secondary
-      start: 50
+      start: 46
+      end: 50
+    - source: type[p.BaseModel]
+      style: secondary
+      start: 46
       end: 63
   "from flext_core import p, t\nfrom typing import ClassVar\nclass E:\n    params_cls: ClassVar[t.ModelClass[p.BaseModel] | None] = None\n":
     fixed: |
@@ -43,3 +47,32 @@ snapshots:
       style: secondary
       start: 90
       end: 115
+  "from flext_core import t\ndef resolve(params: t.BaseModelType | None) -> tuple[t.BaseModelType, int]:\n    return params, 0\n":
+    fixed: |
+      from flext_core import t
+      def resolve(params: p.BaseModel | None) -> tuple[t.BaseModelType, int]:
+          return params, 0
+    labels:
+    - source: t.BaseModelType
+      style: primary
+      start: 45
+      end: 60
+    - source: t.BaseModelType | None
+      style: secondary
+      start: 45
+      end: 67
+  "from typing import TypeIs\nfrom flext_core import t\ndef guard(value: t.JsonValue) -> TypeIs[t.BaseModelType]:\n    return True\n":
+    fixed: |
+      from typing import TypeIs
+      from flext_core import t
+      def guard(value: t.JsonValue) -> TypeIs[p.BaseModel]:
+          return True
+    labels:
+    - source: t.BaseModelType
+      style: primary
+      start: 91
+      end: 106
+    - source: t.BaseModelType
+      style: secondary
+      start: 91
+      end: 106

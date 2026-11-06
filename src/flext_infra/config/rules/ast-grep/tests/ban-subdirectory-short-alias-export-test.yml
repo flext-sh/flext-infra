@@ -1,0 +1,12 @@
+id: ban-subdirectory-short-alias-export
+valid:
+- "__all__: list[str] = ['TestsFlextModelsMixins', 'TestsFlextModelsNamespace']"
+- "__all__: list[str] = ['TestsFlextModelsMixins', 'm']"
+- "names = ['m', 'TestsFlextModelsMixins']"
+- |
+  def build() -> None:
+      __all__ = ['m', 'A']
+invalid:
+- "__all__: list[str] = ['m', 'TestsFlextModelsMixins']"
+- "__all__: tuple[str, ...] = ('A', 't', 'B')"
+- "__all__ = ['A', 'm',]"

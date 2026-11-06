@@ -12,8 +12,6 @@ import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-import pytest
-
 from tests import c, p, tm, u
 
 
@@ -27,7 +25,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
     LIBRARY = "ban-library-type-reference-outside-typings"
 
     @staticmethod
-    @pytest.mark.parametrize("selector_length", [1023, 1024, 1025, 4096])
+    @c.Tests.MARK.parametrize("selector_length", [1023, 1024, 1025, 4096])
     def test_generated_scope_manifest_preserves_long_selector_keys(
         tmp_path: Path, selector_length: int
     ) -> None:
@@ -117,7 +115,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("case", "shape"),
         [
             ("layer-zero/facade_settings", FACADE),
@@ -144,7 +142,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         tm.that([item for item in findings if item.startswith("consumer.py")], eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "library-import/griffe_import",
@@ -165,7 +163,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         tm.that(findings, eq=[f"consumer.py:{owner.EXTERNAL}"])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "allowed-import/pathlib_stdlib",
@@ -184,7 +182,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         tm.that(owner.scan_sources(tmp_path, {"consumer.py": source}), eq=[])
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "library-type-inline/annotation",

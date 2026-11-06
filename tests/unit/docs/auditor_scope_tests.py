@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import c, m, tm, u
@@ -133,7 +131,7 @@ class TestsFlextInfraAuditorScope:
         )
         summary_path = scope.report_dir / c.Infra.DOCS_AUDIT_SUMMARY_FILENAME
         summary_path.mkdir(parents=True)
-        with pytest.raises(
+        with u.Tests.raises(
             OSError,
             match="atomic destination is not a regular file",
         ) as error:
@@ -203,7 +201,7 @@ class TestsFlextInfraAuditorScope:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("check", "markdown"),
         [
             ("links", "[Broken](missing.md)\n"),
@@ -233,7 +231,7 @@ class TestsFlextInfraAuditorScope:
         tm.that(report.items, empty=False)
 
     @staticmethod
-    @pytest.mark.parametrize("scope_name", ["root", "flext-demo", "test"])
+    @c.Tests.MARK.parametrize("scope_name", ["root", "flext-demo", "test"])
     def test_audit_report_scope_cannot_permit_findings(
         tmp_path: Path,
         scope_name: str,
@@ -331,7 +329,7 @@ class TestsFlextInfraAuditorScope:
         tm.that(issues[0].file, eq="docs/guide.md")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "marker",
         ["TODO: finish me.", "Placeholder", "# Placeholder", "<placeholder>"],
     )
@@ -390,5 +388,5 @@ class TestsFlextInfraAuditorScope:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
-        with pytest.raises(ValueError, match="historical evidence"):
+        with u.Tests.raises(ValueError, match="historical evidence"):
             FlextInfraDocAuditor().machine_path_issues(scope)

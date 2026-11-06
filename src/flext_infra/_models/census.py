@@ -93,21 +93,21 @@ class FlextInfraModelsCensus:
         runtime_reference_sites: tuple[
             Annotated[
                 p.Infra.ReferenceSite,
-                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
             ],
             ...,
         ] = m.Field(default_factory=tuple, description="Runtime/source reference sites")
         script_reference_sites: tuple[
             Annotated[
                 p.Infra.ReferenceSite,
-                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
             ],
             ...,
         ] = m.Field(default_factory=tuple, description="Script reference sites")
         all_reference_sites: tuple[
             Annotated[
                 p.Infra.ReferenceSite,
-                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
             ],
             ...,
         ] = m.Field(
@@ -176,7 +176,7 @@ class FlextInfraModelsCensus:
         runtime_reference_sites: tuple[
             Annotated[
                 p.Infra.ReferenceSite,
-                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
             ],
             ...,
         ] = m.Field(
@@ -186,7 +186,7 @@ class FlextInfraModelsCensus:
         script_reference_sites: tuple[
             Annotated[
                 p.Infra.ReferenceSite,
-                t.schema_for_model(FlextInfraModelsCensus.ReferenceSite),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
             ],
             ...,
         ] = m.Field(
@@ -268,7 +268,7 @@ class FlextInfraModelsCensus:
                 MutableSequence[
                     Annotated[
                         p.Infra.Object,
-                        t.schema_for_model(FlextInfraModelsCensus.Object),
+                        t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
                     ]
                 ],
             ],
@@ -279,12 +279,136 @@ class FlextInfraModelsCensus:
             m.Field(description="Projects whose modules produced a census outcome"),
         ]
 
+    class AliasCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One compatibility alias with its canonical target and users."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Alias declaration name")]
+        canonical: Annotated[str, m.Field(description="Canonical target name")] = ""
+        owner_module: Annotated[
+            str, m.Field(description="Module owning the alias declaration")
+        ] = ""
+        kind: Annotated[
+            str,
+            m.Field(description="Alias kind (assignment/import-alias/all-entry)"),
+        ]
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using alias")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the existing cutover can cure it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "ban-compat-alias"
+        )
+
+    class DuplicateCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One duplicate declaration group with elected canonical owner."""
+
+        name: Annotated[
+            t.NonEmptyStr, m.Field(description="Duplicate declaration name")
+        ]
+        kind: Annotated[str, m.Field(description="Duplicate object kind")]
+        canonical_owner: Annotated[
+            str, m.Field(description="Elected canonical owner module")
+        ] = ""
+        modules: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Modules declaring the name"
+        )
+        payload_fingerprint: Annotated[
+            str, m.Field(description="Diagnostic declaration fingerprint")
+        ] = ""
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using copies")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the duplicate cure can apply it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "duplicate-apply"
+        )
+
+    class ShortestFormCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """One declaration or use that is longer than its canonical form."""
+
+        target: Annotated[t.NonEmptyStr, m.Field(description="Declaration or use")]
+        current_form: Annotated[str, m.Field(description="Current longer form")] = ""
+        canonical_form: Annotated[
+            str, m.Field(description="Canonical shortest form")
+        ] = ""
+        kind: Annotated[
+            str,
+            m.Field(description="Shortest-form kind (wrapper/ceremony/all-entry)"),
+        ]
+        users: tuple[
+            Annotated[
+                p.Infra.ReferenceSite,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ReferenceSite),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Reference sites using form")
+        fixable: Annotated[
+            bool, m.Field(description="Whether the existing owner can cure it")
+        ] = False
+        reason: Annotated[
+            str, m.Field(description="Why the row is review-only, when it is")
+        ] = ""
+        cure: Annotated[str, m.Field(description="Canonical cure owner or command")] = (
+            "manual-review"
+        )
+
+    class CensusFixPlan(FlextInfraModelsBase.FrozenArbitrary):
+        """Typed extermination plan over the census rows."""
+
+        alias: tuple[
+            Annotated[
+                p.Infra.AliasCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.AliasCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable alias rows")
+        duplicate: tuple[
+            Annotated[
+                p.Infra.DuplicateCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable duplicate rows")
+        shortest_form: tuple[
+            Annotated[
+                p.Infra.ShortestFormCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ShortestFormCensus),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Fixable shortest-form rows")
+        commands: tuple[str, ...] = m.Field(
+            default_factory=tuple, description="Canonical cure commands per owner"
+        )
+        expected_rescan: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Rows expected to disappear after cure"),
+        ] = 0
+
     class DuplicateDefinition(FlextInfraModelsBase.FrozenArbitrary):
         """One verified duplicate definition and its Rope-owned source region."""
 
         item: Annotated[
             Annotated[
-                p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)
+                p.Infra.Object,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
             ],
             m.Field(description="Canonical census object"),
         ]
@@ -293,7 +417,7 @@ class FlextInfraModelsCensus:
         statement: Annotated[
             Annotated[
                 p.Infra.LogicalStatement,
-                t.schema_for_model(FlextInfraModelsRope.LogicalStatement),
+                t.schema_for_model(lambda: FlextInfraModelsRope.LogicalStatement),
             ]
             | None,
             m.Field(description="Original Rope definition region"),
@@ -308,7 +432,7 @@ class FlextInfraModelsCensus:
         definition: Annotated[
             Annotated[
                 p.Infra.DuplicateDefinition,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateDefinition),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateDefinition),
             ],
             m.Field(description="Verified duplicate definition"),
         ]
@@ -327,7 +451,7 @@ class FlextInfraModelsCensus:
         owner: Annotated[
             Annotated[
                 p.Infra.DuplicateCopyCure,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateCopyCure),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCopyCure),
             ],
             m.Field(description="Elected definition and its bindings"),
         ]
@@ -335,7 +459,9 @@ class FlextInfraModelsCensus:
             tuple[
                 Annotated[
                     p.Infra.DuplicateCopyCure,
-                    t.schema_for_model(FlextInfraModelsCensus.DuplicateCopyCure),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCensus.DuplicateCopyCure
+                    ),
                 ],
                 ...,
             ],
@@ -346,7 +472,7 @@ class FlextInfraModelsCensus:
                 Annotated[
                     p.Infra.SemanticMigrationEdit,
                     t.schema_for_model(
-                        FlextInfraModelsTransformers.SemanticMigrationEdit
+                        lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
                     ),
                 ],
                 ...,
@@ -373,7 +499,10 @@ class FlextInfraModelsCensus:
         ]
         kind: Annotated[str, m.Field(description="Object kind")]
         definitions: MutableSequence[
-            Annotated[p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)]
+            Annotated[
+                p.Infra.Object,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
+            ]
         ] = m.Field(
             description="All definitions of this object",
         )
@@ -454,7 +583,7 @@ class FlextInfraModelsCensus:
         edits: tuple[
             Annotated[
                 p.Infra.DuplicateCureEdit,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateCureEdit),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCureEdit),
             ],
             ...,
         ] = m.Field(
@@ -474,14 +603,16 @@ class FlextInfraModelsCensus:
         edits: tuple[
             Annotated[
                 p.Infra.SemanticMigrationEdit,
-                t.schema_for_model(FlextInfraModelsTransformers.SemanticMigrationEdit),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
+                ),
             ],
             ...,
         ] = m.Field(default_factory=tuple, description="Applied source rewrites")
         plans: tuple[
             Annotated[
                 p.Infra.DuplicateCurePlan,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateCurePlan),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCurePlan),
             ],
             ...,
         ] = m.Field(
@@ -508,7 +639,8 @@ class FlextInfraModelsCensus:
 
         objects: tuple[
             Annotated[
-                p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)
+                p.Infra.Object,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
             ],
             ...,
         ] = m.Field(
@@ -525,7 +657,8 @@ class FlextInfraModelsCensus:
         ]
         violations: tuple[
             Annotated[
-                p.Infra.Violation, t.schema_for_model(FlextInfraModelsCensus.Violation)
+                p.Infra.Violation,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.Violation),
             ],
             ...,
         ] = m.Field(
@@ -547,7 +680,7 @@ class FlextInfraModelsCensus:
         removal_candidates: tuple[
             Annotated[
                 p.Infra.RemovalCandidate,
-                t.schema_for_model(FlextInfraModelsCensus.RemovalCandidate),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.RemovalCandidate),
             ],
             ...,
         ] = m.Field(
@@ -587,7 +720,7 @@ class FlextInfraModelsCensus:
         projects: tuple[
             Annotated[
                 p.Infra.ProjectReport,
-                t.schema_for_model(FlextInfraModelsCensus.ProjectReport),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ProjectReport),
             ],
             ...,
         ] = m.Field(
@@ -605,7 +738,7 @@ class FlextInfraModelsCensus:
         duplicates: tuple[
             Annotated[
                 p.Infra.DuplicateGroup,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateGroup),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateGroup),
             ],
             ...,
         ] = m.Field(
@@ -615,7 +748,7 @@ class FlextInfraModelsCensus:
         duplicate_cure_plans: tuple[
             Annotated[
                 p.Infra.DuplicateCurePlan,
-                t.schema_for_model(FlextInfraModelsCensus.DuplicateCurePlan),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCurePlan),
             ],
             ...,
         ] = m.Field(
@@ -633,13 +766,48 @@ class FlextInfraModelsCensus:
         removal_candidates: tuple[
             Annotated[
                 p.Infra.RemovalCandidate,
-                t.schema_for_model(FlextInfraModelsCensus.RemovalCandidate),
+                t.schema_for_model(lambda: FlextInfraModelsCensus.RemovalCandidate),
             ],
             ...,
         ] = m.Field(
             default_factory=tuple,
             description="Explicit aggressive-removal candidates across workspace",
         )
+        alias_census: tuple[
+            Annotated[
+                p.Infra.AliasCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.AliasCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Compatibility aliases with canonical target and users",
+        )
+        duplicate_census: tuple[
+            Annotated[
+                p.Infra.DuplicateCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.DuplicateCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Duplicate declarations with elected canonical owner",
+        )
+        shortest_form_census: tuple[
+            Annotated[
+                p.Infra.ShortestFormCensus,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.ShortestFormCensus),
+            ],
+            ...,
+        ] = m.Field(
+            default_factory=tuple,
+            description="Declarations or uses longer than their canonical form",
+        )
+        census_fix_plan: Annotated[
+            p.Infra.CensusFixPlan,
+            t.schema_for_model(lambda: FlextInfraModelsCensus.CensusFixPlan),
+            m.Field(description="Typed extermination plan over this report's rows"),
+        ]
         scan_duration_seconds: Annotated[
             float,
             m.Field(description="Wall-clock scan duration"),

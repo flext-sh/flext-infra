@@ -19,11 +19,12 @@ if TYPE_CHECKING:
 
 
 class FlextInfraGatesSmells(FlextInfraGates):
-    """Report qlty smells for one project from a scan of its check directories.
+    """Report qlty smells for one project from a scan of its Git-visible check files.
 
     Every repository evaluates only itself, locally exactly as in CI: qlty
-    receives the project's own paths and the SARIF URI prefix keys each
-    finding to that project.
+    receives the project's own Git-visible files inside its check targets, so
+    a path the repository ignores is never scanned, and the SARIF URI prefix
+    keys each finding to that project.
     """
 
     gate_id: ClassVar[str] = c.Infra.SMELLS
@@ -133,18 +134,31 @@ class FlextInfraGatesSmells(FlextInfraGates):
         return not issues, issues
 
     def _scan_command(self, binary: str, project_dir: Path) -> Sequence[str]:
-        """Name the project's paths explicitly; qlty scans them in full.
+        """Name the project's Git-visible check files; qlty scans exactly them.
+
+        The repository's Git-aware inventory owns visibility: tracked and
+        unpublished files, never a path its ``.gitignore`` excludes.
 
         Returns:
             The resulting ``Sequence[str]``.
 
         Raises:
-            ValueError: If smells.
+            ValueError: If the Git inventory is unavailable or names no target.
 
         """
+        visible = u.Infra.git_source_scope_paths(project_dir)
+        if visible is None:
+            message = f"smells: no Git inventory for {project_dir}"
+            raise ValueError(message)
+        targets = tuple(
+            (project_dir / target).resolve()
+            for target in self._existing_check_dirs(project_dir)
+        )
+        repository_root = self._repository_root.resolve()
         paths = tuple(
-            (project_dir / directory).relative_to(self._repository_root).as_posix()
-            for directory in self._existing_check_dirs(project_dir)
+            path.relative_to(repository_root).as_posix()
+            for path in visible
+            if any(path.is_relative_to(target) for target in targets)
         )
         if not paths:
             message = f"smells: no check targets for {project_dir}"

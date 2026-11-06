@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.transformers import FlextInfraTransformersSemantic
 from flext_infra.workspace import FlextInfraRopeWorkspace
@@ -20,13 +18,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
     """Behavior contract for test_infra_refactor_namespace_moves."""
 
     @staticmethod
-    @pytest.mark.parametrize("source_stem", ["parser", "_parser"])
-    @pytest.mark.parametrize("source_tier", ["src/example", "tests", "examples"])
+    @c.Tests.MARK.parametrize("source_stem", ["parser", "_parser"])
+    @c.Tests.MARK.parametrize("source_tier", ["src/example", "tests", "examples"])
     def test_family_relocation_targets_the_declaring_domain_in_each_family(
         tmp_path: Path, source_stem: str, source_tier: str
     ) -> None:
@@ -116,8 +114,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
-    @pytest.mark.parametrize("nested", [False, True])
-    @pytest.mark.parametrize("via_cli", [False, True])
+    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("via_cli", [False, True])
     def test_exact_module_destination_preserves_mixed_contents_and_identity(
         cls, tmp_path: Path, *, nested: bool, via_cli: bool
     ) -> None:
@@ -309,13 +307,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("both", [False, True])
+    @c.Tests.MARK.parametrize("both", [False, True])
     def test_move_module_command_requires_one_explicit_destination(
         tmp_path: Path, *, both: bool
     ) -> None:
         """The public request rejects ambiguous and missing execution facts."""
         source, target = tmp_path / "source.py", tmp_path / "target.py"
-        with pytest.raises(ValueError, match="exactly one"):
+        with u.Tests.raises(ValueError, match="exactly one"):
             m.Infra.ModuleMoveCommand(
                 repository_root=tmp_path,
                 source_file=source,
@@ -379,7 +377,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target.write_text("VALUE = 'occupied'\n", encoding=c.DEFAULT_ENCODING)
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(FileExistsError, match=r"elements\.py$"):
+            with u.Tests.raises(FileExistsError, match=r"elements\.py$"):
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
@@ -390,7 +388,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
             tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "destination", ["invalid-name.py", "class.py", "owner.txt", "__init__.py"]
     )
     def test_exact_module_destination_rejects_invalid_file_identity(
@@ -487,7 +485,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         target = source.with_name("elements.py")
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match="capture a consumer binding"):
+            with u.Tests.raises(ValueError, match="capture a consumer binding"):
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
@@ -541,7 +539,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                     u.Infra.resolve_pymodule(snapshot, published).source_code,
                     eq=content.decode(c.DEFAULT_ENCODING),
                 )
-                with pytest.raises(u.Infra.rope_error_types()):
+                with u.Tests.raises(u.Infra.rope_error_types()):
                     snapshot.get_resource(
                         (target.parent / "undeclared.py").relative_to(root).as_posix(),
                     )
@@ -630,7 +628,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "changed", ["source", "destination", "retirement", "witness"]
     )
     def test_module_move_stale_source_rejects_before_any_effect(
@@ -691,7 +689,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 tm.that(state.path.read_bytes(), eq=state.content)
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("extra", "message"),
         [
             ("\nclass AnotherOwner:\n    pass\n", "requires one class"),
@@ -713,7 +711,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
         with FlextInfraRopeWorkspace.open_workspace(root) as workspace:
             sources, states = cls._module_move_inputs(workspace.rope_project)
-            with pytest.raises(ValueError, match=message):
+            with u.Tests.raises(ValueError, match=message):
                 u.Infra.plan_module_move(
                     workspace.rope_project,
                     source,
@@ -764,7 +762,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("apply", [False, True])
+    @c.Tests.MARK.parametrize("apply", [False, True])
     def test_invalid_class_move_preserves_destination_absence(
         tmp_path: Path,
         *,
@@ -778,7 +776,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         destination = package / "destination" / "owned.py"
         with (
             FlextInfraRopeWorkspace.open_workspace(root) as workspace,
-            pytest.raises(ValueError, match="was not found at line"),
+            u.Tests.raises(ValueError, match="was not found at line"),
         ):
             _ = u.Infra.move_class(
                 m.Infra.ClassMoveRequest(
@@ -805,7 +803,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         destination = package / "destination" / "owned.py"
         with (
             FlextInfraRopeWorkspace.open_workspace(root) as workspace,
-            pytest.raises(
+            u.Tests.raises(
                 ValueError, match="absent from the governed source inventory"
             ),
         ):
@@ -824,7 +822,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
     @staticmethod
-    @pytest.mark.parametrize("class_name", ["DeclaredOwner", "AnotherDeclaredOwner"])
+    @c.Tests.MARK.parametrize("class_name", ["DeclaredOwner", "AnotherDeclaredOwner"])
     def test_public_module_move_preserves_declarations_and_consumer_identity(
         tmp_path: Path,
         class_name: str,

@@ -12,15 +12,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from shlex import quote
 
-import pytest
-
-from flext_infra import config, m, p
+from flext_infra import config
 from flext_infra.check.gate_registry import FlextInfraGateRegistry
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraGithubGateAttestation:
@@ -147,7 +145,7 @@ class TestsFlextInfraGithubGateAttestation:
         ).oid
         return oid
 
-    @pytest.fixture
+    @u.Tests.fixture
     def signed_repository_factory(self) -> Callable[[Path], Path]:
         """Create one SSH-signing fixture repository per test invocation.
 
@@ -157,7 +155,7 @@ class TestsFlextInfraGithubGateAttestation:
         """
         return self._signed_repository
 
-    @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))
+    @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
         self,
         tmp_path: Path,
@@ -226,7 +224,7 @@ class TestsFlextInfraGithubGateAttestation:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("literal_prefix", [None, "", "key::"])
+    @c.Tests.MARK.parametrize("literal_prefix", [None, "", "key::"])
     def test_signing_identity_reads_only_native_public_references(
         tmp_path: Path,
         signed_repository_factory: Callable[[Path], Path],
@@ -284,8 +282,8 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(restored.allowed_signers_path, eq=report.allowed_signers_path)
 
     @staticmethod
-    @pytest.mark.parametrize("literal_prefix", ["", "key::"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("literal_prefix", ["", "key::"])
+    @c.Tests.MARK.parametrize(
         "corruption",
         ["empty", "missing-payload", "encoding", "type", "truncated"],
     )
@@ -325,7 +323,7 @@ class TestsFlextInfraGithubGateAttestation:
             tm.that(payload not in error, truth=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declarations",
         [
             (),
@@ -409,7 +407,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(isolated.read_bytes(), truth=False)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("key", "value"),
         [
             *((key, "") for key in c.Infra.GIT_SIGNING_CONFIGURATION_KEYS),
@@ -547,7 +545,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.fail(missing_key.exists())
         tm.fail(missing_trust.exists())
 
-    @pytest.mark.parametrize("missing", ["key", "trust"])
+    @c.Tests.MARK.parametrize("missing", ["key", "trust"])
     def test_selected_attestation_still_requires_real_signing_material(
         self,
         tmp_path: Path,
@@ -588,7 +586,7 @@ class TestsFlextInfraGithubGateAttestation:
             tm.fail(verification)
             tm.that(str(unavailable) in tm.not_none(verification.error), truth=True)
 
-    @pytest.mark.parametrize("has_origin", [False, True])
+    @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_dirty_workspace_publishes_original_execution_evidence(
         self,
         tmp_path: Path,
@@ -760,7 +758,9 @@ class TestsFlextInfraGithubGateAttestation:
             TestsFlextInfraGithubGateAttestation._context(root),
         )
 
-    @pytest.mark.parametrize("change", ["none", "republish", "remote-suffix", "commit"])
+    @c.Tests.MARK.parametrize(
+        "change", ["none", "republish", "remote-suffix", "commit"]
+    )
     def test_signed_gate_attestation_round_trip_is_local(
         self,
         tmp_path: Path,
@@ -822,7 +822,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(verified.signer, eq="attester@example.test")
         tm.that(verified.anchor_oid, eq=created.anchor_oid)
 
-    @pytest.mark.parametrize("has_origin", [False, True])
+    @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_original_findings_keep_their_real_nonzero_exit_in_signed_evidence(
         self,
         tmp_path: Path,
@@ -872,7 +872,7 @@ class TestsFlextInfraGithubGateAttestation:
         tm.that(predicate.commands[0].native_outcome, eq=source.native_outcome)
         tm.that(destination.read_text(encoding="utf-8"), lacks=str(tmp_path))
 
-    @pytest.mark.parametrize("corruption", ["modified", "missing"])
+    @c.Tests.MARK.parametrize("corruption", ["modified", "missing"])
     def test_original_report_integrity_is_required_for_proof(
         self,
         tmp_path: Path,
@@ -902,7 +902,7 @@ class TestsFlextInfraGithubGateAttestation:
             eq=["executed"],
         )
 
-    @pytest.mark.parametrize("mismatch", ["context", "stage"])
+    @c.Tests.MARK.parametrize("mismatch", ["context", "stage"])
     def test_verification_requires_original_context_and_stage(
         self,
         tmp_path: Path,
@@ -979,7 +979,7 @@ class TestsFlextInfraGithubGateAttestation:
         updated = source.model_copy(
             update={
                 "command_digest": command_digest,
-                "process": p.Cli.ProcessOutcome.model_validate(
+                "process": m.Cli.ProcessOutcome.model_validate(
                     interrupted.outcome,
                     from_attributes=True,
                 ),
@@ -1010,5 +1010,5 @@ class TestsFlextInfraGithubGateAttestation:
         values = self._request(tmp_path).model_dump()
         values["gates"] = (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK)
 
-        with pytest.raises(ValueError, match="at most 1 item"):
+        with u.Tests.raises(ValueError, match="at most 1 item"):
             m.Infra.GateAttestationCreateRequest.model_validate(values)

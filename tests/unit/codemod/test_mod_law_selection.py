@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.codemod import FlextInfraModTextGateEngine
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraModLawSelection:
     """Drive the public ``refactor mod`` route and law expansion facade.
 
@@ -43,7 +41,7 @@ class TestsFlextInfraModLawSelection:
     @staticmethod
     def test_unselected_run_is_refused(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A run without a theme is a global make and fails before any scan."""
         source = mod_workspace / "unselected.py"
@@ -58,7 +56,7 @@ class TestsFlextInfraModLawSelection:
     @staticmethod
     def test_unknown_law_fails_loud(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A law no active owner claims fails once, before any repository runs."""
         catalog = tm.ok(u.Infra.enforcement_catalog())
@@ -79,7 +77,7 @@ class TestsFlextInfraModLawSelection:
     @staticmethod
     def test_laws_expand_to_every_planned_rule_claiming_them(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """The repository plan's static and generated rules of the law are selected."""
         planned, claims = TestsFlextInfraModLawSelection._plan_laws(mod_workspace)
@@ -100,7 +98,7 @@ class TestsFlextInfraModLawSelection:
     @staticmethod
     def test_repository_without_the_law_gets_an_empty_plan(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A catalog law no planned rule of this repository claims checks nothing."""
         planned, _claims = TestsFlextInfraModLawSelection._plan_laws(mod_workspace)
@@ -123,7 +121,7 @@ class TestsFlextInfraModLawSelection:
     @staticmethod
     def test_unselected_verdict_does_not_fail_a_selected_run(
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A selected theme owns no text verdict: an unrelated finding stays out."""
         target = mod_workspace / "selected.py"

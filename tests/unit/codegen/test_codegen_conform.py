@@ -12,8 +12,6 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
@@ -25,7 +23,7 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, e, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 def _assert_conform_check_reaches_fixed_point(root: Path) -> None:
@@ -82,10 +80,10 @@ class TestsFlextInfraCodegenConform:
             )
         )
 
-    @pytest.fixture(scope="module")
+    @u.Tests.fixture(scope="module")
     @staticmethod
     def conformed_template(
-        tmp_path_factory: pytest.TempPathFactory,
+        tmp_path_factory: t.Tests.TempPathFactory,
     ) -> Path:
         """Conform one real seed tree once per module; each scenario clones it.
 
@@ -146,7 +144,7 @@ class TestsFlextInfraCodegenConform:
         )
         return root, request, published, original
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("operation", "mode"),
         [
             ("generate", c.Infra.CodegenConformMode.APPLY),
@@ -185,7 +183,7 @@ class TestsFlextInfraCodegenConform:
             )
         tm.that(custom.read_text(encoding=c.DEFAULT_ENCODING), eq=declaration)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "scenario", ["concurrent-edit", "lazy-failure", "docs-failure"]
     )
     def test_public_apply_failure_publishes_nothing(
@@ -209,7 +207,7 @@ class TestsFlextInfraCodegenConform:
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
         if scenario == "docs-failure":
-            with pytest.raises(ValueError, match="Invalid JSON"):
+            with u.Tests.raises(ValueError, match="Invalid JSON"):
                 FlextInfraCodegenConform.execute_request(
                     request, execution_context=infra
                 )
@@ -324,7 +322,7 @@ class TestsFlextInfraCodegenConform:
             ),
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_setext_underline_is_accepted_as_ordinary_content(
         self,
         infra_git_repo: Path,
@@ -337,7 +335,7 @@ class TestsFlextInfraCodegenConform:
 
         tm.ok(applied)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_declared_extra_verb_shadowing_a_canonical_builtin_fails_loud(
         self,
         infra_git_repo: Path,
@@ -356,7 +354,7 @@ class TestsFlextInfraCodegenConform:
         tm.that((infra_git_repo / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_apply_recovers_declared_managed_pyproject_conflict(
         infra_git_repo: Path,
     ) -> None:
@@ -429,8 +427,8 @@ class TestsFlextInfraCodegenConform:
     # point in a fresh interpreter. The slow marker opts into the single
     # config-owned slow-item budget; tests must not restate that policy locally.
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("name", ["flext-demo", "flext-member"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("name", ["flext-demo", "flext-member"])
     def test_new_project_is_complete_and_idempotent(
         tmp_path: Path,
         name: str,
@@ -546,7 +544,7 @@ class TestsFlextInfraCodegenConform:
         tm.ok(process, eq="✅ pong")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_generated_make_uses_declared_native_uv(
         infra_git_repo: Path,
     ) -> None:
@@ -592,7 +590,7 @@ class TestsFlextInfraCodegenConform:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_existing_manifest_converges_to_identical_tree(
         tmp_path: Path,
         conformed_template: Path,
@@ -636,7 +634,7 @@ class TestsFlextInfraCodegenConform:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
         infra_git_repo: Path,
     ) -> None:
@@ -692,7 +690,7 @@ class TestsFlextInfraCodegenConform:
         _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_empty_rendered_directory_is_not_a_python_root(
         infra_git_repo: Path,
     ) -> None:
@@ -729,7 +727,7 @@ class TestsFlextInfraCodegenConform:
 
     # Two conform apply cycles plus a check exercise the slow integration harness.
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_manifestless_existing_root_plans_artifacts_without_project_spec(
         infra_git_repo: Path,
     ) -> None:
@@ -786,7 +784,7 @@ class TestsFlextInfraCodegenConform:
         _assert_conform_check_reaches_fixed_point(root)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_repository_root_catalog_profile_projects_no_coverage_floor(
         tmp_path: Path,
     ) -> None:
@@ -849,7 +847,7 @@ class TestsFlextInfraCodegenConform:
         tm.that(report, lacks="fail_under")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_project_root_inherits_declared_upstream_facets(
         tmp_path: Path,
     ) -> None:

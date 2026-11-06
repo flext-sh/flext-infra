@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, p, tm, u
 
@@ -78,7 +76,7 @@ class TestsFlextInfraFreshImportPublication:
     """Prove fresh-import verification against the real publication contract."""
 
     @staticmethod
-    @pytest.mark.parametrize("linked", [False, True])
+    @c.Tests.MARK.parametrize("linked", [False, True])
     def test_namespace_requires_a_physical_directory_chain(
         tmp_path: Path, suite_runtime_root: Path, *, linked: bool
     ) -> None:
@@ -112,7 +110,7 @@ class TestsFlextInfraFreshImportPublication:
             tm.that(report.violations[0], has="Traceback")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "missing_export"),
         [
             ("", False),
@@ -215,8 +213,8 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(report.violations[0], has="Traceback")
 
     @staticmethod
-    @pytest.mark.parametrize("script_group", ["scripts", "gui-scripts"])
-    @pytest.mark.parametrize("target_exists", [False, True])
+    @c.Tests.MARK.parametrize("script_group", ["scripts", "gui-scripts"])
+    @c.Tests.MARK.parametrize("target_exists", [False, True])
     def test_declared_script_failure_blocks_publication(
         tmp_path: Path,
         suite_runtime_root: Path,
@@ -305,7 +303,7 @@ class TestsFlextInfraFreshImportPublication:
         tm.that(report.violations[0], has="Traceback")
 
     @staticmethod
-    @pytest.mark.parametrize("dependency_present", [False, True])
+    @c.Tests.MARK.parametrize("dependency_present", [False, True])
     def test_declared_consumer_catches_exports_omitted_from_plan(
         tmp_path: Path,
         suite_runtime_root: Path,

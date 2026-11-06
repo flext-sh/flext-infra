@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, p, tm, u
 
@@ -19,7 +17,7 @@ class TestsRopeContractFamilyRoutes:
     """Exercise real lazy publication, function identity and cold composition."""
 
     @staticmethod
-    @pytest.mark.parametrize("helper_binding", ["absent", "alias", "module", "shadow"])
+    @c.Tests.MARK.parametrize("helper_binding", ["absent", "alias", "module", "shadow"])
     def test_same_family_never_reenters_composing_facade(
         tmp_path: Path, helper_binding: str
     ) -> None:
@@ -109,7 +107,7 @@ class TestsRopeContractFamilyRoutes:
         ]
         with infra.rope_workspace(root) as workspace:
             if helper_binding == "shadow":
-                with pytest.raises(ValueError, match="shadowed"):
+                with u.Tests.raises(ValueError, match="shadowed"):
                     u.Infra.plan_contract_rules(workspace, sources, rules)
                 tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=sources[path])
                 return
@@ -188,7 +186,7 @@ class TestsRopeContractFamilyRoutes:
         tm.that(edits[0].updated_source, has="u.normalize_to_json_value(")
 
     @staticmethod
-    @pytest.mark.parametrize("arguments", ["*args", "**kwargs"])
+    @c.Tests.MARK.parametrize("arguments", ["*args", "**kwargs"])
     def test_expanded_arguments_cannot_authorize_contract_normalization(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         arguments: str,
@@ -222,6 +220,6 @@ class TestsRopeContractFamilyRoutes:
                 )
             },
         )
-        with pytest.raises(ValueError, match="expanded arguments"):
+        with u.Tests.raises(ValueError, match="expanded arguments"):
             u.Infra.plan_contract_rules(workspace, {path: source}, (rule,))
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)

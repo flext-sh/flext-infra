@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 
@@ -44,7 +42,7 @@ class TestsFlextInfraRepositoryGitmodulesContract:
         tm.fail(result, has="No item found with id origin")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("missing_key", "expected_error"),
         [
             ("url", "Git submodule URL is missing"),
@@ -122,7 +120,7 @@ class TestsFlextInfraRepositoryGitmodulesContract:
         tm.fail(result, has="failed to read Git submodule declarations")
 
     @staticmethod
-    @pytest.mark.parametrize("declared_path", ["../escape", "/absolute/escape"])
+    @c.Tests.MARK.parametrize("declared_path", ["../escape", "/absolute/escape"])
     def test_gitmodule_rejects_escaping_path(
         tmp_path: Path,
         declared_path: str,

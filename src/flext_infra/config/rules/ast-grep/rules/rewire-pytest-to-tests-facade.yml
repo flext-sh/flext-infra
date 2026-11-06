@@ -26,11 +26,18 @@
 id: rewire-pytest-function-to-tests-utilities
 language: python
 severity: error
+metadata:
+  enforce: [ENFORCE-003]
 files:
   - "tests/**/*.py"
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
+  - "tests/constants.py"
+  - "tests/typings.py"
+  - "tests/utilities.py"
+  - "tests/models.py"
+  - "tests/protocols.py"
 rule:
   kind: attribute
   all:
@@ -53,11 +60,18 @@ message: >-
 id: rewire-pytest-type-to-tests-typings
 language: python
 severity: error
+metadata:
+  enforce: [ENFORCE-003]
 files:
   - "tests/**/*.py"
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
+  - "tests/constants.py"
+  - "tests/typings.py"
+  - "tests/utilities.py"
+  - "tests/models.py"
+  - "tests/protocols.py"
 rule:
   kind: attribute
   all:
@@ -85,11 +99,18 @@ message: >-
 id: rewire-pytest-constant-to-tests-constants
 language: python
 severity: error
+metadata:
+  enforce: [ENFORCE-003]
 files:
   - "tests/**/*.py"
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
+  - "tests/constants.py"
+  - "tests/typings.py"
+  - "tests/utilities.py"
+  - "tests/models.py"
+  - "tests/protocols.py"
 rule:
   kind: attribute
   all:
@@ -118,11 +139,18 @@ message: >-
 id: rewire-pytest-class-constant-to-tests-constants
 language: python
 severity: error
+metadata:
+  enforce: [ENFORCE-003]
 files:
   - "tests/**/*.py"
 ignores:
   - "**/conftest.py"
   - "tests/fixtures/**"
+  - "tests/constants.py"
+  - "tests/typings.py"
+  - "tests/utilities.py"
+  - "tests/models.py"
+  - "tests/protocols.py"
 rule:
   kind: attribute
   all:

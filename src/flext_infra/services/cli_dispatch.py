@@ -10,9 +10,9 @@ import sys
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_cli import FlextCli, u
+from flext_cli import FlextCli
 
-from flext_infra import c
+from flext_infra import c, u
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra.services import FlextInfraCliRouteService
 

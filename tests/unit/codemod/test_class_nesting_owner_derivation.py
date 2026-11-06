@@ -10,8 +10,6 @@ import ast
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, t, tm, u
 from tests.unit.codemod.class_nesting_owner_support import (
@@ -25,10 +23,10 @@ if TYPE_CHECKING:
 class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupport):
     """Modules elect one owner and their consumers follow the moved identities."""
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("stem", "source", "expected"),
         [
-            pytest.param(
+            u.Tests.param(
                 "atomic_thing",
                 TestsFlextInfraClassNestingSupport.LOOSE_MODULE,
                 (
@@ -41,7 +39,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ),
                 id="loose-members",
             ),
-            pytest.param(
+            u.Tests.param(
                 "atomic_thing",
                 TestsFlextInfraClassNestingSupport.LOOSE_MODULE,
                 (
@@ -52,7 +50,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ),
                 id="class-variables",
             ),
-            pytest.param(
+            u.Tests.param(
                 "pair_helpers",
                 '"""Two private helpers."""\n\n'
                 "from __future__ import annotations\n\n\n"
@@ -61,7 +59,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ("    class _First:", "    class _Second(_First):"),
                 id="private-classes",
             ),
-            pytest.param(
+            u.Tests.param(
                 "mode_helpers",
                 '"""Sentinel and helper."""\n\n'
                 "from __future__ import annotations\n\n\n"
@@ -72,7 +70,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ("    class {helper}:",),
                 id="published-record",
             ),
-            pytest.param(
+            u.Tests.param(
                 "step_helpers",
                 '"""Declared owner and loose helpers."""\n\n'
                 "from __future__ import annotations\n\n\n"
@@ -87,7 +85,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ("    @staticmethod\n    def _strip(",),
                 id="declared-owner",
             ),
-            pytest.param(
+            u.Tests.param(
                 "registry_helpers",
                 '"""Registry annotations."""\n\n'
                 "from __future__ import annotations\n\n"
@@ -234,10 +232,10 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         )
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("relative_module", "source", "errors"),
         [
-            pytest.param(
+            u.Tests.param(
                 "tests/test_guard.py",
                 "from typing import TYPE_CHECKING\n"
                 f"if TYPE_CHECKING:\n    {statement}\n"
@@ -251,14 +249,14 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
             ))
         ]
         + [
-            pytest.param(
+            u.Tests.param(
                 "processor.py",
                 '"""Competing owners."""\n'
                 "class First:\n    pass\nclass Second:\n    pass\n",
                 ("requires exactly one declared module owner",),
                 id="competing-owners",
             ),
-            pytest.param(
+            u.Tests.param(
                 "processor.py",
                 '"""Immediate suite dependencies."""\n'
                 "class Processor:\n    pass\n\n"
@@ -267,7 +265,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
                 ("definition-time dependencies pin",),
                 id="suite-dependencies",
             ),
-            pytest.param(
+            u.Tests.param(
                 "{family}/rival_owners.py",
                 '"""Two candidate owners."""\n\n'
                 "from __future__ import annotations\n\n\n"
@@ -492,7 +490,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tm.that(before, eq=["True"])
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize("suppressed", [False, True])
+    @c.Tests.MARK.parametrize("suppressed", [False, True])
     def test_strict_helper_prefix_does_not_invent_pytest_suites(
         self,
         tmp_path: Path,
@@ -516,7 +514,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         if not suppressed:
             with (
                 infra.rope_workspace(root) as rope,
-                pytest.raises(ValueError, match="newly collect helper"),
+                u.Tests.raises(ValueError, match="newly collect helper"),
             ):
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.CLASS_NESTING,
@@ -551,8 +549,8 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         )
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize("directory", ["", "scripts", "examples", "tests", "src"])
-    @pytest.mark.parametrize("stem", ["worker", "__main__"])
+    @c.Tests.MARK.parametrize("directory", ["", "scripts", "examples", "tests", "src"])
+    @c.Tests.MARK.parametrize("stem", ["worker", "__main__"])
     def test_ordinary_entry_points_keep_runtime_behavior(
         self,
         tmp_path: Path,
@@ -615,7 +613,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tm.that(after, eq=[*before, *before])
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize("extra_class", ["", "\nclass _Record:\n    pass\n"])
+    @c.Tests.MARK.parametrize("extra_class", ["", "\nclass _Record:\n    pass\n"])
     def test_ordinary_unique_owner_is_not_wrapped(
         self,
         tmp_path: Path,
@@ -680,7 +678,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         tm.that(after, eq=before)
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize("wildcard", [False, True])
+    @c.Tests.MARK.parametrize("wildcard", [False, True])
     def test_native_alias_identity_survives_shadowing_and_same_leaf_modules(
         self,
         tmp_path: Path,
@@ -787,7 +785,7 @@ class TestsFlextInfraClassNestingOwnerDerivation(TestsFlextInfraClassNestingSupp
         )
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("consumer_source", "error"),
         [
             (

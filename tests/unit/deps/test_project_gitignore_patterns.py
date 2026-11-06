@@ -9,11 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m, u
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraProjectGitignorePatterns:
@@ -238,7 +236,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         )
         tm.that(repeated, eq=rendered)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "current",
         [
             "# BEGIN external projection\n/only-start\n",

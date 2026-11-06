@@ -49,7 +49,7 @@ class TestsFlextInfraReleasePublicationLane:
         )[0]
         declared = manifest.model_copy(
             update={
-                "integration": p.Infra.WorkspaceIntegrationSpec(
+                "integration": m.Infra.WorkspaceIntegrationSpec(
                     provider=manifest.repository.provider,
                     branch=base,
                 ),

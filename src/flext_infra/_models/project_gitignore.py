@@ -82,7 +82,9 @@ class FlextInfraModelsProjectGitignore(
                 Annotated[
                     p.Infra.ProjectGitignorePreservedBlock,
                     t.schema_for_model(
-                        FlextInfraModelsProjectGitignore.ProjectGitignorePreservedBlock
+                        lambda: (
+                            FlextInfraModelsProjectGitignore.ProjectGitignorePreservedBlock
+                        )
                     ),
                 ],
                 ...,

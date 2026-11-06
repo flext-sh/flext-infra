@@ -13,10 +13,10 @@ import shutil
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, infra, u
+from flext_infra import config, infra
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_infra.worktree import FlextInfraWorktreeService
-from tests import c, m, p, t, tm
+from tests import c, m, p, t, tm, u
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
@@ -113,6 +113,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return project_dir
 
     @staticmethod
@@ -483,6 +484,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
         for filename, content in files.items():
             (pkg / filename).write_text(content, encoding="utf-8")
+        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project)
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 

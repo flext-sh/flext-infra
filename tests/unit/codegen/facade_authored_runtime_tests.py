@@ -9,8 +9,6 @@ from __future__ import annotations
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codegen, config, workspace
 from tests import c, m, p, tm, u
 
@@ -51,7 +49,7 @@ class TestsFlextInfraFacadeAuthoredRuntime:
             tm.fail(project.source_query(source, "isfile"))
             tm.fail(source in project.source_children(package))
             tm.that(project.source_bytes(binary), eq=b"\xff\x00")
-            with pytest.raises(FileNotFoundError):
+            with u.Tests.raises(FileNotFoundError):
                 project.source_bytes(source)
         tm.that(binary.read_bytes(), eq=opaque.content)
         tm.that(source.read_bytes(), eq=original.content)
@@ -100,6 +98,50 @@ class TestsFlextInfraGeneratedRuntime:
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name} import u\n"
             "assert u.Value == 'built'\n",
+            cwd=root,
+        )
+
+    @staticmethod
+    def test_utility_classvar_storage_composes_into_namespace(
+        native_consumer: p.Tests.NativeConsumer,
+        tmp_path: Path,
+    ) -> None:
+        """A provider holding only ``ClassVar`` storage composes its namespace."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        sources = {
+            directory / "tree.py": (
+                "class Tree:\n"
+                "    @staticmethod\n"
+                "    def build(): return 'built'\n"
+                "__all__ = ['Tree']\n"
+            ),
+            directory / "storage.py": (
+                "from fractions import Fraction\n"
+                "from typing import ClassVar\n"
+                "class Storage:\n"
+                "    Ratio: ClassVar[type[Fraction]] = Fraction\n"
+                "__all__ = ['Storage']\n"
+            ),
+            package / c.Infra.UTILITIES_PY: (
+                f"from {package.name}.{family.directory}.tree import Tree\n"
+                "class Utilities(Tree): pass\n"
+                "u = Utilities\n__all__ = ['Utilities', 'u']\n"
+            ),
+            package / c.Infra.INIT_PY: "from .utilities import u\n__all__ = ['u']\n",
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))
+        tm.ok(u.Cli.atomic_write_text_file(package / c.Infra.UTILITIES_PY, rendered))
+        native_consumer(
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            "from fractions import Fraction\n"
+            f"from {package.name} import u\n"
+            "assert u.build() == 'built'\n"
+            "assert u.Ratio is Fraction\n",
             cwd=root,
         )
 
@@ -161,7 +203,7 @@ class TestsFlextInfraGeneratedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("imports", "guard", "type_only"),
         [
             ("from typing import TYPE_CHECKING\n", "TYPE_CHECKING", True),
@@ -233,8 +275,8 @@ class TestsFlextInfraGeneratedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("depth", [1, 2])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("depth", [1, 2])
+    @c.Tests.MARK.parametrize(
         "segment", ["child", "descriptive_namespace_for_deep_native_owner_projection"]
     )
     def test_generated_imports_preserve_relative_alias_levels(
@@ -292,7 +334,7 @@ class TestsFlextInfraGeneratedRuntime:
                 scoped=True,
             ).model
             if len(f"    from {namespace} import (") > width:
-                with pytest.raises(ValueError, match="exceeds Ruff line length"):
+                with u.Tests.raises(ValueError, match="exceeds Ruff line length"):
                     u.Infra.lazy_init_render(
                         plan, model=model, first_party=frozenset({package.name})
                     )
@@ -314,7 +356,7 @@ class TestsFlextInfraGeneratedRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("generated_name", config.Infra.codegen.generated_sources)
+    @c.Tests.MARK.parametrize("generated_name", config.Infra.codegen.generated_sources)
     def test_generated_barrel_does_not_elect_an_authored_facade(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,
@@ -633,7 +675,7 @@ class TestsFlextInfraGeneratedRuntime:
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod
-    @pytest.mark.parametrize("declared", [False, True])
+    @c.Tests.MARK.parametrize("declared", [False, True])
     def test_unpublished_provider_facet_precedes_native_consumer(
         native_consumer: p.Tests.NativeConsumer,
         installed_dependency_path: Path,
@@ -707,7 +749,7 @@ class TestsFlextInfraGeneratedRuntime:
             tm.scope(python_paths=(str(provider.parent),)),
             nullcontext()
             if declared
-            else pytest.raises(
+            else u.Tests.raises(
                 ValueError,
                 match=(
                     r"^Missing inherited class member: "
@@ -823,7 +865,7 @@ class TestsFlextInfraGeneratedRuntime:
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
     @staticmethod
-    @pytest.mark.parametrize("declared", [False, True])
+    @c.Tests.MARK.parametrize("declared", [False, True])
     def test_planned_provider_export_precedes_native_consumer(
         native_consumer: p.Tests.NativeConsumer,
         installed_dependency_path: Path,

@@ -25,7 +25,9 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         path: Annotated[Path, m.Field(description="Resolved file path")]
         state: Annotated[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             m.Field(description="Authenticated state the run reads and publishes"),
         ]
         digest: Annotated[
@@ -102,7 +104,7 @@ class FlextInfraModelsWorkspaceSnapshot:
                 Annotated[
                     p.Infra.PythonModuleFacts,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                        lambda: FlextInfraModelsCodegenLazyInit.PythonModuleFacts
                     ),
                 ],
             ]
@@ -163,7 +165,7 @@ class FlextInfraModelsWorkspaceSnapshot:
                 Annotated[
                     p.Infra.CodemodNativeGenerated,
                     t.schema_for_model(
-                        FlextInfraModelsRefactorGrep.CodemodNativeGenerated
+                        lambda: FlextInfraModelsRefactorGrep.CodemodNativeGenerated
                     ),
                 ],
             ]

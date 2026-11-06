@@ -14,10 +14,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m, p, t
-from tests import c, p, tm, u
+from flext_infra import config
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraUpgOwnedDependencyPin:
@@ -201,5 +199,5 @@ class TestsFlextInfraUpgOwnedDependencyPin:
             **u.Tests.project_spec("consumer").model_dump(),
             "dependency_revisions": {"flext-core": self.COMMIT},
         }
-        with pytest.raises(ValueError, match="dependency_revisions"):
+        with u.Tests.raises(ValueError, match="dependency_revisions"):
             m.Infra.ProjectSpec.model_validate(retired)

@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsCodegenLazyInit,
         FlextInfraProtocolsCodegenTransaction,
     )
-    from flext_infra._typings import FlextInfraTypesRope, FlextInfraTypesRopeNative
 
 
 from collections.abc import Iterator, Mapping, Sequence
@@ -287,7 +286,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def modules(self) -> tuple[FlextInfraTypesRope.RopeSourceModule, ...]:
+        def modules(self) -> tuple[t.Infra.RopeSourceModule, ...]:
             """Native modules of the source epoch."""
             ...
 
@@ -326,7 +325,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             ...
 
         @property
-        def engine(self) -> FlextInfraTypesRope.RopeProject:
+        def engine(self) -> t.Infra.RopeProject:
             """The one source engine project; planned effects enter its overlay."""
             ...
 
@@ -343,8 +342,8 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> Mapping[
-            FlextInfraTypesRopeNative.RopeNativeParsedModule,
+        ) -> dict[
+            t.Infra.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
         ]:
             """Shared static facts keyed by the original engine parse."""
@@ -424,7 +423,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def codemod_renderings(
             self,
-        ) -> Mapping[
+        ) -> dict[
             tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
         ]:
             """Native codemod rendering per member root and render-input digest."""

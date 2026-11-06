@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenPyTyped
 from tests import c, tm
@@ -74,7 +72,7 @@ class TestsFlextInfraCodegenPyTyped:
         tm.ok((pkg / c.Infra.PY_TYPED).exists())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "skip_dir",
         [".hidden", *config.Infra.codegen.analysis_excluded_dirs],
     )

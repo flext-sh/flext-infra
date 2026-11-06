@@ -9,10 +9,9 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from flext_infra import c, settings
+from flext_infra import c, settings, validate
 from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.services import FlextInfraCliDispatchService
-from flext_infra.validate import FlextInfraCProfileReport
 
 
 class FlextInfraCli(FlextInfraCliDispatchService):
@@ -50,7 +49,7 @@ class FlextInfraCli(FlextInfraCliDispatchService):
         return FlextInfraPytestClock.profile_command(
             lambda: FlextInfraCli().main(cli_args),
             output,
-            after_profile=FlextInfraCProfileReport.report_capture,
+            after_profile=validate.FlextInfraCProfileReport.report_capture,
         )
 
 

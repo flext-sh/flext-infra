@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraGitService, m
-from tests import c, tm, u
+from flext_infra import FlextInfraGitService
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraGitFacetWorktreeStatus:

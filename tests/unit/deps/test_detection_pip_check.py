@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import c, tm, u
 
@@ -19,7 +17,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
     """A native UV verdict belongs to the selected physical environment."""
 
     @staticmethod
-    @pytest.mark.parametrize("conflict", [False, True])
+    @c.Tests.MARK.parametrize("conflict", [False, True])
     def test_installed_package_requirements_determine_the_verdict(
         tmp_path: Path,
         *,

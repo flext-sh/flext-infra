@@ -62,7 +62,7 @@ class FlextInfraCheckWorkspaceCheckReports:
             "## Summary",
             "",
             "| Project | Status | Findings |",
-            "|---|---:|---:|",
+            "| --- |---:|---:|",
         ]
         for target in summary.targets:
             project_summary = cls._project_summary(summary, target)

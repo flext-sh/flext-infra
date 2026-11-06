@@ -13,9 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsCheck
-    from flext_infra._typings import FlextInfraTypesBase
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsEnforcementCatalog:
@@ -26,12 +24,12 @@ class FlextInfraProtocolsEnforcementCatalog:
         """Structural data contract projected from the owning model."""
 
         @property
-        def id(self) -> FlextInfraTypesBase.EnforcementId:
+        def id(self) -> t.Infra.EnforcementId:
             """Claimed enforcement law identity."""
             ...
 
         @property
-        def engine(self) -> FlextInfraConstantsCheck.EnforcementEngine:
+        def engine(self) -> c.Infra.EnforcementEngine:
             """Engine whose declaration makes the claim."""
             ...
 

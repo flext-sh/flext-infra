@@ -15,9 +15,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_cli import FlextCliProtocols
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsCheck
-    from flext_infra._typings import FlextInfraTypesBase
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsDepsToolConfigLinters:
@@ -79,52 +77,11 @@ class FlextInfraProtocolsDepsToolConfigLinters:
     class RuffLintConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def rule_owners(self) -> Mapping[FlextInfraTypesBase.RuffRule, t.NonEmptyStr]:
-            """Structural member projected from the owning model.
-
-            Rules enforced by another registered canonical gate, never waived;
-            projection verifies its complete check/repair election.
-            """
-            ...
-
+        rule_owners: Mapping[t.Infra.RuffRule, t.NonEmptyStr]
         ruling_disabled_rules: tuple[t.NonEmptyStr, ...]
-
-        @property
-        def enforce(
-            self,
-        ) -> Mapping[FlextInfraTypesBase.RuffRule, FlextInfraTypesBase.EnforcementIds]:
-            """Structural member projected from the owning model.
-
-            Ruff rule name -> enforcement law ids the rule claims; a claim is active
-            only while the lint selection enables it.
-            """
-            ...
-
-        @property
-        def fix_recipes(
-            self,
-        ) -> Mapping[
-            FlextInfraTypesBase.RuffRule, FlextInfraConstantsCheck.LintFixRecipe
-        ]:
-            """Structural member projected from the owning model.
-
-            Ruff rule name -> repair make fix applies to the findings Ruff reports
-            without a fix of its own.
-            """
-            ...
-
-        @property
-        def fix_recipe_phases(
-            self,
-        ) -> tuple[tuple[FlextInfraConstantsCheck.LintFixRecipe, ...], ...]:
-            """Structural member projected from the owning model.
-
-            Recipe phases make fix applies in order; Ruff re-reads the tree after
-            each phase so a later phase sees the findings an earlier one created or
-            cured.
-            """
-            ...
+        enforce: Mapping[t.Infra.RuffRule, t.Infra.EnforcementIds]
+        fix_recipes: Mapping[t.Infra.RuffRule, c.Infra.LintFixRecipe]
+        fix_recipe_phases: tuple[tuple[c.Infra.LintFixRecipe, ...], ...]
 
     @runtime_checkable
     class RuffConfig(FlextCliProtocols.BaseModel, Protocol):
@@ -142,12 +99,7 @@ class FlextInfraProtocolsDepsToolConfigLinters:
         """Structural data contract projected from the owning model."""
 
         modules: Sequence[str]
-
-        @property
-        def settings(self) -> FlextInfraTypesBase.SettingsPairs:
-            """Native override options as ordered key/value pairs."""
-            ...
-
+        settings: t.Infra.SettingsPairs
         justification: str
 
     @runtime_checkable

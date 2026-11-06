@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     from flext_infra import t
     from flext_infra._protocols import FlextInfraProtocolsDocsGeneration
     from flext_infra._protocols._config import FlextInfraProtocolsConfigRepository
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 from collections.abc import Mapping, Sequence
@@ -311,7 +310,7 @@ class FlextInfraProtocolsDocs(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Generated documentation language."""
             ...
 

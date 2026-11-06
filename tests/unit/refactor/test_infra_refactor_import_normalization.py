@@ -9,10 +9,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m, transformers
-from tests import c, tm, u
+from flext_infra import transformers
+from tests import c, m, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -27,7 +25,7 @@ class TestsFlextInfraRefactorImportNormalization(
     """Each import-law rule observed through ``normalize_source``."""
 
     @classmethod
-    @pytest.mark.parametrize("consumer", [False, True])
+    @c.Tests.MARK.parametrize("consumer", [False, True])
     def test_function_publication_never_routes_initializer_to_itself(
         cls, tmp_path: Path, *, consumer: bool
     ) -> None:
@@ -44,7 +42,7 @@ class TestsFlextInfraRefactorImportNormalization(
         before = (
             "from typing import TYPE_CHECKING\n"
             "if TYPE_CHECKING:\n"
-            "    from demo_pkg._utilities.inspection import inspect_value\n"
+            "    from demo_pkg_utilities import inspect_value\n"
         )
         normalized = tm.ok(
             u.Infra.normalize_import_source(
@@ -202,14 +200,14 @@ class TestsFlextInfraRefactorImportNormalization(
             "value = u()\n"
         )
         module.write_text(source, encoding="utf-8")
-        with pytest.raises(ValueError, match="forbidden reverse namespace import"):
+        with u.Tests.raises(ValueError, match="forbidden reverse namespace import"):
             u.Infra.normalize_import_source(
                 project_root=project, file_path=module, source=source
             )
         tm.that(module.read_text(encoding="utf-8"), eq=source)
 
     @classmethod
-    @pytest.mark.parametrize("model", [False, True])
+    @c.Tests.MARK.parametrize("model", [False, True])
     def test_typing_guard_promotes_real_definition_time_imports(
         cls, tmp_path: Path, *, model: bool
     ) -> None:
@@ -260,7 +258,7 @@ class TestsFlextInfraRefactorImportNormalization(
         )
 
     @classmethod
-    @pytest.mark.parametrize("own_provider", [False, True])
+    @c.Tests.MARK.parametrize("own_provider", [False, True])
     def test_eager_root_dependencies_preserve_bootstrap_imports(
         cls,
         tmp_path: Path,
@@ -280,7 +278,7 @@ class TestsFlextInfraRefactorImportNormalization(
             encoding="utf-8",
         )
         source = (
-            "from demo_pkg._models.record import DemoRecord\n\n"
+            "from demo_pkg_models import DemoRecord\n\n"
             "class Bootstrap(DemoRecord):\n    pass\n"
             if own_provider
             else "from flext_cli import m\n\n"
@@ -309,8 +307,8 @@ class TestsFlextInfraRefactorImportNormalization(
         )
 
     @classmethod
-    @pytest.mark.parametrize("captured", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("captured", [False, True])
+    @c.Tests.MARK.parametrize(
         ("letter", "family"),
         [("r", None), ("u", None), ("m", "m"), ("p", "p"), ("t", "t")],
     )
@@ -361,7 +359,7 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @classmethod
-    @pytest.mark.parametrize("destination", ["missing", "stale"])
+    @c.Tests.MARK.parametrize("destination", ["missing", "stale"])
     def test_declared_destination_precedes_initializer_projection(
         cls,
         tmp_path: Path,
@@ -516,7 +514,7 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "directory",
         tuple(family.directory for family in u.Infra.facade_families().values()),
     )
@@ -561,7 +559,7 @@ class TestsFlextInfraRefactorImportNormalization(
         tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
-    @pytest.mark.parametrize("stale_root_export", [False, True])
+    @c.Tests.MARK.parametrize("stale_root_export", [False, True])
     def test_root_import_selects_declared_subpackage_owner(
         cls,
         tmp_path: Path,
@@ -697,8 +695,8 @@ class TestsFlextInfraNamespaceImportNormalization(
     """Declared PEP 420 roots retain their regular publishing package identity."""
 
     @classmethod
-    @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
-    @pytest.mark.parametrize("parent", ["", "region"])
+    @c.Tests.MARK.parametrize("namespace", ["infra", "deployment_support"])
+    @c.Tests.MARK.parametrize("parent", ["", "region"])
     def test_regular_publisher_under_declared_namespace(
         cls, tmp_path: Path, namespace: str, parent: str
     ) -> None:
@@ -790,7 +788,7 @@ class TestsFlextInfraNamespaceImportNormalization(
                     ),
                     eq=None,
                 )
-            with pytest.raises(
+            with u.Tests.raises(
                 ValueError, match="namespace without an owned package init"
             ):
                 u.Infra.plan_import_normalization(
@@ -826,7 +824,7 @@ class TestsFlextInfraNamespaceImportNormalization(
                 ),
                 eq=(),
             )
-            with pytest.raises(
+            with u.Tests.raises(
                 ValueError, match="layer-zero module imports its own namespace"
             ):
                 u.Infra.plan_import_normalization(

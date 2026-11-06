@@ -9,8 +9,6 @@ from __future__ import annotations
 import stat
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codemod, infra, services
 from tests import c, m, p, tm, u
 
@@ -66,7 +64,7 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(not (facade / "module.py").exists())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "destination_kind",
         ["data-only", "module", "package", "namespace", "nested-namespace", "invalid"],
     )
@@ -146,7 +144,7 @@ class TestsFlextInfraSemanticPublication:
                     )
                 )
             else:
-                with pytest.raises(ValueError, match=r"occupied|Python identifier"):
+                with u.Tests.raises(ValueError, match=r"occupied|Python identifier"):
                     codemod.FlextInfraCodemodSemanticApply.build_rename_plan(
                         root, workspace, selections
                     )
@@ -157,7 +155,7 @@ class TestsFlextInfraSemanticPublication:
         tm.that(target.exists(), eq=destination_kind == "module")
 
     @staticmethod
-    @pytest.mark.parametrize("occupied", ["module.py", "__module.py", "module"])
+    @c.Tests.MARK.parametrize("occupied", ["module.py", "__module.py", "module"])
     def test_module_policy_collision_has_no_live_effects(
         tmp_path: Path, occupied: str
     ) -> None:
@@ -175,13 +173,13 @@ class TestsFlextInfraSemanticPublication:
             destination.mkdir()
             (destination / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match=r"conflict|occupied"):
+        with u.Tests.raises(ValueError, match=r"conflict|occupied"):
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.that(source.read_text(), eq=original)
         tm.ok(destination.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["_.py", "_class.py"])
+    @c.Tests.MARK.parametrize("name", ["_.py", "_class.py"])
     def test_module_policy_rejects_invalid_stripped_identifiers(
         tmp_path: Path, name: str
     ) -> None:
@@ -193,7 +191,7 @@ class TestsFlextInfraSemanticPublication:
         original = "VALUE = 1\n"
         source.write_text(original, encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="no valid public identifier"):
+        with u.Tests.raises(ValueError, match="no valid public identifier"):
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.that(source.read_text(), eq=original)
 
@@ -295,7 +293,7 @@ class TestsFlextInfraSemanticPublication:
         )
         return hydrated, captured
 
-    @pytest.mark.parametrize("kind", ["class", "module"])
+    @c.Tests.MARK.parametrize("kind", ["class", "module"])
     def test_mod_composes_native_cross_root_effects_and_is_idempotent(
         self,
         tmp_path: Path,
@@ -429,8 +427,8 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states((*originals, observed_driver)))
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("needs_ast", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("needs_ast", [False, True])
     def test_source_campaign_applies_ast_without_a_rename_artifact(
         self,
         tmp_path: Path,
@@ -495,7 +493,7 @@ class TestsFlextInfraSemanticPublication:
         tm.ok(u.Cli.atomic_verify_binary_file_states((published,)))
 
     @staticmethod
-    @pytest.mark.parametrize("retire", [False, True])
+    @c.Tests.MARK.parametrize("retire", [False, True])
     def test_source_effect_rejects_unpaired_content_and_mode(
         tmp_path: Path, *, retire: bool
     ) -> None:
@@ -503,7 +501,7 @@ class TestsFlextInfraSemanticPublication:
         source = tmp_path / "source.py"
         source.write_text("value = 1\n", encoding=c.DEFAULT_ENCODING)
         original = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
-        with pytest.raises(ValueError, match="bytes and mode must agree"):
+        with u.Tests.raises(ValueError, match="bytes and mode must agree"):
             m.Infra.CodegenFilePlan(
                 project=tmp_path,
                 path=source,
@@ -513,7 +511,7 @@ class TestsFlextInfraSemanticPublication:
             )
         tm.ok(u.Cli.atomic_verify_binary_file_states((original,)))
 
-    @pytest.mark.parametrize("drift", ["none", "source", "same-byte"])
+    @c.Tests.MARK.parametrize("drift", ["none", "source", "same-byte"])
     def test_composed_module_rename_preserves_mode_and_refuses_drift(
         self, tmp_path: Path, drift: str
     ) -> None:
@@ -651,7 +649,7 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.that(source.read_text(encoding=c.DEFAULT_ENCODING), has="    class Payload:")
 
-    @pytest.mark.parametrize("failure", ["missing", "collision", "drift"])
+    @c.Tests.MARK.parametrize("failure", ["missing", "collision", "drift"])
     def test_mod_refuses_invalid_cross_root_campaign_before_source_publication(
         self,
         tmp_path: Path,
@@ -714,7 +712,7 @@ class TestsFlextInfraSemanticPublication:
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))
 
-    @pytest.mark.parametrize("kind", ["callable", "class", "module"])
+    @c.Tests.MARK.parametrize("kind", ["callable", "class", "module"])
     def test_authenticated_rename_apply_publishes_then_rejects_stale_repeat(
         self,
         tmp_path: Path,
@@ -773,7 +771,7 @@ class TestsFlextInfraSemanticPublication:
             eq=["True"],
         )
 
-    @pytest.mark.parametrize("kind", ["class", "module"])
+    @c.Tests.MARK.parametrize("kind", ["class", "module"])
     def test_native_rename_artifact_preserves_originals_and_refuses_consumer_drift(
         self,
         tmp_path: Path,

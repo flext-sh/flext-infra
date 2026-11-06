@@ -8,17 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, e, m, u
-from tests import c, tm
+from flext_infra import config
+from tests import c, e, m, tm, u
 
 
 class TestsFlextInfraWorkspaceInventory:
     """Host selection and typed ingress retain native failures."""
 
     @staticmethod
-    @pytest.mark.parametrize("text", [None, '{"entries":[]}', "{", "[]", ""])
+    @c.Tests.MARK.parametrize("text", [None, '{"entries":[]}', "{", "[]", ""])
     def test_host_selection_preserves_native_failures(
         tmp_path: Path,
         text: str | None,

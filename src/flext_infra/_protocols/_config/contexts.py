@@ -17,8 +17,7 @@ from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsDepsToolConfig,
         FlextInfraProtocolsMiseToolchain,
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsConfigRepository,
         FlextInfraProtocolsConfigScaffold,
     )
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsConfigContexts:
@@ -102,7 +100,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
     @runtime_checkable
-    class MakefileRenderSpec(MakeCommandContext, Protocol):
+    class MakefileProjectRenderSpec(MakeCommandContext, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -126,7 +124,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Selected repository Make profile."""
             ...
 
@@ -153,6 +151,10 @@ class FlextInfraProtocolsConfigContexts:
         def workspace_subprojects(self) -> tuple[str, ...]:
             """Declared workspace subproject paths."""
             ...
+
+    @runtime_checkable
+    class MakefileToolchainRenderSpec(MakefileProjectRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def uv_link_mode(self) -> t.NonEmptyStr:
@@ -189,6 +191,15 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
+        def mise_config_filename(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Only project Mise config the locked bootstrap loads; a machine-local
+            override never enters a locked install.
+            """
+            ...
+
+        @property
         def uv_lock_filename(self) -> t.NonEmptyStr:
             """Committed native uv lock of the runtime root."""
             ...
@@ -207,6 +218,10 @@ class FlextInfraProtocolsConfigContexts:
         def python_version(self) -> t.NonEmptyStr:
             """Python minor line the environment syncs against."""
             ...
+
+    @runtime_checkable
+    class MakefileRenderSpec(MakefileToolchainRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
@@ -255,6 +270,15 @@ class FlextInfraProtocolsConfigContexts:
         @property
         def timeout_kill_after_seconds(self) -> int:
             """Forced-termination grace period."""
+            ...
+
+        @property
+        def check_timeout_seconds(self) -> int:
+            """Structural member projected from the owning model.
+
+            Make check wall-time bound derived from the largest declared budget of
+            the gates it runs.
+            """
             ...
 
     @runtime_checkable
@@ -309,7 +333,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Generated Make execution profile."""
             ...
 
@@ -351,7 +375,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
     @runtime_checkable
-    class ProjectRenderContext(
+    class ProjectRenderRuntimeContext(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
@@ -362,7 +386,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Selected repository Make profile."""
             ...
 
@@ -416,20 +440,9 @@ class FlextInfraProtocolsConfigContexts:
             """
             ...
 
-        @property
-        def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name."""
-            ...
-
-        @property
-        def config_base_class(self) -> str:
-            """Config base class composed by the generated ``_config.py``."""
-            ...
-
-        @property
-        def config_base_module(self) -> str:
-            """Import module exposing ``config_base_class``."""
-            ...
+    @runtime_checkable
+    class ProjectRenderDependencyContext(ProjectRenderRuntimeContext, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def scaffold(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldSpec:
@@ -472,6 +485,10 @@ class FlextInfraProtocolsConfigContexts:
         def ownership_command_prefix(self) -> tuple[t.NonEmptyStr, ...]:
             """Configured Beads ownership command."""
             ...
+
+    @runtime_checkable
+    class ProjectRenderPackageContext(ProjectRenderDependencyContext, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def canonical_project_name(self) -> t.NonEmptyStr:
@@ -592,13 +609,32 @@ class FlextInfraProtocolsConfigContexts:
             """
             ...
 
+    @runtime_checkable
+    class ProjectRenderContext(ProjectRenderPackageContext, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name."""
+            ...
+
+        @property
+        def config_base_class(self) -> str:
+            """Config base class composed by the generated ``_config.py``."""
+            ...
+
+        @property
+        def config_base_module(self) -> str:
+            """Import module exposing ``config_base_class``."""
+            ...
+
         @property
         def description(self) -> t.NonEmptyStr:
             """Project description."""
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -682,7 +718,7 @@ class FlextInfraProtocolsConfigContexts:
         """Structural data contract projected from the owning model."""
 
         @property
-        def name(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def name(self) -> c.Infra.MakeProfile:
             """Closed Make profile name."""
             ...
 

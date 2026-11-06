@@ -35,6 +35,11 @@ Infra:
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
       evidence: '"heading_line_length": 200'
+    # rumdl owns every markdownlint rule (MD001-MD060) plus MD061+, and the
+    # rvben.rumdl editor extension reads .rumdl.toml: markdownlint is retired
+    # from CLI and editor alike, so its ignore projection is too.
+    - path: .markdownlintignore
+      evidence: '# @flext-regenerate: make gen'
     - .github/scripts/install-git-hooks.sh
     - .github/scripts/flext-law-loop.sh
     # The unread per-id projection of generated ast-grep utilities and rules
@@ -137,9 +142,11 @@ Infra:
       # document claim must stay inside it) and claimed in the enforcement
       # catalog, so `refactor mod --laws` selects generated rules natively.
       renderers:
-      # The letter-binding law (ADR-028 Decision 10): own-letter and
-      # duplicate-origin (ENFORCE-051), foreign-origin (ENFORCE-003,
-      # ENFORCE-080), module-path (ENFORCE-003, ENFORCE-051).
+      # The letter-binding law (ADR-028 Decision 10): each removal claims the
+      # laws of the rebinding it pairs with. The family rebinding, own-letter
+      # and duplicate-origin removals claim none and receive every law below;
+      # foreign-origin and own-root claim ENFORCE-003 and ENFORCE-080;
+      # module-path claims ENFORCE-003 and ENFORCE-051.
       - name: codemod_import_header_rules
         facts: codemod_workspace_export_facts
         shapes: [ import-header ]
@@ -257,7 +264,13 @@ Infra:
       # 20260929 python-build release aged past a 7d window and re-entered
       # every python resolution, breaking the 3.13 lock-time listing.
       dependency_cooldown_days: 10
-      uv_link_mode: copy
+      # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
+      # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
+      # here, so `copy` duplicated about 1 GB per environment, twice per upg,
+      # and pushed setup past its bound under load (flext-r3rs4). uv falls back
+      # to copy with its own warning where the cache lives on another
+      # filesystem; that project then declares its measured override.
+      uv_link_mode: clone
       editable_sources: {}
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
@@ -663,10 +676,12 @@ Infra:
       # subproject. MakeRuffSpec fails validation without the flag. Rules
       # whose fixes would destroy information stay declared unfixable in
       # tooling.yaml (rule selection, never disabling the unsafe channel).
+      # --force-exclude: a file-scoped run (pre-commit --file) honors the
+      # project's ruff exclude exactly like the repo-wide run.
       ruff:
-        format_check: [ --preview, --check ]
-        format_apply: [ --preview ]
-        lint_check: [ --preview, --no-fix ]
+        format_check: [ --preview, --check, --force-exclude ]
+        format_apply: [ --preview, --force-exclude ]
+        lint_check: [ --preview, --no-fix, --force-exclude ]
         lint_fix: [ --preview, --fix, --unsafe-fixes ]
       # Gates whose mutating side `make fmt` drives (formatters). Their
       # read-only side runs in `make check`; `make fix` never repeats them
@@ -758,9 +773,9 @@ Infra:
       - PYTHONHOME
       - PYTHONPATH
       setup_timeout_seconds: 118
-      # The check route receives TERM at this deadline. The shared timeout
-      # grace then reserves the configured two seconds for reaping children.
-      check_timeout_seconds: 118
+      # The check route wall-time bound is not declared here: the Makefile
+      # render spec derives it from the largest declared budget of the check
+      # gates (gate registry), plus the runner's forced-termination grace.
       ci:
         variable: CI
         value: Y
@@ -791,10 +806,11 @@ Infra:
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
         # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # runs every pre_push row below. Local make setup installs both hooks through the
-        # declared prek runner; CI=Y installs none.
+        # CI owns the complete gate. A pre-push row that runs make check/tests over
+        # the whole tree blocks every push for minutes, so only the commit-stage
+        # incremental hook is emitted.
       pre_commit: true
-      pre_push: true
+      pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
       violations_sweep_repair_verbs: [ fix, fmt, mod ]
       type_contract_rules:
@@ -1077,6 +1093,10 @@ Infra:
       - docs/architecture/crg-reports/**
       - docs/api-reference/generated/**
       - docs/projects/generated/**
+      # Collected plan artifacts are immutable evidence with digests recorded in
+      # their own manifest; a formatter rewrite invalidates provenance and
+      # blocks generation (incident 2026-11-04, ai-hub `formats` commits).
+      - docs/plans/collected/**
       # Frozen historical evidence; formatting must not rewrite the source record.
       - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
       - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
@@ -1224,7 +1244,10 @@ Infra:
       - [ git.repositoryScanMaxDepth, 2 ]
       - [ githubPullRequests.autoRepositoryDetection, true ]
       - [ githubPullRequests.ignoreSubmodules, false ]
-      - [ markdownlint.lintWorkspaceGlobs, [ '!**/.git/**', '!**/.planning/**', '!**/.reports/**', '!**/.venv/**', '!**/*.code-search', '!**/bower_components/**', '!**/build/**', '!**/dist/**', '!**/node_modules/**', '!**/output/**', '!**/tmp/**', '!**/vendor/**', '**/*.{md,mkd,mdwn,mdown,markdown,markdn,mdtxt,mdtext,workbook}' ] ]
+      # markdownlint is retired (rvben.rumdl reads .rumdl.toml): if the
+      # extension is installed anyway, its native off switch silences it so
+      # the editor never shows a second, diverging Markdown policy.
+      - [ markdownlint.appliesTo, noFiles ]
       - [ yaml.disableSchemaDetection, [ '**/.github/workflows/*.yml', '**/.github/workflows/*.yaml', '**/.gitea/workflows/*.yml', '**/.gitea/workflows/*.yaml', '**/.forgejo/workflows/*.yml', '**/.forgejo/workflows/*.yaml' ] ]
       map_union_settings:
         '[python]':
@@ -1242,6 +1265,9 @@ Infra:
       - python.analysis.extraPaths
       - python.analysis.useLibraryCodeForTypes
       - ruff.nativeServer
+      # markdownlint is retired: rvben.rumdl reads .rumdl.toml in the editor.
+      - markdownlint.config
+      - markdownlint.lintWorkspaceGlobs
       stripped_map_keys:
         '[python]':
         - editor.codeActionsOnSave.source.organizeImports
@@ -1660,7 +1686,6 @@ Infra:
         - "!AGENTS.md"
         - "!codex.md"
         - "!.rumdl.toml"
-        - "!.markdownlintignore"
         - "!.shellcheckrc"
       - name: "Git configuration"
         profiles: [ workspace ]
@@ -2197,12 +2222,6 @@ Infra:
           ownership: null
         .mise.toml:
           source: base/.mise.toml.j2
-          profiles: [ workspace, standalone ]
-          ownership:
-            owner: codegen
-            policy: full
-        .markdownlintignore:
-          source: base/markdownlintignore.j2
           profiles: [ workspace, standalone ]
           ownership:
             owner: codegen

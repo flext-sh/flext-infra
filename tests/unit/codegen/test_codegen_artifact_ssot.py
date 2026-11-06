@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
@@ -21,10 +19,10 @@ class TestsFlextInfraCodegenArtifactSsot:
     @staticmethod
     def test_testmon_policy_cannot_invent_missing_configuration() -> None:
         """The public boundary rejects absent policy instead of supplying one."""
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             m.Infra.TestmonCachePolicySpec.model_validate({})
 
-    @pytest.fixture(scope="module")
+    @u.Tests.fixture(scope="module")
     @staticmethod
     def codegen() -> p.Infra.CodegenConfigSpec:
         """Return the production configuration consumed by every projection.
@@ -36,11 +34,11 @@ class TestsFlextInfraCodegenArtifactSsot:
         return config.Infra.codegen
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("dependencies", "error"),
         [
-            pytest.param("cycle", "cyclic dependency graph:", id="cycle"),
-            pytest.param("unknown", "outside the graph:", id="unknown"),
+            u.Tests.param("cycle", "cyclic dependency graph:", id="cycle"),
+            u.Tests.param("unknown", "outside the graph:", id="unknown"),
         ],
     )
     def test_template_artifact_dependencies_form_a_closed_dag(
@@ -57,7 +55,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         payload["entries"][second]["requires_artifacts"] = (
             [first] if dependencies == "cycle" else [f"{second}.undeclared"]
         )
-        with pytest.raises(c.ValidationError, match=error):
+        with u.Tests.raises(c.ValidationError, match=error):
             m.Infra.TemplatesSpec.model_validate(payload)
 
     @staticmethod
@@ -129,7 +127,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(len(expected), eq=len(set(expected)))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -173,7 +171,7 @@ class TestsFlextInfraCodegenArtifactSsot:
     @staticmethod
     def test_generated_source_must_be_a_directory() -> None:
         """A generated source names a package tree, never a single file."""
-        with pytest.raises(c.ValidationError, match="must be a directory"):
+        with u.Tests.raises(c.ValidationError, match="must be a directory"):
             m.Infra.CodegenArtifactSpec(
                 name="wire_pb2.py",
                 is_dir=False,
@@ -203,7 +201,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         tm.that(unaccounted, eq=())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )

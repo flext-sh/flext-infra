@@ -17,6 +17,13 @@ valid:
     class Infra:
         class Report(Base):
             facade: p.Infra.Report | None = None
+  - |
+    class FlextModelsHandler:
+        class HandlerRuntimeState(Base):
+            execution_context: Annotated[
+                p.ExecutionContext,
+                t.schema_for_model(lambda: FlextModelsHandler.ExecutionContext),
+            ]
 invalid:
   - |
     class FlextInfraModelsDepsToml:

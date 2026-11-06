@@ -383,7 +383,7 @@ class FlextInfraProtocolsMiseToolchain:
             ...
 
     @runtime_checkable
-    class ToolchainSpec(FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol):
+    class ToolchainUvSpec(FlextInfraProtocolsMiseToolchainBase.SchemaRecord, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -467,6 +467,10 @@ class FlextInfraProtocolsMiseToolchain:
             by default so the engine never names a specific tool installation.
             """
             ...
+
+    @runtime_checkable
+    class ToolchainSpec(ToolchainUvSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def mise_lockfile(self) -> bool:

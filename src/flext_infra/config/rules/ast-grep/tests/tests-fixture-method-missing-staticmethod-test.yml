@@ -1,0 +1,28 @@
+id: tests-fixture-method-missing-staticmethod
+valid:
+  - |
+    class TestsSample:
+        @pytest.fixture
+        @staticmethod
+        def settings() -> int:
+            return 1
+  - |
+    class TestsSample:
+        @pytest.fixture
+        def settings(self) -> int:
+            return 1
+  - |
+    @pytest.fixture
+    def settings() -> int:
+        return 1
+invalid:
+  - |
+    class TestsSample:
+        @pytest.fixture
+        def settings() -> int:
+            return 1
+  - |
+    class TestsSample:
+        @u.Tests.fixture
+        def settings(tmp_path: Path) -> Path:
+            return tmp_path

@@ -12,8 +12,8 @@ from pathlib import Path
 
 from packaging.utils import canonicalize_name
 
-from flext_infra import config, u
-from tests import c, m, p, t, tm
+from flext_infra import config
+from tests import c, m, p, t, tm, u
 
 # Fixture scenario data, declared here and nowhere else: flext-infra ships no
 # provider registry, so a test that needs a provider declares the one it means
@@ -385,6 +385,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixture
+        fixture.declare_governed_kind(repository)
         provider = fixture.provider()
         path = repository / c.Infra.GITMODULES
         path.write_text(

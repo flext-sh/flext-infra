@@ -10,10 +10,9 @@ import shutil
 from typing import TYPE_CHECKING
 
 import flext_cli
-from flext_cli import m
 
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import tm, u
+from tests import m, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable

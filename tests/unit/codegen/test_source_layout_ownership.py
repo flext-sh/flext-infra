@@ -6,8 +6,6 @@ from __future__ import annotations
 import stat
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraStagedPackage
 from tests import c, m, tm, u
 
@@ -87,8 +85,8 @@ class TestsFlextInfraSourceLayoutOwnership:
         tm.that(collision.is_symlink(), eq=True)
 
     @staticmethod
-    @pytest.mark.parametrize("directory", ["project", ".project"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("directory", ["project", ".project"])
+    @c.Tests.MARK.parametrize(
         "relative",
         [".github/scripts/check.py", "automation/scripts/check.py"],
     )

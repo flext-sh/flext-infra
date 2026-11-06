@@ -143,8 +143,8 @@ class TestsFlextInfraLazyInitRuntime:
                 tm.ok(bool(u.Infra.public_export_names_source(native)))
 
     @staticmethod
-    @pytest.mark.parametrize("immutable_name", ["MappingProxyType", "Immutable"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("immutable_name", ["MappingProxyType", "Immutable"])
+    @c.Tests.MARK.parametrize(
         ("declarations", "mapping_argument"),
         [
             (
@@ -287,14 +287,14 @@ class TestsFlextInfraLazyInitRuntime:
         tm.ok(u.Cli.atomic_write_text_file(initializer, source))
         with (
             infra.rope_workspace(repository) as workspace,
-            pytest.raises(ValueError, match="Cyclic lazy alias mapping declaration"),
+            u.Tests.raises(ValueError, match="Cyclic lazy alias mapping declaration"),
         ):
             u.Infra.lazy_export_bindings(
                 package.name, initializer, source, project=workspace.rope_project
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected"),
         [
             ("class Root:\n    __all__ = ('Root',)\n", ("Root",)),
@@ -335,7 +335,7 @@ class TestsFlextInfraLazyInitRuntime:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("imported_alias", "published_alias"),
         [(False, False), (True, False), (True, True)],
     )
@@ -491,7 +491,7 @@ class TestsFlextInfraLazyInitRuntime:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "ownership",
         [
             "single",
@@ -648,7 +648,7 @@ class TestsFlextInfraLazyInitRuntime:
         tm.that(rendered, has="FlextTestsModels.Tests")
 
     @staticmethod
-    @pytest.mark.parametrize("family", ["c", "m"])
+    @c.Tests.MARK.parametrize("family", ["c", "m"])
     def test_competing_declared_publishers_keep_their_exact_diagnostic(
         tmp_path: Path, family: Literal["c", "m"]
     ) -> None:
@@ -710,9 +710,9 @@ class TestsFlextInfraLazyInitRuntime:
         )
         tm.that(u.Tests.run_lazy_init(repository), eq=0)
         roots = u.Tests.runtime_evaluated_roots()
-        with pytest.raises(ValueError, match="Unresolved planned base"):
+        with u.Tests.raises(ValueError, match="Unresolved planned base"):
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
-        with pytest.raises(
+        with u.Tests.raises(
             AssertionError, match="cannot import name 'FlextPlannedErrors'"
         ):
             u.Tests.run_lazy_init_probe(
@@ -791,7 +791,7 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.DEFAULT_ENCODING,
         )
         roots = u.Tests.runtime_evaluated_roots()
-        with pytest.raises(ValueError, match="Unresolved planned base"):
+        with u.Tests.raises(ValueError, match="Unresolved planned base"):
             u.Infra.runtime_evaluated_base_classes(repository, {}, roots)
         planned = {
             plan.path.resolve(): plan.desired_content.decode(c.DEFAULT_ENCODING)

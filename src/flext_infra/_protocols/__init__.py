@@ -76,6 +76,7 @@ if TYPE_CHECKING:
         FlextInfraProtocolsRefactorNamespaceEnforcer,
     )
     from flext_infra._protocols.release import FlextInfraProtocolsRelease
+    from flext_infra._protocols.release_forge import FlextInfraProtocolsReleaseForge
     from flext_infra._protocols.rope import FlextInfraProtocolsRope
     from flext_infra._protocols.rope_move import FlextInfraProtocolsRopeMove
     from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
@@ -129,6 +130,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsRefactorAstGrep",
     "FlextInfraProtocolsRefactorNamespaceEnforcer",
     "FlextInfraProtocolsRelease",
+    "FlextInfraProtocolsReleaseForge",
     "FlextInfraProtocolsRope",
     "FlextInfraProtocolsRopeMove",
     "FlextInfraProtocolsRopeRuntime",
@@ -187,6 +189,7 @@ install_lazy_exports(
         "FlextInfraProtocolsRefactorAstGrep": ".refactor_ast_grep",
         "FlextInfraProtocolsRefactorNamespaceEnforcer": ".refactor_namespace_enforcer",
         "FlextInfraProtocolsRelease": ".release",
+        "FlextInfraProtocolsReleaseForge": ".release_forge",
         "FlextInfraProtocolsRope": ".rope",
         "FlextInfraProtocolsRopeMove": ".rope_move",
         "FlextInfraProtocolsRopeRuntime": ".rope_runtime",

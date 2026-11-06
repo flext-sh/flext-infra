@@ -119,7 +119,6 @@ class FlextInfraCodegenVscode:
             for key, value in sorted(portable.items())
             if key not in spec.stripped_keys
             and key not in artifact_settings
-            and key != c.Infra.MARKDOWNLINT_CONFIG_SETTING
             and (key not in expected or value != expected[key])
         ]
         deltas: t.MutableJsonMapping = {"settings": pairs} if pairs else {}
@@ -371,50 +370,14 @@ class FlextInfraCodegenVscode:
         # generated keys forever. Only explicitly declared non-artifact maps use
         # merge semantics.
         artifacts_changed = cls._replace_artifact_maps(settings, codegen)
-        # The editor Markdown policy is a complete projection of the tooling
-        # SSOT's common rules: replacing it lets a retired rule converge away
-        # instead of surviving as a stale generated key.
-        markdown_applied = cls._apply_markdown_editor_config(
-            settings,
-            repository_root,
-        )
-        if markdown_applied.failure:
-            return r[bool].from_failure(markdown_applied)
-        # Stripped keys are owned canonically by pyproject.toml [tool.pyright];
-        # keeping them in settings.json makes Pylance emit settingsNotOverridable
-        # warnings. Actively delete every retired key so existing files converge
-        # to a warning-free projection.
+        # Stripped keys are owned canonically elsewhere (pyproject.toml
+        # [tool.pyright]; .rumdl.toml for Markdown, read by rvben.rumdl).
+        # Keeping them in settings.json makes the editor warn or lint with a
+        # second, diverging policy. Actively delete every retired key so
+        # existing files converge to a warning-free projection.
         stripped_changed = cls._strip_retired_keys(settings, spec.stripped_keys)
         stripped_changed |= cls._strip_retired_map_keys(settings, spec)
-        return r[bool].ok(
-            artifacts_changed or markdown_applied.value or stripped_changed or changed,
-        )
-
-    @classmethod
-    def _apply_markdown_editor_config(
-        cls,
-        settings: t.MutableJsonMapping,
-        repository_root: Path,
-    ) -> p.Result[bool]:
-        """Replace the editor Markdown policy with its common-rules projection.
-
-        Returns:
-            The resulting ``p.Result[bool]``.
-
-        """
-        loaded = u.Infra.load_tooling_inputs(repository_root)
-        if loaded.failure:
-            return r[bool].from_failure(loaded)
-        canonical = u.normalize_to_json_value(
-            u.Infra.markdown_editor_configuration(
-                loaded.value.document.tools.markdown,
-            )
-        )
-        key = c.Infra.MARKDOWNLINT_CONFIG_SETTING
-        unchanged = settings.get(key) == canonical
-        if not unchanged:
-            settings[key] = canonical
-        return r[bool].ok(not unchanged)
+        return r[bool].ok(artifacts_changed or stripped_changed or changed)
 
     @classmethod
     def _apply_declared_settings(

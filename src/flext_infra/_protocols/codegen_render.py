@@ -17,8 +17,7 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
     from flext_infra._protocols import FlextInfraProtocolsMiseToolchain
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigMake,
@@ -26,7 +25,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsConfigRender,
         FlextInfraProtocolsConfigRepository,
     )
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsCodegenRender:
@@ -69,7 +67,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -132,7 +130,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -183,7 +181,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class GithubWorkflowRenderSpec(
+    class GithubWorkflowProjectRenderSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
@@ -224,7 +222,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Structural member projected from the owning model.
 
             Make/codegen profile; ci-matrix projected only for workspace/standalone;
@@ -267,6 +265,10 @@ class FlextInfraProtocolsCodegenRender:
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
             """Canonical workflow command contract."""
             ...
+
+    @runtime_checkable
+    class GithubWorkflowRenderSpec(GithubWorkflowProjectRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def workspace_repositories(
@@ -460,6 +462,15 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def mise_config_filename(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Only project Mise config the activation loads; a machine-local override
+            never enters the governed shell.
+            """
+            ...
+
+        @property
         def environment_path_prepends(self) -> tuple[t.NonEmptyStr, ...]:
             """Project-relative executable paths."""
             ...
@@ -538,17 +549,12 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class MarkdownLintRenderSpec(FlextCliProtocols.BaseModel, Protocol):
+    class MarkdownRenderSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
         def native_config(self) -> str:
             """Native Markdown TOML derived from the shared policy."""
-            ...
-
-        @property
-        def exclude(self) -> t.StrTuple:
-            """Declared non-documentation path patterns."""
             ...
 
     @runtime_checkable
@@ -656,7 +662,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 

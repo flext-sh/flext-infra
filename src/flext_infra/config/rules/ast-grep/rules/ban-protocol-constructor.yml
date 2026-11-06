@@ -17,47 +17,95 @@ id: ban-protocol-constructor
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 rewriters:
-  - id: protocol-path-to-model-path
-    rule:
-      kind: attribute
-      pattern: $PATH
-      matches: protocol-model-path
-      not:
-        inside:
-          kind: attribute
-          matches: protocol-model-path
-    transform:
-      MODEL_PATH:
-        replace:
-          source: $PATH
-          replace: "^p\\."
-          by: m.
-    fix: $MODEL_PATH
+- id: protocol-path-to-model-path
+  rule:
+    kind: attribute
+    pattern: $PATH
+    matches: protocol-model-path
+    not:
+      inside:
+        kind: attribute
+        matches: protocol-model-path
+  transform:
+    MODEL_PATH:
+      replace:
+        source: $PATH
+        replace: "^p\\."
+        by: m.
+  fix: $MODEL_PATH
 rule:
   all:
-    - kind: attribute
-    - pattern: $CALLEE
-    - regex: "^p(?:\\.[A-Z][A-Za-z0-9_]*)+(?:\\.model_(?:validate|validate_json|validate_strings|construct))?$"
-    - inside:
-        kind: call
-        field: function
-    - inside:
-        kind: module
+  - kind: attribute
+  - pattern: $CALLEE
+  - regex: "^p(?:\\.[A-Z][A-Za-z0-9_]*)+(?:\\.model_(?:validate|validate_json|validate_strings|construct))?$"
+  - inside:
+      kind: call
+      field: function
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        matches: p-imported-from-flext
         stopBy: end
-        has:
-          matches: p-imported-from-flext
-          stopBy: end
 transform:
   RETARGETED:
     rewrite:
-      rewriters: [protocol-path-to-model-path]
+      rewriters: [ protocol-path-to-model-path ]
       source: $CALLEE
 fix: $RETARGETED
 message: >-
-  A p facade member is a Protocol contract, not a constructor or validator.
-  Construct and validate through the model m publishes at the same path and
-  keep p for annotations and runtime checks.
+  A p facade member is a Protocol contract, not a constructor or validator. Construct and validate through the model m publishes at the same path and keep p for annotations and runtime checks.
 metadata:
-  enforce: [ENFORCE-115]
+  enforce: [ ENFORCE-115 ]
+---
+# The same law covers the validation target of a type adapter. `u.type_adapter`
+# and `TypeAdapter` build a pydantic validator for their type argument, and a
+# Protocol has no pydantic schema: a `p` path with a model twin inside that
+# argument (`tuple[p.Infra.GitLaneBead, ...]`, `MutableSequence[p.Metadata]`)
+# fails at runtime with PydanticSchemaGenerationError. Validation is value-level
+# model behaviour (ADR-018, amendment 2026-11-02), so the path is retargeted to
+# its model twin by the same generated `protocol-model-path` set, while the
+# validated value stays typed through the protocol at its annotation. A
+# protocol with no model twin (a callable protocol) is never matched.
+id: ban-protocol-validation-target
+language: python
+severity: error
+files:
+- "**/*.py"
+rule:
+  all:
+  - kind: attribute
+  - pattern: $PATH
+  - regex: "^p(?:\\.[A-Z][A-Za-z0-9_]*)+$"
+  - matches: protocol-model-path
+  - not:
+      inside:
+        kind: attribute
+        matches: protocol-model-path
+  - inside:
+      kind: argument_list
+      stopBy: end
+      inside:
+        kind: call
+        has:
+          field: function
+          regex: "^(?:TypeAdapter|[um]\\.type_adapter)$"
+  - inside:
+      kind: module
+      stopBy: end
+      has:
+        matches: p-imported-from-flext
+        stopBy: end
+transform:
+  MODEL_PATH:
+    replace:
+      source: $PATH
+      replace: "^p\\."
+      by: m.
+fix: $MODEL_PATH
+message: >-
+  A type adapter validates through a model: retarget the p path inside its type argument to the model m publishes at the same path; keep p for the annotation of the validated value.
+metadata:
+  enforce: [ ENFORCE-115 ]

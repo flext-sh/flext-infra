@@ -9,13 +9,10 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m, p
 from flext_infra.gates.pyright import FlextInfraGatesPyright
 from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
 from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,7 +65,41 @@ class TestsFlextInfraRealGateRunners:
         tm.ok(not result.result.passed)
         tm.that([issue.code for issue in result.issues], has=["line-too-long"])
 
-    @pytest.mark.slow
+    @staticmethod
+    def test_ruff_selected_files_honor_project_exclude(tmp_path: Path) -> None:
+        """A file-scoped run skips an excluded path and still lints a normal one."""
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "force-exclude",
+            pyproject=(
+                '[project]\nname = "force-exclude"\nversion = "0.0.1"\n\n'
+                '[tool.ruff]\nexclude = ["tests/fixtures"]\n'
+            ),
+        )
+        excluded = project_dir / "tests" / "fixtures" / "bad.py"
+        normal = project_dir / "src" / "bad.py"
+        for path in (excluded, normal):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("import os\n", encoding="utf-8")
+        gate = FlextInfraGatesRuffLint(tmp_path)
+
+        def run(path: Path) -> int:
+            return len(
+                gate.check(
+                    project_dir,
+                    m.Infra.GateContext(
+                        repository_root=tmp_path,
+                        reports_dir=tmp_path,
+                        selected_files=(path,),
+                        ruff_args=("--select", "F401"),
+                    ),
+                ).issues
+            )
+
+        tm.that(run(excluded), eq=0)
+        tm.that(run(normal), gte=1)
+
+    @c.Tests.MARK.slow
     def test_ruff_lint_fix_reports_stderr_diagnostics_instead_of_deleting_them(
         self,
         tmp_path: Path,
@@ -116,7 +147,7 @@ class TestsFlextInfraRealGateRunners:
         tm.ok(not after.result.passed)
         tm.that(emitted.stderr, has='{"failed": true}')
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_ruff_lint_fix_hoists_inline_imports_and_wraps_long_literals(
         self,
         tmp_path: Path,
@@ -247,7 +278,7 @@ class TestsFlextInfraRealGateRunners:
         tm.ok(result.result.passed)
         tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
 
-    @pytest.mark.requires_engine("pyright")
+    @c.Tests.MARK.requires_engine("pyright")
     def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
         """Test pyright reports real type error."""
         project_dir = u.Tests.mk_project(

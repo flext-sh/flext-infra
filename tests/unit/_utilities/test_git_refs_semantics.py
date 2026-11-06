@@ -8,10 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraGitRefsSemantics:
@@ -36,7 +33,7 @@ class TestsFlextInfraGitRefsSemantics:
         tm.that(schema["required"], has="repo_root")
         restored = type(request).model_validate_json(request.model_dump_json())
         tm.that(restored, eq=request)
-        with pytest.raises(m.ValidationError, match="repo_root"):
+        with u.Tests.raises(m.ValidationError, match="repo_root"):
             m.Infra.GitPushRequest.model_validate({"branch": request.branch})
 
     @staticmethod

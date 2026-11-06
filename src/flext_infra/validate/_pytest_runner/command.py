@@ -102,6 +102,30 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             return config.Infra.tooling.tools.pytest.ci_excluded_markers
         return ()
 
+    def not_executed_external_gates(
+        self,
+        *,
+        execution_mode: c.Infra.PytestExecutionMode = (
+            c.Infra.PytestExecutionMode.INCREMENTAL
+        ),
+    ) -> t.StrTuple:
+        """Return the external gate markers this run deselects as NOT EXECUTED.
+
+        Offline scopes never run them. Under the Make CI token the incremental
+        global scope deselects them too: CI provides neither Docker nor remote
+        services, so those cases are reported as not executed instead of being
+        skipped at setup. FULL keeps every marker; it runs only locally.
+
+        Returns:
+            The external gate markers deselected by this run.
+
+        """
+        if not execution_mode.is_global or (
+            self.ci_context and execution_mode.is_incremental
+        ):
+            return config.Infra.tooling.tools.pytest.external_gate_markers
+        return ()
+
     def testmon_environment(self, execution_mode: c.Infra.PytestExecutionMode) -> str:
         """Name the testmon environment of one marker scope on this toolchain.
 
@@ -177,14 +201,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         pytest = config.Infra.tooling.tools.pytest
         excluded = tuple(
             dict.fromkeys((
-                *(
-                    (
-                        *pytest.external_gate_markers,
-                        *self.ci_excluded_markers(execution_mode=execution_mode),
-                    )
-                    if not execution_mode.is_global
-                    else ()
-                ),
+                *self.not_executed_external_gates(execution_mode=execution_mode),
+                *self.ci_excluded_markers(execution_mode=execution_mode),
                 *(
                     ()
                     if self.carries_slow_items(execution_mode)

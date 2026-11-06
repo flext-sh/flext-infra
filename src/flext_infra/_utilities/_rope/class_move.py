@@ -1170,7 +1170,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
 
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         rewritten = FlextInfraUtilitiesTypesSemanticNesting.rewrite_quoted_types(
-            composed, resource, text, replacement, module=before_module
+            (composed, resource), text, replacement, module=before_module
         )
         if binding is not None:
             rewritten, elected = runtime.import_binding(
@@ -1394,7 +1394,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             seen.add(key)
 
         FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            project, resource, text, validate
+            (project, resource), text, validate
         )
         if seen != set(required):
             msg = f"module relocation lost original quoted type positions: {path}"
@@ -2043,7 +2043,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         directory = FlextInfraUtilitiesCodegenNamespace.facade_families()[
             family
         ].directory
-        return namespace_root / directory / f"{source_file.stem.strip('_')}.py"
+        stem = source_file.stem.strip("_")
+        if stem.startswith(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX):
+            stem = stem.removeprefix(c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX)
+        return namespace_root / directory / f"{stem}.py"
 
     @staticmethod
     def _owned_path(root: Path, candidate: Path) -> Path:

@@ -96,7 +96,7 @@ class FlextInfraModelsConfigScaffold:
                 Annotated[
                     p.Infra.ScaffoldConfigBaseSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec
+                        lambda: FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec
                     ),
                 ],
                 ...,
@@ -221,14 +221,18 @@ class FlextInfraModelsConfigScaffold:
         build: Annotated[
             Annotated[
                 p.Infra.ScaffoldBuildSpec,
-                t.schema_for_model(FlextInfraModelsConfigScaffold.ScaffoldBuildSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigScaffold.ScaffoldBuildSpec
+                ),
             ],
             m.Field(description="Build-system policy"),
         ]
         project: Annotated[
             Annotated[
                 p.Infra.ScaffoldProjectSpec,
-                t.schema_for_model(FlextInfraModelsConfigScaffold.ScaffoldProjectSpec),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigScaffold.ScaffoldProjectSpec
+                ),
             ],
             m.Field(description="Project metadata and dependency policy"),
         ]
@@ -236,7 +240,7 @@ class FlextInfraModelsConfigScaffold:
             Annotated[
                 p.Infra.ScaffoldPingExampleSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec
+                    lambda: FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec
                 ),
             ],
             m.Field(description="Functional scaffold example"),
@@ -246,7 +250,9 @@ class FlextInfraModelsConfigScaffold:
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,

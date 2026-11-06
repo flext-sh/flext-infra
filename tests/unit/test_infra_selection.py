@@ -11,15 +11,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from tests import c, p, tm, u
 
 
 class TestsFlextInfraInfraSelection:
     """Test suite for u.Infra."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def workspace_with_projects(
         tmp_path: Path,
@@ -50,7 +48,7 @@ class TestsFlextInfraInfraSelection:
         )
         return tmp_path
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def selector() -> type[u.Infra]:
         """Provide project selector utilities class.
@@ -62,7 +60,7 @@ class TestsFlextInfraInfraSelection:
         selector_cls: type[u.Infra] = u.Infra
         return selector_cls
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def workspace_with_declared_names(
         tmp_path: Path,
@@ -99,7 +97,7 @@ class TestsFlextInfraInfraSelection:
         )
         return tmp_path
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def workspace_with_nested_members(
         tmp_path: Path,
@@ -282,7 +280,7 @@ class TestsFlextInfraInfraSelection:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("name", [".", "workspace"])
+    @c.Tests.MARK.parametrize("name", [".", "workspace"])
     def test_resolve_projects_accepts_root_aliases(
         selector: type[u.Infra],
         workspace_with_nested_members: Path,

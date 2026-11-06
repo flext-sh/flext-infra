@@ -9,15 +9,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from flext_infra import (
     FlextInfraCli,
     FlextInfraGitService,
     FlextInfraWorktreeService,
     config,
 )
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsVerifyLanes:
@@ -40,7 +38,7 @@ class TestsVerifyLanes:
         workspace = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
         declared = workspace.model_copy(
             update={
-                "integration": p.Infra.WorkspaceIntegrationSpec(
+                "integration": m.Infra.WorkspaceIntegrationSpec(
                     provider=workspace.repository.provider,
                     branch=integration,
                 ),
@@ -121,12 +119,12 @@ class TestsVerifyLanes:
         ]
 
     @classmethod
-    @pytest.mark.parametrize("integration", ["release/alpha", "delivery/beta"])
-    @pytest.mark.parametrize("minutes", [2.5, 17.0])
+    @c.Tests.MARK.parametrize("integration", ["release/alpha", "delivery/beta"])
+    @c.Tests.MARK.parametrize("minutes", [2.5, 17.0])
     def test_cli_clean_and_merged_ref_inventory(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         integration: str,
         minutes: float,
     ) -> None:
@@ -181,7 +179,7 @@ class TestsVerifyLanes:
     def test_cli_stash_preserves_index_refs_and_wip(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A real recovery ref blocks CLI/admission without altering any WIP."""
         request = cls._repository(tmp_path, "integration/incident", 11.0)
@@ -224,7 +222,7 @@ class TestsVerifyLanes:
     def test_unknown_unique_ref_is_inconclusive_not_abandoned(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Unknown branch ownership never becomes an age-based abandonment claim."""
         request = cls._repository(tmp_path, "integration/unknown", 7.0)
@@ -241,6 +239,37 @@ class TestsVerifyLanes:
             has=f"inconclusive unique ref: refs/heads/{branch}",
         )
         tm.fail("abandoned unique ref" in output.out + output.err)
+
+    @classmethod
+    def test_unselected_evidence_is_not_executed_never_a_refusal(
+        cls,
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """Without selected PR or Bead evidence a unique lane is recorded, not refused.
+
+        The inventory reports both sources as NOT EXECUTED; the run stays green
+        because no selected evidence contradicts the lane.
+        """
+        request = cls._repository(tmp_path, "integration/unselected", 9.0)
+        repo = request.repo_root
+        branch = "unselected-slice"
+        u.Tests.git_run(repo, "switch", "-c", branch)
+        (repo / "work.txt").write_text("unique work\n", encoding="utf-8")
+        u.Tests.git_run(repo, "add", "work.txt")
+        u.Tests.git_run(repo, "commit", "-m", "unique work")
+        code = FlextInfraCli.infra_main([
+            "workspace",
+            "verify-lanes",
+            "--repo-root",
+            str(repo),
+        ])
+        output = capsys.readouterr()
+        text = output.out + output.err
+        tm.that(code, eq=0)
+        tm.that(text, has="PR ownership evidence: NOT EXECUTED")
+        tm.that(text, has="Beads ownership evidence: NOT EXECUTED")
+        tm.fail("inconclusive unique ref" in text)
 
     @classmethod
     def test_open_pr_allows_unique_lane_and_unintegrated_retirement_refuses(
@@ -296,7 +325,7 @@ class TestsVerifyLanes:
     def test_stale_base_and_expired_receipt_fail_without_mutation(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Policy changes drive receipt expiry; stale bases cannot create lanes."""
         request = cls._repository(tmp_path, "integration/stale", 5.5)
@@ -343,7 +372,7 @@ class TestsVerifyLanes:
     def test_remote_divergence_and_read_errors_never_pass(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A stale tracking object or failed evidence read cannot be empty/green."""
         request = cls._repository(tmp_path, "integration/divergent", 9.0)
@@ -417,11 +446,11 @@ class TestsVerifyLanes:
         tm.that(u.Tests.git_capture(repo, "show-ref"), eq=refs)
 
     @classmethod
-    @pytest.mark.parametrize("artifact", ["detached", "orphan"])
+    @c.Tests.MARK.parametrize("artifact", ["detached", "orphan"])
     def test_unowned_detached_and_orphan_registry_entries_are_preserved(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         artifact: str,
     ) -> None:
         """Registry evidence is reported without removal, relocation, or pruning."""
@@ -447,11 +476,11 @@ class TestsVerifyLanes:
         )
 
     @classmethod
-    @pytest.mark.parametrize("minutes", [3.25, 19.0])
+    @c.Tests.MARK.parametrize("minutes", [3.25, 19.0])
     def test_abandonment_requires_correlated_owner_patch_and_activity_policy(
         cls,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         minutes: float,
     ) -> None:
         """Only real unique patches with stale declared ownership are abandoned."""

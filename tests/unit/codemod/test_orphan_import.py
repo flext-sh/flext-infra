@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +39,7 @@ class TestsFlextInfraOrphanImport:
         return stripped
 
     @staticmethod
-    @pytest.mark.parametrize("guard", ["TYPE_CHECKING", "typing.TYPE_CHECKING"])
+    @c.Tests.MARK.parametrize("guard", ["TYPE_CHECKING", "typing.TYPE_CHECKING"])
     def test_guarded_import_survives_a_populated_block(
         tmp_path: Path, guard: str
     ) -> None:

@@ -12,8 +12,6 @@ import sys
 from pathlib import Path
 from typing import cast
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.transformers import FlextInfraTransformersSemantic
 from tests import c, m, tm, u
@@ -140,9 +138,9 @@ class TestsFlextInfraSharedHelperPromotion:
             encoding="utf-8",
         )
 
-    @pytest.mark.parametrize("reexport", [False, True])
-    @pytest.mark.parametrize("quoted_only", [False, True])
-    @pytest.mark.parametrize("lexical_collision", [False, True])
+    @c.Tests.MARK.parametrize("reexport", [False, True])
+    @c.Tests.MARK.parametrize("quoted_only", [False, True])
+    @c.Tests.MARK.parametrize("lexical_collision", [False, True])
     def test_original_identity_moves_without_effects_until_publication(
         self,
         tmp_path: Path,
@@ -195,7 +193,7 @@ class TestsFlextInfraSharedHelperPromotion:
             if lexical_collision:
                 # A collision is a planning defect: it escapes loud, before any
                 # effect, instead of being folded into a failed result.
-                with pytest.raises(
+                with u.Tests.raises(
                     ValueError,
                     match="shadowed quoted type destination",
                 ):
@@ -267,7 +265,7 @@ class TestsFlextInfraSharedHelperPromotion:
         tm.that(self._run(root, identity), eq="shared behavior")
         tm.ok(source.exists())
 
-    @pytest.mark.parametrize("test_case", [False, True])
+    @c.Tests.MARK.parametrize("test_case", [False, True])
     def test_unused_helpers_and_real_test_cases_keep_their_declared_owner(
         self,
         tmp_path: Path,
@@ -392,7 +390,7 @@ class TestsFlextInfraSharedHelperPromotion:
         }
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="requires one utilities facade"),
+            u.Tests.raises(ValueError, match="requires one utilities facade"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,
@@ -464,7 +462,7 @@ class TestsFlextInfraSharedHelperPromotion:
         }
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match="already binds"),
+            u.Tests.raises(ValueError, match="already binds"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CLASS_NESTING,

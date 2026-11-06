@@ -36,68 +36,83 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         root = repository_root.expanduser().absolute()
-        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
-            prepared = FlextInfraDocGenerator(
-                repository_root=root,
-                selected_projects=projects,
-                output_dir=output_dir,
-            ).prepare_bundle()
-            if prepared.failure:
-                return r[Sequence[p.Infra.DocsPhaseReport]].from_failure(prepared)
-            bundle = prepared.value
-            elected: list[
-                tuple[
-                    m.Infra.DocScope,
-                    tuple[p.Cli.AtomicFileState, ...],
-                ]
-            ] = []
-            # Every ownership boundary is checked before the first repair effect.
-            for scoped in bundle.scopes:
-                scope = scoped.scope
-                loaded = u.Infra.load_codegen_inputs(scope.repository_root).unwrap()
-                selected = u.Infra.iter_scope_markdown_files(scope)
-                managed = {
-                    scope.repository_root / item.path: item
-                    for item in loaded.spec.managed_file_specs
-                }
-                generated = {
-                    scope.path / artifact.relative_path for artifact in scoped.artifacts
-                }
-                for path in selected:
-                    ownership = managed.get(path)
-                    if ownership is not None and ownership.policy == "merge":
-                        msg = (
-                            f"authored docs repair requires a Markdown region "
-                            f"compositor for {path}; declared owner={ownership.owner}"
-                        )
-                        raise ValueError(msg)
-                elected.append((
-                    scope,
-                    tuple(
-                        u.Cli.atomic_read_binary_file_state(
-                            path, required=True
-                        ).unwrap()
-                        for path in selected
-                        if path not in generated and path not in managed
-                    ),
-                ))
-            plans = tuple(
-                (scope, *self._plan_scope(scope, sources)) for scope, sources in elected
+        prepared = FlextInfraDocGenerator(
+            repository_root=root,
+            selected_projects=projects,
+            output_dir=output_dir,
+        ).prepare_bundle()
+        if prepared.failure:
+            return r[Sequence[p.Infra.DocsPhaseReport]].from_failure(prepared)
+        bundle = prepared.value
+        elected: list[
+            tuple[
+                m.Infra.DocScope,
+                tuple[p.Cli.AtomicFileState, ...],
+            ]
+        ] = []
+        # Every ownership boundary is checked before the first repair effect.
+        for scoped in bundle.scopes:
+            scope = scoped.scope
+            loaded = u.Infra.load_codegen_inputs(scope.repository_root).unwrap()
+            selected = u.Infra.iter_scope_markdown_files(scope)
+            managed = {
+                scope.repository_root / item.path: item
+                for item in loaded.spec.managed_file_specs
+            }
+            generated = {
+                scope.path / artifact.relative_path for artifact in scoped.artifacts
+            }
+            for path in selected:
+                ownership = managed.get(path)
+                if ownership is not None and ownership.policy == "merge":
+                    msg = (
+                        f"authored docs repair requires a Markdown region "
+                        f"compositor for {path}; declared owner={ownership.owner}"
+                    )
+                    raise ValueError(msg)
+            elected.append((
+                scope,
+                tuple(
+                    u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                    for path in selected
+                    if path not in generated and path not in managed
+                ),
+            ))
+        plans = tuple(
+            (scope, *self._plan_scope(scope, sources)) for scope, sources in elected
+        )
+        # Planning is read-only; the whole repair publishes as one verified batch,
+        # so the mutation lock covers the effect and never the computation.
+        changes = tuple(
+            m.Cli.FileChange(
+                path=file.path,
+                before=file.before,
+                desired_content=file.desired_content,
+                desired_mode=(
+                    file.desired_mode
+                    if file.desired_mode is not None
+                    else c.Infra.CONFIG_SPEC[1]
+                ),
             )
-            reports: list[p.Infra.DocsPhaseReport] = []
-            for scope, files, items in plans:
-                for file in files:
-                    if apply:
-                        if file.desired_content is None:
-                            msg = f"docs repair has no proposed bytes: {file.path}"
-                            raise ValueError(msg)
-                        u.Cli.atomic_write_binary_file_guarded(
-                            file.before,
-                            file.desired_content,
-                            permission_mode=file.desired_mode,
-                        ).unwrap()
-                reports.append(self._scope_report(scope, items, apply=apply))
-            return r[Sequence[p.Infra.DocsPhaseReport]].ok(tuple(reports))
+            for _scope, files, _items in plans
+            for file in files
+            if apply and file.desired_content is not None
+        )
+        for _scope, files, _items in plans:
+            for file in files:
+                if apply and file.desired_content is None:
+                    msg = f"docs repair has no proposed bytes: {file.path}"
+                    raise ValueError(msg)
+        if changes:
+            u.Cli.publish_file_changes(
+                changes,
+                lock_path=u.Infra.mutation_lock_path(root).unwrap(),
+            ).unwrap()
+        reports = tuple(
+            self._scope_report(scope, items, apply=apply)
+            for scope, _files, items in plans
+        )
+        return r[Sequence[p.Infra.DocsPhaseReport]].ok(reports)
 
     @override
     def execute(self) -> p.Result[bool]:

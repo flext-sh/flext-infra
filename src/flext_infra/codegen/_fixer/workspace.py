@@ -33,7 +33,7 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         self,
         project: p.Infra.ProjectInfo,
         *,
-        enforce_namespace: Callable[[str], m.Infra.WorkspaceEnforcementReport],
+        enforce_namespace: Callable[[str], p.Infra.WorkspaceEnforcementReport],
     ) -> p.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project.
 
@@ -79,7 +79,11 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            discovered = tuple(u.Infra.projects(self.repository_root).unwrap())
+            discovered = tuple(
+                project
+                for project in u.Infra.projects(self.repository_root).unwrap()
+                if (project.path / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            )
             scope = frozenset(self.project_names or ())
             selected_projects = (
                 tuple(p for p in discovered if p.path.name in scope)

@@ -14,14 +14,12 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m, p, t, u
+from flext_infra import config
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMiseToolchainProof,
 )
-from tests import c, p, tm
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraMiseToolchainProof:
@@ -50,10 +48,10 @@ class TestsFlextInfraMiseToolchainProof:
         for record in (endpoint, move, overrides):
             contract = type(record)
             tm.that(contract.model_validate_json(record.model_dump_json()), eq=record)
-            with pytest.raises(m.ValidationError, match="extra_forbidden"):
+            with u.Tests.raises(m.ValidationError, match="extra_forbidden"):
                 contract.model_validate({**record.model_dump(), "unexpected": True})
             for field, value in record.model_dump().items():
-                with pytest.raises(m.ValidationError, match="frozen_instance"):
+                with u.Tests.raises(m.ValidationError, match="frozen_instance"):
                     setattr(record, field, value)
 
     @staticmethod
@@ -308,7 +306,7 @@ class TestsFlextInfraMiseToolchainProof:
             },
         }
 
-        with pytest.raises(ValueError, match="no npm backend"):
+        with u.Tests.raises(ValueError, match="no npm backend"):
             m.Infra.ToolchainSpec.model_validate({
                 **declared,
                 "tools": [*declared["tools"], npm_tool],

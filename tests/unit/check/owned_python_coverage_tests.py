@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import gates, m
-from tests import c, tm
+from flext_infra import gates
+from tests import c, m, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,11 +19,11 @@ class TestsFlextInfraOwnedPythonCoverage:
     """Native checks include all owned roots without importing entrypoints."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "relative_path", ["infra/probe.py", "automation/probe.py", "entry.py"]
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "gate_class",
         [
             gates.FlextInfraGatesRuffLint,

@@ -6,16 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from tests import t, u
+from tests import c, t, u
 
 
 class TestsNativeCodeConstants:
     """Changes visible to the executing function cannot disappear in transport."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("initial", "replacement"),
         [
             ("True", "1"),

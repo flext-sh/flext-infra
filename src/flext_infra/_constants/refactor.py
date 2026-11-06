@@ -324,6 +324,8 @@ class FlextInfraConstantsRefactor:
         CONTRACT_NORMALIZATION = "contract-normalization"
         COMPAT_ALIAS = "compat-alias"
         PRIVATE_IMPORT = "private-import"
+        TEST_NAMESPACE_IMPORT = "test-namespace-import"
+        TEST_ASSERT_TO_MATCHER = "test-assert-to-matcher"
         FACADE_BASE = "facade-base"
         MODEL_FIELDS = "model-fields"
         DYNAMIC_ENVIRONMENT = "dynamic-environment"
@@ -334,9 +336,33 @@ class FlextInfraConstantsRefactor:
         SemanticCutoverPhase.DECLARATION_RELOCATION: (
             "ban-nested-payload-outside-models",
         ),
-        SemanticCutoverPhase.CLASS_NESTING: ("ban-loose-module-object",),
+        SemanticCutoverPhase.CLASS_NESTING: (
+            "ban-loose-module-object",
+            "ban-loose-test-function",
+        ),
+        SemanticCutoverPhase.CONSTANT_CONSUMERS: (
+            "require-uppercase-constant-name",
+            "ban-mutable-constant-value",
+        ),
+        # The five declared type-contract rules carry the model-field contract
+        # cure; an unselected engine run is refused (ADR-028 D18), so the phase
+        # is only reachable through its rule family.
+        SemanticCutoverPhase.CONTRACT_NORMALIZATION: (
+            "bind-typing-adapter-utilities",
+            "rewire-cli-json-mapping-adapter",
+            "rewire-cli-json-list-adapter",
+            "pydantic-field-positional-default",
+            "pydantic-unset-private-attribute",
+        ),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
+        SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: (
+            "ban-test-import-outside-test-namespace",
+            "ban-test-direct-tests-submodule",
+            "ban-test-relative-import",
+            "ban-test-namespace-alias",
+        ),
+        SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: ("ban-test-assert",),
         SemanticCutoverPhase.FACADE_BASE: (
             "facade-base-by-class-name",
             "require-facade-mro-completeness",
@@ -368,12 +394,29 @@ class FlextInfraConstantsRefactor:
     # Rust-regex pattern that matches no text: a generated utility whose
     # source of truth is empty still exists, so a referencing rule loads.
     CODEMOD_NEVER_MATCH_REGEX: ClassVar[str] = r"\b\B"
+    # Condition of an `if TYPE_CHECKING:` guard, bare or through `typing.`.
+    CODEMOD_TYPE_CHECKING_TEST_REGEX: ClassVar[str] = r"^(?:typing\.)?TYPE_CHECKING$"
+    # Tree-sitter Python nodes that open a name scope inside a module: a name
+    # they bind is visible only to the uses they enclose.
+    CODEMOD_NAME_SCOPE_KINDS: ClassVar[tuple[str, ...]] = (
+        "function_definition",
+        "lambda",
+        "list_comprehension",
+        "set_comprehension",
+        "dictionary_comprehension",
+        "generator_expression",
+    )
     # Separator of a generated rule id: '<shape>--<qualifier>'.
     CODEMOD_GENERATED_ID_SEPARATOR: ClassVar[str] = "--"
     # Generated utility id prefix of a package's exports: 'exports--<package>'.
     CODEMOD_PACKAGE_EXPORTS_UTILITY: ClassVar[str] = "exports"
     # Generated utility id of the project's facade-family private packages.
     CODEMOD_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = "facade-family-package"
+    # The same packages spelled without their separator ('<root>_<family>'),
+    # a module that never exists.
+    CODEMOD_COLLAPSED_FACADE_FAMILY_PACKAGE_UTILITY: ClassVar[str] = (
+        "collapsed-facade-family-package"
+    )
     # Generated rule shape that rewires an inline type set to the constant
     # declaring it: 'type-set--<constant path>'.
     CODEMOD_TYPE_SET_SHAPE: ClassVar[str] = "type-set"
@@ -515,7 +558,11 @@ class FlextInfraConstantsRefactor:
     CODEMOD_LIBRARY_MEMBER_OWNER_UTILITY_PREFIX: ClassVar[str] = "library-member-owner-"
     CODEMOD_GENERIC_SPECIALIZATION_UTILITY: ClassVar[str] = "generic-specialization"
     CODEMOD_PROTOCOL_MODEL_PATH_UTILITY: ClassVar[str] = "protocol-model-path"
-    "Stable utility: a dotted path `p` publishes as a protocol and `m` as its model twin."
+    (
+        "Stable utility: a dotted path `p` publishes as a protocol and `m` as its "
+        "model "
+        "twin."
+    )
     CODEMOD_MODEL_SDK_TYPE_UTILITY: ClassVar[str] = "model-sdk-type-name"
     "Stable utility: a library type name `t` owns that `p` or `m` re-spells."
     CODEMOD_PAYLOAD_CLASS_SCOPE_PREFIX: ClassVar[str] = "payload-class-"

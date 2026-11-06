@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraModCheckApplyParity:
@@ -55,7 +53,7 @@ class TestsFlextInfraModCheckApplyParity:
     @staticmethod
     def _run(
         root: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *options: str,
     ) -> tuple[int, str]:
         """Invoke the public application route and capture its console.
@@ -93,12 +91,12 @@ class TestsFlextInfraModCheckApplyParity:
         )
         return root, source
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("mode", ["--check", "--apply"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("mode", ["--check", "--apply"])
     def test_invalid_rule_fixture_stops_every_mode_before_the_scan(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         mode: str,
     ) -> None:
         """Inspection fails on a rule whose fixture fails, exactly like apply."""
@@ -111,11 +109,11 @@ class TestsFlextInfraModCheckApplyParity:
         tm.that(console, lacks="mod: ast-grep scan providers")
         tm.that(sample.read_bytes(), eq=before)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_check_plans_and_lists_the_module_naming_campaign(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Inspection reports each planned module rename and publishes nothing."""
         root, source = self._split_module_workspace(tmp_path)
@@ -128,12 +126,12 @@ class TestsFlextInfraModCheckApplyParity:
         tm.that(console, has="1 pending module rename(s)")
         tm.that(source.read_bytes(), eq=original)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("mode", ["--check", "--apply"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("mode", ["--check", "--apply"])
     def test_rule_selection_does_not_plan_module_naming(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         mode: str,
     ) -> None:
         """One selected rule runs alone: the unselected naming campaign stays out."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from collections import deque
 from collections.abc import Callable, Mapping, MutableMapping
-from functools import partial
+from functools import lru_cache, partial
 from os.path import commonpath
 from pathlib import Path
 from tempfile import TemporaryDirectory, gettempdir
@@ -650,7 +650,7 @@ class FlextInfraStagedPackage:
         result_type = r[list[tuple[p.Infra.RopeProjectLayout, bool]]]
         roots: list[tuple[p.Infra.RopeProjectLayout, bool]] = []
         for path in normalized:
-            resolved = cls._source_layout(path, layouts)
+            resolved = cls.source_layout(path, layouts)
             if resolved.success:
                 roots.append((resolved.value, True))
                 continue
@@ -688,7 +688,7 @@ class FlextInfraStagedPackage:
                 continue
             directory = state.path.parent
             if directory not in owners:
-                owners[directory] = cls._source_layout(state.path, layouts)
+                owners[directory] = cls.source_layout(state.path, layouts)
             resolved = owners[directory]
             if resolved.success:
                 roots.append((resolved.value, False))
@@ -773,7 +773,7 @@ class FlextInfraStagedPackage:
         return result_type.ok(normalized)
 
     @staticmethod
-    def _source_layout(
+    def source_layout(
         path: Path,
         layouts: Mapping[str, p.Infra.RopeProjectLayout],
     ) -> p.Result[p.Infra.RopeProjectLayout]:
@@ -952,6 +952,7 @@ class FlextInfraStagedPackage:
         return r[list[Path]].ok(paths)
 
     @staticmethod
+    @lru_cache(maxsize=16384)
     def _runtime_imports(
         path: Path,
         content: bytes,
@@ -1146,7 +1147,7 @@ class FlextInfraStagedPackage:
             if updates is not None:
                 owned = {}
                 for path, content in updates.items():
-                    owner = cls._source_layout(path, layouts)
+                    owner = cls.source_layout(path, layouts)
                     if owner.failure:
                         return r[tuple[p.Infra.RopeProjectLayout, ...]].from_failure(
                             owner

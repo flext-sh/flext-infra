@@ -19,11 +19,7 @@ from flext_infra._protocols import FlextInfraProtocolsBase
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import (
-        FlextInfraConstantsRefactor,
-        FlextInfraConstantsRope,
-    )
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsCodemod:
@@ -183,12 +179,7 @@ class FlextInfraProtocolsCodemod:
 
         file: str
         rule_id: str
-
-        @property
-        def severity(self) -> FlextInfraConstantsRefactor.NativeRuleSeverity:
-            """Native rule severity."""
-            ...
-
+        severity: c.Infra.NativeRuleSeverity
         message: str
         text: str
         lines: str
@@ -203,10 +194,7 @@ class FlextInfraProtocolsCodemod:
     class AstGrepOwnedPathDiagnostic(AstGrepDiagnostic, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def origin(self) -> FlextInfraConstantsRefactor.ModFindingOrigin:
-            """Native owned-path rule provenance."""
-            ...
+        origin: c.Infra.ModFindingOrigin
 
     @runtime_checkable
     class AstGrepReport(FlextCliProtocols.BaseModel, Protocol):
@@ -227,12 +215,12 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def operation(self) -> FlextInfraConstantsRefactor.FamilyFlattenOperation:
+        def operation(self) -> c.Infra.FamilyFlattenOperation:
             """Supported semantic family transformation."""
             ...
 
         @property
-        def collision(self) -> FlextInfraConstantsRefactor.FamilyCollisionPolicy:
+        def collision(self) -> c.Infra.FamilyCollisionPolicy:
             """Member-name collision resolution policy."""
             ...
 
@@ -271,7 +259,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
     @runtime_checkable
-    class RopeContractRule(FlextCliProtocols.BaseModel, Protocol):
+    class RopeContractRuleTarget(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -289,7 +277,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def operation(self) -> FlextInfraConstantsRefactor.RopeContractOperation:
+        def operation(self) -> c.Infra.RopeContractOperation:
             """Native contract operation executed in the shared source epoch."""
             ...
 
@@ -324,7 +312,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def phase(self) -> FlextInfraConstantsRefactor.SemanticCutoverPhase:
+        def phase(self) -> c.Infra.SemanticCutoverPhase:
             """Existing semantic phase owning this rule's execution."""
             ...
 
@@ -352,6 +340,10 @@ class FlextInfraProtocolsCodemod:
         def bindings(self) -> Mapping[str, str]:
             """Destination expressions and their required Rope identities."""
             ...
+
+    @runtime_checkable
+    class RopeContractRuleShape(RopeContractRuleTarget, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def model_bases(self) -> tuple[str, ...]:
@@ -403,7 +395,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def scope_kinds(self) -> tuple[FlextInfraConstantsRope.RopeScopeKind, ...]:
+        def scope_kinds(self) -> tuple[c.Infra.RopeScopeKind, ...]:
             """Native Rope lexical scopes admitting a match."""
             ...
 
@@ -411,6 +403,10 @@ class FlextInfraProtocolsCodemod:
         def implementation_owner(self) -> tuple[t.NonEmptyStr, t.NonEmptyStr] | None:
             """Native module and primitive whose backend stays native."""
             ...
+
+    @runtime_checkable
+    class RopeContractRule(RopeContractRuleShape, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def receiver_methods(self) -> tuple[str, ...]:

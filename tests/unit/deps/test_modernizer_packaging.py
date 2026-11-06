@@ -9,11 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, p, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerPackaging:
@@ -101,7 +99,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         return root_module, root_package
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def _conform_self(infra_git_repo: Path) -> int:
         """Run codegen conform self-apply through the public CLI entrypoint.
 
@@ -120,7 +118,7 @@ class TestsFlextInfraDepsModernizerPackaging:
             c.Infra.CodegenConformMode.APPLY.value,
         ])
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_conform_packages_every_declared_python_root(
         self,
         infra_git_repo: Path,
@@ -233,7 +231,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         ])
         tm.that(fixed_point, eq=0)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_modernizer_preserves_declared_packaging_surfaces(
         self,
         infra_git_repo: Path,
@@ -260,7 +258,7 @@ class TestsFlextInfraDepsModernizerPackaging:
                 u.Infra.workspace_manifest_path(infra_git_repo),
                 manifest.model_copy(
                     update={
-                        "project": p.Infra.ProjectSpec.model_validate({
+                        "project": m.Infra.ProjectSpec.model_validate({
                             **project.model_dump(),
                             "hatch_build_hook_path": hook,
                             "repository_namespace_packages": (namespace,),
@@ -312,8 +310,8 @@ class TestsFlextInfraDepsModernizerPackaging:
             eq=hook.as_posix(),
         )
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("missing_kind", ["module", "package"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("missing_kind", ["module", "package"])
     def test_conform_rejects_missing_declared_python_root(
         self,
         infra_git_repo: Path,
@@ -327,6 +325,6 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         before = (infra_git_repo / c.PYPROJECT_FILENAME).read_bytes()
 
-        with pytest.raises(FileNotFoundError, match=f"root {missing_kind}"):
+        with u.Tests.raises(FileNotFoundError, match=f"root {missing_kind}"):
             self._conform_self(infra_git_repo)
         tm.that((infra_git_repo / c.PYPROJECT_FILENAME).read_bytes(), eq=before)

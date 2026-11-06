@@ -9,16 +9,16 @@ from __future__ import annotations
 import glob
 import sysconfig
 from collections.abc import Mapping, Sequence
-from copy import deepcopy
 from pathlib import Path
 
 from flext_cli import u
 from typing_extensions import TypeForm
 
 from flext_infra import p, r, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
-class FlextInfraUtilitiesNativeTooling:
+class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
     """Own native option values without file-discovery or projection behavior."""
 
     @staticmethod
@@ -136,18 +136,6 @@ class FlextInfraUtilitiesNativeTooling:
         return tuple(resolved)
 
     @staticmethod
-    def configuration_pairs(
-        entries: Sequence[tuple[str, t.JsonValue]],
-    ) -> t.JsonDict:
-        """Elect ordered pairs and isolate their mutable values from consumers.
-
-        Returns:
-            The last declared value per key, preserving nested array order.
-
-        """
-        return deepcopy(dict(entries))
-
-    @staticmethod
     def native_tool_settings(
         document: p.Infra.ToolConfigDocument, table: str
     ) -> t.JsonDict:
@@ -160,58 +148,6 @@ class FlextInfraUtilitiesNativeTooling:
         return FlextInfraUtilitiesNativeTooling.configuration_pairs(
             document.settings[table]
         )
-
-    @staticmethod
-    def markdown_native_configuration(
-        markdown: p.Infra.MarkdownConfig,
-        excludes: Sequence[str],
-    ) -> str:
-        """Render native Markdown tables from the common policy and overrides.
-
-        Returns:
-            Native TOML consumed by lint, repair, formatting and the editor.
-
-        """
-        rules = FlextInfraUtilitiesNativeTooling.configuration_pairs(markdown.rules)
-        for name, value in markdown.native_rules:
-            common = rules.get(name)
-            rules[name] = (
-                {**common, **value}
-                if isinstance(common, Mapping) and isinstance(value, Mapping)
-                else value
-            )
-        document = FlextInfraUtilitiesNativeTooling.configuration_pairs(
-            markdown.native_settings
-        )
-        default = rules.pop("default")
-        global_options = u.Cli.toml_mapping_ensure_path(document, ("global",))
-        global_options["exclude"] = list(excludes)
-        global_options["disable"] = [
-            name for name, value in rules.items() if value is False
-        ]
-        if default is False:
-            global_options["enable"] = [
-                name for name, value in rules.items() if value is not False
-            ]
-        document.update({
-            name: value for name, value in rules.items() if isinstance(value, Mapping)
-        })
-        return u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(document))
-
-    @staticmethod
-    def markdown_editor_configuration(markdown: p.Infra.MarkdownConfig) -> t.JsonDict:
-        """Elect the editor-compatible policy from the common Markdown rules.
-
-        Native rumdl rules and tables (``native_rules``/``native_settings``)
-        stay execution-tool-only: the editor projection reads the common
-        ``MD*`` rules exactly as declared, so one SSOT policy owns both tool
-        dialects without copying the native surface.
-
-        Returns:
-            The JSON mapping consumed by the settings projection.
-
-        """
-        return FlextInfraUtilitiesNativeTooling.configuration_pairs(markdown.rules)
 
     @staticmethod
     def native_tool_configuration(

@@ -17,11 +17,9 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsDocs
+    from flext_infra import c, t
     from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
     from flext_infra._protocols._config import FlextInfraProtocolsConfigWorkspace
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsDocsGeneration:
@@ -164,7 +162,7 @@ class FlextInfraProtocolsDocsGeneration:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -190,9 +188,7 @@ class FlextInfraProtocolsDocsGeneration:
             """The physical repository root owning this scope's docs policy."""
             ...
 
-        def documentation_text(
-            self, message: FlextInfraConstantsDocs.DocumentationText
-        ) -> str:
+        def documentation_text(self, message: c.Infra.DocumentationText) -> str:
             """Structural member projected from the owning model.
 
             Resolve one finite presentation message without changing source prose.

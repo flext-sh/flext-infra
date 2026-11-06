@@ -1,0 +1,5 @@
+{% if header %}{{ header }}
+{% endif %}def test_probe() -> None:
+{% for expression in assertions.splitlines() %}
+    assert {{ expression }}{% if message %}, "{{ message }}"{% endif %}
+{% endfor %}

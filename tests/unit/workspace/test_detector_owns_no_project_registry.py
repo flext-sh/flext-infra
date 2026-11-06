@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
@@ -19,7 +17,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
     """Prove derivation never consults a flext-infra-owned project catalog."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("path", "managed"),
         [
             (Path(), True),
@@ -42,7 +40,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             managed=managed,
         )
 
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match="pending subprojects require managed workspace-relative paths",
         ):
@@ -53,7 +51,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("directory_exists", [False, True])
+    @c.Tests.MARK.parametrize("directory_exists", [False, True])
     def test_missing_managed_checkout_retains_only_its_git_declaration(
         tmp_path: Path,
         *,
@@ -118,7 +116,7 @@ class TestsFlextInfraDetectorOwnsNoProjectRegistry:
         tm.that(pending.repository.role, eq=c.Infra.MakeProfile.WORKSPACE)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("value", "managed"),
         [
             (c.ParserBooleanToken.YES, True),

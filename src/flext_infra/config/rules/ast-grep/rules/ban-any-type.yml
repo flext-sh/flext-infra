@@ -1,0 +1,27 @@
+# Strong typing: `Any` erases the contract the facade publishes. Declare the
+# concrete type in `t`/`p`/`m` and consume it; no `Any` is allowed.
+id: ban-any-type
+language: Python
+severity: error
+files:
+  - "**/*.py"
+metadata:
+  enforce: [ENFORCE-122]
+rule:
+  any:
+    - kind: import_from_statement
+      all:
+        - has:
+            field: module_name
+            regex: '^typing(?:_extensions)?$'
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: '^Any$'
+    - kind: attribute
+      regex: '^(?:typing|t)\.Any$'
+    - kind: type
+      regex: '\bAny\b'
+message: >-
+  `Any` erases the typed contract. Declare the concrete type in `t`/`p`/`m`
+  and use it; no `Any` is allowed.

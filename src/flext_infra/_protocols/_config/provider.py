@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsConfigProvider:
@@ -59,7 +58,7 @@ class FlextInfraProtocolsConfigProvider:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind:
+        def kind(self) -> c.Infra.ProjectKind:
             """Structural member projected from the owning model.
 
             Governance kind declared for this repository; never assumed by a

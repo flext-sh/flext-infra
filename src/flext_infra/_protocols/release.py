@@ -16,10 +16,8 @@ from flext_cli import FlextCliProtocols
 from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsRelease
+    from flext_infra import c, t
     from flext_infra._protocols._git import FlextInfraProtocolsGitWorktreeState
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsRelease:
@@ -29,11 +27,7 @@ class FlextInfraProtocolsRelease:
     class ReleaseOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def phase(self) -> FlextInfraConstantsRelease.ReleasePhase:
-            """Release phase to execute."""
-            ...
-
+        phase: c.Infra.ReleasePhase
         index: bool
         pr_title: str
 
@@ -95,6 +89,11 @@ class FlextInfraProtocolsRelease:
             """Exact release tag."""
             ...
 
+        @property
+        def draft(self) -> bool:
+            """Whether the release is an unpublished draft."""
+            ...
+
     @runtime_checkable
     class GithubReleaseInventory(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -111,7 +110,7 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         @property
-        def commit_oid(self) -> FlextInfraTypesBase.ReleaseCommitOid:
+        def commit_oid(self) -> t.Infra.ReleaseCommitOid:
             """Source commit object ID."""
             ...
 
@@ -125,22 +124,22 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         @property
-        def build_constraints_path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+        def build_constraints_path(self) -> t.Infra.ReleaseAbsolutePath:
             """Snapshotted build constraints absolute path."""
             ...
 
         @property
-        def build_constraints_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def build_constraints_sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Pinned build constraint policy SHA-256."""
             ...
 
         @property
-        def gitleaks_policy_path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+        def gitleaks_policy_path(self) -> t.Infra.ReleaseAbsolutePath:
             """Snapshotted Gitleaks policy absolute path."""
             ...
 
         @property
-        def gitleaks_policy_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def gitleaks_policy_sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Trusted Gitleaks policy SHA-256."""
             ...
 
@@ -149,17 +148,17 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+        def path(self) -> t.Infra.ReleaseAbsolutePath:
             """Artifact absolute path."""
             ...
 
         @property
-        def kind(self) -> FlextInfraTypesBase.ReleaseArtifactKind:
+        def kind(self) -> t.Infra.ReleaseArtifactKind:
             """Wheel or sdist."""
             ...
 
         @property
-        def sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Artifact SHA-256 digest."""
             ...
 
@@ -178,7 +177,7 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def license_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def license_sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Committed source LICENSE SHA-256."""
             ...
 
@@ -197,7 +196,7 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         @property
-        def path(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+        def path(self) -> t.Infra.ReleaseAbsolutePath:
             """Project absolute path."""
             ...
 
@@ -207,7 +206,7 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def log(self) -> FlextInfraTypesBase.ReleaseAbsolutePath:
+        def log(self) -> t.Infra.ReleaseAbsolutePath:
             """Build log absolute path."""
             ...
 
@@ -217,7 +216,7 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def commit_oid(self) -> FlextInfraTypesBase.ReleaseCommitOid | None:
+        def commit_oid(self) -> t.Infra.ReleaseCommitOid | None:
             """Source commit object ID."""
             ...
 
@@ -227,9 +226,7 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def source_license_sha256(
-            self,
-        ) -> FlextInfraTypesBase.ReleaseArtifactSha256 | None:
+        def source_license_sha256(self) -> t.Infra.ReleaseArtifactSha256 | None:
             """Committed source LICENSE SHA-256."""
             ...
 
@@ -248,7 +245,7 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def bump(self) -> FlextInfraConstantsRelease.VersionBump:
+        def bump(self) -> c.Infra.VersionBump:
             """Bump derived from merged PRs."""
             ...
 
@@ -315,12 +312,12 @@ class FlextInfraProtocolsRelease:
             ...
 
         @property
-        def build_constraints_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def build_constraints_sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Pinned build constraint policy SHA-256."""
             ...
 
         @property
-        def gitleaks_policy_sha256(self) -> FlextInfraTypesBase.ReleaseArtifactSha256:
+        def gitleaks_policy_sha256(self) -> t.Infra.ReleaseArtifactSha256:
             """Trusted Gitleaks policy SHA-256."""
             ...
 
@@ -334,12 +331,7 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         dry_run: bool
-
-        @property
-        def phase(self) -> FlextInfraConstantsRelease.ReleasePhase:
-            """Release phase."""
-            ...
-
+        phase: c.Infra.ReleasePhase
         index: bool
         pr_title: str
 

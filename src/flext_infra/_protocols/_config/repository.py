@@ -17,21 +17,21 @@ from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 if TYPE_CHECKING:
     from flext_cli import p
 
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsConfig
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
         FlextInfraProtocolsConfigMake,
         FlextInfraProtocolsConfigTemplates,
     )
-    from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraProtocolsConfigRepository:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class ProjectIdentitySpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -85,7 +85,7 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
         @property
-        def documentation_language(self) -> FlextInfraTypesBase.DocumentationLanguage:
+        def documentation_language(self) -> t.Infra.DocumentationLanguage:
             """Project-local generated documentation language."""
             ...
 
@@ -103,6 +103,10 @@ class FlextInfraProtocolsConfigRepository:
         def author_email(self) -> t.NonEmptyStr:
             """Author email."""
             ...
+
+    @runtime_checkable
+    class ProjectSpec(ProjectIdentitySpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def upstream(self) -> t.NonEmptyStr:
@@ -251,7 +255,9 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
     @runtime_checkable
-    class RepositoryRef(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class RepositoryRefIdentity(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -280,12 +286,12 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
         @property
-        def role(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def role(self) -> c.Infra.MakeProfile:
             """Repository role in the declared topology."""
             ...
 
         @property
-        def state(self) -> FlextInfraConstantsConfig.RepositoryState:
+        def state(self) -> c.Infra.RepositoryState:
             """Repository lifecycle state."""
             ...
 
@@ -304,7 +310,7 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind:
+        def kind(self) -> c.Infra.ProjectKind:
             """Structural member projected from the owning model.
 
             Governance kind; only internal_flext repositories are rewritten by
@@ -313,8 +319,12 @@ class FlextInfraProtocolsConfigRepository:
             """
             ...
 
+    @runtime_checkable
+    class RepositoryRef(RepositoryRefIdentity, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
-        def codegen(self) -> FlextInfraConstantsConfig.CodegenKind:
+        def codegen(self) -> c.Infra.CodegenKind:
             """Repository code-generation policy."""
             ...
 
@@ -436,7 +446,7 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
         @property
-        def make_profile(self) -> FlextInfraConstantsConfig.MakeProfile:
+        def make_profile(self) -> c.Infra.MakeProfile:
             """Make profile inferred from live Git topology."""
             ...
 

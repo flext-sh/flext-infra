@@ -1,5 +1,10 @@
 # AUTO-GENERATED FILE - Source bootstrap protocol domain owner.
-"""Canonical owner for partitioned protocol contracts."""
+"""Canonical owner for partitioned protocol contracts.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+src/flext_infra/_protocols/codegen
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

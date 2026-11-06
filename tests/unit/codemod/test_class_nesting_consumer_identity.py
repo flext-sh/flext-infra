@@ -9,11 +9,8 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-import flext_core
-import pytest
-
 from flext_infra import infra
-from tests import c, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codemod.class_nesting_owner_support import (
     TestsFlextInfraClassNestingSupport,
 )
@@ -25,7 +22,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSupport):
     """Native aliases, framework hooks and consumers follow the nested owner."""
 
-    @pytest.mark.parametrize("module_kind", ["ordinary", "utilities", "typings"])
+    @c.Tests.MARK.parametrize("module_kind", ["ordinary", "utilities", "typings"])
     def test_pep695_aliases_preserve_lazy_values_and_generic_scope(
         self,
         tmp_path: Path,
@@ -125,7 +122,7 @@ class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSup
         tm.that(after, eq=before)
         tm.that(residue, eq={})
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("stem", "declaration"),
         [
             ("conftest", "def configure() -> None:\n    pass\n"),
@@ -336,8 +333,13 @@ class TestsFlextInfraClassNestingConsumerIdentity(TestsFlextInfraClassNestingSup
         A suffix spanning the whole core facade name doubles the stem in every
         derived owner (``<Project>FlextUtilities<Module>``).
         """
+        facades = {"c": c, "t": t, "p": p, "m": m, "u": u}
         stems = {
-            getattr(flext_core, letter).__name__.removesuffix(family.suffix)
+            next(
+                owner
+                for owner in facades[letter].__mro__
+                if owner.__module__.partition(".")[0] == "flext_core"
+            ).__name__.removesuffix(family.suffix)
             for letter, family in u.Infra.facade_families().items()
         }
         tm.that(len(stems), eq=1)

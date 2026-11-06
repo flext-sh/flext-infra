@@ -10,8 +10,6 @@ import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, p, tm, u
 
@@ -19,13 +17,13 @@ from tests import c, p, tm, u
 # item starts; each scenario provisions its own physical environment frozen
 # from those resolved dependency locks.
 # Make test-full owns these external installer and Git integration scenarios.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraCodegenSetupSubmodules:
     """Tests for ``FlextInfraCodegenSetupSubmodules``."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def generated_project_template(
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -84,30 +82,34 @@ class TestsFlextInfraCodegenSetupSubmodules:
         tm.fail(u.Infra.runtime_environment_dir(root).exists())
 
     @staticmethod
-    def _setup(root: Path) -> p.Cli.CommandOutput:
+    def _setup(root: Path, *, ci: bool = False) -> p.Cli.CommandOutput:
         """Invoke the generated public verb with real managed executables.
 
         Returns:
             The resulting ``p.Cli.CommandOutput``.
 
         """
+        make = config.Infra.codegen.make
+        environment = {"GIT_ALLOW_PROTOCOL": "file:https:ssh"}
+        if ci:
+            environment[make.ci.variable] = make.ci.value
         return tm.ok(
             u.Tests.run_isolated_make(
                 ["--no-print-directory", "setup"],
                 cwd=root,
-                env={"GIT_ALLOW_PROTOCOL": "file:https:ssh"},
+                env=environment,
             ),
         )
 
     @classmethod
-    def _assert_setup(cls, root: Path) -> p.Cli.CommandOutput:
+    def _assert_setup(cls, root: Path, *, ci: bool = False) -> p.Cli.CommandOutput:
         """Require installed metadata and activation from the real post-setup hook.
 
         Returns:
             The resulting ``p.Cli.CommandOutput``.
 
         """
-        process = cls._setup(root)
+        process = cls._setup(root, ci=ci)
         tm.that(
             u.Cli.process_succeeded(process.outcome),
             eq=True,
@@ -315,6 +317,31 @@ class TestsFlextInfraCodegenSetupSubmodules:
         self._assert_setup(project)
         self._assert_setup(project)
 
+    def test_ci_setup_runs_declared_post_setup_dependencies(
+        self,
+        tmp_path: Path,
+        generated_project_template: Path,
+    ) -> None:
+        """Cold CI setup executes the declared hook against its installed runtime."""
+        project = tmp_path / "project"
+        self._generated_project(project, generated_project_template)
+        make = config.Infra.codegen.make
+        probe = (
+            "import importlib.metadata, sys, tomllib; from pathlib import Path; "
+            f'project = tomllib.loads(Path("{c.PYPROJECT_FILENAME}").read_text())'
+            '["project"]; '
+            'assert Path(sys.prefix) == Path("$(RUNTIME_VENV)"); '
+            'assert importlib.metadata.version(project["name"]) == project["version"]; '
+            'print("installed-runtime-verified")'
+        )
+        (project / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            ".PHONY: post-setup\npost-setup:\n"
+            f'\t@test "$({make.ci.variable})" = "{make.ci.value}"\n'
+            f"\t@$(UV_RUN) python -c '{probe}'\n",
+            encoding="utf-8",
+        )
+        self._assert_setup(project, ci=True)
+
     def test_content_only_submodule_is_never_initialized(
         self,
         tmp_path: Path,
@@ -361,7 +388,7 @@ class TestsFlextInfraCodegenSetupSubmodules:
             eq=configured_url,
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "member_branch",
         ["declared-dev", "feature/lane", "local-work"],
     )

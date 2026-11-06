@@ -13,8 +13,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesRuffLint
@@ -37,7 +35,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
             flag for flag in ruff.lint_fix if flag != c.Infra.RUFF_UNSAFE_FIXES_FLAG
         )
 
-        with pytest.raises(m.ValidationError) as failure:
+        with u.Tests.raises(m.ValidationError) as failure:
             _ = m.Infra.MakeRuffSpec.model_validate(payload)
 
         tm.that(str(failure.value), has=c.Infra.RUFF_UNSAFE_FIXES_FLAG)
@@ -51,7 +49,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
         tm.that(restored.lint_fix, eq=ruff.lint_fix)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_scaffold_pyproject_renders_the_fix_safety_policy(
         tmp_path: Path,
     ) -> None:
@@ -129,7 +127,7 @@ class TestsFlextInfraCodegenMakeLintFixSafety:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_native_descriptor_policy_keeps_misspelled_dunders_visible(
         tmp_path: Path,
     ) -> None:

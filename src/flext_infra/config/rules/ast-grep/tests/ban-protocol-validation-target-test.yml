@@ -1,0 +1,28 @@
+# Fixture models (fixture-utils/protocol-model-path.yml): `ConfigDocument`,
+# `Infra.FacadeFamily` and `Infra.Outer.Inner`; `Infra.RopeImportedName` is a
+# protocol with no model twin and is never matched.
+id: ban-protocol-validation-target
+valid:
+- |
+  from flext_infra import m, p, u
+  adapter = u.type_adapter(tuple[m.Infra.FacadeFamily, ...])
+- |
+  from flext_infra import p, u
+  adapter = u.type_adapter(tuple[p.Infra.RopeImportedName, ...])
+- |
+  from flext_infra import p
+  def read(value: p.Infra.FacadeFamily) -> tuple[p.Infra.FacadeFamily, ...]:
+      return (value,)
+- |
+  from thirdparty import p
+  adapter = TypeAdapter(tuple[p.Infra.FacadeFamily, ...])
+invalid:
+- |
+  from flext_infra import p, u
+  adapter = u.type_adapter(tuple[p.Infra.FacadeFamily, ...])
+- |
+  from flext_infra import p, t, u
+  adapter = u.type_adapter(t.TypeForm(list[p.ConfigDocument]))
+- |
+  from flext_infra import p
+  adapter = TypeAdapter(p.Infra.Outer.Inner)

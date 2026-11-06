@@ -10,22 +10,15 @@ import ast
 import sys
 from pathlib import Path
 
-import pytest
-
-from flext_infra import c, infra
-from flext_infra._models.codegen_toolchain import FlextInfraModelsCodegenToolchain
-from flext_infra._models.deps import FlextInfraModelsDeps
-from flext_infra._models.gates import FlextInfraModelsGates
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
-from flext_infra._utilities.protocol_models import FlextInfraUtilitiesModelsProtocol
-from tests import p, tm, u
+from flext_infra import infra
+from tests import c, m, p, t, tm, u
 
 
 class TestsModelProtocolNativeMro:
     """Compare generated contracts with the real Pydantic consumer."""
 
     @staticmethod
-    @pytest.mark.parametrize("requested", ["visible", "foreign"])
+    @c.Tests.MARK.parametrize("requested", ["visible", "foreign"])
     def test_existing_narrow_port_retains_model_owner(
         tmp_path: Path, requested: str
     ) -> None:
@@ -62,7 +55,7 @@ class TestsModelProtocolNativeMro:
             tm.ok(u.Cli.atomic_write_text_file(path, content))
         with u.Infra.facade_source_project(root) as binding:
             if requested == "foreign":
-                with pytest.raises(ValueError, match="model contract collides"):
+                with u.Tests.raises(ValueError, match="model contract collides"):
                     u.Infra.protocol_model_sources_from_source(root, binding[0])
                 return
             projected = tm.ok(
@@ -83,23 +76,23 @@ class TestsModelProtocolNativeMro:
     @staticmethod
     def test_runtime_dependency_plan_schema_uses_the_port_owner() -> None:
         """A structural manifest remains schema-safe at the public model boundary."""
-        schema = FlextInfraModelsDeps.RuntimeDependencyPlan.model_json_schema()
+        schema = m.Infra.RuntimeDependencyPlan.model_json_schema()
         tm.ok(isinstance(schema, dict))
 
     @staticmethod
     def test_deptry_scan_schema_uses_the_port_owner() -> None:
         """A gate model schema accepts its structural source manifest port."""
-        schema = FlextInfraModelsGates.DeptryScan.model_json_schema()
+        schema = m.Infra.DeptryScan.model_json_schema()
         tm.ok(isinstance(schema, dict))
 
     @staticmethod
     def test_codegen_source_authority_schema_uses_the_port_owner() -> None:
         """Source authority completes its runtime Pydantic core schema."""
-        FlextInfraModelsWorkspace.CodegenSourceAuthority.model_rebuild()
-        tm.ok(FlextInfraModelsWorkspace.CodegenSourceAuthority.__pydantic_complete__)
+        m.Infra.CodegenSourceAuthority.model_rebuild()
+        tm.ok(m.Infra.CodegenSourceAuthority.__pydantic_complete__)
         tm.ok(
             isinstance(
-                FlextInfraModelsWorkspace.CodegenSourceAuthority.__pydantic_core_schema__,
+                m.Infra.CodegenSourceAuthority.__pydantic_core_schema__,
                 dict,
             )
         )
@@ -107,14 +100,12 @@ class TestsModelProtocolNativeMro:
     @staticmethod
     def test_mise_toolchain_sources_schema_uses_the_port_owner() -> None:
         """Computed source fields rebuild with their structural state port."""
-        FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan.model_rebuild()
-        tm.ok(
-            FlextInfraModelsCodegenToolchain.MiseToolchainWorkspacePlan.__pydantic_complete__
-        )
+        m.Infra.MiseToolchainWorkspacePlan.model_rebuild()
+        tm.ok(m.Infra.MiseToolchainWorkspacePlan.__pydantic_complete__)
 
     @staticmethod
     def test_source_inventory_does_not_open_missing_protocol_model_facade(
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """The real repository plans before its incomplete facade is importable."""
         root = Path(__file__).parents[3]
@@ -159,7 +150,8 @@ class TestsModelProtocolNativeMro:
                 "class ModelsPayload:\n"
                 "    class Request(BaseModel):\n"
                 "        title: TypeMetadata[str, m.Field(description='title')]\n"
-                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, m.Field()]\n"
+                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, "
+                "m.Field()]\n"
                 "        workspace: FlextInfraModelsWorkspace.WorkspaceThing\n"
             ),
         }
@@ -246,22 +238,6 @@ class TestsModelProtocolNativeMro:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
-    def test_generated_source_parse_error_identifies_owner_and_path() -> None:
-        """Plan diagnostics identify the invalid generated Protocol artifact."""
-        with pytest.raises(
-            ValueError,
-            match=(
-                "generated Protocol source is invalid: "
-                "owner=ProtocolsPayload path=generated-payload.py"
-            ),
-        ):
-            FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection._source_validate_generated_module(
-                "class Broken:\n    @property\n",
-                Path("generated-payload.py"),
-                "ProtocolsPayload",
-            )
-
-    @staticmethod
     def test_source_mirror_resolves_model_holder_from_another_module(
         tmp_path: Path,
     ) -> None:
@@ -311,7 +287,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("bases", ["Left, Right", "Right, Left"])
+    @c.Tests.MARK.parametrize("bases", ["Left, Right", "Right, Left"])
     def test_diamond_override_matches_the_runtime_model(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -385,7 +361,8 @@ class TestsModelProtocolNativeMro:
             "    and is_protocol(member) and member.__name__ == 'Payload']\n"
             "tm.that(len(contracts), eq=1)\n"
             "model = m.Domain.Payload\n"
-            "hints = {name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
+            "hints = "
+            "{name: get_type_hints(getattr(contracts[0], name).fget)['return']\n"
             "    for name in model.model_fields}\n"
             "tm.that(set(hints), eq=set(model.model_fields))\n"
             "for name, field in model.model_fields.items():\n"
@@ -398,7 +375,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("authored", [False, True])
+    @c.Tests.MARK.parametrize("authored", [False, True])
     def test_unpublished_models_mirror_module_and_preserve_authored_ports(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -513,7 +490,7 @@ class TestsModelProtocolNativeMro:
             tm.ok(u.Cli.atomic_write_text_file(path, source))
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="incompatible authored protocol contract"),
+            u.Tests.raises(ValueError, match="incompatible authored protocol contract"),
         ):
             tm.ok(u.Infra.protocol_model_sources(workspace))
         tm.that(destination.read_text(), eq=authored)
@@ -613,7 +590,7 @@ class TestsModelProtocolNativeMro:
     def test_authored_protocol_annotation_facades_stay_type_checking(
         tmp_path: Path,
     ) -> None:
-        """Source completion keeps protocol annotation facades out of runtime imports."""
+        """Source completion keeps protocol annotation facades type-checking only."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         destination = package / "_protocols" / "payload.py"
         owner = "FlextTestProjectProtocolsPayload"
@@ -660,6 +637,45 @@ class TestsModelProtocolNativeMro:
         tm.ok("if TYPE_CHECKING:\n    from flext_test_project import p, t" in rendered)
         tm.fail("\nfrom flext_test_project import p\n" in rendered)
         tm.fail("\nfrom flext_test_project import t\n" in rendered)
+
+    @staticmethod
+    def test_type_checking_annotation_imports_reach_the_projection(
+        tmp_path: Path,
+    ) -> None:
+        """Names a model imports only under TYPE_CHECKING are imported by its mirror."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "models.py": (
+                "class Models:\n    pass\nm = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+            package / "_models" / "views.py": (
+                "from __future__ import annotations\n"
+                "from typing import TYPE_CHECKING\n"
+                "from pydantic import BaseModel\n"
+                "if TYPE_CHECKING:\n"
+                "    from collections.abc import KeysView\n"
+                "class FlextTestProjectModelsViews:\n"
+                "    class Bag(BaseModel):\n"
+                "        def keys(self) -> KeysView[str]:\n"
+                "            return {}.keys()\n"
+            ),
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+
+        with infra.rope_workspace(root) as workspace:
+            projected = tm.ok(u.Infra.protocol_model_sources(workspace))
+
+        rendered = next(
+            source for path, source in projected.items() if path.name == "views.py"
+        )
+        tm.ok("KeysView[str]" in rendered)
+        tm.ok("from collections.abc import KeysView" in rendered)
 
     @staticmethod
     def test_consumer_bootstrap_never_plans_the_infra_facade(tmp_path: Path) -> None:

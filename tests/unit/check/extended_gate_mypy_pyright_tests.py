@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli, check, config, gates
 from tests import c, m, p, tm, u
 
@@ -24,7 +22,7 @@ class TestsFlextInfraTypeGates:
     def test_omitted_ruff_policy_is_rejected() -> None:
         """A governed Make policy requires an explicit typed Ruff cache."""
         configured = config.Infra.codegen.make
-        with pytest.raises(ValueError, match="ruff_cache"):
+        with u.Tests.raises(ValueError, match="ruff_cache"):
             m.Infra.MakeSpec.model_validate(
                 configured.model_dump(
                     exclude={"ruff_cache"},
@@ -33,7 +31,7 @@ class TestsFlextInfraTypeGates:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field",
         ["data_home_environment_variable", "user_home_environment_variable"],
     )
@@ -47,11 +45,11 @@ class TestsFlextInfraTypeGates:
             exclude={field},
             exclude_computed_fields=True,
         )
-        with pytest.raises(ValueError, match=field):
+        with u.Tests.raises(ValueError, match=field):
             type(policy).model_validate(payload)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_mypy_cache_is_project_keyed_across_checkouts_and_relocks(
         tmp_path: Path,
     ) -> None:
@@ -102,7 +100,7 @@ class TestsFlextInfraTypeGates:
                 eq={"fixture-alpha", "fixture-beta"},
             )
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def checker_context(
         tmp_path: Path,
@@ -128,8 +126,8 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "plugin_output",
         ["native-plugin-output", "    native-plugin-output", "Deferral trace:"],
     )
@@ -169,8 +167,8 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "gate",
         sorted(c.Infra.TYPE_CHECKER_GATES),
     )
@@ -215,8 +213,8 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("module", "service"),
         [
             ("flext_infra", "s"),
@@ -291,7 +289,7 @@ class TestsFlextInfraTypeGates:
             tm.that(issue.message, has=["set[int]", "int"], msg=rejected.raw_output)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_mypy_preserves_protocol_member_diagnostics(
         checker_context: p.Infra.GateContext,
     ) -> None:
@@ -316,8 +314,8 @@ class TestsFlextInfraTypeGates:
         tm.that(messages, has=["Expected", "Actual", "def size", "int", "str"])
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "gate_class",
         [
             gates.FlextInfraGatesMypy,
@@ -351,8 +349,8 @@ class TestsFlextInfraTypeGates:
         tm.that(repaired.issues, truth=False)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("gate_class", "config_text"),
         [
             (
@@ -397,7 +395,7 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_failed_pyrefly_cannot_reuse_previous_report(
         checker_context: p.Infra.GateContext,
     ) -> None:
@@ -425,8 +423,8 @@ class TestsFlextInfraTypeGates:
         tm.that(native_reports[0].exists(), truth=False)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "gate_class",
         [
             gates.FlextInfraGatesMypy,
@@ -465,7 +463,7 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "gate_class",
         [
             gates.FlextInfraGatesMypy,
@@ -488,7 +486,7 @@ class TestsFlextInfraTypeGates:
         tm.that(result.result.errors, truth=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "gate_class",
         [gates.FlextInfraGatesPyright, gates.FlextInfraGatesPyrefly],
     )
@@ -509,8 +507,8 @@ class TestsFlextInfraTypeGates:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("payload", ["", " ", "not JSON", "{}", "[]", "null"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("payload", ["", " ", "not JSON", "{}", "[]", "null"])
+    @c.Tests.MARK.parametrize(
         "report_model",
         [p.Infra.MypyDiagnostic, m.Infra.PyrightReport, m.Infra.PyreflyReport],
     )
@@ -521,7 +519,7 @@ class TestsFlextInfraTypeGates:
         payload: str,
     ) -> None:
         """Test invalid native report."""
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             report_model.model_validate_json(payload, strict=True)
 
     @staticmethod
@@ -532,7 +530,7 @@ class TestsFlextInfraTypeGates:
             '"summary":{"filesAnalyzed":1,"errorCount":0,"warningCount":1,'
             '"informationCount":0,"timeInSec":0.1}}'
         )
-        with pytest.raises(c.ValidationError, match="warning count"):
+        with u.Tests.raises(c.ValidationError, match="warning count"):
             m.Infra.PyrightReport.model_validate_json(payload, strict=True)
 
     @staticmethod

@@ -274,7 +274,7 @@ class FlextInfraUtilitiesDocsAudit(
             *metric_lines,
             "",
             "| file | type | severity | message |",
-            "|---|---|---|---|",
+            "| --- | --- | --- | --- |",
             *[
                 f"| {issue.file} | {issue.issue_type} | {issue.severity} "
                 f"| {issue.message} |"

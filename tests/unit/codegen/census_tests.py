@@ -12,11 +12,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra.codegen import FlextInfraCodegenCensus, p
+from flext_infra.codegen import FlextInfraCodegenCensus
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c, m, r, tm, u
+from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -89,7 +87,7 @@ class TestsFlextInfraCodegenCensus:
         tm.ok(fixable.fixable)
         tm.fail(detect.fixable)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "violation",
         [
             "",
@@ -107,7 +105,7 @@ class TestsFlextInfraCodegenCensus:
             m.Infra.ValidationReport(passed=False, violations=[violation]),
         )
 
-        with pytest.raises(ValueError, match="report format"):
+        with u.Tests.raises(ValueError, match="report format"):
             u.Infra.parse_namespace_validation(report, project)
 
     def test_report_failure_propagates(self, tmp_path: Path) -> None:

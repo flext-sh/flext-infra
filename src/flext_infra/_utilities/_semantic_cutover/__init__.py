@@ -84,6 +84,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.model_aliases import (
         FlextInfraUtilitiesSemanticModelAliases,
     )
+    from flext_infra._utilities._semantic_cutover.model_field_contracts import (
+        FlextInfraUtilitiesSemanticModelFieldContracts,
+    )
     from flext_infra._utilities._semantic_cutover.model_fields import (
         FlextInfraUtilitiesSemanticCutoverModelFields,
     )
@@ -120,8 +123,14 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.private_imports import (
         FlextInfraUtilitiesSemanticCutoverPrivateImports,
     )
+    from flext_infra._utilities._semantic_cutover.test_assertions import (
+        FlextInfraUtilitiesSemanticCutoverTestAssertions,
+    )
     from flext_infra._utilities._semantic_cutover.test_helpers import (
         FlextInfraUtilitiesSemanticTestHelpers,
+    )
+    from flext_infra._utilities._semantic_cutover.test_namespace_imports import (
+        FlextInfraUtilitiesSemanticCutoverTestNamespaceImports,
     )
 
 
@@ -153,6 +162,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticCutoverOwnMro",
     "FlextInfraUtilitiesSemanticCutoverPrivateImportCst",
     "FlextInfraUtilitiesSemanticCutoverPrivateImports",
+    "FlextInfraUtilitiesSemanticCutoverTestAssertions",
+    "FlextInfraUtilitiesSemanticCutoverTestNamespaceImports",
     "FlextInfraUtilitiesSemanticDeclarationRelocation",
     "FlextInfraUtilitiesSemanticDeclarationRetirement",
     "FlextInfraUtilitiesSemanticDelegations",
@@ -161,6 +172,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticFamilyTypeReferences",
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticModelAliases",
+    "FlextInfraUtilitiesSemanticModelFieldContracts",
     "FlextInfraUtilitiesSemanticTestHelpers",
     "FlextInfraUtilitiesTypesSemanticNesting",
 )
@@ -200,6 +212,10 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticCutoverOwnMro": ".own_mro",
         "FlextInfraUtilitiesSemanticCutoverPrivateImportCst": ".private_import_cst",
         "FlextInfraUtilitiesSemanticCutoverPrivateImports": ".private_imports",
+        "FlextInfraUtilitiesSemanticCutoverTestAssertions": ".test_assertions",
+        "FlextInfraUtilitiesSemanticCutoverTestNamespaceImports": (
+            ".test_namespace_imports"
+        ),
         "FlextInfraUtilitiesSemanticDeclarationRelocation": ".declaration_relocation",
         "FlextInfraUtilitiesSemanticDeclarationRetirement": ".declaration_retirement",
         "FlextInfraUtilitiesSemanticDelegations": ".delegations",
@@ -208,6 +224,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticFamilyTypeReferences": ".family_type_references",
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
+        "FlextInfraUtilitiesSemanticModelFieldContracts": ".model_field_contracts",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
         "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
     },

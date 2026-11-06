@@ -10,12 +10,11 @@ import ast
 import operator
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import cache
-from inspect import getfile
+from importlib.util import find_spec
 from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
-import flext_core
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
@@ -111,6 +110,41 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     @cache
+    def core_package_exports() -> tuple[Path, Mapping[str, str]]:
+        """Read the core package directory and its published lazy map from source.
+
+        The core package is located through its import spec and its exports are
+        read statically from its generated initializer, never through the
+        package module object.
+
+        Returns:
+            The core package directory and each published name's target module.
+
+        Raises:
+            ValueError: The core package is not importable or declares its lazy
+                map indirectly.
+
+        """
+        spec = find_spec(c.Infra.PKG_CORE_UNDERSCORE)
+        locations = None if spec is None else spec.submodule_search_locations
+        if not locations:
+            msg = f"{c.Infra.PKG_CORE_UNDERSCORE} is not an importable package"
+            raise ValueError(msg)
+        core_dir = Path(next(iter(locations)))
+        targets, references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                (core_dir / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+            )
+        )
+        if references:
+            msg = f"{core_dir}: lazy map is declared through {', '.join(references)}"
+            raise ValueError(msg)
+        return core_dir, MappingProxyType({
+            name: module for module, names in targets for name in names
+        })
+
+    @staticmethod
+    @cache
     def facade_families() -> Mapping[str, m.Infra.FacadeFamily]:
         """Derive the facade families from the core package's declarations.
 
@@ -126,15 +160,33 @@ class FlextInfraUtilitiesCodegenNamespace:
             ValueError: If ``not bound``.
 
         """
-        core_dir = Path(getfile(flext_core)).parent
+        core_dir, published = FlextInfraUtilitiesCodegenNamespace.core_package_exports()
         bound: MutableMapping[str, tuple[str, str]] = {}
         for layer in config.Infra.tooling.lazy_init.import_layer_order:
-            facade = getattr(flext_core, layer, None)
-            if not isinstance(facade, type):
+            target = published.get(layer)
+            if target is None or not target.startswith("."):
                 continue
-            module = facade.__module__.rpartition(".")[2]
-            if (core_dir / f"_{module}").is_dir():
-                bound[layer] = (module, facade.__name__)
+            module = target.removeprefix(".")
+            source = core_dir / f"{module}{c.Infra.EXT_PYTHON}"
+            if not source.is_file() or not (core_dir / f"_{module}").is_dir():
+                continue
+            facade = next(
+                (
+                    statement.value.id
+                    for statement in ast.parse(
+                        source.read_text(encoding=c.DEFAULT_ENCODING)
+                    ).body
+                    if isinstance(statement, ast.Assign)
+                    and isinstance(statement.value, ast.Name)
+                    and any(
+                        isinstance(target_name, ast.Name) and target_name.id == layer
+                        for target_name in statement.targets
+                    )
+                ),
+                None,
+            )
+            if facade is not None:
+                bound[layer] = (module, facade)
         if not bound:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} binds no facade family"
             raise ValueError(msg)
@@ -229,16 +281,6 @@ class FlextInfraUtilitiesCodegenNamespace:
                 return family
         return None
 
-    @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* is a governed root-namespace facade file.
-
-        Returns:
-            Whether *file_name* is a governed root-namespace facade file.
-
-        """
-        return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
-
     @staticmethod
     def runtime_module_names(
         *, project_name: str, codegen: p.Infra.CodegenConfigSpec
@@ -284,39 +326,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             ),
             None,
         )
-
-    @staticmethod
-    def ordered_namespace_exports(
-        *,
-        package_dir: Path,
-        package_name: str,
-        export_names: Sequence[str],
-    ) -> Sequence[str]:
-        """Order root-package exports with alias hierarchy preserved.
-
-        Returns:
-            The resulting ``Sequence[str]``.
-
-        """
-        _ = (package_dir, package_name)
-        ordered_unique = tuple(dict.fromkeys(export_names))
-        export_set = set(ordered_unique)
-        preferred_aliases = tuple(
-            alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
-        )
-        declared_aliases = tuple(
-            name
-            for name in ordered_unique
-            if (
-                name.islower()
-                and len(name) <= c.Infra.MAX_ALIAS_LENGTH
-                and name not in preferred_aliases
-            )
-        )
-        ordered_aliases = (*preferred_aliases, *declared_aliases)
-        alias_set = set(ordered_aliases)
-        other_exports = tuple(name for name in ordered_unique if name not in alias_set)
-        return (*other_exports, *ordered_aliases)
 
     @staticmethod
     def package_alias(*, package_name: str) -> str:

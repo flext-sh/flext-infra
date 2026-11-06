@@ -10,12 +10,10 @@ import os
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 def _run_make_help(
@@ -54,7 +52,7 @@ class TestsFlextInfraCodegenMakeVerbs:
     """Prove every declared verb renders one reachable, inert-input target."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -81,7 +79,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -105,7 +103,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(makefile, lacks="package=false (content-only root)")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -134,7 +132,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(makefile, has="_builtin_build_artifacts:")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
@@ -233,7 +231,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(invocation, lacks="--apply")
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_help_prints_description_as_literal_data(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -523,7 +521,7 @@ class TestsFlextInfraCodegenMakeVerbs:
         tm.that(target, lacks="_dispatch")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("verb_group", "declared"),
         [("diag", ()), ("unknown", ("diag",))],
     )
@@ -533,7 +531,7 @@ class TestsFlextInfraCodegenMakeVerbs:
     ) -> None:
         """A verb names a declared section; a section exists only by declaration."""
         provider = u.Tests.provider()
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.RepositoryRef(
                 name="demo",
                 distribution="demo",
@@ -558,10 +556,10 @@ class TestsFlextInfraCodegenMakeVerbs:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("token", ["infra;rm", "Infra", "$(X)", ""])
+    @c.Tests.MARK.parametrize("token", ["infra;rm", "Infra", "$(X)", ""])
     def test_cli_route_tokens_are_shell_inert(token: str) -> None:
         """Route words are lowercase identifiers; anything else is refused."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.MakeVerbSpec(
                 name="infra-preview",
                 cli=("fixture-cli", token),

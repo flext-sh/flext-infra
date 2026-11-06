@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from flext_cli import cli
 
-from flext_infra import config, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.refactor._census import FlextInfraRefactorCensusCollect
 
 
@@ -24,7 +24,10 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
 
     model_config: ClassVar[t.ConfigDict] = m.Infra.CensusOptions.model_config
 
-    options: p.Infra.CensusOptions = m.Field(
+    options: Annotated[
+        p.Infra.CensusOptions,
+        t.schema_for_model(lambda: m.Infra.CensusOptions),
+    ] = m.Field(
         default_factory=m.Infra.CensusOptions,
         description="Validated census filters and report destinations",
     )
@@ -94,11 +97,17 @@ class FlextInfraRefactorCensusCollectHelpers(FlextInfraRefactorCensusCollect):
                     current_project = module.project_root
                     cli.display_text(f"census: scan {current_project}")
                 self._scan_module(rope, module, scan_config, findings=findings)
+        census_kinds = frozenset(
+            u.Infra.normalize_sequence_values(self.options.census_kinds) or ()
+        ) | frozenset(
+            name for name in kind_names or () if name in frozenset(c.Infra.CensusRule)
+        )
         return self._assemble_report(
             rope,
             source_preview=source_preview,
             findings=findings,
             scan_config=scan_config,
+            census_kinds=census_kinds or None,
         )
 
 

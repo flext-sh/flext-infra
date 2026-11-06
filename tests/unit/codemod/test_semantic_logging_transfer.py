@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import infra, p
+from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from flext_infra.workspace import FlextInfraRopeWorkspace
-from tests import c, m, r, t, tm, u
+from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
     """Native receivers, old owners and generated exports cut over together."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "complete",
@@ -69,7 +69,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             )
         }
         if case == "source-drift":
-            with pytest.raises(ValueError, match=r"source|directory|identity"):
+            with u.Tests.raises(ValueError, match=r"source|directory|identity"):
                 TestsFlextInfraSemanticLoggingTransfer._plan_logging_source_drift(
                     root, report, legacy, original[legacy]
                 )
@@ -91,7 +91,7 @@ class TestsFlextInfraSemanticLoggingTransfer:
             }
             with (
                 infra.rope_workspace(root) as workspace,
-                pytest.raises(ValueError, match=messages[case]),
+                u.Tests.raises(ValueError, match=messages[case]),
             ):
                 FlextInfraCodemodSemanticApply.apply(
                     root,

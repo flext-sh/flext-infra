@@ -11,17 +11,15 @@ import sqlite3
 from collections.abc import MutableSequence, Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
-from tests import c, e, m, tm, u
+from tests import c, e, m, t, tm, u
 
 
 class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
     @staticmethod
-    @pytest.mark.parametrize("has_origin", [False, True])
+    @c.Tests.MARK.parametrize("has_origin", [False, True])
     def test_original_suite_receipt_binds_public_process_and_accounting(
         cached_runner_project: Path,
         *,
@@ -139,7 +137,7 @@ class TestsFlextInfraPytestRunner:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("ci_context", [True, False])
+    @c.Tests.MARK.parametrize("ci_context", [True, False])
     def test_marker_selection_is_shared_by_collection_execution_and_coverage(
         cached_runner_project: Path,
         *,
@@ -196,10 +194,10 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("ci_context", [False, True])
+    @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_child_imports_respect_the_installed_ci_boundary(
         cached_runner_project: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch: t.Tests.MonkeyPatch,
         *,
         ci_context: bool,
     ) -> None:
@@ -277,7 +275,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_config_only_changes_invalidate_the_persistent_cache(
         cached_runner_project: Path,
     ) -> None:
@@ -331,8 +329,8 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("profile_collection", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("profile_collection", [False, True])
     def test_warm_cache_deselects_the_unchanged_suite(
         cached_runner_project: Path,
         *,
@@ -372,7 +370,7 @@ class TestsFlextInfraPytestRunner:
             tm.fail(warm_state.seed_needed)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_seeded_cache_executes_only_an_added_test(
         cached_runner_project: Path,
     ) -> None:
@@ -394,7 +392,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_failed_slow_item_stays_red_across_budgeted_runs(
         cached_runner_project: Path,
     ) -> None:
@@ -447,8 +445,8 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("omit_case", [False, True], ids=["order", "membership"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("omit_case", [False, True], ids=["order", "membership"])
     def test_warm_workers_follow_the_central_selection_order(
         cached_runner_project: Path,
         *,
@@ -505,7 +503,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_first_failure_stops_remaining_cases(
         cached_runner_project: Path,
     ) -> None:
@@ -550,7 +548,7 @@ class TestsFlextInfraPytestRunner:
             tm.ok(u.Cli.files_read_text(report_path.parent / "suite-outcome.json")),
         )
         tm.that(
-            (pytest.ExitCode.TESTS_FAILED.value, pytest.ExitCode.INTERRUPTED.value),
+            (c.Tests.ExitCode.TESTS_FAILED.value, c.Tests.ExitCode.INTERRUPTED.value),
             has=outcome.raw_return_code,
         )
         tm.that(outcome.raw_return_code, eq=exit_code)
@@ -559,8 +557,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(u.Tests.PytestRunner.summary(reports_root), has=f"failed={failed}")
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "finding",
         ["skip", "warning", "mro-warning", "homonymous-warning"],
     )
@@ -630,7 +628,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(warning_evidence.count("repeated runtime evidence"), eq=warnings_count)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_setup_failure_is_accounted_without_a_call_phase(
         cached_runner_project: Path,
     ) -> None:
@@ -657,15 +655,20 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_external_gate_markers_are_not_executed_offline(
         cached_runner_project: Path,
+        *,
+        ci_context: bool,
     ) -> None:
         """An external-token gate is deselected, never a KeyError, and reported.
 
         gate-budget/engineering-core: incremental verification records external
-        gates as not executed; the full verb owns their execution. The marker set is
-        the SSOT ``external-gate-markers``; every expectation derives from it.
+        gates as not executed; the full verb owns their execution. Under the Make
+        CI token the same deselection holds, so CI reports them as not executed
+        instead of skipping them at setup. The marker set is the SSOT
+        ``external-gate-markers``; every expectation derives from it.
         """
         pytest_policy = config.Infra.tooling.tools.pytest
         markers = pytest_policy.external_gate_markers
@@ -690,7 +693,9 @@ class TestsFlextInfraPytestRunner:
         )
 
         exit_code = tm.ok(
-            u.Tests.PytestRunner.runner_for(cached_runner_project).execute()
+            u.Tests.PytestRunner.runner_for(
+                cached_runner_project, ci_context=ci_context
+            ).execute()
         )
 
         tm.that(exit_code, eq=0)
@@ -716,8 +721,8 @@ class TestsFlextInfraPytestRunner:
         tm.that(deselection, has=["not (", *markers])
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("ci_context", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("ci_context", [False, True])
     def test_full_executes_every_marker_once_without_touching_testmon(
         cached_runner_project: Path,
         *,
@@ -773,7 +778,7 @@ class TestsFlextInfraPytestRunner:
         tm.that(parsed[-1].execution_mode, eq=c.Infra.PytestExecutionMode.FULL)
         tm.that(
             parsed[-1].deadline_monotonic,
-            eq=pytest.approx(runner.started_at_monotonic + policy.run_timeout_seconds),
+            eq=u.Tests.approx(runner.started_at_monotonic + policy.run_timeout_seconds),
         )
         report_dir = contexts[-1].parent
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
@@ -804,7 +809,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_file_runs_after_warm_cache_and_ignores_node_like_diagnostics(
         cached_runner_project: Path,
     ) -> None:
@@ -891,7 +896,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_suite_applies_effective_slow_and_aggregate_policy(
         cached_runner_project: Path,
     ) -> None:
@@ -939,7 +944,7 @@ class TestsFlextInfraPytestRunner:
         tm.that({context.testmon_lease_acquired for context in parsed}, eq={None})
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_warm_partial_selection_accounts_for_every_stable_test(
         cached_runner_project: Path,
     ) -> None:
@@ -992,7 +997,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_file_propagates_the_failed_process_status(
         cached_runner_project: Path,
     ) -> None:
@@ -1015,7 +1020,7 @@ class TestsFlextInfraPytestRunner:
         # stops xdist through max-failures (INTERRUPTED); a last-item failure
         # completes the suite (TESTS_FAILED). Both are the incremental red.
         tm.that(
-            (pytest.ExitCode.TESTS_FAILED.value, pytest.ExitCode.INTERRUPTED.value),
+            (c.Tests.ExitCode.TESTS_FAILED.value, c.Tests.ExitCode.INTERRUPTED.value),
             has=exit_code,
         )
         (context_path,) = (cached_runner_project / runner.reports).glob(
@@ -1042,7 +1047,7 @@ class TestsFlextInfraPytestRunner:
         )
         tm.not_none(runner.testmon_db).write_bytes(b"not a SQLite database")
 
-        with pytest.raises(sqlite3.DatabaseError):
+        with u.Tests.raises(sqlite3.DatabaseError):
             runner.execute()
 
         tm.that(
@@ -1051,7 +1056,7 @@ class TestsFlextInfraPytestRunner:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_warm_incremental_rejects_an_empty_complete_inventory(
         cached_runner_project: Path,
     ) -> None:
@@ -1072,7 +1077,7 @@ class TestsFlextInfraPytestRunner:
 
         status = tm.ok(runner.execute())
 
-        tm.that(status, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(status, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
 
         contexts = sorted(
             (cached_runner_project / runner.reports).glob("*/run-context.json"),

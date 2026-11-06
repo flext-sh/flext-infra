@@ -11,10 +11,7 @@ import sys
 from os import pathsep
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m
-from tests import c, tm, u
+from tests import c, m, tm, u
 from tests.unit.refactor.import_normalization_support import (
     TestsFlextInfraRefactorImportNormalizationSupport,
 )
@@ -104,8 +101,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.ok(result, eq=source)
 
     @classmethod
-    @pytest.mark.parametrize("local_alias", ["tm", "u", "payload_models"])
-    @pytest.mark.parametrize("imported_name", ["m", "FlextTestsModels"])
+    @c.Tests.MARK.parametrize("local_alias", ["tm", "u", "payload_models"])
+    @c.Tests.MARK.parametrize("imported_name", ["m", "FlextTestsModels"])
     def test_renamed_model_letter_preserves_public_payload_identity(
         cls,
         tmp_path: Path,
@@ -205,7 +202,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             package / "services" / "worker.py",
             "from __future__ import annotations\n"
             "\n"
-            "from demo_pkg._models.record import DemoRecord\n"
+            "from demo_pkg_models import DemoRecord\n"
             "\n"
             "\n"
             "def run() -> object:\n"
@@ -216,7 +213,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(normalized, lacks="demo_pkg._models.record")
 
     @classmethod
-    @pytest.mark.parametrize("reexport", [True, False])
+    @c.Tests.MARK.parametrize("reexport", [True, False])
     def test_published_package_binding_preserves_provider_identity(
         cls,
         tmp_path: Path,
@@ -242,7 +239,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
         source = "from demo_pkg._models import DemoRecord\n\nvalue = DemoRecord\n"
         if not reexport:
-            with pytest.raises(ValueError, match="Ambiguous declared public import"):
+            with u.Tests.raises(ValueError, match="Ambiguous declared public import"):
                 u.Infra.normalize_import_source(
                     project_root=project,
                     file_path=package / "consumer.py",
@@ -265,7 +262,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                     "-c",
                     (
                         "from demo_pkg._models import DemoRecord; "
-                        "from demo_pkg._models.record import DemoRecord as provider; "
+                        "from demo_pkg_models import DemoRecord as provider; "
                         "assert DemoRecord is provider"
                     ),
                 ),
@@ -276,7 +273,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.ok(u.Cli.process_succeeded(result.outcome))
 
     @classmethod
-    @pytest.mark.parametrize("base_binding", ["module", "direct", "alias", "generic"])
+    @c.Tests.MARK.parametrize("base_binding", ["module", "direct", "alias", "generic"])
     def test_exception_factory_mro_reexports_have_one_terminal_owner(
         cls,
         tmp_path: Path,
@@ -337,7 +334,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
 
     @classmethod
-    @pytest.mark.parametrize("same_package", [False, True])
+    @c.Tests.MARK.parametrize("same_package", [False, True])
     def test_unpublished_name_rejects_competing_descendant_declarations(
         cls,
         tmp_path: Path,
@@ -357,7 +354,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
                 encoding="utf-8",
             )
         source = "from demo_pkg.services import DemoRecord\n\nvalue = DemoRecord\n"
-        with pytest.raises(ValueError, match="Ambiguous declared public import"):
+        with u.Tests.raises(ValueError, match="Ambiguous declared public import"):
             u.Infra.normalize_import_source(
                 project_root=project,
                 file_path=package / "consumer.py",
@@ -417,8 +414,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(normalized, lacks="TestsDemoUtilities")
 
     @classmethod
-    @pytest.mark.parametrize("namespace", ["primary_pkg", "secondary_pkg"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("namespace", ["primary_pkg", "secondary_pkg"])
+    @c.Tests.MARK.parametrize(
         "relative",
         [
             "consumer.py",
@@ -428,7 +425,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "domain_records.py",
         ],
     )
-    @pytest.mark.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_native_facade_role_and_identity_are_project_independent(
         cls, tmp_path: Path, namespace: str, relative: str, *, guarded: bool
     ) -> None:
@@ -545,9 +542,9 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(outcome.stderr, eq="")
 
     @classmethod
-    @pytest.mark.parametrize("namespace", ["checks", "verification"])
-    @pytest.mark.parametrize("distinct", [False, True])
-    @pytest.mark.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize("namespace", ["checks", "verification"])
+    @c.Tests.MARK.parametrize("distinct", [False, True])
+    @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_native_alias_collision_requires_identity_before_effects(
         cls, tmp_path: Path, namespace: str, *, distinct: bool, guarded: bool
     ) -> None:
@@ -584,7 +581,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
         module.write_text(source, encoding="utf-8")
         if distinct:
-            with pytest.raises(ValueError, match="ambiguous facade binding"):
+            with u.Tests.raises(ValueError, match="ambiguous facade binding"):
                 u.Infra.normalize_import_source(
                     project_root=project, file_path=module, source=source
                 )
@@ -682,20 +679,20 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         tm.that(outcome.stderr, eq="")
 
     @classmethod
-    @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    @c.Tests.MARK.parametrize(
         "statement",
         [
             "from demo_pkg import t",
             "from demo_pkg import settings",
             "from demo_pkg import settings as own",
-            "from demo_pkg._models.base import DemoModelsBase",
+            "from demo_pkg_models import DemoModelsBase",
             "from demo_pkg._settings import DemoSettings",
             "from ._settings import DemoSettings",
             "import demo_pkg as own",
         ],
     )
-    @pytest.mark.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_layer_zero_rejects_all_own_namespace_dependencies(
         cls, tmp_path: Path, role: str, statement: str, *, guarded: bool
     ) -> None:
@@ -716,7 +713,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
         )
 
     @classmethod
-    @pytest.mark.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
+    @c.Tests.MARK.parametrize("role", sorted(c.Infra.IMPORT_LAW_ROOT_SINGLETONS))
     def test_layer_zero_role_uses_architecture_not_substring(cls, role: str) -> None:
         """A domain configuration name cannot override its enclosing family."""
         tm.that(u.Infra.import_module_role(f"demo_pkg._{role}"), eq="layer0")
@@ -731,8 +728,8 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             )
 
     @classmethod
-    @pytest.mark.parametrize("letter", sorted(u.Infra.facade_families()))
-    @pytest.mark.parametrize("guarded", [False, True])
+    @c.Tests.MARK.parametrize("letter", sorted(u.Infra.facade_families()))
+    @c.Tests.MARK.parametrize("guarded", [False, True])
     def test_family_rejects_own_facade_but_preserves_private_assembly(
         cls, tmp_path: Path, letter: str, *, guarded: bool
     ) -> None:

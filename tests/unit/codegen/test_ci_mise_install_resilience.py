@@ -13,8 +13,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 from tests.unit.codegen import test_ci_integration_branch_triggers as triggers
 
@@ -56,9 +54,9 @@ class TestsFlextInfraCiMiseInstallResilience:
             text = f"<<<<<<< ours\n{text}=======\n>>>>>>> theirs\n"
         lock.write_text(text, encoding="utf-8")
 
-    @pytest.mark.remote
-    @pytest.mark.slow
-    @pytest.mark.parametrize("shape", ["pinned", "without-self-pin", "merge-markers"])
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("shape", ["pinned", "without-self-pin", "merge-markers"])
     def test_step_provisions_mise_without_reading_a_broken_lock(
         self,
         tmp_path: Path,

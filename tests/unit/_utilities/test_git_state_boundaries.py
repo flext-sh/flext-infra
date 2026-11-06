@@ -10,17 +10,14 @@ import errno
 import os
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m
-from tests import tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraGitStateBoundaries:
     """Keep unsupported flags explicit and retain independently owned gitlinks."""
 
     @staticmethod
-    @pytest.mark.parametrize("broken_scratch", [False, True])
+    @c.Tests.MARK.parametrize("broken_scratch", [False, True])
     def test_symlink_checkpoint_preserves_unowned_pid_scratch(
         tmp_path: Path,
         *,

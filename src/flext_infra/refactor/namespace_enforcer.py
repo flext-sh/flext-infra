@@ -88,7 +88,16 @@ class FlextInfraNamespaceEnforcer(
         scoped = frozenset(
             path for paths in files_by_project.values() for path in paths
         )
-        with u.Infra.codemod_workspace_snapshot(self._repository_root) as snapshot:
+        plan_root = (
+            self._repository_root / project_names[0]
+            if project_names
+            and len(project_names) == 1
+            and (self._repository_root / project_names[0]).is_dir()
+            else project_roots[0]
+            if len(project_roots) == 1
+            else self._repository_root
+        )
+        with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
             before_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         source_files = tuple(sorted(scoped)) if module is not None else None
         before = FlextInfraModGateEngine.scan(

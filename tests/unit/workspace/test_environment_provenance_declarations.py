@@ -21,7 +21,7 @@ from tests import c, m, t, tm, u
 class TestsFlextInfraWorkspaceEnvironmentProvenanceDeclarations:
     """Prove declaration, alias and descriptor identity against physical sources."""
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "layout", ["package", "namespace", "multiple", "hatch-sources"]
     )
     def test_editable_path_must_expose_declared_package_sources(

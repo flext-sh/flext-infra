@@ -10,9 +10,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraLazyInitOwnership:
@@ -143,7 +141,7 @@ class TestsFlextInfraLazyInitOwnership:
     @staticmethod
     def test_independent_packages_accept_same_export_name_without_warnings(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A public name belongs to its package, not a workspace-wide census."""
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
@@ -168,7 +166,7 @@ class TestsFlextInfraLazyInitOwnership:
     @staticmethod
     def test_unpublished_module_homonyms_do_not_compete_for_exports(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Independent implementation declarations need no global renaming."""
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
@@ -184,10 +182,10 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(captured.out + captured.err, lacks="WARN:")
 
     @staticmethod
-    @pytest.mark.parametrize("export_names", [("Shared",), ("Shared", "Other")])
+    @c.Tests.MARK.parametrize("export_names", [("Shared",), ("Shared", "Other")])
     def test_duplicate_public_export_fails_before_generation(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         export_names: Sequence[str],
     ) -> None:
         """Two owners of one public name stop the phase before any file plan.
@@ -264,7 +262,7 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(after, lacks='"c"')
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "modules",
         [("holder_part_01", "holder_part_99"), ("api", "_api")],
     )
@@ -389,7 +387,7 @@ class TestsFlextInfraLazyInitOwnership:
         tm.that(tuple(path.read_bytes() for path in initializers), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "modules",
         [("holder_part_99", "holder_part_01"), ("foundation", "runtime")],
     )

@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
@@ -277,7 +275,7 @@ class TestsFlextInfraUvNativeResolution:
         return u.Tests.toml_mapping(resolved["source"])
 
     @staticmethod
-    @pytest.mark.parametrize("source_kind", ["path", "git"])
+    @c.Tests.MARK.parametrize("source_kind", ["path", "git"])
     def test_package_owned_runtime_source_is_resolved_natively(
         tmp_path: Path,
         source_kind: str,
@@ -329,7 +327,7 @@ class TestsFlextInfraUvNativeResolution:
         tm.that((directory / c.PYPROJECT_FILENAME).read_bytes(), eq=declared)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("identity", "expected_error"),
         [
             (

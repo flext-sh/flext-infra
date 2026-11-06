@@ -14,11 +14,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import FlextInfraCli, config, m
+from flext_infra import FlextInfraCli, config
 from flext_infra.gates.pyright import FlextInfraGatesPyright
-from tests import c, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -126,7 +124,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that(emitted, has='"$schema":')
         tm.that(m.Infra.SarifReport.model_validate_json(emitted), eq=report)
         finding = report.runs[0].results[0]
-        with pytest.raises(m.ValidationError, match="locations"):
+        with u.Tests.raises(m.ValidationError, match="locations"):
             m.Infra.SarifResult.model_validate({
                 "rule_id": finding.rule_id,
                 "level": finding.level,
@@ -137,7 +135,7 @@ class TestsFlextInfraCheckReportContract:
     @staticmethod
     def test_public_check_preserves_native_diagnostic_levels_and_failure(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Real Pyright findings produce readable SARIF, not a validation crash."""
         project = u.Tests.mk_project(
@@ -277,7 +275,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that(self._sources(project), ne=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "invalid",
         ["", "../outside.py", "/outside.py", "./file.py", "a/../file.py", "missing.py"],
     )
@@ -300,7 +298,7 @@ class TestsFlextInfraCheckReportContract:
         tm.fail(reports.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("parent_link", [False, True])
+    @c.Tests.MARK.parametrize("parent_link", [False, True])
     def test_file_selection_refuses_symlink_ambiguity(
         tmp_path: Path,
         *,
@@ -331,7 +329,7 @@ class TestsFlextInfraCheckReportContract:
         tm.fail(reports.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("broken", [False, True])
+    @c.Tests.MARK.parametrize("broken", [False, True])
     def test_public_file_check_uses_literal_scope_and_native_verdict(
         tmp_path: Path,
         *,
@@ -360,7 +358,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that((selected.read_bytes(), sibling.read_bytes()), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("gate", [None, "unregistered-fixture-gate"])
+    @c.Tests.MARK.parametrize("gate", [None, "unregistered-fixture-gate"])
     def test_missing_or_unknown_file_gate_selection_is_not_acceptance(
         tmp_path: Path,
         gate: str | None,
@@ -384,7 +382,7 @@ class TestsFlextInfraCheckReportContract:
     def test_file_selection_uses_declared_member_context(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A workspace file uses its member's configuration and report identity."""
         root = u.Tests.mk_project(
@@ -425,7 +423,7 @@ class TestsFlextInfraCheckReportContract:
         tm.that(selected.read_bytes(), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "mode",
         [
             ("--apply",),

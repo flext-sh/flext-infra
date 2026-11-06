@@ -13,8 +13,6 @@ from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, t, tm, u
@@ -86,7 +84,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         self,
         project: Path,
         *,
-        expected_raw_exit: pytest.ExitCode,
+        expected_raw_exit: c.Tests.ExitCode,
     ) -> tuple[Path, t.StrTuple, int]:
         """Return the published run, its selection and its executed count.
 
@@ -111,7 +109,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         return bounded, selected, executed
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_interrupted_startup_preserves_exit_without_completed_reports(
         cached_runner_project: Path,
     ) -> None:
@@ -129,7 +127,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
 
         result = runner.execute()
 
-        tm.that(tm.ok(result), eq=pytest.ExitCode.INTERRUPTED.value)
+        tm.that(tm.ok(result), eq=c.Tests.ExitCode.INTERRUPTED.value)
         reports = config.Infra.codegen.make.testmon_cache.reports_directory
         (outcome_path,) = (cached_runner_project / reports).glob(
             "*/suite-outcome.json",
@@ -137,7 +135,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             tm.ok(u.Cli.files_read_text(outcome_path)),
         )
-        tm.that(outcome.raw_return_code, eq=pytest.ExitCode.INTERRUPTED.value)
+        tm.that(outcome.raw_return_code, eq=c.Tests.ExitCode.INTERRUPTED.value)
         tm.fail(outcome.timed_out)
         tm.that(outcome.forwarded_signal, none=True)
         tm.that(
@@ -187,8 +185,8 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.that(batch_size > 0, truth=True)
         return batch_size
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("distributed", [True, False], ids=["xdist", "serial"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("distributed", [True, False], ids=["xdist", "serial"])
     def test_suite_stop_instant_persists_the_executed_prefix(
         self,
         cached_runner_project: Path,
@@ -222,11 +220,11 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             encoding="utf-8",
         )
         runner = self._spent_runner(cached_runner_project, serial=not distributed)
-        tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.INTERRUPTED.value)
+        tm.that(tm.ok(runner.execute()), eq=c.Tests.ExitCode.INTERRUPTED.value)
 
         bounded, selected, executed = self._published_run(
             cached_runner_project,
-            expected_raw_exit=pytest.ExitCode.INTERRUPTED,
+            expected_raw_exit=c.Tests.ExitCode.INTERRUPTED,
         )
         tm.that(executed, gt=0)
         tm.that(executed, lt=len(selected))
@@ -263,7 +261,7 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         tm.that(len(persisted), eq=executed)
         tm.ok(persisted <= set(selected))
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_stop_instant_after_the_last_selected_test_completes_the_run(
         self,
         cached_runner_project: Path,
@@ -282,11 +280,11 @@ class TestsFlextInfraPytestRunnerSuiteStop:
         )
         runner = self._spent_runner(cached_runner_project, serial=True)
 
-        tm.that(tm.ok(runner.execute()), eq=pytest.ExitCode.OK.value)
+        tm.that(tm.ok(runner.execute()), eq=c.Tests.ExitCode.OK.value)
 
         bounded, selected, executed = self._published_run(
             cached_runner_project,
-            expected_raw_exit=pytest.ExitCode.OK,
+            expected_raw_exit=c.Tests.ExitCode.OK,
         )
         tm.that(executed, eq=len(selected))
         tm.that(

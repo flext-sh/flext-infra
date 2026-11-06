@@ -848,9 +848,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingOwner:
         bases = tuple(payloads.direct_bases(owner))
         if len(bases) != 1:
             return ()
-        preset = payloads.qualified_name(
-            project, "flext_core.m.ArbitraryTypesModel"
-        ).get_object()
+        preset = payloads.qualified_name(project, "m.ArbitraryTypesModel").get_object()
         if bases != (preset,):
             return ()
         model = payloads.identity_name(

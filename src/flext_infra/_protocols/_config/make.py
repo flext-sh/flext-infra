@@ -12,7 +12,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
-from flext_infra._constants import FlextInfraConstantsConfig
 from flext_infra._constants.config import FlextInfraConstantsConfig
 from flext_infra._protocols._config import (
     FlextInfraProtocolsConfigContract,
@@ -20,8 +19,7 @@ from flext_infra._protocols._config import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import t
-    from flext_infra._constants import FlextInfraConstantsCheck
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigMakeClean,
         FlextInfraProtocolsConfigMakeDocs,
@@ -200,7 +198,7 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def phase(self) -> FlextInfraConstantsCheck.CheckPhase:
+        def phase(self) -> c.Infra.CheckPhase:
             """Checker evidence phase; other verbs are complete."""
             ...
 
@@ -375,7 +373,7 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class MakeSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class MakeExecutionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -457,29 +455,28 @@ class FlextInfraProtocolsConfigMake:
             """Native environment installation wall-time budget."""
             ...
 
-        @property
-        def check_timeout_seconds(self) -> int:
-            """Canonical Make check wall-time budget before forced child cleanup."""
-            ...
+    @runtime_checkable
+    class MakeHarnessSpec(MakeExecutionSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def testmon_cache(
             self,
-        ) -> FlextInfraProtocolsConfigMake.MakeSpecTestmonCacheSpec:
+        ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecTestmonCacheSpec:
             """Adaptive testmon Actions cache policy."""
             ...
 
         @property
         def pytest_scratch(
             self,
-        ) -> FlextInfraProtocolsConfigMake.MakeSpecPytestScratchSpec:
+        ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecPytestScratchSpec:
             """Scratch root declared by every pytest verb."""
             ...
 
         @property
         def executor_environment(
             self,
-        ) -> FlextInfraProtocolsConfigMake.MakeSpecExecutorEnvironmentSpec:
+        ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecExecutorEnvironmentSpec:
             """Structural member projected from the owning model.
 
             Isolated environment that runs the residual flext-infra upgrade step
@@ -544,6 +541,151 @@ class FlextInfraProtocolsConfigMake:
             """External project-keyed native Ruff cache policy."""
             ...
 
+    @runtime_checkable
+    class MakeHarnessSpecTestmonCachePolicySpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def mode(self) -> Literal["bootstrap", "stable"]:
+            """Cache phase: bootstrap seeds, stable saves."""
+            ...
+
+        @property
+        def save_enabled(self) -> bool:
+            """Master switch for cache publishes."""
+            ...
+
+        @property
+        def max_bootstrap_generations(self) -> int:
+            """Retention cap for bootstrap generations."""
+            ...
+
+        @property
+        def max_stable_generations(self) -> int:
+            """Retention cap for stable generations."""
+            ...
+
+        @property
+        def per_repo_budget_bytes(self) -> int:
+            """Per-repository byte budget."""
+            ...
+
+        @property
+        def warning_threshold_percent(self) -> int:
+            """Quota-ladder warning stage."""
+            ...
+
+        @property
+        def maintenance_threshold_percent(self) -> int:
+            """Quota-ladder maintenance stage."""
+            ...
+
+        @property
+        def block_threshold_percent(self) -> int:
+            """Quota-ladder block stage."""
+            ...
+
+        @property
+        def key_prefix(self) -> t.NonEmptyStr:
+            """Actions cache key namespace."""
+            ...
+
+    @runtime_checkable
+    class MakeHarnessSpecTestmonCacheSpec(
+        FlextInfraProtocolsConfigExternalCache.Directory[
+            FlextInfraConstantsConfig.PytestCacheEnvironment
+        ],
+        FlextInfraProtocolsConfigContract.ConfigContract,
+        Protocol,
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def data_home_environment_variable(
+            self,
+        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+            """XDG persistent cache-home variable."""
+            ...
+
+        @property
+        def user_home_environment_variable(
+            self,
+        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+            """User home variable for the XDG default."""
+            ...
+
+        @property
+        def database_filename(self) -> t.NonEmptyStr:
+            """pytest-testmon database filename."""
+            ...
+
+        @property
+        def database_environment_variable(
+            self,
+        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+            """pytest-testmon's supported database-path variable."""
+            ...
+
+        @property
+        def target_directory(self) -> Path:
+            """Repository-relative pytest target."""
+            ...
+
+        @property
+        def reports_directory(self) -> Path:
+            """Repository-relative pytest reports root."""
+            ...
+
+    @runtime_checkable
+    class MakeHarnessSpecExecutorEnvironmentSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def directory(self) -> Path:
+            """Runtime-root-relative executor environment."""
+            ...
+
+        @property
+        def dependency_group(self) -> t.NonEmptyStr:
+            """Dependency group whose frozen closure pins flext-infra."""
+            ...
+
+    @runtime_checkable
+    class MakeHarnessSpecPytestScratchSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def user_home_environment_variable(
+            self,
+        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
+            """User home variable anchoring the scratch root."""
+            ...
+
+        @property
+        def home_relative_directory(self) -> t.NonEmptyStr:
+            """Home-relative scratch base directory."""
+            ...
+
+        @property
+        def state_directory_name(self) -> t.NonEmptyStr:
+            """Runtime-state directory name under the base."""
+            ...
+
+        @property
+        def namespace(self) -> t.NonEmptyStr:
+            """Scratch namespace below the checkout path."""
+            ...
+
+    @runtime_checkable
+    class MakeVerbCatalogSpec(MakeHarnessSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
         @property
         def verbs(self) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbSpec, ...]:
             """Ordered canonical public verbs."""
@@ -599,6 +741,10 @@ class FlextInfraProtocolsConfigMake:
         def docs(self) -> FlextInfraProtocolsConfigMakeDocs.MakeDocsSpec:
             """Public documentation lifecycle policy."""
             ...
+
+    @runtime_checkable
+    class MakeSpec(MakeVerbCatalogSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def custom_handler_policy(
@@ -700,147 +846,6 @@ class FlextInfraProtocolsConfigMake:
             self,
         ) -> Mapping[str, FlextInfraProtocolsConfigMake.CustomHandlerPolicy]:
             """Effective custom-handler policy for every Make profile."""
-            ...
-
-    @runtime_checkable
-    class MakeSpecTestmonCachePolicySpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def mode(self) -> Literal["bootstrap", "stable"]:
-            """Cache phase: bootstrap seeds, stable saves."""
-            ...
-
-        @property
-        def save_enabled(self) -> bool:
-            """Master switch for cache publishes."""
-            ...
-
-        @property
-        def max_bootstrap_generations(self) -> int:
-            """Retention cap for bootstrap generations."""
-            ...
-
-        @property
-        def max_stable_generations(self) -> int:
-            """Retention cap for stable generations."""
-            ...
-
-        @property
-        def per_repo_budget_bytes(self) -> int:
-            """Per-repository byte budget."""
-            ...
-
-        @property
-        def warning_threshold_percent(self) -> int:
-            """Quota-ladder warning stage."""
-            ...
-
-        @property
-        def maintenance_threshold_percent(self) -> int:
-            """Quota-ladder maintenance stage."""
-            ...
-
-        @property
-        def block_threshold_percent(self) -> int:
-            """Quota-ladder block stage."""
-            ...
-
-        @property
-        def key_prefix(self) -> t.NonEmptyStr:
-            """Actions cache key namespace."""
-            ...
-
-    @runtime_checkable
-    class MakeSpecTestmonCacheSpec(
-        FlextInfraProtocolsConfigExternalCache.Directory[
-            FlextInfraConstantsConfig.PytestCacheEnvironment
-        ],
-        FlextInfraProtocolsConfigContract.ConfigContract,
-        Protocol,
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def data_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """XDG persistent cache-home variable."""
-            ...
-
-        @property
-        def user_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """User home variable for the XDG default."""
-            ...
-
-        @property
-        def database_filename(self) -> t.NonEmptyStr:
-            """pytest-testmon database filename."""
-            ...
-
-        @property
-        def database_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """pytest-testmon's supported database-path variable."""
-            ...
-
-        @property
-        def target_directory(self) -> Path:
-            """Repository-relative pytest target."""
-            ...
-
-        @property
-        def reports_directory(self) -> Path:
-            """Repository-relative pytest reports root."""
-            ...
-
-    @runtime_checkable
-    class MakeSpecExecutorEnvironmentSpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def directory(self) -> Path:
-            """Runtime-root-relative executor environment."""
-            ...
-
-        @property
-        def dependency_group(self) -> t.NonEmptyStr:
-            """Dependency group whose frozen closure pins flext-infra."""
-            ...
-
-    @runtime_checkable
-    class MakeSpecPytestScratchSpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def user_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """User home variable anchoring the scratch root."""
-            ...
-
-        @property
-        def home_relative_directory(self) -> t.NonEmptyStr:
-            """Home-relative scratch base directory."""
-            ...
-
-        @property
-        def state_directory_name(self) -> t.NonEmptyStr:
-            """Runtime-state directory name under the base."""
-            ...
-
-        @property
-        def namespace(self) -> t.NonEmptyStr:
-            """Scratch namespace below the checkout path."""
             ...
 
     @runtime_checkable

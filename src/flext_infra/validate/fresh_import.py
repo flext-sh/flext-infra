@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from inspect import getsource
 from pathlib import Path
 from textwrap import dedent, indent
+from types import ModuleType
 from typing import Annotated, override
 
 from pydantic.warnings import UnsupportedFieldAttributeWarning
@@ -463,73 +464,105 @@ class FlextInfraValidateFreshImport(s[bool]):
             ),
             key=lambda klass: f"{klass.__module__}.{klass.__qualname__}",
         )
-        for klass in models:
-            # The model is built natively first, in its own module namespace
-            # (Pydantic's resolution), so each field annotation below is the
-            # resolved type rather than a forward reference of another frame.
-            u.type_adapter(klass)
-            fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
-            for name, info in fields.items():
-                if info.annotation is None:
-                    continue
-                # An inherited field's annotation is written in its declaring
-                # class's module; resolving it in the subclass module reads
-                # a different binding of the same letter.
-                owner = next(
-                    (
-                        base
-                        for base in klass.__mro__
-                        if name in vars(base).get("__annotations__", {})
-                    ),
-                    klass,
+        probe_module = ModuleType("_flext_fresh_import_probe")
+        sys.modules[probe_module.__name__] = probe_module
+        try:
+            for klass in models:
+                # The model is built natively first, in its own module namespace
+                # (Pydantic's resolution), so each field annotation below is the
+                # resolved type rather than a forward reference of another frame.
+                u.type_adapter(klass)
+                # A synthetic subclass in an empty module reproduces cross-module
+                # inheritance: any field left incomplete when `klass` was defined
+                # is re-evaluated in `probe_module` and fails through Pydantic's
+                # public TypeAdapter build.
+                probe_subclass = type(
+                    f"_Probe{klass.__name__}",
+                    (klass,),
+                    {"__module__": probe_module.__name__},
                 )
-                namespace = (
-                    vars(sys.modules[klass.__module__])
-                    | vars(sys.modules[owner.__module__])
-                    | dict(vars(owner))
+                # The synthetic subclass declares no PEP 695 parameters of its own,
+                # so the ones its inherited annotations name come from `klass`.
+                parent_namespace = (
+                    dict(vars(sys.modules[klass.__module__]))
                     | {
                         parameter.__name__: parameter
                         for parameter in getattr(klass, "__type_params__", ())
                     }
-                    | {klass.__name__: klass, owner.__name__: owner}
+                    | {klass.__name__: klass}
                 )
-                try:
-                    # Deferred build: an eager adapter resolves forward
-                    # references in this probe's own frame (whose letters are
-                    # flext-infra's), not in the declaring module namespace.
-                    annotation = info.rebuild_annotation()
-                    # The probe body runs in a fresh script that binds only
-                    # flext-core's ``c, p, r, t, u``: no ``m`` here.
-                    if isinstance(annotation, type) and (
-                        "__pydantic_fields__" in vars(annotation)
-                    ):
-                        # A model field type builds in its own module namespace.
-                        u.type_adapter(annotation)
-                    else:
-                        u.type_adapter(
-                            annotation, config={"defer_build": True}
-                        ).rebuild(
-                            force=True, raise_errors=True, _types_namespace=namespace
+                u.type_adapter(probe_subclass).rebuild(
+                    force=True,
+                    raise_errors=True,
+                    _types_namespace=parent_namespace,
+                )
+                fields: Mapping[str, t.FieldInfo] = vars(klass)["__pydantic_fields__"]
+                for name, info in fields.items():
+                    if info.annotation is None:
+                        continue
+                    # An inherited field's annotation is written in its declaring
+                    # class's module; resolving it in the subclass module reads
+                    # a different binding of the same letter.
+                    owner = next(
+                        (
+                            base
+                            for base in klass.__mro__
+                            if name in vars(base).get("__annotations__", {})
+                        ),
+                        klass,
+                    )
+                    namespace = (
+                        vars(sys.modules[klass.__module__])
+                        | vars(sys.modules[owner.__module__])
+                        | dict(vars(owner))
+                        | {
+                            parameter.__name__: parameter
+                            for parameter in getattr(klass, "__type_params__", ())
+                        }
+                        | {klass.__name__: klass, owner.__name__: owner}
+                    )
+                    try:
+                        # Deferred build: an eager adapter resolves forward
+                        # references in this probe's own frame (whose letters are
+                        # flext-infra's), not in the declaring module namespace.
+                        annotation = info.rebuild_annotation()
+                        # The probe body runs in a fresh script that binds only
+                        # flext-core's ``c, p, r, t, u``: no ``m`` here.
+                        if isinstance(annotation, type) and (
+                            "__pydantic_fields__" in vars(annotation)
+                        ):
+                            # A model field type builds in its own module namespace.
+                            u.type_adapter(annotation)
+                        else:
+                            u.type_adapter(
+                                annotation, config={"defer_build": True}
+                            ).rebuild(
+                                force=True,
+                                raise_errors=True,
+                                _types_namespace=namespace,
+                            )
+                    except c.PydanticSchemaGenerationError as exc:
+                        exc.add_note(
+                            f"{klass.__module__}.{klass.__qualname__}.{name} needs "
+                            "arbitrary_types_allowed: declare its type through t.Port "
+                            "or a validated t alias"
                         )
-                except c.PydanticSchemaGenerationError as exc:
-                    exc.add_note(
-                        f"{klass.__module__}.{klass.__qualname__}.{name} needs "
-                        "arbitrary_types_allowed: declare its type through t.Port "
-                        "or a validated t alias"
-                    )
-                    raise
-                except (AttributeError, NameError) as exc:
-                    exc.add_note(
-                        f"{klass.__module__}.{klass.__qualname__}.{name} annotation "
-                        f"does not resolve in {owner.__module__}"
-                    )
-                    raise
-                except UnsupportedFieldAttributeWarning as exc:
-                    exc.add_note(
-                        f"{klass.__module__}.{klass.__qualname__}.{name} places "
-                        "field metadata inside an Annotated alias"
-                    )
-                    raise
+                        raise
+                    except (AttributeError, NameError) as exc:
+                        exc.add_note(
+                            f"{klass.__module__}.{klass.__qualname__}.{name} "
+                            f"annotation "
+                            f"does not resolve in {owner.__module__}"
+                        )
+                        raise
+                    except UnsupportedFieldAttributeWarning as exc:
+                        exc.add_note(
+                            f"{klass.__module__}.{klass.__qualname__}.{name} places "
+                            "field metadata inside an Annotated alias"
+                        )
+                        raise
+        finally:
+            sys.modules.pop(probe_module.__name__, None)
 
     def execute_probe(
         self,

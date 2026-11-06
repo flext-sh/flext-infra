@@ -9,33 +9,30 @@ from __future__ import annotations
 import pstats
 from pathlib import Path
 
-import pytest
-
-from flext_infra import m
 from flext_infra.validate import FlextInfraPytestDiagExtractor
-from tests import c, e, tm, u
+from tests import c, e, m, tm, u
 
 
 class TestsFlextInfraPytestCollectionPolicy:
     """Keep collection findings loud, accounted, and identity-preserving."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_collection_policy_error_fails_loud_and_names_the_offender(
         policy_violation_project: Path,
     ) -> None:
         """A collection-time policy error rejects the run and names the offender."""
         runner = u.Tests.PytestRunner.runner_for(policy_violation_project)
 
-        with pytest.raises(RuntimeError) as raised:
+        with u.Tests.raises(RuntimeError) as raised:
             runner.execute()
 
         tm.that(str(raised.value), has=["FLEXT slow timeout policy", "test_policy.py"])
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("profile_collection", [False, True])
-    @pytest.mark.parametrize("finding", ["warning", "module-skip", "module-error"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("profile_collection", [False, True])
+    @c.Tests.MARK.parametrize("finding", ["warning", "module-skip", "module-error"])
     def test_collection_findings_block_before_suite_execution(
         cached_runner_project: Path,
         finding: str,
@@ -82,7 +79,7 @@ class TestsFlextInfraPytestCollectionPolicy:
             else:
                 runner.execute()
 
-        with pytest.raises(RuntimeError, match=expected):
+        with u.Tests.raises(RuntimeError, match=expected):
             execute_blocking_collection()
 
         (events,) = (cached_runner_project / runner.reports).glob(
@@ -98,7 +95,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         )
         tm.that(outcome.raw_return_code != 0, eq=finding == "module-error")
         if finding == "module-error":
-            tm.that(outcome.raw_return_code == pytest.ExitCode.INTERRUPTED, truth=True)
+            tm.that(outcome.raw_return_code == c.Tests.ExitCode.INTERRUPTED, truth=True)
         profile = events.parent / "testmon-selection.pstats"
         tm.that(profile.is_file() == profile_collection, truth=True)
         if profile_collection:
@@ -114,8 +111,8 @@ class TestsFlextInfraPytestCollectionPolicy:
             tm.that(parent.with_suffix(".pstats.json").is_file(), truth=True)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("homonym", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("homonym", [False, True])
     def test_serial_collection_warning_blocks_and_preserves_identity(
         cached_runner_project: Path,
         *,
@@ -144,7 +141,9 @@ class TestsFlextInfraPytestCollectionPolicy:
             f"        warnings.warn('serial policy evidence', {category})\n",
             encoding="utf-8",
         )
-        with pytest.raises(RuntimeError, match="collection contains blocking findings"):
+        with u.Tests.raises(
+            RuntimeError, match="collection contains blocking findings"
+        ):
             runner.execute()
 
         (receipt,) = (cached_runner_project / runner.reports).glob(
@@ -164,7 +163,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         tm.that(identity.category_module, eq="runner_sample.notices")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_warm_inventory_captures_warnings_from_stable_modules(
         cached_runner_project: Path,
     ) -> None:
@@ -184,7 +183,9 @@ class TestsFlextInfraPytestCollectionPolicy:
         (target / "emit-warning").touch()
 
         inventory_runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
-        with pytest.raises(RuntimeError, match="collection contains blocking findings"):
+        with u.Tests.raises(
+            RuntimeError, match="collection contains blocking findings"
+        ):
             inventory_runner.execute()
 
         (context,) = set(reports_root.glob("*/run-context.json")) - existing
@@ -200,14 +201,14 @@ class TestsFlextInfraPytestCollectionPolicy:
         tm.fail((context.parent / "suite-outcome.json").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_coverage_pass_fails_loud_on_collection_policy_error(
         policy_violation_project: Path,
     ) -> None:
         """The coverage inventory rejects the same collection policy violation."""
         runner = u.Tests.PytestRunner.runner_for(policy_violation_project)
 
-        with pytest.raises(RuntimeError) as raised:
+        with u.Tests.raises(RuntimeError) as raised:
             runner.execute_coverage()
 
         tm.that(str(raised.value), has=["FLEXT slow timeout policy", "test_policy.py"])

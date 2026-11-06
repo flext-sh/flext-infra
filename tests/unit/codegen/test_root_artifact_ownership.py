@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codegen, config, infra
 from tests import c, m, tm, u
 from tests.unit.codegen import conform_support
@@ -84,7 +82,7 @@ class TestsFlextInfraRootArtifactOwnership:
             if Path(destination).parts[:1] == (".github",):
                 entry["ownership"]["policy"] = "merge"
 
-        with pytest.raises(ValueError, match="must be full-managed"):
+        with u.Tests.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(payload)
 
     @staticmethod
@@ -154,7 +152,7 @@ class TestsFlextInfraRootArtifactOwnership:
         """The conform plan is a repository-local, offline inventory."""
 
         @staticmethod
-        @pytest.mark.slow
+        @c.Tests.MARK.slow
         def test_plan_never_fetches_origin(infra_git_repo: Path) -> None:
             """Planning consumes the existing origin ref without network access."""
             root = infra_git_repo

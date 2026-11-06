@@ -14,8 +14,6 @@ from json import dumps
 from pathlib import Path
 from typing import ClassVar
 
-import pytest
-
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.deps.phases import FlextInfraToolTablesPhase
@@ -248,7 +246,7 @@ class TestsFlextInfraDepsGate:
         tm.that(report_path.read_bytes(), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "directory", "roots", "unused"),
         [
             (
@@ -321,7 +319,7 @@ class TestsFlextInfraDepsGate:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("excluded", [False, True])
+    @c.Tests.MARK.parametrize("excluded", [False, True])
     def test_native_capture_requires_executed_sources(
         tmp_path: Path, *, excluded: bool
     ) -> None:
@@ -375,7 +373,7 @@ class TestsFlextInfraDepsGate:
             runtime_dependency_inputs=inputs,
         )
 
-        with pytest.raises(
+        with u.Tests.raises(
             RuntimeError,
             match="runtime import requires one authored, installed, locked supplier",
         ) as rejected:
@@ -449,7 +447,7 @@ class TestsFlextInfraDepsGate:
         tm.that(len(tuple((tmp_path / "reports").rglob("*.json"))), eq=2)
 
     @staticmethod
-    @pytest.mark.parametrize("invoked", [False, True])
+    @c.Tests.MARK.parametrize("invoked", [False, True])
     def test_executable_only_dependency_stays_runtime(
         tmp_path: Path,
         *,
@@ -471,7 +469,7 @@ class TestsFlextInfraDepsGate:
         tm.that(plan.dependencies, eq=(name,) if invoked else ())
 
     @staticmethod
-    @pytest.mark.parametrize("loaded", [False, True])
+    @c.Tests.MARK.parametrize("loaded", [False, True])
     def test_pytest_plugin_only_dependency_stays_runtime(
         tmp_path: Path,
         *,
@@ -647,7 +645,7 @@ class TestsFlextInfraDepsGate:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "change",
         ["ambiguous", "source", "shipped-source", "wrong-lock"],
     )
@@ -716,7 +714,7 @@ class TestsFlextInfraDepsGate:
         tm.that(scan.settings.path.read_bytes(), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("attached_peer", [False, True])
+    @c.Tests.MARK.parametrize("attached_peer", [False, True])
     def test_peer_import_remains_a_dependency_after_projection(
         tmp_path: Path,
         *,
@@ -838,7 +836,7 @@ class TestsFlextInfraDepsGate:
         tm.that(stale.read_text(encoding="utf-8"), eq="[]")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "payload",
         [
             "{}",
@@ -861,7 +859,7 @@ class TestsFlextInfraDepsGate:
         """The public owned JSON boundary rejects malformed or incomplete records."""
         report = tmp_path / "deptry.json"
         report.write_text(payload, encoding="utf-8")
-        with pytest.raises(ValueError, match="validation error"):
+        with u.Tests.raises(ValueError, match="validation error"):
             m.Infra.DeptryNativeReport.model_validate_json(
                 report.read_bytes(),
                 strict=True,

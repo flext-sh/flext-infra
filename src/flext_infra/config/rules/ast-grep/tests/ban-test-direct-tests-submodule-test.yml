@@ -1,0 +1,19 @@
+id: ban-test-direct-tests-submodule
+valid:
+  - |
+    from tests import c
+  - |
+    from tests import FlextCore
+  - |
+    import tests
+  - |
+    import pytest
+invalid:
+  - |
+    from tests.constants import c
+  - |
+    from tests._utilities import build
+  - |
+    from tests.fixtures.sandbox import Sandbox
+  - |
+    import tests.models

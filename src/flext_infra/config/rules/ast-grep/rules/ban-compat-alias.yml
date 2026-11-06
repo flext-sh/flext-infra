@@ -50,3 +50,123 @@ note: >-
   declared facade alias, not a compatibility name.
 files:
   - "**/*.py"
+---
+# FLEXT generator law point 5 (operator law 2026-09-20, flext-0in0k): internal
+# tiers inherit by class MRO and declare their own letter in their own
+# `__all__`; a subdirectory declares no short alias. Only a namespace-root
+# facade module (`src/<package>/<module>.py` or `<tier>/<module>.py`) binds a
+# family letter. A module below a package or tier subdirectory that binds a
+# single-letter name at module level re-declares a letter its namespace root
+# already publishes: its generated initializer then publishes a second owner of
+# the letter, and the import law can no longer elect one origin for the
+# family modules beside it.
+#
+# The fix deletes the assignment; the two documents below remove its
+# `__all__` entry, and the regenerated initializer stops publishing it.
+# Consumers bind the letter from the namespace root.
+id: ban-subdirectory-short-alias
+language: Python
+severity: error
+metadata:
+  enforce: [ENFORCE-010, ENFORCE-066]
+files:
+  - "*/*/**/*.py"
+ignores:
+  - "src/*/*.py"
+  - "**/__init__.py"
+rule:
+  kind: expression_statement
+  inside:
+    kind: module
+  has:
+    kind: assignment
+    all:
+      - has:
+          field: left
+          kind: identifier
+          regex: "^[a-z]$"
+      - has:
+          field: right
+          regex: "."
+fix: ""
+message: >-
+  A subdirectory module declares no short alias: the letter belongs to the
+  namespace-root facade module that composes this class.
+---
+# Companion of ban-subdirectory-short-alias: the deleted alias leaves the
+# module's own `__all__` exporting a name it no longer binds. An entry
+# followed by a comma is removed with that comma.
+id: ban-subdirectory-short-alias-export
+language: Python
+severity: error
+metadata:
+  enforce: [ENFORCE-010, ENFORCE-066]
+files:
+  - "*/*/**/*.py"
+ignores:
+  - "src/*/*.py"
+  - "**/__init__.py"
+rule:
+  kind: string
+  regex: "^[\"'][a-z][\"']$"
+  precedes:
+    regex: "^,$"
+  inside:
+    any:
+      - kind: list
+      - kind: tuple
+    inside:
+      kind: assignment
+      has:
+        field: left
+        regex: "^__all__$"
+      inside:
+        kind: expression_statement
+        inside:
+          kind: module
+fix:
+  template: ""
+  expandEnd:
+    regex: "^,$"
+message: >-
+  A subdirectory module exports no short alias: its namespace root publishes
+  the letter.
+---
+# Companion of ban-subdirectory-short-alias: the last `__all__` entry, with
+# no comma after it, is removed with the comma before it.
+id: ban-subdirectory-short-alias-export-last
+language: Python
+severity: error
+metadata:
+  enforce: [ENFORCE-010, ENFORCE-066]
+files:
+  - "*/*/**/*.py"
+ignores:
+  - "src/*/*.py"
+  - "**/__init__.py"
+rule:
+  kind: string
+  regex: "^[\"'][a-z][\"']$"
+  not:
+    precedes:
+      regex: "^,$"
+  inside:
+    any:
+      - kind: list
+      - kind: tuple
+    inside:
+      kind: assignment
+      has:
+        field: left
+        regex: "^__all__$"
+      inside:
+        kind: expression_statement
+        inside:
+          kind: module
+fix:
+  template: ""
+  expandStart:
+    regex: "^,$"
+message: >-
+  A subdirectory module exports no short alias: its namespace root publishes
+  the letter.

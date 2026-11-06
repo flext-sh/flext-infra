@@ -2,7 +2,9 @@
 # truth rules, nothing short-circuits here: `assert` already evaluates both
 # operands exactly once, and tm.that evaluates them once as arguments, so the
 # rewrite preserves evaluation order and binds no new name. A branchless
-# expression also keeps the enclosing test's complexity unchanged.
+# expression also keeps the enclosing test's complexity unchanged. A comparison
+# wrapped in one parenthesized_expression (the multi-line formatter shape) is the
+# same comparison, so each rule matches both shapes.
 id: rewire-test-assert-contains
 language: Python
 severity: error
@@ -11,7 +13,9 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - pattern: "assert $A in $B"
+    - any:
+        - pattern: "assert $A in $B"
+        - pattern: "assert ($A in $B)"
     - not:
         has:
           nthChild: 2
@@ -36,7 +40,9 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - pattern: "assert $A not in $B"
+    - any:
+        - pattern: "assert $A not in $B"
+        - pattern: "assert ($A not in $B)"
     - not:
         has:
           nthChild: 2
@@ -61,7 +67,9 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - pattern: "assert $A == $B"
+    - any:
+        - pattern: "assert $A == $B"
+        - pattern: "assert ($A == $B)"
     - not:
         has:
           nthChild: 2
@@ -86,7 +94,9 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - pattern: "assert $A != $B"
+    - any:
+        - pattern: "assert $A != $B"
+        - pattern: "assert ($A != $B)"
     - not:
         has:
           nthChild: 2

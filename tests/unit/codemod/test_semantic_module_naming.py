@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codemod
 from tests import c, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraSemanticModuleNaming:
     """Derive split-module names from native evidence or fail closed."""
 
     @staticmethod
-    @pytest.mark.parametrize("suffix", ["_parts", "_part"])
+    @c.Tests.MARK.parametrize("suffix", ["_parts", "_part"])
     def test_package_policy_precedes_modules_and_defers_descendants(
         tmp_path: Path, suffix: str
     ) -> None:
@@ -55,7 +53,7 @@ class TestsFlextInfraSemanticModuleNaming:
         tm.ok(not destination.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["_parts", "_part", "_domain_part01", "_part_2"])
+    @c.Tests.MARK.parametrize("name", ["_parts", "_part", "_domain_part01", "_part_2"])
     def test_package_policy_reports_unresolved_semantic_grouping(
         tmp_path: Path, name: str
     ) -> None:
@@ -68,13 +66,13 @@ class TestsFlextInfraSemanticModuleNaming:
         source = directory / c.Infra.INIT_PY
         source.write_text("", encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="unresolved semantic grouping") as caught:
+        with u.Tests.raises(ValueError, match="unresolved semantic grouping") as caught:
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.ok(str(directory) in str(caught.value))
         tm.ok(source.is_file())
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["_behavior_part.py", "behavior_parts.py"])
+    @c.Tests.MARK.parametrize("name", ["_behavior_part.py", "behavior_parts.py"])
     def test_module_policy_removes_unnumbered_split_suffix(
         tmp_path: Path, name: str
     ) -> None:
@@ -93,7 +91,7 @@ class TestsFlextInfraSemanticModuleNaming:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["_part01.py", "behavior_part_2.py", "_parts.py"])
+    @c.Tests.MARK.parametrize("name", ["_part01.py", "behavior_part_2.py", "_parts.py"])
     def test_module_policy_reports_unresolved_semantic_grouping(
         tmp_path: Path, name: str
     ) -> None:
@@ -104,13 +102,13 @@ class TestsFlextInfraSemanticModuleNaming:
         source = package / name
         source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="unresolved semantic grouping") as caught:
+        with u.Tests.raises(ValueError, match="unresolved semantic grouping") as caught:
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.ok(str(source) in str(caught.value))
         tm.ok(source.is_file())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "replacement"),
         [
             ("Contract", "contract"),
@@ -150,7 +148,7 @@ class TestsFlextInfraSemanticModuleNaming:
         tm.that(consumer.read_text(), eq=imported)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declarations",
         [
             "class ExampleContract:\n    pass\nclass ExampleFields:\n    pass\n",
@@ -168,12 +166,12 @@ class TestsFlextInfraSemanticModuleNaming:
         source = package / "example_part_01.py"
         source.write_text(declarations, encoding=c.DEFAULT_ENCODING)
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="unresolved semantic grouping"):
+        with u.Tests.raises(ValueError, match="unresolved semantic grouping"):
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.that(source.read_text(), eq=declarations)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("methods", "replacement"),
         [
             (("build_map", "normalize_map", "reset"), "map"),
@@ -201,7 +199,7 @@ class TestsFlextInfraSemanticModuleNaming:
         tm.that(source.read_text(), eq=original)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "sources",
         [
             {"examplelazy_part_01.py": ("execute_app", "register_command", "exit")},
@@ -228,6 +226,6 @@ class TestsFlextInfraSemanticModuleNaming:
                 encoding=c.DEFAULT_ENCODING,
             )
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="unresolved semantic grouping"):
+        with u.Tests.raises(ValueError, match="unresolved semantic grouping"):
             codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
         tm.ok(all((package / name).is_file() for name in sources))

@@ -12,11 +12,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import m, p, u
 from flext_infra.gates.index_declarations import FlextInfraGatesIndexDeclarations
-from tests import p, tm
+from tests import m, p, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,7 +23,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraIndexDeclarationsGate:
     """Every indexed gitlink must be declared in `.gitmodules`."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def gate_result(
         tmp_path: Path,

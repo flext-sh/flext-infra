@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import m, p, u
+from flext_infra import p, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.codegen._fixer import FlextInfraCodegenFixerResults
 
@@ -21,7 +21,7 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
     def _run_namespace_enforcement(
         ctx: p.Infra.FixContext,
         project_path: Path,
-        enforce: Callable[[str], m.Infra.WorkspaceEnforcementReport],
+        enforce: Callable[[str], p.Infra.WorkspaceEnforcementReport],
     ) -> None:
         """Run namespace enforcement and record any unresolved violations."""
         enforcement = enforce(project_path.name)
@@ -37,16 +37,13 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
             project=project_path.name,
             error="violations remain after namespace enforcement",
         )
-        ctx.violations_skipped.extend(
-            m.Infra.CensusViolation(
+        for project_report in violating_projects:
+            ctx.skip(
                 module=project_report.project,
                 rule="NAMESPACE",
                 line=0,
                 message="violations remain after namespace enforcement",
-                fixable=False,
             )
-            for project_report in violating_projects
-        )
 
     @staticmethod
     def _run_import_cycle_proof(ctx: p.Infra.FixContext, project_path: Path) -> None:
@@ -69,16 +66,13 @@ class FlextInfraCodegenFixerPasses(FlextInfraCodegenFixerResults):
             project=project_path.name,
             modules=",".join(sorted(cycles)),
         )
-        ctx.violations_skipped.extend(
-            m.Infra.CensusViolation(
+        for module in sorted(cycles):
+            ctx.skip(
                 module=module,
                 rule="IMPORT-CYCLE",
                 line=0,
                 message="module takes part in a runtime import cycle",
-                fixable=False,
             )
-            for module in sorted(cycles)
-        )
 
     @staticmethod
     def _run_lazy_init_preflight(ctx: p.Infra.FixContext, project_path: Path) -> None:

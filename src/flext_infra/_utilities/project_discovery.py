@@ -864,45 +864,6 @@ class FlextInfraUtilitiesProjectDiscovery(
             and not member.read_only
         )
 
-    @staticmethod
-    def nearest_project_root(
-        repository_root: Path,
-        path: Path,
-        *,
-        source_project: p.Infra.RopeProject | None = None,
-    ) -> Path | None:
-        """Find the nearest manifest owner inside one governed repository.
-
-        Returns:
-            The resulting ``Path | None``.
-
-        """
-        boundary = repository_root.resolve()
-        candidate = path.resolve()
-        if source_project is not None and source_project.source_query(
-            candidate, "isfile"
-        ):
-            candidate = candidate.parent
-        if not candidate.is_relative_to(boundary):
-            return None
-        for parent in (candidate, *candidate.parents):
-            is_directory = (
-                parent.is_dir()
-                if source_project is None
-                else source_project.source_query(parent, "isdir")
-            )
-            if is_directory and (
-                (parent / c.PYPROJECT_FILENAME).is_file()
-                if source_project is None
-                else source_project.source_query(
-                    parent / c.PYPROJECT_FILENAME, "isfile"
-                )
-            ):
-                return parent
-            if parent == boundary:
-                return None
-        return None
-
     @classmethod
     def runtime_environment_dir(
         cls,

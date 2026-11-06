@@ -1,3 +1,4 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
 """Constants for FLEXT infra tests.
 
 Provides TestsFlextInfraConstants, extending FlextTestsConstants with
@@ -17,24 +18,24 @@ from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_tests import FlextTestsConstants
+from flext_tests import c as flext_tests_c
 
-from flext_infra import FlextInfraConstants
+from flext_infra import c as flext_infra_c
+from tests._constants import TestsFlextInfraConstantsSemanticCutover
 from tests.constants_scan import TestsFlextInfraConstantsScan
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
-    """Constants for FLEXT infra tests - extends FlextTestsConstants.
+class TestsFlextInfraConstants(flext_infra_c):
+    """Constants for FLEXT infra tests composed from the production facade."""
 
-    Architecture layer: Layer 0 foundation constants with infra test extensions.
-    Architecture: Extends FlextTestsConstants with infra-specific constants.
-    All base constants from FlextTestsConstants are available through inheritance.
-    """
-
-    class Tests(TestsFlextInfraConstantsScan, FlextTestsConstants.Tests):
+    class Tests(
+        flext_tests_c.Tests,
+        TestsFlextInfraConstantsScan,
+        TestsFlextInfraConstantsSemanticCutover,
+    ):
         """Flat constants optimized for data-driven infra tests."""
 
         DETECTOR_MODULE_SCENARIOS: ClassVar[Sequence[t.StrTuple]] = (
@@ -140,9 +141,9 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             "FIX",
             "FLEXT_INFRA_PYTHON",
             "FLEXT_ROOT",
-            *FlextInfraConstants.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
-            FlextInfraConstants.Infra.ENV_VAR_STANDALONE,
-            FlextInfraConstants.Infra.ENV_VAR_REPOSITORY_ROOT,
+            *flext_infra_c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            flext_infra_c.Infra.ENV_VAR_STANDALONE,
+            flext_infra_c.Infra.ENV_VAR_REPOSITORY_ROOT,
             "MATCH",
             "PROJECT",
             "PROJECTS",
@@ -151,9 +152,9 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
             "RUFF_ARGS",
             "UV",
             "VALIDATE_GATES",
-            FlextInfraConstants.Infra.PromotedEnv.WHAT,
-            FlextInfraConstants.Infra.MAKE_REPOSITORY_ROOT,
-            *FlextInfraConstants.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            flext_infra_c.Infra.PromotedEnv.WHAT,
+            flext_infra_c.Infra.MAKE_REPOSITORY_ROOT,
+            *flext_infra_c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             *DIRENV_SESSION_ENV_KEYS,
             # The host's GitHub credential under every name Make reads never
             # enters a test; a test that needs one passes its own.
@@ -174,17 +175,11 @@ class TestsFlextInfraConstants(FlextTestsConstants, FlextInfraConstants):
         # ClassVar, not Final: these rebindings live on a Pydantic model
         # class, and Pydantic 2.11 deprecates final-annotated defaults
         # (filterwarnings=error turns that into a collection failure).
-        RELEASE_PHASE_PLAN: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.PLAN
-        RELEASE_PHASE_VERSION: ClassVar[str] = (
-            FlextInfraConstants.Infra.ReleasePhase.VERSION
-        )
-        RELEASE_PHASE_TAG: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.TAG
-        RELEASE_PHASE_BUILD: ClassVar[str] = (
-            FlextInfraConstants.Infra.ReleasePhase.BUILD
-        )
-        RELEASE_PHASE_PUBLISH: ClassVar[str] = (
-            FlextInfraConstants.Infra.ReleasePhase.PUBLISH
-        )
+        RELEASE_PHASE_PLAN: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.VERSION
+        RELEASE_PHASE_TAG: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.BUILD
+        RELEASE_PHASE_PUBLISH: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.PUBLISH
 
         WORKSPACE_PROJECT_NAME: ClassVar[str] = "workspace"
         DEMO_PROJECT_NAME: ClassVar[str] = "demo-project"

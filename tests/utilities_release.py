@@ -11,7 +11,18 @@ from pathlib import Path
 
 from flext_infra import FlextInfraCli
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, config, m, p, u
+from tests import (
+    TestsFlextInfraUtilitiesGit,
+    TestsFlextInfraUtilitiesProjectFixture,
+    TestsFlextInfraUtilitiesToolingFixture,
+    c,
+    config,
+    m,
+    p,
+    t,
+    tm,
+    u,
+)
 
 
 class TestsFlextInfraUtilitiesRelease:
@@ -59,13 +70,13 @@ class TestsFlextInfraUtilitiesRelease:
         workspace.mkdir(parents=True, exist_ok=True)
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
-        u.Tests.copy_tracked_mise_seeds(root)
-        u.Tests.write_project_beads_config(
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(root)
+        TestsFlextInfraUtilitiesProjectFixture.write_project_beads_config(
             workspace,
             "workspace",
         )
-        source = u.Tests.flext_source
-        spec = u.Tests.project_spec("workspace")
+        source = TestsFlextInfraUtilitiesProjectFixture.flext_source
+        spec = TestsFlextInfraUtilitiesProjectFixture.project_spec("workspace")
         (workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -158,12 +169,12 @@ class TestsFlextInfraUtilitiesRelease:
                 "MIT License\n\nCopyright (c) FLEXT Tests\n",
                 encoding="utf-8",
             )
-            u.Tests.write_member_package(
+            TestsFlextInfraUtilitiesProjectFixture.write_member_package(
                 project,
                 name,
             )
         if project_names:
-            u.Tests.declare_workspace_projects(
+            TestsFlextInfraUtilitiesProjectFixture.declare_workspace_projects(
                 workspace,
                 project_names,
             )
@@ -184,12 +195,12 @@ class TestsFlextInfraUtilitiesRelease:
             locked.model_dump(mode="json", exclude_none=True),
         ).unwrap()
         if initialize_root_git:
-            u.Tests.initialize_git_repo(workspace)
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace)
         else:
             (workspace / c.GIT_DIR_NAME).mkdir(exist_ok=True)
         if initialize_project_git:
             for name in project_names:
-                u.Tests.initialize_git_repo(workspace / name)
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace / name)
         context = FlextInfraWorkspaceDetector.resolution_context(workspace).unwrap()
         context.lock_path.parent.mkdir(parents=True, exist_ok=True)
         u.Cli.toml_write_mapping(
@@ -223,6 +234,75 @@ class TestsFlextInfraUtilitiesRelease:
             *arguments,
             *ownership_arguments,
         ])
+
+    @staticmethod
+    def create_tagged_release_build(
+        tmp_path: Path,
+        *,
+        projects: t.StrTuple = ("flext-a",),
+    ) -> tuple[Path, m.Infra.BuildReport]:
+        """Build members through the public CLI and tag their attested sources.
+
+        Returns:
+            The tagged workspace with its verified build receipt.
+
+        """
+        workspace = TestsFlextInfraUtilitiesRelease.create_release_workspace(
+            tmp_path,
+            project_names=(*projects, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+            initialize_project_git=True,
+        )
+        for index, name in enumerate(projects):
+            project = workspace / name
+            tm.ok(u.Infra.replace_project_version(project, f"0.2.{index}"))
+            TestsFlextInfraUtilitiesGit.commit_git_changes(
+                project,
+                "declare independent member version",
+            )
+        notes = workspace / "docs" / "releases"
+        notes.mkdir(parents=True)
+        (notes / "v0.1.0.md").write_text("# Release v0.1.0\n", encoding="utf-8")
+        tm.that(
+            TestsFlextInfraUtilitiesRelease.run_release_main(
+                workspace,
+                "--phase",
+                "build",
+                "--projects",
+                ",".join(projects),
+                "--apply",
+            ),
+            eq=0,
+        )
+        report_path = (
+            TestsFlextInfraUtilitiesRelease.release_report_dir(
+                workspace,
+                c.Tests.RELEASE_VERSION_BASE,
+            )
+            / c.Infra.RELEASE_REPORT_FILENAME
+        )
+        report = m.Infra.BuildReport.model_validate_json(
+            report_path.read_text(encoding="utf-8"),
+        )
+        for record in report.records:
+            TestsFlextInfraUtilitiesGit.git_bootstrap(
+                workspace,
+                (
+                    "update-index",
+                    "--add",
+                    "--replace",
+                    "--cacheinfo",
+                    f"160000,{record.commit_oid},{record.project}",
+                ),
+            )
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            workspace,
+            ("commit", "-m", "attest release member sources"),
+        )
+        TestsFlextInfraUtilitiesGit.git_bootstrap(
+            workspace,
+            ("tag", c.Infra.TAG_FORMAT.format(version=report.version)),
+        )
+        return workspace, report
 
     @staticmethod
     def run_release_build(

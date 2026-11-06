@@ -204,7 +204,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
                 f"Changed files: {len(table.rows)}",
                 "",
                 "| " + " | ".join(table.columns) + " |",
-                "|---|" + "---:|" * (len(table.columns) - 1),
+                "| --- |" + "---:|" * (len(table.columns) - 1),
                 *(" | ".join(row) + " |" for row in table.rows),
             ],
         ).unwrap()

@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, infra, m, p
+from flext_infra import config, infra
 from flext_infra.codemod import (
     FlextInfraApplyRenames,
     FlextInfraCodemodBatchApply,
@@ -23,7 +21,7 @@ from flext_infra.codemod.loop import (
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 _FIRST_RENAME = FlextInfraAccessorMigrationOrchestrator.automated_rules()[0]
 _SOURCE_NAME = _FIRST_RENAME.source_name
@@ -226,7 +224,7 @@ class TestsFlextInfraCodemodLoopPhases:
         tm.that(foreign_source, has=f"def {_SOURCE_NAME}(")
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_accessor_candidate_closes_declaration_and_consumer(
         tmp_path: Path,
         *,
@@ -252,7 +250,7 @@ class TestsFlextInfraCodemodLoopPhases:
         tm.that(foreign.read_bytes(), eq=foreign_before)
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_accessor_rejection_precedes_both_shared_mutations(
         tmp_path: Path,
         *,
@@ -280,7 +278,7 @@ class TestsFlextInfraCodemodLoopPhases:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize("callback", [False, True])
+    @c.Tests.MARK.parametrize("callback", [False, True])
     def test_protected_accessor_publication_returns_failure(
         tmp_path: Path,
         *,
@@ -327,7 +325,7 @@ class TestsFlextInfraCodemodLoopPhases:
             tm.that(path.read_bytes(), eq=content)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_batch_loop_runs_callback_phases_to_the_fixed_point(
         tmp_path: Path,
     ) -> None:

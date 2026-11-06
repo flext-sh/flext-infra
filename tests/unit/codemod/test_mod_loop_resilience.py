@@ -9,11 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, e, infra, m, p, r
+from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraApplyRenames, FlextInfraCodemodBatchApply
-from tests import c, p, t, tm, u
+from tests import c, e, m, p, r, t, tm, u
 
 
 class _RecordingProgress:
@@ -273,7 +271,7 @@ class TestsFlextInfraModLoopResilience:
     """External drift and one module's failure never abort the mod loop."""
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_external_drift_discards_iteration_and_adopts_disk(
         tmp_path: Path,
     ) -> None:
@@ -291,14 +289,13 @@ class TestsFlextInfraModLoopResilience:
             [
                 message
                 for message in progress.messages
-                if "discarded after external change" in message
-                and str(alpha) in message
+                if "observed external change" in message and str(alpha) in message
             ],
             empty=False,
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_module_failure_quarantines_only_that_module(
         tmp_path: Path,
     ) -> None:

@@ -26,6 +26,8 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverModuleLayout,
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
+    FlextInfraUtilitiesSemanticCutoverTestAssertions,
+    FlextInfraUtilitiesSemanticCutoverTestNamespaceImports,
     FlextInfraUtilitiesSemanticDeclarationRelocation,
     FlextInfraUtilitiesSemanticModelAliases,
 )
@@ -45,6 +47,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
     FlextInfraUtilitiesSemanticCutoverNesting,
     FlextInfraUtilitiesSemanticCutoverAliases,
     FlextInfraUtilitiesSemanticCutoverPrivateImports,
+    FlextInfraUtilitiesSemanticCutoverTestNamespaceImports,
+    FlextInfraUtilitiesSemanticCutoverTestAssertions,
     FlextInfraUtilitiesSemanticCutoverFacadeBases,
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticCutoverDynamicEnvironment,
@@ -132,6 +136,8 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 | c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
                 | c.Infra.SemanticCutoverPhase.COMPAT_ALIAS
                 | c.Infra.SemanticCutoverPhase.PRIVATE_IMPORT
+                | c.Infra.SemanticCutoverPhase.TEST_NAMESPACE_IMPORT
+                | c.Infra.SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER
                 | c.Infra.SemanticCutoverPhase.FACADE_BASE
                 | c.Infra.SemanticCutoverPhase.MODEL_FIELDS
             ):
@@ -313,6 +319,12 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 cls._plan_private_imports(
                     root, sources, selected, project=rope_workspace.rope_project
                 )
+            ),
+            c.Infra.SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: lambda: (
+                cls._plan_test_namespace_imports(root, sources, selected)
+            ),
+            c.Infra.SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: lambda: (
+                cls._plan_test_assertions(root, sources, selected)
             ),
             c.Infra.SemanticCutoverPhase.FACADE_BASE: lambda: cls._plan_facade_bases(
                 rope_workspace, sources, selected

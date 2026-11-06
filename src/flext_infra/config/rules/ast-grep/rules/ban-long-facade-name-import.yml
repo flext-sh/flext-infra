@@ -24,6 +24,7 @@ ignores:
   - "**/protocols.py"
   - "**/models.py"
   - "**/utilities.py"
+  - "**/utils.py"
   - "**/_constants/**"
   - "**/_typings/**"
   - "**/_protocols/**"

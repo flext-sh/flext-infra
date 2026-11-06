@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
 from flext_infra import config
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraAuditorCommandSyntax:
     """Prove which documented command forms the audit accepts or rejects."""
 
     @staticmethod
-    @pytest.mark.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
+    @c.Tests.MARK.parametrize("tool", ["uv", "mkdocs", "ruff", "pyright", "pre-commit"])
     def test_tool_filename_is_not_a_command(tool: str) -> None:
         """Filename prefixes remain prose; actual tool invocations are rejected."""
         for content, expected in (
@@ -108,7 +106,7 @@ class TestsFlextInfraAuditorCommandSyntax:
             description="An operation with a named file input.",
             arguments=("FILE",),
         )
-        with pytest.raises(ValueError, match="No closing quotation"):
+        with u.Tests.raises(ValueError, match="No closing quotation"):
             u.Infra.docs_command_contract_content_issues(
                 "```bash\nmake with-input FILE='unterminated\n```\n",
                 relative_path="docs/guides/testing.md",
@@ -116,7 +114,7 @@ class TestsFlextInfraAuditorCommandSyntax:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("name", ["MATCH", "UNDECLARED_ARGUMENT"])
+    @c.Tests.MARK.parametrize("name", ["MATCH", "UNDECLARED_ARGUMENT"])
     def test_allowed_input_does_not_hide_a_later_forbidden_selector(name: str) -> None:
         """All documented assignments are checked after an accepted input."""
         verb = m.Infra.MakeVerbSpec(
@@ -168,7 +166,7 @@ make test PROJECT=flext-demo MATCH=unit
         tm.that(issues[0].message, has="invented Make selector")
 
     @staticmethod
-    @pytest.mark.parametrize("value", ["Y", "N", "", "invalid"])
+    @c.Tests.MARK.parametrize("value", ["Y", "N", "", "invalid"])
     def test_rejects_legacy_apply_flag_on_a_declared_verb(value: str) -> None:
         """The exterminated `APPLY` flag is rejected in documented commands."""
         verb = next(spec.name for spec in config.Infra.codegen.make.verbs)

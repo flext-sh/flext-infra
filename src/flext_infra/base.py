@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Self, override
 
-from flext_cli import m, p, r
+from flext_cli import m, r
 from flext_core import FlextService
 
 from flext_infra import c, p, settings

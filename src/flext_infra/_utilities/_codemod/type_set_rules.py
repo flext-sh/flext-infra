@@ -59,6 +59,8 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         """
         del snapshot
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
+        if not package or package == ".":
+            return {}
         # A package that is not installed has no runtime facade (typed
         # absence); an installed package that fails to import raises.
         if find_spec(package) is None:
@@ -253,6 +255,8 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         """
         del snapshot
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
+        if not package or package == ".":
+            return {}
         # A package that is not installed has no runtime facade (typed
         # absence); an installed package that fails to import raises.
         if find_spec(package) is None:

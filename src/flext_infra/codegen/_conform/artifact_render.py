@@ -10,7 +10,17 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, deps as dependency_services, m, p, r, t, u
+from flext_infra import (
+    c,
+    check as validation_services,
+    config,
+    deps as dependency_services,
+    m,
+    p,
+    r,
+    t,
+    u,
+)
 from flext_infra.codegen._conform.context_render import (
     FlextInfraCodegenConformContextRender,
 )
@@ -775,21 +785,16 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         spec: p.BaseModel
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
             spec = m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
-        elif destination in {
-            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
-            c.Infra.MARKDOWN_CONFIG_FILENAME,
-        }:
+        elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:
                 return r[p.BaseModel].fail(
                     "Markdown rendering requires elected tooling inputs"
                 )
-            markdown = tooling.document.tools.markdown
-            spec = m.Infra.MarkdownLintRenderSpec(
+            spec = m.Infra.MarkdownRenderSpec(
                 native_config=u.Infra.markdown_native_configuration(
-                    markdown, codegen.markdown_exclude_globs
+                    tooling.document.tools.markdown, codegen.markdown_exclude_globs
                 ),
-                exclude=codegen.markdown_exclude_globs,
             )
         elif destination in {
             c.Infra.MISE_TOML_FILENAME,
@@ -802,7 +807,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 for field_name, value in codegen.toolchain.model_dump().items()
                 if field_name in m.Infra.ToolchainSpec.model_fields
             }
-            spec = m.Infra.ToolchainSpec(**toolchain_data)
+            spec = m.Infra.ToolchainSpec.model_validate(toolchain_data)
         elif destination == c.Infra.GIT_HOOK_VALIDATOR_RELPATH:
             spec = m.Infra.GitHookRenderSpec(
                 preservation_ref_namespaces=(
@@ -1092,11 +1097,29 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        workspace_profile = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         order = (
             u.Infra.workspace_dependency_order(target.root, workspace.subprojects)
-            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+            if workspace_profile
             else ()
         )
+        # The check wrapper covers the largest declared budget of the gates
+        # it runs, plus the forced-termination grace of that gate's runner.
+        try:
+            gate_budget = validation_services.FlextInfraGateRegistry(
+                project_gates=codegen.make.project_check_gates,
+            ).check_budget_seconds(
+                codegen.make.check_gates_default,
+                (
+                    target.root,
+                    *(
+                        target.root / item.path
+                        for item in (workspace.subprojects if workspace_profile else ())
+                    ),
+                ),
+            )
+        except ValueError as exc:
+            return r[p.Infra.MakefileRenderSpec].fail(str(exc), exception=exc)
         return r[p.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_requirements=Path(
@@ -1166,6 +1189,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                check_timeout_seconds=(
+                    gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS
+                ),
             ),
         )
 

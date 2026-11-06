@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from flext_cli import p
 
     from flext_infra import t
-    from flext_infra._typings import FlextInfraTypesRope
 
 
 class FlextInfraProtocolsTransformers:
@@ -367,7 +366,7 @@ class FlextInfraProtocolsTransformers:
         """Structural data contract projected from the owning model."""
 
         @property
-        def project(self) -> FlextInfraTypesRope.RopeProject:
+        def project(self) -> t.Infra.RopeProject:
             """Rope project snapshot holding the editable sources."""
             ...
 

@@ -17,9 +17,8 @@ from flext_infra import (
     __url__,
     __version__,
     __version_info__,
-    u,
 )
-from tests import tm
+from tests import tm, u
 
 
 class TestsFlextInfraInfraVersionExtra:

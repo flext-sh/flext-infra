@@ -10,13 +10,12 @@ from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraCodegenRuntimeProfiles:
@@ -183,20 +182,20 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         )
         return rendered
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "upstream",
         tuple(
             base.module for base in config.Infra.codegen.scaffold.project.config_bases
         ),
     )
-    @pytest.mark.parametrize("composed", [False, True])
+    @c.Tests.MARK.parametrize("composed", [False, True])
     # Two complete governed pyproject renders per case (tooling context,
     # template, overlay, conform, taplo) over a real git fixture: measured
     # 3.3-4.9s per render under a four-worker phase, so each case exceeds the
     # bounded-phase item budget. Integration-scale, so it runs in the slow
     # phase under its per-item bound (rules/workflow/gate-budget.md), never a
     # raised limit.
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_target_requirements_survive_runtime_rendering(
         self,
         tmp_path: Path,
@@ -270,7 +269,7 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("invalid", ['["external>=1", 42]', '"external>=1"'])
+    @c.Tests.MARK.parametrize("invalid", ['["external>=1", 42]', '"external>=1"'])
     def test_invalid_custom_requirements_are_not_discarded(invalid: str) -> None:
         """Composition rejects malformed arrays rather than filtering their entries."""
         rendered = '[project]\nname = "sample"\ndependencies = ["owned>=2"]\n'

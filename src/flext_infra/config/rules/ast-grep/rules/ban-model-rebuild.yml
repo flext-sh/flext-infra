@@ -1,13 +1,14 @@
 # ``model_rebuild`` patches annotations that failed to resolve.
 #
 # OPERATOR RULING 2026-10-24 (supersedes the 2026-10-06 severity-off ruling):
-# banned without exception; fix the cause. Measured on pydantic 2.14.1 for
-# models nested in a namespace class: an earlier sibling referenced by bare
-# name completes at class creation; an ``Outer.Name`` path resolves lazily on
-# first use through module globals; only a later sibling by bare name fails
-# (``class-not-fully-defined``). The cure is declaration order: reference
-# earlier siblings by bare name (pydantic-development skill, declaration.md
-# section 1). The fleet had zero real calls when the rule was re-enabled.
+# banned without exception; fix the cause. Measured on pydantic 2.14 for
+# models nested in a namespace class: an ``Outer.Name`` path in an eagerly
+# evaluated annotation leaves the field incomplete (``Outer`` is unbound while
+# its body runs), and a subclass in another module then re-resolves it in its
+# own namespace. A bare sibling name is no cure: static checkers report it as
+# undefined. The cure is the deferred schema owner of ADR-018 (amendment
+# 2026-11-03): type by the protocol, ``t.schema_for_model(lambda: Outer.Name)``.
+# The fleet had zero real calls when the rule was re-enabled.
 id: ban-model-rebuild
 language: python
 severity: error
@@ -19,9 +20,10 @@ ignores:
 rule:
   pattern: $$$TARGET.model_rebuild($$$ARGS)
 message: >-
-  `model_rebuild()` is a declaration defect: declare nested models in
-  dependency order and reference earlier siblings by bare name, export the
-  symbol through its facade, break the import cycle at its owner, or hoist the
-  model out of the function scope. A strict fleet never calls `model_rebuild`.
+  `model_rebuild()` is a declaration defect: type model fields by their protocol
+  and defer the schema owner (`Annotated[p.X, t.schema_for_model(lambda: ...)]`),
+  export the symbol through its facade, break the import cycle at its owner, or
+  hoist the model out of the function scope. A strict fleet never calls
+  `model_rebuild`.
 metadata:
   enforce: [ENFORCE-041]

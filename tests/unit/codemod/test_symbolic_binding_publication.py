@@ -9,11 +9,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
-from tests import tm, u
+from tests import c, tm, u
 
 # Shared fixture line: the owned-constant read every receiver scenario asserts on.
 _OWNED_CI_LINE = (
@@ -24,7 +22,7 @@ _OWNED_CI_LINE = (
 class TestsFlextInfraSymbolicBindingPublication:
     """Binding evidence must survive until the guarded phase's source barrier."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def symbolic_workspace(
         tmp_path: Path,
@@ -51,8 +49,8 @@ class TestsFlextInfraSymbolicBindingPublication:
         return tmp_path
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "receiver", ["source", "replacement", "intermediate", "conditional", "loop"]
     )
     def test_rebound_receiver_is_diagnostic_without_mutation(
@@ -125,8 +123,8 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(after.stdout, eq=baseline.stdout)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("scope", ["module", "enclosing"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("scope", ["module", "enclosing"])
     def test_rebound_outcome_receiver_is_never_an_enum_fixer(
         symbolic_workspace: Path,
         scope: str,
@@ -190,7 +188,7 @@ class TestsFlextInfraSymbolicBindingPublication:
         tm.that(after.stdout, eq=baseline.stdout)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_type_alias_payloads_and_legacy_comparisons_remain_visible(
         symbolic_workspace: Path,
     ) -> None:

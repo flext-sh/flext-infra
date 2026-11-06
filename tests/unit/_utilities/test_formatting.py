@@ -10,8 +10,6 @@ import re
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, tm, u
 
@@ -25,11 +23,11 @@ class TestsFlextInfraUtilitiesformatting:
         document = tool_config_document.model_copy(
             update={"settings": {**tool_config_document.settings, "ruff": ()}}
         )
-        with pytest.raises(KeyError, match="line-length"):
+        with u.Tests.raises(KeyError, match="line-length"):
             u.Infra.native_tool_setting(document, "ruff", "line-length", int)
 
     @staticmethod
-    @pytest.mark.parametrize("width_factor", [1, 2])
+    @c.Tests.MARK.parametrize("width_factor", [1, 2])
     def test_staged_formatting_uses_destination_policy_without_publication(
         tmp_path: Path,
         width_factor: int,
@@ -84,7 +82,7 @@ class TestsFlextInfraUtilitiesformatting:
             u.Cli.run((sys.executable, "-c", preserved + "print(sum(values))\n"))
         )
         tm.that(output.stdout.strip(), eq=str(sum(values)))
-        with pytest.raises(SyntaxError):
+        with u.Tests.raises(SyntaxError):
             u.Infra.normalize_source(root, path, "values = [\n")
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
 
