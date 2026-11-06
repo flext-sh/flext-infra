@@ -2522,7 +2522,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if self.package is None:
                 return frozenset()
             names: set[str] = set()
-            for path in (self.package / "_protocols").rglob("*.py"):
+            for path in (self.package / "_protocols").glob("*.py"):
                 try:
                     tree = ast.parse(path.read_text(encoding="utf-8"))
                 except (OSError, SyntaxError):
