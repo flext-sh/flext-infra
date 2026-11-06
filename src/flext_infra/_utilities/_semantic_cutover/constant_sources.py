@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
-from flext_infra import c, e, m, p, t
+from flext_infra import c, e, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeCore,
