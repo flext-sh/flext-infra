@@ -16,8 +16,6 @@ from flext_infra import t
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-
     from flext_cli import p
 
     from flext_infra._protocols import (
@@ -529,7 +527,7 @@ class FlextInfraProtocolsDeps(Protocol):
         @property
         def projects(
             self,
-        ) -> MutableMapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]:
+        ) -> Mapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]:
             """Per-project reports."""
             ...
 

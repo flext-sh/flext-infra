@@ -779,10 +779,6 @@ class FlextInfraUtilitiesModelsProtocol:
             self.type_parameters: dict[str, list[t.Infra.AstTypeParameter]] = {}
             self.dependencies: set[str] = set()
             self.member_cache: dict[str, p.Infra.RopePyName | None] = {}
-            # Model references replaced by their Protocol route so far: a
-            # container becomes read-only only when one of its elements was a
-            # model (covariance), never for unwrapped metadata or p routes.
-            self.source_model_rewrites = 0
             self.source_package_name = ""
             self.source_model_protocols: dict[str, str] = {}
             self.source_model_protocol_destinations: dict[str, Path] = {}
@@ -5372,12 +5368,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 return node
             read_only = self._source_read_only_container(node.value, scope)
             if read_only is not None:
-                rewrites = self.source_model_rewrites
-                visited = visitor.generic_visit(node)
+                original = ast.dump(node.slice)
                 return self._source_read_only_rewrite(
-                    read_only,
-                    rewritten=self.source_model_rewrites != rewrites,
-                    visited=visited,
+                    read_only, original, visitor.generic_visit(node)
                 )
             return visitor.generic_visit(node)
 
@@ -5472,21 +5465,21 @@ class FlextInfraUtilitiesModelsProtocol:
 
         @staticmethod
         def _source_read_only_rewrite(
-            read_only: str, *, rewritten: bool, visited: ast.AST
+            read_only: str, original: str, visited: ast.AST
         ) -> ast.AST:
-            """Expose a container of model-rewritten elements through its read-only ABC.
+            """Expose a container of rewritten elements through its read-only ABC.
 
-            An element rewritten from a model to its protocol makes the container
-            covariant only through its read-only ABC. Unwrapping metadata
-            (``Annotated[p.X, t.schema_for_model(...)]``, whose element already is
-            the protocol) or resolving a protocol route rewrites no model, so the
-            container keeps its mutable contract.
+            Elements rewritten to protocols make the container covariant only
+            through its read-only ABC; a container of unchanged element types
+            keeps its mutable contract.
 
             Returns:
                 The read-only container, or the visited container unchanged.
 
             """
-            if not rewritten or not isinstance(visited, ast.Subscript):
+            if not isinstance(visited, ast.Subscript) or (
+                ast.dump(visited.slice) == original
+            ):
                 return visited
             return ast.copy_location(
                 ast.Subscript(
@@ -5662,7 +5655,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"({identity})"
                 )
                 raise ValueError(msg)
-            self.source_model_rewrites += 1
             return protocol_route
 
         @staticmethod

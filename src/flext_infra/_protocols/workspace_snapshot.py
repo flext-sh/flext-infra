@@ -342,7 +342,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> dict[
+        ) -> Mapping[
             t.Infra.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
         ]:
@@ -423,7 +423,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def codemod_renderings(
             self,
-        ) -> dict[
+        ) -> Mapping[
             tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
         ]:
             """Native codemod rendering per member root and render-input digest."""

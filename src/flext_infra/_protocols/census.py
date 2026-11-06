@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSet, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -304,7 +304,7 @@ class FlextInfraProtocolsCensus:
         @property
         def project_objects(
             self,
-        ) -> MutableMapping[str, MutableSequence[FlextInfraProtocolsCensus.Object]]:
+        ) -> Mapping[str, Sequence[FlextInfraProtocolsCensus.Object]]:
             """Object inventory accumulated per project."""
             ...
 
@@ -599,7 +599,7 @@ class FlextInfraProtocolsCensus:
             ...
 
         @property
-        def definitions(self) -> MutableSequence[FlextInfraProtocolsCensus.Object]:
+        def definitions(self) -> Sequence[FlextInfraProtocolsCensus.Object]:
             """All definitions of this object."""
             ...
 
