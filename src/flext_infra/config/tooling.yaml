@@ -227,7 +227,7 @@ Infra:
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]
-      - [ namespace_packages, true ]
+      - [ namespace_packages, false ]
       - [ explicit_package_bases, true ]
       - [ check_untyped_defs, true ]
       - [ extra_checks, true ]

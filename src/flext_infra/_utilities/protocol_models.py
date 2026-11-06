@@ -4375,9 +4375,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 ]
                 if names:
                     module_name = statement.module
-                    model_source = module_name is not None and module_name.startswith(
-                        (f"{package_name}._models", f"{package_name}._protocols")
-                    )
+                    model_source = module_name is not None and module_name.startswith((
+                        f"{package_name}._models",
+                        f"{package_name}._protocols",
+                    ))
                     type_names = [
                         alias
                         for alias in names
@@ -4435,11 +4436,19 @@ class FlextInfraUtilitiesModelsProtocol:
             declarations = list(classes)
             fields: dict[str, _SourceFieldProjection] = {}
             for ancestor in reversed(model.get_mro()):
-                if (
-                    not self.py_class(ancestor)
-                    or ancestor is model_base
-                    or model_base not in ancestor.get_mro()
-                ):
+                if not self.py_class(ancestor) or ancestor is model_base:
+                    continue
+                # Pydantic collects annotations from plain mixins too: a
+                # mixin's declared fields are effective model fields even
+                # though the mixin is outside the BaseModel MRO. Skip only the
+                # runtime/library bases (object, pydantic, typing, abc).
+                if ancestor.get_module().get_name().split(".", 1)[0] in {
+                    "builtins",
+                    "pydantic",
+                    "pydantic_core",
+                    "typing",
+                    "abc",
+                }:
                     continue
                 declaration, ancestor_tree = self._source_register_ancestor(
                     ancestor, declarations
