@@ -2534,6 +2534,16 @@ class FlextInfraUtilitiesModelsProtocol:
                         node.name, ast.Name
                     ):
                         names.add(node.name.id)
+                    elif isinstance(node, ast.AnnAssign) and isinstance(
+                        node.target, ast.Name
+                    ):
+                        names.add(node.target.id)
+                    elif isinstance(node, ast.Assign):
+                        names.update(
+                            target.id
+                            for target in node.targets
+                            if isinstance(target, ast.Name)
+                        )
             return frozenset(names)
 
         @staticmethod
