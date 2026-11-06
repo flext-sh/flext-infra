@@ -229,9 +229,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[
                 Annotated[
                     p.Infra.MakeVerbSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeVerbSpec
-                    ),
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
                 ],
                 ...,
             ],
@@ -383,9 +381,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             tuple[
                 Annotated[
                     p.Infra.MakeVerbSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeVerbSpec
-                    ),
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
                 ],
                 ...,
             ],

@@ -2462,62 +2462,79 @@ class FlextInfraUtilitiesModelsProtocol:
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ],
         ) -> None:
-            """Index model-namespace type aliases whose value names projected models.
+            """Index model aliases whose value names projected models.
 
-            Such an alias is a model type; its protocol mirror is declared in the
-            same generated holder, under the public route of its sibling models.
+            A model family may nest its owners or bind module-level owners as
+            class aliases. Both forms are model types; their protocol mirror is
+            declared under the hoisted own-letter route (``p.<Stem>.<Alias>``).
 
             """
+            prefix = f"p.{self.class_stem}"
+            global_model_names = {
+                path[-1]
+                for classes in grouped.values()
+                for _node, path, _tree in classes
+                if path
+            }
             for destination, classes in grouped.items():
-                for namespace in {
-                    path[0] for _node, path, _tree in classes if len(path) > 1
-                }:
-                    members = [
-                        (node, path, tree)
-                        for node, path, tree in classes
-                        if path[:-1] == (namespace,)
-                    ]
-                    if not members:
-                        continue
-                    tree = members[0][2]
-                    owner = next(
-                        (
-                            statement
-                            for statement in tree.body
-                            if isinstance(statement, ast.ClassDef)
-                            and statement.name == namespace
-                        ),
-                        None,
+                model_nodes = {path[-1]: node for node, path, _tree in classes if path}
+                if not model_nodes:
+                    continue
+                sibling_names = set(model_nodes)
+                trees = {id(tree): tree for _node, _path, tree in classes}
+                for tree in trees.values():
+                    for owner in (
+                        node for node in tree.body if isinstance(node, ast.ClassDef)
+                    ):
+                        for statement in owner.body:
+                            alias = self._source_model_alias(statement)
+                            if alias is None:
+                                continue
+                            named = {
+                                symbol.id
+                                if isinstance(symbol, ast.Name)
+                                else symbol.attr
+                                for symbol in ast.walk(alias.value)
+                                if isinstance(symbol, (ast.Name, ast.Attribute))
+                            }
+                            matched = sorted(
+                                named & (sibling_names | global_model_names)
+                            )
+                            if not matched or not isinstance(alias.name, ast.Name):
+                                continue
+                            self.source_model_aliases[f"{prefix}.{alias.name.id}"] = (
+                                destination,
+                                alias,
+                                tree,
+                                model_nodes.get(matched[0], classes[0][0]),
+                            )
+
+        @staticmethod
+        def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:
+            """Normalize a model alias declaration to a PEP 695 alias node.
+
+            Returns:
+                The alias node, or None when the statement is not a model alias.
+
+            """
+            if isinstance(statement, ast.TypeAlias) and isinstance(
+                statement.name, ast.Name
+            ):
+                return statement
+            if (
+                isinstance(statement, ast.Assign)
+                and len(statement.targets) == 1
+                and isinstance(statement.targets[0], ast.Name)
+                and isinstance(statement.value, (ast.Name, ast.Attribute))
+            ):
+                return ast.fix_missing_locations(
+                    ast.TypeAlias(
+                        name=ast.Name(id=statement.targets[0].id, ctx=ast.Store()),
+                        type_params=[],
+                        value=statement.value,
                     )
-                    if owner is None:
-                        continue
-                    sibling_names = {path[1] for _node, path, _tree in members}
-                    route = ".".join((
-                        self.source_module_names[id(tree)],
-                        *members[0][1],
-                    ))
-                    public = self.source_model_protocol_routes.get(route)
-                    if public is None:
-                        continue
-                    # Why: the authored field spelling is the hoisted
-                    # own-letter route (``p.AiHub.<Alias>``); the alias mirror
-                    # must be indexed under that same hoisted prefix, not under
-                    # the nested sibling route.
-                    prefix = public.split(".", 1)[0]
-                    for statement in owner.body:
-                        if not isinstance(statement, ast.TypeAlias) or not isinstance(
-                            statement.name, ast.Name
-                        ):
-                            continue
-                        named = {
-                            symbol.id if isinstance(symbol, ast.Name) else symbol.attr
-                            for symbol in ast.walk(statement.value)
-                            if isinstance(symbol, (ast.Name, ast.Attribute))
-                        }
-                        if named & sibling_names:
-                            self.source_model_aliases[
-                                f"{prefix}.{statement.name.id}"
-                            ] = (destination, statement, tree, members[0][0])
+                )
+            return None
 
         def _source_unpublished_protocol_owners(self) -> None:
             """Elect uncomposed declarations by their authenticated generated owner.

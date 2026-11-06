@@ -1180,20 +1180,11 @@ class FlextInfraCodemodDuplicateApply(
             mirror or already seen.
 
         """
-        duplicate = report_duplicate.model_dump(by_alias=True)
-        first = duplicate["firstFile"]
-        second = duplicate["secondFile"]
+        first = report_duplicate.first_file
+        second = report_duplicate.second_file
         sides = (
-            (
-                first,
-                FlextInfraGatesDuplication.report_file_name(first),
-                FlextInfraGatesDuplication.side_span_key(first),
-            ),
-            (
-                second,
-                FlextInfraGatesDuplication.report_file_name(second),
-                FlextInfraGatesDuplication.side_span_key(second),
-            ),
+            (first, cls._side_file_name(first), cls._side_span_key(first)),
+            (second, cls._side_file_name(second), cls._side_span_key(second)),
         )
         if sides[0][2] == sides[1][2]:
             return None
@@ -1205,9 +1196,35 @@ class FlextInfraCodemodDuplicateApply(
         return cls._clone_plan(report_duplicate.lines, owner_side, other_side)
 
     @staticmethod
+    def _side_file_name(side: p.Infra.JscpdFile) -> str:
+        """Return the typed clone side's on-disk file name.
+
+        jscpd names markdown-embedded code blocks ``<file>:<language>``; the
+        range belongs to that embedded block, and ownership to the real file.
+
+        Returns:
+            The clone side's file name without any virtual suffix.
+
+        """
+        raw = side.name
+        file_name, separator, _language = raw.rpartition(":")
+        return file_name if separator and file_name and "." in file_name else raw
+
+    @classmethod
+    def _side_span_key(cls, side: p.Infra.JscpdFile) -> str:
+        """Return the typed clone side's on-disk span identity.
+
+        Returns:
+            The clone side's ``<file>:<start-line>:<end-line>`` identity.
+
+        """
+        name = cls._side_file_name(side)
+        return f"{name}:{side.start_location.line}:{side.end_location.line}"
+
+    @staticmethod
     def _side_layer_key(
         layers: Mapping[Path, int],
-    ) -> Callable[[tuple[t.JsonMapping, str, str]], tuple[int, str]]:
+    ) -> Callable[[tuple[p.Infra.JscpdFile, str, str]], tuple[int, str]]:
         """Order one clone side by its containing project layer and path.
 
         Returns:
@@ -1233,8 +1250,8 @@ class FlextInfraCodemodDuplicateApply(
     def _clone_plan(
         cls,
         lines: int,
-        owner_side: tuple[t.JsonMapping, str, str],
-        other_side: tuple[t.JsonMapping, str, str],
+        owner_side: tuple[p.Infra.JscpdFile, str, str],
+        other_side: tuple[p.Infra.JscpdFile, str, str],
     ) -> p.Infra.DuplicateCurePlan:
         """Build one manual plan for a structural two-sided jscpd clone.
 
@@ -1243,14 +1260,14 @@ class FlextInfraCodemodDuplicateApply(
 
         """
 
-        def side_line(side: t.JsonMapping) -> int:
+        def side_line(side: p.Infra.JscpdFile) -> int:
             """Start line.
 
             Returns:
                 The resulting ``int``.
 
             """
-            return u.Cli.json_nested_int(side, "startLoc", "line", default=1)
+            return side.start_location.line
 
         return m.Infra.DuplicateCurePlan(
             name=Path(owner_side[1]).name,

@@ -175,9 +175,7 @@ class FlextInfraModelsConfigWorkspace:
             Annotated[
                 p.Infra.WorkspaceIntegrationSpec,
                 t.schema_for_model(
-                    lambda: (
-                        FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
-                    )
+                    lambda: FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
                 ),
             ]
             | None,
@@ -647,8 +645,7 @@ class FlextInfraModelsConfigWorkspace:
                     p.Infra.CandidateBootstrapTargetSpec,
                     t.schema_for_model(
                         lambda: (
-                            FlextInfraModelsConfigWorkspace
-                            .CandidateBootstrapTargetSpec
+                            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec
                         )
                     ),
                 ],
@@ -874,9 +871,7 @@ class FlextInfraModelsConfigWorkspace:
         project: Annotated[
             Annotated[
                 p.Infra.ProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.ProjectSpec
-                ),
+                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
             ]
             | None,
             m.Field(description="Metadata required only when materializing a new tree"),
@@ -936,9 +931,7 @@ class FlextInfraModelsConfigWorkspace:
                 Annotated[
                     p.Infra.GitSubmoduleDeclaration,
                     t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration
-                        )
+                        lambda: FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration
                     ),
                 ],
                 ...,
