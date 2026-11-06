@@ -592,7 +592,8 @@ PUBLISH_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
 			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
 		fi; \
 		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		printf 'setup: published %s; previous environment retained at %s\n' "$$install_target" "$$install_environment"; \
+		rm -rf -- "$$install_stage"; \
+		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
 	else \
 		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
 		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
@@ -605,10 +606,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "requirements-infra.txt"); \
 		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 	fi; \
 	env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$$install_python" -m flext_infra workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
@@ -761,17 +762,17 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u U
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
 SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --compile-bytecode --link-mode copy --refresh; \
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --compile-bytecode --link-mode clone; \
 	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode copy
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode copy --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.

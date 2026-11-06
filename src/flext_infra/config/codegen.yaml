@@ -264,7 +264,13 @@ Infra:
       # 20260929 python-build release aged past a 7d window and re-entered
       # every python resolution, breaking the 3.13 lock-time listing.
       dependency_cooldown_days: 10
-      uv_link_mode: copy
+      # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
+      # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
+      # here, so `copy` duplicated about 1 GB per environment, twice per upg,
+      # and pushed setup past its bound under load (flext-r3rs4). uv falls back
+      # to copy with its own warning where the cache lives on another
+      # filesystem; that project then declares its measured override.
+      uv_link_mode: clone
       editable_sources: {}
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
