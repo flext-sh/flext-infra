@@ -5,26 +5,79 @@ snapshots:
       def run(self) -> p.Result[str]:
           result = self._load()
           return result.map(self._normalize)
+          return r[str].ok(self._normalize(result.value))
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return r[str].from_failure(result)
-            return r[str].ok(self._normalize(result.value))
       style: primary
-      start: 36
+      start: 62
+      end: 123
+    - source: return r[str].ok(self._normalize(result.value))
+      style: secondary
+      start: 128
       end: 175
+  "def run_after_guard(self) -> p.Result[str]:\n    loaded = self._load()\n    if loaded.failure:\n        return r[str].from_failure(loaded)\n    result = self._parse(loaded.value, strict=True)\n    if result.failure:\n        return result\n    return r[str].ok(self._normalize(result.value))\n":
+    fixed: |
+      def run_after_guard(self) -> p.Result[str]:
+          loaded = self._load()
+          if loaded.failure:
+              return r[str].from_failure(loaded)
+          result = self._parse(loaded.value, strict=True)
+          return result.map(self._normalize)
+          return r[str].ok(self._normalize(result.value))
+    labels:
+    - source: |-
+        if result.failure:
+                return result
+      style: primary
+      start: 192
+      end: 232
+    - source: return r[str].ok(self._normalize(result.value))
+      style: secondary
+      start: 237
+      end: 284
+  "def run_bound(self) -> p.Result[str]:\n    result = self._load()\n    if result.failure:\n        return r[str].from_failure(result)\n    normalized = self._normalize(result.value)\n    return r[str].ok(normalized)\n":
+    fixed: |
+      def run_bound(self) -> p.Result[str]:
+          result = self._load()
+          if result.failure:
+              return r[str].from_failure(result)
+          return result.map(self._normalize)
+          return r[str].ok(normalized)
+    labels:
+    - source: normalized = self._normalize(result.value)
+      style: primary
+      start: 134
+      end: 176
+    - source: normalized = self._normalize(result.value)
+      style: secondary
+      start: 134
+      end: 176
+    - source: |-
+        if result.failure:
+                return r[str].from_failure(result)
+      style: secondary
+      start: 68
+      end: 129
+    - source: return r[str].ok(normalized)
+      style: secondary
+      start: 181
+      end: 209
   "def run_tuple(self) -> p.Result[tuple[str, ...]]:\n    result = self._load()\n    if result.failure:\n        return result\n    return outcome.ok(tuple(result.value))\n":
     fixed: |
       def run_tuple(self) -> p.Result[tuple[str, ...]]:
           result = self._load()
           return result.map(tuple)
+          return outcome.ok(tuple(result.value))
     labels:
     - source: |-
-        result = self._load()
-            if result.failure:
+        if result.failure:
                 return result
-            return outcome.ok(tuple(result.value))
       style: primary
-      start: 54
+      start: 80
+      end: 120
+    - source: return outcome.ok(tuple(result.value))
+      style: secondary
+      start: 125
       end: 163

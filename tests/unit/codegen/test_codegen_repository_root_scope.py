@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import check, config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
@@ -335,12 +335,15 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         tm.ok(u.Cli.process_succeeded(execution.outcome))
         make = config.Infra.codegen.make
+        gate_budget = check.FlextInfraGateRegistry(
+            project_gates=make.project_check_gates,
+        ).check_budget_seconds(make.check_gates_default, (repository_root,))
         expected = (
             "FLEXT_INFRA_PROFILE=1 "
             f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{make.check_profile_path}" '
             f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM "
             f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s "
-            f"{make.check_timeout_seconds}s"
+            f"{gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s"
         )
         tm.that(execution.stdout + execution.stderr, has=expected)
 

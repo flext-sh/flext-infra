@@ -201,6 +201,16 @@ Infra:
       - [ convention, google ]
       ruff.lint.pylint:
       - [ allow-dunder-method-names, [ __base__, __bases__ ] ]
+      # Axiom (operator decision 2026-11-05, tracker key
+      # operator-decisions-2026-11-05-ws7iv-testverbs-timeout-ldap-pydantic,
+      # answer "Exceção-axioma"): the Pydantic protocol module mirrors
+      # Pydantic's own public method signatures (p.BaseModel.model_dump keeps
+      # pydantic's keyword set, every keyword with fleet consumers). The
+      # argument count is the external SDK's contract, not a local design, so
+      # too-many-arguments cannot coexist with the faithful protocol. Scoped to
+      # that one module path; every other module keeps the rule.
+      ruff.lint.per-file-ignores:
+      - [ '**/_protocols/pydantic.py', [ too-many-arguments ] ]
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]

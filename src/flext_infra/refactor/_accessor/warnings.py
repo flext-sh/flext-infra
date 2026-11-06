@@ -26,7 +26,7 @@ class FlextInfraRefactorAccessorWarnings:
         return u.type_adapter(
             Sequence[
                 Annotated[
-                    p.Infra.AccessorMigrationRule,
+                    m.Infra.AccessorMigrationRule,
                     t.schema_for_model(lambda: m.Infra.AccessorMigrationRule),
                 ]
             ]
