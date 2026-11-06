@@ -149,12 +149,14 @@ class FlextInfraProtocolsValidate:
         @property
         def eligible(
             self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownOrigin]:
+        ) -> MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownOrigin]:
             """Independently parsed origins."""
             ...
 
         @property
-        def collected(self) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
+        def collected(
+            self,
+        ) -> MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
             """Observed pre-selection items."""
             ...
 
@@ -505,14 +507,14 @@ class FlextInfraProtocolsValidate:
         @property
         def markdown_attempts(
             self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownAttempt]:
+        ) -> MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownAttempt]:
             """Call-phase attempt observations."""
             ...
 
         @property
         def markdown_items(
             self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
+        ) -> MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
             """Call-phase origin observations."""
             ...
 
