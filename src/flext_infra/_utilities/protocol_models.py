@@ -2470,6 +2470,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             prefix = f"p.{self.class_stem}"
+            declared_protocol_names = self._source_protocol_declared_names()
             global_model_names = {
                 path[-1]
                 for classes in grouped.values()
@@ -2502,12 +2503,38 @@ class FlextInfraUtilitiesModelsProtocol:
                             )
                             if not matched or not isinstance(alias.name, ast.Name):
                                 continue
+                            if alias.name.id in declared_protocol_names:
+                                continue
                             self.source_model_aliases[f"{prefix}.{alias.name.id}"] = (
                                 destination,
                                 alias,
                                 tree,
                                 model_nodes.get(matched[0], classes[0][0]),
                             )
+
+        def _source_protocol_declared_names(self) -> frozenset[str]:
+            """Return names already declared by the authored protocol tree.
+
+            Returns:
+                Class and alias names the protocol facade already owns.
+
+            """
+            if self.package is None:
+                return frozenset()
+            names: set[str] = set()
+            for path in (self.package / "_protocols").rglob("*.py"):
+                try:
+                    tree = ast.parse(path.read_text(encoding="utf-8"))
+                except (OSError, SyntaxError):
+                    continue
+                for node in tree.body:
+                    if isinstance(node, ast.ClassDef):
+                        names.add(node.name)
+                    elif isinstance(node, ast.TypeAlias) and isinstance(
+                        node.name, ast.Name
+                    ):
+                        names.add(node.name.id)
+            return frozenset(names)
 
         @staticmethod
         def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:
@@ -4375,9 +4402,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 ]
                 if names:
                     module_name = statement.module
-                    model_source = module_name is not None and module_name.startswith(
-                        (f"{package_name}._models", f"{package_name}._protocols")
-                    )
+                    model_source = module_name is not None and module_name.startswith((
+                        f"{package_name}._models",
+                        f"{package_name}._protocols",
+                    ))
                     type_names = [
                         alias
                         for alias in names
@@ -4435,11 +4463,19 @@ class FlextInfraUtilitiesModelsProtocol:
             declarations = list(classes)
             fields: dict[str, _SourceFieldProjection] = {}
             for ancestor in reversed(model.get_mro()):
-                if (
-                    not self.py_class(ancestor)
-                    or ancestor is model_base
-                    or model_base not in ancestor.get_mro()
-                ):
+                if not self.py_class(ancestor) or ancestor is model_base:
+                    continue
+                # Pydantic collects annotations from plain mixins too: a
+                # mixin's declared fields are effective model fields even
+                # though the mixin is outside the BaseModel MRO. Skip only the
+                # runtime/library bases (object, pydantic, typing, abc).
+                if ancestor.get_module().get_name().split(".", 1)[0] in {
+                    "builtins",
+                    "pydantic",
+                    "pydantic_core",
+                    "typing",
+                    "abc",
+                }:
                     continue
                 declaration, ancestor_tree = self._source_register_ancestor(
                     ancestor, declarations

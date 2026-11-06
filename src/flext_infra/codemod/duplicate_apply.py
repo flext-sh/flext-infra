@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.gates.duplication import FlextInfraGatesDuplication
 from flext_infra.refactor import FlextInfraRefactorCensus
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
