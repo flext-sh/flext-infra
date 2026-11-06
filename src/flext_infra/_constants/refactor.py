@@ -102,6 +102,8 @@ class FlextInfraConstantsRefactor:
     "Exact second stderr line emitted for error-severity JSONL findings."
     IMPORT_NORMALIZATION_MAX_PASSES: ClassVar[int] = 24
     "Fixed-point pass ceiling for import normalization."
+    NATIVE_CASCADE_MAX_PASSES: ClassVar[int] = 64
+    "Fixed-point pass ceiling for the native ast-grep cascade."
     IMPORT_LAW_OTHER_LAYER: ClassVar[str] = "other"
     "Import-layer slot of a module whose path names no declared layer."
     IMPORT_LAW_BASE_LAYER: ClassVar[str] = "base"

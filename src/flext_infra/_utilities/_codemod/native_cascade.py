@@ -193,7 +193,11 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         )
         current = cls._preview_contents(preview)
         seen = {frozenset(current.items())}
-        for _run in range(len(ruleset.rule_ids) + 1):
+        # Why: a nested match needs one pass per nesting level, so the
+        # one-run-per-rule bound is not a fixed-point ceiling. The repeated
+        # state check still rejects a real oscillation.
+        pass_ceiling = max(len(ruleset.rule_ids) + 1, c.Infra.NATIVE_CASCADE_MAX_PASSES)
+        for _run in range(pass_ceiling):
             executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
             if not u.Cli.process_succeeded(executed.outcome):
                 msg = (
