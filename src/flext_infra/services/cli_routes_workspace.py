@@ -248,6 +248,13 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
+                name="verify-lanes",
+                help_text="Read-only lane inventory, ownership census, and refusals",
+                model_cls=m.Infra.GitLaneVerificationRequest,
+                handler=FlextInfraGitService.verify_lanes,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="lane-ownership",
                 help_text="Authenticate a retained and integrated Git checkpoint",
                 model_cls=m.Infra.GitLaneOwnershipRequest,
@@ -303,13 +310,6 @@ class FlextInfraWorkspaceRoutes:
                     m.Infra.GitLaneVerificationRequest,
                     FlextInfraGitService.verify_lane,
                     "lane stash and live integration ancestry verified",
-                ),
-                (
-                    "verify-lanes",
-                    "Read-only lane inventory, ownership census, and refusals",
-                    m.Infra.GitLaneVerificationRequest,
-                    FlextInfraGitService.verify_lanes,
-                    "lane inventory verified",
                 ),
                 (
                     "identity",
