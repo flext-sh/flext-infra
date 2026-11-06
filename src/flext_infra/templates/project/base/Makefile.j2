@@ -430,7 +430,8 @@ PUBLISH_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | d
 			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
 		fi; \
 		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		printf 'setup: published %s; previous environment retained at %s\n' "$$install_target" "$$install_environment"; \
+		rm -rf -- "$$install_stage"; \
+		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
 	else \
 		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
 		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
@@ -443,10 +444,10 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args --refresh; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
+		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
 		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
@@ -604,7 +605,7 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
 SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }} --refresh; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }}; \
 	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
