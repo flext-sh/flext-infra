@@ -154,7 +154,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Configured uv installation link mode"),
         ]
         toolchain: Annotated[
-            FlextInfraModelsConfigContract.ToolchainSpec,
+            Annotated[
+                p.Infra.ToolchainSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContract.ToolchainSpec
+                ),
+            ],
             m.Field(description="Canonical toolchain consumed by native bootstrap"),
         ]
         mise_selector: Annotated[
@@ -221,15 +226,37 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Repository-specific public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
+            Annotated[
+                p.Infra.ScriptDispatchSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.ScriptDispatchSpec
+                ),
+            ]
+            | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
         verb_groups: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbGroupSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered `make help` sections; empty is flat"),
         ] = ()
 
