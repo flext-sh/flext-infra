@@ -486,7 +486,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
         analysis_exclusions: Sequence[str] | None,
-    ) -> p.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.PhaseConfig:
         """Build the managed pyright phase for one project context.
 
         Returns:
