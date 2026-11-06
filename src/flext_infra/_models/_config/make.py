@@ -641,15 +641,6 @@ class FlextInfraModelsConfigMake(
                 gt=0, description="Native environment installation wall-time budget"
             ),
         ]
-        check_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description=(
-                    "Canonical Make check wall-time budget before forced child cleanup"
-                ),
-            ),
-        ]
 
     class MakeHarnessSpec(MakeExecutionSpec):
         """Test harness, cache, receipt and profile environment of the Make surface."""

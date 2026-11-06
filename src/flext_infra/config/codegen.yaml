@@ -773,9 +773,9 @@ Infra:
       - PYTHONHOME
       - PYTHONPATH
       setup_timeout_seconds: 118
-      # The check route receives TERM at this deadline. The shared timeout
-      # grace then reserves the configured two seconds for reaping children.
-      check_timeout_seconds: 118
+      # The check route wall-time bound is not declared here: the Makefile
+      # render spec derives it from the largest declared budget of the check
+      # gates (gate registry), plus the runner's forced-termination grace.
       ci:
         variable: CI
         value: Y

@@ -19,7 +19,7 @@ from flext_infra import c
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import MutableMapping
 
     from flext_cli import p
 
@@ -612,7 +612,9 @@ class FlextInfraProtocolsCheck(Protocol):
         process: p.Cli.ProcessOutcome | None
 
         @property
-        def components(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:
+        def components(
+            self,
+        ) -> MutableMapping[str, FlextInfraProtocolsCheck.GateExecution]:
             """Executions owned by a composite gate."""
             ...
 
@@ -641,7 +643,7 @@ class FlextInfraProtocolsCheck(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def gates(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:
+        def gates(self) -> MutableMapping[str, FlextInfraProtocolsCheck.GateExecution]:
             """Gate name to execution mapping."""
             ...
 

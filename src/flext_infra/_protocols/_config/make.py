@@ -455,11 +455,6 @@ class FlextInfraProtocolsConfigMake:
             """Native environment installation wall-time budget."""
             ...
 
-        @property
-        def check_timeout_seconds(self) -> int:
-            """Canonical Make check wall-time budget before forced child cleanup."""
-            ...
-
     @runtime_checkable
     class MakeHarnessSpec(MakeExecutionSpec, Protocol):
         """Structural data contract projected from the owning model."""
