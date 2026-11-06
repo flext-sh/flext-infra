@@ -2527,7 +2527,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     tree = ast.parse(path.read_text(encoding="utf-8"))
                 except (OSError, SyntaxError):
                     continue
-                for node in tree.body:
+                for node in ast.walk(tree):
                     if isinstance(node, ast.ClassDef):
                         names.add(node.name)
                     elif isinstance(node, ast.TypeAlias) and isinstance(
@@ -2544,6 +2544,8 @@ class FlextInfraUtilitiesModelsProtocol:
                             for target in node.targets
                             if isinstance(target, ast.Name)
                         )
+                    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        names.add(node.name)
             return frozenset(names)
 
         @staticmethod
