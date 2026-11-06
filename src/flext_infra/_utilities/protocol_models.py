@@ -2522,18 +2522,30 @@ class FlextInfraUtilitiesModelsProtocol:
             if self.package is None:
                 return frozenset()
             names: set[str] = set()
-            for path in (self.package / "_protocols").rglob("*.py"):
+            for path in (self.package / "_protocols").glob("*.py"):
                 try:
                     tree = ast.parse(path.read_text(encoding="utf-8"))
                 except (OSError, SyntaxError):
                     continue
-                for node in tree.body:
+                for node in ast.walk(tree):
                     if isinstance(node, ast.ClassDef):
                         names.add(node.name)
                     elif isinstance(node, ast.TypeAlias) and isinstance(
                         node.name, ast.Name
                     ):
                         names.add(node.name.id)
+                    elif isinstance(node, ast.AnnAssign) and isinstance(
+                        node.target, ast.Name
+                    ):
+                        names.add(node.target.id)
+                    elif isinstance(node, ast.Assign):
+                        names.update(
+                            target.id
+                            for target in node.targets
+                            if isinstance(target, ast.Name)
+                        )
+                    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        names.add(node.name)
             return frozenset(names)
 
         @staticmethod
@@ -4847,7 +4859,7 @@ class FlextInfraUtilitiesModelsProtocol:
             ) or method.name in c.Infra.PROTOCOL_EXCLUDED_DUNDERS:
                 return False
             if isinstance(method, ast.FunctionDef) and self._source_computed_field(
-                method, tree, definition
+                method, tree
             ):
                 return False
             # A structural protocol describes the instance: class-level
@@ -5162,7 +5174,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     ) and name == name.lower()
                 elif isinstance(
                     statement, ast.FunctionDef
-                ) and self._source_computed_field(statement, tree, node):
+                ) and self._source_computed_field(statement, tree):
                     if statement.returns is None:
                         continue
                     name, annotation, read_only = (
@@ -6598,11 +6610,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 annotation.slice if ast.unparse(annotation.value) in bindings else None
             )
 
+        @staticmethod
         def _source_computed_field(
-            self,
             declaration: ast.FunctionDef,
             tree: ast.Module,
-            model: ast.ClassDef,
         ) -> bool:
             """Recognize only Pydantic computed fields bound through m or pydantic.
 
@@ -6619,8 +6630,11 @@ class FlextInfraUtilitiesModelsProtocol:
                     and isinstance(expression.value, ast.Name)
                     and expression.value.id == "m"
                     and expression.attr == "computed_field"
-                    and self._source_model_facade_binding(tree, model)
                 ):
+                    # Any models facade bound as ``m`` is authoritative: a
+                    # member project may legitimately reuse a sibling's
+                    # facade (``from flext_web import m``) for its models, and
+                    # the decorator itself denotes a computed field.
                     return True
                 if (
                     isinstance(expression, ast.Attribute)
