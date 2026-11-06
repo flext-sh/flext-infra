@@ -241,6 +241,37 @@ class TestsVerifyLanes:
         tm.fail("abandoned unique ref" in output.out + output.err)
 
     @classmethod
+    def test_unselected_evidence_is_not_executed_never_a_refusal(
+        cls,
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """Without selected PR or Bead evidence a unique lane is recorded, not refused.
+
+        The inventory reports both sources as NOT EXECUTED; the run stays green
+        because no selected evidence contradicts the lane.
+        """
+        request = cls._repository(tmp_path, "integration/unselected", 9.0)
+        repo = request.repo_root
+        branch = "unselected-slice"
+        u.Tests.git_run(repo, "switch", "-c", branch)
+        (repo / "work.txt").write_text("unique work\n", encoding="utf-8")
+        u.Tests.git_run(repo, "add", "work.txt")
+        u.Tests.git_run(repo, "commit", "-m", "unique work")
+        code = FlextInfraCli.infra_main([
+            "workspace",
+            "verify-lanes",
+            "--repo-root",
+            str(repo),
+        ])
+        output = capsys.readouterr()
+        text = output.out + output.err
+        tm.that(code, eq=0)
+        tm.that(text, has="PR ownership evidence: NOT EXECUTED")
+        tm.that(text, has="Beads ownership evidence: NOT EXECUTED")
+        tm.fail("inconclusive unique ref" in text)
+
+    @classmethod
     def test_open_pr_allows_unique_lane_and_unintegrated_retirement_refuses(
         cls,
         tmp_path: Path,
