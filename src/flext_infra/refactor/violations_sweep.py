@@ -435,9 +435,9 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         destination: Path,
     ) -> p.Result[
         tuple[
-            m.Infra.ModScanEvidence,
-            m.Infra.ModScanEvidenceReceipt,
-            m.Infra.ViolationsSweepSources,
+            p.Infra.ModScanEvidence,
+            p.Infra.ModScanEvidenceReceipt,
+            p.Infra.ViolationsSweepSources,
         ]
     ]:
         """Authenticate the canonical inventory around a scan and preserve its receipt.
@@ -448,9 +448,9 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         """
         result = r[
             tuple[
-                m.Infra.ModScanEvidence,
-                m.Infra.ModScanEvidenceReceipt,
-                m.Infra.ViolationsSweepSources,
+                p.Infra.ModScanEvidence,
+                p.Infra.ModScanEvidenceReceipt,
+                p.Infra.ViolationsSweepSources,
             ]
         ]
         captured = cls._source_snapshot(root, observe=True)
@@ -577,7 +577,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         root: Path,
     ) -> p.Result[
         tuple[
-            m.Infra.CodemodRulePlan,
+            p.Infra.CodemodRulePlan,
             Sequence[str],
             tuple[Path, ...],
             tuple[p.Infra.GitSubmoduleDeclaration, ...],
@@ -591,7 +591,7 @@ class FlextInfraRefactorViolationsSweep(s[p.Infra.ViolationsSweepReport]):
         """
         result = r[
             tuple[
-                m.Infra.CodemodRulePlan,
+                p.Infra.CodemodRulePlan,
                 Sequence[str],
                 tuple[Path, ...],
                 tuple[p.Infra.GitSubmoduleDeclaration, ...],
