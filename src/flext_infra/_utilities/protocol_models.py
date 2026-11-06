@@ -1830,8 +1830,15 @@ class FlextInfraUtilitiesModelsProtocol:
 
             Raises:
                 ValueError: If the part source or its holder is absent or ambiguous.
+                TypeError: If the native model base is not a source definition.
 
             """
+            if not isinstance(model_base_class, p.Infra.RopeSourceObject):
+                msg = (
+                    "model domain base is not a native source definition: "
+                    f"{model_base_class}"
+                )
+                raise TypeError(msg)
             if self._source_is_marker_class(model_base_class.get_ast()):
                 return None
             package_dir, package_name = package
@@ -2492,7 +2499,11 @@ class FlextInfraUtilitiesModelsProtocol:
                     public = self.source_model_protocol_routes.get(route)
                     if public is None:
                         continue
-                    prefix = public.rpartition(".")[0]
+                    # Why: the authored field spelling is the hoisted
+                    # own-letter route (``p.AiHub.<Alias>``); the alias mirror
+                    # must be indexed under that same hoisted prefix, not under
+                    # the nested sibling route.
+                    prefix = public.split(".", 1)[0]
                     for statement in owner.body:
                         if not isinstance(statement, ast.TypeAlias) or not isinstance(
                             statement.name, ast.Name
@@ -3792,8 +3803,8 @@ class FlextInfraUtilitiesModelsProtocol:
 
         @staticmethod
         def _source_bases_first(
-            contracts: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract],
-        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+            contracts: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Order contracts so every local base is declared before its heirs.
 
             Returns:
@@ -3801,7 +3812,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             names = {contract.name for contract in contracts}
-            ordered: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            ordered: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             placed: set[str] = set()
             pending = list(contracts)
             while pending:
@@ -3910,7 +3921,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             contracts: list[
-                p.Infra.ModelProtocolRenderContext.ModelProtocolContract
+                m.Infra.ModelProtocolRenderContext.ModelProtocolContract
             ] = []
             evaluated_bases: set[str] = set()
             base_imports: set[str] = set()
@@ -4021,7 +4032,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def _source_promote_base_reads(
             imports: Sequence[str],
             contracts: Sequence[
-                p.Infra.ModelProtocolRenderContext.ModelProtocolContract
+                m.Infra.ModelProtocolRenderContext.ModelProtocolContract
             ],
         ) -> list[str]:
             """Import at runtime every name a contract base reads.
@@ -5430,6 +5441,10 @@ class FlextInfraUtilitiesModelsProtocol:
             return instance_wrapper or (
                 isinstance(value, ast.Name)
                 and len(declaration.type_params) == 1
+                and isinstance(
+                    declaration.type_params[0],
+                    ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec,
+                )
                 and value.id == declaration.type_params[0].name
             )
 
@@ -7737,7 +7752,7 @@ class FlextInfraUtilitiesModelsProtocol:
             holder: p.Infra.RopeSourceClass,
             context: p.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -7747,7 +7762,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -8861,10 +8876,12 @@ class FlextInfraUtilitiesModelsProtocol:
         def _denotes(
             self,
             node: t.Infra.AstExpression,
-            scope: p.Infra.RopeScope,
+            scope: p.Infra.RopeScope | None,
             module: str,
             name: str,
         ) -> bool:
+            if scope is None:
+                return False
             return self.same_name(
                 self.qualified_name(self.project, name, module_name=module),
                 FlextInfraUtilitiesRopeRuntime.expression_name(
