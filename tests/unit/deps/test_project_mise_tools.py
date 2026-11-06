@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m
-from tests import tm, u
+from flext_infra import config
+from tests import m, tm, u
 
 
 class TestsFlextInfraProjectMiseTools:
@@ -62,5 +60,5 @@ class TestsFlextInfraProjectMiseTools:
             '      "github:example/tool": "1.2.3"\n',
         )
 
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             u.Infra.load_project_managed_artifacts(root)

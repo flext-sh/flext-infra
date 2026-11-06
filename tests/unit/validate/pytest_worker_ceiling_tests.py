@@ -12,14 +12,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 
-@pytest.mark.unit
+@c.Tests.MARK.unit
 class TestsFlextInfraPytestWorkerCeiling:
     """Public contract of the tagged worker ceiling and its resolution."""
 
@@ -33,9 +31,9 @@ class TestsFlextInfraPytestWorkerCeiling:
     @staticmethod
     def test_exactly_one_form_is_required() -> None:
         """Both or neither form set is rejected."""
-        with pytest.raises(ValueError, match="exactly one"):
+        with u.Tests.raises(ValueError, match="exactly one"):
             m.Infra.PytestWorkerCeiling.model_validate({})
-        with pytest.raises(ValueError, match="exactly one"):
+        with u.Tests.raises(ValueError, match="exactly one"):
             m.Infra.PytestWorkerCeiling.model_validate({
                 "workers": 4,
                 "cpu_fraction": "1/4",
@@ -44,7 +42,7 @@ class TestsFlextInfraPytestWorkerCeiling:
     @staticmethod
     def test_cpu_fraction_shape_is_validated() -> None:
         """Non-fraction strings are rejected at validation."""
-        with pytest.raises(ValueError, match="cpu_fraction"):
+        with u.Tests.raises(ValueError, match="cpu_fraction"):
             m.Infra.PytestWorkerCeiling.model_validate({"cpu_fraction": "quarter"})
 
     @staticmethod

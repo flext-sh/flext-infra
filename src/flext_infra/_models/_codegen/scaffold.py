@@ -37,7 +37,9 @@ class FlextInfraModelsCodegenScaffold:
             Sequence[
                 Annotated[
                     p.Infra.CensusViolation,
-                    t.schema_for_model(FlextInfraModelsCodegenScaffold.CensusViolation),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
+                    ),
                 ]
             ],
             m.Field(description="Detected violations"),

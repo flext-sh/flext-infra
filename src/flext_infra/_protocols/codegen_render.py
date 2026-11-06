@@ -181,7 +181,7 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
     @runtime_checkable
-    class GithubWorkflowRenderSpec(
+    class GithubWorkflowProjectRenderSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
@@ -265,6 +265,10 @@ class FlextInfraProtocolsCodegenRender:
         def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
             """Canonical workflow command contract."""
             ...
+
+    @runtime_checkable
+    class GithubWorkflowRenderSpec(GithubWorkflowProjectRenderSpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def workspace_repositories(
@@ -455,6 +459,15 @@ class FlextInfraProtocolsCodegenRender:
         @property
         def repository_root_rel(self) -> t.NonEmptyStr:
             """Project-relative owner of the runtime environment."""
+            ...
+
+        @property
+        def mise_config_filename(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Only project Mise config the activation loads; a machine-local override
+            never enters the governed shell.
+            """
             ...
 
         @property

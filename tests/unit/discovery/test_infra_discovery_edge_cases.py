@@ -14,8 +14,6 @@ from cProfile import Profile
 from pathlib import Path
 from pstats import Stats
 
-import pytest
-
 from tests import c, tm, u
 
 
@@ -23,7 +21,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected"),
         [
             ("class Alpha: ...\n__all__ = ['Alpha']\n", ("Alpha",)),
@@ -116,7 +114,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    @c.Tests.MARK.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
     def test_source_files_discover_their_authenticated_project_root(
         tmp_path: Path, suffix: str
     ) -> None:
@@ -129,9 +127,9 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             tm.that(u.Infra.project_root(source, source_project=project), eq=tmp_path)
 
     @staticmethod
-    @pytest.mark.parametrize("nested_manifest", [False, True])
-    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
-    def test_nearest_manifest_owns_nested_source_layout(
+    @c.Tests.MARK.parametrize("nested_manifest", [False, True])
+    @c.Tests.MARK.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    def test_nearest_manifest_owns_nestedsource_layout(
         tmp_path: Path, suffix: str, *, nested_manifest: bool
     ) -> None:
         """A nested src tree belongs to the closest declared project."""
@@ -155,7 +153,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             tm.that(u.Infra.project_root(source, source_project=project), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
+    @c.Tests.MARK.parametrize("suffix", [c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB])
     def test_publication_policy_preserves_explicit_project_layout(
         tmp_path: Path, suffix: str
     ) -> None:

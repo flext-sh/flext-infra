@@ -8,18 +8,13 @@ from __future__ import annotations
 
 import shlex
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, infra, m
+from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
 _HOOK_TEMPLATE = (
     Path(__file__).resolve().parents[3]
@@ -135,7 +130,7 @@ class TestsFlextInfraCodegenHookConformance:
         tm.that(rendered, lacks=".local")
 
     @staticmethod
-    @pytest.mark.parametrize("inherited", ["ci", "local"])
+    @c.Tests.MARK.parametrize("inherited", ["ci", "local"])
     def test_pre_push_check_unsets_inherited_ci_before_the_real_make_runtime(
         tmp_path: Path,
         inherited: str,

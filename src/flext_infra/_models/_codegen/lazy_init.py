@@ -107,7 +107,7 @@ class FlextInfraModelsCodegenLazyInit:
                     Annotated[
                         p.Infra.PythonModuleFacts,
                         t.schema_for_model(
-                            FlextInfraModelsCodegenLazyInit.PythonModuleFacts
+                            lambda: FlextInfraModelsCodegenLazyInit.PythonModuleFacts
                         ),
                     ],
                 ]
@@ -153,7 +153,9 @@ class FlextInfraModelsCodegenLazyInit:
 
         context: Annotated[
             p.Infra.LazyInitPackageContext,
-            t.schema_for_model(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext),
+            t.schema_for_model(
+                lambda: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+            ),
         ] = m.Field(
             description="Discovered package context.",
         )
@@ -256,7 +258,7 @@ class FlextInfraModelsCodegenLazyInit:
                 Annotated[
                     p.Infra.RopeModuleIndexEntry,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                        lambda: FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
                     ),
                 ],
                 ...,
@@ -301,7 +303,7 @@ class FlextInfraModelsCodegenLazyInit:
                 Annotated[
                     p.Infra.RopePackageIndexEntry,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenLazyInit.RopePackageIndexEntry
+                        lambda: FlextInfraModelsCodegenLazyInit.RopePackageIndexEntry
                     ),
                 ],
             ],
@@ -313,7 +315,7 @@ class FlextInfraModelsCodegenLazyInit:
                 Annotated[
                     p.Infra.RopeModuleIndexEntry,
                     t.schema_for_model(
-                        FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
+                        lambda: FlextInfraModelsCodegenLazyInit.RopeModuleIndexEntry
                     ),
                 ],
             ],
@@ -341,14 +343,18 @@ class FlextInfraModelsCodegenLazyInit:
         index: Annotated[
             Annotated[
                 p.Infra.RopeWorkspaceIndex,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex
+                ),
             ],
             m.Field(description="The repository's shared source inventory"),
         ]
         model: Annotated[
             Annotated[
                 p.Infra.PythonModelRun,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.PythonModelRun),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.PythonModelRun
+                ),
             ],
             m.Field(description="The run's parse-once static Python model"),
         ]
@@ -359,7 +365,7 @@ class FlextInfraModelsCodegenLazyInit:
                     Annotated[
                         p.Infra.LazyInitPlan,
                         t.schema_for_model(
-                            FlextInfraModelsCodegenLazyInit.LazyInitPlan
+                            lambda: FlextInfraModelsCodegenLazyInit.LazyInitPlan
                         ),
                     ],
                 ]
@@ -373,7 +379,9 @@ class FlextInfraModelsCodegenLazyInit:
                     Annotated[
                         p.Infra.LazyInitPackageContext,
                         t.schema_for_model(
-                            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                            lambda: (
+                                FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                            )
                         ),
                     ],
                 ]

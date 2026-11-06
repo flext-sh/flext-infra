@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from tests import c, p, tm, u
 
@@ -65,9 +63,9 @@ class TestsFlextInfraSkillValidator:
     @staticmethod
     def test_invalid_input_raises() -> None:
         """Non-string items and non-list values raise."""
-        with pytest.raises(TypeError):
+        with u.Tests.raises(TypeError):
             u.Infra.string_list(["a", 123, "c"])
-        with pytest.raises(TypeError, match="expected list"):
+        with u.Tests.raises(TypeError, match="expected list"):
             u.Infra.string_list({"key": "value"})
 
     @staticmethod

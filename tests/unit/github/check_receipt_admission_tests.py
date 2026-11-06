@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, m, tm, u
@@ -19,7 +17,7 @@ class TestsFlextInfraCheckReceiptAdmission:
     """The tests verb refuses a candidate no green check has approved."""
 
     @staticmethod
-    @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))
+    @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_refuses_without_any_check_receipt(
         infra_git_repo: Path,
         phase: c.Infra.CheckPhase,
@@ -40,7 +38,7 @@ class TestsFlextInfraCheckReceiptAdmission:
         tm.that(admitted.error or "", has="run make check first")
 
     @staticmethod
-    @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))
+    @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_refuses_an_incomplete_check_of_the_same_scope(
         infra_git_repo: Path,
         phase: c.Infra.CheckPhase,
@@ -89,7 +87,7 @@ class TestsFlextInfraCheckReceiptAdmission:
                 )
 
     @staticmethod
-    @pytest.mark.parametrize("phase", tuple(c.Infra.CheckPhase))
+    @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_newest_same_phase_wrong_inventory_is_not_skipped(
         infra_git_repo: Path,
         phase: c.Infra.CheckPhase,

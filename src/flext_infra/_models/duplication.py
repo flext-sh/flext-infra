@@ -161,7 +161,7 @@ class FlextInfraModelsDuplication:
         semantic: Annotated[
             Annotated[
                 p.Infra.JscpdSemantic,
-                t.schema_for_model(FlextInfraModelsDuplication.JscpdSemantic),
+                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdSemantic),
             ]
             | None,
             m.Field(description="Embedding pass; absent where it is not executed"),
@@ -203,7 +203,7 @@ class FlextInfraModelsDuplication:
         end: Annotated[t.PositiveInt, m.Field(description="Exclusive clone end offset")]
         end_location: Annotated[
             p.Infra.JscpdLocation,
-            t.schema_for_model(FlextInfraModelsDuplication.JscpdLocation),
+            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdLocation),
         ] = m.Field(alias="endLoc", description="Clone end coordinate")
         name: Annotated[
             t.NonEmptyStr,
@@ -219,7 +219,7 @@ class FlextInfraModelsDuplication:
         ]
         start_location: Annotated[
             p.Infra.JscpdLocation,
-            t.schema_for_model(FlextInfraModelsDuplication.JscpdLocation),
+            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdLocation),
         ] = m.Field(alias="startLoc", description="Clone start coordinate")
 
     class JscpdDuplicate(m.ContractModel):
@@ -232,7 +232,8 @@ class FlextInfraModelsDuplication:
         )
 
         first_file: Annotated[
-            p.Infra.JscpdFile, t.schema_for_model(FlextInfraModelsDuplication.JscpdFile)
+            p.Infra.JscpdFile,
+            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdFile),
         ] = m.Field(alias="firstFile", description="First clone source")
         format_name: t.NonEmptyStr = m.Field(
             alias="format", description="jscpd parser format name"
@@ -263,7 +264,8 @@ class FlextInfraModelsDuplication:
             m.Field(description="Duplicated logical line count"),
         ]
         second_file: Annotated[
-            p.Infra.JscpdFile, t.schema_for_model(FlextInfraModelsDuplication.JscpdFile)
+            p.Infra.JscpdFile,
+            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdFile),
         ] = m.Field(alias="secondFile", description="Second clone source")
         tokens: Annotated[t.PositiveInt, m.Field(description="Duplicated token count")]
         similarity: Annotated[
@@ -332,7 +334,7 @@ class FlextInfraModelsDuplication:
                 Annotated[
                     p.Infra.JscpdStatisticsSummary,
                     t.schema_for_model(
-                        FlextInfraModelsDuplication.JscpdStatisticsSummary
+                        lambda: FlextInfraModelsDuplication.JscpdStatisticsSummary
                     ),
                 ],
             ],
@@ -341,7 +343,9 @@ class FlextInfraModelsDuplication:
         total: Annotated[
             Annotated[
                 p.Infra.JscpdStatisticsSummary,
-                t.schema_for_model(FlextInfraModelsDuplication.JscpdStatisticsSummary),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDuplication.JscpdStatisticsSummary
+                ),
             ],
             m.Field(description="Aggregate scan statistics"),
         ]
@@ -353,7 +357,9 @@ class FlextInfraModelsDuplication:
             Sequence[
                 Annotated[
                     p.Infra.JscpdDuplicate,
-                    t.schema_for_model(FlextInfraModelsDuplication.JscpdDuplicate),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsDuplication.JscpdDuplicate
+                    ),
                 ]
             ],
             m.Field(description="Complete detected clone records"),
@@ -361,7 +367,7 @@ class FlextInfraModelsDuplication:
         statistics: Annotated[
             Annotated[
                 p.Infra.JscpdStatistics,
-                t.schema_for_model(FlextInfraModelsDuplication.JscpdStatistics),
+                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdStatistics),
             ],
             m.Field(description="Validated scan statistics"),
         ]
@@ -433,15 +439,26 @@ class FlextInfraModelsDuplication:
         canonical_index: t.NonNegativeInt = m.Field(
             description="First unordered span pair index"
         )
-        candidate: FlextInfraModelsDuplication.JscpdDuplicate = m.Field(
+        candidate: Annotated[
+            p.Infra.JscpdDuplicate,
+            t.schema_for_model(
+                lambda: FlextInfraModelsDuplication.JscpdDuplicate,
+            ),
+        ] = m.Field(
             description="Unmodified typed scanner candidate",
         )
         owned: bool = m.Field(description="At least one side belongs to the project")
         self_span: bool = m.Field(description="Both sides name the identical span")
-        measures: tuple[FlextInfraModelsDuplication.DuplicationSpanMeasure, ...] = (
-            m.Field(
-                description="Both measured spans when analysis succeeds",
-            )
+        measures: tuple[
+            Annotated[
+                p.Infra.DuplicationSpanMeasure,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsDuplication.DuplicationSpanMeasure,
+                ),
+            ],
+            ...,
+        ] = m.Field(
+            description="Both measured spans when analysis succeeds",
         )
 
     class DuplicationAssessment(m.ContractModel):
@@ -453,13 +470,13 @@ class FlextInfraModelsDuplication:
         raw_sha256: str = m.Field(description="Digest of the exact published receipt")
         report: Annotated[
             p.Infra.JscpdReport,
-            t.schema_for_model(FlextInfraModelsDuplication.JscpdReport),
+            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdReport),
         ] = m.Field(description="Complete raw typed inventory and counters")
         candidates: tuple[
             Annotated[
                 p.Infra.DuplicationCandidateEvidence,
                 t.schema_for_model(
-                    FlextInfraModelsDuplication.DuplicationCandidateEvidence
+                    lambda: FlextInfraModelsDuplication.DuplicationCandidateEvidence
                 ),
             ],
             ...,
@@ -510,7 +527,7 @@ class FlextInfraModelsDuplication:
         report: Annotated[
             Annotated[
                 p.Infra.JscpdReport,
-                t.schema_for_model(FlextInfraModelsDuplication.JscpdReport),
+                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdReport),
             ],
             m.Field(description="Validated report from this exact scan"),
         ]

@@ -10,8 +10,6 @@ import ast
 import runpy
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, tm, u
 
@@ -23,7 +21,7 @@ class TestsFlextInfraFamilyTypeReferences:
     """Exercise the real Rope graph for generic bases and deferred annotations."""
 
     @staticmethod
-    @pytest.mark.parametrize("protocol_imported", [False, True])
+    @c.Tests.MARK.parametrize("protocol_imported", [False, True])
     def test_nested_result_regions_publish_one_native_protocol_cutover(
         tmp_path: Path,
         *,
@@ -41,9 +39,9 @@ class TestsFlextInfraFamilyTypeReferences:
             f"from flext_cli import {imports}\n"
             "state = u.Cli.atomic_read_binary_file_state(\n"
             "    Path(__file__).resolve(), required=True).unwrap()\n"
-            "declared: r[m.Cli.AtomicFileState] = (\n"
-            "    r[m.Cli.AtomicFileState].ok(state))\n"
-            "nested = r[tuple[m.Cli.AtomicFileState, r[m.Cli.AtomicFileState]]]\n"
+            "declared: r[p.Cli.AtomicFileState] = (\n"
+            "    r[p.Cli.AtomicFileState].ok(state))\n"
+            "nested = r[tuple[p.Cli.AtomicFileState, r[p.Cli.AtomicFileState]]]\n"
             "constructor = m.Cli.AtomicFileState\n"
             "literal = 'm.Cli.AtomicFileState'\n"
             "parsed = m.Cli.AtomicFileState.model_validate_json(\n"
@@ -103,7 +101,7 @@ class TestsFlextInfraFamilyTypeReferences:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "expected"),
         [
             (
@@ -164,7 +162,7 @@ class TestsFlextInfraFamilyTypeReferences:
             )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "source",
         [
             "VALUE = 'payload'\n",
@@ -208,7 +206,7 @@ class TestsFlextInfraFamilyTypeReferences:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("label", ["é", "payload; kept"])
+    @c.Tests.MARK.parametrize("label", ["é", "payload; kept"])
     def test_semicolon_members_keep_values_and_uninitialized_annotations(
         tmp_path: Path, label: str
     ) -> None:

@@ -14,8 +14,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from threading import Barrier, Event, Thread
 
-import pytest
-
 from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
 from tests import c, m, t, tm, u
@@ -132,7 +130,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             termination_grace_seconds=policy.termination_grace_seconds,
         )
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_plural_module_form_still_owns_its_tests(
         self,
         tmp_path: Path,
@@ -154,7 +152,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         outcome = tm.ok(self._runner(project_root, tmp_path).execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.OK.value)
         summary = self._latest_summary(project_root / cache.reports_directory)
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
@@ -162,7 +160,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.fail(plan.owns_no_tests)
         tm.that(
             tm.ok(self._runner(project_root, tmp_path).execute()),
-            eq=pytest.ExitCode.OK.value,
+            eq=c.Tests.ExitCode.OK.value,
         )
         summary = self._latest_summary(project_root / cache.reports_directory)
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
@@ -191,7 +189,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         lock = database.with_name(f"{database.name}.lock")
         with (
             self._held_elsewhere(lock),
-            pytest.raises(TimeoutError, match=re.escape(str(lock))),
+            u.Tests.raises(TimeoutError, match=re.escape(str(lock))),
         ):
             runner.execute()
 
@@ -228,7 +226,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         lock = latest.with_name(f"{latest.name}.lock")
         with self._held_elsewhere(lock):
             before = lock.stat()
-            with pytest.raises(TimeoutError, match=re.escape(str(lock))):
+            with u.Tests.raises(TimeoutError, match=re.escape(str(lock))):
                 runner.execute()
             receipts = tuple(reports.glob("*/run-context.json"))
             tm.that(len(receipts), eq=1)
@@ -280,7 +278,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         def contend(runner: FlextInfraPytestRunner) -> None:
             start.wait(timeout=policy.run_timeout_seconds)
-            with pytest.raises(TimeoutError, match=re.escape(str(cache_lock))):
+            with u.Tests.raises(TimeoutError, match=re.escape(str(cache_lock))):
                 runner.execute()
 
         with u.Cli.file_changes_lock(cache_lock):
@@ -314,7 +312,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             )
         tm.fail(database.exists())
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_empty_slow_scope_remains_red_with_accounting(
         self,
         tmp_path: Path,
@@ -329,12 +327,12 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.that(
             tm.ok(self._runner(project, tmp_path).execute()),
-            eq=pytest.ExitCode.OK.value,
+            eq=c.Tests.ExitCode.OK.value,
         )
 
         outcome = tm.ok(self._runner(project, tmp_path, slow_phase=True).execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
         summary = self._latest_summary(project / cache.reports_directory)
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
             self._read(summary.parent / "selection-plan.json"),
@@ -350,7 +348,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.that(suite.raw_return_code, eq=outcome)
         tm.that(self._read(summary), has=["outcome=failed\n", f"exit={outcome}\n"])
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_incremental_run_publishes_receipt_for_zero_test_project(
         self,
         tmp_path: Path,
@@ -361,7 +359,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         outcome = tm.ok(runner.execute())
 
-        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         summary = self._latest_summary(reports_root)
@@ -380,7 +378,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         )
         tm.ok(plan.owns_no_tests)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_run_keeps_native_status_for_zero_test_project(
         self,
         tmp_path: Path,
@@ -396,7 +394,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         outcome = tm.ok(runner.execute_full())
 
-        tm.that(outcome, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
         cache = config.Infra.codegen.make.testmon_cache
         reports_root = project / cache.reports_directory
         report_dir = reports_root / self._read(reports_root / "latest.txt").strip()
@@ -415,14 +413,14 @@ class TestsFlextInfraPytestRunnerZeroTest:
         suite = m.Cli.ProcessOutcome.model_validate_json(
             self._read(report_dir / "suite-outcome.json"),
         )
-        tm.that(suite.raw_return_code, eq=pytest.ExitCode.NO_TESTS_COLLECTED.value)
+        tm.that(suite.raw_return_code, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
         for promoted in ("selection-plan.json", "run-accounting.json"):
             tm.fail((report_dir / promoted).exists())
         summary = self._read(report_dir / "summary.txt").splitlines()
         tm.that(summary, has=["phase=suite", f"exit={outcome}"])
         tm.that(summary, lacks="outcome=passed")
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_slow_only_declared_file_executes_its_slow_items(
         self,
         tmp_path: Path,
@@ -446,7 +444,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             self._runner(project, tmp_path, target_file=relative).execute(),
         )
 
-        tm.that(outcome, eq=pytest.ExitCode.OK.value)
+        tm.that(outcome, eq=c.Tests.ExitCode.OK.value)
         summary = self._latest_summary(project / cache.reports_directory)
         tm.that(self._read(summary), has=["outcome=executed\n", "executed=1\n"])
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
@@ -455,7 +453,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.fail(plan.owns_no_tests)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_conftest_import_failure_preserves_native_startup_status(
         cached_runner_project: Path,
     ) -> None:
@@ -475,7 +473,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         status = tm.ok(runner.execute_full())
 
-        tm.that(status, eq=pytest.ExitCode.USAGE_ERROR.value)
+        tm.that(status, eq=c.Tests.ExitCode.USAGE_ERROR.value)
         (context_path,) = (cached_runner_project / runner.reports).glob(
             "*/run-context.json",
         )
@@ -533,7 +531,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         ):
             tm.fail((report_dir / absent_artifact).exists())
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_target_file_collection_failure_stays_red(
         self,
         tmp_path: Path,
@@ -554,7 +552,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         status = tm.ok(runner.execute())
 
-        tm.that(status, eq=pytest.ExitCode.INTERRUPTED.value)
+        tm.that(status, eq=c.Tests.ExitCode.INTERRUPTED.value)
         summary = self._latest_summary(project / runner.reports)
         report_dir = summary.parent
         outcome = m.Cli.ProcessOutcome.model_validate_json(
@@ -589,7 +587,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
         tm.fail((report_dir / "junit.xml").exists())
         tm.fail((report_dir / "run-accounting.json").exists())
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_target_file_failure_stays_red(self, tmp_path: Path) -> None:
         """A declared file whose test fails still fails the phase."""
         project = self._zero_test_project(tmp_path)
@@ -606,7 +604,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
 
         tm.that(outcome, ne=0)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_target_file_rerun_over_a_warm_cache_executes_again(
         self,
         tmp_path: Path,
@@ -628,7 +626,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
             outcome = tm.ok(
                 self._runner(project, tmp_path, target_file=relative).execute(),
             )
-            tm.that(outcome, eq=pytest.ExitCode.OK.value)
+            tm.that(outcome, eq=c.Tests.ExitCode.OK.value)
             summary = self._latest_summary(project / cache.reports_directory)
             accounting = m.Infra.TestmonRunAccounting.model_validate_json(
                 self._read(summary.parent / "run-accounting.json"),

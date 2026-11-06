@@ -778,8 +778,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             ),
         )
         edits = FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            native[0],
-            native[1],
+            native,
             source,
             transformer.type_reference,
         )

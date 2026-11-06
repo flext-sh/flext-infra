@@ -22,7 +22,7 @@ from sys import modules
 from types import ModuleType
 from typing import TYPE_CHECKING
 
-from flext_core import p, r
+from flext_infra import p, r
 
 if TYPE_CHECKING:
     from flext_infra import t

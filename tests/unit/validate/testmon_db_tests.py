@@ -9,11 +9,9 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.validate import FlextInfraTestmonDbInspector
-from tests import p, tm
+from tests import p, tm, u
 
 
 class TestsFlextInfraTestmonDbInspector:
@@ -31,7 +29,7 @@ class TestsFlextInfraTestmonDbInspector:
             pre_run_digest=None,
         )
 
-        with pytest.raises(FileNotFoundError):
+        with u.Tests.raises(FileNotFoundError):
             inspector.execute()
 
     @staticmethod
@@ -40,7 +38,7 @@ class TestsFlextInfraTestmonDbInspector:
         repository_root = tmp_path / "checkout"
         repository_root.mkdir()
 
-        with pytest.raises(ValueError, match="outside the repository checkout"):
+        with u.Tests.raises(ValueError, match="outside the repository checkout"):
             FlextInfraTestmonDbInspector(
                 repository_root=repository_root,
                 db_path=repository_root
@@ -61,7 +59,7 @@ class TestsFlextInfraTestmonDbInspector:
         db.parent.mkdir()
         db.write_text("not a sqlite database", encoding="utf-8")
 
-        with pytest.raises(sqlite3.DatabaseError):
+        with u.Tests.raises(sqlite3.DatabaseError):
             FlextInfraTestmonDbInspector(
                 repository_root=repository_root,
                 db_path=db,
@@ -127,7 +125,7 @@ class TestsFlextInfraTestmonDbInspector:
         """Test in checkout database is rejected."""
         filename = config.Infra.codegen.make.testmon_cache.database_filename
 
-        with pytest.raises(ValueError, match="outside the repository checkout"):
+        with u.Tests.raises(ValueError, match="outside the repository checkout"):
             FlextInfraTestmonDbInspector(
                 repository_root=tmp_path,
                 db_path=tmp_path / filename,

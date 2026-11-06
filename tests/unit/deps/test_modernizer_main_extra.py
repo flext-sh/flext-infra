@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.deps import FlextInfraPyprojectModernizer
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,12 +39,12 @@ class TestsFlextInfraDepsModernizerMainExtra:
         return (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "expected"),
         [
-            pytest.param(None, 2, id="missing-root-pyproject"),
-            pytest.param("", 2, id="empty-root-pyproject"),
-            pytest.param("[invalid toml {", 2, id="invalid-root-pyproject"),
+            u.Tests.param(None, 2, id="missing-root-pyproject"),
+            u.Tests.param("", 2, id="empty-root-pyproject"),
+            u.Tests.param("[invalid toml {", 2, id="invalid-root-pyproject"),
         ],
     )
     def test_run_handles_root_edge_cases(
@@ -101,7 +99,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         # The canonical docs-scope reader owns the typed invalid-TOML error and
         # names the file; the run lets it leave instead of logging an exit code.
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError,
             match="docs pyproject TOML is invalid",
         ) as raised:
@@ -239,7 +237,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     @staticmethod
     def test_run_scopes_default_audit_to_root_without_external_siblings(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Keep default modernization inside the declared workspace boundary."""
         workspace = u.Tests.mk_project(

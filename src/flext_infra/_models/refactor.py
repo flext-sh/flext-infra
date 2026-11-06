@@ -54,7 +54,7 @@ class FlextInfraModelsRefactor(
                 c.Infra.CodemodRelocation,
                 Annotated[
                     p.Infra.ModScanFinding,
-                    t.schema_for_model(FlextInfraModelsScan.ModScanFinding),
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ModScanFinding),
                 ],
             ]
         ] = m.Field(description="Native relocation selections")
@@ -69,7 +69,9 @@ class FlextInfraModelsRefactor(
         )
         originals: MutableMapping[
             Path,
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
         ] = m.Field(description="Complete original dependency closure")
         modes: MutableMapping[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
@@ -101,7 +103,9 @@ class FlextInfraModelsRefactor(
         inventory: Annotated[
             Annotated[
                 p.Infra.SemanticBehaviorOwners,
-                t.schema_for_model(FlextInfraModelsRefactor.SemanticBehaviorOwners),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.SemanticBehaviorOwners
+                ),
             ],
             m.Field(description="Declared behavior owners"),
         ]
@@ -186,7 +190,8 @@ class FlextInfraModelsRefactor(
 
         declaration: Annotated[
             Annotated[
-                p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)
+                p.Infra.Object,
+                t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
             ],
             m.Field(
                 description="Actual introducing declaration from semantic discovery"
@@ -201,7 +206,8 @@ class FlextInfraModelsRefactor(
         contracts: Annotated[
             tuple[
                 Annotated[
-                    p.Infra.Object, t.schema_for_model(FlextInfraModelsCensus.Object)
+                    p.Infra.Object,
+                    t.schema_for_model(lambda: FlextInfraModelsCensus.Object),
                 ],
                 ...,
             ],
@@ -228,7 +234,9 @@ class FlextInfraModelsRefactor(
         decisions: tuple[
             Annotated[
                 p.Infra.SemanticRenameSelection,
-                t.schema_for_model(FlextInfraModelsRefactor.SemanticRenameSelection),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.SemanticRenameSelection
+                ),
             ],
             ...,
         ] = m.Field(description="Explicit domain names for inventoried owners")
@@ -243,7 +251,9 @@ class FlextInfraModelsRefactor(
         decisions: tuple[
             Annotated[
                 p.Infra.SemanticRenameDecision,
-                t.schema_for_model(FlextInfraModelsRefactor.SemanticRenameDecision),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.SemanticRenameDecision
+                ),
             ],
             ...,
         ] = m.Field(
@@ -253,7 +263,9 @@ class FlextInfraModelsRefactor(
         edits: tuple[
             Annotated[
                 p.Infra.SemanticMigrationEdit,
-                t.schema_for_model(FlextInfraModelsTransformers.SemanticMigrationEdit),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
+                ),
             ],
             ...,
         ] = m.Field(description="Exact source bytes before and after the native rename")
@@ -342,7 +354,9 @@ class FlextInfraModelsRefactor(
             tuple[
                 Annotated[
                     p.Infra.ViolationsRuleDelta,
-                    t.schema_for_model(FlextInfraModelsRefactor.ViolationsRuleDelta),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
+                    ),
                 ],
                 ...,
             ],
@@ -403,7 +417,7 @@ class FlextInfraModelsRefactor(
                 Annotated[
                     p.Infra.ProjectEnforcementReport,
                     t.schema_for_model(
-                        FlextInfraModelsRefactor.ProjectEnforcementReport
+                        lambda: FlextInfraModelsRefactor.ProjectEnforcementReport
                     ),
                 ]
             ],
@@ -427,7 +441,9 @@ class FlextInfraModelsRefactor(
         plan: Annotated[
             Annotated[
                 p.Infra.CodemodRulePlan,
-                t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRulePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
+                ),
             ],
             m.Field(description="Elected full rule catalog and provider digests"),
         ]
@@ -449,7 +465,7 @@ class FlextInfraModelsRefactor(
         ast_report: Annotated[
             Annotated[
                 p.Infra.ModScanEvidence,
-                t.schema_for_model(FlextInfraModelsScan.ModScanEvidence),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidence),
             ]
             | None,
             m.Field(
@@ -459,7 +475,7 @@ class FlextInfraModelsRefactor(
         text_report: Annotated[
             Annotated[
                 p.Infra.ModTextReport,
-                t.schema_for_model(FlextInfraModelsScan.ModTextReport),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModTextReport),
             ]
             | None,
             m.Field(description="Actual native text scan, None if unobserved"),
@@ -505,7 +521,9 @@ class FlextInfraModelsRefactor(
         delta: Annotated[
             Annotated[
                 p.Infra.ViolationsRuleDelta,
-                t.schema_for_model(FlextInfraModelsRefactor.ViolationsRuleDelta),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
+                ),
             ]
             | None,
             m.Field(description="Occurrence evidence only for successful native scans"),
@@ -548,7 +566,9 @@ class FlextInfraModelsRefactor(
             m.Field(description="Whether Make was invoked"),
         ] = True
         outcome: Annotated[
-            Annotated[p.Cli.ProcessOutcome, t.schema_for_model(m.Cli.ProcessOutcome)]
+            Annotated[
+                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
+            ]
             | None,
             m.Field(description="Original process exit, timeout and signal state"),
         ]
@@ -559,7 +579,9 @@ class FlextInfraModelsRefactor(
         audit_before: Annotated[
             Annotated[
                 p.Infra.ViolationsSweepSources,
-                t.schema_for_model(FlextInfraModelsRefactor.ViolationsSweepSources),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.ViolationsSweepSources
+                ),
             ]
             | None,
             m.Field(
@@ -569,7 +591,9 @@ class FlextInfraModelsRefactor(
         audit_after: Annotated[
             Annotated[
                 p.Infra.ViolationsSweepSources,
-                t.schema_for_model(FlextInfraModelsRefactor.ViolationsSweepSources),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactor.ViolationsSweepSources
+                ),
             ]
             | None,
             m.Field(description="After audit snapshot, retained for failed operations"),
@@ -589,7 +613,7 @@ class FlextInfraModelsRefactor(
                 Annotated[
                     p.Infra.ViolationsRuleEvaluation,
                     t.schema_for_model(
-                        FlextInfraModelsRefactor.ViolationsRuleEvaluation
+                        lambda: FlextInfraModelsRefactor.ViolationsRuleEvaluation
                     ),
                 ],
                 ...,
@@ -601,7 +625,7 @@ class FlextInfraModelsRefactor(
                 Annotated[
                     p.Infra.ViolationsEngineCoverage,
                     t.schema_for_model(
-                        FlextInfraModelsRefactor.ViolationsEngineCoverage
+                        lambda: FlextInfraModelsRefactor.ViolationsEngineCoverage
                     ),
                 ],
                 ...,
@@ -616,7 +640,7 @@ class FlextInfraModelsRefactor(
             tuple[
                 Annotated[
                     p.Infra.ModTextFinding,
-                    t.schema_for_model(FlextInfraModelsScan.ModTextFinding),
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ModTextFinding),
                 ],
                 ...,
             ]
@@ -624,13 +648,8 @@ class FlextInfraModelsRefactor(
             m.Field(description="Introduced text occurrences, None if unobserved"),
         ] = None
 
-    class ViolationsSweepReport(m.ContractModel):
-        """Before/after receipt of one violations sweep.
-
-        Published for successful and partial failed repair sequences.
-        """
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+    class ViolationsSweepScope(m.ContractModel):
+        """Repository, verbs and topology one violations sweep covers."""
 
         schema_version: Annotated[
             int,
@@ -656,16 +675,27 @@ class FlextInfraModelsRefactor(
             tuple[
                 Annotated[
                     p.Infra.ViolationsSweepStage,
-                    t.schema_for_model(FlextInfraModelsRefactor.ViolationsSweepStage),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactor.ViolationsSweepStage
+                    ),
                 ],
                 ...,
             ],
             m.Field(description="Independent operation receipts in invocation order"),
         ] = ()
+
+    class ViolationsSweepReport(ViolationsSweepScope):
+        """Before/after receipt of one violations sweep.
+
+        Published for successful and partial failed repair sequences.
+        """
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
         before: Annotated[
             Annotated[
                 p.Infra.ViolationsTotals,
-                t.schema_for_model(FlextInfraModelsRefactor.ViolationsTotals),
+                t.schema_for_model(lambda: FlextInfraModelsRefactor.ViolationsTotals),
             ]
             | None,
             m.Field(description="Scan totals before the repair sequence"),
@@ -673,7 +703,7 @@ class FlextInfraModelsRefactor(
         after: Annotated[
             Annotated[
                 p.Infra.ViolationsTotals,
-                t.schema_for_model(FlextInfraModelsRefactor.ViolationsTotals),
+                t.schema_for_model(lambda: FlextInfraModelsRefactor.ViolationsTotals),
             ]
             | None,
             m.Field(description="Scan totals after the repair sequence"),
@@ -682,7 +712,9 @@ class FlextInfraModelsRefactor(
             tuple[
                 Annotated[
                     p.Infra.ViolationsRuleDelta,
-                    t.schema_for_model(FlextInfraModelsRefactor.ViolationsRuleDelta),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRefactor.ViolationsRuleDelta
+                    ),
                 ],
                 ...,
             ],
@@ -693,7 +725,7 @@ class FlextInfraModelsRefactor(
                 Annotated[
                     p.Infra.ViolationsRuleEvaluation,
                     t.schema_for_model(
-                        FlextInfraModelsRefactor.ViolationsRuleEvaluation
+                        lambda: FlextInfraModelsRefactor.ViolationsRuleEvaluation
                     ),
                 ],
                 ...,
@@ -705,7 +737,7 @@ class FlextInfraModelsRefactor(
                 Annotated[
                     p.Infra.ViolationsEngineCoverage,
                     t.schema_for_model(
-                        FlextInfraModelsRefactor.ViolationsEngineCoverage
+                        lambda: FlextInfraModelsRefactor.ViolationsEngineCoverage
                     ),
                 ],
                 ...,
@@ -735,7 +767,7 @@ class FlextInfraModelsRefactor(
         before_evidence: Annotated[
             Annotated[
                 p.Infra.ModScanEvidenceReceipt,
-                t.schema_for_model(FlextInfraModelsScan.ModScanEvidenceReceipt),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidenceReceipt),
             ]
             | None,
             m.Field(
@@ -745,7 +777,7 @@ class FlextInfraModelsRefactor(
         after_evidence: Annotated[
             Annotated[
                 p.Infra.ModScanEvidenceReceipt,
-                t.schema_for_model(FlextInfraModelsScan.ModScanEvidenceReceipt),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidenceReceipt),
             ]
             | None,
             m.Field(description="Invocation-local full after evidence and byte digest"),
@@ -753,7 +785,9 @@ class FlextInfraModelsRefactor(
         before_plan: Annotated[
             Annotated[
                 p.Infra.CodemodRulePlan,
-                t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRulePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
+                ),
             ]
             | None,
             m.Field(description="Before elected rules, providers, sources and digests"),
@@ -761,7 +795,9 @@ class FlextInfraModelsRefactor(
         after_plan: Annotated[
             Annotated[
                 p.Infra.CodemodRulePlan,
-                t.schema_for_model(FlextInfraModelsRefactorGrep.CodemodRulePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsRefactorGrep.CodemodRulePlan
+                ),
             ]
             | None,
             m.Field(description="After elected rules, providers, sources and digests"),
@@ -1285,7 +1321,7 @@ class FlextInfraModelsRefactor(
         scope: Annotated[
             Annotated[
                 p.Infra.ImportLawScope,
-                t.schema_for_model(FlextInfraModelsRefactor.ImportLawScope),
+                t.schema_for_model(lambda: FlextInfraModelsRefactor.ImportLawScope),
             ],
             m.Field(description="Module facts of the pass"),
         ]

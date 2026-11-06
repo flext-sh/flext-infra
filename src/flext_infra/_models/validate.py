@@ -67,7 +67,7 @@ class FlextInfraModelsCore:
 
         project: Annotated[
             p.Infra.FreshImportEntryPoints,
-            t.schema_for_model(FlextInfraModelsCore.FreshImportEntryPoints),
+            t.schema_for_model(lambda: FlextInfraModelsCore.FreshImportEntryPoints),
         ] = m.Field(
             description="Executable metadata from the published project table",
         )
@@ -153,7 +153,7 @@ class FlextInfraModelsCore:
         eligible: MutableSequence[
             Annotated[
                 p.Infra.PytestMarkdownOrigin,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownOrigin),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownOrigin),
             ]
         ] = m.Field(
             default_factory=u.empty(
@@ -167,7 +167,7 @@ class FlextInfraModelsCore:
         collected: MutableSequence[
             Annotated[
                 p.Infra.PytestMarkdownItem,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownItem),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
             ]
         ] = m.Field(
             default_factory=u.empty(
@@ -513,7 +513,7 @@ class FlextInfraModelsCore:
         phase_outcomes: tuple[
             Annotated[
                 p.Infra.PytestPhaseOutcome,
-                t.schema_for_model(FlextInfraModelsCore.PytestPhaseOutcome),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestPhaseOutcome),
             ],
             ...,
         ] = m.Field(
@@ -523,7 +523,7 @@ class FlextInfraModelsCore:
         markdown_attempts: tuple[
             Annotated[
                 p.Infra.PytestMarkdownAttempt,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownAttempt),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownAttempt),
             ],
             ...,
         ] = m.Field(
@@ -533,7 +533,7 @@ class FlextInfraModelsCore:
         markdown_items: tuple[
             Annotated[
                 p.Infra.PytestMarkdownItem,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownItem),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
             ],
             ...,
         ] = m.Field(default_factory=tuple, description="Executed call-phase origins")
@@ -596,7 +596,7 @@ class FlextInfraModelsCore:
         markdown_attempts: MutableSequence[
             Annotated[
                 p.Infra.PytestMarkdownAttempt,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownAttempt),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownAttempt),
             ]
         ] = m.Field(
             default_factory=u.empty(
@@ -610,7 +610,7 @@ class FlextInfraModelsCore:
         markdown_items: MutableSequence[
             Annotated[
                 p.Infra.PytestMarkdownItem,
-                t.schema_for_model(FlextInfraModelsCore.PytestMarkdownItem),
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
             ]
         ] = m.Field(
             default_factory=u.empty(

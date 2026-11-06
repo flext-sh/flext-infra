@@ -148,99 +148,198 @@ constraints:
           regex: '(?:^|\.)(?:ok|fail|fail_op|from_failure|from_result)$'
 fix: return $RES.flat_map($FN)
 ---
+# Guard rules anchor on statements, never on a `$$$BEFORE` block context: that
+# ellipsis stops at the first earlier `if $RES.failure:` guard and never
+# reaches the last one, so a function with two or more sequential guards was
+# never matched. The terminal form anchors on the guard and absorbs the return
+# through `expandEnd`; the intermediate form anchors on the binding between
+# them and absorbs the guard through `expandStart` (each expands one sibling).
+# Every collapse leaves a return the previous guard's rule matches, so the
+# native cascade converges to one railroad chain.
 id: railroad-guard-identity-passthrough
 language: python
 severity: error
 message: >-
-  Replace terminal failure guard followed by ok(res.value) with direct return of the Result.
+  Replace a failure guard made redundant by the return that follows it
+  (ok(res.value), the Result itself, or a map/flat_map chain on it) with that
+  Result.
 rule:
-  any:
-    - pattern:
-        context: |
-          if _block:
-              $$$BEFORE
-              if $RES.failure:
-                  return $OUT.from_failure($RES)
-              return $OUT_OK.ok($RES.value)
-        selector: block
-    - pattern:
-        context: |
-          if _block:
-              $$$BEFORE
-              if $RES.failure:
-                  return $RES
-              return $OUT_OK.ok($RES.value)
-        selector: block
+  all:
+    - matches: railroad-guard-identity-failure
+    - precedes:
+        any:
+          - pattern: return $OUT_OK.ok($RES.value)
+          - all:
+              - pattern: return $CHAIN
+              - has:
+                  matches: railroad-guard-identity-chain
 constraints:
   RES:
     kind: identifier
-fix: |-
-  $$$BEFORE
-  return $RES
+utils:
+  # A failure guard on `$RES` with no else branch: `if $RES.failure:`
+  # returning the failure, retyped (`from_failure`) or as is.
+  railroad-guard-identity-failure:
+    all:
+      - kind: if_statement
+      - not:
+          has:
+            any:
+              - kind: else_clause
+              - kind: elif_clause
+      - any:
+          - pattern: |
+              if $RES.failure:
+                  return $OUT.from_failure($RES)
+          - pattern: |
+              if $RES.failure:
+                  return $RES
+  # The returned Result chain: `$RES` itself, or `$RES` followed only by
+  # success-path combinators (`map`, `flat_map`) whose arguments never name
+  # `$RES`, so `$RES` occurs exactly once, as the chain's receiver.
+  railroad-guard-identity-chain:
+    any:
+      - pattern: $RES
+      - all:
+          - kind: call
+          - has:
+              field: function
+              kind: attribute
+              all:
+                - has:
+                    field: object
+                    matches: railroad-guard-identity-chain
+                - has:
+                    field: attribute
+                    regex: '^(?:map|flat_map)$'
+          - not:
+              has:
+                field: arguments
+                has:
+                  stopBy: end
+                  pattern: $RES
+          # Combinator arguments become eager on the failure path, so they
+          # are callables only: no call outside a lambda body.
+          - not:
+              has:
+                field: arguments
+                has:
+                  stopBy: end
+                  kind: call
+                  not:
+                    inside:
+                      stopBy: end
+                      kind: lambda
+rewriters:
+  # Drops the chain receiver; the fix renders the receiver's replacement
+  # before the remaining combinators.
+  - id: railroad-guard-identity-chain-receiver
+    rule:
+      pattern: $RES
+    fix: ''
+transform:
+  TAIL:
+    rewrite:
+      source: $CHAIN
+      rewriters: [railroad-guard-identity-chain-receiver]
+fix:
+  template: return $RES$TAIL
+  expandEnd:
+    kind: return_statement
 ---
 id: railroad-guard-to-map-callable
 language: python
 severity: error
 message: >-
-  Replace terminal failure guard followed by ok(fn(res.value)) with Result.map(fn).
+  Replace a failure guard followed by ok(fn(res.value)), directly or through
+  an intermediate binding, with Result.map(fn).
 rule:
   any:
-    - pattern:
-        context: |
-          if _block:
-              $$$BEFORE
-              if $RES.failure:
-                  return $OUT.from_failure($RES)
-              return $OUT_OK.ok($FN($RES.value))
-        selector: block
-    - pattern:
-        context: |
-          if _block:
-              $$$BEFORE
-              if $RES.failure:
-                  return $RES
-              return $OUT_OK.ok($FN($RES.value))
-        selector: block
+    - all:
+        - matches: railroad-guard-map-failure
+        - precedes:
+            pattern: return $OUT_OK.ok($FN($RES.value))
+    - all:
+        - kind: expression_statement
+        - has:
+            pattern: $NEXT = $FN($RES.value)
+        - follows:
+            matches: railroad-guard-map-failure
+        - precedes:
+            pattern: return $OUT_OK.ok($NEXT)
 constraints:
   RES:
     kind: identifier
+  NEXT:
+    kind: identifier
   FN:
-    any:
-      - kind: identifier
-      - kind: attribute
-fix: |-
-  $$$BEFORE
-  return $RES.map($FN)
+    all:
+      - any:
+          - kind: identifier
+          - kind: attribute
+      # The callable is evaluated before the guard's success path, so it
+      # must not read the guarded Result.
+      - not:
+          has:
+            stopBy: end
+            pattern: $RES
+utils:
+  # A failure guard on `$RES` with no else branch: `if $RES.failure:`
+  # returning the failure, retyped (`from_failure`) or as is.
+  railroad-guard-map-failure:
+    all:
+      - kind: if_statement
+      - not:
+          has:
+            any:
+              - kind: else_clause
+              - kind: elif_clause
+      - any:
+          - pattern: |
+              if $RES.failure:
+                  return $OUT.from_failure($RES)
+          - pattern: |
+              if $RES.failure:
+                  return $RES
+fix:
+  template: return $RES.map($FN)
+  expandStart:
+    matches: railroad-guard-map-failure
+  expandEnd:
+    kind: return_statement
 ---
 id: railroad-guard-to-flat-map-callable
 language: python
 severity: error
 message: >-
-  Replace terminal failure guard followed by Result-returning callable with Result.flat_map(fn).
+  Replace a failure guard followed by a Result-returning callable, returned
+  directly or bound and returned through a map/flat_map chain, with
+  Result.flat_map(fn).
 rule:
   all:
     - inside:
         stopBy: end
         matches: result-returning-function
     - any:
-        - pattern:
-            context: |
-              if _block:
-                  $$$BEFORE
-                  if $RES.failure:
-                      return $OUT.from_failure($RES)
-                  return $FN($RES.value)
-            selector: block
-        - pattern:
-            context: |
-              if _block:
-                  $$$BEFORE
-                  if $RES.failure:
-                      return $RES
-                  return $FN($RES.value)
-            selector: block
+        - all:
+            - matches: railroad-guard-flat-map-failure
+            - precedes:
+                pattern: return $FN($RES.value)
+        - all:
+            - kind: expression_statement
+            - has:
+                pattern: $NEXT = $FN($RES.value)
+            - follows:
+                matches: railroad-guard-flat-map-failure
+            - precedes:
+                all:
+                  - pattern: return $CHAIN
+                  - has:
+                      matches: railroad-guard-flat-map-chain
 constraints:
   RES:
+    kind: identifier
+  NEXT:
     kind: identifier
   FN:
     all:
@@ -249,6 +348,81 @@ constraints:
           - kind: attribute
       - not:
           regex: '(?:^|\.)(?:ok|fail|fail_op|from_failure|from_result)$'
-fix: |-
-  $$$BEFORE
-  return $RES.flat_map($FN)
+      # The callable is evaluated before the guard's success path, so it
+      # must not read the guarded Result.
+      - not:
+          has:
+            stopBy: end
+            pattern: $RES
+utils:
+  # A failure guard on `$RES` with no else branch: `if $RES.failure:`
+  # returning the failure, retyped (`from_failure`) or as is.
+  railroad-guard-flat-map-failure:
+    all:
+      - kind: if_statement
+      - not:
+          has:
+            any:
+              - kind: else_clause
+              - kind: elif_clause
+      - any:
+          - pattern: |
+              if $RES.failure:
+                  return $OUT.from_failure($RES)
+          - pattern: |
+              if $RES.failure:
+                  return $RES
+  # The returned Result chain: `$NEXT` itself, or `$NEXT` followed only by
+  # success-path combinators (`map`, `flat_map`) whose arguments never name
+  # `$NEXT`, so `$NEXT` occurs exactly once, as the chain's receiver.
+  railroad-guard-flat-map-chain:
+    any:
+      - pattern: $NEXT
+      - all:
+          - kind: call
+          - has:
+              field: function
+              kind: attribute
+              all:
+                - has:
+                    field: object
+                    matches: railroad-guard-flat-map-chain
+                - has:
+                    field: attribute
+                    regex: '^(?:map|flat_map)$'
+          - not:
+              has:
+                field: arguments
+                has:
+                  stopBy: end
+                  pattern: $NEXT
+          # Combinator arguments become eager on the failure path, so they
+          # are callables only: no call outside a lambda body.
+          - not:
+              has:
+                field: arguments
+                has:
+                  stopBy: end
+                  kind: call
+                  not:
+                    inside:
+                      stopBy: end
+                      kind: lambda
+rewriters:
+  # Drops the chain receiver; the fix renders the receiver's replacement
+  # before the remaining combinators.
+  - id: railroad-guard-flat-map-chain-receiver
+    rule:
+      pattern: $NEXT
+    fix: ''
+transform:
+  TAIL:
+    rewrite:
+      source: $CHAIN
+      rewriters: [railroad-guard-flat-map-chain-receiver]
+fix:
+  template: return $RES.flat_map($FN)$TAIL
+  expandStart:
+    matches: railroad-guard-flat-map-failure
+  expandEnd:
+    kind: return_statement

@@ -29,7 +29,8 @@ class FlextInfraModelsCodegenTransaction:
         inputs: Annotated[
             tuple[
                 Annotated[
-                    p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
                 ],
                 ...,
             ],
@@ -87,10 +88,14 @@ class FlextInfraModelsCodegenTransaction:
             if self.path.suffix == ".pyi" and self.desired_content is not None:
                 msg = f"first-party .pyi publication is forbidden: {self.path}"
                 raise ValueError(msg)
-            if self.move_source is not None and (
-                not self.move_source.is_absolute()
-                or not self.move_source.is_relative_to(self.project)
-                or self.move_source == self.path
+            move_source = self.move_source
+            move_escapes = move_source is not None and (
+                not move_source.is_absolute()
+                or not move_source.is_relative_to(self.project)
+            )
+            if move_source is not None and (
+                move_escapes
+                or move_source == self.path
                 or self.before.content is not None
                 or self.desired_content is None
             ):
@@ -123,12 +128,16 @@ class FlextInfraModelsCodegenTransaction:
         declared_files: tuple[
             Annotated[
                 p.Infra.CodegenFilePlan,
-                t.schema_for_model(FlextInfraModelsCodegenTransaction.CodegenFilePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                ),
             ],
             ...,
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
         inputs: tuple[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             ...,
         ] = m.Field(
             default=(),
@@ -189,7 +198,9 @@ class FlextInfraModelsCodegenTransaction:
             description="Discovered project roots covering the pinned source closure"
         )
         inputs: tuple[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)],
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ],
             ...,
         ] = m.Field(description="Exact source and configuration observations")
         updates: Mapping[Path, str | None] = m.Field(
@@ -204,7 +215,9 @@ class FlextInfraModelsCodegenTransaction:
         declared_files: tuple[
             Annotated[
                 p.Infra.CodegenFilePlan,
-                t.schema_for_model(FlextInfraModelsCodegenTransaction.CodegenFilePlan),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                ),
             ],
             ...,
         ] = m.Field(
@@ -216,7 +229,9 @@ class FlextInfraModelsCodegenTransaction:
         layouts: tuple[
             Annotated[
                 p.Infra.RopeProjectLayout,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
+                ),
             ],
             ...,
         ] = m.Field(
@@ -228,7 +243,9 @@ class FlextInfraModelsCodegenTransaction:
         candidate_layouts: tuple[
             Annotated[
                 p.Infra.RopeProjectLayout,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
+                ),
             ],
             ...,
         ] = m.Field(
@@ -243,7 +260,9 @@ class FlextInfraModelsCodegenTransaction:
 
         candidate: Annotated[
             p.Infra.StageSourcePlan,
-            t.schema_for_model(FlextInfraModelsCodegenTransaction.StageSourcePlan),
+            t.schema_for_model(
+                lambda: FlextInfraModelsCodegenTransaction.StageSourcePlan
+            ),
         ] = m.Field(
             description="Authenticated complete source and runtime candidate closure",
         )

@@ -8,18 +8,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import FlextInfraCli, infra, m, t
+from flext_infra import FlextInfraCli, infra
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraModEvidenceInputs:
     """Validate public evidence round-trips without duplicated input bodies."""
 
     @staticmethod
-    @pytest.mark.parametrize("source", ["  Symbol  ", "block\n", "\tSymbol\t"])
+    @c.Tests.MARK.parametrize("source", ["  Symbol  ", "block\n", "\tSymbol\t"])
     def test_native_capture_preserves_exact_source_bytes(source: str) -> None:
         """Whitespace belongs to the authenticated source, not normalization."""
         capture = m.Infra.AstGrepCapture.model_validate({
@@ -30,8 +28,8 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(capture.end_byte, eq=len(capture.text.encode("utf-8")))
 
     @staticmethod
-    @pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("newline", ["\n", "\r\n", "\r"])
+    @c.Tests.MARK.parametrize(
         ("declarations", "expected_lines"),
         [
             (
@@ -151,7 +149,7 @@ class TestsFlextInfraModEvidenceInputs:
     def test_composed_native_scan_preserves_provider_utils_and_local_shadows(
         mod_workspace: Path,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """One invocation keeps provider bindings and local utilities separate."""
         rules: list[p.Infra.CodemodRule] = []
@@ -258,7 +256,7 @@ class TestsFlextInfraModEvidenceInputs:
             plan.model_copy(update={"rules": duplicate_rules}),
         )):
             destination = tmp_path / f"conflicting-native-{index}"
-            with pytest.raises(ValueError, match="native codemod rule IDs"):
+            with u.Tests.raises(ValueError, match="native codemod rule IDs"):
                 u.Infra.codemod_stage_scan_ruleset(conflicting, destination)
             tm.fail(destination.exists())
         before = tm.ok(u.Cli.atomic_read_binary_file_state(source, required=True))
@@ -270,7 +268,7 @@ class TestsFlextInfraModEvidenceInputs:
                 {**declaration, "rule": {"pattern": repr("changed")}},
             ),
         )
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="elected codemod rule changed before projection"
         ):
             FlextInfraModGateEngine.scan(
@@ -310,10 +308,10 @@ class TestsFlextInfraModEvidenceInputs:
                     ),
                 }
             )
-            with pytest.raises(ValueError, match="record digest"):
+            with u.Tests.raises(ValueError, match="record digest"):
                 u.Infra.mod_native_payload(corrupted, readers)
             changed = finding.model_copy(update={"text": "foreign source"})
-            with pytest.raises(ValueError, match="operational fields"):
+            with u.Tests.raises(ValueError, match="operational fields"):
                 u.Infra.mod_native_payload(changed, readers)
 
     @staticmethod
@@ -372,9 +370,9 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(evidence.native_artifacts, eq=report.native_artifacts)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_diagnostic_runs_one_native_scan(
-        mod_workspace: Path, capsys: pytest.CaptureFixture[str]
+        mod_workspace: Path, capsys: t.Tests.CaptureFixture[str]
     ) -> None:
         """The public whole-catalog summary consumes the existing scan receipt."""
         exit_code = FlextInfraCli.infra_main([
@@ -424,7 +422,7 @@ class TestsFlextInfraModEvidenceInputs:
                 )
 
     @staticmethod
-    @pytest.mark.parametrize("occurrences", [2, 96])
+    @c.Tests.MARK.parametrize("occurrences", [2, 96])
     def test_native_occurrences_share_authenticated_inputs(
         mod_workspace: Path, occurrences: int
     ) -> None:
@@ -572,7 +570,7 @@ class TestsFlextInfraModEvidenceInputs:
                 )
             }
         )
-        with pytest.raises(KeyError) as missing:
+        with u.Tests.raises(KeyError) as missing:
             m.Infra.ModScanEvidence.model_validate_json(
                 tampered.model_dump_json(round_trip=True)
             )
@@ -580,13 +578,13 @@ class TestsFlextInfraModEvidenceInputs:
         for field in ("totals_by_repository", "totals_by_rule"):
             totals = dict(getattr(restored, field))
             totals[next(iter(totals))] += 1
-            with pytest.raises(m.ValidationError, match="totals differ"):
+            with u.Tests.raises(m.ValidationError, match="totals differ"):
                 m.Infra.ModScanEvidence.model_validate_json(
                     restored.model_copy(update={field: totals}).model_dump_json(
                         round_trip=True
                     )
                 )
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.ModScanEvidence.model_validate_json(
                 restored.model_copy(
                     update={
@@ -594,7 +592,7 @@ class TestsFlextInfraModEvidenceInputs:
                     }
                 ).model_dump_json(round_trip=True)
             )
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
                     snapshot.states[0],

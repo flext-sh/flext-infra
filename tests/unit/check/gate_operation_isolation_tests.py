@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli
 from tests import c, tm, u
 
@@ -21,7 +19,7 @@ class TestsFlextInfraGateOperationIsolation:
     """Observe actual Ruff failures and Markdown repair effects through the CLI."""
 
     @staticmethod
-    @pytest.mark.parametrize("fail_fast", [False, True])
+    @c.Tests.MARK.parametrize("fail_fast", [False, True])
     def test_project_findings_preserve_declared_execution_policy(
         tmp_path: Path, *, fail_fast: bool
     ) -> None:

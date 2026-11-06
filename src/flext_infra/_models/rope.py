@@ -213,28 +213,28 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         base: Annotated[
             Annotated[
                 p.Infra.SourceClassReference,
-                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
             ],
             m.Field(description="Native module or class identity of the receiver"),
         ]
         accessor: Annotated[
             Annotated[
                 p.Infra.SourceClassReference,
-                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
             ],
             m.Field(description="Native __getattribute__ declaration identity"),
         ]
         member: Annotated[
             Annotated[
                 p.Infra.SourceClassReference,
-                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
             ],
             m.Field(description="Native owner and identity of the requested member"),
         ]
         descriptor: Annotated[
             Annotated[
                 p.Infra.SourceClassReference,
-                t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
             ]
             | None,
             m.Field(
@@ -269,7 +269,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             tuple[
                 Annotated[
                     p.Infra.SourceClassReference,
-                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRope.SourceClassReference
+                    ),
                 ],
                 ...,
             ],
@@ -280,7 +282,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
                 str,
                 Annotated[
                     p.Infra.SourceClassReference,
-                    t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRope.SourceClassReference
+                    ),
                 ]
                 | None,
             ],
@@ -336,7 +340,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
                     str,
                     Annotated[
                         p.Infra.SourceClassDefinition,
-                        t.schema_for_model(FlextInfraModelsRope.SourceClassDefinition),
+                        t.schema_for_model(
+                            lambda: FlextInfraModelsRope.SourceClassDefinition
+                        ),
                     ],
                 ]
             ],
@@ -350,7 +356,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
                     str,
                     Annotated[
                         p.Infra.SourceClassReference,
-                        t.schema_for_model(FlextInfraModelsRope.SourceClassReference),
+                        t.schema_for_model(
+                            lambda: FlextInfraModelsRope.SourceClassReference
+                        ),
                     ]
                     | None,
                 ]
@@ -526,7 +534,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
                 tuple[
                     Annotated[
                         p.Infra.SymbolInfo,
-                        t.schema_for_model(FlextInfraModelsRope.SymbolInfo),
+                        t.schema_for_model(lambda: FlextInfraModelsRope.SymbolInfo),
                     ],
                     str,
                     str,
@@ -542,7 +550,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             tuple[
                 Annotated[
                     p.Infra.ClassInfo,
-                    t.schema_for_model(FlextInfraModelsRope.ClassInfo),
+                    t.schema_for_model(lambda: FlextInfraModelsRope.ClassInfo),
                 ],
                 ...,
             ],
@@ -578,7 +586,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             Annotated[
                 p.Infra.LazyInitPackageContext,
                 t.schema_for_model(
-                    FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
+                    lambda: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext
                 ),
             ],
             m.Field(description="Resolved lazy-init package context for the module"),
@@ -586,14 +594,18 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         module_policy: Annotated[
             Annotated[
                 p.Infra.NamespaceModulePolicy,
-                t.schema_for_model(FlextInfraModelsCodegenFix.NamespaceModulePolicy),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenFix.NamespaceModulePolicy
+                ),
             ],
             m.Field(description="Canonical module policy derived for the module"),
         ]
         project_layout: Annotated[
             Annotated[
                 p.Infra.RopeProjectLayout,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeProjectLayout),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeProjectLayout
+                ),
             ]
             | None,
             m.Field(
@@ -642,7 +654,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         convention: Annotated[
             Annotated[
                 p.Infra.RopeModuleConvention,
-                t.schema_for_model(FlextInfraModelsRope.RopeModuleConvention),
+                t.schema_for_model(lambda: FlextInfraModelsRope.RopeModuleConvention),
             ],
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
@@ -679,7 +691,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         workspace_index: Annotated[
             Annotated[
                 p.Infra.RopeWorkspaceIndex,
-                t.schema_for_model(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex
+                ),
             ],
             m.Field(description="Materialized workspace index for the open session"),
         ]

@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
 from tests import c, p, tm
 
@@ -35,7 +33,7 @@ class TestsFlextInfraImportDag:
             target.write_text(source, encoding="utf-8")
         return project
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "imported"),
         [
             ("tests/typings.py", "from tests.constants import C\n"),
@@ -61,7 +59,7 @@ class TestsFlextInfraImportDag:
         )
         tm.fail(report.passed)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("source", "case"),
         [
             ("tests/unit/test_behavior.py", "absolute"),
@@ -87,7 +85,7 @@ class TestsFlextInfraImportDag:
         )
         tm.fail(report.passed)
 
-    @pytest.mark.parametrize("name", ["__init__.py", "conftest.py"])
+    @c.Tests.MARK.parametrize("name", ["__init__.py", "conftest.py"])
     def test_artifact_wiring_is_rejected_without_parsing(
         self, tmp_path: Path, name: str
     ) -> None:

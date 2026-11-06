@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from flext_infra.codemod import FlextInfraCodemodSemanticApply
 from tests import c, m, tm, u
@@ -81,7 +79,7 @@ class TestsFlextInfraSemanticRenameSeed:
         tm.fail(target.exists())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "conflict", ["payload", "directory", "module", "child", "empty"]
     )
     def test_package_preview_rejects_incomplete_or_overlapping_moves(
@@ -127,7 +125,7 @@ class TestsFlextInfraSemanticRenameSeed:
         selections = m.Infra.SemanticRenameSelections(decisions=tuple(decisions))
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match=diagnostic),
+            u.Tests.raises(ValueError, match=diagnostic),
         ):
             FlextInfraCodemodSemanticApply.build_rename_plan(
                 root, workspace, selections
@@ -213,18 +211,18 @@ class TestsFlextInfraSemanticRenameSeed:
         """An authenticated no-op source campaign is never a rename artifact."""
         root, _package = u.Tests.create_lazy_init_workspace(tmp_path)
         campaign = tm.ok(FlextInfraCodemodSemanticApply.build_source_plan(root))
-        with pytest.raises(ValueError, match="decisions"):
+        with u.Tests.raises(ValueError, match="decisions"):
             m.Infra.SemanticRenamePlan(
                 decisions=(), edits=(), candidate=campaign.candidate
             )
         payload = campaign.model_dump(mode="json")
         payload.update(decisions=[], edits=[], moves=[])
         content = tm.ok(u.Cli.json_dumps(payload))
-        with pytest.raises(ValueError, match="decisions"):
+        with u.Tests.raises(ValueError, match="decisions"):
             m.Infra.SemanticRenamePlan.model_validate_json(content)
         driver = root / "empty.artifact"
         tm.ok(u.Cli.atomic_write_text_file(driver, content))
-        with pytest.raises(ValueError, match="decisions"):
+        with u.Tests.raises(ValueError, match="decisions"):
             FlextInfraCodemodSemanticApply.load_rename_artifact(
                 root, m.Infra.ModCommand(repository_root=root, rename_plan=driver)
             )
@@ -255,7 +253,7 @@ class TestsFlextInfraSemanticRenameSeed:
         )
         with (
             infra.rope_workspace(root) as workspace,
-            pytest.raises(ValueError, match="MissingFirst") as failure,
+            u.Tests.raises(ValueError, match="MissingFirst") as failure,
         ):
             FlextInfraCodemodSemanticApply.build_rename_plan(
                 root, workspace, selections

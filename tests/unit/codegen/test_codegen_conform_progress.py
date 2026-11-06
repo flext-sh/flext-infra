@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, infra, m
-from tests import c, tm, u
+from flext_infra import config, infra
+from tests import c, m, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
@@ -21,7 +19,7 @@ class TestsFlextInfraCodegenConformProgress:
     @staticmethod
     def test_apply_emits_stage_and_repository_progress(
         infra_git_repo: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Publication reports its work and check finds nothing left to write."""
         root = infra_git_repo

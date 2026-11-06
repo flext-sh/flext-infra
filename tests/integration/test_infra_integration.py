@@ -13,24 +13,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import infra, m
+from flext_infra import infra
 from flext_infra.gates import FlextInfraGatesMarkdown
 from flext_infra.refactor import FlextInfraRefactorCensus
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = [pytest.mark.integration]
+pytestmark = [c.Tests.MARK.integration]
 
 
 class TestsFlextInfraIntegrationInfraIntegration:
     """Integration tests for the public FlextInfra surface."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("name", "declaration"),
         [("helper", "def"), ("_helper", "def"), ("helper", "async def")],
         ids=["function", "private-function", "async-function"],
@@ -189,7 +187,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(restored.projects, eq=report.projects)
 
     @staticmethod
-    @pytest.mark.parametrize("declaration", ["def", "async def"])
+    @c.Tests.MARK.parametrize("declaration", ["def", "async def"])
     def test_census_definition_only_and_disabled_evidence(
         tmp_path: Path,
         declaration: str,
@@ -389,7 +387,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(parameter.references_count, eq=0)
 
     @staticmethod
-    @pytest.mark.integration
+    @c.Tests.MARK.integration
     def test_markdown_fix_reports_residual_after_repair(tmp_path: Path) -> None:
         """A valid repair survives while an unfixable finding fails the invocation."""
         project_dir = u.Tests.mk_project(
@@ -417,7 +415,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         )
 
     @staticmethod
-    @pytest.mark.integration
+    @c.Tests.MARK.integration
     def test_markdown_check_retains_normalization_finding(tmp_path: Path) -> None:
         """A native MD013 normalization diagnostic remains visible to callers."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-normalization")
@@ -451,7 +449,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(execution.issues[0].code, eq="MD013")
 
     @staticmethod
-    @pytest.mark.integration
+    @c.Tests.MARK.integration
     def test_cli_capture_git_current_branch_in_real_repo(tmp_path: Path) -> None:
         """Test git branch detection through the canonical CLI runtime surface."""
         repo_root = tmp_path / "repo"
@@ -485,7 +483,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(branch_result.value, ne="")
 
     @staticmethod
-    @pytest.mark.integration
+    @c.Tests.MARK.integration
     def test_command_runner_capture_executes_real_command() -> None:
         """Test u.Cli.capture with a real external command."""
         capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])

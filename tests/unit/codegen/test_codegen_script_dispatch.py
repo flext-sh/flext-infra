@@ -9,13 +9,11 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraScriptDispatchMakefile:
     """Prove per-repo extra verbs and script-dispatch WHAT normalization."""
 
@@ -462,7 +460,7 @@ class TestsFlextInfraScriptDispatchMakefile:
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "script_dispatch",
         [
             None,

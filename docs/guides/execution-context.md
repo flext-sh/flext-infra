@@ -55,6 +55,7 @@
   - [Single-Project Repository Snapshot and Memoized Facts (ADR-028)](#single-project-repository-snapshot-and-memoized-facts-adr-028)
   - [Profiling a root verb](#profiling-a-root-verb)
 - [Related Documentation](#related-documentation)
+  - [Workspace settings type correction (2026-11-02)](#workspace-settings-type-correction-2026-11-02)
 
 <!-- TOC END -->
 

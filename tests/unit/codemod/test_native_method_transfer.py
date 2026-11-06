@@ -9,8 +9,6 @@ from __future__ import annotations
 import runpy
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, tm, u
 
 
@@ -70,7 +68,7 @@ class TestsFlextInfraNativeMethodTransfer:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("destination", "method", "failure"),
         [
             (
@@ -100,7 +98,7 @@ class TestsFlextInfraNativeMethodTransfer:
         source = f"class Owner:\n{destination}    class Helpers:\n{method}"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         module = f"{path.parent.name}.{path.stem}"
-        with pytest.raises(
+        with u.Tests.raises(
             u.Infra.exception_type("rope.base.exceptions", "RefactoringError"),
             match=failure,
         ):
@@ -138,7 +136,7 @@ class TestsFlextInfraNativeMethodTransfer:
         for file, content in sources.items():
             file.write_text(content, encoding=c.DEFAULT_ENCODING)
         module = path.parent.name
-        with pytest.raises(
+        with u.Tests.raises(
             u.Infra.exception_type("rope.base.exceptions", "RefactoringError"),
             match=r"conflicts|changes binding",
         ):

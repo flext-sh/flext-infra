@@ -11,8 +11,6 @@ import sys
 from os.path import commonpath
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig, config, infra, settings
 from flext_infra.workspace import FlextInfraRopeWorkspace
 from tests import c, m, p, tm, u
@@ -21,7 +19,7 @@ from tests import c, m, p, tm, u
 class TestsFlextInfraDynamicEnvironmentCutover:
     """Preserve unset, empty, and populated values without default normalization."""
 
-    @pytest.mark.parametrize("declared_owner_present", [False, True])
+    @c.Tests.MARK.parametrize("declared_owner_present", [False, True])
     def test_declared_settings_owner_is_required_without_legacy_fallback(
         self, tmp_path: Path, *, declared_owner_present: bool
     ) -> None:
@@ -83,7 +81,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             tm.that(before.content, eq=None)
         with infra.rope_workspace(root) as rope:
             if not declared_owner_present:
-                with pytest.raises(ValueError, match="declared settings owner"):
+                with u.Tests.raises(ValueError, match="declared settings owner"):
                     u.Infra.plan_dynamic_environment_cutover(
                         rope_workspace=rope,
                         sources=sources,
@@ -92,7 +90,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                     )
                 tm.ok(u.Cli.atomic_verify_binary_file_states((before,)))
                 return
-            with pytest.raises(ValueError, match="policy belongs to another root"):
+            with u.Tests.raises(ValueError, match="policy belongs to another root"):
                 u.Infra.plan_dynamic_environment_cutover(
                     rope_workspace=rope,
                     sources=sources,
@@ -138,8 +136,8 @@ class TestsFlextInfraDynamicEnvironmentCutover:
                 )
         tm.ok(u.Cli.atomic_verify_binary_file_states((original, before)))
 
-    @pytest.mark.parametrize("value", [None, "", "literal value"])
-    @pytest.mark.parametrize("required", [False, True])
+    @c.Tests.MARK.parametrize("value", [None, "", "literal value"])
+    @c.Tests.MARK.parametrize("required", [False, True])
     def test_real_settings_consumer_preserves_lookup_contract(
         self,
         tmp_path: Path,
@@ -214,7 +212,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout, eq="" if mode == "missing-required" else f"{value!r}\n")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "access",
         ["os.environ.get('STATIC_KEY')", "os.environ.get(unknown_key)"],
     )
@@ -229,7 +227,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         source = f"import os\ndef value(unknown_key: str):\n    return {access}\n"
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"typed-config provenance"),
+            u.Tests.raises(ValueError, match=r"typed-config provenance"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.DYNAMIC_ENVIRONMENT,

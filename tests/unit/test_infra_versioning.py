@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from tests import c, tf, tm, u
 
 
@@ -19,7 +17,7 @@ class TestsFlextInfraInfraVersioning:
     """Behavior contract for test_infra_versioning."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("version", "expected"),
         [
             ("1.2.3", (1, 2, 3)),
@@ -35,7 +33,7 @@ class TestsFlextInfraInfraVersioning:
         tm.ok(u.Infra.parse_semver(version), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "version",
         ["1.2", "a.b.c", "1.2.3-beta", "1.2.3-dev", "1.2.3.rc0"],
         ids=[
@@ -56,7 +54,7 @@ class TestsFlextInfraInfraVersioning:
         tm.ok(u.Infra.parse_semver("1.2.3"), is_=tuple)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("version", "bump_type", "expected"),
         [
             ("1.2.3", "major", "2.0.0"),
@@ -75,7 +73,7 @@ class TestsFlextInfraInfraVersioning:
         tm.ok(u.Infra.bump_version(version, bump_type), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("version", "bump_type", "error"),
         [
             ("1.2.3", "invalid", "invalid bump type"),
@@ -97,7 +95,7 @@ class TestsFlextInfraInfraVersioning:
         tm.ok(u.Infra.bump_version("1.2.3", "major"), is_=str)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "expected", "error"),
         [
             ('[project]\nversion = "1.2.3"\n', "1.2.3", ""),
@@ -133,7 +131,7 @@ class TestsFlextInfraInfraVersioning:
         tm.fail(result)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "expected", "error"),
         [
             ('[project]\nversion = "1.0.0"\n', "2.0.0", ""),

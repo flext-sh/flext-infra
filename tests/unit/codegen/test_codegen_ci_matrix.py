@@ -9,14 +9,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
     """Prove codegen emits the CI matrix workflow and distro Dockerfiles."""
 

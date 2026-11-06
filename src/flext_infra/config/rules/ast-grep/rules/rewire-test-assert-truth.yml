@@ -19,6 +19,10 @@ rule:
           - pattern: "assert $LEFT not in $RIGHT"
           - pattern: "assert $LEFT == $RIGHT"
           - pattern: "assert $LEFT != $RIGHT"
+          - pattern: "assert ($LEFT in $RIGHT)"
+          - pattern: "assert ($LEFT not in $RIGHT)"
+          - pattern: "assert ($LEFT == $RIGHT)"
+          - pattern: "assert ($LEFT != $RIGHT)"
     - not:
         has:
           kind: not_operator

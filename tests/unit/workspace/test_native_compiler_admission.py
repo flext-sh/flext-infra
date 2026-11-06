@@ -8,16 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from tests import p, tm, u
+from tests import c, p, tm, u
 
 
 class TestsNativeCompilerAdmission:
     """Separate passive native observations from isolated import effects."""
 
     @staticmethod
-    @pytest.mark.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
+    @c.Tests.MARK.parametrize("defect", ["absent", "missing-spec", "broken-origin"])
     def test_imported_class_preserves_its_supplier_failure(
         native_consumer: p.Tests.NativeConsumer,
         tmp_path: Path,

@@ -9,8 +9,6 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import pytest
-
 from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
 from flext_infra.release import FlextInfraReleaseRelease
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -382,7 +380,7 @@ class TestsFlextInfraReleaseHelpers:
         @staticmethod
         def test_artifact_rejects_relative_path() -> None:
             """Reject a relative artifact path at the public model boundary."""
-            with pytest.raises(c.ValidationError) as exc_info:
+            with u.Tests.raises(c.ValidationError) as exc_info:
                 m.Infra.BuildArtifact(
                     path="dist/flext_a-1.0.0-py3-none-any.whl",
                     kind="wheel",
@@ -405,7 +403,7 @@ class TestsFlextInfraReleaseHelpers:
             )
 
             tm.that(record.exit_code, eq=-9)
-            with pytest.raises(c.ValidationError):
+            with u.Tests.raises(c.ValidationError):
                 m.Infra.BuildRecord.model_validate({
                     "project": "flext-a",
                     "path": str(tmp_path.resolve()),
@@ -418,7 +416,7 @@ class TestsFlextInfraReleaseHelpers:
 
         # Why (flext-oftik class): builds a real artifact twice (uv build); the
         # SSOT slow budget (flext_slow_timeout_seconds) owns its ceiling.
-        @pytest.mark.slow
+        @c.Tests.MARK.slow
         @staticmethod
         def test_collision_preserves_complete_existing_set(tmp_path: Path) -> None:
             """Fail on immutable collision without partial or temporary output."""
@@ -577,5 +575,5 @@ source = { registry = "https://pypi.org/simple" }
                 '[[package]]\nname = "flext-api"\nversion = 1\nsource = {git = "repo"}',
             )
 
-            with pytest.raises(c.ValidationError):
+            with u.Tests.raises(c.ValidationError):
                 FlextInfraReleaseRelease.internal_locked_versions(tmp_path)

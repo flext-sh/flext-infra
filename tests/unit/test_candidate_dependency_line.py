@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 
@@ -18,7 +16,7 @@ class TestsFlextInfraCandidateDependencyLine:
     """Exercise candidate source detection through the public repository utility."""
 
     @staticmethod
-    @pytest.mark.parametrize("declarations", [1, 2])
+    @c.Tests.MARK.parametrize("declarations", [1, 2])
     def test_candidate_keeps_the_declared_integration_line(
         tmp_path: Path, declarations: int
     ) -> None:

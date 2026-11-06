@@ -252,14 +252,13 @@ class FlextInfraGatesMypy(FlextInfraGates):
         return None, u.Infra.mypy_runner_deadline(timeout)
 
     @override
-    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
+    def check_budget_seconds(self, project_dir: Path) -> int:
         """Keep the outer runner alive through the controlled Mypy deadline.
 
         Returns:
-            The resulting ``int``.
+            The project's admitted Mypy budget plus its controlled grace.
 
         """
-        del ctx
         return u.Infra.mypy_runner_timeout(self._project_limit(project_dir))
 
     @override

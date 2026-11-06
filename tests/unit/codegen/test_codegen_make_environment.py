@@ -12,12 +12,10 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, p, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraCodegenMakeEnvironment:
@@ -112,8 +110,8 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(process.stdout + process.stderr, lacks=credential)
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["help", "status"])
-    @pytest.mark.parametrize("credential", ["", "invalid-test-credential"])
+    @c.Tests.MARK.parametrize("verb", ["help", "status"])
+    @c.Tests.MARK.parametrize("credential", ["", "invalid-test-credential"])
     def test_make_without_gh_auth_stops_at_the_environment_boundary(
         tmp_path: Path,
         verb: str,
@@ -161,7 +159,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.fail((project_root / ".venv").exists())
 
     @staticmethod
-    @pytest.mark.parametrize("failure_return", [None, 37])
+    @c.Tests.MARK.parametrize("failure_return", [None, 37])
     def test_public_dispatch_activates_once_before_hooks(
         tmp_path: Path,
         *,
@@ -226,9 +224,9 @@ class TestsFlextInfraCodegenMakeEnvironment:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "check", "gen", "status"])
-    @pytest.mark.parametrize("broken", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("verb", ["setup", "check", "gen", "status"])
+    @c.Tests.MARK.parametrize("broken", [False, True])
+    @c.Tests.MARK.parametrize(
         "environment_part",
         ["runtime", "runtime-bin", ".venv", ".venv/bin"],
     )
@@ -277,7 +275,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.fail(foreign.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("command_line", [False, True])
+    @c.Tests.MARK.parametrize("command_line", [False, True])
     def test_derived_workspace_paths_ignore_foreign_redirection(
         tmp_path: Path,
         *,
@@ -367,15 +365,15 @@ class TestsFlextInfraCodegenMakeEnvironment:
         return hostile_python, hostile_bin, active_env
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
-    @pytest.mark.parametrize("provisioned", [False, True])
+    @c.Tests.MARK.parametrize("provisioned", [False, True])
     # Why: `make setup` provisions a real environment from the remote
     # index and GitHub sources (an external gate); `make test-full` selects
     # it after the incremental test phase.
-    @pytest.mark.remote
+    @c.Tests.MARK.remote
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         tmp_path: Path,
         resolved_make_templates: Mapping[c.Infra.MakeProfile, Path],
@@ -705,14 +703,14 @@ class TestsFlextInfraCodegenMakeEnvironment:
             ),
         )
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "profile",
         [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE],
     )
     # Why: `make setup` provisions a real environment from the remote
     # index and GitHub sources (an external gate); it never runs inside
     # the offline unit gate; make test-full includes this remote boundary.
-    @pytest.mark.remote
+    @c.Tests.MARK.remote
     def test_setup_provisions_environment_before_project_runtime(
         self,
         tmp_path: Path,
@@ -890,7 +888,7 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.that(envrc, lacks=forced)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_bootstrap_selects_the_github_credential_from_declared_sources(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,

@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, t, tm, u
 
@@ -22,8 +20,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
         """Declared packages and source roles keep strict scan boundaries."""
 
         @staticmethod
-        @pytest.mark.parametrize("namespace", ["infra", "deployment_support"])
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize("namespace", ["infra", "deployment_support"])
+        @c.Tests.MARK.parametrize(
             ("consumer", "target", "expected"),
             [
                 ("contracts/models.py", "contracts._models.entity", (True, True)),
@@ -112,8 +110,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
             tm.that(source.read_text(encoding="utf-8"), eq=content)
 
         @staticmethod
-        @pytest.mark.parametrize("with_utilities", [False, True])
-        @pytest.mark.parametrize("constructor", ["native", "m", "t"])
+        @c.Tests.MARK.parametrize("with_utilities", [False, True])
+        @c.Tests.MARK.parametrize("constructor", ["native", "m", "t"])
         def test_adapter_construction_excludes_only_native_layer_zero_calls(
             mod_workspace: Path, *, with_utilities: bool, constructor: str
         ) -> None:
@@ -189,7 +187,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
         """Native declarations distinguish configuration from consumer helpers."""
 
         @staticmethod
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize(
             "filename",
             [
                 "configuration.py",
@@ -200,8 +198,8 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 "pulumi/lib/settings.py",
             ],
         )
-        @pytest.mark.parametrize("declares", [False, True])
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize("declares", [False, True])
+        @c.Tests.MARK.parametrize(
             ("provider", "base"),
             [("flext_core", "FlextConfig"), ("flext_ldap", "FlextLdapSettings")],
         )
@@ -238,7 +236,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
                 )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "case",
         [
             "publisher",
@@ -383,9 +381,9 @@ class TestsFlextInfraCodemodOwnPackageScans:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("producer", [False, True])
-    @pytest.mark.parametrize("module_import", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("producer", [False, True])
+    @c.Tests.MARK.parametrize("module_import", [False, True])
     def test_own_utility_import_requires_the_declared_producer_family(
         mod_workspace: Path,
         *,
@@ -448,7 +446,7 @@ class TestsFlextInfraCodemodOwnPackageScans:
         tm.that(bool(report.entries), eq=producer and not module_import)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "dependencies",
         [None, (), ("pydantic; python_version < '0'",)],
     )

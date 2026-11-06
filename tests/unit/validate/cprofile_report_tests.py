@@ -11,21 +11,19 @@ import sys
 from pathlib import Path
 from time import monotonic
 
-import pytest
-
 from flext_infra import FlextInfraCli, config, validate
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
 
     @staticmethod
-    @pytest.mark.parametrize("suite_state", ["absent", "published", "stale"])
+    @c.Tests.MARK.parametrize("suite_state", ["absent", "published", "stale"])
     def test_interrupted_suite_reports_native_outcome_before_artifacts(
         tmp_path: Path,
         native_cprofile: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         suite_state: str,
     ) -> None:
         """Keep missing snapshots incomplete and require present ones to match."""
@@ -106,7 +104,7 @@ class TestsFlextInfraCProfileReport:
             tm.that(output.read_text(encoding=c.DEFAULT_ENCODING), has=str(selection))
 
     @staticmethod
-    @pytest.mark.parametrize("execution_artifact", [False, True])
+    @c.Tests.MARK.parametrize("execution_artifact", [False, True])
     def test_waiting_lease_profile_has_no_child_execution(
         tmp_path: Path, native_cprofile: Path, *, execution_artifact: bool
     ) -> None:
@@ -150,8 +148,8 @@ class TestsFlextInfraCProfileReport:
             tm.ok(result)
 
     @staticmethod
-    @pytest.mark.parametrize("exit_code", [0, 1])
-    @pytest.mark.parametrize("stage", ["selection", "inventory"])
+    @c.Tests.MARK.parametrize("exit_code", [0, 1])
+    @c.Tests.MARK.parametrize("stage", ["selection", "inventory"])
     def test_selection_profile_without_plan_requires_failed_receipt(
         tmp_path: Path,
         native_cprofile: Path,
@@ -287,7 +285,7 @@ class TestsFlextInfraCProfileReport:
         tm.that(callers, has=str(owned))
 
     @staticmethod
-    @pytest.mark.parametrize("absolute_profile", [False, True])
+    @c.Tests.MARK.parametrize("absolute_profile", [False, True])
     def test_entry_renders_member_profile_from_workspace_root(
         tmp_path: Path,
         *,
@@ -355,7 +353,7 @@ class TestsFlextInfraCProfileReport:
         tm.that(rendered, has="function calls")
 
     @staticmethod
-    @pytest.mark.parametrize("inventory_only", [False, True])
+    @c.Tests.MARK.parametrize("inventory_only", [False, True])
     def test_real_profile_renders_bounded_text(
         tmp_path: Path,
         *,
@@ -445,7 +443,7 @@ class TestsFlextInfraCProfileReport:
 
     @staticmethod
     def test_validate_route_exposes_profile_input(
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """The public CLI exposes the report owner's actual profile option."""
         tm.that(
@@ -460,7 +458,7 @@ class TestsFlextInfraCProfileReport:
         """Test profile artifacts cannot escape workspace reports."""
         policy = config.Infra.tooling.tools.pytest
 
-        with pytest.raises(ValueError, match="cProfile path must stay under"):
+        with u.Tests.raises(ValueError, match="cProfile path must stay under"):
             validate.FlextInfraCProfileReport(
                 repository_root=tmp_path,
                 profile=tmp_path / "outside.pstats",

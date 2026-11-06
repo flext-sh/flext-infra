@@ -29,7 +29,9 @@ class FlextInfraProtocolsConfigRepository:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ProjectSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class ProjectIdentitySpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -101,6 +103,10 @@ class FlextInfraProtocolsConfigRepository:
         def author_email(self) -> t.NonEmptyStr:
             """Author email."""
             ...
+
+    @runtime_checkable
+    class ProjectSpec(ProjectIdentitySpec, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def upstream(self) -> t.NonEmptyStr:
@@ -249,7 +255,9 @@ class FlextInfraProtocolsConfigRepository:
             ...
 
     @runtime_checkable
-    class RepositoryRef(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class RepositoryRefIdentity(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
         """Structural data contract projected from the owning model."""
 
         @property
@@ -310,6 +318,10 @@ class FlextInfraProtocolsConfigRepository:
             and never assumes internal_flext.
             """
             ...
+
+    @runtime_checkable
+    class RepositoryRef(RepositoryRefIdentity, Protocol):
+        """Structural data contract projected from the owning model."""
 
         @property
         def codegen(self) -> c.Infra.CodegenKind:

@@ -15,8 +15,6 @@ import time
 import tracemalloc
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, tm, u
 
@@ -24,8 +22,8 @@ _PROJECT_COUNT = c.Tests.GEN_PIPELINE_PROJECT_COUNT
 _MODULES_PER_PROJECT = c.Tests.GEN_PIPELINE_MODULES_PER_PROJECT
 
 
-@pytest.mark.performance
-@pytest.mark.slow
+@c.Tests.MARK.performance
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenPipelinePerformance:
     """Benchmark gen pipeline wall-clock and memory on a synthetic workspace."""
 

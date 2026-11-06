@@ -13,8 +13,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from shlex import quote
 
-import pytest
-
 from flext_infra import config, workspace
 from tests import c, m, p, tm, u
 from tests.unit.codegen import test_mise_pin_bootstrap
@@ -24,7 +22,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
     """Public Make preserves physical ownership and native tool configuration."""
 
     @staticmethod
-    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
     def test_install_recipe_survives_template_conditionals(
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
@@ -142,9 +140,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         elected = root if associated else member
         return root, member, elected, elected / c.Infra.ENVIRONMENT_DIRECTORY
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("verb", ["setup", "upg"])
-    @pytest.mark.parametrize("associated", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg"])
+    @c.Tests.MARK.parametrize("associated", [False, True])
     def test_cold_reader_elects_before_runtime_admission_without_resolving_locks(
         self,
         tmp_path: Path,
@@ -248,7 +246,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         tm.ok(Path(reader).is_relative_to(isolation))
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "entry",
         ["spaced", "symlink", "outside-spaced", "outside-symlink"],
     )
@@ -419,9 +417,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         )
         return m.Infra.WorkspaceRuntimeContext.model_validate_json(observed.stdout)
 
-    @pytest.mark.parametrize("invocation", ["root", "member"])
-    @pytest.mark.parametrize("excluded", [False, True])
-    @pytest.mark.parametrize("hosted", [False, True])
+    @c.Tests.MARK.parametrize("invocation", ["root", "member"])
+    @c.Tests.MARK.parametrize("excluded", [False, True])
+    @c.Tests.MARK.parametrize("hosted", [False, True])
     def test_hosted_runtime_is_independent_of_local_ci_partition(
         self,
         tmp_path: Path,
@@ -683,7 +681,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.fail(marker.exists())
         tm.fail((project / c.Infra.ENVIRONMENT_DIRECTORY).exists())
 
-    @pytest.mark.parametrize("associated_clone", [False, True])
+    @c.Tests.MARK.parametrize("associated_clone", [False, True])
     @staticmethod
     def _native_owner_workspace_checkout(
         tmp_path: Path,
@@ -917,7 +915,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(project_locks, eq={project / c.Infra.MISE_LOCK_FILENAME})
         tm.that(tuple(path.read_bytes() for path in paths), eq=before)
 
-    @pytest.mark.parametrize("scenario", ["relative-link", "link-cycle"])
+    @c.Tests.MARK.parametrize("scenario", ["relative-link", "link-cycle"])
     @staticmethod
     def test_public_make_authenticates_file_aliases_without_replacing_the_invoker(
         tmp_path: Path,
@@ -973,9 +971,9 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             eq=Path(entry.name) if scenario == "link-cycle" else binary,
         )
 
-    @pytest.mark.parametrize("verb", ["setup", "upg"])
-    @pytest.mark.parametrize("profile", list(c.Infra.MakeProfile))
-    @pytest.mark.parametrize("broken", [False, True])
+    @c.Tests.MARK.parametrize("verb", ["setup", "upg"])
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("broken", [False, True])
     @staticmethod
     def test_borrowed_environment_blocks_bootstrap_before_effects(
         tmp_path: Path,

@@ -10,9 +10,10 @@ import ast
 import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import ClassVar, override
 
 from flext_infra import m, p, r
+from flext_infra._utilities import protocol_models
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeModulePatch,
@@ -22,9 +23,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class FlextInfraUtilitiesSemanticModelFieldContracts(
@@ -47,12 +45,25 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
         routes = cls._model_protocol_routes(workspace)
         edits: list[p.Infra.SemanticMigrationEdit] = []
         for path, source in cls._editable_sources(sources):
-            if path.suffix != ".py":
+            if path.suffix != ".py" or cls._is_projection(path):
                 continue
             edit = cls._plan_single_file_contract(workspace, path, source, routes)
             if edit is not None:
                 edits.append(edit)
         return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
+
+    @staticmethod
+    def _is_projection(path: Path) -> bool:
+        """Return whether the path is a generated protocol projection.
+
+        A projection is regenerated from its owner; editing it here would add
+        protocol members the runtime-checkable contract cannot carry.
+
+        Returns:
+            True for the protocol projection surface of a package.
+
+        """
+        return "_protocols" in path.parts or path.name == "protocols.py"
 
     @classmethod
     def _plan_single_file_contract(
@@ -68,12 +79,8 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             The resulting edit, or None when source remains unchanged.
 
         """
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            return None
-
-        rewriter = _ModelFieldProtocolRewriter(routes)
+        tree = ast.parse(source, filename=str(path))
+        rewriter = _ModelFieldProtocolRewriter(path, routes, tree)
         transformed = rewriter.visit(tree)
         if not rewriter.changed:
             return None
@@ -106,41 +113,53 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             Mapping from model class route to public protocol route.
 
         """
-        from flext_infra._utilities.protocol_models import (
-            FlextInfraUtilitiesModelsProtocol,
-        )
-
         routes: dict[str, str] = {}
-        try:
-            projection = FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection(
-                workspace.repository_root,
-                source_project=workspace.rope_project,
+        protocol = protocol_models.FlextInfraUtilitiesModelsProtocol
+        pkg_names = protocol.protocol_model_package_names(
+            workspace.repository_root, workspace.rope_project
+        )
+        for package_name in pkg_names:
+            routes.update(
+                protocol.protocol_model_routes_from_source(
+                    workspace.repository_root,
+                    workspace.rope_project,
+                    package_name=package_name,
+                )
             )
-            pkg = projection.source_package_name
-            if projection.package is not None and pkg:
-                projection._source_model_facade_owners(projection.package, pkg)
-                routes.update(projection.source_model_protocol_routes)
-        except (ValueError, KeyError, AttributeError):
-            pass
         return routes
 
     @staticmethod
     def resolve_model_protocol(model_str: str, routes: Mapping[str, str]) -> str | None:
-        """Resolve a model name or attribute to its public protocol route.
+        """Resolve a model identity route to its public protocol route.
+
+        A reference resolves by its exact public (``m.X``) or source route, or,
+        when dotted, by the one source route it qualifies. No prefix is
+        rewritten blindly: a reference outside the route table is not a model.
 
         Returns:
             The protocol route string, or None if not an admitted model.
+
+        Raises:
+            ValueError: The reference qualifies competing protocol routes.
 
         """
         stripped = model_str.strip()
         if stripped in routes:
             return routes[stripped]
-        for candidate, target in routes.items():
-            if candidate.endswith(f".{stripped}") or stripped.endswith(f".{candidate}"):
-                return target
-        if stripped.startswith("m."):
-            return "p." + stripped[2:]
-        return None
+        if "." not in stripped:
+            return None
+        targets = {
+            target
+            for candidate, target in routes.items()
+            if candidate.endswith(f".{stripped}")
+        }
+        if len(targets) > 1:
+            msg = (
+                f"model reference {stripped} qualifies competing protocol routes: "
+                f"{sorted(targets)}"
+            )
+            raise ValueError(msg)
+        return next(iter(targets), None)
 
     @classmethod
     def _patch_file_imports(
@@ -156,19 +175,16 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             The updated source with missing imports added.
 
         """
-        try:
-            resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
-                workspace.rope_project, path
-            )
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
-                workspace.rope_project.get_pymodule(resource)
-            )
-            pkg = FlextInfraUtilitiesRopeAnalysis.package_name_for_module(
-                module.get_name(), resource
-            )
-            return cls._apply_patch_imports(module, source, pkg, rewriter)
-        except (ValueError, KeyError, AttributeError):
-            return source
+        resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+            workspace.rope_project, path
+        )
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            workspace.rope_project.get_pymodule(resource)
+        )
+        pkg = FlextInfraUtilitiesRopeAnalysis.package_name_for_module(
+            module.get_name(), resource
+        )
+        return cls._apply_patch_imports(module, source, pkg, rewriter)
 
     @staticmethod
     def _apply_patch_imports(
@@ -182,7 +198,18 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
         Returns:
             The resulting source text.
 
+        Raises:
+            ValueError: A projected contract needs a facade import outside a package.
+
         """
+        facades = tuple(
+            name
+            for name, needed in (("p", rewriter.needs_p), ("t", rewriter.needs_t))
+            if needed
+        )
+        if facades and pkg is None:
+            msg = f"projected protocol contract has no owning package: {rewriter.path}"
+            raise ValueError(msg)
         updated = source
         with FlextInfraUtilitiesRopeModulePatch.candidate_module(
             module, updated
@@ -191,62 +218,103 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
                 updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
                     candidate, module="typing", name="Annotated"
                 )
-            if rewriter.needs_p and pkg:
+            for owner, name in (
+                tuple((pkg, name) for name in facades) if pkg is not None else ()
+            ):
                 updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
-                    candidate, module=pkg, name="p"
-                )
-            if rewriter.needs_t and pkg:
-                updated = FlextInfraUtilitiesRopeModulePatch.ensure_from_import(
-                    candidate, module=pkg, name="t"
+                    candidate, module=owner, name=name
                 )
         return updated
 
 
 class _ModelFieldProtocolRewriter(ast.NodeTransformer):
-    """AST rewriter for model fields and schema_for_model calls."""
+    """Project every model type operand of one module to its protocol route.
 
-    def __init__(self, routes: Mapping[str, str]) -> None:
+    Model fields (direct model-class annotations and computed-field returns)
+    receive the deferred schema form ``Annotated[p.X, t.schema_for_model(lambda:
+    m.X)]`` at each model operand, nested generic arguments included. Every
+    other type position (signatures, local and module annotations, type
+    aliases, ``cast`` targets and parameterized factories) receives the plain
+    protocol route. Construction, validation and schema metadata keep the
+    actual model owner.
+    """
+
+    _ANNOTATED: ClassVar[frozenset[str]] = frozenset({"Annotated", "typing.Annotated"})
+    _CLASS_VAR: ClassVar[frozenset[str]] = frozenset({"ClassVar", "typing.ClassVar"})
+    _LITERAL: ClassVar[frozenset[str]] = frozenset({"Literal", "typing.Literal"})
+    _SCHEMA: ClassVar[frozenset[str]] = frozenset({
+        "t.schema_for_model",
+        "schema_for_model",
+    })
+    _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
+
+    def __init__(self, path: Path, routes: Mapping[str, str], tree: ast.Module) -> None:
         super().__init__()
+        self.path = path
         self.routes = routes
-        self.in_model = False
+        self.model_roots = frozenset(
+            alias.asname or alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+            if alias.name == "m"
+        )
+        self.fields: set[int] = set()
         self.changed = False
         self.needs_annotated = False
         self.needs_p = False
         self.needs_t = False
 
+    @override
     def visit_Call(self, node: ast.Call) -> ast.AST:
-        node = self.generic_visit(node)
-        func_name = ast.unparse(node.func)
-        is_schema = func_name in {"t.schema_for_model", "schema_for_model"}
-        if is_schema and node.args and not isinstance(node.args[0], ast.Lambda):
-            node.args[0] = ast.Lambda(
-                args=ast.arguments(
-                    posonlyargs=[],
-                    args=[],
-                    kwonlyargs=[],
-                    kw_defaults=[],
-                    defaults=[],
-                ),
-                body=node.args[0],
-            )
-            self.changed = True
-            self.needs_t = True
-        return node
-
-    def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
-        node = self.generic_visit(node)
-        if node.attr == "Model":
-            val = ast.unparse(node.value)
-            if val == "p" or re.match(r"^Flext\w*Protocols$", val):
-                node.attr = "BaseModel"
+        visited = self.generic_visit(node)
+        if not isinstance(visited, ast.Call):
+            return visited
+        func_name = ast.unparse(visited.func)
+        if func_name in self._SCHEMA:
+            if visited.args and not isinstance(visited.args[0], ast.Lambda):
+                visited.args[0] = ast.Lambda(
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[],
+                        kwonlyargs=[],
+                        kw_defaults=[],
+                        defaults=[],
+                    ),
+                    body=visited.args[0],
+                )
                 self.changed = True
-        elif isinstance(node.value, ast.Name) and node.value.id == "FlextProtocolsBase":
-            node.value.id = "FlextProtocolsPydantic"
-            if node.attr == "Model":
-                node.attr = "BaseModel"
-            self.changed = True
-        return node
+                self.needs_t = True
+            return visited
+        if func_name in self._CAST and visited.args:
+            visited.args[0] = self._project(visited.args[0], field=False)
+        visited.func = self._project_factory(visited.func)
+        for keyword in visited.keywords:
+            if keyword.arg == "default_factory":
+                keyword.value = self._project_factory(keyword.value)
+        return visited
 
+    @override
+    def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+        visited = self.generic_visit(node)
+        if not isinstance(visited, ast.Attribute):
+            return visited
+        if visited.attr == "Model":
+            val = ast.unparse(visited.value)
+            if val == "p" or re.match(r"^Flext\w*Protocols$", val):
+                visited.attr = "BaseModel"
+                self.changed = True
+        elif (
+            isinstance(visited.value, ast.Name)
+            and visited.value.id == "FlextProtocolsBase"
+        ):
+            visited.value.id = "FlextProtocolsPydantic"
+            if visited.attr == "Model":
+                visited.attr = "BaseModel"
+            self.changed = True
+        return visited
+
+    @override
     def visit_ClassDef(self, node: ast.ClassDef) -> ast.AST:
         for tp in getattr(node, "type_params", []):
             default = getattr(tp, "default_value", None)
@@ -259,67 +327,230 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             )
             for base in node.bases
         )
-        prev = self.in_model
-        self.in_model = self.in_model or is_model
-        node = self.generic_visit(node)
-        self.in_model = prev
-        return node
+        if is_model:
+            for statement in node.body:
+                if isinstance(statement, ast.AnnAssign) or (
+                    isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and any(
+                        "computed_field" in ast.unparse(decorator)
+                        for decorator in statement.decorator_list
+                    )
+                ):
+                    self.fields.add(id(statement))
+        return self.generic_visit(node)
 
+    @override
     def visit_AnnAssign(self, node: ast.AnnAssign) -> ast.AST:
-        node = self.generic_visit(node)
-        if not self.in_model:
+        visited = self.generic_visit(node)
+        if not isinstance(visited, ast.AnnAssign):
+            return visited
+        visited.annotation = self._project(
+            visited.annotation, field=id(node) in self.fields
+        )
+        return visited
+
+    @override
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
+        return self._visit_signature(node)
+
+    @override
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AST:
+        return self._visit_signature(node)
+
+    @override
+    def visit_TypeAlias(self, node: ast.TypeAlias) -> ast.AST:
+        visited = self.generic_visit(node)
+        if not isinstance(visited, ast.TypeAlias):
+            return visited
+        visited.value = self._project(visited.value, field=False)
+        return visited
+
+    def _visit_signature(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> ast.AST:
+        visited = self.generic_visit(node)
+        if not isinstance(visited, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return visited
+        arguments = visited.args
+        for argument in (
+            *arguments.posonlyargs,
+            *arguments.args,
+            *arguments.kwonlyargs,
+            *((arguments.vararg,) if arguments.vararg else ()),
+            *((arguments.kwarg,) if arguments.kwarg else ()),
+        ):
+            if argument.annotation is not None:
+                argument.annotation = self._project(argument.annotation, field=False)
+        if visited.returns is not None:
+            visited.returns = self._project(
+                visited.returns, field=id(node) in self.fields
+            )
+        return visited
+
+    def _project_factory(self, node: ast.expr) -> ast.expr:
+        """Project the type operands of a parameterized non-model factory.
+
+        Returns:
+            The factory with protocol operands; a model specialization stays.
+
+        """
+        if not isinstance(node, ast.Subscript) or self._model_spec(node) is not None:
             return node
-        annotation = node.annotation
-        if self._rewrite_annotated_subscript(annotation):
-            self.changed = True
+        return self._project(node, field=False)
+
+    def _project(self, node: ast.expr, *, field: bool) -> ast.expr:
+        """Return ``node`` with each model operand received as its protocol.
+
+        Returns:
+            The projected expression, or ``node`` itself when unchanged.
+
+        """
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            parsed = ast.parse(node.value, mode="eval").body
+            projected = self._project(parsed, field=field)
+            return node if projected is parsed else ast.Constant(ast.unparse(projected))
+        spec = self._model_spec(node)
+        if spec is not None:
+            return self._reception(spec, node, field=field)
+        if isinstance(node, ast.Subscript):
+            return self._project_subscript(node, field=field)
+        return self._project_composite(node, field=field)
+
+    def _project_composite(self, node: ast.expr, *, field: bool) -> ast.expr:
+        """Project the members of a union, tuple or callable-argument list.
+
+        Returns:
+            The projected expression, or ``node`` itself when unchanged.
+
+        """
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            left = self._project(node.left, field=field)
+            right = self._project(node.right, field=field)
+            if left is node.left and right is node.right:
+                return node
+            return ast.BinOp(left=left, op=ast.BitOr(), right=right)
+        if not isinstance(node, (ast.Tuple, ast.List)):
             return node
-        unparsed = ast.unparse(annotation)
+        elements = [self._project(elt, field=field) for elt in node.elts]
+        if all(new is old for new, old in zip(elements, node.elts, strict=True)):
+            return node
+        return type(node)(elts=elements, ctx=ast.Load())
+
+    def _project_subscript(self, node: ast.Subscript, *, field: bool) -> ast.expr:
+        """Project the type arguments of a non-model generic operand.
+
+        Returns:
+            The projected expression, or ``node`` itself when unchanged.
+
+        """
+        base = ast.unparse(node.value)
+        if base in self._LITERAL:
+            return node
+        if base in self._ANNOTATED:
+            return self._project_annotated(node, field=field)
+        projected_slice = self._project(
+            node.slice, field=field and base not in self._CLASS_VAR
+        )
+        if projected_slice is node.slice:
+            return node
+        return ast.Subscript(value=node.value, slice=projected_slice, ctx=ast.Load())
+
+    def _project_annotated(self, node: ast.Subscript, *, field: bool) -> ast.expr:
+        """Project an ``Annotated`` operand while its metadata stays executable.
+
+        Returns:
+            The projected ``Annotated`` expression, or ``node`` when unchanged.
+
+        """
+        if not (isinstance(node.slice, ast.Tuple) and node.slice.elts):
+            return node
+        first, *metadata = node.slice.elts
+        spec = self._model_spec(first)
+        if spec is None:
+            projected = self._project(first, field=field)
+            if projected is first:
+                return node
+            elements = [projected, *metadata]
+        else:
+            self.needs_p = True
+            self.needs_annotated = True
+            elements = [spec, *metadata]
+            if field and not any(
+                "schema_for_model" in ast.unparse(item) for item in metadata
+            ):
+                elements.insert(1, self._schema(first))
+        self.changed = True
+        return ast.Subscript(
+            value=node.value,
+            slice=ast.Tuple(elts=elements, ctx=ast.Load()),
+            ctx=ast.Load(),
+        )
+
+    def _model_spec(self, node: ast.expr) -> ast.expr | None:
+        """Return the plain protocol expression of a direct model operand.
+
+        Returns:
+            The protocol route (specialized for a generic model), or None.
+
+        Raises:
+            ValueError: A model-facade reference has no projected protocol route.
+
+        """
+        if isinstance(node, ast.Subscript):
+            if not isinstance(node.value, (ast.Name, ast.Attribute)):
+                return None
+            base = self._model_spec(node.value)
+            if base is None:
+                return None
+            return ast.Subscript(
+                value=base,
+                slice=self._project(node.slice, field=False),
+                ctx=ast.Load(),
+            )
+        if not isinstance(node, (ast.Name, ast.Attribute)):
+            return None
+        reference = ast.unparse(node)
         protocol = (
             FlextInfraUtilitiesSemanticModelFieldContracts.resolve_model_protocol(
-                unparsed, self.routes
+                reference, self.routes
             )
         )
         if protocol is not None:
-            node.annotation = ast.parse(
-                f"Annotated[{protocol}, t.schema_for_model(lambda: {unparsed})]",
-                mode="eval",
-            ).body
-            self.needs_p = True
-            self.needs_t = True
-            self.needs_annotated = True
-            self.changed = True
-        return node
-
-    def _rewrite_annotated_subscript(self, annotation: ast.expr) -> bool:
-        if not (
-            isinstance(annotation, ast.Subscript)
-            and ast.unparse(annotation.value) in {"Annotated", "typing.Annotated"}
+            return ast.parse(protocol, mode="eval").body
+        root = node
+        while isinstance(root, ast.Attribute):
+            root = root.value
+        if isinstance(node, ast.Attribute) and (
+            isinstance(root, ast.Name) and root.id in self.model_roots
         ):
-            return False
-        slice_node = annotation.slice
-        if not (isinstance(slice_node, ast.Tuple) and slice_node.elts):
-            return False
-        first_str = ast.unparse(slice_node.elts[0])
-        protocol = (
-            FlextInfraUtilitiesSemanticModelFieldContracts.resolve_model_protocol(
-                first_str, self.routes
+            msg = (
+                f"{self.path}:{node.lineno}: model type reference {reference} "
+                "has no projected protocol route"
             )
-        )
-        if protocol is None:
-            return False
-        slice_node.elts[0] = ast.parse(protocol, mode="eval").body
-        has_schema = any(
-            "schema_for_model" in ast.unparse(elt) for elt in slice_node.elts[1:]
-        )
-        if not has_schema:
-            schema_call = ast.parse(
-                f"t.schema_for_model(lambda: {first_str})", mode="eval"
-            ).body
-            slice_node.elts.insert(1, schema_call)
-            self.needs_t = True
+            raise ValueError(msg)
+        return None
+
+    def _schema(self, model: ast.expr) -> ast.expr:
+        self.needs_t = True
+        return ast.parse(
+            f"t.schema_for_model(lambda: {ast.unparse(model)})", mode="eval"
+        ).body
+
+    def _reception(self, spec: ast.expr, model: ast.expr, *, field: bool) -> ast.expr:
+        """Receive one model operand as its protocol, with schema for a field.
+
+        Returns:
+            The plain protocol, or its deferred-schema ``Annotated`` field form.
+
+        """
+        self.changed = True
         self.needs_p = True
+        if not field:
+            return spec
         self.needs_annotated = True
-        return True
+        return ast.Subscript(
+            value=ast.Name(id="Annotated", ctx=ast.Load()),
+            slice=ast.Tuple(elts=[spec, self._schema(model)], ctx=ast.Load()),
+            ctx=ast.Load(),
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticModelFieldContracts"]

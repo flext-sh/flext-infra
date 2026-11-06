@@ -118,7 +118,9 @@ class FlextInfraModelsConfigWorkspace:
                 Annotated[
                     p.Infra.DependencyCommitSourceSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec
+                        )
                     ),
                 ],
                 ...,
@@ -156,18 +158,8 @@ class FlextInfraModelsConfigWorkspace:
                 raise ValueError(msg)
             return values
 
-    class RepositoryDeltaSpec(CandidateDependenciesSpec):
-        """Own repository differences; Git and project metadata own identity.
-
-        The effective codegen configuration composes this declaration from the
-        library defaults, the selected repository and its local overlay. It
-        never declares another runtime repository or workspace participant.
-        Recovery targets authorize bounded publication into existing worktrees.
-        """
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
-            use_enum_values=False, extra="forbid"
-        )
+    class RepositoryDeltaAnalysisSpec(CandidateDependenciesSpec):
+        """Docs, scaffold, integration and analysis part of a repository delta."""
 
         docs_audit: Annotated[
             FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
@@ -204,6 +196,20 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraModelsConfigWorkspace.RefactorConfigSpec | None,
             m.Field(description="Own refactor file-selection declaration"),
         ] = None
+
+    class RepositoryDeltaSpec(RepositoryDeltaAnalysisSpec):
+        """Own repository differences; Git and project metadata own identity.
+
+        The effective codegen configuration composes this declaration from the
+        library defaults, the selected repository and its local overlay. It
+        never declares another runtime repository or workspace participant.
+        Recovery targets authorize bounded publication into existing worktrees.
+        """
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            use_enum_values=False, extra="forbid"
+        )
+
         beads_enabled: Annotated[
             bool,
             m.Field(description="Repository participates in the Beads contract"),
@@ -338,9 +344,9 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
+                    p.Infra.DependencyGroupInclude,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),
                 ],
                 ...,
@@ -451,9 +457,9 @@ class FlextInfraModelsConfigWorkspace:
             tuple[
                 str
                 | Annotated[
-                    FlextInfraModelsConfigWorkspace.DependencyGroupInclude,
+                    p.Infra.DependencyGroupInclude,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.DependencyGroupInclude
+                        lambda: FlextInfraModelsConfigWorkspace.DependencyGroupInclude
                     ),
                 ],
                 ...,
@@ -739,7 +745,9 @@ class FlextInfraModelsConfigWorkspace:
                 Annotated[
                     p.Infra.HostWorkspaceInventoryEntry,
                     t.schema_for_model(
-                        FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.HostWorkspaceInventoryEntry
+                        )
                     ),
                 ],
                 ...,

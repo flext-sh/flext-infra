@@ -9,8 +9,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
@@ -19,7 +17,7 @@ from tests import c, m, tm, u
 class TestsFlextInfraRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
 
-    @pytest.mark.parametrize("uv_package", [None, False, True])
+    @c.Tests.MARK.parametrize("uv_package", [None, False, True])
     def test_packaging_ingress_retains_native_declarations_without_exports(
         self,
         tmp_path: Path,
@@ -77,7 +75,7 @@ class TestsFlextInfraRepositoryLocalTopology:
         tm.that(after.repository.distribution, eq=metadata.project.name)
         tm.that(after.repository.package, eq=before.repository.package)
         tm.that(after.repository.provider, eq=before.repository.provider)
-        with pytest.raises(SyntaxError):
+        with u.Tests.raises(SyntaxError):
             u.Infra.layout(root)
 
     @staticmethod

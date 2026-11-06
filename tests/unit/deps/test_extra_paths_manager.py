@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, tm, u
 from tests.unit.deps.extra_paths_support import TestsFlextInfraExtraPathsSupport
 
@@ -59,7 +57,7 @@ class TestsFlextInfraExtraPathsManager:
         tm.fail(result.value)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "tool_doc",
         [
             {"pyright": {"extraPaths": ["src"]}},

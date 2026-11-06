@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,7 +34,7 @@ class TestsFlextInfraDocsMainEntry:
         tm.that(FlextInfraCli.infra_main(["docs"]), eq=1)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "argv",
         [
             ["docs", "--help"],

@@ -43,7 +43,7 @@ class FlextInfraModelsRelease:
         ownership: Annotated[
             Annotated[
                 p.Infra.GitLaneOwnershipReceipt,
-                t.schema_for_model(FlextInfraModelsGit.GitLaneOwnershipReceipt),
+                t.schema_for_model(lambda: FlextInfraModelsGit.GitLaneOwnershipReceipt),
             ]
             | None,
             m.Field(
@@ -99,7 +99,9 @@ class FlextInfraModelsRelease:
             tuple[
                 Annotated[
                     p.Infra.GithubReleaseAsset,
-                    t.schema_for_model(FlextInfraModelsRelease.GithubReleaseAsset),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRelease.GithubReleaseAsset
+                    ),
                 ],
                 ...,
             ],
@@ -111,6 +113,10 @@ class FlextInfraModelsRelease:
 
         id: Annotated[t.PositiveInt, m.Field(description="Native release identifier")]
         tag_name: Annotated[t.NonEmptyStr, m.Field(description="Exact release tag")]
+        draft: Annotated[
+            bool,
+            m.Field(description="Whether the release is an unpublished draft"),
+        ]
 
     class GithubReleaseInventory(m.StrictBoundaryModel):
         """Complete paginated releases used to distinguish absence from failure."""
@@ -119,7 +125,9 @@ class FlextInfraModelsRelease:
             tuple[
                 Annotated[
                     p.Infra.GithubReleaseIdentity,
-                    t.schema_for_model(FlextInfraModelsRelease.GithubReleaseIdentity),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsRelease.GithubReleaseIdentity
+                    ),
                 ],
                 ...,
             ],
@@ -231,7 +239,7 @@ class FlextInfraModelsRelease:
             tuple[
                 Annotated[
                     p.Infra.BuildArtifact,
-                    t.schema_for_model(FlextInfraModelsRelease.BuildArtifact),
+                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildArtifact),
                 ],
                 ...,
             ],
@@ -335,7 +343,7 @@ class FlextInfraModelsRelease:
             tuple[
                 Annotated[
                     p.Infra.BuildRecord,
-                    t.schema_for_model(FlextInfraModelsRelease.BuildRecord),
+                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildRecord),
                 ],
                 ...,
             ],

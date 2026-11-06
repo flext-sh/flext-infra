@@ -1333,7 +1333,7 @@ class FlextInfraModGateEngine:
         root: Path,
         *,
         fix: bool,
-        selection: Sequence[str] | m.Infra.CodemodRulePlan | None = None,
+        selection: Sequence[str] | p.Infra.CodemodRulePlan | None = None,
         source_files: Sequence[Path] | None = None,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Scan or apply every ruleset elected by the composed rule-plan SSOT.
@@ -1345,19 +1345,19 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[p.Infra.ModScanReport]``.
 
         """
-        if isinstance(selection, m.Infra.CodemodRulePlan):
+        if selection is None or isinstance(selection, Sequence):
+            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+                planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection)
+            if planned.failure:
+                return r[p.Infra.ModScanReport].from_failure(planned)
+            plan = planned.value
+        else:
             plan = selection
             if root.resolve() not in plan.project_rule_ids:
                 return r[p.Infra.ModScanReport].fail(
                     "precomposed scan plan requires its governed root and owns rule "
                     "selection"
                 )
-        else:
-            with u.Infra.codemod_workspace_snapshot(root) as snapshot:
-                planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection)
-            if planned.failure:
-                return r[p.Infra.ModScanReport].from_failure(planned)
-            plan = planned.value
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
         context = m.Infra.ModScanSourceContext(
@@ -1408,8 +1408,7 @@ class FlextInfraModGateEngine:
                 repositories=tuple(project.name for project in plan.project_rule_ids),
                 rule_ids=tuple(rules_by_id),
             ),
-            exact_replacements=selection is not None
-            and not isinstance(selection, m.Infra.CodemodRulePlan),
+            exact_replacements=isinstance(selection, Sequence),
         )
 
     @staticmethod
@@ -1477,7 +1476,7 @@ class FlextInfraModGateEngine:
         view_root: Path,
         candidate: p.Infra.StageSourcePlan,
         *,
-        selection: Sequence[str] | m.Infra.CodemodRulePlan | None = None,
+        selection: Sequence[str] | p.Infra.CodemodRulePlan | None = None,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Scan an immutable overlay with the original catalog and logical policy.
 
@@ -1490,11 +1489,11 @@ class FlextInfraModGateEngine:
         if captured.failure:
             return r[p.Infra.ModScanReport].from_failure(captured)
         view_root /= root.relative_to(candidate.workspace)
-        if isinstance(selection, m.Infra.CodemodRulePlan):
-            plan = selection
-        else:
+        if selection is None or isinstance(selection, Sequence):
             with u.Infra.codemod_workspace_snapshot(root) as snapshot:
                 plan = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection).unwrap()
+        else:
+            plan = selection
         staged_plan = plan.model_copy(
             update={
                 "project_rule_ids": {

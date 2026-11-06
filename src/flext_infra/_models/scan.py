@@ -67,7 +67,7 @@ class FlextInfraModelsScan:
             Sequence[
                 Annotated[
                     p.Infra.ScanViolation,
-                    t.schema_for_model(FlextInfraModelsScan.ScanViolation),
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ScanViolation),
                 ]
             ],
             m.Field(description="Violations found in the file"),
@@ -149,7 +149,9 @@ class FlextInfraModelsScan:
             m.Field(description="Writable authority for the finding source"),
         ] = "authored"
         source_state: Annotated[
-            Annotated[p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)]
+            Annotated[
+                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
+            ]
             | None,
             m.Field(
                 exclude=True,
@@ -176,7 +178,7 @@ class FlextInfraModelsScan:
         replacement_offsets: (
             Annotated[
                 p.Infra.ModReplacementOffsets,
-                t.schema_for_model(FlextInfraModelsScan.ModReplacementOffsets),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModReplacementOffsets),
             ]
             | None
         ) = m.Field(
@@ -217,7 +219,8 @@ class FlextInfraModelsScan:
             Mapping[
                 Path,
                 Annotated[
-                    p.Cli.AtomicFileState, t.schema_for_model(m.Cli.AtomicFileState)
+                    p.Cli.AtomicFileState,
+                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
                 ],
             ],
             m.Field(description="Exact sources captured before the native scan"),
@@ -235,7 +238,7 @@ class FlextInfraModelsScan:
                             Path,
                             Annotated[
                                 p.Cli.AtomicFileState,
-                                t.schema_for_model(m.Cli.AtomicFileState),
+                                t.schema_for_model(lambda: m.Cli.AtomicFileState),
                             ],
                         ]
                     ]
@@ -398,7 +401,7 @@ class FlextInfraModelsScan:
         report: Annotated[
             Annotated[
                 p.Infra.ModScanReport,
-                t.schema_for_model(FlextInfraModelsScan.ModScanReport),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanReport),
             ],
             m.Field(description="Scan of the post-iteration sources"),
         ]
@@ -413,7 +416,7 @@ class FlextInfraModelsScan:
         quarantined: Annotated[
             Annotated[
                 p.Infra.ModModuleQuarantine,
-                t.schema_for_model(FlextInfraModelsScan.ModModuleQuarantine),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModModuleQuarantine),
             ]
             | None,
             m.Field(description="Module whose attributed failure voided the plan"),
@@ -505,7 +508,7 @@ class FlextInfraModelsScan:
             tuple[
                 Annotated[
                     p.Infra.ModTextFinding,
-                    t.schema_for_model(FlextInfraModelsScan.ModTextFinding),
+                    t.schema_for_model(lambda: FlextInfraModelsScan.ModTextFinding),
                 ],
                 ...,
             ],
@@ -623,7 +626,7 @@ class FlextInfraModelsScan:
         evidence: Annotated[
             Annotated[
                 p.Infra.ModScanEvidence,
-                t.schema_for_model(FlextInfraModelsScan.ModScanEvidence),
+                t.schema_for_model(lambda: FlextInfraModelsScan.ModScanEvidence),
             ],
             m.Field(description="Exact structured evidence that was published"),
         ]

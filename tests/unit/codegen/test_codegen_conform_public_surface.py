@@ -11,15 +11,13 @@ import shutil
 import stat
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from flext_infra.services import FlextInfraCodegenRoutes
 from tests import c, m, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 class TestsFlextInfraCodegenConformPublicSurface:
@@ -94,7 +92,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.fail(root.exists())
 
     @staticmethod
-    @pytest.mark.parametrize("surface", tuple(c.Infra.CodegenConformSurface))
+    @c.Tests.MARK.parametrize("surface", tuple(c.Infra.CodegenConformSurface))
     def test_request_constraints_follow_surface_contracts(
         tmp_path: Path,
         surface: c.Infra.CodegenConformSurface,
@@ -118,10 +116,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.ok(restored.what is surface)
         tm.ok(restored.scope is request.scope)
         if surface is c.Infra.CodegenConformSurface.FACADES:
-            with pytest.raises(ValueError, match=r"requires.*--module"):
+            with u.Tests.raises(ValueError, match=r"requires.*--module"):
                 m.Infra.CodegenGenerateRequest(root=tmp_path, what=surface)
         if surface in c.Infra.SELF_SCOPE_SURFACES | c.Infra.FILE_ONLY_SURFACES:
-            with pytest.raises(ValueError, match="self repository scope"):
+            with u.Tests.raises(ValueError, match="self repository scope"):
                 m.Infra.CodegenGenerateRequest(
                     root=tmp_path,
                     what=surface,
@@ -253,7 +251,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("marker", ["<<<<<<< HEAD", "=======", ">>>>>>> incoming"])
+    @c.Tests.MARK.parametrize("marker", ["<<<<<<< HEAD", "=======", ">>>>>>> incoming"])
     def test_envrc_bootstrap_preserves_other_surfaces_and_converges(
         infra_git_repo: Path,
         marker: str,
@@ -283,7 +281,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "scope",
         [c.Infra.CodegenConformScope.DECLARED, c.Infra.CodegenConformScope.ALL],
     )
@@ -291,7 +289,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         scope: c.Infra.CodegenConformScope,
     ) -> None:
         """Recovery cannot widen activation publication to another checkout."""
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="envrc requires the self repository scope"
         ):
             u.Tests.conform_request(
@@ -302,7 +300,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             )
 
     @staticmethod
-    @pytest.mark.parametrize("initial_state", ["invalid", "absent", "wrong-mode"])
+    @c.Tests.MARK.parametrize("initial_state", ["invalid", "absent", "wrong-mode"])
     def test_mise_config_repairs_invalid_toml_without_touching_other_surfaces(
         infra_git_repo: Path,
         initial_state: str,
@@ -513,7 +511,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.ok(u.Cli.json_loads(projection.read_bytes()))
 
     @staticmethod
-    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
+    @c.Tests.MARK.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
         infra_git_repo: Path,
         mode: c.Infra.CodegenConformMode,
@@ -582,7 +580,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
     # per-item bound. The public CLI route of the same check is proven by
     # test_public_cli_routes_check_and_apply_to_one_handler.
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_dependency_surface_excludes_unowned_managed_files(
         infra_git_repo: Path,
     ) -> None:

@@ -9,12 +9,10 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, tm, u
 
-pytestmark = pytest.mark.slow
+pytestmark = c.Tests.MARK.slow
 
 
 class TestsFlextInfraManagedMaintenanceHeaders:
@@ -93,7 +91,7 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(self._fields(custom), eq={})
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "surface",
         [
             c.Infra.CodegenConformSurface.MAKEFILE,
@@ -149,5 +147,5 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         """Malformed destination Git metadata remains an identity failure."""
         root = tmp_path / "fixture-project"
         (root / c.GIT_DIR_NAME).mkdir(parents=True)
-        with pytest.raises(OSError, match="cannot open git repository"):
+        with u.Tests.raises(OSError, match="cannot open git repository"):
             u.Tests.scaffold_plan(root, what=c.Infra.CodegenConformSurface.MAKEFILE)

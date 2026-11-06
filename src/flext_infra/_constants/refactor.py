@@ -344,6 +344,16 @@ class FlextInfraConstantsRefactor:
             "require-uppercase-constant-name",
             "ban-mutable-constant-value",
         ),
+        # The five declared type-contract rules carry the model-field contract
+        # cure; an unselected engine run is refused (ADR-028 D18), so the phase
+        # is only reachable through its rule family.
+        SemanticCutoverPhase.CONTRACT_NORMALIZATION: (
+            "bind-typing-adapter-utilities",
+            "rewire-cli-json-mapping-adapter",
+            "rewire-cli-json-list-adapter",
+            "pydantic-field-positional-default",
+            "pydantic-unset-private-attribute",
+        ),
         SemanticCutoverPhase.COMPAT_ALIAS: ("ban-compat-alias",),
         SemanticCutoverPhase.PRIVATE_IMPORT: ("ban-private-import",),
         SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: (
@@ -384,6 +394,18 @@ class FlextInfraConstantsRefactor:
     # Rust-regex pattern that matches no text: a generated utility whose
     # source of truth is empty still exists, so a referencing rule loads.
     CODEMOD_NEVER_MATCH_REGEX: ClassVar[str] = r"\b\B"
+    # Condition of an `if TYPE_CHECKING:` guard, bare or through `typing.`.
+    CODEMOD_TYPE_CHECKING_TEST_REGEX: ClassVar[str] = r"^(?:typing\.)?TYPE_CHECKING$"
+    # Tree-sitter Python nodes that open a name scope inside a module: a name
+    # they bind is visible only to the uses they enclose.
+    CODEMOD_NAME_SCOPE_KINDS: ClassVar[tuple[str, ...]] = (
+        "function_definition",
+        "lambda",
+        "list_comprehension",
+        "set_comprehension",
+        "dictionary_comprehension",
+        "generator_expression",
+    )
     # Separator of a generated rule id: '<shape>--<qualifier>'.
     CODEMOD_GENERATED_ID_SEPARATOR: ClassVar[str] = "--"
     # Generated utility id prefix of a package's exports: 'exports--<package>'.

@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, settings
 from tests import c, m, tm, u
 
@@ -80,7 +78,7 @@ class TestsFlextInfraMiseToolchainRepair:
         tm.that(after, eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize("selected", [False, True])
+    @c.Tests.MARK.parametrize("selected", [False, True])
     def test_invalid_selection_fails_before_installation(
         tmp_path: Path,
         *,

@@ -52,7 +52,7 @@ class FlextInfraModelsSonarcloud:
             Annotated[
                 p.Infra.SonarcloudIssueFieldValue,
                 t.schema_for_model(
-                    FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                    lambda: FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
                 ),
             ],
             ...,
@@ -70,7 +70,9 @@ class FlextInfraModelsSonarcloud:
             tuple[
                 Annotated[
                     p.Infra.SonarcloudSetting,
-                    t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudSetting),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudSetting
+                    ),
                 ],
                 ...,
             ],
@@ -103,7 +105,7 @@ class FlextInfraModelsSonarcloud:
                 Annotated[
                     p.Infra.SonarcloudIssueFieldValue,
                     t.schema_for_model(
-                        FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudIssueFieldValue
                     ),
                 ],
                 ...,
@@ -155,7 +157,9 @@ class FlextInfraModelsSonarcloud:
         paging: Annotated[
             Annotated[
                 p.Infra.SonarcloudIssuePaging,
-                t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudIssuePaging),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsSonarcloud.SonarcloudIssuePaging
+                ),
             ],
             m.Field(description="Server-side page accounting of this page"),
         ]
@@ -163,7 +167,9 @@ class FlextInfraModelsSonarcloud:
             tuple[
                 Annotated[
                     p.Infra.SonarcloudIssue,
-                    t.schema_for_model(FlextInfraModelsSonarcloud.SonarcloudIssue),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsSonarcloud.SonarcloudIssue
+                    ),
                 ],
                 ...,
             ],

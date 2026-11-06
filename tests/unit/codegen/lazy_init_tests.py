@@ -12,8 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from tests import c, tm, u
@@ -47,11 +45,11 @@ def _create_init_file(directory: Path, content: str) -> Path:
     return init_file
 
 
-@pytest.mark.usefixtures("governed_project")
+@c.Tests.MARK.usefixtures("governed_project")
 class TestsFlextInfraCodegenLazyInit:
     """Test suite for FlextInfraCodegenLazyInit directory scanning behavior."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def governed_project(
         tmp_path: Path,

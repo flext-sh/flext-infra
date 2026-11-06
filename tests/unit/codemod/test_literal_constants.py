@@ -9,16 +9,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
-from tests import c, m, p, t, tm
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraConstantsLiteral:
     """Exercise the constants phase through its public planning boundary."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("literal_source", "return_source"),
         [
             ("'wire-value'", '"wire-value"'),
@@ -97,7 +95,7 @@ class TestsFlextInfraConstantsLiteral:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("case", ["shadowed", "ambiguous"])
+    @c.Tests.MARK.parametrize("case", ["shadowed", "ambiguous"])
     def test_unproven_literal_owner_fails_before_publication(
         constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
@@ -130,5 +128,5 @@ class TestsFlextInfraConstantsLiteral:
             if case == "shadowed"
             else "literal return has ambiguous public constant owners"
         )
-        with pytest.raises(ValueError, match=message):
+        with u.Tests.raises(ValueError, match=message):
             constant_candidate(sources, ())

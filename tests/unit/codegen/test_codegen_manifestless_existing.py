@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config, infra
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
@@ -21,7 +19,7 @@ from tests import c, e, p, t, tm, u
 # itself dominates the runtime. The class carries the config-owned slow budget
 # (Infra.tooling.tools.pytest.slow-timeout-seconds) instead of a hardcoded
 # ceiling, so a real hang still aborts at the declared wall.
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraCodegenManifestlessExisting:
     """Tests for ``FlextInfraCodegenManifestlessExisting``."""
 
@@ -328,7 +326,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "license_id",
         config.Infra.codegen.scaffold.project.supported_licenses,
     )

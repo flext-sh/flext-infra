@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 
 
@@ -146,5 +144,5 @@ class TestsFlextInfraAttributeReadProofs:
                 .get_attribute("execute")
                 .get_object()
             )
-            with pytest.raises(ValueError, match="non-builtin getter"):
+            with u.Tests.raises(ValueError, match="non-builtin getter"):
                 u.Infra.attribute_read_proofs(project, resource, function, resolver)

@@ -122,11 +122,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.fail((tmp_path / c.Infra.MISE_LOCK_FILENAME).exists())
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("content", "exists", "expected"),
         [
-            pytest.param('key = "value"\n', True, True, id="valid"),
-            pytest.param("", False, False, id="missing"),
+            u.Tests.param('key = "value"\n', True, True, id="valid"),
+            u.Tests.param("", False, False, id="missing"),
         ],
     )
     def test_toml_read_handles_public_file_cases(
@@ -164,16 +164,16 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(str(result), ne="")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("description", "sort_first"),
         [
-            pytest.param("Config-owned metadata", None, id="config-owner"),
-            pytest.param(
+            u.Tests.param("Config-owned metadata", None, id="config-owner"),
+            u.Tests.param(
                 "Portable process runner",
                 ("project", "dependency-groups"),
                 id="project-first",
             ),
-            pytest.param(
+            u.Tests.param(
                 "Typed metadata: punctuation-safe.",
                 ("dependency-groups", "project"),
                 id="groups-first",
@@ -396,7 +396,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         tm.that(exact.run(), eq=0)
 
     @staticmethod
-    @pytest.mark.parametrize("member_kind", ["absolute", "parent-relative", "symlink"])
+    @c.Tests.MARK.parametrize("member_kind", ["absolute", "parent-relative", "symlink"])
     def test_modernizer_rejects_configured_members_outside_workspace(
         modernizer_workspace: Path,
         member_kind: str,
@@ -431,7 +431,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("selector_kind", ["absolute", "parent-relative"])
+    @c.Tests.MARK.parametrize("selector_kind", ["absolute", "parent-relative"])
     def test_modernizer_rejects_undeclared_project_paths(
         modernizer_workspace: Path,
         selector_kind: str,

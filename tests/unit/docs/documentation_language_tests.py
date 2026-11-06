@@ -137,18 +137,18 @@ class TestsFlextInfraDocumentationLanguage:
         tm.that(u.Infra.docs_project_mkdocs(self._scope(tmp_path), {}), eq=english)
 
     @staticmethod
-    @pytest.mark.parametrize("language", ["pt", "PT-BR", "fr", "", None, 1])
+    @c.Tests.MARK.parametrize("language", ["pt", "PT-BR", "fr", "", None, 1])
     def test_unsupported_locale_fails_before_effects(
         tmp_path: Path, language: t.JsonValue
     ) -> None:
         """Strict authorial and projected ingress refuse unknown language values."""
         project = u.Tests.project_spec("locale-project").model_dump()
         project["documentation_language"] = language
-        with pytest.raises(c.ValidationError, match="documentation_language"):
+        with u.Tests.raises(c.ValidationError, match="documentation_language"):
             m.Infra.ProjectSpec.model_validate(project)
-        with pytest.raises(ValueError, match="unsupported documentation_language"):
+        with u.Tests.raises(ValueError, match="unsupported documentation_language"):
             u.Infra.docs_documentation_language({"documentation_language": language})
-        with pytest.raises(c.ValidationError, match="documentation_language"):
+        with u.Tests.raises(c.ValidationError, match="documentation_language"):
             m.Infra.DocScope.model_validate({
                 "name": "invalid",
                 "path": tmp_path,

@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, t, tm, u
 
 
@@ -18,11 +16,11 @@ class TestsFlextInfraConstantDeclarations:
     """Typing identities select class constants without capturing homonyms."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "provider",
         ["flext_tap_oracle_wms", "flext_target_oracle", "flext_dbt_oracle"],
     )
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "binding",
         [
             ("from typing import Final", "Final"),
@@ -75,7 +73,7 @@ class TestsFlextInfraConstantDeclarations:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("relative", ["_constants/values.py", "consumer.py"])
+    @c.Tests.MARK.parametrize("relative", ["_constants/values.py", "consumer.py"])
     def test_nonconstant_final_bindings_keep_their_contract(
         constants_workspace: tuple[Path, Path],
         constant_candidate: t.Tests.SourceCandidate,
@@ -117,6 +115,6 @@ class TestsFlextInfraConstantDeclarations:
             "class Values:\n"
             "    TOKEN: Final[str] = 'consumer-token'\n"
         )
-        with pytest.raises(ValueError, match="destination ClassVar is shadowed"):
+        with u.Tests.raises(ValueError, match="destination ClassVar is shadowed"):
             constant_candidate({path: source}, ())
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)

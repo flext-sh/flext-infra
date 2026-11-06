@@ -2,9 +2,13 @@
     2026-10-25, "only the root lock"): its CI checks out the containing
     workspace at its integration branch with every submodule, pins the member
     at the tested commit and runs the member verbs from inside that workspace,
-    so setup installs the frozen root lock and CI never relocks.
-    ``push`` authorizes a releasing job's pushes to the member repository
-    with the job token, as a persisted checkout credential would. -#}
+     so setup installs the frozen root lock and CI never relocks.
+     The recursive checkout materializes every submodule at the commit the
+     superproject records, which is the only authoritative bootstrap state; a
+     mutable branch name or a literal commit would drift as soon as that branch
+     is retired, so this fragment never re-pins bootstrap submodules.
+     ``push`` authorizes a releasing job's pushes to the member repository
+     with the job token, as a persisted checkout credential would. -#}
 {% macro superproject_checkout(sha_expression, push=false) %}
       - name: Checkout workspace {{ superproject.repository }}
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}

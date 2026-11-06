@@ -17,16 +17,13 @@ import socket
 import time
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
-from tests import c, r, tm
+from tests import c, p, r, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
 
 _PYTEST_POLICY = config.Infra.tooling.tools.pytest
 # The real MkDocs server cold-starts an interpreter and builds the site. This
@@ -76,7 +73,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
         finally:
             connection.close()
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_serve_scope_serves_site_over_http(self, tmp_path: Path) -> None:
         """Test serve scope serves site over http."""
         (tmp_path / "docs").mkdir()

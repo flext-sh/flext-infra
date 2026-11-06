@@ -8,15 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from tests import p, tm, u
+from tests import c, p, tm, u
 
 
 class TestsNestedProtocolFacade:
     """Exercise qualified imports and rendering convergence through public utilities."""
 
-    @pytest.mark.parametrize("inherited", [False, True])
+    @c.Tests.MARK.parametrize("inherited", [False, True])
     def test_nested_package_protocol_owners_keep_native_identity(
         self,
         tmp_path: Path,

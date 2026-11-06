@@ -12,8 +12,6 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config, validate
 from tests import c, m, t, tm, u
 
@@ -207,8 +205,8 @@ class TestsFlextInfraPytestFullInventory:
         return tuple(events)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         "distributed",
         [False, True],
         ids=["default", "declared-xdist"],
@@ -230,7 +228,7 @@ class TestsFlextInfraPytestFullInventory:
         if distributed:
             tm.that(budget, gt=1)
 
-        tm.that(tm.ok(runner.execute_full()), eq=pytest.ExitCode.OK)
+        tm.that(tm.ok(runner.execute_full()), eq=c.Tests.ExitCode.OK)
 
         directory = TestsFlextInfraPytestFullInventory._report_directory(project)
         plan = m.Infra.PytestSelectionPlan.model_validate_json(
@@ -304,7 +302,7 @@ class TestsFlextInfraPytestFullInventory:
         tm.fail((project / "excluded-output.txt").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_worker_crash_keeps_native_failure_without_restart(
         tmp_path: Path,
     ) -> None:
@@ -329,7 +327,7 @@ class TestsFlextInfraPytestFullInventory:
 
         status = tm.ok(runner.execute_full())
 
-        tm.that(status, ne=pytest.ExitCode.OK)
+        tm.that(status, ne=c.Tests.ExitCode.OK)
         directory = TestsFlextInfraPytestFullInventory._report_directory(project)
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (directory / "suite-outcome.json").read_bytes(),
@@ -367,7 +365,7 @@ class TestsFlextInfraPytestFullInventory:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_shutdown_does_not_promote_late_worker_output(
         tmp_path: Path,
     ) -> None:
@@ -443,7 +441,7 @@ class TestsFlextInfraPytestFullInventory:
 
         status = tm.ok(runner.execute_full())
 
-        tm.that(status, eq=pytest.ExitCode.INTERRUPTED)
+        tm.that(status, eq=c.Tests.ExitCode.INTERRUPTED)
         directory = TestsFlextInfraPytestFullInventory._report_directory(project)
         admissions = TestsFlextInfraPytestFullInventory._admissions(project)
         tm.that(admissions, length=budget)
@@ -486,7 +484,7 @@ class TestsFlextInfraPytestFullInventory:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_full_empty_inventory_is_not_promoted_to_success(tmp_path: Path) -> None:
         """An actually empty whole target keeps pytest's native zero-test failure."""
         project = TestsFlextInfraPytestFullInventory._consumer(
@@ -498,7 +496,7 @@ class TestsFlextInfraPytestFullInventory:
 
         status = tm.ok(runner.execute_full())
 
-        tm.that(status, eq=pytest.ExitCode.NO_TESTS_COLLECTED)
+        tm.that(status, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED)
         directory = TestsFlextInfraPytestFullInventory._report_directory(project)
         observations = TestsFlextInfraPytestFullInventory._assert_single_collection(
             project,
@@ -523,8 +521,8 @@ class TestsFlextInfraPytestFullInventory:
         tm.that(outcome.forwarded_signal, none=True)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
         ("execution_mode", "phase", "report_name"),
         [
             (c.Infra.PytestExecutionMode.FULL, "suite", "events.jsonl"),
@@ -614,7 +612,7 @@ class TestsFlextInfraPytestFullInventory:
         tm.fail((project / "python-output.txt").exists())
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_profile_setting_keeps_full_operation_and_native_suite_profile(
         tmp_path: Path,
     ) -> None:
@@ -647,7 +645,7 @@ class TestsFlextInfraPytestFullInventory:
             ),
         )
 
-        tm.that(process.outcome.raw_return_code, eq=pytest.ExitCode.OK)
+        tm.that(process.outcome.raw_return_code, eq=c.Tests.ExitCode.OK)
         tm.fail(process.outcome.timed_out)
         tm.that(process.outcome.forwarded_signal, none=True)
         directory = TestsFlextInfraPytestFullInventory._report_directory(project)

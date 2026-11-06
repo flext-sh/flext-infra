@@ -8,21 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
-pytestmark = [pytest.mark.slow]
+pytestmark = [c.Tests.MARK.slow]
 
 
 def _apply_custom_make_and_assert_clean(
     root: Path,
     workspace: p.Infra.WorkspaceSpec,
     custom_content: str,
-    captured: pytest.CaptureFixture[str],
+    captured: t.Tests.CaptureFixture[str],
 ) -> None:
     """Write custom.mk, apply the MAKEFILE surface, and assert a clean outcome."""
     custom = root / "custom.mk"
@@ -72,10 +70,10 @@ class TestsFlextInfraCodegenMakeContracts:
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_valid_private_custom_make_has_no_rejection(
         infra_git_repo: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Test valid private custom make has no rejection."""
         root = infra_git_repo
@@ -110,7 +108,7 @@ class TestsFlextInfraCodegenMakeContracts:
         tm.fail(result, has="unterminated .PHONY continuation")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         infra_git_repo: Path,
     ) -> None:
@@ -143,7 +141,7 @@ class TestsFlextInfraCodegenMakeContracts:
         tm.that(output.stdout, lacks="WHAT")
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         infra_git_repo: Path,
     ) -> None:
@@ -187,7 +185,7 @@ class TestsFlextInfraCodegenMakeContracts:
     @staticmethod
     def test_custom_make_accepts_pre_post_verb_hooks(
         infra_git_repo: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """custom.mk may append pre/post verb hooks (verb-wide and WHAT-scoped)."""
         root = infra_git_repo
@@ -204,7 +202,7 @@ class TestsFlextInfraCodegenMakeContracts:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_non_regular_custom_make_remains_fatal(infra_git_repo: Path) -> None:
         """Test non regular custom make remains fatal."""
         root = infra_git_repo

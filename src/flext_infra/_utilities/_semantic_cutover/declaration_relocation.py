@@ -69,6 +69,10 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         """
         if rule.owner_root is None:
             return repository_root
+        if rule.owner_root.is_relative_to(repository_root):
+            # The catalogue already names a project inside this workspace; the
+            # upward search would resolve the enclosing superproject instead.
+            return rule.owner_root
         owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             repository_root,
             rule.owner_root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH,

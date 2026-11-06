@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import pytest
-
-from tests import m, tm
+from tests import m, tm, u
 
 
 class TestsFlextInfraNativeModelProvenance:
@@ -41,7 +39,7 @@ class TestsFlextInfraNativeModelProvenance:
         })
         converted.evidence.append(record)
         tm.that(converted.evidence, eq=[record])
-        with pytest.raises(m.ValidationError, match="evidence"):
+        with u.Tests.raises(m.ValidationError, match="evidence"):
             m.Infra.NativeObservationContext.model_validate({
                 "paths": (),
                 "evidence": [{}],

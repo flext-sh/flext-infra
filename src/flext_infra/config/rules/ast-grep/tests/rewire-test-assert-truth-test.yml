@@ -19,6 +19,11 @@ valid:
       run()
   except ValueError:
       assert handled
+- |
+  from tests import tm
+  assert (
+      left in right
+  )
 invalid:
 - |
   from flext_tests import tm
@@ -30,8 +35,3 @@ invalid:
 - |
   from tests import tm
   assert 0 < count < limit
-- |
-  from tests import tm
-  assert (
-      tm.ok(result) == expected
-  )

@@ -141,15 +141,15 @@ jobs:
 {%- endif %}
 {%- include "_fragments/custom_steps.j2" %}
 
-{%- set ci_check = namespace(step_id="", setup_id="") %}
+{%- set ci_check = namespace(setup_id="", ran="", failed="") %}
 {%- for step in make.workflow if "ci" in step.contexts %}
 {%- set verb = step.verb %}
-{%- if verb == "check" %}
-{%- set ci_check.step_id = "approval-" ~ step.identity %}
-{%- endif %}
 {%- set approval_id = "approval-" ~ step.identity %}
 {%- if loop.first %}
 {%- set ci_check.setup_id = approval_id %}
+{%- else %}
+{%- set ci_check.ran = ci_check.ran ~ (" || " if ci_check.ran else "") ~ "steps." ~ approval_id ~ ".outcome == 'success' || steps." ~ approval_id ~ ".outcome == 'failure'" %}
+{%- set ci_check.failed = ci_check.failed ~ (" || " if ci_check.failed else "") ~ "steps." ~ approval_id ~ ".outcome == 'failure'" %}
 {%- endif %}
 {%- if verb == "tests" %}
 {%- set ci_tests.test_step_id = approval_id %}
@@ -188,10 +188,11 @@ jobs:
             fi
           done
 {%- endif %}
-      # Reports exist only once check executed; uploading after an earlier
-      # failure would only add a second, misleading error.
+      # Reports exist once any approval row after setup executed, whichever
+      # row failed first (a failed tests row skips every later check row);
+      # uploading after a setup failure would only add a second, misleading error.
       - name: Upload execution reports
-        if: {% raw %}${{ !cancelled() && (steps.{% endraw %}{{ ci_check.step_id }}{% raw %}.outcome == 'success' || steps.{% endraw %}{{ ci_check.step_id }}{% raw %}.outcome == 'failure') }}{% endraw %}
+        if: {% raw %}${{ !cancelled() && ({% endraw %}{{ ci_check.ran }}{% raw %}) }}{% endraw %}
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}
         with:
           name: flext-ci-reports-{% raw %}${{ github.run_id }}{% endraw %}
@@ -211,24 +212,14 @@ jobs:
             {{ report_root }}.reports/codegen-publication.json
             {{ report_root }}.reports/codegen-publication/**/*.json
             {{ report_root }}{{ setup_operations_report_directory }}/*.json
-            {{ report_root }}.reports/tests/**/suite-outcome.json
-            {{ report_root }}.reports/tests/**/selection-outcome.json
-            {{ report_root }}.reports/tests/**/inventory-outcome.json
-            {{ report_root }}.reports/tests/**/run-context.json
-            {{ report_root }}.reports/tests/**/selection-plan.json
-            {{ report_root }}.reports/tests/**/testmon-selection.json
-            {{ report_root }}.reports/tests/**/testmon-inventory.json
-            {{ report_root }}.reports/tests/**/run-accounting.json
-            {{ report_root }}.reports/tests/**/diagnostics.json
-            {{ report_root }}.reports/tests/**/{{ gate_original_receipt_filename }}
-            {{ report_root }}.reports/tests/**/cache-before.json
-            {{ report_root }}.reports/tests/**/cache-after.json
-            {{ report_root }}.reports/tests/**/cache-policy.json
-            {{ report_root }}.reports/tests/**/markdown-reconciliation.json
+            {{ report_root }}.reports/tests/**/*.json
+            {{ report_root }}.reports/tests/**/summary.txt
+            {{ report_root }}.reports/tests/**/failed-tests.txt
+            {{ report_root }}.reports/tests/**/errors.txt
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
-{%- set gate_receipts_step_id = ci_check.step_id %}
+{%- set gate_receipts_failed = ci_check.failed %}
 {%- include "_fragments/gate_receipts_upload.j2" %}
 {%- if ci_tests.selected %}
 {%- include "_fragments/testmon_cache_save.j2" %}

@@ -13,8 +13,6 @@ from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenScaffolder
 from tests import c, tm, u
 
@@ -51,10 +49,10 @@ class TestsFlextInfraCodegenScaffolderNaming:
         """Generated topology modules compile and follow the naming contract."""
 
         @staticmethod
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize(
             ("with_all_modules", "validate"),
             [
-                pytest.param(
+                u.Tests.param(
                     False,
                     partial(
                         _validate_modules_parse,
@@ -62,7 +60,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
                     ),
                     id="src-parses",
                 ),
-                pytest.param(
+                u.Tests.param(
                     True,
                     partial(
                         _validate_modules_parse,
@@ -70,7 +68,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
                     ),
                     id="tests-parses",
                 ),
-                pytest.param(
+                u.Tests.param(
                     False,
                     partial(
                         _validate_class_names,
@@ -84,7 +82,7 @@ class TestsFlextInfraCodegenScaffolderNaming:
                     ),
                     id="src-class-names",
                 ),
-                pytest.param(
+                u.Tests.param(
                     True,
                     partial(
                         _validate_class_names,

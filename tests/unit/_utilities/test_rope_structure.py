@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import m, u
-from tests import c, tm
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraRopeStructure:

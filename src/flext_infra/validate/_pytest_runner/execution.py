@@ -712,18 +712,15 @@ class FlextInfraPytestRunnerExecution(
             inputs=u.Infra.load_codegen_inputs(self.repository_root),
         ).unwrap()
 
-    @staticmethod
-    def _external_gate_markers(context: p.Infra.PytestRunContext) -> str:
+    def _external_gate_markers(self, context: p.Infra.PytestRunContext) -> str:
         """Return the not-executed external gate marker list of one run.
 
         Returns:
             The not-executed external gate marker list of one run.
 
         """
-        return (
-            ""
-            if context.execution_mode.is_global
-            else ",".join(config.Infra.tooling.tools.pytest.external_gate_markers)
+        return ",".join(
+            self.not_executed_external_gates(execution_mode=context.execution_mode),
         )
 
     def _ci_marker_list(self, context: p.Infra.PytestRunContext) -> str:

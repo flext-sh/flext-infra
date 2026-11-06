@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, tm, u
 
@@ -53,7 +51,7 @@ class TestsWorkspaceOperationReceipts:
                 "content": observed.content,
             },
         )
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             m.Infra.WorkspaceRuntimeContext.model_validate(payload)
 
     @staticmethod

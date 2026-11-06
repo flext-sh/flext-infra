@@ -14,7 +14,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 from flext_infra import c, m, p, t
-from flext_infra._protocols_bootstrap import merge_class_lineages
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCorePyModule,
@@ -25,6 +24,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeSourceBasesAliases,
     FlextInfraUtilitiesRopeSourceBasesInventory,
 )
+from flext_infra.protocols_bootstrap import merge_class_lineages
 
 
 class FlextInfraUtilitiesRopeSourceBasesRuntime:

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
-from flext_infra import config, t
-from tests import tm, u
+from flext_infra import config
+from tests import t, tm, u
 from tests.unit.codegen.test_ci_integration_branch_triggers import (
     TestsFlextInfraCiIntegrationBranchTriggers,
 )

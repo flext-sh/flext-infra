@@ -163,6 +163,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
                     "semantic:test-namespace-import": "test-namespace-import",
                     "semantic:test-assert-to-matcher": "test-assert-to-matcher",
                     "semantic:compat-alias": "compat-alias",
+                    "semantic:contract-normalization": "contract-normalization",
                 }
                 if (
                     self.id not in phases
@@ -191,7 +192,9 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 Annotated[
                     p.Infra.RenameCampaignSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                        lambda: (
+                            FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec
+                        )
                     ),
                 ],
                 ...,
@@ -203,7 +206,7 @@ class FlextInfraModelsConfigRefactorCampaigns:
                 Annotated[
                     p.Infra.ModOwnerSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
+                        lambda: FlextInfraModelsConfigRefactorCampaigns.ModOwnerSpec
                     ),
                 ],
                 ...,

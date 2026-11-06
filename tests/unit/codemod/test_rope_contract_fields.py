@@ -9,8 +9,6 @@ from __future__ import annotations
 import runpy
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, p, tm, u
 
@@ -22,7 +20,7 @@ class TestsFlextInfraRopeFieldContracts:
     """Preserve Pydantic field factories, validation effects and runtime values."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "changes"),
         [
             ("values: list[str] = Field(default_factory=list)", False),
@@ -108,7 +106,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "values: list[Domain.Item] = Field(default_factory=list)",
@@ -219,8 +217,8 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("minimum", [0, 1])
-    @pytest.mark.parametrize("alias", [False, True])
+    @c.Tests.MARK.parametrize("minimum", [0, 1])
+    @c.Tests.MARK.parametrize("alias", [False, True])
     def test_readonly_factory_preserves_full_field_validation_and_freshness(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         minimum: int,
@@ -291,7 +289,7 @@ class TestsFlextInfraRopeFieldContracts:
         runpy.run_path(str(path))
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("contract", "factory", "native"),
         [
             ("tuple[str, ...]", c.Action.LIST, "tuple"),
@@ -354,7 +352,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("factory", ["tuple", "frozenset"])
+    @c.Tests.MARK.parametrize("factory", ["tuple", "frozenset"])
     def test_strict_native_immutable_factory_is_not_a_raw_mutable_violation(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         factory: str,
@@ -374,7 +372,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("origin", "factory", "changes"),
         [
             ("Sequence", c.Action.LIST, True),
@@ -414,7 +412,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("declaration", ["Contract =", "type Contract ="])
+    @c.Tests.MARK.parametrize("declaration", ["Contract =", "type Contract ="])
     def test_rebound_type_alias_cannot_prove_a_deferred_factory_contract(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         declaration: str,
@@ -439,7 +437,7 @@ class TestsFlextInfraRopeFieldContracts:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
+    @c.Tests.MARK.parametrize("factory", ["list[str]", "lambda: ['consumer']"])
     def test_typed_constructor_and_authored_callback_keep_distinct_behavior(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         factory: str,
@@ -487,7 +485,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.ok("contract_factory=lambda: TypeForm(" in updated)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "marker",
         [
             "AfterValidator",
@@ -497,7 +495,7 @@ class TestsFlextInfraRopeFieldContracts:
             "GetPydanticSchema",
         ],
     )
-    @pytest.mark.parametrize("alias", [False, True])
+    @c.Tests.MARK.parametrize("alias", [False, True])
     def test_effectful_metadata_alias_rejects_additional_native_validation(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         marker: str,
@@ -566,7 +564,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(before[1], eq=(("python", {"consumer": "field"}),))
         tm.that(before[2], eq=("marker", "marker"))
         tm.that(before[3], eq=(("json", None), ("python", {"consumer": "field"})))
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="additional validation effects are not proven idempotent"
         ):
             u.Infra.plan_semantic_cutover(
@@ -578,7 +576,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("definition", "metadata"),
         [
             ("", "Field(min_length=0, description='constraint')"),
@@ -590,7 +588,7 @@ class TestsFlextInfraRopeFieldContracts:
             ("", "MaxLen(8)"),
         ],
     )
-    @pytest.mark.parametrize("alias", [False, True])
+    @c.Tests.MARK.parametrize("alias", [False, True])
     def test_native_declarative_metadata_preserves_constraints_and_literal_payloads(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         definition: str,
@@ -693,7 +691,7 @@ class TestsFlextInfraRopeFieldContracts:
     @staticmethod
     # Outer facades from this project's own declared FLEXT dependencies; a
     # library test never imports a downstream consumer it does not install.
-    @pytest.mark.parametrize("namespace", ["flext_core", "flext_cli"])
+    @c.Tests.MARK.parametrize("namespace", ["flext_core", "flext_cli"])
     def test_outer_facades_preserve_nested_contracts(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         namespace: str,
@@ -732,7 +730,7 @@ class TestsFlextInfraRopeFieldContracts:
         workspace, path = rope_contract_consumer
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
-        with pytest.raises(ValueError, match="authored evaluation cannot repeat"):
+        with u.Tests.raises(ValueError, match="authored evaluation cannot repeat"):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
                 rope_workspace=workspace,
@@ -742,7 +740,7 @@ class TestsFlextInfraRopeFieldContracts:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field_argument",
         ["default=default_value()", "default_factory=factory_value()"],
     )
@@ -774,7 +772,7 @@ class TestsFlextInfraRopeFieldContracts:
         before = runpy.run_path(str(path))["evidence"]
         with (
             infra.rope_workspace(root) as rope,
-            pytest.raises(ValueError, match=r"annotation.*reorder"),
+            u.Tests.raises(ValueError, match=r"annotation.*reorder"),
         ):
             u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,

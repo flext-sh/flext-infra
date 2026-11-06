@@ -11,15 +11,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscovery:
     """Tests for ``FlextInfraDiscoveryInfraDiscovery``."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def service() -> u.Infra:
         """Provide ``service``.
@@ -30,7 +28,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         """
         return u.Infra()
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def workspace_with_projects(
         tmp_path: Path,

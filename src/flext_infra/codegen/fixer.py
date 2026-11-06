@@ -12,9 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_core import r
-
-from flext_infra import c
+from flext_infra import c, r
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.codegen._fixer import FlextInfraCodegenFixerWorkspace
 

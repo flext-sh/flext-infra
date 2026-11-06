@@ -16,11 +16,10 @@ from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
 
-import pytest
 from packaging.version import Version
 
-from flext_infra import config, m, t
-from tests import c, p, tm, u
+from flext_infra import config
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -30,7 +29,9 @@ class TestsFlextInfraMisePinBootstrap:
         """Declared bootstrap inputs passed through the real template consumer."""
 
         toolchain: Annotated[
-            Annotated[p.Infra.ToolchainSpec, t.schema_for_model(m.Infra.ToolchainSpec)],
+            Annotated[
+                p.Infra.ToolchainSpec, t.schema_for_model(lambda: m.Infra.ToolchainSpec)
+            ],
             m.Field(description="Original declared toolchain"),
         ]
         make: Annotated[p.Infra.MakeSpec, m.Field(description="Original Make contract")]
@@ -155,7 +156,7 @@ class TestsFlextInfraMisePinBootstrap:
             ),
         )
 
-    @pytest.mark.parametrize("git_metadata", [False, True])
+    @c.Tests.MARK.parametrize("git_metadata", [False, True])
     def test_setup_preserves_a_missing_self_pin(
         self, tmp_path: Path, *, git_metadata: bool
     ) -> None:
@@ -200,7 +201,7 @@ class TestsFlextInfraMisePinBootstrap:
             tm.ok(report.candidate_read_exit_code != 0)
 
     @staticmethod
-    @pytest.mark.parametrize("enabled", [False, True])
+    @c.Tests.MARK.parametrize("enabled", [False, True])
     def test_mise_settings_follow_typed_policy_without_global_locking(
         *, enabled: bool
     ) -> None:
@@ -298,8 +299,8 @@ class TestsFlextInfraMisePinBootstrap:
             eq={"python", selected.mise_selector, *selected.tool_keys.values()},
         )
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("pin_present", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("pin_present", [False, True])
     def test_upgrade_qualifies_the_final_self_pin(
         self, tmp_path: Path, *, pin_present: bool
     ) -> None:
@@ -379,7 +380,7 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(cached.read_bytes(), eq=damaged)
         tm.fail((tmp_path / "recovered.txt").exists())
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_locked_setup_runs_without_host_mise_from_cold_and_warm_cache(
         self,
         tmp_path: Path,
@@ -428,7 +429,7 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that(lock_path.read_text(encoding=c.DEFAULT_ENCODING), eq=lock)
         tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_hosted_setup_publishes_the_release_shim_farm(
         self,
         tmp_path: Path,
@@ -466,7 +467,7 @@ class TestsFlextInfraMisePinBootstrap:
         tm.ok(farm.is_relative_to(tmp_path / "cache"))
         tm.that(shutil.which("mise", path=str(farm)), none=False)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_wrong_real_cached_release_is_replaced_before_lifecycle(
         self,
         tmp_path: Path,

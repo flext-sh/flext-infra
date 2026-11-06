@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.docs import FlextInfraDocCollector
 from tests import c, m, p, tm, u
 
@@ -165,7 +163,7 @@ class TestsFlextInfraPlanCollection:
         source = self._config().sources[0]
         payload = source.model_dump()
         for field_name in ("plan_globs", "exclude_globs", "updated_fields"):
-            with pytest.raises(ValueError, match="valid tuple"):
+            with u.Tests.raises(ValueError, match="valid tuple"):
                 m.Infra.PlanCollectionSource.model_validate({
                     **payload,
                     field_name: source.plan_globs[0],
@@ -180,22 +178,22 @@ class TestsFlextInfraPlanCollection:
 
         tm.that(config.sources, eq=())
         disabled = {**self._config().model_dump(), "enabled": False}
-        with pytest.raises(ValueError, match="disabled plan collection"):
+        with u.Tests.raises(ValueError, match="disabled plan collection"):
             m.Infra.PlanCollectionConfig.model_validate(disabled)
-        with pytest.raises(ValueError, match="requires at least one source"):
+        with u.Tests.raises(ValueError, match="requires at least one source"):
             m.Infra.PlanCollectionConfig(enabled=True, canonical_dir=Path("docs/plans"))
 
     @staticmethod
     def test_yaml_sequence_fields_reject_scalar_strings() -> None:
         """Test yaml sequence fields reject scalar strings."""
-        with pytest.raises(ValueError, match="valid tuple"):
+        with u.Tests.raises(ValueError, match="valid tuple"):
             m.Infra.PlanCollectionConfig.model_validate({
                 "enabled": True,
                 "canonical_dir": "docs/plans",
                 "sources": "kilo-local-plans",
             })
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "field",
         ["plan_globs", "exclude_globs", "updated_fields"],
     )
@@ -206,7 +204,7 @@ class TestsFlextInfraPlanCollection:
         """Accept YAML lists without coercing their invalid item values."""
         source = self._config().sources[0].model_dump()
         source[field] = [3]
-        with pytest.raises(ValueError, match="valid string"):
+        with u.Tests.raises(ValueError, match="valid string"):
             m.Infra.PlanCollectionSource.model_validate(source)
 
     def test_plan_and_companion_are_snapshotted_without_writing(
@@ -339,7 +337,7 @@ class TestsFlextInfraPlanCollection:
 
     def test_missing_source_is_not_empty_coverage(self, tmp_path: Path) -> None:
         """Test missing source is not empty coverage."""
-        with pytest.raises(FileNotFoundError, match="input"):
+        with u.Tests.raises(FileNotFoundError, match="input"):
             u.Infra.docs_collect_plan_files(tmp_path, self._config())
 
     def test_projection_is_explicit_and_carries_its_own_owner(
@@ -401,7 +399,7 @@ class TestsFlextInfraPlanCollection:
         for plan in fourth.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("value", "expected"),
         [
             ("2026-09-14T17:20:28Z", "2026-09-14T17:20:28Z"),
@@ -410,8 +408,8 @@ class TestsFlextInfraPlanCollection:
             ("2026-09-14T14:20:28", "2026-09-14T14:20:28"),
         ],
     )
-    @pytest.mark.parametrize("newline", ["\n", "\r\n"])
-    @pytest.mark.parametrize("prefix", ["", "\ufeff"])
+    @c.Tests.MARK.parametrize("newline", ["\n", "\r\n"])
+    @c.Tests.MARK.parametrize("prefix", ["", "\ufeff"])
     def test_native_yaml_timestamp_preserves_precision(
         self,
         tmp_path: Path,

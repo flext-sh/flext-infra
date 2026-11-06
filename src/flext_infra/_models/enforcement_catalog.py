@@ -53,7 +53,7 @@ class FlextInfraModelsEnforcementCatalog:
                 Annotated[
                     p.Infra.EnforcementClaim,
                     t.schema_for_model(
-                        FlextInfraModelsEnforcementCatalog.EnforcementClaim
+                        lambda: FlextInfraModelsEnforcementCatalog.EnforcementClaim
                     ),
                 ],
                 ...,

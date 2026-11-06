@@ -188,36 +188,55 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
         *,
         tooling: p.Infra.ToolConfigDocument,
     ) -> None:
-        """Repair every module of one phase, computing all before any write."""
-        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            import_graph: Mapping[str, frozenset[str]] = (
-                u.Infra.project_import_graph(project_dir)[0]
-                if any(
-                    recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
-                    for issues in by_file.values()
-                    for issue in issues
-                )
-                else {}
+        """Repair every module of one phase, computing all before any write.
+
+        Planning is read-only and runs outside the mutation lock, so concurrent
+        sessions never serialize on it. One ``publish_file_changes`` batch then
+        takes the lock, verifies every destination still matches the observed
+        state and writes the whole phase or nothing.
+
+        """
+        import_graph: Mapping[str, frozenset[str]] = (
+            u.Infra.project_import_graph(project_dir)[0]
+            if any(
+                recipes.get(issue.code) is c.Infra.LintFixRecipe.NORMALIZE_IMPORTS
+                for issues in by_file.values()
+                for issue in issues
             )
-            # A module the recipes cannot place stops the phase with nothing
-            # written.
-            planned: MutableSequence[tuple[p.Cli.AtomicFileState, str]] = []
-            for path, issues in sorted(by_file.items()):
-                before = u.Cli.atomic_read_binary_file_state(
-                    path,
-                    required=True,
-                ).unwrap()
-                repaired = self._repaired_source(
-                    project_dir,
-                    before,
-                    issues,
-                    import_graph=import_graph,
-                    tooling=tooling,
-                )
-                if repaired.encode(c.DEFAULT_ENCODING) != before.content:
-                    planned.append((before, repaired))
-            for before, repaired in planned:
-                u.Cli.atomic_write_text_file_guarded(before, repaired).unwrap()
+            else {}
+        )
+        # A module the recipes cannot place stops the phase with nothing written.
+        planned: MutableSequence[tuple[p.Cli.AtomicFileState, str]] = []
+        for path, issues in sorted(by_file.items()):
+            before = u.Cli.atomic_read_binary_file_state(
+                path,
+                required=True,
+            ).unwrap()
+            repaired = self._repaired_source(
+                project_dir,
+                before,
+                issues,
+                import_graph=import_graph,
+                tooling=tooling,
+            )
+            if repaired.encode(c.DEFAULT_ENCODING) != before.content:
+                planned.append((before, repaired))
+        changes = tuple(
+            m.Cli.FileChange(
+                path=before.path,
+                before=before,
+                desired_content=repaired.encode(c.DEFAULT_ENCODING),
+                desired_mode=(
+                    before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1]
+                ),
+            )
+            for before, repaired in planned
+        )
+        if changes:
+            u.Cli.publish_file_changes(
+                changes,
+                lock_path=u.Infra.mutation_lock_path(project_dir).unwrap(),
+            ).unwrap()
 
     @staticmethod
     def _static_hook_keys(

@@ -9,8 +9,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, tm, u
 
@@ -19,7 +17,7 @@ class TestsFlextInfraMarkdownModule:
     """Exercise registration and cleanup through the installed SDK executor."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("previous", "failure", "replacement"),
         [
             (False, False, False),

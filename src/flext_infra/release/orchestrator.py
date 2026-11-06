@@ -34,6 +34,16 @@ class FlextInfraReleaseOrchestrator(
             ),
         ),
     ] = None
+    release_forge: Annotated[
+        t.Port[p.Infra.ReleaseForge] | None,
+        m.Field(
+            exclude=True,
+            description=(
+                "Release forge port bound by the FlextInfra facade; the "
+                "publish phase fails before any effect without it"
+            ),
+        ),
+    ] = None
 
     def codegen_conform_collaborators(self) -> p.Infra.CodegenConformPorts | None:
         """Return the capabilities already bound to this release invocation.
@@ -84,7 +94,7 @@ class FlextInfraReleaseOrchestrator(
             case c.Infra.ReleasePhase.BUILD:
                 return self.phase_build(ctx)
             case c.Infra.ReleasePhase.PUBLISH:
-                return self.phase_publish(ctx)
+                return self.phase_publish(ctx, self.release_forge)
 
     def phase_version(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Open or update the release pull request for the planned version.

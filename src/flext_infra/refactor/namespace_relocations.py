@@ -219,15 +219,20 @@ class FlextInfraNamespaceRelocationCascade:
         if selected.failure:
             return result_type.from_failure(selected)
         declarations, members = selected.value
-        effect = self._prepare_destinations(
-            state, declarations, members, project_root=request.project_root
+        effect = (
+            self
+            ._prepare_destinations(
+                state, declarations, members, project_root=request.project_root
+            )
+            .flat_map(
+                lambda _: self._move_declarations(
+                    request, state, rope_project, declarations
+                )
+            )
+            .flat_map(
+                lambda _: self._transfer_members(request, state, rope_project, members)
+            )
         )
-        if effect.failure:
-            return result_type.from_failure(effect)
-        effect = self._move_declarations(request, state, rope_project, declarations)
-        if effect.failure:
-            return result_type.from_failure(effect)
-        effect = self._transfer_members(request, state, rope_project, members)
         if effect.failure:
             return result_type.from_failure(effect)
         return self._relocation_plans(request, state)

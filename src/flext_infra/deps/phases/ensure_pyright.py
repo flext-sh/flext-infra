@@ -37,7 +37,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         env_dir: str,
         *,
-        rules: p.Infra.PyrightConfig.PathRulesConfig | None = None,
+        rules: p.Infra.PyrightConfigPathRulesConfig | None = None,
     ) -> str:
         """Apply the configured privacy policy for each declared root category.
 
@@ -61,8 +61,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         root: str,
         extra_paths: Sequence[str],
-        rules: p.Infra.PyrightConfig.PathRulesConfig,
-    ) -> p.Infra.PyrightConfig.ExecutionEnvironment:
+        rules: p.Infra.PyrightConfigPathRulesConfig,
+    ) -> p.Infra.PyrightConfigExecutionEnvironment:
         """Env entry.
 
         Returns:
@@ -107,12 +107,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dirs: Sequence[str],
         source_path: str,
         project_root: str,
-        rules: p.Infra.PyrightConfig.PathRulesConfig,
-    ) -> Sequence[p.Infra.PyrightConfig.ExecutionEnvironment]:
+        rules: p.Infra.PyrightConfigPathRulesConfig,
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Envs for dirs.
 
         Returns:
-            The resulting ``Sequence[p.Infra.PyrightConfig.ExecutionEnvironment]``.
+            The resulting ``Sequence[p.Infra.PyrightConfigExecutionEnvironment]``.
 
         """
         environments = [
@@ -151,7 +151,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         *,
         project_dir: Path | None,
         source_path: str,
-    ) -> Sequence[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Render each authorized exception root before the broad environments.
 
         Pyright elects the first environment containing a file, so each root
@@ -162,7 +162,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         rules = self._tool_config.tools.pyright.path_rules
-        environments: MutableSequence[p.Infra.PyrightConfig.ExecutionEnvironment] = []
+        environments: MutableSequence[p.Infra.PyrightConfigExecutionEnvironment] = []
         for root, levels in u.Infra.diagnostic_exception_levels(
             self._tool_config, c.Infra.PYRIGHT, project_dir
         ):
@@ -226,7 +226,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _workspace_member_envs(
         self, repository_root: Path
-    ) -> Sequence[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Share one analyzer while keeping member package resolution local.
 
         Returns:
@@ -234,7 +234,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
         """
         rules = self._tool_config.tools.pyright.path_rules
-        environments: list[p.Infra.PyrightConfig.ExecutionEnvironment] = []
+        environments: list[p.Infra.PyrightConfigExecutionEnvironment] = []
         for member, roots in self._workspace_member_roots(repository_root):
             source = self._project_source_path(prefix=member)
             environments.extend(
@@ -271,7 +271,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         repository_root: Path | None,
         project_dir: Path | None,
         project_roots: Sequence[str],
-    ) -> Sequence[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> Sequence[p.Infra.PyrightConfigExecutionEnvironment]:
         """Return the expected execution environments.
 
         Returns:
@@ -376,7 +376,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     @staticmethod
     def _environment_payload(
-        environment: p.Infra.PyrightConfig.ExecutionEnvironment,
+        environment: p.Infra.PyrightConfigExecutionEnvironment,
     ) -> t.JsonDict:
         """Render one execution environment.
 
@@ -486,7 +486,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         context: p.Infra.PyprojectAnalyzerContext,
         paths_manager: FlextInfraExtraPathsManager | None,
         analysis_exclusions: Sequence[str] | None,
-    ) -> m.Infra.DepsToml.PhaseConfig:
+    ) -> p.Infra.PhaseConfig:
         """Build the managed pyright phase for one project context.
 
         Returns:

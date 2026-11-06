@@ -77,7 +77,10 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     )
     laws: tuple[str, ...] | None = m.Field(
         default=None,
-        description="Theme laws re-expanded against the current plan on every read",
+        description=(
+            "Theme laws re-expanded against the current plan whenever a source "
+            "the expansion read changes"
+        ),
     )
     _quarantine: dict[Path, m.Infra.ModModuleQuarantine] = m.PrivateAttr(
         default_factory=dict
@@ -85,9 +88,22 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     _excluded: dict[str, m.Infra.ModQuarantineExclusion] = m.PrivateAttr(
         default_factory=dict
     )
+    _plan: p.Infra.CodemodRulePlan | None = m.PrivateAttr(default=None)
+    _plan_selection: t.StrTuple | None = m.PrivateAttr(default=None)
+    _plan_states: tuple[p.Cli.AtomicFileState, ...] = m.PrivateAttr(default=())
 
     @property
-    def selected_rule_ids(self) -> tuple[str, ...] | None:
+    def focused(self) -> bool:
+        """Whether the transaction selects rules instead of the complete catalog.
+
+        Returns:
+            Whether a law, plural or single rule selection is declared.
+
+        """
+        return (self.laws, self.rule_ids, self.rule_id) != (None, None, None)
+
+    @property
+    def selected_rule_ids(self) -> t.StrTuple | None:
         """Exact AST selection of a focused transaction.
 
         Returns:
@@ -95,16 +111,58 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             selection, the single selector, or ``None`` for the complete catalog.
 
         """
-        if self.laws is not None:
-            # Generated rule ids derive from the current import layout, so a
-            # law selection is expanded again after every publication.
-            with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
-                return u.Infra.codemod_law_rule_ids(
-                    snapshot, frozenset(self.laws)
-                ).unwrap()
-        if self.rule_ids is not None:
-            return self.rule_ids
-        return (self.rule_id,) if self.rule_id is not None else None
+        if self.laws is None:
+            if self.rule_ids is not None:
+                return self.rule_ids
+            return (self.rule_id,) if self.rule_id is not None else None
+        _ = self.selected_plan
+        return self._plan_selection
+
+    @property
+    def selected_plan(self) -> p.Infra.CodemodRulePlan:
+        """Rule plan of the selection, reused while its sources are unchanged.
+
+        Generated rule ids and scopes derive from the current import layout,
+        so a publication or another actor's write plans the selection again.
+
+        Returns:
+            The plan every scan of this transaction runs.
+
+        """
+        plan = self._plan
+        if plan is not None and not self._drifted(self._plan_states):
+            return plan
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            return self._plan_snapshot(snapshot, self._selection(snapshot)).unwrap()
+
+    def _selection(self, snapshot: p.Infra.WorkspaceSnapshot) -> t.StrTuple | None:
+        """Expand the laws over ``snapshot``, or return the declared selection.
+
+        Returns:
+            The exact rule ids, or ``None`` for the complete catalog.
+
+        """
+        if self.laws is None:
+            return self.selected_rule_ids
+        return u.Infra.codemod_law_rule_ids(snapshot, frozenset(self.laws)).unwrap()
+
+    def _plan_snapshot(
+        self, snapshot: p.Infra.WorkspaceSnapshot, selection: t.StrTuple | None
+    ) -> p.Result[p.Infra.CodemodRulePlan]:
+        """Plan ``selection`` over ``snapshot`` and record the states it read.
+
+        Returns:
+            The selection's rule plan, or the planning failure.
+
+        """
+        planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection)
+        if planned.success:
+            self._plan = planned.value
+            self._plan_selection = selection
+            self._plan_states = tuple(
+                source.state for source in snapshot.sources.values()
+            )
+        return planned
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
@@ -120,7 +178,20 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].fail(
                 "consumer roots must be existing absolute checkout roots"
             )
-        preflight = self._preflight()
+        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
+            selection = self._selection(snapshot)
+            if self.laws is not None:
+                laws = ", ".join(sorted(self.laws))
+                if not selection:
+                    self.progress.emit(
+                        f"mod: no planned rule in {self.repository_root} claims {laws}"
+                    )
+                    return r[t.Cli.ResultValue].ok(value=True)
+                self.progress.emit(
+                    f"mod: laws expand to {len(selection)} rule(s) in "
+                    f"{self.repository_root}"
+                )
+            preflight = self._preflight(snapshot, selection)
         if preflight.failure:
             return r[t.Cli.ResultValue].from_failure(preflight)
         rules, pending = preflight.value
@@ -130,6 +201,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     def _preflight(
         self,
+        snapshot: p.Infra.WorkspaceSnapshot,
+        selection: t.StrTuple | None,
     ) -> p.Result[tuple[tuple[Path, ...], m.Infra.ModScanReport]]:
         """Plan and scan the current snapshot once; concurrent writers never block it.
 
@@ -138,31 +211,30 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         left to the apply loop, which authenticates every input before each
         effect and voids an iteration on drift (optimistic publication). The
         preflight never discards and re-captures the whole snapshot, which a
-        busy shared checkout would starve.
+        busy shared checkout would starve. The law expansion and the plan
+        share ``snapshot``, so the theme's sources are read once, and every
+        later scan reuses the plan until one of them changes.
 
         Returns:
             The discovered rule files and the scan of the captured snapshot.
 
         """
         outcome = r[tuple[tuple[Path, ...], m.Infra.ModScanReport]]
-        with u.Infra.codemod_workspace_snapshot(self.repository_root) as snapshot:
-            planned = u.Infra.codemod_rule_plan(
-                snapshot, rule_ids=self.selected_rule_ids
-            )
-            if planned.failure:
-                return outcome.from_failure(planned)
-            rules = u.Infra.codemod_fixture_resources(planned.value)
-            self.progress.emit("mod: validate ast-grep rule fixtures")
-            FlextInfraModGateEngine.validate_rule_fixtures(
-                self.repository_root,
-                rules,
-            ).unwrap()
-            states = tuple(source.state for source in snapshot.sources.values())
-            pending = FlextInfraModGateEngine.scan(
-                self.repository_root,
-                fix=False,
-                selection=planned.value,
-            ).unwrap()
+        planned = self._plan_snapshot(snapshot, selection)
+        if planned.failure:
+            return outcome.from_failure(planned)
+        rules = u.Infra.codemod_fixture_resources(planned.value)
+        self.progress.emit("mod: validate ast-grep rule fixtures")
+        FlextInfraModGateEngine.validate_rule_fixtures(
+            self.repository_root,
+            rules,
+        ).unwrap()
+        states = tuple(source.state for source in snapshot.sources.values())
+        pending = FlextInfraModGateEngine.scan(
+            self.repository_root,
+            fix=False,
+            selection=planned.value,
+        ).unwrap()
         self._emit_drift("preflight", self._drifted(states))
         return outcome.ok((rules, pending))
 
@@ -188,7 +260,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             )
             if preview.failure:
                 return r[t.Cli.ResultValue].from_failure(preview)
-        elif self.selected_rule_ids is None:
+        elif not self.focused:
             seed_renames = self._preview_module_names()
             if seed_renames.failure:
                 return r[t.Cli.ResultValue].from_failure(seed_renames)
@@ -197,7 +269,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         pending_count += text_pending.findings
         renames_pending = r[int].ok(value=0)
         error_data: t.JsonDict | None = None
-        if self.selected_rule_ids is None:
+        if not self.focused:
             error_data = {"text": text_pending.model_dump(mode="json")}
             renames_pending = self._pending_renames()
             if renames_pending.failure:
@@ -235,7 +307,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             current,
             text_precondition_pending=True,
         )
-        if result.failure or self.selected_rule_ids is not None:
+        if result.failure or self.focused:
             return result
         self.progress.emit("mod: verify the workspace constants census")
         census_runner = FlextInfraRefactorCensus(
@@ -416,13 +488,15 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _merge_wave(
         plans: dict[Path, m.Infra.SemanticFilePlan],
         inputs: MutableMapping[Path, m.Cli.AtomicFileState],
-        wave: Sequence[p.Infra.SemanticFilePlan],
+        wave: Sequence[m.Infra.SemanticFilePlan],
     ) -> None:
         """Fold one wave into the plans, keeping each file's first witness."""
         for plan in wave:
             original = plans.get(plan.path)
             if original is None:
-                inputs.setdefault(plan.path, plan.before)
+                inputs.setdefault(
+                    plan.path, m.Cli.AtomicFileState.model_validate(plan.before)
+                )
                 plans[plan.path] = plan.model_copy(update={"before": inputs[plan.path]})
                 continue
             plans[plan.path] = plan.model_copy(
@@ -609,7 +683,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 root,
                 view_root,
                 candidate,
-                selection=self.selected_rule_ids,
+                selection=self.selected_plan,
             )
 
         return self.source_preview.preview_sources(
@@ -898,7 +972,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The publication candidate or its first planning failure.
 
         """
-        if self.selected_rule_ids is not None:
+        if self.focused:
             return r[p.Infra.SemanticSourcePlan].ok(seed)
         callbacks = self._plan_phase_callbacks(root, seed, graph)
         if callbacks.failure:
@@ -1006,7 +1080,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         built = FlextInfraCodemodSemanticApply.build_source_plan(
             root, self.consumer_roots
         )
-        if built.failure or self.selected_rule_ids is not None:
+        if built.failure or self.focused:
             return built
         named = FlextInfraCodemodSemanticApply.plan_module_names(root, built.value)
         if named.success and not self._coherent(
@@ -1083,7 +1157,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate=syntax.value,
             consumer_roots=captured_seed.consumer_roots,
         )
-        if self.selected_rule_ids is not None:
+        if self.focused:
             return r[p.Infra.SemanticSourcePlan].ok(seed)
         text_preparation = self._plan_text_phase(
             root,
@@ -1223,7 +1297,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self.progress.emit(f"mod: published {len(published_paths)} source file(s)")
         rope_workspace.refresh()
         after_ast = FlextInfraModGateEngine.scan(
-            root, fix=False, selection=self.selected_rule_ids
+            root, fix=False, selection=self.selected_plan
         ).unwrap()
         phase_states.append(
             FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
@@ -1237,7 +1311,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if renames.value:
             rope_workspace.refresh()
             after_ast = FlextInfraModGateEngine.scan(
-                root, fix=False, selection=self.selected_rule_ids
+                root, fix=False, selection=self.selected_plan
             ).unwrap()
         return outcome.ok(
             m.Infra.ModPhaseAdvance(report=after_ast, phase_states=tuple(phase_states))
@@ -1277,23 +1351,27 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """Observe the whole-catalog text and import-cycle verdicts.
 
         A selected theme (ADR-028 Decision 18 item 2) checks and fixes only
-        its own rules, so neither verdict belongs to it.
+        its own rules, so the whole-catalog text verdict does not belong to
+        it. The import law always runs, inside a selected run too: a theme
+        that binds a family's own letter at runtime closes an import cycle
+        (ENFORCE-006/ENFORCE-051), and that cycle blocks its fixed point.
 
         Returns:
-            The text report and the runtime import cycles; both empty for a
-            selected theme.
+            The text report (empty for a selected theme) and the runtime
+            import cycles.
 
         """
-        if self.selected_rule_ids is not None:
+        cycles = u.Infra.codemod_import_cycle_issues(self.repository_root)
+        if self.focused:
             empty = m.Infra.ModTextReport(
                 findings=0, actionable=0, files=frozenset(), entries=()
             )
-            return empty, ()
+            return empty, cycles
         return (
             FlextInfraModTextGateEngine.scan(
                 self.repository_root, fix=False, validate_receipts=validate_receipts
             ).unwrap(),
-            u.Infra.codemod_import_cycle_issues(self.repository_root),
+            cycles,
         )
 
     def _verdict_message(
@@ -1394,7 +1472,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     current = FlextInfraModGateEngine.scan(
                         root,
                         fix=False,
-                        selection=self.selected_rule_ids,
+                        selection=self.selected_plan,
                     ).unwrap()
                 continue
             current, phase_states = advance.report, advance.phase_states
@@ -1461,7 +1539,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             has a resolved owner.
 
         """
-        if self.selected_rule_ids is not None:
+        if self.focused:
             return None
         findings = FlextInfraCodemodSemanticApply.relocation_findings(
             root,

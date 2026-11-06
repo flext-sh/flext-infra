@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
-from tests import c, e, m, tm, u
+from tests import c, e, m, t, tm, u
 from tests.unit.codegen.test_ci_integration_branch_triggers import (
     TestsFlextInfraCiIntegrationBranchTriggers,
 )
@@ -151,19 +149,19 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             tm.fail(gate in make.pre_commit_check_gates)
 
     @staticmethod
-    @pytest.mark.parametrize("stage", tuple(c.Infra.GateStage))
+    @c.Tests.MARK.parametrize("stage", tuple(c.Infra.GateStage))
     def test_project_declared_gates_follow_their_declared_stage(
         stage: c.Infra.GateStage,
     ) -> None:
         """A repository-owned gate lands in every partition its stage admits."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        payload["project_check_gates"] = (
+        payload["project_check_gates"] = [
             {
                 "name": "fixture-project-gate",
                 "module": "fixture_project.gate",
-                "stage": stage,
+                "stage": stage.value,
             },
-        )
+        ]
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
@@ -182,9 +180,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_project_declared_gate_defaults_to_the_push_stage() -> None:
         """An undeclared stage keeps a repository validator out of CI and commits."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        payload["project_check_gates"] = (
+        payload["project_check_gates"] = [
             {"name": "fixture-project-gate", "module": "fixture_project.gate"},
-        )
+        ]
 
         active = m.Infra.MakeSpec.model_validate(payload)
 
@@ -198,8 +196,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_context_tokens_must_be_distinct() -> None:
         """Two contexts sharing one token would silently merge their partitions."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        payload["ci"] = {**payload["ci"], "pre_commit_value": payload["ci"]["value"]}
-        with pytest.raises(e.PydanticValidationError, match="tokens must be distinct"):
+        ci = u.json_dict_adapter().validate_python(payload["ci"])
+        payload["ci"] = {**ci, "pre_commit_value": ci["value"]}
+        with u.Tests.raises(e.PydanticValidationError, match="tokens must be distinct"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
@@ -239,9 +238,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_pre_commit_workflow_refuses_every_other_operation() -> None:
         """Any other declared workflow verb in the commit hook is refused."""
         base = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        others = [
-            row["verb"] for row in base["workflow"] if row["verb"] != c.Infra.VERB_CHECK
-        ]
+        rows = u.Tests.json_rows(base, "workflow")
+        others = [row["verb"] for row in rows if row["verb"] != c.Infra.VERB_CHECK]
         tm.that(others, empty=False)
         for verb in others:
             payload = {
@@ -250,21 +248,21 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                     {
                         **row,
                         "contexts": (
-                            (*row["contexts"], "pre_commit")
+                            [*u.Tests.json_strings(row["contexts"]), "pre_commit"]
                             if row["verb"] == verb
                             else row["contexts"]
                         ),
                     }
-                    for row in base["workflow"]
+                    for row in rows
                 ],
             }
-            with pytest.raises(
+            with u.Tests.raises(
                 e.PydanticValidationError, match="pre-commit hook requires"
             ):
                 m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("verb", ["setup", "tests"])
+    @c.Tests.MARK.parametrize("verb", ["setup", "tests"])
     def test_ci_workflow_requires_its_provisioning_and_test_boundaries(
         verb: str,
     ) -> None:
@@ -273,35 +271,39 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         payload["workflow"] = [
             {
                 **row,
-                "contexts": tuple(
-                    context for context in row["contexts"] if context != "ci"
-                )
-                if row["verb"] == verb
-                else row["contexts"],
+                "contexts": (
+                    [
+                        context
+                        for context in u.Tests.json_strings(row["contexts"])
+                        if context != "ci"
+                    ]
+                    if row["verb"] == verb
+                    else row["contexts"]
+                ),
             }
-            for row in payload["workflow"]
+            for row in u.Tests.json_rows(payload, "workflow")
         ]
-        with pytest.raises(e.PydanticValidationError, match="CI requires setup"):
+        with u.Tests.raises(e.PydanticValidationError, match="CI requires setup"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(("first", "second"), [("setup", "check")])
+    @c.Tests.MARK.parametrize(("first", "second"), [("setup", "check")])
     def test_ci_workflow_rejects_reordered_milestones(first: str, second: str) -> None:
         """Provisioning precedes the approval milestones."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
-        rows = list(payload["workflow"])
+        rows = u.Tests.json_rows(payload, "workflow")
         positions = [
             next(i for i, row in enumerate(rows) if row["verb"] == verb)
             for verb in (first, second)
         ]
         rows[positions[0]], rows[positions[1]] = rows[positions[1]], rows[positions[0]]
-        payload["workflow"] = rows
-        with pytest.raises(e.PydanticValidationError, match="CI requires setup"):
+        payload["workflow"] = [*rows]
+        with u.Tests.raises(e.PydanticValidationError, match="CI requires setup"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
-    @pytest.mark.parametrize("before", ["check", "tests"])
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("before", ["check", "tests"])
     def test_ci_workflow_renders_additional_admissible_phases(
         profile: c.Infra.MakeProfile,
         before: str,
@@ -313,8 +315,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             name="fixture-ci-phase",
             description="Additional configured CI phase",
         )
-        payload["verbs"] = (*payload["verbs"], phase.model_dump())
-        rows = list(payload["workflow"])
+        payload["verbs"] = [*u.Tests.json_rows(payload, "verbs"), phase.model_dump()]
+        rows = u.Tests.json_rows(payload, "workflow")
         rows.insert(
             next(i for i, row in enumerate(rows) if row["verb"] == before),
             m.Infra.MakeWorkflowStepSpec(
@@ -323,7 +325,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 contexts=("local", "ci"),
             ).model_dump(exclude_computed_fields=True),
         )
-        payload["workflow"] = rows
+        payload["workflow"] = [*rows]
         active = m.Infra.MakeSpec.model_validate(payload)
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="workflow-consumer",
@@ -356,13 +358,14 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_ci_workflow_requires_all_profile_verbs() -> None:
         """A declared workflow operation must be callable by every consumer."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        every_profile = [*(profile.value for profile in tuple(c.Infra.MakeProfile))]
         payload["verbs"] = [
-            {**row, "profiles": tuple(c.Infra.MakeProfile)[:-1]}
+            {**row, "profiles": [*every_profile][:-1]}
             if row["name"] == c.Infra.VERB_CHECK
             else row
-            for row in payload["verbs"]
+            for row in u.Tests.json_rows(payload, "verbs")
         ]
-        with pytest.raises(
+        with u.Tests.raises(
             e.PydanticValidationError, match="available in every profile"
         ):
             m.Infra.MakeSpec.model_validate(payload)
@@ -372,16 +375,18 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         """Initial tests require the primary phase, not complete check acceptance."""
         payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
         payload["workflow"] = [
-            {**row, "requires": ()} if row["verb"] == c.Infra.VERB_TEST else row
-            for row in payload["workflow"]
+            {**row, "requires": list[t.JsonValue]()}
+            if row["verb"] == c.Infra.VERB_TEST
+            else row
+            for row in u.Tests.json_rows(payload, "workflow")
         ]
-        with pytest.raises(
+        with u.Tests.raises(
             e.PydanticValidationError, match="tests require fresh global primary"
         ):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("profile", tuple(c.Infra.MakeProfile))
+    @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_ci_step_runs_only_after_its_required_steps(
         profile: c.Infra.MakeProfile,
     ) -> None:
@@ -415,8 +420,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                     )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("context", ["ci", "local", "all"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("context", ["ci", "local", "all"])
     def test_make_check_keeps_a_missing_runtime_fatal(
         tmp_path: Path,
         context: str,

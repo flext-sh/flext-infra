@@ -8,12 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra import p, t
 from flext_infra.validate import FlextInfraPytestDiagExtractor
-from tests import c, e, m, tm
+from tests import c, e, m, p, t, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +23,7 @@ class TestsFlextInfraPytestDiag:
     @staticmethod
     def test_extractor_requires_the_canonical_log_path_field(tmp_path: Path) -> None:
         """Reject an input that supplies no canonical required log path."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             FlextInfraPytestDiagExtractor.model_validate({
                 "junit": tmp_path / "junit.xml",
                 "log": tmp_path / "pytest.log",
@@ -99,7 +97,7 @@ class TestsFlextInfraPytestDiag:
         log.write_text("FAILED test_case.py::test_foo")
         missing_xml = tmp_path / "missing.xml"
 
-        with pytest.raises(FileNotFoundError):
+        with u.Tests.raises(FileNotFoundError):
             self._extractor(missing_xml, log).extract(
                 missing_xml,
                 log,
@@ -114,7 +112,7 @@ class TestsFlextInfraPytestDiag:
         bad_xml = tmp_path / "bad.xml"
         bad_xml.write_text("invalid xml content")
 
-        with pytest.raises(DefusedET.ParseError):
+        with u.Tests.raises(DefusedET.ParseError):
             self._extractor(bad_xml, log).extract(
                 bad_xml,
                 log,
@@ -198,7 +196,7 @@ class TestsFlextInfraPytestDiag:
         )
         tm.that(slow_report.slow_entries, length_gt=0)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("phase", "capability", "node", "accepted"),
         [
             ("setup", "connectivity", "tests/test_case.py::test_skip", True),
@@ -253,7 +251,7 @@ class TestsFlextInfraPytestDiag:
             '<testsuite name="t" tests="0"/></testsuites>',
         )
 
-        with pytest.raises(FileNotFoundError):
+        with u.Tests.raises(FileNotFoundError):
             self._extractor(junit, tmp_path / "missing.txt").extract(
                 junit,
                 tmp_path / "missing.txt",
@@ -270,7 +268,7 @@ class TestsFlextInfraPytestDiag:
         log_is_dir = tmp_path / "log_is_dir"
         log_is_dir.mkdir()
 
-        with pytest.raises(IsADirectoryError):
+        with u.Tests.raises(IsADirectoryError):
             self._extractor(junit, log_is_dir).extract(
                 junit,
                 log_is_dir,
@@ -357,7 +355,7 @@ class TestsFlextInfraPytestDiag:
         log = tmp_path / "log.txt"
         log.write_text("")
 
-        with pytest.raises(ValueError, match="not-a-number"):
+        with u.Tests.raises(ValueError, match="not-a-number"):
             self._extractor(junit, log).extract(
                 junit,
                 log,
@@ -433,7 +431,7 @@ class TestsFlextInfraPytestDiag:
         tm.that(report.warning_lines[0], contains="enforcement evidence")
         tm.that(report.warning_lines[0], contains=e.SmellViolationError.__module__)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "events",
         [
             "",
@@ -461,7 +459,7 @@ class TestsFlextInfraPytestDiag:
             log,
             options=m.Tests.PytestDiagOptions(events=events),
         )
-        with pytest.raises(ValueError, match=r"contains no events|validation error"):
+        with u.Tests.raises(ValueError, match=r"contains no events|validation error"):
             extractor.extract(junit, log, report_log=extractor.report_log)
 
     def test_missing_report_log_preserves_file_error(self, tmp_path: Path) -> None:
@@ -471,7 +469,7 @@ class TestsFlextInfraPytestDiag:
         log = tmp_path / "pytest.log"
         log.write_text("consumer output")
         extractor = self._extractor(junit, log)
-        with pytest.raises(FileNotFoundError):
+        with u.Tests.raises(FileNotFoundError):
             extractor.extract(junit, log, report_log=tmp_path / "missing.jsonl")
 
     def test_warning_without_identity_is_not_counted_as_green(
@@ -491,11 +489,11 @@ class TestsFlextInfraPytestDiag:
                 '"filename":"test_case.py","lineno":10,"message":"evidence"}\n',
             ),
         )
-        with pytest.raises(ValueError, match="zip"):
+        with u.Tests.raises(ValueError, match="zip"):
             extractor.extract(junit, log, report_log=extractor.report_log)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("phases", "expected"),
         [
             (("setup", "teardown"), "incomplete pytest lifecycle"),
@@ -529,5 +527,5 @@ class TestsFlextInfraPytestDiag:
             encoding="utf-8",
         )
 
-        with pytest.raises(ValueError, match=expected):
+        with u.Tests.raises(ValueError, match=expected):
             FlextInfraPytestDiagExtractor.extract_report_log(report_log)

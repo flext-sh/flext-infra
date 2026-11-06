@@ -40,13 +40,17 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 Annotated[
                     p.Infra.TrackerAuthorization,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
+                        lambda: (
+                            FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
+                        )
                     ),
                 ]
                 | Annotated[
                     p.Infra.OperatorAuthorization,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
+                        lambda: (
+                            FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
+                        )
                     ),
                 ]
             ),
@@ -57,7 +61,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 Annotated[
                     p.Infra.DiagnosticRuleChange,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange
+                        lambda: (
+                            FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange
+                        )
                     ),
                 ],
                 ...,
@@ -176,7 +182,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 Annotated[
                     p.Infra.DiagnosticPathException,
                     t.schema_for_model(
-                        FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException
+                        lambda: (
+                            FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException
+                        )
                     ),
                 ],
                 ...,

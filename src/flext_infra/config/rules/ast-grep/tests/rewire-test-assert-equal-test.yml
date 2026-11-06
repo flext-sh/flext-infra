@@ -11,3 +11,9 @@ invalid:
 - |
   from tests import tm
   assert len(lines) == _EXPECTED_LINES
+- |
+  from tests import tm
+  assert (
+      "a long expected fragment"
+      == observed
+  )

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, t, tm, u
 
@@ -20,7 +18,7 @@ class TestsFlextInfraWorkspaceManifest:
     """Classification of a checkout as a fleet umbrella."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("target_path", "valid"),
         [
             (".", True),
@@ -72,7 +70,7 @@ class TestsFlextInfraWorkspaceManifest:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("payload", ["version: invalid\n", "{}\n"])
+    @c.Tests.MARK.parametrize("payload", ["version: invalid\n", "{}\n"])
     def test_invalid_legacy_manifest_does_not_own_discovery(
         tmp_path: Path,
         payload: str,
@@ -118,7 +116,7 @@ class TestsFlextInfraWorkspaceManifest:
         tm.fail(u.Infra.fleet_umbrella(tmp_path))
 
     @staticmethod
-    @pytest.mark.parametrize("declared", [False, True])
+    @c.Tests.MARK.parametrize("declared", [False, True])
     def test_git_members_declare_a_fleet_umbrella(
         tmp_path: Path,
         *,
@@ -149,7 +147,7 @@ class TestsFlextInfraWorkspaceManifest:
         tm.fail(u.Infra.fleet_umbrella(tmp_path))
 
     @staticmethod
-    @pytest.mark.parametrize("scan_dirs", [None, [""]])
+    @c.Tests.MARK.parametrize("scan_dirs", [None, [""]])
     def test_invalid_codegen_cannot_supply_default_refactor_settings(
         tmp_path: Path,
         scan_dirs: t.JsonValue,
@@ -174,6 +172,6 @@ class TestsFlextInfraWorkspaceManifest:
         loaded = u.Infra.load_codegen_inputs(tmp_path)
         tm.fail(loaded, has="project_scan_dirs")
         tm.ok(isinstance(loaded.exception, c.ValidationError))
-        with pytest.raises(RuntimeError, match="project_scan_dirs") as raised:
+        with u.Tests.raises(RuntimeError, match="project_scan_dirs") as raised:
             u.Infra.load_refactor_config(tmp_path)
         tm.ok(isinstance(raised.value.__cause__, c.ValidationError))

@@ -10,8 +10,6 @@ import sys
 from functools import partial
 from pathlib import Path
 
-import pytest
-
 from flext_infra import codemod, transformers
 from tests import c, m, p, r, t, tm, u
 
@@ -41,7 +39,7 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
         return tuple(plans)
 
-    @pytest.mark.parametrize("linked", [False, True])
+    @c.Tests.MARK.parametrize("linked", [False, True])
     def test_changed_middle_identity_rejects_before_other_publications(
         self,
         mod_workspace: Path,
@@ -207,7 +205,7 @@ class TestsFlextInfraSemanticPublicationPlans:
             )
             for index, plan in enumerate(plans)
         )
-        with pytest.raises(SyntaxError):
+        with u.Tests.raises(SyntaxError):
             codemod.FlextInfraCodemodSemanticApply.publish_planned_edits(
                 mod_workspace, edits
             )

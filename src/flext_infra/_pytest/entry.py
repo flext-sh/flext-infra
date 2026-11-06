@@ -11,8 +11,7 @@ import traceback
 from itertools import islice
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c, settings
+from flext_infra import FlextInfraPytestProfile, c, settings
 from flext_infra._pytest import FlextInfraPytestClock
 from flext_infra.validate import FlextInfraPytestRunner
 
@@ -102,7 +101,7 @@ class FlextInfraPytestEntry:
             msg = "pytest profile requires its pre-import profiler"
             raise RuntimeError(msg)
         try:
-            profile = flext_infra.FlextInfraPytestProfile(Path(sys.argv[2]))
+            profile = FlextInfraPytestProfile(Path(sys.argv[2]))
             status = profile.run_parent(
                 started_at_monotonic=FlextInfraPytestClock.started_at_monotonic,
                 profile=profiler,

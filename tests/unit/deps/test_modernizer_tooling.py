@@ -12,8 +12,6 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraConfig, check, config, deps
 from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
 from tests import c, m, p, t, tm, u
@@ -64,7 +62,7 @@ class TestsFlextInfraDepsModernizerTooling:
                 tm.that(type(pair), eq=tuple)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("table", "key", "value"),
         [
             ("pyright", "stubPath", "local_typing"),
@@ -111,11 +109,11 @@ class TestsFlextInfraDepsModernizerTooling:
                 ),
             },
         }
-        with pytest.raises(m.ValidationError, match="Local stub"):
+        with u.Tests.raises(m.ValidationError, match="Local stub"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "path", ["typings/vendor", "vendor-stubs", "stubs", "src/site-packages/stubs"]
     )
     def test_topology_cannot_reintroduce_local_stub_paths(
@@ -186,7 +184,7 @@ class TestsFlextInfraDepsModernizerTooling:
             tm.that(dict(validated.settings[table])[key], eq=paths)
 
     @staticmethod
-    @pytest.mark.parametrize("relative_to_project", [False, True])
+    @c.Tests.MARK.parametrize("relative_to_project", [False, True])
     def test_member_tooling_paths_use_elected_root_not_process_cwd(
         tmp_path: Path,
         *,
@@ -230,7 +228,7 @@ class TestsFlextInfraDepsModernizerTooling:
             tm.fail(loaded, has="Local stub search roots")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "pair",
         [[], ["option"], ["option", True, False], [1, True], ["", True], "ab"],
     )
@@ -243,7 +241,7 @@ class TestsFlextInfraDepsModernizerTooling:
             tool_config_document,
         )
         payload["settings"] = {"invalid_table": [pair]}
-        with pytest.raises(m.ValidationError, match=r"settings\.invalid_table"):
+        with u.Tests.raises(m.ValidationError, match=r"settings\.invalid_table"):
             _ = m.Infra.ToolConfigDocument.model_validate(payload)
 
     @staticmethod
@@ -332,12 +330,12 @@ class TestsFlextInfraDepsModernizerTooling:
         missing = "undeclared_tool"
         while missing in roots:
             missing = f"_{missing}"
-        with pytest.raises(KeyError) as rejected:
+        with u.Tests.raises(KeyError) as rejected:
             u.Infra.native_tool_configuration(tool_config_document, missing)
         tm.that(rejected.value.args, eq=(missing,))
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_new_native_root_and_subtable_survive_template_and_conformance(
         tmp_path: Path,
     ) -> None:

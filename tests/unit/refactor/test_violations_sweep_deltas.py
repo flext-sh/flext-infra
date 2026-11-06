@@ -13,12 +13,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli, config
 from flext_infra.codemod import FlextInfraModGateEngine, FlextInfraModTextGateEngine
 from flext_infra.refactor import FlextInfraRefactorViolationsSweep
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 from tests.unit.refactor.violations_sweep_support import (
     LOCAL_GROWTH_RULE,
     LOCAL_RULE_CATALOG,
@@ -26,7 +24,7 @@ from tests.unit.refactor.violations_sweep_support import (
 )
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraRefactorViolationsSweepDeltas(
     TestsFlextInfraRefactorViolationsSweepSupport,
 ):
@@ -228,7 +226,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             eq=True,
         )
         for field in ("before_source_sha256", "after_source_sha256"):
-            with pytest.raises(ValueError, match=field):
+            with u.Tests.raises(ValueError, match=field):
                 m.Infra.ViolationsSweepReport.model_validate(
                     report.model_dump(exclude={field}),
                 )
@@ -300,7 +298,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             eq=True,
         )
 
-    @pytest.mark.parametrize("original_count", [1, 2])
+    @c.Tests.MARK.parametrize("original_count", [1, 2])
     def test_equal_or_lower_total_cannot_hide_introduced_occurrences(
         self,
         mod_workspace: Path,
@@ -409,11 +407,11 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         )
         tm.ok(bool(rule.provider))
 
-    @pytest.mark.parametrize("secondary", ["scan", "publication"])
+    @c.Tests.MARK.parametrize("secondary", ["scan", "publication"])
     def test_first_repair_failure_survives_secondary_failure(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         secondary: str,
     ) -> None:
         """Real filesystem failures must not replace the first Make diagnostic."""
@@ -450,7 +448,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
             tm.ok(bool(report.after_scan_error))
             tm.that(report.after_evidence, eq=None)
             tm.that(report.after_source_sha256, eq=None)
-            with pytest.raises(
+            with u.Tests.raises(
                 ValueError, match="requires an authenticated after scan"
             ):
                 _ = report.increased_totals
@@ -511,7 +509,7 @@ class TestsFlextInfraRefactorViolationsSweepDeltas(
         tm.fail((root / "ran.txt").exists())
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraRefactorViolationsSweepAudits(
     TestsFlextInfraRefactorViolationsSweepSupport,
 ):
@@ -552,7 +550,7 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
     def test_existing_ast_cli_applies_only_the_exact_selected_rule(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """Reuse the native selected engine, never a sweep-specific rewrite engine."""
         root = mod_workspace
@@ -626,7 +624,7 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         audit_after = tm.not_none(audit.audit_after)
         tm.that(audit_before.sha256, eq=audit_after.sha256)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("option", "value"),
         [
             ("--rules", "unknown-sweep-rule"),
@@ -647,8 +645,8 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         tm.that(self._sweep(root, option, value), ne=0)
         tm.fail((root / "ran.txt").exists())
 
-    @pytest.mark.parametrize("fail", [False, True])
-    @pytest.mark.parametrize("mutation", ["introduce", "resolve"])
+    @c.Tests.MARK.parametrize("fail", [False, True])
+    @c.Tests.MARK.parametrize("mutation", ["introduce", "resolve"])
     def test_audit_focus_keeps_cross_rule_and_mutation_failures(
         self,
         mod_workspace: Path,
@@ -699,7 +697,7 @@ class TestsFlextInfraRefactorViolationsSweepAudits(
         row = next(row for row in report.rule_deltas if row.rule_id == "sweep-growth")
         tm.that(row.introduced if mutation == "introduce" else row.resolved, eq=1)
 
-    @pytest.mark.parametrize("mutation", ["change", "add", "remove"])
+    @c.Tests.MARK.parametrize("mutation", ["change", "add", "remove"])
     def test_audit_authenticates_utility_bytes_and_inventory_without_source_changes(
         self,
         mod_workspace: Path,

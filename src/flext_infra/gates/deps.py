@@ -171,53 +171,65 @@ class FlextInfraGatesDeps(FlextInfraGates):
             msg = "repair requires apply_fixes=True and check_only=False"
             raise ValueError(msg)
         started = time.monotonic()
-        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            declaration = u.Cli.atomic_read_binary_file_state(
-                project_dir / c.PYPROJECT_FILENAME, required=True
+        # Planning and the deptry scan are read-only: they run outside the
+        # mutation lock, so a concurrent session never waits on them. Each
+        # write is one verified publication batch.
+        declaration = u.Cli.atomic_read_binary_file_state(
+            project_dir / c.PYPROJECT_FILENAME, required=True
+        ).unwrap()
+        document = u.Cli.toml_parse_text(
+            (declaration.content or b"").decode(c.DEFAULT_ENCODING)
+        )
+        if document is None:
+            msg = f"invalid dependency declaration: {declaration.path}"
+            raise ValueError(msg)
+        if self._aligned_references(project_dir, document):
+            u.Cli.publish_file_changes(
+                (
+                    m.Cli.FileChange(
+                        path=declaration.path,
+                        before=declaration,
+                        desired_content=document.as_string().encode(c.DEFAULT_ENCODING),
+                        desired_mode=(
+                            declaration.mode
+                            if declaration.mode is not None
+                            else c.Infra.CONFIG_SPEC[1]
+                        ),
+                    ),
+                ),
+                lock_path=u.Infra.mutation_lock_path(project_dir).unwrap(),
             ).unwrap()
-            document = u.Cli.toml_parse_text(
-                (declaration.content or b"").decode(c.DEFAULT_ENCODING)
+        execution, scan = self._scan(project_dir, ctx)
+        if execution.outcome is not c.Infra.ToolOutcome.FINDINGS or scan is None:
+            return execution
+        inputs = ctx.runtime_dependency_inputs
+        if inputs is None and ctx.runtime_dependency_collector is not None:
+            inputs = ctx.runtime_dependency_collector(project_dir, scan).unwrap()
+        if inputs is None or inputs.python != Path(sys.executable).absolute():
+            issue = m.Infra.Issue(
+                file=str(project_dir / c.PYPROJECT_FILENAME),
+                line=0,
+                column=0,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=(
+                    "dependency repair requires provenance"
+                    " from the selected interpreter"
+                ),
+                severity=c.Infra.GateSeverity.ERROR.value,
             )
-            if document is None:
-                msg = f"invalid dependency declaration: {declaration.path}"
-                raise ValueError(msg)
-            if self._aligned_references(project_dir, document):
-                u.Cli.atomic_write_binary_file_guarded(
-                    declaration,
-                    document.as_string().encode(c.DEFAULT_ENCODING),
-                    permission_mode=declaration.mode,
-                ).unwrap()
-            execution, scan = self._scan(project_dir, ctx)
-            if execution.outcome is not c.Infra.ToolOutcome.FINDINGS or scan is None:
-                return execution
-            inputs = ctx.runtime_dependency_inputs
-            if inputs is None and ctx.runtime_dependency_collector is not None:
-                inputs = ctx.runtime_dependency_collector(project_dir, scan).unwrap()
-            if inputs is None or inputs.python != Path(sys.executable).absolute():
-                issue = m.Infra.Issue(
-                    file=str(project_dir / c.PYPROJECT_FILENAME),
-                    line=0,
-                    column=0,
-                    code=c.Infra.ToolOutcome.ERROR.value,
-                    message=(
-                        "dependency repair requires provenance"
-                        " from the selected interpreter"
-                    ),
-                    severity=c.Infra.GateSeverity.ERROR.value,
-                )
-                return self._build_gate_execution(
-                    m.Infra.GateExecutionParams(
-                        project_dir=project_dir,
-                        verdict=False,
-                        outcome=c.Infra.ToolOutcome.ERROR,
-                        issues=(*execution.issues, issue),
-                        raw_output=execution.raw_output + "\n" + issue.message,
-                        started=started,
-                    ),
-                    ctx=ctx,
-                )
-            plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
-            changed = u.Infra.publish_runtime_dependency_plan(plan).unwrap()
+            return self._build_gate_execution(
+                m.Infra.GateExecutionParams(
+                    project_dir=project_dir,
+                    verdict=False,
+                    outcome=c.Infra.ToolOutcome.ERROR,
+                    issues=(*execution.issues, issue),
+                    raw_output=execution.raw_output + "\n" + issue.message,
+                    started=started,
+                ),
+                ctx=ctx,
+            )
+        plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+        changed = u.Infra.publish_runtime_dependency_plan(plan).unwrap()
         return self._build_gate_execution(
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
@@ -326,7 +338,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
         raw_output = ""
         issues: tuple[p.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
-        scan: p.Infra.DeptryScan | None = None
+        scan: m.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)

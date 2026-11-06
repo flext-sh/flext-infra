@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
 
 import tests
-from tests import c, conftest
+from tests import c, conftest, t
 
 
 class TestsPytestProjectContext:
@@ -20,7 +19,7 @@ class TestsPytestProjectContext:
 
     @staticmethod
     def test_selected_project_owns_test_package_and_fixtures(
-        pytestconfig: pytest.Config,
+        pytestconfig: t.Tests.Config,
         infra_git_repo: Path,
     ) -> None:
         """Resolve the selected root without replacing cached module identities."""

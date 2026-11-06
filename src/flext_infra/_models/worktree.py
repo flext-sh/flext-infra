@@ -119,7 +119,9 @@ class FlextInfraModelsWorktree:
         policy: Annotated[
             Annotated[
                 p.Infra.WorktreeFactsPolicy,
-                t.schema_for_model(FlextInfraModelsWorktree.WorktreeFactsPolicy),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorktree.WorktreeFactsPolicy
+                ),
             ],
             m.Field(description="Layout and dependency vocabulary to apply"),
         ]
@@ -220,7 +222,7 @@ class FlextInfraModelsWorktree:
             tuple[
                 Annotated[
                     p.Infra.PruneAction,
-                    t.schema_for_model(FlextInfraModelsWorktree.PruneAction),
+                    t.schema_for_model(lambda: FlextInfraModelsWorktree.PruneAction),
                 ],
                 ...,
             ],
@@ -238,7 +240,7 @@ class FlextInfraModelsWorktree:
             tuple[
                 Annotated[
                     p.Infra.WorktreeFact,
-                    t.schema_for_model(FlextInfraModelsWorktree.WorktreeFact),
+                    t.schema_for_model(lambda: FlextInfraModelsWorktree.WorktreeFact),
                 ],
                 ...,
             ],
@@ -247,7 +249,7 @@ class FlextInfraModelsWorktree:
         plan: Annotated[
             Annotated[
                 p.Infra.PrunePlan,
-                t.schema_for_model(FlextInfraModelsWorktree.PrunePlan),
+                t.schema_for_model(lambda: FlextInfraModelsWorktree.PrunePlan),
             ]
             | None,
             m.Field(description="Planned stale-deps pruning, when any"),

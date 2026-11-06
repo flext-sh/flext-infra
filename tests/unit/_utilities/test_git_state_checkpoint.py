@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m
-from tests import p, tm, u
+from tests import m, p, tm, u
 
 
 class TestsFlextInfraGitStateCheckpoint:

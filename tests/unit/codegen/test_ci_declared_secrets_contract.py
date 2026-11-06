@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import t
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraCiDeclaredSecretsContract:

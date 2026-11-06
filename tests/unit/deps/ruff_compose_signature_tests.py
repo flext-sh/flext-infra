@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
 from typing_extensions import TypeForm
 
 from flext_infra import config
@@ -26,7 +25,7 @@ class TestsFlextInfraRuffProjectPolicy:
     """One native policy replaces both fresh and formerly suppressed inputs."""
 
     @staticmethod
-    @pytest.mark.parametrize("missing_contract", ["check", "repair"])
+    @c.Tests.MARK.parametrize("missing_contract", ["check", "repair"])
     def test_delegation_rejects_a_missing_owner_election(missing_contract: str) -> None:
         """A declared owner cannot disappear from either canonical contract."""
         make = config.Infra.codegen.make
@@ -38,7 +37,7 @@ class TestsFlextInfraRuffProjectPolicy:
                 for gate in (*make.check_gates_fixable, *make.fmt_gates)
                 if gate != owner
             )
-            with pytest.raises(ValueError, match="elected native check/repair owner"):
+            with u.Tests.raises(ValueError, match="elected native check/repair owner"):
                 FlextInfraGateRegistry.default().delegated_lint_rules(
                     owners,
                     check_gates=(
@@ -80,7 +79,7 @@ class TestsFlextInfraRuffProjectPolicy:
                 or gate is None
                 or not gate.can_fix
             ):
-                with pytest.raises(
+                with u.Tests.raises(
                     ValueError, match="elected native check/repair owner"
                 ):
                     registry.delegated_lint_rules(
@@ -90,7 +89,7 @@ class TestsFlextInfraRuffProjectPolicy:
                     )
 
     @staticmethod
-    @pytest.mark.parametrize("delegate", [False, True])
+    @c.Tests.MARK.parametrize("delegate", [False, True])
     def test_modernization_uses_the_supplied_validated_owner_policy(
         tmp_path: Path,
         *,
@@ -213,7 +212,7 @@ class TestsFlextInfraRuffProjectPolicy:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "surface",
         u.Infra.native_tool_setting(config.Infra.tooling, "ruff", "src", list[str]),
     )

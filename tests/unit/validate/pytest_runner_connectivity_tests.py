@@ -9,8 +9,6 @@ from __future__ import annotations
 import socket
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 
 
@@ -18,8 +16,8 @@ class TestsFlextInfraPytestRunnerConnectivity:
     """Exercise actual setup, call, teardown, JUnit and canonical classification."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("owner_skip", [True, False], ids=["owner", "forged"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("owner_skip", [True, False], ids=["owner", "forged"])
     def test_connectivity_classification_keeps_native_skips_red(
         cached_runner_project: Path, *, owner_skip: bool
     ) -> None:

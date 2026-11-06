@@ -10,8 +10,6 @@ import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra import infra
 from tests import c, m, tm, u
 from tests.unit.codegen._utility_facade_projection.publication import (
@@ -190,7 +188,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
             )
         return proposed
 
-    @pytest.mark.parametrize("relation", ["isolated", "inherited", "foreign-only"])
+    @c.Tests.MARK.parametrize("relation", ["isolated", "inherited", "foreign-only"])
     def test_behavior_owners_follow_the_imported_package_lineage(
         self,
         tmp_path: Path,
@@ -356,10 +354,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("runtime_source", "facade_source", "closing_checks", "relocation_fragments"),
         [
-            pytest.param(
+            u.Tests.param(
                 (
                     "from {package} import t\n"
                     "class Runtime:\n"
@@ -385,7 +383,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
                 ),
                 id="relocated-staticmethod-runtime",
             ),
-            pytest.param(
+            u.Tests.param(
                 (
                     "class Runtime:\n"
                     "    @classmethod\n"
@@ -501,10 +499,10 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
         tm.that(result.stdout, has="rejected")
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("runtime_source", "facade_source"),
         [
-            pytest.param(
+            u.Tests.param(
                 (
                     "from {package}.{directory}.adapter import AdapterOwner\n"
                     "class Runtime:\n    @staticmethod\n    def parse(value):\n"
@@ -519,7 +517,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
                 ),
                 id="direct-adapter-runtime",
             ),
-            pytest.param(
+            u.Tests.param(
                 (
                     "class Runtime:\n    @classmethod\n    def parse(cls, value):\n"
                     "        return cls.value_adapter().validate_python(value)\n"
@@ -578,7 +576,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
         tm.that(output.stdout, has="nested")
 
-    @pytest.mark.parametrize("alias", ["leaf", "u\u0301"])
+    @c.Tests.MARK.parametrize("alias", ["leaf", "u\u0301"])
     def test_aliased_owner_projection_preserves_unicode_and_lexical_scopes(
         self,
         tmp_path: Path,
@@ -667,7 +665,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
         )
         tm.that(u.Cli.process_succeeded(output.outcome), eq=True, msg=output.stderr)
 
-    @pytest.mark.parametrize("conflict", ["unpublished", "shadowing"])
+    @c.Tests.MARK.parametrize("conflict", ["unpublished", "shadowing"])
     def test_behavior_cutover_rejects_unavailable_destination_without_mutation(
         self,
         tmp_path: Path,
@@ -711,7 +709,7 @@ class UtilityFacadeBehavior(UtilityFacadePublication):
                 if conflict == "shadowing"
                 else "relocated behavior is not reachable through public utilities:"
             )
-            with pytest.raises(ValueError, match=cause):
+            with u.Tests.raises(ValueError, match=cause):
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION,
                     rope_workspace=rope,

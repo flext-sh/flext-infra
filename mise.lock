@@ -203,7 +203,7 @@ url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/6598195
 provenance = "github-attestations"
 
 [[tools."github:microsoft/waza"]]
-version = "0.39.0"
+version = "0.39.1"
 backend = "github:microsoft/waza"
 specifiers = ["latest"]
 
@@ -211,24 +211,24 @@ specifiers = ["latest"]
 version_prefix = "v"
 
 [tools."github:microsoft/waza"."platforms.linux-x64"]
-checksum = "sha256:a80138c3d37d48e947ef5b414a1ba4657935b7334d2cebe47cf71d004680f250"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.0/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/660184389"
+checksum = "sha256:43fedb4405851021663d75309bd2b6f5df317239859c8c6e741da20565b55fc1"
+url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305573"
 
 [tools."github:microsoft/waza"."platforms.linux-x64-musl"]
-checksum = "sha256:a80138c3d37d48e947ef5b414a1ba4657935b7334d2cebe47cf71d004680f250"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.0/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/660184389"
+checksum = "sha256:43fedb4405851021663d75309bd2b6f5df317239859c8c6e741da20565b55fc1"
+url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305573"
 
 [tools."github:microsoft/waza"."platforms.macos-arm64"]
-checksum = "sha256:f4732e350a61e22f440ddfe7fcedc2e781661fd7c039cf3005af90bab5d52c0f"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.0/waza-darwin-arm64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/660184384"
+checksum = "sha256:1f8407ee7c6d27fc042ee72c7d6e9c7c1babe6baf0d61e7403ad6ebbdc85eaa5"
+url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-darwin-arm64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305578"
 
 [tools."github:microsoft/waza"."platforms.windows-x64"]
-checksum = "sha256:30357da1c0702b47675151b5c9a65a50b648a50b60764d154402c8a8020a0c60"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.0/waza-windows-amd64.exe"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/660184419"
+checksum = "sha256:719794d0986730c61fa0fbeedc01743d3c0973d953640db55c9d239a9be8c5bf"
+url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-windows-amd64.exe"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305622"
 
 [[tools."github:qltysh/qlty"]]
 version = "0.662.0"
@@ -316,28 +316,28 @@ checksum = "sha256:b3efd5c70cba3308ed46e7e699a9b8aac075bbc6b027fcb39c84c31acc25e
 url = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-win-x64.zip"
 
 [[tools.python]]
-version = "3.13.17"
+version = "3.13.18"
 backend = "core:python"
 specifiers = ["3.13"]
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:f829adc9d888e76c8801b4799ed444188d35239fcae3a9808a99ec5cb0d8d92c"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17+20261021-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:df15fe60d3ff55bf9dcf25824b5572756bb8816ff93865a273d3301d7066a8b7"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18+20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64-musl"]
-checksum = "sha256:089e64ce3a7969382e4782e2051c12d6de143e9f7d102c89a8c8d54e7c554b90"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17+20261021-x86_64-unknown-linux-musl-install_only_stripped.tar.gz"
+checksum = "sha256:d997b3bd2d0651cfba6dd43c18c31b35d3a142819015fd5c35338c2ea27d4ceb"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18+20261026-x86_64-unknown-linux-musl-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:8dc60610a82f1e73be7faf964383e02520f95f6e39592a5c37c3809f5a7b798e"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17+20261021-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:8392b6ea51d94391befb2c31ebe75463f045d0b69dfcf5e1bb3234e1f5fa3405"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18+20261026-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.windows-x64"]
-checksum = "sha256:56cde3b1a1dcc36576753cb408ee0c3568d211baafa0eee40423adc147c480f2"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.13.17+20261021-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+checksum = "sha256:7369f7a35f261222a6ac8b3a87c1c88eeebee8af945d85346202591a64038dd3"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18+20261026-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.taplo]]
@@ -370,30 +370,30 @@ url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-windows-x
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323062"
 
 [[tools.uv]]
-version = "0.13.5"
+version = "0.13.6"
 backend = "aqua:astral-sh/uv"
 specifiers = ["latest"]
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f"
-url = "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/664336023"
+checksum = "sha256:f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/679980644"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64-musl"]
-checksum = "sha256:57ef9d9ccb01fb1bd998df995b0dd221b52f7d7841fbea93f2d4463bf61fb7a9"
-url = "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/664336027"
+checksum = "sha256:5d61f26b6c7213779eda90edc6971ea6b0b796bfb8d49a574c8ad69b59838548"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/679980664"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73"
-url = "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/664335803"
+checksum = "sha256:60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/679980393"
 provenance = "github-attestations"
 
 [tools.uv."platforms.windows-x64"]
-checksum = "sha256:a38b8d1902b7cfbc76b423ba1bb456f623f42064cdc72628b6075b89afd1019a"
-url = "https://github.com/astral-sh/uv/releases/download/0.13.5/uv-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/664336006"
+checksum = "sha256:a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.6/uv-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/679980629"
 provenance = "github-attestations"

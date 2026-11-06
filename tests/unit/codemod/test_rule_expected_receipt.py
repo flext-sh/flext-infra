@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import tm, u
+from tests import c, t, tm, u
 
 
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraModRuleExpectedReceipt:
     """Prove the ast-grep phase honours the receipt the sed phase already owns.
 
@@ -60,7 +58,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
         """
         self._declare(mod_workspace, expected="metadata:\n  expected: 2\n")
 
-        with pytest.raises(
+        with u.Tests.raises(
             RuntimeError,
             match=r"receipt-probe declares 2 finding\(s\), scan produced 1",
         ):
@@ -75,7 +73,7 @@ class TestsFlextInfraModRuleExpectedReceipt:
     def test_a_matching_receipt_does_not_block_the_scan(
         self,
         mod_workspace: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
     ) -> None:
         """A receipt that matches the occurrence count raises no receipt failure."""
         self._declare(mod_workspace, expected="metadata:\n  expected: 1\n")

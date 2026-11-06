@@ -22,6 +22,9 @@ ignores:
   - "**/tests/*/__init__.py"
   - "**/tests/_*/**"
   - "**/tests/fixtures/**"
+  # The generated utilities facade composes the `tests._utilities` family; its
+  # imports are the projection's output, mirroring `test-facade-rewire`.
+  - "**/tests/utilities.py"
 rule:
   any:
     - kind: import_from_statement

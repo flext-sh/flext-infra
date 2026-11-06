@@ -101,18 +101,6 @@ class FlextInfraConstantsCodegen(
 
     JOURNAL_MODE: ClassVar[int] = 0o600
 
-    JOURNAL_LEASE_WAIT_SECONDS: ClassVar[float] = 1800.0
-    """Bounded polite wait for a held lease before failing loud.
-
-    A legitimate fleet ``make gen`` holds the lease for minutes; an immediate
-    non-blocking refusal turned ordinary concurrent traffic into a spurious
-    ``JournalLeaseTimeoutError``. The wait is bounded so a truly
-    wedged holder still fails loud instead of hanging forever.
-    """
-
-    JOURNAL_LEASE_POLL_SECONDS: ClassVar[float] = 1.0
-    """Polling interval while waiting for a held journal lease."""
-
     TRANSACTION_DIR_PREFIX: ClassVar[str] = "transaction-"
 
     TRANSACTION_ID_LENGTH: ClassVar[int] = 32
@@ -161,10 +149,8 @@ class FlextInfraConstantsCodegen(
         rf"[0-9]+(\.[0-9]+){{{MISE_RELEASE_COMPONENT_COUNT - 1}}}"
     )
     "Resolved-release grammar consumed by Python and generated shell boundaries."
-    CODEGEN_TRANSACTION_LOCK_FILENAME: ClassVar[str] = "flext-infra-codegen.lock"
-    "Worktree-specific administrative lock for complete generation."
-    CODEGEN_TRANSACTION_LOCK_MODE: ClassVar[int] = 0o600
-    "Owner-private mode required for the generation lock."
+    LOCK_FILE_SUFFIX: ClassVar[str] = ".lock"
+    "Suffix of every lease file, which a disposable-target sweep never removes."
 
     # --- Quality gate constants (was: class QualityGate) ---
     QG_REPORT_DIR: ClassVar[str] = ".reports/codegen/constants-quality-gate"

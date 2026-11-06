@@ -11,8 +11,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModTextGateEngine
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
@@ -102,7 +100,7 @@ class TestsFlextInfraSymbolicTextCutover:
                 tm.ok(u.Infra.same_name(provider, actual))
 
     @classmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("binding", "body", "runtime_output", "proven"),
         [
             (
@@ -181,7 +179,7 @@ class TestsFlextInfraSymbolicTextCutover:
         )
 
     @classmethod
-    @pytest.mark.parametrize("module_import", [False, True])
+    @c.Tests.MARK.parametrize("module_import", [False, True])
     def test_prior_class_import_preserves_provider_identity(
         cls,
         mod_workspace: Path,
@@ -211,7 +209,7 @@ class TestsFlextInfraSymbolicTextCutover:
         )
 
     @classmethod
-    @pytest.mark.parametrize("outer_function", [False, True])
+    @c.Tests.MARK.parametrize("outer_function", [False, True])
     def test_nested_class_refuses_future_function_local(
         cls,
         mod_workspace: Path,
@@ -249,7 +247,7 @@ class TestsFlextInfraSymbolicTextCutover:
         )
 
     @classmethod
-    @pytest.mark.parametrize("annotation_only", [False, True])
+    @c.Tests.MARK.parametrize("annotation_only", [False, True])
     def test_uninitialized_class_name_selects_module_global(
         cls,
         mod_workspace: Path,
@@ -319,8 +317,8 @@ class TestsFlextInfraSymbolicTextCutover:
         )
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("binding", ["same", "absent", "independent"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("binding", ["same", "absent", "independent"])
     def test_packaged_cutover_preserves_json_and_same_spelling_owners(
         mod_workspace: Path,
         binding: str,

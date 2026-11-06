@@ -10,8 +10,6 @@ import ast
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import pytest
-
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -22,7 +20,7 @@ class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declarations", "base", "body", "expected"),
         [
             ("", "Exception", "pass", ()),
@@ -114,7 +112,9 @@ class TestsFlextInfraRopeAnalysis:
         )
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ValueError, match="cyclic facade namespace inheritance"):
+            with u.Tests.raises(
+                ValueError, match="cyclic facade namespace inheritance"
+            ):
                 u.Infra.inherited_facade_namespaces(
                     rope_project,
                     resource,
@@ -141,7 +141,7 @@ class TestsFlextInfraRopeAnalysis:
         tm.that(source.read_text(encoding="utf-8"), eq=content)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "expected"),
         [
             ("value = object", "object"),
@@ -173,7 +173,7 @@ class TestsFlextInfraRopeAnalysis:
             tm.that(u.Infra.superclass_name(value), eq=expected)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("declaration", "message"),
         [
             ("def value():\n    pass\n", "not a class or inferred instance"),
@@ -195,11 +195,11 @@ class TestsFlextInfraRopeAnalysis:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
             module = u.Infra.resolve_pymodule(rope_project, resource)
             value = module.get_attribute("value").get_object()
-            with pytest.raises((TypeError, ValueError), match=message):
+            with u.Tests.raises((TypeError, ValueError), match=message):
                 u.Infra.superclass_name(value)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "declaration",
         [
             "def invalid():\n    pass\nclass Consumer(invalid):\n    pass\n",
@@ -217,11 +217,11 @@ class TestsFlextInfraRopeAnalysis:
         source.write_text(declaration, encoding="utf-8")
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ValueError, match="Unresolved Rope superclass lineage"):
+            with u.Tests.raises(ValueError, match="Unresolved Rope superclass lineage"):
                 u.Infra.resolve_class_info(rope_project, resource)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("statement", "suffix"),
         [
             ("from . import Owner as Local", ".inner.leaf.Owner"),
@@ -286,7 +286,7 @@ class TestsFlextInfraRopeAnalysis:
         source.write_text("from .. import Owner\n", encoding="utf-8")
         with u.Infra.open_project(project) as rope_project:
             resource = tm.not_none(u.Infra.fetch_python_resource(rope_project, source))
-            with pytest.raises(ImportError, match="beyond top-level package"):
+            with u.Tests.raises(ImportError, match="beyond top-level package"):
                 u.Infra.resolve_declared_module_imports(rope_project, resource)
 
     @staticmethod
@@ -301,5 +301,5 @@ class TestsFlextInfraRopeAnalysis:
         child = u.Infra.ensure_ast_node(source_tree.body[0])
         tm.ok(u.Infra.module_level_node(child, parents))
         # The rejection names the offending runtime type; its prose is not a contract.
-        with pytest.raises(TypeError, match=r"\bobject\b"):
+        with u.Tests.raises(TypeError, match=r"\bobject\b"):
             u.Infra.ensure_ast_node(object())

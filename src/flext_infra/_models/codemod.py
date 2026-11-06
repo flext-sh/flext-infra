@@ -96,19 +96,23 @@ class FlextInfraModelsCodemod:
         signature_additions: Sequence[
             Annotated[
                 p.Infra.RopeSignatureAddition,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
             ]
         ] = m.Field(default=(), description="Native additions in this same source pass")
         method_transfers: Sequence[
             Annotated[
                 p.Infra.RopeMethodTransfer,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
             ]
         ] = m.Field(default=(), description="Native transfers in this same source pass")
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
             ]
         ] = m.Field(default=(), description="Native body and parameter retirements")
 
@@ -304,7 +308,9 @@ class FlextInfraModelsCodemod:
             Sequence[
                 Annotated[
                     p.Infra.RopeContractScopeTarget,
-                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractScopeTarget),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractScopeTarget
+                    ),
                 ]
             ],
             m.Field(min_length=1, description="Exact distribution/module target pairs"),
@@ -320,8 +326,8 @@ class FlextInfraModelsCodemod:
                 raise ValueError(msg)
             return self
 
-    class RopeContractRule(m.ContractModel):
-        """Identity-constrained native Rope restructuring of a Python contract."""
+    class RopeContractRuleTarget(m.ContractModel):
+        """Identity, admission scope and native pattern of one Rope contract rule."""
 
         owner_root: Path | None = m.Field(
             default=None,
@@ -376,7 +382,7 @@ class FlextInfraModelsCodemod:
         scope: (
             Annotated[
                 p.Infra.RopeContractScope,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeContractScope),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeContractScope),
             ]
             | None
         ) = m.Field(
@@ -416,6 +422,10 @@ class FlextInfraModelsCodemod:
             default_factory=u.empty(t.TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
+
+    class RopeContractRuleShape(RopeContractRuleTarget):
+        """Ancestry, capture and lexical-scope constraints of a Rope rule."""
+
         model_bases: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Required model ancestry for every matched declaration",
@@ -469,6 +479,10 @@ class FlextInfraModelsCodemod:
             default=None,
             description="Native module and primitive whose backend stays native",
         )
+
+    class RopeContractRule(RopeContractRuleShape):
+        """Identity-constrained native Rope restructuring of a Python contract."""
+
         receiver_methods: t.DocumentInput[tuple[str, ...]] = m.Field(
             default=(),
             description="Discarded-call interface required of a factory product",
@@ -617,7 +631,9 @@ class FlextInfraModelsCodemod:
             Sequence[
                 Annotated[
                     p.Infra.RopeContractRule,
-                    t.schema_for_model(FlextInfraModelsCodemod.RopeContractRule),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsCodemod.RopeContractRule
+                    ),
                 ]
             ],
             m.Field(description="Ordered, identity-constrained Rope contract rules"),
@@ -625,19 +641,23 @@ class FlextInfraModelsCodemod:
         signature_additions: Sequence[
             Annotated[
                 p.Infra.RopeSignatureAddition,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureAddition),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureAddition
+                ),
             ]
         ] = m.Field(default=(), description="Ordered native required keyword additions")
         method_transfers: Sequence[
             Annotated[
                 p.Infra.RopeMethodTransfer,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeMethodTransfer),
+                t.schema_for_model(lambda: FlextInfraModelsCodemod.RopeMethodTransfer),
             ]
         ] = m.Field(default=(), description="Ordered native method ownership transfers")
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,
-                t.schema_for_model(FlextInfraModelsCodemod.RopeSignatureRemoval),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.RopeSignatureRemoval
+                ),
             ]
         ] = m.Field(default=(), description="Ordered native parameter retirements")
 

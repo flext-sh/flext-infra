@@ -8,14 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import config
 from tests import c, tm, u
 
 # Each scenario's candidate checkout is set up from its committed locks before
 # any item starts. Make test-full owns the native installer and conform boundary.
-pytestmark = [pytest.mark.slow, pytest.mark.remote]
+pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
 
 class TestsFlextInfraCodegenGenActivation:

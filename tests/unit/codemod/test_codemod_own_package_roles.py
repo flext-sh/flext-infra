@@ -9,8 +9,6 @@ from __future__ import annotations
 from collections.abc import MutableMapping, MutableSequence
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
@@ -19,8 +17,8 @@ class TestsFlextInfraCodemodOwnPackageRoles:
     """Source roles follow native definitions, never filenames."""
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("surface", ["src", "tests", "scripts", "examples"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("surface", ["src", "tests", "scripts", "examples"])
     def test_library_boundary_scans_owned_code_without_filename_waivers(
         mod_workspace: Path, surface: str
     ) -> None:
@@ -85,9 +83,9 @@ class TestsFlextInfraCodemodOwnPackageRoles:
             tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
-    @pytest.mark.slow
-    @pytest.mark.parametrize("implementation", ["_native_hook", "moved_entrypoint"])
-    @pytest.mark.parametrize("framework_import", [False, True])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("implementation", ["_native_hook", "moved_entrypoint"])
+    @c.Tests.MARK.parametrize("framework_import", [False, True])
     def test_isolated_execution_role_uses_native_producer_and_entrypoint(
         mod_workspace: Path, implementation: str, *, framework_import: bool
     ) -> None:

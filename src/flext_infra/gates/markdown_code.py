@@ -224,11 +224,16 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
                     ),
                 )
                 if format_ok:
-                    self._splice_formatted_blocks(
+                    changes = self._splice_formatted_blocks(
                         project_dir,
                         sources_dir,
                         ctx.scope_facts,
                     )
+                    if changes:
+                        u.Cli.publish_file_changes(
+                            changes,
+                            lock_path=u.Infra.mutation_lock_path(project_dir).unwrap(),
+                        ).unwrap()
                     # Docstrings are not written back: staged formatting is
                     # native success, but their unchanged sources still block.
                     findings.extend(
@@ -265,39 +270,41 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         project_dir: Path,
         sources_dir: Path,
         scope_facts: p.Infra.GitScopeFacts | None,
-    ) -> Sequence[Path]:
-        """Write formatted blocks back into docs whose round-trip recompiles cleanly.
+    ) -> Sequence[p.Cli.FileChange]:
+        """Plan formatted blocks back into docs whose round-trip recompiles cleanly.
 
         Enumeration matches the extractor exactly: only parseable non-``notest``
         blocks own a staged source, share its index, and take part in the
-        all-or-nothing splice; fragments stay byte-identical.
+        all-or-nothing splice; fragments stay byte-identical. Nothing is written
+        here: the caller publishes the whole batch in one verified effect.
 
         Returns:
-            The resulting ``Sequence[Path]``.
+            One change per rewritten document, in enumeration order.
 
         """
-        rewritten: MutableSequence[Path] = []
+        changes: MutableSequence[p.Cli.FileChange] = []
         for md_path in FlextInfraMarkdownGateBase.collect_markdown_files(
             project_dir, scope_facts
         ):
             spliced = self._splice_document(md_path, project_dir, sources_dir)
             if spliced is not None:
-                rewritten.append(spliced)
-        return rewritten
+                changes.append(spliced)
+        return changes
 
     def _splice_document(
         self,
         md_path: Path,
         project_dir: Path,
         sources_dir: Path,
-    ) -> Path | None:
-        """Write one document's formatted blocks back when its round-trip holds.
+    ) -> p.Cli.FileChange | None:
+        """Plan one document's formatted blocks back when its round-trip holds.
 
         Returns:
-            The rewritten path, or ``None`` when the document stayed identical.
+            The document's change, or ``None`` when it stayed identical.
 
         """
-        content = md_path.read_text(c.DEFAULT_ENCODING)
+        before = u.Cli.atomic_read_binary_file_state(md_path, required=True).unwrap()
+        content = (before.content or b"").decode(c.DEFAULT_ENCODING)
         relative_posix = md_path.relative_to(project_dir).as_posix()
         staged = FlextInfraMarkdownCodeSources.formattable_fences(content, md_path)
         if not staged:
@@ -320,8 +327,14 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
         )
         if updated == content:
             return None
-        md_path.write_text(updated, c.DEFAULT_ENCODING)
-        return md_path
+        return m.Cli.FileChange(
+            path=md_path,
+            before=before,
+            desired_content=updated.encode(c.DEFAULT_ENCODING),
+            desired_mode=(
+                before.mode if before.mode is not None else c.Infra.CONFIG_SPEC[1]
+            ),
+        )
 
     @staticmethod
     def _formatted_blocks(
@@ -417,8 +430,9 @@ class FlextInfraGatesMarkdownCode(FlextInfraGates):
             msg = "repair requires apply_fixes=True and check_only=False"
             raise ValueError(msg)
         started = time.monotonic()
-        with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(project_dir).unwrap()):
-            ran, passed, issues = self._run_extracted(project_dir, ctx, fix=True)
+        # The formatter subprocess and the round-trip checks are read-only
+        # planning; only the splice publishes, in one verified batch.
+        ran, passed, issues = self._run_extracted(project_dir, ctx, fix=True)
         if not ran:
             return self._clean_without_embedded_code(project_dir, ctx, started)
         return self._build_gate_execution(

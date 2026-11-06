@@ -10,9 +10,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
-
-from flext_infra import c, p, r, t
+from flext_infra import c, p, r, t, u
 from flext_infra.gates import (
     FlextInfraGatesBandit,
     FlextInfraGatesCodemod,
@@ -153,6 +151,36 @@ class FlextInfraGateRegistry:
 
         """
         return self._gates.get(gate_id)
+
+    def check_budget_seconds(
+        self,
+        gate_ids: Sequence[str],
+        project_dirs: Sequence[Path],
+    ) -> int:
+        """Largest declared check budget of the selected gates over the projects.
+
+        Each registered gate owns its budget reader, so a project-dependent
+        budget (the Mypy overlay) is read from the same owner the run uses.
+
+        Returns:
+            The maximum gate runner budget, in seconds.
+
+        Raises:
+            ValueError: If a selected gate is unregistered or no budget is selected.
+
+        """
+        budgets: list[int] = []
+        for gate_id in gate_ids:
+            for project_dir in project_dirs:
+                gate = self.create(gate_id, project_dir)
+                if gate is None:
+                    msg = f"unregistered gate has no check budget: {gate_id}"
+                    raise ValueError(msg)
+                budgets.append(gate.check_budget_seconds(project_dir))
+        if not budgets:
+            msg = "check budget requires at least one gate and one project"
+            raise ValueError(msg)
+        return max(budgets)
 
     def delegated_lint_rules(
         self,

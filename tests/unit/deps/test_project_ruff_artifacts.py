@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,7 +18,7 @@ class TestsFlextInfraProjectRuffArtifacts:
     """The real project configuration loader rejects retired Ruff catalogs."""
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "pattern", ["src/**", "tests/**", "scripts/**", "examples/**"]
     )
     def test_project_ruff_exemptions_are_rejected(tmp_path: Path, pattern: str) -> None:

@@ -10,8 +10,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from re import escape
 
-import pytest
-
 from flext_infra import config
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.cli import FlextInfraCli
@@ -62,7 +60,7 @@ class TestsFlextInfraCodemodGate:
         )
         return project
 
-    @pytest.mark.parametrize("severity", ["error", "warning", "info", "hint"])
+    @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_policy_findings_block_at_every_severity(
         self,
         tmp_path: Path,
@@ -330,7 +328,7 @@ class TestsFlextInfraCodemodGate:
         finally:
             type(config).reset_for_testing()
 
-    @pytest.mark.parametrize("target_scope", ["in_tree", "foreign", "broken"])
+    @c.Tests.MARK.parametrize("target_scope", ["in_tree", "foreign", "broken"])
     def test_stub_symlink_keeps_the_owned_path_name(
         self,
         tmp_path: Path,
@@ -360,9 +358,9 @@ class TestsFlextInfraCodemodGate:
             [issue.file for issue in gate.issues if issue.code == "ban-stub-file"],
             eq=[stub.relative_to(project).as_posix()],
         )
-        with pytest.raises(OSError, match=escape(str(stub))) as original_guard:
+        with u.Tests.raises(OSError, match=escape(str(stub))) as original_guard:
             u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
-        with pytest.raises(type(original_guard.value)) as mod_guard:
+        with u.Tests.raises(type(original_guard.value)) as mod_guard:
             FlextInfraModGateEngine.scan(
                 project,
                 fix=False,
@@ -488,10 +486,10 @@ class TestsFlextInfraCodemodGate:
         gate = FlextInfraGatesCodemod(tmp_path)
         context = u.Tests.gate_context(tmp_path)
 
-        with pytest.raises(FileNotFoundError):
+        with u.Tests.raises(FileNotFoundError):
             gate.check_files((missing,), project, context)
 
-    @pytest.mark.parametrize("finding", [False, True])
+    @c.Tests.MARK.parametrize("finding", [False, True])
     def test_public_file_check_reuses_elected_scanner_scope(
         self,
         tmp_path: Path,
@@ -535,7 +533,7 @@ class TestsFlextInfraCodemodGate:
         )
         tm.that((selected.read_bytes(), sibling.read_bytes()), eq=before)
 
-    @pytest.mark.parametrize("severity", ["error", "warning", "info", "hint"])
+    @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_workspace_pipeline_fails_the_project_on_policy_findings(
         self,
         tmp_path: Path,
@@ -622,22 +620,22 @@ class TestsFlextInfraCodemodGate:
         original_mode = blocked.stat().st_mode
         blocked.chmod(0)
         try:
-            with pytest.raises(PermissionError):
+            with u.Tests.raises(PermissionError):
                 tuple(blocked.iterdir())
-            with pytest.raises(PermissionError):
+            with u.Tests.raises(PermissionError):
                 u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         finally:
             blocked.chmod(original_mode)
 
     @staticmethod
-    @pytest.mark.parametrize("payload", ["", "[", "{}", "[{}]", "[null]"])
+    @c.Tests.MARK.parametrize("payload", ["", "[", "{}", "[{}]", "[null]"])
     def test_native_json_contract_rejects_malformed_output(payload: str) -> None:
         """An empty stream or malformed finding cannot be a clean native scan."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.AstGrepReport.model_validate_json(payload)
 
     @staticmethod
-    @pytest.mark.parametrize("severity", c.Infra.NativeRuleSeverity)
+    @c.Tests.MARK.parametrize("severity", c.Infra.NativeRuleSeverity)
     def test_native_severity_preserves_wire_literals(
         severity: c.Infra.NativeRuleSeverity,
     ) -> None:
@@ -655,7 +653,7 @@ class TestsFlextInfraCodemodGate:
         tm.that(type(diagnostic.severity), eq=c.Infra.NativeRuleSeverity)
         tm.that(diagnostic.model_dump()["severity"] is severity, eq=True)
         tm.that(diagnostic.model_dump(mode="json")["severity"], eq=severity.value)
-        with pytest.raises(m.ValidationError, match="is_instance_of"):
+        with u.Tests.raises(m.ValidationError, match="is_instance_of"):
             m.Infra.AstGrepDiagnostic.model_validate(diagnostic.model_dump(mode="json"))
         tm.that(
             m.Infra.AstGrepDiagnostic.model_validate(diagnostic) is diagnostic,
@@ -667,10 +665,10 @@ class TestsFlextInfraCodemodGate:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("severity", ["fatal", "ERROR", "", b"error"])
+    @c.Tests.MARK.parametrize("severity", ["fatal", "ERROR", "", b"error"])
     def test_native_severity_rejects_non_wire_values(severity: str | bytes) -> None:
         """Unknown values and Python bytes retain literal rejection semantics."""
-        with pytest.raises(m.ValidationError):
+        with u.Tests.raises(m.ValidationError):
             m.Infra.AstGrepDiagnostic.model_validate({
                 "file": "subject.py",
                 "ruleId": "native-wire",

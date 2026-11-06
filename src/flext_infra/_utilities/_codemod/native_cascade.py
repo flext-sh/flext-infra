@@ -171,10 +171,18 @@ class FlextInfraUtilitiesCodemodNativeCascade:
     def _run_native_stage(
         cls, preview: Path, binary: Path, ruleset: p.Infra.CodemodRuleset
     ) -> None:
-        """Apply one staged ruleset with ast-grep's own ``--update-all``.
+        """Apply one staged ruleset through ``--update-all`` until it settles.
+
+        One ``--update-all`` applies a single fix per overlapping range: the
+        generated header documents all anchor on a module's first import, so
+        each run binds one more name. The stage therefore reruns until a run
+        changes no byte. Every fix of a converging ruleset removes its own
+        match, so a ruleset settles within one run per rule; a repeated
+        preview state, or a run past that bound, is an oscillation.
 
         Raises:
-            RuntimeError: If ast-grep does not exit successfully.
+            RuntimeError: If ast-grep does not exit successfully, or the
+                ruleset does not settle.
 
         """
         command = FlextInfraUtilitiesBase.ast_grep_scan_command(
@@ -183,14 +191,30 @@ class FlextInfraUtilitiesCodemodNativeCascade:
             targets=(".",),
             update_all=True,
         )
-        executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
-        if not u.Cli.process_succeeded(executed.outcome):
-            msg = (
-                f"ast-grep native stage {ruleset.provider} failed "
-                f"(exit {executed.outcome.raw_return_code}): "
-                f"{(executed.stderr or executed.stdout).strip()}"
-            )
-            raise RuntimeError(msg)
+        current = cls._preview_contents(preview)
+        seen = {frozenset(current.items())}
+        for _run in range(len(ruleset.rule_ids) + 1):
+            executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
+            if not u.Cli.process_succeeded(executed.outcome):
+                msg = (
+                    f"ast-grep native stage {ruleset.provider} failed "
+                    f"(exit {executed.outcome.raw_return_code}): "
+                    f"{(executed.stderr or executed.stdout).strip()}"
+                )
+                raise RuntimeError(msg)
+            settled = cls._preview_contents(preview)
+            if settled == current:
+                return
+            state = frozenset(settled.items())
+            if state in seen:
+                break
+            seen.add(state)
+            current = settled
+        msg = (
+            f"ast-grep native stage {ruleset.provider} does not settle: "
+            f"{len(ruleset.rule_ids)} rule(s) keep rewriting {preview}"
+        )
+        raise RuntimeError(msg)
 
     @staticmethod
     def _run_ruff_stage(

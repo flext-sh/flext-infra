@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-import pytest
-
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from tests import m, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraRepositoryBeadsIdentity:
@@ -87,7 +85,7 @@ class TestsFlextInfraRepositoryBeadsIdentity:
         )
         tm.that(workspace.beads, eq=beads)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "missing_field",
         ["version", "workspace", "database", "issue_prefix"],
     )
@@ -106,14 +104,14 @@ class TestsFlextInfraRepositoryBeadsIdentity:
 
         tm.fail(result, has=missing_field)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("field", "invalid_value"),
         [
-            pytest.param("version", 2, id="unknown-version"),
-            pytest.param("workspace", "", id="empty-workspace"),
-            pytest.param("database", ["not", "a", "scalar"], id="database-list"),
-            pytest.param("issue_prefix", None, id="null-prefix"),
-            pytest.param(
+            u.Tests.param("version", 2, id="unknown-version"),
+            u.Tests.param("workspace", "", id="empty-workspace"),
+            u.Tests.param("database", ["not", "a", "scalar"], id="database-list"),
+            u.Tests.param("issue_prefix", None, id="null-prefix"),
+            u.Tests.param(
                 "custom_issue_types",
                 ["incident", "incident"],
                 id="duplicate-custom-type",

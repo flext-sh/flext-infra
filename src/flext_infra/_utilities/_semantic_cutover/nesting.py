@@ -1153,7 +1153,9 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         root = Path(project.root.real_path)
         for consumer, text in working.items():
             candidate = project.get_resource(consumer.relative_to(root).as_posix())
-            quotes = cls.quoted_type_edits(project, candidate, text, quoted_replacement)
+            quotes = cls.quoted_type_edits(
+                (project, candidate), text, quoted_replacement
+            )
             if quotes:
                 rewrites.setdefault(consumer, []).extend(quotes)
 

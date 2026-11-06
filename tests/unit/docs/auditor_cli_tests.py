@@ -8,10 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import FlextInfraCli
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -59,10 +57,10 @@ class TestsFlextInfraAuditorCli:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("package_entrypoint", [False, True])
+    @c.Tests.MARK.parametrize("package_entrypoint", [False, True])
     def test_auditor_main_finding_exits_nonzero(
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         *,
         package_entrypoint: bool,
     ) -> None:
@@ -88,7 +86,7 @@ class TestsFlextInfraAuditorCli:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("option", ["--strict", "--strict-mode", "--no-strict"])
+    @c.Tests.MARK.parametrize("option", ["--strict", "--strict-mode", "--no-strict"])
     def test_auditor_cli_rejects_removed_modes(
         tmp_path: Path,
         option: str,

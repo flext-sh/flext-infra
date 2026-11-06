@@ -1732,7 +1732,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if family is not c.Infra.FacadeFamily.U and provider in aliases.values():
                 continue
             if family is c.Infra.FacadeFamily.U:
-                if cls._utility_provider_nominal(provider, bases):
+                if cls._utility_provider_nominal(project, provider, bases):
                     nominal.append(provider)
                     continue
                 if not payload.utility_namespace_declaration(project, provider):
@@ -1756,6 +1756,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @staticmethod
     def _utility_provider_nominal(
+        project: p.Infra.RopeProject,
         provider: p.Infra.RopeSourceClass,
         bases: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> bool:
@@ -1763,7 +1764,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
         Returns:
             True for instance behavior, inherited instance callables absent from
-            the facade bases, or a provider without meaningful class callables.
+            the facade bases, or a provider without meaningful class callables or
+            admissible class storage.
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
@@ -1825,8 +1827,21 @@ class FlextInfraUtilitiesFacadeComponents:
             for name, attribute in provider.get_attributes().items()
         )
         # Extending a class is meaningful in itself: an upstream base the
-        # engine cannot resolve to source still carries its behavior.
-        meaningful = bool(methods) or bool(provider.get_superclasses())
+        # engine cannot resolve to source still carries its behavior. Annotated
+        # class storage (``Member: ClassVar[...] = value``) is the namespace's
+        # own publication, reached as ``u.Ns.Member``: a provider whose storage
+        # is wholly admissible class storage composes; instance fields (a
+        # decorated data carrier) keep it nominal.
+        storage = bool(
+            provider
+            .get_module()
+            .get_source_binding_index()
+            .class_layout(provider.get_scope())
+            .annotated_bindings
+        ) and FlextInfraUtilitiesDeclarationPayload.utility_namespace_declaration(
+            project, provider
+        )
+        meaningful = bool(methods) or bool(provider.get_superclasses()) or storage
         return inherited_instance or not meaningful
 
     @classmethod

@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraCli, config
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.services.cli_routes import FlextInfraCliRouteService
@@ -19,7 +17,7 @@ from tests import c, m, tm, u
 class TestsFlextInfraCliRepositoryRootContract:
     """Tests for ``FlextInfraCliRepositoryRootContract``."""
 
-    @pytest.fixture
+    @u.Tests.fixture
     @staticmethod
     def rendered_makefile(
         tmp_path: Path,
@@ -57,7 +55,7 @@ class TestsFlextInfraCliRepositoryRootContract:
         )
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("group", c.HandlerMode.COMMAND, "generated_command"),
         [
             (c.Infra.CLI_GROUP_CHECK, c.Infra.VERB_RUN, c.Infra.VERB_RUN),

@@ -509,21 +509,14 @@ or checking; `upg` owns changes to the resolved release.
 The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.yaml`
 (`Infra.tooling.tools.markdown`) and is projected to every repository by `make gen`:
 
-- rumdl is the one Markdown engine. `rules`, `extend-enable` and `native_settings`
-  render one canonical `.rumdl.toml` (`[global]`, native tables, sorted rule
-  tables); exclusions derive from `codegen.markdown_exclude_globs`. `make gen-scope
-  WHAT=markdown` regenerates only that file.
-- The editor uses the same file: `rvben.rumdl` is the Markdown formatter and linter
-  and reads `.rumdl.toml`. markdownlint is retired everywhere. rumdl implements every
-  markdownlint rule (MD001-MD060) plus MD061+. Generation removes the old
-  `.markdownlint.json` and `.markdownlintignore` projections and the
-  `markdownlint.config`/`lintWorkspaceGlobs` settings, and declares
-  `markdownlint.appliesTo: noFiles`, so a locally installed extension stays silent.
-- `rumdl` reads generated `.rumdl.toml`, including the MkDocs dialect used by the
-  documentation renderer. `make fmt` and `make fix` repair every Markdown file Git
-  sees (tracked plus untracked, never ignored or excluded); findings and the exit code
-  cover tracked files only. Unresolved findings remain failures, not accepted
-  exceptions.
+- Common `MD*` rules, native options and additional rules generate one
+  `.rumdl.toml`. The former markdownlint JSON projection is retired through the
+  codegen planner: automatic import of its unsupported context-specific options
+  caused native configuration warnings. `.markdownlintignore` and native
+  exclusions derive from the same governed scope.
+- `rumdl` is the command-line linter and reads generated `.rumdl.toml`, including
+  the MkDocs dialect used by the documentation renderer. `make fix` applies its
+  supported repairs; unresolved findings remain failures, not accepted exceptions.
 - `rumdl fmt` is the formatter and reads the same `.rumdl.toml`:
   `rumdl fmt --check` in `make check`, `rumdl fmt` in `make fmt`. rumdl is locked in
   `uv.lock`; the Mise npm backend remains retired (ADR-025). The amended Bun

@@ -9,8 +9,6 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import infra
 from tests import c, tm, u
 
@@ -257,8 +255,8 @@ class TestsFlextInfraFamilyFlatten:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("collision", [False, True])
-    @pytest.mark.parametrize("subdirectory", ["", "domain", "domain/split"])
+    @c.Tests.MARK.parametrize("collision", [False, True])
+    @c.Tests.MARK.parametrize("subdirectory", ["", "domain", "domain/split"])
     def test_snapshot_rewrites_alias_and_inherited_consumers_without_effects(
         tmp_path: Path,
         subdirectory: str,
@@ -319,14 +317,14 @@ class TestsFlextInfraFamilyFlatten:
             tm.that(file_path.read_text(encoding="utf-8"), eq=original)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "entity",
         [
             "class Entity(Enum):\n        VALUE = 'one'",
             "class Entity:\n        def value(self) -> int:\n            return 1",
         ],
     )
-    @pytest.mark.parametrize("subdirectory", ["", "domain", "domain/split"])
+    @c.Tests.MARK.parametrize("subdirectory", ["", "domain", "domain/split"])
     def test_entity_classes_are_not_namespace_wrappers(
         tmp_path: Path,
         entity: str,
@@ -360,7 +358,7 @@ class TestsFlextInfraFamilyFlatten:
         tm.that(planned.value, empty=True)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "reference",
         [
             "ALIAS = {owner}.Wrapper",

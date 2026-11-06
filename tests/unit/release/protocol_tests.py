@@ -16,8 +16,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from tests import c, m, p, t, tm, u
 
@@ -27,14 +25,14 @@ if TYPE_CHECKING:
 
 # These scenarios drive real release phases over Git repositories; their
 # integration harness shares the declared slow policy.
-@pytest.mark.slow
+@c.Tests.MARK.slow
 class TestsFlextInfraReleaseProtocol:
     """Behavior contract for the release protocol."""
 
     class TestsMaintenanceFinalization:
         """Explicit maintenance decisions do not reinterpret historical subjects."""
 
-        @pytest.mark.parametrize(
+        @c.Tests.MARK.parametrize(
             ("scenario", "outcome"),
             [
                 (("7.4.6", "v7.4.6", "feat: existing capability"), ("7.4.7", True)),
@@ -95,11 +93,11 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(u.Tests.git_capture(workspace, "log", "--format=%H:%s"), eq=before)
             tm.ok(u.Infra.current_workspace_version(workspace), eq=current)
 
-        @pytest.mark.parametrize("tag", ["", "v7.4.6", "v7.4.5"])
+        @c.Tests.MARK.parametrize("tag", ["", "v7.4.6", "v7.4.5"])
         @staticmethod
         def test_finalization_without_line_is_rejected_in_every_branch(
             tmp_path: Path,
-            capsys: pytest.CaptureFixture[str],
+            capsys: t.Tests.CaptureFixture[str],
             tag: str,
         ) -> None:
             """Require a line for first, tagged and awaiting releases."""
@@ -387,7 +385,7 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(plan.previous_tag, eq=None)
         tm.ok(plan.releasable)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("current", "tag", "subject", "outcome"),
         [
             ("3.7.2", "", "", ("3.7.2", True)),
@@ -422,7 +420,7 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(plan.next, eq=outcome[0])
         tm.that(plan.releasable, eq=outcome[1])
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("scenario", "diagnostic_fragment"),
         [
             (("3.7.2", "v3.7.2", "feat: introduce capability"), "bump=minor"),
@@ -437,7 +435,7 @@ class TestsFlextInfraReleaseProtocol:
     def test_maintenance_rejects_incompatible_candidates_without_receipt(
         self,
         tmp_path: Path,
-        capsys: pytest.CaptureFixture[str],
+        capsys: t.Tests.CaptureFixture[str],
         scenario: tuple[str, str, str],
         diagnostic_fragment: str,
     ) -> None:
@@ -479,8 +477,8 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(plan.previous_tag, eq="v0.1.0")
         tm.that(plan.next, eq="0.1.1")
 
-    @pytest.mark.parametrize("subject", ["fix: member repair", "feat: member feature"])
-    @pytest.mark.parametrize("finalize", [False, True])
+    @c.Tests.MARK.parametrize("subject", ["fix: member repair", "feat: member feature"])
+    @c.Tests.MARK.parametrize("finalize", [False, True])
     def test_attached_member_inherits_workspace_maintenance_policy(
         self,
         tmp_path: Path,
@@ -943,11 +941,11 @@ class TestsFlextInfraReleaseProtocol:
     class TestsAdmission:
         """Version and tag admission against real Git state."""
 
-        @pytest.mark.parametrize("foreign_owner", [False, True])
+        @c.Tests.MARK.parametrize("foreign_owner", [False, True])
         @staticmethod
         def test_release_version_refuses_missing_or_foreign_ownership(
             tmp_path: Path,
-            capsys: pytest.CaptureFixture[str],
+            capsys: t.Tests.CaptureFixture[str],
             *,
             foreign_owner: bool,
         ) -> None:

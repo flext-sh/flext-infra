@@ -9,8 +9,6 @@ from __future__ import annotations
 from contextlib import closing
 from pathlib import Path
 
-import pytest
-
 from tests import c, m, tm, u
 
 
@@ -51,7 +49,7 @@ class TestsFlextInfraSourceMemberResolver:
         )
         with (
             closing(u.Infra.init_rope_project(tmp_path)) as project,
-            pytest.raises(
+            u.Tests.raises(
                 ValueError,
                 match=(
                     r"Unresolved declared provider base: "
@@ -138,7 +136,7 @@ class TestsFlextInfraSourceMemberResolver:
                     project,
                     sources=dict.fromkeys(order, (source, content)),
                 )
-                with pytest.raises(
+                with u.Tests.raises(
                     ValueError, match="Ambiguous captured source owner:"
                 ) as failure:
                     ambiguous(child)

@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPromotedExecutionContract:

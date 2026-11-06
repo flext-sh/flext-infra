@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra.codegen import FlextInfraCodegenFixer
 from tests import c, p, tm, u
 
@@ -32,7 +30,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         )
 
     @staticmethod
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_project_without_pyproject_excluded_from_run(
         tmp_path: Path, session_runtime: p.Tests.SessionRuntime
     ) -> None:
@@ -88,7 +86,7 @@ class TestsFlextInfraCodegenAutofixWorkspace:
         tm.that(result.violations_skipped, empty=True)
         tm.that(result.files_modified, empty=True)
 
-    @pytest.mark.slow
+    @c.Tests.MARK.slow
     def test_files_modified_tracks_affected_files(
         self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
     ) -> None:

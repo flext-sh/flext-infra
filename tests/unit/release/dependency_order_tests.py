@@ -13,8 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import u
-from tests import c, tm
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path

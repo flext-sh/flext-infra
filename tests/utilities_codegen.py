@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
-from flext_infra import codegen, config, u, workspace
+from flext_infra import codegen, config, workspace
 from tests import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
@@ -23,6 +23,7 @@ from tests import (
     p,
     r,
     tm,
+    u,
     utilities_conform,
 )
 

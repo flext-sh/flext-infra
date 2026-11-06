@@ -135,7 +135,7 @@ class FlextInfraUtilitiesDocsGuides:
                     path=path,
                     before=captured.value,
                     desired_content=FlextInfraUtilitiesDocsGuides._make_contract_content(
-                        source, rendered.rendered, path
+                        source, u.Cli.markdown_align_tables(rendered.rendered), path
                     ).encode(c.DEFAULT_ENCODING),
                     desired_mode=(
                         previous.desired_mode

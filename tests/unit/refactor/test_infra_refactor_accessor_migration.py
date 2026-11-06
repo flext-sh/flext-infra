@@ -10,16 +10,14 @@ import ast
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, infra, m
+from flext_infra import config, infra
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.codemod.loop import FlextInfraCodemodLoopPhaseAccessorRename
 from flext_infra.refactor import FlextInfraRefactorAccessor
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -175,7 +173,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=_legacy_module_source())
 
     @staticmethod
-    @pytest.mark.parametrize("captured", [False, True])
+    @c.Tests.MARK.parametrize("captured", [False, True])
     def test_model_receiver_retains_declaring_parameter_identity(
         tmp_path: Path,
         *,
@@ -392,7 +390,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         with u.Tests.authenticated_rope_workspace(project) as rope:
             preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
             phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
-            with pytest.raises(ValueError, match="accessor receiver"):
+            with u.Tests.raises(ValueError, match="accessor receiver"):
                 phase.apply(project, preflight, rope)
         tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
@@ -433,7 +431,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
             with u.Tests.authenticated_rope_workspace(project) as rope:
                 preflight = FlextInfraModGateEngine.scan(project, fix=False).unwrap()
                 phase = FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project)
-                with pytest.raises(ValueError, match="accessor backing field"):
+                with u.Tests.raises(ValueError, match="accessor backing field"):
                     phase.apply(project, preflight, rope)
             tm.that(consumer.read_text(encoding="utf-8"), eq=source)
 
@@ -617,7 +615,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(warning_names, lacks="get_source_folders")
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "decorator", ["", "@staticmethod\n    ", "@classmethod\n    "]
     )
     def test_core_prefix_policy_discovers_methods_outside_legacy_catalog(
@@ -655,7 +653,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize("snapshot_case", ["original", "source", "project"])
+    @c.Tests.MARK.parametrize("snapshot_case", ["original", "source", "project"])
     def test_manual_warnings_authenticate_the_original_snapshot(
         tmp_path: Path,
         snapshot_case: str,
@@ -683,7 +681,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
                         ],
                     )
                 else:
-                    with pytest.raises(
+                    with u.Tests.raises(
                         ValueError,
                         match="accessor discovery source differs from Rope snapshot",
                     ):
@@ -784,7 +782,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         tm.that(origin_file.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "base", ["MissingBase", "MissingBase[str]", "KnownBase, MissingBase[str]"]
     )
     def test_unresolved_owned_accessor_ancestry_fails_before_changes(
@@ -801,7 +799,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
         )
         _ = origin_file.write_text(source, encoding="utf-8")
 
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="unresolved accessor class ancestry: Owned"
         ):
             _ = FlextInfraAccessorMigrationOrchestrator(
@@ -865,7 +863,7 @@ class TestsFlextInfraRefactorInfraRefactorAccessorMigration:
     ) -> None:
         """Unknown facade contracts must fail instead of returning green zero."""
         workspace, _origin_file, _foreign_file = _materialize_fixture(tmp_path)
-        with pytest.raises(
+        with u.Tests.raises(
             ValueError, match="accessor namespace selected no published facade"
         ):
             _ = FlextInfraAccessorMigrationOrchestrator(

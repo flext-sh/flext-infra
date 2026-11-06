@@ -10,8 +10,6 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-import pytest
-
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
@@ -20,11 +18,11 @@ from tests import c, m, p, tm, u
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "binding", ["canonical", "foreign", "renamed", "duplicate", "annotation"]
     )
-    @pytest.mark.parametrize("model", [False, True])
-    @pytest.mark.parametrize("constructor", ["ConfigDict", "m.ConfigDict"])
+    @c.Tests.MARK.parametrize("model", [False, True])
+    @c.Tests.MARK.parametrize("constructor", ["ConfigDict", "m.ConfigDict"])
     def test_explicit_owner_config_requires_canonical_metadata(
         self,
         tmp_path: Path,
@@ -131,9 +129,9 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", tuple(u.Infra.facade_families()))
-    @pytest.mark.parametrize("nested", [False, True])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
+    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize(
         "publication",
         [
             (origin, source_root)
@@ -271,8 +269,8 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", ["c", "m", "p", "u"])
-    @pytest.mark.parametrize("stale_base", [False, True])
+    @c.Tests.MARK.parametrize("family", ["c", "m", "p", "u"])
+    @c.Tests.MARK.parametrize("stale_base", [False, True])
     def test_explicit_class_bindings_preserve_authored_upstream_contract(
         self,
         tmp_path: Path,
@@ -351,8 +349,8 @@ class UtilityFacadeOwnerPublication:
         )
         tm.that(u.Cli.process_succeeded(result.outcome), eq=True, msg=result.stderr)
 
-    @pytest.mark.parametrize("family", ["c", "t", "p", "m", "u"])
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize("family", ["c", "t", "p", "m", "u"])
+    @c.Tests.MARK.parametrize(
         "invalid",
         [
             "Other = missing",
@@ -418,7 +416,7 @@ class UtilityFacadeOwnerPublication:
             tm.that(projected.count(" import Owner\n"), eq=1)
             tm.that(projected, has="class PublicFacade:\n", lacks="class PublicFacade(")
 
-    @pytest.mark.parametrize("family", ["c", "t", "m", "p", "u"])
+    @c.Tests.MARK.parametrize("family", ["c", "t", "m", "p", "u"])
     def test_unselected_inherited_sdk_contract_keeps_real_mro(
         self,
         tmp_path: Path,
@@ -475,7 +473,7 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
-    @pytest.mark.parametrize("header", ["plain", "protocol", "commented"])
+    @c.Tests.MARK.parametrize("header", ["plain", "protocol", "commented"])
     def test_long_protocol_owner_bases_are_canonical_before_publication(
         self,
         tmp_path: Path,
@@ -640,8 +638,8 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
 
-    @pytest.mark.parametrize("length_delta", [0, 16])
-    @pytest.mark.parametrize("parenthesized", [False, True])
+    @c.Tests.MARK.parametrize("length_delta", [0, 16])
+    @c.Tests.MARK.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(
         self,
         tmp_path: Path,

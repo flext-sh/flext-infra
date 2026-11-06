@@ -13,11 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
-from flext_infra import config, m
+from flext_infra import config
 from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +48,7 @@ class TestsFlextInfraLocCapGate:
         tm.that(FlextInfraGatesLocCap.gate_id, eq="loc-cap")
         tm.fail(FlextInfraGatesLocCap.can_fix)
 
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         ("code_lines", "passed"),
         [(config.Infra.codegen.loc_cap.max_lines + 50, False), (1, True)],
     )
@@ -103,12 +101,12 @@ class TestsFlextInfraLocCapGate:
 
         with (
             tm.scope(env={"PATH": str(empty_path)}),
-            pytest.raises(RuntimeError, match=c.Infra.SCC_BINARY),
+            u.Tests.raises(RuntimeError, match=c.Infra.SCC_BINARY),
         ):
             u.Tests.run_gate_check(FlextInfraGatesLocCap, tmp_path, project)
 
     @staticmethod
-    @pytest.mark.parametrize(
+    @c.Tests.MARK.parametrize(
         "payload",
         [
             "",
@@ -132,11 +130,11 @@ class TestsFlextInfraLocCapGate:
         payload: str,
     ) -> None:
         """Invalid native reports cannot become an empty successful scan."""
-        with pytest.raises(c.ValidationError):
+        with u.Tests.raises(c.ValidationError):
             m.Infra.SccReport.model_validate_json(payload, strict=True)
 
     @staticmethod
-    @pytest.mark.parametrize("payload", ["[]", '[{"Name":"Python","Files":[]}]'])
+    @c.Tests.MARK.parametrize("payload", ["[]", '[{"Name":"Python","Files":[]}]'])
     def test_scc_boundary_accepts_valid_empty_collections(payload: str) -> None:
         """Empty scanner collections differ from absent or malformed output."""
         report = m.Infra.SccReport.model_validate_json(payload, strict=True)
@@ -185,5 +183,5 @@ class TestsFlextInfraLocCapGate:
         module.write_bytes(b"# \xff\n" + module.read_bytes())
         gate = FlextInfraGatesLocCap(tmp_path)
 
-        with pytest.raises(UnicodeDecodeError):
+        with u.Tests.raises(UnicodeDecodeError):
             gate.check_files((module,), project, u.Tests.gate_context(tmp_path))

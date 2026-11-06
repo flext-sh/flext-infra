@@ -15,7 +15,7 @@ from typing import Annotated, Literal, Self
 from flext_core import c, m
 
 from flext_infra import p, t
-from flext_infra._models.mise_toolchain_base import FlextInfraModelsMiseToolchainBase
+from flext_infra._models import FlextInfraModelsMiseToolchainBase
 
 
 class FlextInfraModelsMiseToolchain:
@@ -52,7 +52,9 @@ class FlextInfraModelsMiseToolchain:
         package: Annotated[
             Annotated[
                 p.Infra.UvOverridePackage,
-                t.schema_for_model(FlextInfraModelsMiseToolchain.UvOverridePackage),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsMiseToolchain.UvOverridePackage
+                ),
             ],
             m.Field(description="Package selector owning this override's scope"),
         ]
@@ -358,7 +360,9 @@ class FlextInfraModelsMiseToolchain:
         http: Annotated[
             Annotated[
                 p.Infra.MiseHttpToolOptions,
-                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseHttpToolOptions),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsMiseToolchain.MiseHttpToolOptions
+                ),
             ]
             | None,
             m.Field(
@@ -379,7 +383,7 @@ class FlextInfraModelsMiseToolchain:
             Annotated[
                 p.Infra.MisePostinstallOptions,
                 t.schema_for_model(
-                    FlextInfraModelsMiseToolchain.MisePostinstallOptions
+                    lambda: FlextInfraModelsMiseToolchain.MisePostinstallOptions
                 ),
             ]
             | None,
@@ -401,7 +405,9 @@ class FlextInfraModelsMiseToolchain:
         version_probe: Annotated[
             Annotated[
                 p.Infra.MiseToolVersionProbe,
-                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolVersionProbe),
+                t.schema_for_model(
+                    lambda: FlextInfraModelsMiseToolchain.MiseToolVersionProbe
+                ),
             ],
             m.Field(
                 description=(
@@ -417,7 +423,7 @@ class FlextInfraModelsMiseToolchain:
         entry: Annotated[
             Annotated[
                 p.Infra.MiseToolEntry,
-                t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+                t.schema_for_model(lambda: FlextInfraModelsMiseToolchain.MiseToolEntry),
             ],
             m.Field(description="Declared tool entry currently under proof."),
         ]
@@ -439,7 +445,9 @@ class FlextInfraModelsMiseToolchain:
             Sequence[
                 Annotated[
                     p.Infra.MiseToolEntry,
-                    t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsMiseToolchain.MiseToolEntry
+                    ),
                 ]
             ],
             m.Field(
@@ -451,14 +459,8 @@ class FlextInfraModelsMiseToolchain:
             m.Field(description="Selectors already proven before this entry."),
         ]
 
-    class ToolchainSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
-        """Language-runtime and native-tool versions shared by generated projects.
-
-        Native tools use moving ``latest`` selectors; Python retains its
-        required major.minor runtime line. Only ``make upg`` resolves the
-        selectors and writes mise.lock; setup installs frozen from that lock.
-        Python linters and type checkers remain owned by pyproject manifests.
-        """
+    class ToolchainUvSpec(FlextInfraModelsMiseToolchainBase.SchemaRecord):
+        """Python line, cooldown and uv resolution policy of the fleet toolchain."""
 
         python_version: Annotated[
             t.NonEmptyStr,
@@ -525,7 +527,9 @@ class FlextInfraModelsMiseToolchain:
                 t.NonEmptyStr
                 | Annotated[
                     p.Infra.UvScopedOverride,
-                    t.schema_for_model(FlextInfraModelsMiseToolchain.UvScopedOverride),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsMiseToolchain.UvScopedOverride
+                    ),
                 ],
                 ...,
             ],
@@ -553,6 +557,16 @@ class FlextInfraModelsMiseToolchain:
                 ),
             ),
         ] = ()
+
+    class ToolchainSpec(ToolchainUvSpec):
+        """Language-runtime and native-tool versions shared by generated projects.
+
+        Native tools use moving ``latest`` selectors; Python retains its
+        required major.minor runtime line. Only ``make upg`` resolves the
+        selectors and writes mise.lock; setup installs frozen from that lock.
+        Python linters and type checkers remain owned by pyproject manifests.
+        """
+
         mise_lockfile: Annotated[
             bool,
             m.Field(
@@ -631,7 +645,9 @@ class FlextInfraModelsMiseToolchain:
             tuple[
                 Annotated[
                     p.Infra.MiseToolEntry,
-                    t.schema_for_model(FlextInfraModelsMiseToolchain.MiseToolEntry),
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsMiseToolchain.MiseToolEntry
+                    ),
                 ],
                 ...,
             ],
@@ -679,7 +695,7 @@ class FlextInfraModelsMiseToolchain:
         beads: Annotated[
             Annotated[
                 p.Infra.BeadsToolSpec,
-                t.schema_for_model(FlextInfraModelsMiseToolchain.BeadsToolSpec),
+                t.schema_for_model(lambda: FlextInfraModelsMiseToolchain.BeadsToolSpec),
             ],
             m.Field(description="Beads ledger projection (.beads config)"),
         ]

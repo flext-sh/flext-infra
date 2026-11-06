@@ -266,7 +266,7 @@ class FlextInfraModelsConfigTemplates:
             Annotated[
                 p.Infra.ManagedFileOwnership,
                 t.schema_for_model(
-                    FlextInfraModelsConfigTemplates.ManagedFileOwnership
+                    lambda: FlextInfraModelsConfigTemplates.ManagedFileOwnership
                 ),
             ]
             | None,
@@ -439,7 +439,7 @@ class FlextInfraModelsConfigTemplates:
             Annotated[
                 p.Infra.TemplateDeclarationSpec,
                 t.schema_for_model(
-                    FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
+                    lambda: FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
                 ),
             ],
         ] = m.Field(
@@ -564,7 +564,9 @@ class FlextInfraModelsConfigTemplates:
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,
@@ -580,7 +582,9 @@ class FlextInfraModelsConfigTemplates:
                 Annotated[
                     p.Infra.ScaffoldGitignoreSectionSpec,
                     t.schema_for_model(
-                        FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        lambda: (
+                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
+                        )
                     ),
                 ],
                 ...,
