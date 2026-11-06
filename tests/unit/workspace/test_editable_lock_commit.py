@@ -37,12 +37,11 @@ class TestsEditableLockCommit:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 lock,
-                u.Cli.toml_dumps({
-                    "version": 1,
-                    "package": [
-                        {"name": name, "version": version, "source": {"git": source}}
-                    ],
-                }),
+                (
+                    "version = 1\n\n[[package]]\n"
+                    f'name = "{name}"\nversion = "{version}"\n'
+                    f'source = {{ git = "{source}" }}\n'
+                ),
             ),
         )
         return lock
