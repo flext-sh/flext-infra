@@ -172,7 +172,15 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Explicit metadata for a new project scaffold"),
         ] = None
         integration: Annotated[
-            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(
+                    lambda: (
+                        FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
+                    )
+                ),
+            ]
+            | None,
             m.Field(description="Explicit repository integration contract"),
         ] = None
         namespace_scan_dirs: Annotated[
@@ -634,7 +642,18 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Optional integration provider overlay"),
         ] = None
         candidate_bootstrap_targets: Annotated[
-            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargets,
+            tuple[
+                Annotated[
+                    p.Infra.CandidateBootstrapTargetSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace
+                            .CandidateBootstrapTargetSpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Declared candidate worktrees conformed by Infra"),
         ] = ()
         repository_policy_overlays: Annotated[
@@ -642,7 +661,15 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Repository-local policy overlays"),
         ] = ()
         external_consumers: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.ExternalConsumerSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ExternalConsumerSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigWorkspace.ExternalConsumerSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Out-of-workspace repositories propagation adjusts as"
@@ -803,7 +830,12 @@ class FlextInfraModelsConfigWorkspace:
         ] = ()
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            Annotated[
+                p.Infra.DocsAuditOverridesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                ),
+            ],
             m.Field(
                 description="Validated local documentation audit declarations",
             ),
@@ -811,7 +843,13 @@ class FlextInfraModelsConfigWorkspace:
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         beads: Annotated[
-            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
+            Annotated[
+                p.Infra.BeadsProjectSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
+                ),
+            ]
+            | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         gascity_enabled: Annotated[
@@ -825,15 +863,32 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = True
         repository: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                ),
+            ],
             m.Field(description="Local repository Git contract"),
         ]
         project: Annotated[
-            FlextInfraModelsConfigContexts.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.ProjectSpec
+                ),
+            ]
+            | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
         flext_source: Annotated[
-            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None,
+            Annotated[
+                p.Infra.CodegenBootstrapSource,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "FLEXT dependency source required before the first pyproject "
@@ -865,11 +920,29 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Declared candidate worktrees for bootstrap"),
         ] = ()
         subprojects: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
         pending_subprojects: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration, ...],
+            tuple[
+                Annotated[
+                    p.Infra.GitSubmoduleDeclaration,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.GitSubmoduleDeclaration
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description="Managed Git declarations awaiting checkout provisioning",
             ),
