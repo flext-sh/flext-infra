@@ -23,6 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesIteration,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesManagedConflicts,
+    FlextInfraUtilitiesMarkdownTooling,
     FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesRefactor,
@@ -36,7 +37,6 @@ from flext_infra._utilities._rope import FlextInfraUtilitiesRopeModulePatch
 from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisWorkspace,
 )
-from flext_infra._utilities.markdown_tooling import FlextInfraUtilitiesMarkdownTooling
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
