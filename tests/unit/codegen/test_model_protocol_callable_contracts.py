@@ -79,6 +79,44 @@ class TestsModelProtocolCallableContracts:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
+    def test_container_turns_read_only_only_for_model_elements(
+        tmp_path: Path,
+    ) -> None:
+        """Mutable containers stay mutable unless a model element became a protocol.
+
+        Unwrapping ``Annotated`` metadata rewrites no model, so the field keeps
+        its mutable attribute; a model element projects a covariant read-only
+        property.
+        """
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from collections.abc import MutableSequence\n"
+            "from typing import Annotated\n"
+            "from pydantic import BaseModel\n\n"
+            "class ModelsPayload:\n"
+            "    class Child(BaseModel):\n"
+            "        name: str\n\n"
+            "    class Holder(BaseModel):\n"
+            "        plain: MutableSequence[str]\n"
+            "        annotated: MutableSequence[Annotated[str, 'metadata']]\n"
+            "        children: MutableSequence[ModelsPayload.Child]\n",
+        )
+
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+
+        generated = projected[(package / "_protocols" / "payload.py").relative_to(root)]
+        holder = generated[generated.index("class Holder") :]
+        tm.ok("plain: MutableSequence[str]" in holder)
+        tm.ok("annotated: MutableSequence[str]" in holder)
+        tm.fail("def annotated(" in holder)
+        tm.ok("def children(" in holder)
+        tm.ok("Sequence[" in holder[holder.index("def children(") :])
+        ast.parse(generated, filename="generated-payload.py")
+
+    @staticmethod
     def test_cached_property_member_keeps_its_source_descriptor(
         tmp_path: Path,
     ) -> None:
