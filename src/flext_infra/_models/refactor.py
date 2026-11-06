@@ -481,7 +481,15 @@ class FlextInfraModelsRefactor(
             m.Field(description="Actual native text scan, None if unobserved"),
         ] = None
         lint: Annotated[
-            Mapping[str, t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult]]
+            Mapping[
+                str,
+                t.Infra.LintSnapshot[
+                    Annotated[
+                        p.Infra.LintGateResult,
+                        t.schema_for_model(lambda: FlextInfraModelsBase.LintGateResult),
+                    ]
+                ],
+            ]
             | None,
             m.Field(description="Canonical Ruff snapshots by source path"),
         ] = None
