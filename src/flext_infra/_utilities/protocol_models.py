@@ -4374,9 +4374,10 @@ class FlextInfraUtilitiesModelsProtocol:
                     and (alias.asname or alias.name) not in excluded
                 ]
                 if names:
-                    model_source = statement.module.startswith(
-                        f"{package_name}._models"
-                    ) or statement.module.startswith(f"{package_name}._protocols")
+                    module_name = statement.module
+                    model_source = module_name is not None and module_name.startswith(
+                        (f"{package_name}._models", f"{package_name}._protocols")
+                    )
                     type_names = [
                         alias
                         for alias in names
