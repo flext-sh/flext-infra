@@ -347,8 +347,7 @@ class FlextInfraConstantsRefactor:
             "ban-mutable-constant-value",
         ),
         # The five declared type-contract rules carry the model-field contract
-        # cure; an unselected engine run is refused (ADR-028 D18), so the phase
-        # is only reachable through its rule family.
+        # cure; the phase is selected through its rule family.
         SemanticCutoverPhase.CONTRACT_NORMALIZATION: (
             "bind-typing-adapter-utilities",
             "rewire-cli-json-mapping-adapter",
