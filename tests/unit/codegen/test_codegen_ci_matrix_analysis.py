@@ -81,6 +81,24 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
         tm.ok((root / c.Infra.DIR_TESTS).is_dir())
         self._assert_sonarcloud_scope(rendered)
 
+    @staticmethod
+    def test_qlty_excludes_the_generated_family_facades(
+        rendered_project: Path,
+    ) -> None:
+        """The smells gate never reads the facades the generator projects.
+
+        Premise: every family facade lists the same families by construction,
+        so a consumer with enough families made qlty report the generated
+        ``models.py``/``protocols.py`` as similar code (flext-otcin follow-up).
+        """
+        rendered = (
+            rendered_project
+            / c.Infra.QLTY_CONFIG_DIRNAME
+            / c.Infra.QLTY_CONFIG_FILENAME
+        ).read_text(encoding="utf-8")
+        for family in u.Infra.facade_families().values():
+            tm.that(rendered, has=f'"**/{family.module}.py"')
+
     def test_sonarcloud_tests_root_is_always_materialized_by_conform(
         self,
         infra_git_repo: Path,

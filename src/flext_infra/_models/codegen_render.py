@@ -586,6 +586,13 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             strict=True,
         )
 
+        facade_modules: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description="Facade module stems the generator projects (c, t, p, m, u)"
+            ),
+        ]
+
     # Keep the module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ArbitraryTypesModel):
         """Native module inventory filling the canonical template's owned slots."""

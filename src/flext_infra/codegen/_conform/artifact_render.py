@@ -749,8 +749,17 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if destination == (
             f"{c.Infra.QLTY_CONFIG_DIRNAME}/{c.Infra.QLTY_CONFIG_FILENAME}"
         ):
+            # The family facades are projections of the same generator, identical
+            # by construction across members: the smells gate reads authored code.
             return r[p.BaseModel].ok(
-                m.Infra.QltyRenderSpec(),
+                m.Infra.QltyRenderSpec(
+                    facade_modules=tuple(
+                        sorted(
+                            family.module
+                            for family in u.Infra.facade_families().values()
+                        )
+                    ),
+                ),
             )
         if destination == c.Infra.ENVRC_FILENAME:
             # The workspace declaration owns whether a Beads route exists.
