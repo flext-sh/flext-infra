@@ -780,7 +780,7 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-    ) -> p.Result[tuple[Path, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[Path, p.Cli.AtomicFileState]]:
         """Associate a finding with its source's current state.
 
         Returns:
@@ -791,7 +791,7 @@ class FlextInfraModGateEngine:
         resolved_file = (root / file_path).resolve()
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure and not resolved_file.exists():
-            return r[tuple[Path, m.Cli.AtomicFileState]].fail(
+            return r[tuple[Path, p.Cli.AtomicFileState]].fail(
                 f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
@@ -853,7 +853,7 @@ class FlextInfraModGateEngine:
         root: Path,
         plan: tuple[Mapping[str, Path], frozenset[str]],
         context: p.Infra.ModScanSourceContext,
-        native: tuple[p.Infra.ModNativeRecord, m.Cli.AtomicFileReceipt],
+        native: tuple[p.Infra.ModNativeRecord, p.Cli.AtomicFileReceipt],
     ) -> p.Result[p.Infra.ModScanFinding]:
         """Validate one JSONL finding into a typed, authenticated entry.
 
