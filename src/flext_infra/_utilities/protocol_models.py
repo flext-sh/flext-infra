@@ -4849,7 +4849,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 True for a public instance callable that is no computed field.
 
             """
-            definition, tree = owner
+            _definition, tree = owner
             dunder = method.name.startswith("__") and method.name.endswith("__")
             # Private helpers stay implementation; the container and
             # call protocol dunders an authored model defines are its
