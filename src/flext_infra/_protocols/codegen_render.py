@@ -412,6 +412,15 @@ class FlextInfraProtocolsCodegenRender:
             """Canonical workflow command contract."""
             ...
 
+        @property
+        def scenario_data_roots(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Scenario-data roots the staged-file hook never hands to a gate
+            (codegen.exclusions.scenario_data_roots).
+            """
+            ...
+
     @runtime_checkable
     class GitHookRenderSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
