@@ -1250,9 +1250,14 @@ class FlextInfraUtilitiesModelsProtocol:
             protocol_facade = self._source_facade_class_name(
                 package_dir / "protocols.py", "p"
             )
+            alias_ctx = self._source_model_alias_names_by_tree(grouped)
             for classes in grouped.values():
                 imports.extend(self.source_annotation_imports(classes, package_name))
                 for node, path, tree in classes:
+                    # A type alias is not a model to witness: its protocol
+                    # mirror is the target class contract, not a conversion.
+                    if path and path[-1] in alias_ctx[0].get(id(tree), set()):
+                        continue
                     identity = ".".join((self.source_module_names[id(tree)], *path))
                     model, port = (
                         public.get(identity),
@@ -1264,7 +1269,10 @@ class FlextInfraUtilitiesModelsProtocol:
                         model is None
                         or port is None
                         or any(part.startswith("_") for part in path)
+                        or bool(node.type_params)
                     ):
+                        continue
+                    if model.rsplit(".", 1)[-1] in (alias_ctx[1] | alias_ctx[2]):
                         continue
                     parameters = self._source_witness_parameters(
                         (tree, node, path), classes, (model_facade, public)
@@ -2547,6 +2555,46 @@ class FlextInfraUtilitiesModelsProtocol:
                     elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         names.add(node.name)
             return frozenset(names)
+
+        def _source_model_alias_names_by_tree(
+            self,
+            grouped: Mapping[
+                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
+            ],
+        ) -> tuple[dict[int, set[str]], set[str], set[str]]:
+            """Index projected model aliases by their source tree.
+
+            Returns:
+                Alias names keyed by the id of the tree that declares them.
+
+            """
+            alias_names_by_tree: dict[int, set[str]] = {}
+            for (
+                _destination,
+                statement,
+                alias_tree,
+                _model,
+            ) in self.source_model_aliases.values():
+                if isinstance(statement.name, ast.Name):
+                    alias_names_by_tree.setdefault(id(alias_tree), set()).add(
+                        statement.name.id
+                    )
+            model_alias_names = {
+                target.id
+                for classes in grouped.values()
+                for _node, _path, tree in classes
+                for family in tree.body
+                if isinstance(family, ast.ClassDef)
+                for statement in family.body
+                if isinstance(statement, ast.Assign)
+                for target in statement.targets
+                if isinstance(target, ast.Name)
+            }
+            return (
+                alias_names_by_tree,
+                {name for names in alias_names_by_tree.values() for name in names},
+                model_alias_names,
+            )
 
         @staticmethod
         def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:

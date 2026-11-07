@@ -28,5 +28,4 @@ repos:
 {% for context, enabled in (("pre_commit", make.pre_commit), ("pre_push", make.pre_push)) if enabled %}
 {% for step in make.workflow if context in step.contexts %}
 {{ workflow_hook(step, context) }}
-{% endfor -%}
-{% endfor -%}
+{% endfor -%}{% endfor -%}
