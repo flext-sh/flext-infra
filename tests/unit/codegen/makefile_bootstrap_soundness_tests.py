@@ -82,6 +82,31 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(check_body, lacks="--apply")
 
     @staticmethod
+    @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
+    def test_every_native_sync_clears_the_caller_environment(
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+    ) -> None:
+        """Every native ``uv sync`` runs without the configured caller variables.
+
+        The Makefile exports ``VIRTUAL_ENV`` for its own commands; a staged
+        sync that inherits it makes uv warn that the live environment does
+        not match the stage it targets (flext-ptnlu). The unset list is the
+        configured ``make.native_environment_unset``, never a copy.
+        """
+        root, _ = u.Tests.render_make_environment(tmp_path, profile)
+        spec = tm.ok(workspace.FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        rendered = u.Tests.conform_makefile_text(root, spec)
+        unset = "env" + "".join(
+            f" -u {variable}"
+            for variable in config.Infra.codegen.make.native_environment_unset
+        )
+        syncs = [line for line in rendered.splitlines() if "$(UV) sync" in line]
+        tm.that(len(syncs), gt=1)
+        for line in syncs:
+            tm.that(line.split("$(UV) sync", 1)[0], has=unset, msg=line)
+
+    @staticmethod
     def _reader_workspace_checkout(
         tmp_path: Path,
         *,
