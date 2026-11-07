@@ -38,6 +38,8 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     CONFLICT_MARKERS: ClassVar[str] = "conflict-markers"
     DEPS: ClassVar[str] = "deps"
     RUNTIME_INTEGRITY: ClassVar[str] = "runtime-integrity"
+    # Runtime-integrity component proving uv.lock matches its manifest.
+    LOCK_FRESHNESS: ClassVar[str] = "lock-freshness"
     ENFORCEMENT_CATALOG: ClassVar[str] = "enforcement-catalog"
 
     GATE_TOOLS_BY_KIND: ClassVar[
