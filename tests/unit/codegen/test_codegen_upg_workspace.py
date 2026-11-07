@@ -20,7 +20,7 @@ class TestsFlextInfraCodegenUpgWorkspace:
     def _declared_member_checkout(
         root: Path,
         tmp_path: Path,
-    ) -> tuple[str, Path, m.Infra.RepositoryRef]:
+    ) -> tuple[str, Path, p.Infra.RepositoryRef]:
         """Attach a governed origin member and capture its indexed gitlink.
 
         Args:

@@ -738,7 +738,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, p.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 
@@ -850,7 +850,10 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        root = u.Infra.runtime_owner_root(self.repository_root).unwrap()
+        # The check publishes its receipt under the root it was invoked at and
+        # plans coverage from it; admission reads that same root, so a member
+        # checked inside a workspace checkout (CI) finds its own receipt.
+        root = self.repository_root
         approved = u.Infra.git_require_green_check_receipt(
             root,
             u.Infra.load_codegen_inputs(root).unwrap().spec.make,

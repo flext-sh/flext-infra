@@ -29,9 +29,9 @@ class FlextInfraDocAuditorMixin:
         docstring_coverage: p.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
-                m.Infra.DocScope,
+                p.Infra.DocScope,
                 Sequence[p.Infra.AuditIssue],
-                m.Infra.DocstringCoverage | None,
+                p.Infra.DocstringCoverage | None,
             ],
             Sequence[str],
         ],

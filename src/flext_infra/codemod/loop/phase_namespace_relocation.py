@@ -34,7 +34,7 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
         """
         cascade = FlextInfraNamespaceRelocationCascade()
         working = dict(sources)
-        effects: MutableMapping[Path, m.Infra.CodegenFilePlan] = {}
+        effects: MutableMapping[Path, p.Infra.CodegenFilePlan] = {}
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue

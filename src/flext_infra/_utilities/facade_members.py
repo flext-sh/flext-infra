@@ -745,7 +745,7 @@ class FlextInfraUtilitiesFacadeMembers:
             str,
             p.Infra.RopeParsedModule,
             p.Infra.RopeSourceModule,
-            Mapping[str, m.Infra.SourceClassReference],
+            Mapping[str, p.Infra.SourceClassReference],
             frozenset[str],
         ],
         letter: str,

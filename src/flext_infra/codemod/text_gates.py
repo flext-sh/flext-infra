@@ -623,7 +623,7 @@ class FlextInfraModTextGateEngine:
     ) -> p.Result[
         tuple[
             tuple[p.Cli.AtomicFileState, ...],
-            m.Cli.AtomicFileState,
+            p.Cli.AtomicFileState,
             tuple[p.Infra.ModTextRule, ...],
         ]
     ]:

@@ -560,7 +560,7 @@ class FlextInfraUtilitiesDependencies(
             planned_manifests=planned_manifests,
             inputs=workspace.inputs,
         )
-        by_name: Mapping[str, m.Infra.RepositoryRef] = {
+        by_name: Mapping[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -642,9 +642,9 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_payload(
         cls,
         project: Path,
-        manifests: Mapping[Path, m.Infra.CodegenFilePlan],
+        manifests: Mapping[Path, p.Infra.CodegenFilePlan],
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None = None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Read one project's dependency manifest, planned payload first.
 
@@ -695,7 +695,7 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_unplanned_content(
         path: Path,
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None,
     ) -> bytes:
         """Read an unplanned manifest from its captured input or from disk.
 

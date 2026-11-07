@@ -55,7 +55,7 @@ class FlextInfraDuplicationReport:
                 f"for project {project_dir.name}",
             )
         data = u.Cli.json_as_mapping(report.model_dump(mode="json", by_alias=True))
-        issues: dict[str, m.Infra.Issue] = {}
+        issues: dict[str, p.Infra.Issue] = {}
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
             owned = cls._owned_clone_issue(duplicate, project_dir)
             if owned is not None:
@@ -67,7 +67,7 @@ class FlextInfraDuplicationReport:
         cls,
         duplicate: t.JsonMapping,
         project_dir: Path,
-    ) -> tuple[str, m.Infra.Issue] | None:
+    ) -> tuple[str, p.Infra.Issue] | None:
         """Map one reported clone to its owned side, keyed by its span pair.
 
         The two sides of a clone are the same span only when the same

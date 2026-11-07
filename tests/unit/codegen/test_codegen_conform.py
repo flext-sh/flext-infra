@@ -118,7 +118,7 @@ class TestsFlextInfraCodegenConform:
         tmp_path: Path,
         scenario: str,
         template: Path,
-    ) -> tuple[Path, m.Infra.CodegenConformRequest, Path, bytes]:
+    ) -> tuple[Path, p.Infra.CodegenConformRequest, Path, bytes]:
         """Clone the conformed template, then introduce one recoverable publication.
 
         Returns:

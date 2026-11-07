@@ -42,8 +42,8 @@ class TestsFlextInfraCodegenConformHatchHook:
         hook_path: str | Path | None,
     ) -> tuple[
         FlextInfraCodegenConform.Generate,
-        m.Infra.CodegenConformRequest,
-        m.Infra.CodegenFilePlan,
+        p.Infra.CodegenConformRequest,
+        p.Infra.CodegenFilePlan,
     ]:
         """Plan the canonical pyproject through the public conform owner.
 

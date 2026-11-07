@@ -175,7 +175,7 @@ class FlextInfraModelsCodegenTransaction:
                     has no original source witness.
 
             """
-            observed: dict[Path, m.Cli.AtomicFileState] = {}
+            observed: dict[Path, p.Cli.AtomicFileState] = {}
             for state in self.inputs:
                 previous = observed.setdefault(state.path, state)
                 if previous != state:

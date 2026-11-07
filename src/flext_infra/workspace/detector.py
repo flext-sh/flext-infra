@@ -254,7 +254,7 @@ class FlextInfraWorkspaceDetector(
         *,
         observed: p.Infra.RepositoryRef,
         sources: tuple[p.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]]:
+    ) -> p.Result[tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
         The checkout's own manifest is mandatory for identity: its complete
@@ -639,7 +639,7 @@ class FlextInfraWorkspaceDetector(
         declaration: p.Infra.GitSubmoduleDeclaration,
         *,
         context: p.Infra.SubprojectLoadContext,
-    ) -> p.Result[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
+    ) -> p.Result[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]:
         """Load one governed entry, or its declared path for external entries.
 
         A native Git false management declaration marks a read-only external
@@ -711,7 +711,7 @@ class FlextInfraWorkspaceDetector(
         declaration: p.Infra.GitSubmoduleDeclaration,
         *,
         context: p.Infra.SubprojectLoadContext,
-    ) -> p.Result[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
+    ) -> p.Result[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]:
         """Resolve a provisioned checkout without a second identity catalog.
 
         Returns:
@@ -742,7 +742,7 @@ class FlextInfraWorkspaceDetector(
         *,
         declared_url: str,
         context: p.Infra.SubprojectLoadContext,
-    ) -> p.Result[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
+    ) -> p.Result[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]:
         """Derive a composed member from its provisioned Python checkout.
 
         Returns:
@@ -803,7 +803,7 @@ class FlextInfraWorkspaceDetector(
         cls,
         repository: p.Infra.RepositoryRef,
         inputs: p.Infra.RepositoryDeclarationInputs,
-    ) -> p.Result[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]:
+    ) -> p.Result[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]:
         """Attach the commands a member declares in its own manifest.
 
         ``inputs`` is the member declaration the reference was built from, read
@@ -980,9 +980,9 @@ class FlextInfraWorkspaceDetector(
         allow_unprovisioned_members: bool,
     ) -> p.Result[
         tuple[
-            m.Infra.BeadsProjectSpec | None,
+            p.Infra.BeadsProjectSpec | None,
             tuple[
-                tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+                tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
                 tuple[
                     Sequence[p.Infra.RepositoryRef],
                     Sequence[Path],
@@ -1124,7 +1124,7 @@ class FlextInfraWorkspaceDetector(
         cls,
         superproject_root: Path,
         member_root: Path,
-    ) -> p.Result[tuple[p.Infra.BeadsProjectSpec, m.Infra.RepositoryRef]]:
+    ) -> p.Result[tuple[p.Infra.BeadsProjectSpec, p.Infra.RepositoryRef]]:
         """Load the superproject's Beads ledger and the member's governed ref.
 
         Resolve this independent member's native declaration once, after its
@@ -1186,7 +1186,7 @@ class FlextInfraWorkspaceDetector(
         allow_unprovisioned_members: bool,
     ) -> p.Result[
         tuple[
-            tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+            tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
             tuple[
                 Sequence[p.Infra.RepositoryRef],
                 Sequence[Path],

@@ -35,7 +35,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
             One effect per destination with its original witness and dependencies.
 
         """
-        files: dict[Path, m.Infra.CodegenFilePlan] = {}
+        files: dict[Path, p.Infra.CodegenFilePlan] = {}
         for file in plans:
             previous = files.get(file.path)
             if previous is None and not inputs:
@@ -115,7 +115,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @classmethod
     def codegen_stage_file_plans(
         cls,
-        index: MutableMapping[Path, m.Infra.CodegenFilePlan],
+        index: MutableMapping[Path, p.Infra.CodegenFilePlan],
         plans: Sequence[p.Infra.CodegenFilePlan],
         *,
         ordered: bool = False,
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         edit: p.Infra.SemanticMigrationEdit,
         *,
         source_project: p.Infra.RopeProject,
-        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
+        declared_files: Mapping[Path, p.Infra.CodegenFilePlan],
     ) -> p.Infra.CodegenFilePlan:
         """Bind a semantic edit to its original candidate publication witness.
 

@@ -1,0 +1,49 @@
+# An instance annotation names the structural protocol, never the model class
+# (AGENTS.md "Typing": a model is never a type; every m.* typing reference is
+# prohibited). The model->protocol stage projects every model `m.<Ns>.<Name>`
+# (or its facade class `Flext<Pkg>Models`) as `p.<Ns>.<Name>` with the same fields plus the p.BaseModel API
+# (model_copy, model_dump, model_dump_json, model_validate), so a parameter,
+# return or local annotation rewrites to the protocol of the same name.
+#
+# Scope: annotations inside a function (parameters, return, locals). A class
+# position (`type[...]`, a PEP 695 bound, `t.ModelClass[...]`) keeps the class:
+# the Pydantic class API is called there. Model field annotations in a class
+# body are owned by rewire-model-protocol-field-to-port and schema_for_model,
+# never by this rule. Idempotent: a rewritten reference no longer matches.
+id: model-annotation-to-protocol
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/config/rules/ast-grep/tests/**"
+  - "**/_typings/**"
+  - "**/typings.py"
+  # The protocol layer names models only as conformance witnesses.
+  - "**/_protocols/**"
+  - "**/protocols.py"
+rule:
+  kind: attribute
+  regex: ^(?:m|Flext[A-Za-z0-9]*Models)\.[A-Z][A-Za-z0-9]*\.[A-Z][A-Za-z0-9]*$
+  pattern: $FACADE.$NS.$NAME
+  inside:
+    kind: type
+    stopBy: end
+  all:
+    - inside:
+        kind: function_definition
+        stopBy: end
+    - not:
+        inside:
+          any:
+            - kind: constrained_type
+            - kind: generic_type
+              regex: ^type\[
+            - kind: subscript
+              regex: ^t\.ModelClass\[
+          stopBy:
+            kind: function_definition
+fix: p.$NS.$NAME
+message: >-
+  An instance annotation names the model class; annotate the structural
+  protocol p.<Ns>.<Name> (a model is never a type).

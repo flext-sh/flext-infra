@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             manifest: p.Infra.PlanCollectionManifest,
             configuration: p.Infra.PlanCollectionConfig,
             *,
-            states: MutableMapping[Path, m.Cli.AtomicFileState],
+            states: MutableMapping[Path, p.Cli.AtomicFileState],
         ) -> None:
             self.canonical = canonical
             self.projection = projection
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 (item.identity, item.digest): item for item in manifest.revisions
             }
             self.current_revisions: dict[
-                tuple[str, Path], m.Infra.PlanCollectionRevision
+                tuple[str, Path], p.Infra.PlanCollectionRevision
             ] = {}
             self.coverage: list[p.Infra.PlanCollectionCoverage] = []
             self.invalid_owned: MutableMapping[Path, str] = {}
@@ -480,7 +480,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
     @staticmethod
     def _collection_markdown_width(
         root: Path,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> int:
         """Bind the renderer's elected tooling policy to original observations.
 
@@ -568,7 +568,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             configuration,
         )
         cls._require_unique_sources(configuration)
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {
+        states: MutableMapping[Path, p.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
         manifest, excluded_outputs = cls.docs_collection_manifest(
@@ -629,7 +629,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             configuration,
         )
         cls._require_unique_sources(configuration)
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {
+        states: MutableMapping[Path, p.Cli.AtomicFileState] = {
             state.path: state for state in inputs
         }
         width = cls._collection_markdown_width(repository_root, states)
@@ -709,7 +709,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         manifest: p.Infra.PlanCollectionManifest,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
         *,
         width: int,
     ) -> None:
@@ -723,7 +723,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             (item.source_id, item.source_path, item.digest): item
             for item in manifest.revisions
         }
-        current: dict[str, m.Infra.PlanCollectionRevision] = {}
+        current: dict[str, p.Infra.PlanCollectionRevision] = {}
         for coverage in manifest.coverage:
             for locator, digest in coverage.source_revisions:
                 revision = by_revision[coverage.source_id, locator, digest]
@@ -777,7 +777,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         manifest: p.Infra.PlanCollectionManifest,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> None:
         """Verify every manifest-owned canonical file through its original snapshot.
 
@@ -812,7 +812,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         cls,
         canonical: Path,
         manifest: p.Infra.PlanCollectionManifest,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> None:
         """Compare immutable provenance and incoming digests with their published owner.
 
@@ -952,7 +952,7 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         artifacts: tuple[p.Cli.AtomicFileState, ...],
         desired: MutableMapping[Path, bytes],
         *,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Infra.PlanCollectionRevision:
         """Keep curated canonical text intact while recording incoming revisions.
 

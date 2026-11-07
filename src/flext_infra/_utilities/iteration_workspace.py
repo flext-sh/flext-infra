@@ -217,7 +217,7 @@ class FlextInfraUtilitiesIterationWorkspace:
         *,
         mutating: bool,
     ) -> tuple[
-        m.Infra.WorkspaceOperationReceipt,
+        p.Infra.WorkspaceOperationReceipt,
         tuple[Path, ...],
         p.Result[Sequence[Path]] | None,
     ]:

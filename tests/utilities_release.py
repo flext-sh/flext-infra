@@ -240,7 +240,7 @@ class TestsFlextInfraUtilitiesRelease:
         tmp_path: Path,
         *,
         projects: t.StrTuple = ("flext-a",),
-    ) -> tuple[Path, m.Infra.BuildReport]:
+    ) -> tuple[Path, p.Infra.BuildReport]:
         """Build members through the public CLI and tag their attested sources.
 
         Returns:

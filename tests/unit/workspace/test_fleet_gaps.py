@@ -273,7 +273,7 @@ class TestsFlextInfraWorkspaceFleetGaps:
         member: Path,
         reports: Path,
         gates: Sequence[str],
-    ) -> tuple[Path, m.Infra.ProjectResult]:
+    ) -> tuple[Path, p.Infra.ProjectResult]:
         """Publish a real checker invocation and return its exact native receipt.
 
         Returns:
