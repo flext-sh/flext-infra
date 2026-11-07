@@ -423,6 +423,15 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             ],
             m.Field(description="Canonical workflow command contract"),
         ]
+        scenario_data_roots: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Scenario-data roots the staged-file hook never hands to "
+                    "a gate (codegen.exclusions.scenario_data_roots)"
+                ),
+            ),
+        ]
 
     class GitHookRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by the generated Git hook validator."""

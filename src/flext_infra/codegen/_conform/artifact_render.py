@@ -793,7 +793,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         dist = render_inputs.target.repository.distribution
         spec: p.BaseModel
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
-            spec = m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
+            spec = m.Infra.MakeWorkflowRenderSpec(
+                dist=dist,
+                make=codegen.make,
+                scenario_data_roots=codegen.exclusions.scenario_data_roots,
+            )
         elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:

@@ -62,6 +62,7 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=config.Infra.codegen.make,
                 ),
@@ -116,7 +117,11 @@ class TestsFlextInfraCodegenHookConformance:
         rendered = tm.ok(
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
-                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist="flext-demo",
+                    make=make,
+                ),
             ),
         )
         tm.ok(u.Cli.atomic_write_text_file(root / ".pre-commit-config.yaml", rendered))
@@ -150,7 +155,11 @@ class TestsFlextInfraCodegenHookConformance:
         rendered = tm.ok(
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
-                m.Infra.MakeWorkflowRenderSpec(dist="fixture-project", make=make),
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist="fixture-project",
+                    make=make,
+                ),
             ),
         )
         hook_config = root / c.Infra.PRE_COMMIT_CONFIG_FILENAME
@@ -238,7 +247,11 @@ class TestsFlextInfraCodegenHookConformance:
         rendered = tm.ok(
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
-                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist="flext-demo",
+                    make=make,
+                ),
             ),
         )
         commit_rows = [
@@ -280,7 +293,11 @@ class TestsFlextInfraCodegenHookConformance:
         rendered = tm.ok(
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
-                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist="flext-demo",
+                    make=make,
+                ),
             ),
         )
         tm.that("flext-pre-commit-" in rendered, eq=make.pre_commit)
@@ -293,6 +310,7 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=config.Infra.codegen.make.model_copy(
                         update={"pre_commit": False, "pre_push": False},
@@ -315,6 +333,7 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make.model_copy(update={"pre_commit": True, "pre_push": True}),
                 ),
@@ -332,6 +351,7 @@ class TestsFlextInfraCodegenHookConformance:
             u.Cli.template_render(
                 _HOOK_TEMPLATE,
                 m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist="flext-demo",
                     make=make.model_copy(
                         update={"pre_commit": True, "pre_push": False},
