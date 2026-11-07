@@ -30,15 +30,18 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             native mypy settings.
 
         """
-        payload = config.Infra.tooling.model_dump(
-            mode="json", by_alias=True, exclude_computed_fields=True
+        payload = u.json_mapping_adapter().validate_python(
+            config.Infra.tooling.model_dump(
+                mode="json", by_alias=True, exclude_computed_fields=True
+            )
         )
-        settings = payload["settings"]
+        settings = u.json_mapping_adapter().validate_python(payload["settings"])
+        mypy_values = u.json_list_adapter().validate_python(settings["mypy"])
         return {
             **payload,
             "settings": {
                 **settings,
-                "mypy": [*settings["mypy"], *map(list, entries)],
+                "mypy": [*mypy_values, *map(list, entries)],
             },
         }
 
@@ -182,25 +185,19 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
     ) -> None:
         """Free native override options cannot bypass the diagnostic policy."""
         document = config.Infra.tooling
-        mypy = document.tools.mypy.model_dump(
-            by_alias=True, exclude_computed_fields=True
+        document_payload = u.json_mapping_adapter().validate_python(
+            document.model_dump(by_alias=True, exclude_computed_fields=True)
         )
+        tools = u.json_mapping_adapter().validate_python(document_payload["tools"])
+        mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
         mypy["overrides"] = [
             {
                 "modules": ["arbitrary_dependency.*"],
-                "settings": [(option, value)],
+                "settings": [[option, value]],
                 "justification": "https://mypy.readthedocs.io/en/stable/config_file.html",
             }
         ]
-        payload = {
-            **document.model_dump(by_alias=True, exclude_computed_fields=True),
-            "tools": {
-                **document.tools.model_dump(
-                    by_alias=True, exclude_computed_fields=True
-                ),
-                "mypy": mypy,
-            },
-        }
+        payload = {**document_payload, "tools": {**tools, "mypy": mypy}}
         with u.Tests.raises(e.PydanticValidationError, match=r"[Mm]ypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
 

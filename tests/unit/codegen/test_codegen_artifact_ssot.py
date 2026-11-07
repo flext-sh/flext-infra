@@ -47,14 +47,22 @@ class TestsFlextInfraCodegenArtifactSsot:
         error: str,
     ) -> None:
         """A cyclic or undeclared artifact dependency rejects the catalog."""
-        payload = codegen.templates.model_dump(
-            mode="json", by_alias=True, exclude_computed_fields=True
+        payload = u.json_mapping_adapter().validate_python(
+            codegen.templates.model_dump(
+                mode="json", by_alias=True, exclude_computed_fields=True
+            )
         )
-        first, second = sorted(payload["entries"])[:2]
-        payload["entries"][first]["requires_artifacts"] = [second]
-        payload["entries"][second]["requires_artifacts"] = (
+        entries = u.json_mapping_adapter().validate_python(payload["entries"])
+        first, second = sorted(entries)[:2]
+        first_entry = u.json_mapping_adapter().validate_python(entries[first])
+        second_entry = u.json_mapping_adapter().validate_python(entries[second])
+        first_entry["requires_artifacts"] = [second]
+        second_entry["requires_artifacts"] = (
             [first] if dependencies == "cycle" else [f"{second}.undeclared"]
         )
+        entries[first] = first_entry
+        entries[second] = second_entry
+        payload["entries"] = entries
         with u.Tests.raises(c.ValidationError, match=error):
             m.Infra.TemplatesSpec.model_validate(payload)
 
@@ -75,7 +83,9 @@ class TestsFlextInfraCodegenArtifactSsot:
         entries = codegen.templates.entries
         tm.that(len(entries), eq=len(catalog))
         for entry in entries:
-            declaration = catalog[entry.destination]
+            declaration = m.Infra.TemplateDeclarationSpec.model_validate(
+                catalog[entry.destination]
+            )
             for name in type(declaration).model_fields:
                 tm.that(getattr(entry, name), eq=getattr(declaration, name))
 
