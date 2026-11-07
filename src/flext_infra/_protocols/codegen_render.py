@@ -561,6 +561,11 @@ class FlextInfraProtocolsCodegenRender:
     class QltyRenderSpec(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
+        @property
+        def facade_modules(self) -> tuple[str, ...]:
+            """Facade module stems the generator projects (c, t, p, m, u)."""
+            ...
+
     @runtime_checkable
     class ModuleSkeletonRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

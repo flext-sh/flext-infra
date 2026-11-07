@@ -124,6 +124,16 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
                 ),
             ),
             (
+                c.Infra.LOCK_FRESHNESS,
+                (
+                    *infra,
+                    "workspace",
+                    "verify-lock",
+                    "--repository-root",
+                    str(runtime_root),
+                ),
+            ),
+            (
                 "environment-provenance",
                 (
                     *infra,
