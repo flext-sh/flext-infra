@@ -266,20 +266,15 @@ class FlextInfra(
 
     @staticmethod
     def _mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
-        """Require one theme selection and only laws the catalog derives.
+        """Accept a full-catalog run or a selection of laws the catalog derives.
+
+        A selector-free run converges the complete active catalog (ADR-028
+        Decision 18 item 2); a selection only narrows the focus.
 
         Returns:
-            Acceptance, the unselected-run refusal, the catalog failure, or
-            the unknown-law failure.
+            Acceptance, the catalog failure, or the unknown-law failure.
 
         """
-        selectors = (request.rule_id, request.rule_ids, request.laws)
-        if all(item is None for item in (*selectors, request.rename_plan)):
-            return r[bool].fail(
-                "refactor mod requires a theme selection (--laws, --rule-ids, "
-                "--rule or --rename-plan); an unselected engine run is a global "
-                "make and is refused (ADR-028 Decision 18 item 2)"
-            )
         if request.laws is None:
             return r[bool].ok(value=True)
         catalog = u.Infra.enforcement_catalog()
@@ -412,9 +407,9 @@ class FlextInfra(
         A mutating run stops at its first failed prerequisite; later
         repositories are not reported as executed. A check or dry-run mutates
         nothing, so every selected repository runs and one aggregated failure
-        names each failing repository. A run must select its theme (laws,
-        rule IDs, one rule or a rename plan): an unselected engine run is a
-        global make and is refused (ADR-028 Decision 18 item 2). Laws are
+        names each failing repository. A selector-free run converges the
+        complete active catalog; laws, rule IDs, one rule or a rename plan
+        only narrow the focus (ADR-028 Decision 18 item 2). Laws are
         validated once against the derived enforcement catalog; each
         repository expands them into its own planned rules.
 
