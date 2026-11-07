@@ -240,6 +240,8 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     custom=False,
                 )
             case c.Infra.CodegenConformSurface.WORKFLOWS:
+                # The commit and push hooks are the local half of the same
+                # workflow contract the CI projections carry.
                 contract = m.Infra.CodegenConformSurfaceContract(
                     destinations=frozenset(
                         entry.destination
@@ -247,6 +249,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                         if Path(entry.destination).is_relative_to(
                             c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
                         )
+                        or entry.destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME
                     ),
                     delegates=False,
                     pyproject=False,
