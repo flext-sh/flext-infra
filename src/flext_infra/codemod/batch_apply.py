@@ -82,7 +82,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             "the expansion read changes"
         ),
     )
-    _quarantine: dict[Path, m.Infra.ModModuleQuarantine] = m.PrivateAttr(
+    _quarantine: dict[Path, p.Infra.ModModuleQuarantine] = m.PrivateAttr(
         default_factory=dict
     )
     _excluded: dict[str, m.Infra.ModQuarantineExclusion] = m.PrivateAttr(
@@ -203,7 +203,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self,
         snapshot: p.Infra.WorkspaceSnapshot,
         selection: t.StrTuple | None,
-    ) -> p.Result[tuple[tuple[Path, ...], m.Infra.ModScanReport]]:
+    ) -> p.Result[tuple[tuple[Path, ...], p.Infra.ModScanReport]]:
         """Plan and scan the current snapshot once; concurrent writers never block it.
 
         Sessions share the checkout and write concurrently. The preflight is
@@ -219,7 +219,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The discovered rule files and the scan of the captured snapshot.
 
         """
-        outcome = r[tuple[tuple[Path, ...], m.Infra.ModScanReport]]
+        outcome = r[tuple[tuple[Path, ...], p.Infra.ModScanReport]]
         planned = self._plan_snapshot(snapshot, selection)
         if planned.failure:
             return outcome.from_failure(planned)
@@ -344,7 +344,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         root: Path,
         current: p.Infra.ModScanReport,
         seed: p.Infra.StageSourcePlan,
-        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[p.Infra.StageSourcePlan]:
         """Compose syntax fixes without publishing the original producer epoch.
 
@@ -393,7 +393,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self,
         root: Path,
         rule_plan: p.Infra.CodemodRulePlan,
-        inputs: Mapping[Path, m.Cli.AtomicFileState],
+        inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> dict[Path, m.Infra.SemanticFilePlan]:
         """Bind every native-cascade rewrite to its captured input state.
@@ -421,8 +421,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         native_ids: frozenset[str],
         state: tuple[
             dict[Path, m.Infra.SemanticFilePlan],
-            MutableMapping[Path, m.Cli.AtomicFileState],
-            m.Infra.StageSourcePlan,
+            MutableMapping[Path, p.Cli.AtomicFileState],
+            p.Infra.StageSourcePlan,
         ],
     ) -> p.Result[bool]:
         """Compose engine replacement waves until no actionable finding remains.
@@ -487,7 +487,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     @staticmethod
     def _merge_wave(
         plans: dict[Path, m.Infra.SemanticFilePlan],
-        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState],
         wave: Sequence[m.Infra.SemanticFilePlan],
     ) -> None:
         """Fold one wave into the plans, keeping each file's first witness."""
@@ -510,7 +510,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _admitted_syntax(
         root: Path,
         plans: Mapping[Path, m.Infra.SemanticFilePlan],
-        inputs: Mapping[Path, m.Cli.AtomicFileState],
+        inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> p.Result[p.Infra.StageSourcePlan]:
         """Stage the admitted syntax fixes over the seed candidate.
@@ -545,7 +545,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     @staticmethod
     def _native_cascade(
         rule_plan: p.Infra.CodemodRulePlan,
-        inputs: Mapping[Path, m.Cli.AtomicFileState],
+        inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> Mapping[Path, bytes]:
         """Run each governed project's native cascade over the seeded sources.
@@ -589,7 +589,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     @staticmethod
     def _capture_ast_inputs(
-        root: Path, inputs: MutableMapping[Path, m.Cli.AtomicFileState]
+        root: Path, inputs: MutableMapping[Path, p.Cli.AtomicFileState]
     ) -> tuple[Path, ...]:
         """Authenticate every syntax target before composing the first wave.
 
@@ -643,7 +643,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         self,
         root: Path,
         plans: Mapping[Path, m.Infra.SemanticFilePlan],
-        inputs: MutableMapping[Path, m.Cli.AtomicFileState],
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Bind each wave's authenticated plan to its transactional scan.
@@ -742,7 +742,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The latest authenticated state of every published campaign path.
 
         """
-        published: dict[Path, m.Cli.AtomicFileState] = {}
+        published: dict[Path, p.Cli.AtomicFileState] = {}
         for rename_params in self.rename_inputs:
             renamed = self.rename_runner.run(rename_params)
             if renamed.failure:
@@ -783,7 +783,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         seeded = self._phase_seed(root, rope_workspace)
         if seeded.failure:
             return self._attributed(seeded, voided)
-        inputs = {state.path: state for state in seeded.value.candidate.inputs}
+        inputs: MutableMapping[Path, p.Cli.AtomicFileState] = {
+            state.path: state for state in seeded.value.candidate.inputs
+        }
         # The candidate is linearized at the seed capture; a source another
         # session changed since is guarded by the destination compare-and-swap
         # at publication, never by voiding the whole iteration here.
@@ -809,8 +811,8 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         root: Path,
         current: p.Infra.ModScanReport,
         captured: tuple[
-            m.Infra.SemanticSourcePlan,
-            MutableMapping[Path, m.Cli.AtomicFileState],
+            p.Infra.SemanticSourcePlan,
+            MutableMapping[Path, p.Cli.AtomicFileState],
         ],
         *,
         text_precondition_pending: bool,
@@ -1137,7 +1139,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         current: p.Infra.ModScanReport,
         captured: tuple[
             m.Infra.SemanticSourcePlan,
-            MutableMapping[Path, m.Cli.AtomicFileState],
+            MutableMapping[Path, p.Cli.AtomicFileState],
         ],
         graph: p.Infra.RopeWorkspaceDsl,
         *,
