@@ -850,10 +850,10 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        # The check publishes its receipt under the root it was invoked at and
-        # plans coverage from it; admission reads that same root, so a member
-        # checked inside a workspace checkout (CI) finds its own receipt.
-        root = self.repository_root
+        # The admission receipt is the one the project's own check wrote under
+        # its repository root; a workspace member never writes it under the
+        # workspace that owns the shared runtime.
+        root = self.repository_root.resolve()
         approved = u.Infra.git_require_green_check_receipt(
             root,
             u.Infra.load_codegen_inputs(root).unwrap().spec.make,
