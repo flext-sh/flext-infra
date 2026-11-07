@@ -234,7 +234,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         hook = tm.ok(
             u.Cli.template_render(
                 root / ".pre-commit-config.yaml.j2",
-                m.Infra.MakeWorkflowRenderSpec(dist=spec.dist, make=codegen.make),
+                m.Infra.MakeWorkflowRenderSpec(
+                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
+                    dist=spec.dist,
+                    make=codegen.make,
+                ),
             ),
         )
         tm.that(

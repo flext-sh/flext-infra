@@ -1160,7 +1160,7 @@ Infra:
       - site
       - vendor
       # Fixture materialization and pytest collection roots. Fixtures are
-      # scenario data (operator ruling 2026-11-01): no linter, formatter or type
+      # scenario data (ADR-028, scenario artifacts): no linter, formatter or type
       # checker analyzes them, and the codemod gate and make mod leave them
       # out. Helpers that tests import live in conftest.py and u.Tests.*, never
       # under these roots. flext-tests derives its fixture-tree location from
