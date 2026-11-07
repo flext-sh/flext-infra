@@ -613,7 +613,7 @@ class FlextInfraModGateEngine:
     def _elected(
         root: Path,
         report: p.Infra.ModScanReport,
-        rules_by_id: Mapping[str, m.Infra.CodemodRule],
+        rules_by_id: Mapping[str, p.Infra.CodemodRule],
         project_rule_ids: Mapping[Path, Sequence[str]],
     ) -> p.Infra.ModScanReport:
         """Keep each source's findings of its nearest governed project's plan.
@@ -1055,8 +1055,8 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         ruleset: p.Infra.CodemodRuleset,
-        rules_by_id: Mapping[str, m.Infra.CodemodRule],
-        selection: tuple[Sequence[str], m.Infra.ModScanSourceContext],
+        rules_by_id: Mapping[str, p.Infra.CodemodRule],
+        selection: tuple[Sequence[str], p.Infra.ModScanSourceContext],
         *,
         artifact_root: Path,
     ) -> p.Result[p.Infra.ModScanReport]:
