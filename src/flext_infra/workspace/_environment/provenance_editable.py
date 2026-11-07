@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from importlib.metadata import Distribution
+from json import dumps
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
+
+from packaging.utils import canonicalize_name
 
 from flext_infra import FlextInfraUtilities, c, m, p, r, t, u
 from flext_infra._utilities import FlextInfraUtilitiesDiscovery
@@ -69,6 +72,63 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
             return result.from_failure(receipt)
         return result.ok((distribution, raw, receipt.value))
 
+    @staticmethod
+    def editable_root(payload: p.Infra.DirectUrlReceipt) -> Path:
+        """Return the physical source tree a PEP 610 file receipt names.
+
+        Returns:
+            The resolved directory of the receipt's file URL.
+
+        """
+        return Path(url2pathname(unquote(urlparse(payload.url).path))).resolve()
+
+    @staticmethod
+    def editable_sources_at_lock(
+        lock_path: Path,
+        sources: Mapping[str, Path],
+    ) -> p.Result[bool]:
+        """Prove each editable source tree sits at the commit its lock pins.
+
+        A lock entry with a git source binds the editable tree's ``HEAD`` to
+        the locked commit (flext-92rpb, operator decision "Require tip =
+        lock"): a tree at another commit renders projections and installs
+        code that the locked environment lacks. Entries the lock records as
+        editable, registry, or not at all carry no commit and stay admitted;
+        a target without a lock has no pin to prove.
+
+        Returns:
+            Success when every git-pinned source is at its locked commit; the
+            first divergence otherwise, naming both commits and the cure.
+
+        """
+        if not lock_path.is_file():
+            return r[bool].ok(value=True)
+        document = u.Cli.toml_read_json(lock_path)
+        if document.failure:
+            return r[bool].from_failure(document)
+        locked = m.Infra.LockedEnvironment.model_validate_json(dumps(document.value))
+        selected = {canonicalize_name(name): root for name, root in sources.items()}
+        for item in locked.package:
+            source = selected.get(canonicalize_name(item.name))
+            if source is None or item.source.git is None:
+                continue
+            commit = urlparse(item.source.git.removeprefix("git+")).fragment
+            head = u.Infra.git_resolve_commit(
+                m.Infra.GitCommitishRequest(
+                    repo_root=source, commitish=c.Infra.GIT_HEAD
+                ),
+            )
+            if head.failure:
+                return r[bool].from_failure(head)
+            if head.value.oid != commit:
+                return r[bool].fail(
+                    f"editable {item.name} at {source} is HEAD {head.value.oid}, "
+                    f"not the commit {commit or '<none>'} pinned by {lock_path}: "
+                    f"cure — push the {item.name} change, run make upg, "
+                    "then make setup",
+                )
+        return r[bool].ok(value=True)
+
     @classmethod
     def _validate_direct_url(
         cls,
@@ -126,7 +186,9 @@ class FlextInfraWorkspaceEnvironmentProvenanceEditable(
                 f"distribution={distribution} expected={expected_root} "
                 f"url={payload.url} installed_revision={revision}",
             )
-        actual_root = Path(url2pathname(unquote(parsed.path))).resolve()
+        actual_root = FlextInfraWorkspaceEnvironmentProvenanceEditable.editable_root(
+            payload
+        )
         if actual_root != expected_root:
             return r[int].fail(
                 "editable provenance direct_url mismatch: "

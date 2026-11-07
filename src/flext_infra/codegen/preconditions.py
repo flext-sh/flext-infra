@@ -24,7 +24,8 @@ class FlextInfraCodegenPreconditions:
     def rendering_engine(repository_root: Path) -> p.Result[bool]:
         """Prove the executing engine is the flext-infra the target's lock pins.
 
-        Editable bindings and targets without an engine pin use their own tree.
+        Targets without an engine pin use their own tree; an editable engine
+        must sit at the commit the target lock pins.
 
         Returns:
             Success only for the declared rendering origin and registry version.
@@ -62,7 +63,14 @@ class FlextInfraCodegenPreconditions:
             and receipt.dir_info is not None
             and receipt.dir_info.editable
         ):
-            return result_type.ok(value=True)
+            # An editable engine renders from its own tree, so that tree must be
+            # the commit the target lock pins (flext-92rpb): otherwise the
+            # projections call routes the locked engine lacks.
+            environment = workspace_services.FlextInfraWorkspaceEnvironment
+            return environment.editable_sources_at_lock(
+                lock_path,
+                {distribution_name: environment.editable_root(receipt)},
+            )
         return (
             u.Cli
             .toml_read_json(lock_path)
