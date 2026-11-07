@@ -22,20 +22,22 @@ class FlextInfraCodegenLayoutPlan:
     """Build the per-project layout plan from the declarative layout SSOT."""
 
     @staticmethod
-    def _layout_spec(project_dir: Path) -> p.Infra.LayoutSpec:
+    def _codegen_spec(project_dir: Path) -> p.Infra.CodegenConfigSpec:
         """Layout SSOT: the selected project's layered codegen contract.
 
         Gates and the generator read the SAME ordered strict source (packaged
         defaults + repository layers). The split-brain where the generator
         saw the repository layers while this gate read packaged defaults is
-        what dropped standalone repositories' canonical declarations.
+        what dropped standalone repositories' canonical declarations. The
+        same contract carries the template catalog, the owner of every root
+        entry the generator projects.
 
         Returns:
-            The selected project's validated layered layout policy.
+            The selected project's validated layered codegen policy.
 
         """
         layered = u.Infra.load_codegen_inputs(project_dir)
-        return layered.map(lambda inputs: inputs.spec.layout).unwrap()
+        return layered.map(lambda inputs: inputs.spec).unwrap()
 
     @staticmethod
     def layout_project_name(project_dir: Path) -> str:
@@ -77,10 +79,13 @@ class FlextInfraCodegenLayoutPlan:
             The resulting ``m.Infra.LayoutProjectReport``.
 
         """
-        spec = self._layout_spec(project_dir)
+        codegen = self._codegen_spec(project_dir)
+        spec = codegen.layout
         project_name = self.layout_project_name(project_dir)
         override = self._resolve_override(spec, project_name)
-        allowed = self._allowed_root_names(spec, project_dir, project_name, override)
+        allowed = self._allowed_root_names(
+            spec, codegen.templates.entries, project_dir, project_name, override
+        )
         override_roots = self._override_root_names(override)
         findings: list[p.Infra.LayoutFinding] = []
         git_root_names = u.Infra.git_tracked_top_level_dir_names(project_dir)
@@ -144,11 +149,17 @@ class FlextInfraCodegenLayoutPlan:
     @staticmethod
     def _allowed_root_names(
         spec: p.Infra.LayoutSpec,
+        entries: Sequence[p.Infra.TemplateEntrySpec],
         project_dir: Path,
         project_name: str,
         override: p.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
         """Canonical root names for one project, profile extras included.
+
+        A root the template catalog projects for the project's Make profile is
+        canonical by ownership; the declared lists hold only the authored and
+        tool-owned names the catalog does not generate. The profile follows the
+        checkout topology: a project declaring submodules is a workspace.
 
         Returns:
             The resulting ``frozenset[str]``.
@@ -173,6 +184,16 @@ class FlextInfraCodegenLayoutPlan:
         if declared.failure:
             raise ValueError(declared.error or "invalid .gitmodules")
         allowed.update(item.path.parts[0] for item in declared.value)
+        profile = (
+            c.Infra.MakeProfile.WORKSPACE
+            if declared.value
+            else c.Infra.MakeProfile.STANDALONE
+        )
+        allowed.update(
+            Path(entry.destination).parts[0]
+            for entry in entries
+            if profile in entry.profiles
+        )
         return frozenset(allowed)
 
     @staticmethod

@@ -1285,46 +1285,32 @@ Infra:
       diagrams_target: docs/diagrams
       docs_target: docs
       examples_target: examples
+      # Root entries the template catalog projects for the project's Make
+      # profile are canonical by ownership (codegen/_layout/plan.py); these
+      # lists declare only the authored and tool-owned names it never generates.
       canonical_root_files:
-      - pyproject.toml
       - uv.lock
       - mise.lock
-      - Makefile
       - base.mk
-      - custom.mk
       - README.md
-      - LICENSE
       - CHANGELOG.md
       - CONTRIBUTING.md
       - AGENTS.md
       - CLAUDE.md
       - GEMINI.md
-      - conftest.py
       - mkdocs.yml
       canonical_root_dotfiles:
-      - .gitignore
       - .gitattributes
       - .gitmodules
-      - .envrc
-      - .envrc.local
-      - .env.example
-      - .python-version
-      - .pre-commit-config.yaml
-      - .mise.toml
       - .mcp.json
       - .waza.yaml
-      - .sonarcloud.properties
       - sonar-project.properties
       canonical_root_dirs:
       - .mise
       - bin
       - infra
-      - src
-      - tests
-      - docs
       - examples
       - scripts
-      - config
       - ci
       - dist
       - docker
