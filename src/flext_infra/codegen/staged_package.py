@@ -590,17 +590,23 @@ class FlextInfraStagedPackage:
         states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
         for state in inputs:
             states.setdefault(state.path, state)
+        unchanged_imports: MutableMapping[Path, p.Result[tuple[str, ...]]] = {}
 
         def read_layout(
             provider: p.Infra.RopeProjectLayout,
             owned: Mapping[Path, str | None] | None,
         ) -> p.Result[tuple[str, ...]]:
-            return cls._layout_states(
+            return cls._layout_imports(
+                unchanged_imports,
                 provider,
-                states,
-                (source_project, snapshot),
-                updates=owned,
-                import_edges=options.import_edges,
+                owned,
+                lambda read_owned: cls._layout_states(
+                    provider,
+                    states,
+                    (source_project, snapshot),
+                    updates=read_owned,
+                    import_edges=options.import_edges,
+                ),
             )
 
         elected = cls._source_roots(normalized, layouts, source_project, states)
@@ -632,6 +638,29 @@ class FlextInfraStagedPackage:
             if path not in states:
                 states[path] = source_project.source_state(path, required=False)
         return result_type.ok((selected, states))
+
+    @staticmethod
+    def _layout_imports(
+        unchanged: MutableMapping[Path, p.Result[tuple[str, ...]]],
+        provider: p.Infra.RopeProjectLayout,
+        owned: Mapping[Path, str | None] | None,
+        read: Callable[[Mapping[Path, str | None] | None], p.Result[tuple[str, ...]]],
+    ) -> p.Result[tuple[str, ...]]:
+        """Read a provider's imports, once per invocation when it is unchanged.
+
+        Every root's closure revisits the shared providers. A provider owning
+        no rewritten source reads the same captured states, so its imports
+        are derived once and reused; a rewritten provider is always read.
+
+        Returns:
+            The imports of the provider's sources.
+
+        """
+        if owned:
+            return read(owned)
+        if provider.project_root not in unchanged:
+            unchanged[provider.project_root] = read(owned)
+        return unchanged[provider.project_root]
 
     @classmethod
     def _source_roots(

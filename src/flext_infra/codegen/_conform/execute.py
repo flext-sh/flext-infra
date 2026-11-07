@@ -1029,12 +1029,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Admit the normalized candidate through its injected runtime validator.
 
+        Admission validates a change: a candidate whose Python sources all
+        keep their captured content is the live tree itself, so it publishes
+        no Python effect and needs no staged preview.
+
         Returns:
             The unchanged normalized plans, or the original validation failure.
 
         """
         result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
-        if not any(file.path.suffix == c.Infra.EXT_PYTHON for file in files):
+        if not any(
+            file.path.suffix == c.Infra.EXT_PYTHON
+            and file.desired_content != file.before.content
+            for file in files
+        ):
             return result_type.ok(files)
         ports, snapshot = run.ports, run.snapshot
         if ports is None:
