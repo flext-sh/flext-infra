@@ -222,15 +222,22 @@ class FlextInfraUtilitiesSemanticCutoverTestAssertions(
         """
         for index, line in enumerate(lines):
             stripped = line.strip()
-            if not stripped.startswith("from tests import "):
+            if not stripped.startswith(
+                ("from tests import ", "from flext_tests import ")
+            ):
                 continue
-            names = stripped.removeprefix("from tests import ").strip()
+            module = (
+                "tests"
+                if stripped.startswith("from tests import ")
+                else "flext_tests"
+            )
+            names = stripped.removeprefix(f"from {module} import ").strip()
             if re.search(r"\btm\b", names):
                 return lines
-            lines[index] = f"from tests import {names}, tm\n"
+            lines[index] = f"from {module} import {names}, tm\n"
             return lines
         position = cls._import_position(lines)
-        lines.insert(position, "from tests import tm\n")
+        lines.insert(position, "from flext_tests import tm\n")
         return lines
 
     @staticmethod
@@ -250,9 +257,18 @@ class FlextInfraUtilitiesSemanticCutoverTestAssertions(
                 while position < len(lines) and quote not in lines[position]:
                     position += 1
                 position += 1
+        depth = 0
         while position < len(lines):
             stripped = lines[position].strip()
-            if stripped.startswith(("from ", "import ")) or not stripped:
+            if depth > 0:
+                depth += stripped.count("(") - stripped.count(")")
+                position += 1
+                continue
+            if stripped.startswith(("from ", "import ")):
+                depth = stripped.count("(") - stripped.count(")")
+                position += 1
+                continue
+            if not stripped:
                 position += 1
                 continue
             break
