@@ -328,7 +328,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _control_plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[p.Infra.CodegenPlan]:
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Plan the native file-only control cohort before Python inventory.
 
         Returns:
@@ -566,7 +566,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _checked(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: p.Infra.CodegenPlan,
+        plan: m.Infra.CodegenPlan,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Compare the injected publisher's normalized plan with the tree.
 
@@ -602,7 +602,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _planned(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[p.Infra.CodegenPlan]:
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Plan the request; a planning exception propagates with its traceback.
 
         Returns:
