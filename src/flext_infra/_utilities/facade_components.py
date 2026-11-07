@@ -1333,18 +1333,29 @@ class FlextInfraUtilitiesFacadeComponents:
         # resolves awaits that re-render instead of blocking it.
         rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER)
         proven: list[tuple[p.Infra.SourceClassReference]] = []
+        # A class nested in a deferred holder is reached through the holder's
+        # stale bases, so it awaits the same re-render.
+        deferred_holders: set[tuple[str, ...]] = set()
         for reference, holder in cls._facade_class_references(
             FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
                 module, source_project=project
             ),
             owner,
         ):
+            if any(
+                reference.attributes[:depth] in deferred_holders
+                for depth in range(1, len(reference.attributes))
+            ):
+                deferred_holders.add(reference.attributes)
+                continue
             deferred = cls._facade_class_deferred(
                 project, (path, module, holder), admitted, rendered=rendered
             )
             if deferred.failure:
                 return result_type.from_failure(deferred)
-            if not deferred.value:
+            if deferred.value:
+                deferred_holders.add(reference.attributes)
+            else:
                 proven.append((reference,))
         return result_type.create_from_callable(
             partial(
