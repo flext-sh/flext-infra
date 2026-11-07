@@ -4839,9 +4839,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 for method in definition.body:
                     if not isinstance(
                         method, (ast.FunctionDef, ast.AsyncFunctionDef)
-                    ) or not self._source_is_port_method(
-                        method, ancestor, (definition, tree)
-                    ):
+                    ) or not self._source_is_port_method(method, ancestor, tree):
                         continue
                     projected = self._source_method_declaration(
                         method, definition, tree, declarations, ancestor.get_scope()
@@ -4889,7 +4887,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             method: ast.FunctionDef | ast.AsyncFunctionDef,
             ancestor: p.Infra.RopeSourceClass,
-            owner: tuple[ast.ClassDef, ast.Module],
+            tree: ast.Module,
         ) -> bool:
             """Whether an authored callable belongs to the structural port.
 
@@ -4897,7 +4895,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 True for a public instance callable that is no computed field.
 
             """
-            definition, tree = owner
             dunder = method.name.startswith("__") and method.name.endswith("__")
             # Private helpers stay implementation; the container and
             # call protocol dunders an authored model defines are its
@@ -4907,7 +4904,7 @@ class FlextInfraUtilitiesModelsProtocol:
             ) or method.name in c.Infra.PROTOCOL_EXCLUDED_DUNDERS:
                 return False
             if isinstance(method, ast.FunctionDef) and self._source_computed_field(
-                method, tree, definition
+                method, tree
             ):
                 return False
             # A structural protocol describes the instance: class-level
@@ -5222,7 +5219,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     ) and name == name.lower()
                 elif isinstance(
                     statement, ast.FunctionDef
-                ) and self._source_computed_field(statement, tree, node):
+                ) and self._source_computed_field(statement, tree):
                     if statement.returns is None:
                         continue
                     name, annotation, read_only = (
@@ -6658,11 +6655,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 annotation.slice if ast.unparse(annotation.value) in bindings else None
             )
 
+        @staticmethod
         def _source_computed_field(
-            self,
             declaration: ast.FunctionDef,
             tree: ast.Module,
-            model: ast.ClassDef,
         ) -> bool:
             """Recognize only Pydantic computed fields bound through m or pydantic.
 
@@ -6679,8 +6675,11 @@ class FlextInfraUtilitiesModelsProtocol:
                     and isinstance(expression.value, ast.Name)
                     and expression.value.id == "m"
                     and expression.attr == "computed_field"
-                    and self._source_model_facade_binding(tree, model)
                 ):
+                    # Any models facade bound as ``m`` is authoritative: a
+                    # member project may legitimately reuse a sibling's
+                    # facade (``from flext_web import m``) for its models, and
+                    # the decorator itself denotes a computed field.
                     return True
                 if (
                     isinstance(expression, ast.Attribute)
