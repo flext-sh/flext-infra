@@ -1138,7 +1138,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         root: Path,
         current: p.Infra.ModScanReport,
         captured: tuple[
-            m.Infra.SemanticSourcePlan,
+            p.Infra.SemanticSourcePlan,
             MutableMapping[Path, p.Cli.AtomicFileState],
         ],
         graph: p.Infra.RopeWorkspaceDsl,
