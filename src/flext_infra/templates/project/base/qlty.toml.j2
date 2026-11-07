@@ -5,13 +5,17 @@
 
 config_version = "0"
 
-# Generated scaffolding (lazy exports and derived protocols) is identical by
-# construction; the smells gate evaluates only authored code. Consistent with the
-# `_protocols/**` exclusion already declared in the project's jscpd configuration.
+# Generated scaffolding (lazy exports, derived protocols and the family facades)
+# is identical by construction; the smells gate evaluates only authored code.
+# Consistent with the `_protocols/**` exclusion already declared in the project's
+# jscpd configuration.
 exclude_patterns = [
   "**/__init__.py",
   "**/_protocols/**",
   "**/_constants/**",
+{%- for module in facade_modules %}
+  "**/{{ module }}.py",
+{%- endfor %}
 ]
 
 [smells]
