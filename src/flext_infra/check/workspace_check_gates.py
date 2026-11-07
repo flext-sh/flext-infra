@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
-    """Gate execution, project loop, and individual gate runner methods."""
+    """Workspace check gates orchestration."""
 
     _repository_root: Path
     _registry: FlextInfraGateRegistry
@@ -86,7 +86,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             u.Cli.ensure_dir(project_ctx.reports_dir).unwrap()
         u.Cli.info(f"check: prerequisite planning start projects={len(projects)}")
         jobs_by_gate: dict[
-            str, list[tuple[p.Infra.CheckProjectTarget, p.Infra.Gate]]
+            str, list[tuple[p.Infra.CheckProjectTarget, FlextInfraGates]]
         ] = {}
         for target in projects:
             requested = tuple(
@@ -463,7 +463,6 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         return cli.pipeline(
             (stage,),
             context=m.Cli.PipelineStageContext(repository_root=project_dir),
-            logger=self.logger,
         )
 
     def _make_gate_handler(
@@ -499,12 +498,10 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             gate_ctx = ctx.model_copy()
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
-            self.logger.info(
-                "gate_executed",
-                project=project_name,
-                gate=gate_id,
-                passed=execution.result.passed,
-                elapsed=execution.result.duration,
+            u.Cli.info(
+                f"gate_executed project={project_name} gate={gate_id} "
+                f"passed={execution.result.passed} "
+                f"elapsed={execution.result.duration}"
             )
             if not execution.result.passed:
                 return r[p.Cli.PipelineStageResult].fail(
