@@ -400,7 +400,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _control_identities(
         selected: tuple[p.Infra.RepositoryRef, ...],
-    ) -> p.Result[dict[str, m.Infra.RepositoryRef]]:
+    ) -> p.Result[dict[str, p.Infra.RepositoryRef]]:
         """Index the selected repositories by their unique distribution identity.
 
         Returns:
@@ -408,7 +408,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             order, or the duplicate-identity failure.
 
         """
-        result_type = r[dict[str, m.Infra.RepositoryRef]]
+        result_type = r[dict[str, p.Infra.RepositoryRef]]
         by_name = {
             t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(
                 repository.distribution
@@ -627,7 +627,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _published(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: p.Infra.CodegenPlan,
+        plan: m.Infra.CodegenPlan,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         *,
         after_cohort_publication: tuple[
@@ -684,7 +684,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         request: p.Infra.CodegenGenerateRequest,
         root: Path,
         plan: p.Infra.CodegenPlan,
-        ready: dict[str, m.Infra.RepositoryRef],
+        ready: Mapping[str, p.Infra.RepositoryRef],
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]] | None:
         """Fold ready-repository documentation into the published plan.
 
@@ -1040,7 +1040,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         if ports is None:
             return result_type.fail("candidate admission requires its bound ports")
         root = request.root.expanduser().resolve()
-        inputs: dict[Path, m.Cli.AtomicFileState] = {}
+        inputs: dict[Path, p.Cli.AtomicFileState] = {}
         for file in files:
             for state in (file.before, *file.inputs):
                 original = inputs.setdefault(state.path, state)
