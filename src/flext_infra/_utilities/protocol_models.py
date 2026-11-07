@@ -2478,7 +2478,9 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             prefix = f"p.{self.class_stem}"
-            declared_protocol_names = self._source_protocol_declared_names()
+            declared_protocol_names = self._source_protocol_declared_names(
+                frozenset(destination.resolve() for destination in grouped)
+            )
             global_model_names = {
                 path[-1]
                 for classes in grouped.values()
@@ -2520,8 +2522,17 @@ class FlextInfraUtilitiesModelsProtocol:
                                 model_nodes.get(matched[0], classes[0][0]),
                             )
 
-        def _source_protocol_declared_names(self) -> frozenset[str]:
+        def _source_protocol_declared_names(
+            self, projected: frozenset[Path]
+        ) -> frozenset[str]:
             """Return names already declared by the authored protocol tree.
+
+            The modules this stage projects are its own output, not authored
+            declarations: reading them would make each run drop what the
+            previous run emitted.
+
+            Args:
+                projected: Resolved destinations this stage writes.
 
             Returns:
                 Class and alias names the protocol facade already owns.
@@ -2531,10 +2542,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 return frozenset()
             names: set[str] = set()
             for path in (self.package / "_protocols").glob("*.py"):
-                try:
-                    tree = ast.parse(path.read_text(encoding="utf-8"))
-                except (OSError, SyntaxError):
+                if path.resolve() in projected:
                     continue
+                tree = ast.parse(path.read_text(encoding="utf-8"))
                 for node in ast.walk(tree):
                     if isinstance(node, ast.ClassDef):
                         names.add(node.name)
