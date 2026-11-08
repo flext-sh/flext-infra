@@ -249,3 +249,39 @@ class TestsFlextInfraDepsExtraPathsSync:
         tm.that(changes, eq=[])
         changes_again = manager.sync_doc(doc, project_dir=tmp_path)
         tm.that(changes_again, eq=[])
+
+    def test_sync_doc_maps_declared_repository_namespace_for_mypy(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A declared implicit namespace is named from the project root for mypy."""
+        name = "namespace-owner"
+        namespace = "infra"
+        project = u.Tests.mk_project(
+            tmp_path,
+            name,
+            with_src=True,
+            pyproject=f'[project]\nname = "{name}"\nversion = "0.1.0"\n',
+        )
+        u.Tests.write_standalone_workspace_manifest(
+            project,
+            name,
+            declaration=u.Tests.StandaloneManifestDeclaration(
+                cli_module=False,
+                repository_namespace_packages=(namespace,),
+            ),
+        )
+        (project / namespace / "contracts").mkdir(parents=True)
+        manager = self._manager(project)
+        doc = u.Cli.toml_document()
+        tool = u.Cli.toml_table()
+        tool["pyright"] = u.Cli.toml_table()
+        tool["mypy"] = u.Cli.toml_table()
+        doc["tool"] = tool
+
+        tm.that(manager.sync_doc(doc, project_dir=project), empty=False)
+        mypy = u.Cli.toml_table_child(u.Cli.toml_table_child(doc, "tool"), "mypy")
+        tm.that(mypy, none=False)
+        if mypy is not None:
+            tm.that(list(u.Cli.toml_as_string_list(mypy["mypy_path"]))[-1], eq=".")
+        tm.that(manager.sync_doc(doc, project_dir=project), eq=[])
