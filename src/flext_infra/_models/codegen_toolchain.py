@@ -132,8 +132,8 @@ class FlextInfraModelsCodegenToolchain:
         @m.model_validator(mode="after")
         def _validate_participants(self) -> Self:
             participants: tuple[
-                FlextInfraModelsCodegenToolchain.MiseToolchainProjectLayout
-                | FlextInfraModelsCodegenToolchain.CodegenFileParticipant,
+                p.Infra.MiseToolchainProjectLayout
+                | p.Infra.CodegenFileParticipant,
                 ...,
             ] = (*self.projects, *self.file_participants)
             if not participants:
