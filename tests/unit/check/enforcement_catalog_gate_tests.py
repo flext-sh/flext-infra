@@ -11,8 +11,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
-from flext_infra.gates.enforcement_catalog import FlextInfraGatesEnforcementCatalog
+from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.gates import FlextInfraGatesEnforcementCatalog
 from tests import c, m, t, tm, u
 
 

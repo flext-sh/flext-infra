@@ -546,6 +546,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FACADE_MODULE_SCOPE: ClassVar[str] = "facade-module"
     CODEMOD_FAMILY_SCOPE_PREFIX: ClassVar[str] = "facade-family-"
     CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX: ClassVar[str] = "private-family-"
+    CODEMOD_TOP_PACKAGE_SCOPE_PREFIX: ClassVar[str] = "top-package-"
+    "File scope: the modules whose dotted name starts with that top-level package."
     CODEMOD_LACKS_LAYER_SCOPE_PREFIX: ClassVar[str] = "lacks-layer-"
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"

@@ -285,7 +285,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         module of every private family package it lives in. The letter
         vocabulary is the tooling import-layer order; no file name is mapped
         to a letter. ``private-family-<family>`` groups the modules of each
-        private family package.
+        private family package and ``top-package-<package>`` the modules of
+        each top-level package.
 
         Returns:
             Project-relative POSIX paths keyed by scope selector.
@@ -331,7 +332,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 )
                 for letter in sorted(letters)
             },
-            **cls._private_family_scopes(snapshot, root),
+            **cls._module_group_scopes(snapshot, root),
         }
 
     @staticmethod
@@ -1252,19 +1253,20 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         return rendered
 
     @staticmethod
-    def _private_family_scopes(
+    def _module_group_scopes(
         snapshot: p.Infra.WorkspaceSnapshot, root: Path
     ) -> Mapping[str, t.StrTuple]:
-        """Group the project's modules by the private family package they belong to.
+        """Group the project's modules by private family and by top-level package.
 
         A private family is a dotted module path up to its first
         ``_``-prefixed segment; its members are the modules inside that tree,
         the family package itself and its facade (the path with the
-        underscore removed).
+        underscore removed). A top-level package groups every module whose
+        dotted name starts with it.
 
         Returns:
             Project-relative POSIX paths keyed by
-            ``private-family-<dotted family>``.
+            ``private-family-<dotted family>`` and ``top-package-<package>``.
 
         """
         modules: dict[str, str] = {}
@@ -1277,8 +1279,10 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             if located is not None:
                 modules[located[1]] = path.relative_to(root).as_posix()
         members: dict[str, set[str]] = {}
+        tops: dict[str, set[str]] = {}
         for module, relative in modules.items():
             parts = module.split(".")
+            tops.setdefault(parts[0], set()).add(relative)
             private = next(
                 (
                     index
@@ -1295,10 +1299,18 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             if facade is not None:
                 members[family].add(facade)
         return {
-            f"{c.Infra.CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX}{family}": tuple(
-                sorted(found)
-            )
-            for family, found in sorted(members.items())
+            **{
+                f"{c.Infra.CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX}{family}": tuple(
+                    sorted(found)
+                )
+                for family, found in sorted(members.items())
+            },
+            **{
+                f"{c.Infra.CODEMOD_TOP_PACKAGE_SCOPE_PREFIX}{package}": tuple(
+                    sorted(found)
+                )
+                for package, found in sorted(tops.items())
+            },
         }
 
     @staticmethod

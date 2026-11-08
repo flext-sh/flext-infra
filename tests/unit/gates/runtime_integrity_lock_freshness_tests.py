@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.gates.runtime_integrity import FlextInfraGatesRuntimeIntegrity
+from flext_infra.gates import FlextInfraGatesRuntimeIntegrity
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.gates.index_declarations import FlextInfraGatesIndexDeclarations
+from flext_infra.gates import FlextInfraGatesIndexDeclarations
 from tests import m, p, tm, u
 
 if TYPE_CHECKING:

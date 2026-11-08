@@ -10,9 +10,11 @@ from typing import TYPE_CHECKING
 
 from flext_infra import config
 from flext_infra.check import FlextInfraWorkspaceChecker
-from flext_infra.gates.markdown_code import FlextInfraGatesMarkdownCode
-from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
-from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+from flext_infra.gates import (
+    FlextInfraGatesMarkdownCode,
+    FlextInfraGatesMarkdownFormat,
+    FlextInfraMarkdownCodeSources,
+)
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:
