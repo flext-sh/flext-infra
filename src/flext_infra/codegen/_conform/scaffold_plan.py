@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import override
 
 from flext_infra import c, deps as dependency_services, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
@@ -18,6 +19,107 @@ from flext_infra.codegen._conform.existing_plan import (
 
 class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan):
     """Complete scaffold planning for ``codegen new``."""
+
+    @override
+    def _plan_existing_repository(
+        self,
+        *,
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        contract: p.Infra.CodegenConformSurfaceContract,
+    ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
+        """Conform an existing repository and scaffold its absent family files.
+
+        An existing ``internal_flext`` repository receives each absent facade
+        family file from the same scaffold templates ``codegen new`` renders;
+        a file already present is never planned here.
+
+        Returns:
+            The existing plans followed by the absent family scaffold plans.
+
+        """
+        existing = super()._plan_existing_repository(
+            target=target, workspace=workspace, codegen=codegen, contract=contract
+        )
+        absent = self._absent_family_destinations(target, workspace, codegen)
+        if existing.failure or not absent or not contract.templates:
+            return existing
+        scaffold = self._plan_scaffold_repository(
+            target=target,
+            workspace=workspace,
+            codegen=codegen,
+            contract=contract.model_copy(
+                update={"destinations": absent, "pyproject": False}
+            ),
+        )
+        if scaffold.failure:
+            return scaffold
+        planned = {plan.path for plan in existing.value}
+        root = target.root
+        return r[Sequence[p.Infra.CodegenFilePlan]].ok((
+            *existing.value,
+            *(
+                plan
+                for plan in scaffold.value
+                if plan.path not in planned
+                and plan.path.relative_to(root).as_posix() in absent
+            ),
+        ))
+
+    @staticmethod
+    def _absent_family_destinations(
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> frozenset[str]:
+        """Select the scaffold-only family destinations absent from the checkout.
+
+        Returns:
+            The absent destinations; empty outside an identified internal FLEXT
+            repository.
+
+        """
+        project = workspace.project
+        if (
+            project is None
+            or target.repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
+        ):
+            return frozenset()
+        package = Path(c.Infra.DEFAULT_SRC_DIR) / project.package_name
+        family_roots = tuple(
+            root
+            for family in u.Infra.facade_families().values()
+            for root in (
+                package / f"{family.module}.py",
+                package / family.directory,
+            )
+        )
+        destinations = (
+            Path(
+                entry.destination.format(
+                    package_name=project.package_name,
+                    ns=project.namespace,
+                    **u.Infra.runtime_module_names(
+                        project_name=target.repository.distribution,
+                        codegen=codegen,
+                    ),
+                )
+            )
+            for entry in codegen.templates.entries
+            if entry.ownership is None
+            and entry.source is not None
+            and target.make_profile in entry.profiles
+        )
+        return frozenset(
+            destination.as_posix()
+            for destination in destinations
+            if any(
+                destination == family_root or destination.is_relative_to(family_root)
+                for family_root in family_roots
+            )
+            and not (target.root / destination).exists()
+        )
 
     def _plan_scaffold_repository(
         self,
