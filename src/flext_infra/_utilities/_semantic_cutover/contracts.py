@@ -136,7 +136,9 @@ class FlextInfraUtilitiesSemanticContracts(
             The resulting semantic migration edits.
 
         """
-        computed = cls.plan_computed_model_field_contracts(workspace, sources)
+        computed = cls.plan_computed_model_field_contracts(
+            workspace, sources, workspace.model_protocol_routes
+        )
         if computed.failure:
             return computed
         working: dict[t.Infra.RopeSourcePath, str] = dict(sources)

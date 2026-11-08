@@ -386,7 +386,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                         snapshot
                         if project == root
                         else repository_snapshots.enter_context(
-                            u.Infra.workspace_snapshot(project, ())
+                            u.Infra.workspace_snapshot(project, (project,))
                         )
                     )
                     project_inputs = (

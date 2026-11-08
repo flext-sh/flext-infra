@@ -72,6 +72,27 @@ class TestsFlextInfraSemanticModuleNaming:
         tm.ok(source.is_file())
 
     @staticmethod
+    def test_module_policy_preserves_prefix_beside_package_data_directory(
+        tmp_path: Path,
+    ) -> None:
+        """A sibling data directory owns the public basename; nothing moves."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.provision_checkout(root)
+        u.Tests.provision_runtime_environment(root)
+        source = package / "_catalog.py"
+        source.write_text("VALUE = 1\n", encoding=c.DEFAULT_ENCODING)
+        data = package / "catalog"
+        data.mkdir()
+        (data / "entries.yaml").write_text("entries: []\n", encoding=c.DEFAULT_ENCODING)
+        seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(root))
+        planned = tm.ok(
+            codemod.FlextInfraCodemodSemanticApply.plan_module_names(root, seed)
+        )
+        tm.ok(package / "catalog.py" not in planned.candidate.updates)
+        tm.ok(source not in planned.candidate.updates)
+        tm.ok(source.is_file())
+
+    @staticmethod
     @c.Tests.MARK.parametrize("name", ["_behavior_part.py", "behavior_parts.py"])
     def test_module_policy_removes_unnumbered_split_suffix(
         tmp_path: Path, name: str

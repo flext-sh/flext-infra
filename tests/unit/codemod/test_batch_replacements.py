@@ -498,3 +498,32 @@ class TestsFlextInfraBatchReplacements:
         tm.ok(u.Cli.run([sys.executable, "-I", str(path)]))
         tm.ok(codemod.FlextInfraModReplacements.publish(root, report))
         tm.that(path.read_bytes(), eq=published)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("seeded", [True, False])
+    def test_admit_judges_seed_created_module_against_seed_bytes(
+        tmp_path: Path, *, seeded: bool
+    ) -> None:
+        """A renamed module exists only in the seed; absent bytes stay refused."""
+        root = u.Tests.git_repository(tmp_path)
+        (root / c.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+        )
+        path = root / "config.py"
+        absent = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        desired = b'value = "after"\n'
+        plan = m.Infra.SemanticFilePlan(
+            project=root,
+            path=path,
+            before=absent,
+            desired_content=desired,
+            desired_mode=0o644,
+            changes=("fixture-rewrite",),
+        )
+        created = {path: 'value = "before"\n'} if seeded else {}
+        admitted = codemod.FlextInfraModReplacements.admit(root, (plan,), created)
+        if seeded:
+            tm.that(tm.ok(admitted)[0].desired_content, eq=desired)
+        else:
+            tm.fail(admitted, has="syntax candidate lacks authenticated bytes")
+        tm.ok(not path.exists())

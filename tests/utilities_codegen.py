@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from multiprocessing import get_context
 from pathlib import Path
 
-from flext_infra import codegen, config, workspace
+from flext_infra import codegen, config, u, workspace
 from tests import (
     TestsFlextInfraUtilitiesGit,
     TestsFlextInfraUtilitiesProjectFixture,
@@ -23,13 +23,12 @@ from tests import (
     p,
     r,
     tm,
-    u,
-    utilities_conform,
 )
+from tests.utilities_conform import TestsFlextInfraUtilitiesConform
 
 
 class TestsFlextInfraUtilitiesCodegen(
-    utilities_conform.TestsFlextInfraUtilitiesConform,
+    TestsFlextInfraUtilitiesConform,
 ):
     """Public conformance and scaffold fixture helpers."""
 

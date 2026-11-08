@@ -9036,5 +9036,30 @@ class FlextInfraUtilitiesModelsProtocol:
                 raise TypeError(message)
             return value
 
+    @classmethod
+    def model_protocol_routes(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> Mapping[str, str]:
+        """Map every model route of the workspace to its projected protocol.
+
+        Returns:
+            Model identity routes of every projected package, with their
+            public protocol routes.
+
+        """
+        routes: dict[str, str] = {}
+        for package_name in cls.protocol_model_package_names(
+            workspace.repository_root, workspace.rope_project
+        ):
+            routes.update(
+                cls.protocol_model_routes_from_source(
+                    workspace.repository_root,
+                    workspace.rope_project,
+                    package_name=package_name,
+                )
+            )
+        return routes
+
 
 __all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]
