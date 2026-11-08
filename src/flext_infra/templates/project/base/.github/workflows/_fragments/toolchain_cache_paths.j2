@@ -1,4 +1,5 @@
             {{ make.clean.cache_dirs | join("\n            ") }}
+            {{ make.bootstrap_bin_dir }}
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
