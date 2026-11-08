@@ -143,7 +143,10 @@ class FlextInfraModelsCore:
         """Actual collected node bound to its definition, not its display name."""
 
         node_id: t.NonEmptyStr = m.Field(description="Actual collected pytest node ID")
-        origin: FlextInfraModelsCore.PytestMarkdownOrigin = m.Field(
+        origin: Annotated[
+            p.Infra.PytestMarkdownOrigin,
+            t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownOrigin),
+        ] = m.Field(
             description="Definition supplied by the installed Markdown collector",
         )
 
@@ -201,12 +204,20 @@ class FlextInfraModelsCore:
         """The selected node IDs after every collection hook has completed."""
 
         node_ids: t.StrTuple = m.Field(description="Unique node IDs in execution order")
-        markdown_eligible: tuple[FlextInfraModelsCore.PytestMarkdownOrigin, ...] = (
-            m.Field(default_factory=tuple, description="Independent plugin eligibility")
-        )
-        markdown_collected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = (
-            m.Field(default_factory=tuple, description="Collection before deselection")
-        )
+        markdown_eligible: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownOrigin,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownOrigin),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Independent plugin eligibility")
+        markdown_collected: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ],
+            ...,
+        ] = m.Field(default_factory=tuple, description="Collection before deselection")
         markdown_deselected: t.StrTuple = m.Field(
             default_factory=tuple,
             description="Explicit Markdown deselection node IDs",
@@ -561,16 +572,37 @@ class FlextInfraModelsCore:
     class PytestMarkdownReconciliation(m.Value):
         """Origin and phase accounting; deselection is never execution."""
 
-        eligible: tuple[FlextInfraModelsCore.PytestMarkdownOrigin, ...] = m.Field(
+        eligible: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownOrigin,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownOrigin),
+            ],
+            ...,
+        ] = m.Field(
             description="Independent parser eligibility",
         )
-        selected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
+        selected: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ],
+            ...,
+        ] = m.Field(
             description="Actual selected identities",
         )
-        deselected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
+        deselected: tuple[
+            Annotated[
+                p.Infra.PytestMarkdownItem,
+                t.schema_for_model(lambda: FlextInfraModelsCore.PytestMarkdownItem),
+            ],
+            ...,
+        ] = m.Field(
             description="Origins not executed in this phase",
         )
-        diagnostics: FlextInfraModelsCore.PytestDiagnostics = m.Field(
+        diagnostics: Annotated[
+            p.Infra.PytestDiagnostics,
+            t.schema_for_model(lambda: FlextInfraModelsCore.PytestDiagnostics),
+        ] = m.Field(
             description="Unmodified observed phases, attempts and first causes",
         )
         cache_hit: bool = m.Field(

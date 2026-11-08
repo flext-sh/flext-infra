@@ -74,10 +74,7 @@ class FlextInfraProtocolsRefactor:
 
         working: MutableMapping[Path, str]
 
-        @property
-        def originals(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Complete original dependency closure."""
-            ...
+        originals: MutableMapping[Path, p.Cli.AtomicFileState]
 
         modes: MutableMapping[Path, int | None]
 

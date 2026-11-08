@@ -184,6 +184,22 @@ class FlextInfraExtraPathsManager(
             ordered.insert(0, source_root)
         return tuple(ordered)
 
+    @staticmethod
+    def repository_namespaces(project_dir: Path) -> Sequence[str]:
+        """Read the project's declared repository namespace packages.
+
+        Returns:
+            The declared implicit namespaces, empty when none is declared.
+
+        """
+        project = (
+            u.Infra
+            .load_repository_declaration_inputs(project_dir)
+            .unwrap()
+            .spec.project
+        )
+        return () if project is None else project.repository_namespace_packages
+
     def mypy_search_paths(self, *, project_dir: Path) -> Sequence[str]:
         """Compute mypy search paths: like pyrefly but without the project root.
 
@@ -209,10 +225,17 @@ class FlextInfraExtraPathsManager(
             shared_search_paths=rules.project_shared_search_paths,
             include_generated_roots=False,
         )
-        return (
+        elected = (
             (source_root, *sorted(paths))
             if (project_dir / source_root).is_dir()
             else tuple(sorted(paths))
+        )
+        # A declared repository namespace (PEP 420, no __init__.py) is named
+        # from the project root, the one base that re-spells no other root.
+        return (
+            (*elected, ".")
+            if self.repository_namespaces(project_dir) and "." not in elected
+            else elected
         )
 
     def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> Sequence[str]:

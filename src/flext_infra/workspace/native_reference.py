@@ -171,7 +171,7 @@ class FlextInfraWorkspaceNativeReference:
         supplier: str,
         qualname: str,
         namespace: Mapping[str, t.Infra.NativeOperand],
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
     ) -> p.Result[tuple[frozenset[str], ...]]:
         """Separate authored class bindings from a metaclass's operational outputs.
 
@@ -2274,7 +2274,7 @@ class FlextInfraWorkspaceNativeReference:
         seen: frozenset[int] = frozenset(),
         *,
         construction: bool = False,
-        context: m.Infra.NativeObservationContext | None = None,
+        context: p.Infra.NativeObservationContext | None = None,
         binding: str = "",
     ) -> str:
         """Serialize one structural observation without recursively escaping JSON.
@@ -2326,7 +2326,7 @@ class FlextInfraWorkspaceNativeReference:
         seen: frozenset[int],
         *,
         construction: bool,
-        context: m.Infra.NativeObservationContext | None = None,
+        context: p.Infra.NativeObservationContext | None = None,
         binding: str = "",
     ) -> t.JsonValue:
         """Observe native slots as JSON data without authored accessors.
@@ -2359,7 +2359,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: Iterable[t.Infra.NativeOperand],
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2409,7 +2409,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2444,7 +2444,7 @@ class FlextInfraWorkspaceNativeReference:
     def _code_value(
         cls,
         value: t.Infra.NativeCode,
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
     ) -> t.JsonValue:
         """Observe code through the same complete native compiler witness.
 
@@ -2461,7 +2461,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2507,7 +2507,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2590,7 +2590,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
         *,
         construction: bool,
@@ -2647,7 +2647,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
     ) -> list[t.JsonValue]:
         """Observe interpreter-owned dictionaries and slots in native MRO order.
@@ -2701,7 +2701,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         value: t.Infra.NativeOperand,
         seen: frozenset[int],
-        context: m.Infra.NativeObservationContext | None,
+        context: p.Infra.NativeObservationContext | None,
         binding: str,
     ) -> t.JsonValue:
         """Authenticate full instance storage or its registered native singleton.
@@ -2976,7 +2976,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def capture(
         cls,
-        names: Sequence[str | m.Infra.SourceClassReference],
+        names: Sequence[str | p.Infra.SourceClassReference],
         *,
         paths: Sequence[tuple[Path, Path]] = (),
     ) -> p.Result[p.Infra.NativeImportObservation]:
@@ -2991,7 +2991,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _module_generated_owners(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         name: str,
         namespace: Mapping[str, t.Infra.NativeOperand],
     ) -> None:
@@ -3066,7 +3066,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _module_inventory(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         name: str,
         namespace: Mapping[str, t.Infra.NativeOperand],
         instructions: t.Infra.NativeInstructionFacts,
@@ -3123,7 +3123,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _nominate_lexical_binding(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         nomination: p.Infra.SourceClassReference,
         module: t.Infra.NativeOperand,
         source: Path,
@@ -3166,7 +3166,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _nominate_module(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         nomination: p.Infra.SourceClassReference,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
@@ -3278,7 +3278,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _enqueue_class_members(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeType,
         binding: str,
         identity: tuple[str, str, str, Mapping[str, t.Infra.NativeOperand]],
@@ -3534,7 +3534,7 @@ class FlextInfraWorkspaceNativeReference:
         declared: t.Infra.NativeOperand,
         namespace: Mapping[str, t.Infra.NativeOperand],
         instructions: t.Infra.NativeInstructionFacts,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         observe: Callable[[t.Infra.NativeOperand], str],
     ) -> str:
         """Observe every original Field slot and its metadata projection writer.
@@ -3611,7 +3611,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_class_body(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeType,
         binding: str,
         identity: tuple[str, str, str, Mapping[str, t.Infra.NativeOperand]],
@@ -3759,7 +3759,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_class(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeType,
         binding: str,
         instructions: t.Infra.NativeInstructionFacts,
@@ -3801,7 +3801,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_function_binding(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: p.Infra.FunctionDescriptor,
     ) -> p.Result[bool]:
         """Observe an exact classmethod or staticmethod and enqueue its function.
@@ -3833,7 +3833,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_bound_method(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: MethodType,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
@@ -3886,7 +3886,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_property(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: property,
     ) -> p.Result[bool]:
         """Observe property accessor presence before queuing actual accessors.
@@ -3932,7 +3932,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_descriptor(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeDescriptor,
     ) -> p.Result[bool]:
         """Authenticate a native descriptor supplier and enqueue its actual owner.
@@ -3979,7 +3979,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_generic_alias(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
     ) -> p.Result[bool]:
         """Observe native alias construction and its actual executable operands.
@@ -4017,7 +4017,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_wrapper(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         kind: str,
         wrapper_kind: str,
@@ -4109,7 +4109,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_native_callable(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         kind: str,
     ) -> p.Result[bool]:
@@ -4152,7 +4152,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_weak_reference(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: Callable[[], t.Infra.NativeOperand | None],
     ) -> p.Result[bool]:
         """Observe an exact interpreter weak reference without keeping it alive.
@@ -4189,7 +4189,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_callable_instance(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
     ) -> p.Result[bool]:
         """Observe a callable instance through its storage and native class.
@@ -4231,7 +4231,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _native_callable_origin(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         native_builtin: t.Infra.NativeBuiltinCallable | None,
     ) -> p.Result[tuple[str, str, str]]:
@@ -4274,7 +4274,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _receiver_evidence(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         native_builtin: t.Infra.NativeBuiltinCallable,
         origin: tuple[str, str, str],
     ) -> tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]:
@@ -4344,7 +4344,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _receiver_failure_note(
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         supplier: str,
         native_name: str,
         qualified: str,
@@ -4430,7 +4430,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _generated_function_source(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: FunctionType,
     ) -> p.Result[tuple[str, tuple[tuple[str, str], ...]]]:
         """Observe the registered supplier and receiver without replaying a compiler.
@@ -4467,7 +4467,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_function_source(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: FunctionType,
     ) -> p.Result[p.Infra.NativeFunctionObservationContext]:
         """Elect the actual function source before inspecting executable operands.
@@ -4544,7 +4544,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _function_namespaces(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Infra.NativeFunctionObservationContext:
@@ -4646,7 +4646,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _function_descriptor_edges(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
     ) -> None:
         """Queue native descriptor identities through actual lexical class ancestry."""
@@ -4679,7 +4679,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _enqueue_function_operands(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
     ) -> None:
         """Queue actual globals, defaults and closure operands in original order."""
@@ -4716,7 +4716,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_function_evidence(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         kind: str,
     ) -> None:
@@ -4915,7 +4915,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _absent_edge(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         edge: str,
         name: str,
@@ -4973,7 +4973,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _function_attribute_edges(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
         *,
@@ -5081,7 +5081,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _enqueue_lookup_readers(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         receiver: t.Infra.NativeOperand,
         name: str,
         edge: str,
@@ -5158,7 +5158,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _loaded_native_edge(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         edge: str,
         value: t.Infra.NativeOperand,
@@ -5205,7 +5205,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_function(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: FunctionType,
         kind: str,
         instructions: t.Infra.NativeInstructionFacts,
@@ -5245,7 +5245,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_executable(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
@@ -5268,7 +5268,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_binding(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
@@ -5299,7 +5299,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @classmethod
     def _capture_native_suppliers(
-        cls, context: m.Infra.NativeObservationContext
+        cls, context: p.Infra.NativeObservationContext
     ) -> p.Result[bool]:
         """Elect original interpreter suppliers before accepting any nomination.
 
@@ -5330,7 +5330,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @classmethod
     def _capture_nominations(
-        cls, names: Sequence[str | m.Infra.SourceClassReference]
+        cls, names: Sequence[str | p.Infra.SourceClassReference]
     ) -> p.Result[tuple[p.Infra.SourceClassReference, ...]]:
         """Validate exactly one complete-module or lexical selection contract.
 
@@ -5364,7 +5364,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture_next(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
         """Admit exactly the next native identity after draining registered edges.
@@ -5435,7 +5435,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _canonical_bound_method(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: MethodType,
     ) -> MethodType:
         """Reuse a retained interpreter binding across repeated descriptor reads.
@@ -5457,7 +5457,7 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _binding_evidence(
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         binding: str,
     ) -> p.Infra.NativeBindingEvidence | None:
         """Index appended observations without copying or reordering their owners.
@@ -5474,7 +5474,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _promote_native_binding(
         cls,
-        context: m.Infra.NativeObservationContext,
+        context: p.Infra.NativeObservationContext,
         value: t.Infra.NativeOperand,
         instructions: t.Infra.NativeInstructionFacts,
     ) -> p.Result[bool]:
@@ -5528,7 +5528,7 @@ class FlextInfraWorkspaceNativeReference:
     @classmethod
     def _capture(
         cls,
-        names: Sequence[str | m.Infra.SourceClassReference],
+        names: Sequence[str | p.Infra.SourceClassReference],
         *,
         paths: Sequence[tuple[Path, Path]],
     ) -> p.Result[p.Infra.NativeImportObservation]:

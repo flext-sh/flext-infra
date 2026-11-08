@@ -157,12 +157,16 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeSourceClass(RopeSourceObject, RopeClassObject, Protocol):
         """A source-defined class retaining its native superclass graph."""
 
+        def get_ast(self) -> ast.ClassDef: ...
+
         def invalidate_bases(self) -> None:
             """Drop the cached bases and MRO for one settled re-read."""
 
     @runtime_checkable
     class RopeSourceFunction(RopeSourceObject, Protocol):
         """A source-defined function retaining its native callable role."""
+
+        def get_ast(self) -> ast.FunctionDef | ast.AsyncFunctionDef: ...
 
         def get_kind(self) -> str: ...
 
@@ -215,9 +219,10 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeAstNode(Protocol):
         """Raw AST node shape from ``RopePyModule.get_ast()``.
 
-        Minimal contract for Python ``ast.AST`` nodes as exposed by Rope.
-        Consumers access attributes via ``getattr``/``hasattr``; the protocol
-        declares the common fields that appear across all node types.
+        Minimal contract for Python ``ast.AST`` nodes as exposed by Rope. It
+        declares only the fields common to every node type; a consumer that
+        needs a node's own fields reads them through the concrete source
+        protocol (``RopeSourceClass``/``RopeSourceFunction``), never by probing.
         """
 
         _fields: ClassVar[tuple[str, ...]]

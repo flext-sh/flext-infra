@@ -229,7 +229,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-override SETUP_BIN := $(BOOTSTRAP_ROOT)/.bin
+override SETUP_BIN := $(BOOTSTRAP_ROOT)/{{ make.bootstrap_bin_dir }}
 ifeq ($(OS),Windows_NT)
 override BOOTSTRAP_MISE := $(SETUP_BIN)/mise.exe
 else

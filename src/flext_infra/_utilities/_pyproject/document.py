@@ -587,13 +587,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         return (frozenset(domain), frozenset(platform))
 
     type _CustomGroupsPair = tuple[
-        Sequence[str | m.Infra.DependencyGroupInclude],
-        Sequence[str | m.Infra.DependencyGroupInclude],
+        Sequence[str | p.Infra.DependencyGroupInclude],
+        Sequence[str | p.Infra.DependencyGroupInclude],
     ]
     type _ConformedProvenance = tuple[
         t.Cli.TomlDocument,
         str,
-        m.Infra.RequirementsProvenance,
+        p.Infra.RequirementsProvenance,
     ]
 
     class PyprojectConformOptions(m.ImmutableValueModel):
@@ -860,7 +860,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             )
         groups = u.Cli.toml_ensure_table(source, c.Infra.DEPENDENCY_GROUPS)
         retained: MutableMapping[
-            str, Sequence[str | m.Infra.DependencyGroupInclude]
+            str, Sequence[str | p.Infra.DependencyGroupInclude]
         ] = {}
         for group in (str(c.Infra.DEV), c.Infra.DependencyGroup.CODEGEN):
             authored_name = cls.dependency_group_name(groups, str(group))
@@ -900,7 +900,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             strict=True,
         ):
             normalized_custom: MutableSequence[
-                str | m.Infra.DependencyGroupInclude
+                str | p.Infra.DependencyGroupInclude
             ] = []
             for value in custom:
                 if not isinstance(value, str):
