@@ -264,7 +264,7 @@ class FlextInfraWorkspaceDetector(
         along: ``True`` when the manifest declares no overlay.
 
         Returns:
-            The resulting ``p.Result[tuple[m.Infra.RepositoryRef, bool,
+            The resulting ``p.Result[tuple[p.Infra.RepositoryRef, bool,
                 p.Infra.ProjectSpec | None]]``.
 
         """
@@ -275,16 +275,18 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
-        values["inputs"] = [
-            state.model_dump(round_trip=True) for state in (*observed.inputs, *sources)
-        ]
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
-                tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]
+                tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]
             ].from_failure(validated)
-        return r[tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]].ok((
-            validated.value,
+        # The observations are live witnesses excluded from serialization, so
+        # they ride on the validated record instead of through its payload.
+        reference = validated.value.model_copy(
+            update={"inputs": (*observed.inputs, *sources)},
+        )
+        return r[tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]].ok((
+            reference,
             declaration.gascity_enabled,
             declaration.project,
         ))
@@ -467,9 +469,9 @@ class FlextInfraWorkspaceDetector(
                 f"project declaration: {repository_root}",
             )
             return result_type.fail(str(error), exception=error)
-        if declaration.integration is None:
+        if declaration.integration is None or declaration.kind is None:
             return result_type.fail(
-                "new project requires its own integration declaration: "
+                "new project requires its own integration and kind declarations: "
                 f"{repository_root}",
             )
         if declaration.project.flext_source is None:
@@ -1002,7 +1004,7 @@ class FlextInfraWorkspaceDetector(
             tuple[
                 p.Infra.BeadsProjectSpec | None,
                 tuple[
-                    tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
+                    tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
                     tuple[
                         Sequence[p.Infra.RepositoryRef],
                         Sequence[Path],
@@ -1133,7 +1135,7 @@ class FlextInfraWorkspaceDetector(
             The resulting ``(inherited_beads, loaded_member)`` pair.
 
         """
-        result_type = r[tuple[p.Infra.BeadsProjectSpec, m.Infra.RepositoryRef]]
+        result_type = r[tuple[p.Infra.BeadsProjectSpec, p.Infra.RepositoryRef]]
         inherited_beads = cls.load_beads_spec(superproject_root)
         if inherited_beads.failure:
             return result_type.from_failure(inherited_beads)
@@ -1202,7 +1204,7 @@ class FlextInfraWorkspaceDetector(
         """
         result_type = r[
             tuple[
-                tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
+                tuple[p.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
                 tuple[
                     Sequence[p.Infra.RepositoryRef],
                     Sequence[Path],

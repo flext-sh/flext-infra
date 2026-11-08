@@ -1810,7 +1810,7 @@ class FlextInfraUtilitiesFacadeComponents:
             and isinstance(statement.value, ast.Name)
             and (bound := module_names.get(statement.value.id)) is not None
             and types.py_class(bound.get_object())
-            for statement in getattr(provider.get_ast(), "body", ())
+            for statement in provider.get_ast().body
         ):
             return False
         methods = tuple(
