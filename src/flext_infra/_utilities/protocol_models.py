@@ -5384,6 +5384,14 @@ class FlextInfraUtilitiesModelsProtocol:
 
             class Project(ast.NodeTransformer):
                 @override
+                def visit_Constant(self, node: ast.Constant) -> ast.AST:
+                    # A quoted forward reference names a type like its
+                    # unquoted form; Literal payloads never reach here.
+                    if not isinstance(node.value, str):
+                        return node
+                    return self.visit(ast.parse(node.value, mode="eval").body)
+
+                @override
                 def visit_Name(self, node: ast.Name) -> ast.AST:
                     return self_owner._source_projected_name(node, member)
 
