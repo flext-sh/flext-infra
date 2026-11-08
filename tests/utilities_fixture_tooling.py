@@ -17,8 +17,8 @@ from textwrap import indent
 
 from typing_extensions import TypeForm
 
-from flext_infra import config, validate, workspace
-from tests import c, m, p, r, t, tm, u
+from flext_infra import config, u, validate, workspace
+from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
 

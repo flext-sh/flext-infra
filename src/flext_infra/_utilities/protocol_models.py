@@ -9038,3 +9038,36 @@ class FlextInfraUtilitiesModelsProtocol:
 
 
 __all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]
+
+
+try:
+    from flext_infra._utilities._semantic_cutover.contracts import (
+        FlextInfraUtilitiesSemanticContracts,
+    )
+except (ImportError, AttributeError):
+    # pragma: no cover - defensive during partial imports
+    FlextInfraUtilitiesSemanticContracts = None
+
+if FlextInfraUtilitiesSemanticContracts is not None:
+
+    def _flext_infra_model_protocol_routes(
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> Mapping[str, str]:
+        protocol = FlextInfraUtilitiesModelsProtocol
+        pkg_names = protocol.protocol_model_package_names(
+            workspace.repository_root, workspace.rope_project
+        )
+        routes: dict[str, str] = {}
+        for package_name in pkg_names:
+            routes.update(
+                protocol.protocol_model_routes_from_source(
+                    workspace.repository_root,
+                    workspace.rope_project,
+                    package_name=package_name,
+                )
+            )
+        return routes
+
+    FlextInfraUtilitiesSemanticContracts.register_model_protocol_routes(
+        _flext_infra_model_protocol_routes
+    )
