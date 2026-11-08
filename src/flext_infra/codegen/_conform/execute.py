@@ -257,7 +257,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         changes its content hash, and direnv then blocks every later command
         in that checkout, including a workspace member's ``make check`` and
         its commit hook. The publisher therefore authorizes each published
-        ``.envrc`` (root and members alike) in the same operation, outside CI.
+        ``.envrc`` (root and members alike) in the same operation, outside CI,
+        with the direnv the root's locked Mise toolchain resolves, never one
+        found on the caller's PATH.
 
         Returns:
             Whether any file was authorized, or the first native failure.
@@ -272,8 +274,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if path.name == c.Infra.ENVRC_FILENAME
         }
         for root in sorted(roots):
+            direnv = u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, root)
+            if direnv.failure:
+                return r[bool].from_failure(direnv)
             result = u.Cli.run_raw(
-                (c.Infra.CLI_DIRENV, "allow", str(root)),
+                (str(direnv.value), "allow", str(root)),
                 cwd=root,
                 timeout=c.Infra.TIMEOUT_SHORT,
             )
