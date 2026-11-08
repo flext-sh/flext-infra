@@ -67,7 +67,7 @@ class FlextInfraApplyRenames:
 
     @staticmethod
     def _decoded_sources(
-        inventory: Mapping[Path, m.Cli.AtomicFileState],
+        inventory: Mapping[Path, p.Cli.AtomicFileState],
     ) -> Mapping[Path, str]:
         """Decode the authenticated campaign inventory.
 
@@ -193,7 +193,7 @@ class FlextInfraApplyRenames:
         pairs: Sequence[tuple[str, str]],
         snapshot: p.Infra.WorkspaceSnapshot,
         overrides: Mapping[Path, bytes],
-    ) -> tuple[Mapping[Path, m.Cli.AtomicFileState], int]:
+    ) -> tuple[Mapping[Path, p.Cli.AtomicFileState], int]:
         """Elect the rename sources from the snapshot and the declared text surfaces.
 
         Python sources come from the snapshot's one authenticated read; only the
@@ -210,7 +210,7 @@ class FlextInfraApplyRenames:
             if cls._identifier_campaign(params, pairs)
             else None
         )
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: dict[Path, p.Cli.AtomicFileState] = {}
         scanned = 0
         for path, source in u.Infra.workspace_sources(snapshot).items():
             if path.suffix != c.Infra.EXT_PYTHON or cls._excluded(
@@ -282,12 +282,12 @@ class FlextInfraApplyRenames:
     def _file_plans(
         cls,
         scope: tuple[
-            m.Infra.ApplyRenamesInput,
+            p.Infra.ApplyRenamesInput,
             Sequence[tuple[str, str]],
             Path,
             Sequence[Path],
         ],
-        context: tuple[frozenset[Path], Mapping[Path, m.Cli.AtomicFileState]],
+        context: tuple[frozenset[Path], Mapping[Path, p.Cli.AtomicFileState]],
         project: p.Infra.RopeProject,
         edits: tuple[
             Mapping[Path, Sequence[p.Infra.SourceRewrite]],
@@ -314,12 +314,12 @@ class FlextInfraApplyRenames:
     def _file_plan(
         cls,
         scope: tuple[
-            m.Infra.ApplyRenamesInput,
+            p.Infra.ApplyRenamesInput,
             Sequence[tuple[str, str]],
             Path,
             Sequence[Path],
         ],
-        context: tuple[frozenset[Path], Mapping[Path, m.Cli.AtomicFileState]],
+        context: tuple[frozenset[Path], Mapping[Path, p.Cli.AtomicFileState]],
         project: p.Infra.RopeProject,
         symbols: Mapping[Path, Sequence[p.Infra.SourceRewrite]],
         entry: tuple[Path, str],
@@ -386,7 +386,7 @@ class FlextInfraApplyRenames:
         cls,
         params: p.Infra.ApplyRenamesInput,
         snapshot: p.Infra.WorkspaceSnapshot,
-        state: tuple[tuple[Path, m.Cli.AtomicFileState], Sequence[tuple[str, str]]],
+        state: tuple[tuple[Path, p.Cli.AtomicFileState], Sequence[tuple[str, str]]],
         planned: tuple[Sequence[p.Infra.SemanticFilePlan], int],
     ) -> p.Result[tuple[Sequence[Path], int]]:
         """Accept the previewed campaign by a clean re-scan, then publish it.

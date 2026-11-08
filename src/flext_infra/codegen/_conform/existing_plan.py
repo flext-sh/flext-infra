@@ -1350,7 +1350,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         target: p.Infra.RepositoryConformTarget,
         codegen: p.Infra.CodegenConfigSpec,
         destination: str,
-    ) -> p.Result[tuple[p.Infra.TemplateEntrySpec, m.Infra.ManagedFileSpec]]:
+    ) -> p.Result[tuple[p.Infra.TemplateEntrySpec, p.Infra.ManagedFileSpec]]:
         """Resolve the single render template and managed spec of a destination.
 
         Args:
@@ -1891,7 +1891,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     def _bind_governed_ownership(
         root: Path,
         planned: Sequence[p.Infra.CodegenFilePlan],
-        governed_by_path: Mapping[Path, m.Infra.ManagedFileSpec],
+        governed_by_path: Mapping[Path, p.Infra.ManagedFileSpec],
     ) -> p.Result[tuple[list[p.Infra.CodegenFilePlan], set[Path]]]:
         """Stamp governed ownership onto the planned files, first plan wins.
 
@@ -1932,7 +1932,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         self,
         target: p.Infra.RepositoryConformTarget,
         codegen: p.Infra.CodegenConfigSpec,
-        governed_by_path: Mapping[Path, m.Infra.ManagedFileSpec],
+        governed_by_path: Mapping[Path, p.Infra.ManagedFileSpec],
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan every unrepresented governed artifact in the mapping.
 

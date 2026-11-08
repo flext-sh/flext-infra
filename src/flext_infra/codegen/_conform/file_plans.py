@@ -217,9 +217,9 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     ) -> (
         p.Result[
             tuple[
-                m.Cli.AtomicFileState,
-                m.Infra.RepositoryDeltaSpec,
-                m.Infra.WorkspaceManifestSpec,
+                p.Cli.AtomicFileState,
+                p.Infra.RepositoryDeltaSpec,
+                p.Infra.WorkspaceManifestSpec,
             ]
         ]
         | None

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraMarkdownCodeSources:
@@ -61,7 +61,7 @@ class FlextInfraMarkdownCodeSources:
     def formattable_fences(
         content: str,
         origin: Path,
-    ) -> tuple[tuple[int, m.Cli.MarkdownFence], ...]:
+    ) -> tuple[tuple[int, p.Cli.MarkdownFence], ...]:
         """Index governed ``python`` fences and keep those that compile.
 
         A pure function of the document text: extraction and write-back of

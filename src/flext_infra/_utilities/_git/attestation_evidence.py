@@ -355,8 +355,8 @@ class FlextInfraUtilitiesGitAttestationEvidence(FlextInfraUtilitiesGitRepo):
         cls,
         repo_root: Path,
         request: p.Infra.GateAttestationCreateRequest
-        | m.Infra.GateAttestationVerifyRequest,
-    ) -> p.Result[tuple[p.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]:
+        | p.Infra.GateAttestationVerifyRequest,
+    ) -> p.Result[tuple[p.Infra.GateCommandEvidence, p.Infra.GateReportEvidence]]:
         result_type = r[tuple[p.Infra.GateCommandEvidence, m.Infra.GateReportEvidence]]
         path = (
             request.receipt

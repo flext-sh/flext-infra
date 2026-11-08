@@ -450,7 +450,7 @@ class FlextInfraModelsConfigTemplates:
         @cached_property
         def entries(
             self,
-        ) -> tuple[FlextInfraModelsConfigTemplates.TemplateEntrySpec, ...]:
+        ) -> tuple[p.Infra.TemplateEntrySpec, ...]:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
@@ -469,7 +469,7 @@ class FlextInfraModelsConfigTemplates:
             }
 
         @property
-        def bootstrap_entry(self) -> FlextInfraModelsConfigTemplates.TemplateEntrySpec:
+        def bootstrap_entry(self) -> p.Infra.TemplateEntrySpec:
             """Require the single declared executor bootstrap artifact.
 
             Returns:

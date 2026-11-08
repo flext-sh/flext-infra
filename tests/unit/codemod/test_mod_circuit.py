@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
-from tests import c, m, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 @c.Tests.MARK.slow
@@ -167,7 +167,7 @@ class TestsFlextInfraModCliRoute:
     def _run_mod_scan(
         mod_workspace: Path,
         capsys: t.Tests.CaptureFixture[str],
-    ) -> tuple[int, m.Infra.ModScanEvidence, str, str]:
+    ) -> tuple[int, p.Infra.ModScanEvidence, str, str]:
         """Run one ``refactor mod`` scan and capture its receipt artifacts.
 
         Returns:

@@ -564,7 +564,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     @staticmethod
     def _attestation_paths(
         request: p.Infra.GateAttestationCreateRequest
-        | m.Infra.GateAttestationVerifyRequest,
+        | p.Infra.GateAttestationVerifyRequest,
     ) -> p.Result[tuple[Path, Path]]:
         repo_root = Path(request.workspace).expanduser().resolve()
         allowed = Path(request.allowed_signers).expanduser().resolve()

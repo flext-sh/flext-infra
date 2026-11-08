@@ -46,7 +46,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         bundle = prepared.value
         elected: list[
             tuple[
-                m.Infra.DocScope,
+                p.Infra.DocScope,
                 tuple[p.Cli.AtomicFileState, ...],
             ]
         ] = []

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, p, t, u
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    pass
 
 
 class FlextInfraDocAuditorMixin:
@@ -29,9 +29,9 @@ class FlextInfraDocAuditorMixin:
         docstring_coverage: p.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
-                m.Infra.DocScope,
+                p.Infra.DocScope,
                 Sequence[p.Infra.AuditIssue],
-                m.Infra.DocstringCoverage | None,
+                p.Infra.DocstringCoverage | None,
             ],
             Sequence[str],
         ],

@@ -469,9 +469,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs: p.Infra.CodegenInputs,
     ) -> p.Result[
         tuple[
-            m.Infra.WorkspaceSpec,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.RepositoryRef,
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
         ]
     ]:
         """Load the planning workspace and its current conformance target.
@@ -783,7 +783,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         waves: Sequence[tuple[p.Infra.CodegenRepositoryPlanTask, ...]],
         providers: tuple[p.Infra.CodegenFilePlan, ...],
         snapshots: Mapping[str, p.Infra.WorkspaceSnapshot],
-    ) -> Mapping[str, m.Infra.CodegenRepositoryPlanOutcome]:
+    ) -> Mapping[str, p.Infra.CodegenRepositoryPlanOutcome]:
         """Plan managed surfaces in dependency order over the staged plans.
 
         Each repository plans in the one loop over the plans staged by the
@@ -793,7 +793,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The managed outcome per repository.
 
         """
-        planned: MutableMapping[str, m.Infra.CodegenRepositoryPlanOutcome] = {}
+        planned: MutableMapping[str, p.Infra.CodegenRepositoryPlanOutcome] = {}
         staged = {file.path: file for file in providers}
         for wave in waves:
             for task in wave:
@@ -859,9 +859,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         root: Path,
         planning: tuple[
-            m.Infra.WorkspaceSpec,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.RepositoryRef,
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
         ],
         selected: tuple[p.Infra.RepositoryRef, ...],
         surface: c.Infra.CodegenConformSurface,
@@ -954,9 +954,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         self,
         root: Path,
         planning: tuple[
-            m.Infra.WorkspaceSpec,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.RepositoryRef,
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
         ],
         selected: tuple[p.Infra.RepositoryRef, ...],
         surface: c.Infra.CodegenConformSurface,
@@ -1199,8 +1199,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         inputs: p.Infra.CodegenInputs,
         planned_inputs: tuple[
             Path,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.WorkspaceSpec,
         ],
         started: float,
     ) -> p.Infra.CodegenRepositoryPlanOutcome:
@@ -1259,8 +1259,8 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     ) -> p.Result[
         tuple[
             Path,
-            m.Infra.RepositoryConformTarget,
-            m.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.WorkspaceSpec,
         ]
     ]:
         """Resolve one repository's checkout root, target, and local workspace.

@@ -1040,7 +1040,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             return r[p.Infra.ProjectManagedArtifactsResolution].ok(
                 cls.empty_snapshot().resolution,
             )
-        fragments: list[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]] = []
+        fragments: list[tuple[Path, p.Infra.ProjectManagedArtifactsFragment]] = []
         for source, content in sorted(payloads.items()):
             parsed = cls._parse_project_fragment(source, content)
             if parsed.failure:
@@ -1138,7 +1138,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     @classmethod
     def _compose_project_fragments(
         cls,
-        fragments: Sequence[tuple[Path, m.Infra.ProjectManagedArtifactsFragment]],
+        fragments: Sequence[tuple[Path, p.Infra.ProjectManagedArtifactsFragment]],
     ) -> p.Result[p.Infra.ProjectManagedArtifactsResolution]:
         """Compose source fragments in path order into one resolution.
 
@@ -1146,7 +1146,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             The resulting ``p.Result[p.Infra.ProjectManagedArtifactsResolution]``.
 
         """
-        mise_tools: MutableMapping[str, m.Infra.ProjectMiseTool] = {}
+        mise_tools: MutableMapping[str, p.Infra.ProjectMiseTool] = {}
         mise_sources: MutableMapping[str, Path] = {}
         gitignore_patterns: list[str] = []
         gitignore_blocks: list[p.Infra.ProjectGitignorePreservedBlock] = []

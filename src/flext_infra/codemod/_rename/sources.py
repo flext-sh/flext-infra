@@ -195,7 +195,7 @@ class FlextInfraCodemodRenameSources:
         *,
         needles: frozenset[str] | None = None,
         python_sources: bool = True,
-    ) -> tuple[Mapping[Path, m.Cli.AtomicFileState], int]:
+    ) -> tuple[Mapping[Path, p.Cli.AtomicFileState], int]:
         """Index scanned files minus ignored, generated, and driver paths.
 
         ``needles`` bounds the authenticated reads of an identifier campaign to
@@ -210,7 +210,7 @@ class FlextInfraCodemodRenameSources:
             the number of electable files scanned.
 
         """
-        files: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        files: MutableMapping[Path, p.Cli.AtomicFileState] = {}
         scanned = 0
         raw_needles = tuple(
             needle.encode(c.DEFAULT_ENCODING) for needle in needles or ()

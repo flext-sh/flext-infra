@@ -40,7 +40,7 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 @pytest.fixture
 def codegen_admission_cohort(
     infra_git_repo: Path,
-) -> tuple[tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState]:
+) -> tuple[tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState]:
     """Provide real effects with an unchanged shared-observation carrier.
 
     Returns:

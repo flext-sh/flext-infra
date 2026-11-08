@@ -24,11 +24,9 @@ from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 def _effective_custom_handler_policies(
-    base: FlextInfraModelsConfigMake.CustomHandlerPolicy,
-    overrides: tuple[
-        tuple[str, FlextInfraModelsConfigMake.CustomHandlerPolicyOverride], ...
-    ],
-) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+    base: p.Infra.CustomHandlerPolicy,
+    overrides: tuple[tuple[str, p.Infra.CustomHandlerPolicyOverride], ...],
+) -> Mapping[str, p.Infra.CustomHandlerPolicy]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -304,7 +302,15 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         requires: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowRequirementSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "
@@ -1333,9 +1339,7 @@ class FlextInfraModelsConfigMake(
                     self._validate_test_admission(step)
             self._validate_admission_requirements()
 
-        def _validate_test_admission(
-            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
-        ) -> None:
+        def _validate_test_admission(self, tests: p.Infra.MakeWorkflowStepSpec) -> None:
             """Require primary evidence in every context of each test invocation.
 
             Raises:

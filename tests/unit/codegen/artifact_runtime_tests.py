@@ -267,7 +267,7 @@ class TestsArtifactRuntime:
         uv: str,
         wheel: Path,
         distribution: str,
-    ) -> tuple[Path, Path, m.Cli.ProcessOptions]:
+    ) -> tuple[Path, Path, p.Cli.ProcessOptions]:
         """Sync one isolated consumer runtime from the built wheel.
 
         Args:

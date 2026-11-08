@@ -448,7 +448,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
     @classmethod
     def _validate_required(
         cls,
-        members: Mapping[str, m.Infra.RepositoryRef],
+        members: Mapping[str, p.Infra.RepositoryRef],
         locked: p.Infra.LockedEnvironment,
         context: p.Infra.WorkspaceRuntimeContext,
         *,

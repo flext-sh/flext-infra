@@ -20,7 +20,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     def test_noop_carrier_and_complete_reordering_keep_publication_guard(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[
-            tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
         ],
         *,
         reverse: bool,
@@ -49,7 +49,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     def test_later_conflicting_observation_rejects_all_effects(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[
-            tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
         ],
     ) -> None:
         """A later conflicting read cannot replace the cohort's first witness."""
@@ -78,7 +78,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     @staticmethod
     def test_read_only_verification_preserves_files_on_observation_drift(
         codegen_admission_cohort: tuple[
-            tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
         ],
     ) -> None:
         """Native verification refuses a stale read without publishing any effect."""
@@ -98,7 +98,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     def test_deleted_carrier_preserves_survivor_and_shared_input_guard(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[
-            tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
         ],
         *,
         drift: bool,
@@ -135,7 +135,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     def test_independent_cohorts_each_reject_their_shared_input_drift(
         infra_git_repo: Path,
         codegen_admission_cohort: tuple[
-            tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
         ],
     ) -> None:
         """Each separately declared publication retains its original observation."""

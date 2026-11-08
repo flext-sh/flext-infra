@@ -34,7 +34,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
     def source_member_binding(
         cls,
         project: p.Infra.RopeProject,
-        qualified: str | m.Infra.SourceClassReference,
+        qualified: str | p.Infra.SourceClassReference,
         *,
         sources: Mapping[str, tuple[Path, str]] | None = None,
     ) -> p.Infra.RopePyName:
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         """
 
         def __call__(
-            self, qualified: str | m.Infra.SourceClassReference, /
+            self, qualified: str | p.Infra.SourceClassReference, /
         ) -> p.Infra.RopePyName:
             """Resolve a member with this captured view's native ordering.
 
@@ -179,7 +179,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             return True
 
         def source_member_binding(
-            self, qualified: str | m.Infra.SourceClassReference
+            self, qualified: str | p.Infra.SourceClassReference
         ) -> p.Infra.RopePyName:
             """Read a member from the first native declaration in the source MRO.
 
@@ -282,18 +282,18 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._source_names_by_path: Mapping[Path, t.StrTuple] = {
                 path: tuple(names) for path, names in names_by_path.items()
             }
-            self._definitions: MutableMapping[str, m.Infra.SourceClassDefinition] = {}
+            self._definitions: MutableMapping[str, p.Infra.SourceClassDefinition] = {}
             self._modules: MutableMapping[
                 str,
-                Mapping[str, m.Infra.SourceClassReference | None],
+                Mapping[str, p.Infra.SourceClassReference | None],
             ] = {}
             self._lazy_declarations: MutableMapping[
                 str,
-                Mapping[str, m.Infra.SourceClassReference | None],
+                Mapping[str, p.Infra.SourceClassReference | None],
             ] = {}
             self._providers: MutableMapping[str, t.Infra.RopePyModule] = {}
             self._namespaces: set[str] = set()
-            self._module_aliases: MutableMapping[str, m.Infra.SourceClassReference] = {}
+            self._module_aliases: MutableMapping[str, p.Infra.SourceClassReference] = {}
             self._external: MutableMapping[str, t.Infra.RopePyObject] = {}
             self._class_bindings: MutableMapping[str, p.Infra.RopePyName] = {}
             self._linearizations: MutableMapping[str, t.StrTuple] = {}
@@ -576,7 +576,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             required_line: int | None = None,
             allow_conditional: bool = False,
             provider: t.Infra.RopePyModule | None = None,
-        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, p.Infra.SourceClassReference | None]:
             """Index lexical bindings without installing a cross-module overlay.
 
             A provider class is indexed at its native declaration line.
@@ -1051,7 +1051,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             module_name: str,
             provider: p.Infra.RopeSourceModule,
             resource: p.Infra.RopeResource,
-        ) -> Mapping[str, m.Infra.SourceClassReference | None]:
+        ) -> Mapping[str, p.Infra.SourceClassReference | None]:
             """Inventory a provider in its captured epoch using the native origin.
 
             Returns:
@@ -1510,7 +1510,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
         def _provider_lazy_bindings(
             self,
             module: t.Infra.RopeSemanticModule,
-        ) -> Mapping[str, m.Infra.SourceClassReference]:
+        ) -> Mapping[str, p.Infra.SourceClassReference]:
             """Read lazy aliases from the provider's authenticated native candidate.
 
             Returns:

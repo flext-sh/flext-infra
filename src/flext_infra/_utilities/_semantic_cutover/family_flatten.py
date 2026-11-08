@@ -147,7 +147,7 @@ class FlextInfraUtilitiesSemanticFamilyFlatten(
         path: Path,
     ) -> (
         tuple[
-            m.Infra.LogicalStatement,
+            p.Infra.LogicalStatement,
             tuple[p.Infra.LogicalStatement, ...],
             tuple[int, int] | None,
         ]

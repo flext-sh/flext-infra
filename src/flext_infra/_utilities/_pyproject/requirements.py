@@ -49,7 +49,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
 
     @staticmethod
     def dependency_group_wire(
-        entries: Sequence[str | m.Infra.DependencyGroupInclude],
+        entries: Sequence[str | p.Infra.DependencyGroupInclude],
     ) -> list[t.JsonValue]:
         """Serialize native entries without turning inclusion tables into strings.
 
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         live: str | None,
         *,
         group: str = str(c.Infra.DEV),
-    ) -> p.Result[tuple[str | m.Infra.DependencyGroupInclude, ...]]:
+    ) -> p.Result[tuple[str | p.Infra.DependencyGroupInclude, ...]]:
         """Remove only entries carrying this generator's explicit provenance.
 
         Returns:
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @staticmethod
     def dependency_group_entries(
         value: t.JsonPayload,
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Parse the shared native entry grammar without expanding inclusions.
 
         Returns:
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         cls,
         container: t.Cli.TomlTable,
         name: str,
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Read an absent or native array without permissive string extraction.
 
         Returns:
@@ -174,9 +174,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
     @classmethod
     def merge_dependency_group_entries(
         cls,
-        generated: Sequence[str | m.Infra.DependencyGroupInclude],
-        custom: Sequence[str | m.Infra.DependencyGroupInclude],
-    ) -> tuple[str | m.Infra.DependencyGroupInclude, ...]:
+        generated: Sequence[str | p.Infra.DependencyGroupInclude],
+        custom: Sequence[str | p.Infra.DependencyGroupInclude],
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
         """Lead missing complete requirements and preserve authored entries.
 
         Packaging owns requirement identity, including version constraints.
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             for entry in authored
             if not isinstance(entry, str)
         }
-        additions: list[str | m.Infra.DependencyGroupInclude] = []
+        additions: list[str | p.Infra.DependencyGroupInclude] = []
         for entry in generated:
             if isinstance(entry, str):
                 parsed = Requirement(entry)
@@ -319,7 +319,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         if parsed.failure:
             return r[bool].from_failure(parsed)
         for group_name, entries in parsed.value.dependency_groups.items():
-            values: list[str | m.Infra.DependencyGroupInclude] = []
+            values: list[str | p.Infra.DependencyGroupInclude] = []
             for entry in entries:
                 if not isinstance(entry, str):
                     values.append(entry)
@@ -663,14 +663,14 @@ class FlextInfraUtilitiesPyprojectRequirements:
         dev_name: str,
         *,
         provenance: p.Infra.RequirementsProvenance,
-    ) -> p.Result[list[str | m.Infra.DependencyGroupInclude]]:
+    ) -> p.Result[list[str | p.Infra.DependencyGroupInclude]]:
         """Normalize the live development group's entries in declared order.
 
         Returns:
             The resulting ``p.Result[list[str | m.Infra.DependencyGroupInclude]]``.
 
         """
-        live_dev: list[str | m.Infra.DependencyGroupInclude] = []
+        live_dev: list[str | p.Infra.DependencyGroupInclude] = []
         for entry in cls.read_dependency_group(groups, dev_name):
             if not isinstance(entry, str):
                 live_dev.append(entry)

@@ -56,7 +56,7 @@ class FlextInfraDepsDetectorRuntimeSteps:
         *,
         venv_bin: Path,
         params: p.Infra.DetectCommand,
-        projects_report: MutableMapping[str, m.Infra.ProjectDependencyReport],
+        projects_report: MutableMapping[str, p.Infra.ProjectDependencyReport],
     ) -> p.Result[bool]:
         """Run deptry for one project.
 

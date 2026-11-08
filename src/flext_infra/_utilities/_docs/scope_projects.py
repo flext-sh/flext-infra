@@ -53,7 +53,7 @@ class FlextInfraUtilitiesDocsScopeProjects(
             return r[Sequence[p.Infra.ProjectInfo]].ok(
                 sorted(projects, key=operator.attrgetter("name")),
             )
-        by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
+        by_name: MutableMapping[str, p.Infra.ProjectInfo] = {}
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)

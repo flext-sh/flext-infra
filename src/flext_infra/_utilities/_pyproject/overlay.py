@@ -139,7 +139,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
     def sync_member_dev_provenance(
         document: t.Cli.TomlDocument,
         *,
-        custom: Sequence[str | m.Infra.DependencyGroupInclude],
+        custom: Sequence[str | p.Infra.DependencyGroupInclude],
         group: str = str(c.Infra.DEV),
     ) -> None:
         """Tag generated additions in the existing dev group, not another registry."""

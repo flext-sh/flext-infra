@@ -48,7 +48,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         )
         if entries.failure:
             return r[bool].from_failure(entries)
-        rendered: list[str | m.Infra.DependencyGroupInclude] = []
+        rendered: list[str | p.Infra.DependencyGroupInclude] = []
         has_direct_references = False
         for requirement in entries.value:
             if not isinstance(requirement, str):
@@ -69,7 +69,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         raw: t.JsonValue,
         *,
         dependency_group: bool,
-    ) -> p.Result[Sequence[str | m.Infra.DependencyGroupInclude]]:
+    ) -> p.Result[Sequence[str | p.Infra.DependencyGroupInclude]]:
         """Parse one TOML requirement array into its declared entries.
 
         Args:

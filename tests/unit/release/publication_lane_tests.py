@@ -32,7 +32,7 @@ class TestsFlextInfraReleasePublicationLane:
     def _lane(
         self,
         tmp_path: Path,
-    ) -> Generator[tuple[Path, m.Infra.GitLaneRequest, Path]]:
+    ) -> Generator[tuple[Path, p.Infra.GitLaneRequest, Path]]:
         """Yield a clean integration checkout, its lane request and the ``gh`` log.
 
         Yields:

@@ -32,7 +32,7 @@ class FlextInfraUtilitiesPythonModel:
         module_files: Mapping[str, Path],
         *,
         module_facts: MutableMapping[
-            t.Infra.RopeNativeParsedModule, m.Infra.PythonModuleFacts
+            t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts
         ]
         | None = None,
     ) -> p.Infra.PythonModelRun:

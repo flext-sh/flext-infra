@@ -488,7 +488,7 @@ class TestsFlextInfraModEvidenceInputs:
     def _scanned_shared_occurrences(
         mod_workspace: Path,
         occurrences: int,
-    ) -> tuple[p.Infra.ModScanReport, m.Infra.CodemodBindingSnapshot, Path]:
+    ) -> tuple[p.Infra.ModScanReport, p.Infra.CodemodBindingSnapshot, Path]:
         """Scan the shared-occurrence workspace with its authenticated input.
 
         Args:

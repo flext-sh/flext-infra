@@ -294,7 +294,7 @@ class TestsFlextInfraReleaseProtocol:
         cls,
         tmp_path: Path,
         runtime_environment: Mapping[str, str] | None = None,
-    ) -> Generator[tuple[Path, Path, m.Infra.GitLaneOwnershipReceipt]]:
+    ) -> Generator[tuple[Path, Path, p.Infra.GitLaneOwnershipReceipt]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
         Why: PATH is restored by the public ``env_vars_context`` facade rather
