@@ -786,6 +786,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ] = {}
             self.source_field_cache: dict[str, tuple[_SourceFieldProjection, ...]] = {}
+            # Invocation-local: a native resource's real path resolves once.
+            self.resolved_paths: dict[str, Path] = {}
             self.source_model_protocol_routes: dict[str, str] = {}
             self.source_protocol_retirements: dict[
                 Path, tuple[tuple[str, str], ...]
@@ -2847,6 +2849,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             protocols_root, protocol_base = scope
+            resolved_destination = destination.resolve()
             for holder in owner.get_mro():
                 if not self.py_class(holder):
                     continue
@@ -2854,11 +2857,14 @@ class FlextInfraUtilitiesModelsProtocol:
                 resource = module.get_resource() if module is not None else None
                 if resource is None:
                     continue
-                source_path = Path(resource.real_path).resolve()
+                source_path = self.resolved_paths.get(resource.real_path)
+                if source_path is None:
+                    source_path = Path(resource.real_path).resolve()
+                    self.resolved_paths[resource.real_path] = source_path
                 holder_node = holder.get_ast()
                 if (
                     not source_path.is_relative_to(protocols_root)
-                    or source_path == destination.resolve()
+                    or source_path == resolved_destination
                     or not isinstance(holder_node, ast.ClassDef)
                 ):
                     continue
