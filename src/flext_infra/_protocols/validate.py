@@ -146,18 +146,8 @@ class FlextInfraProtocolsValidate:
     class PytestMarkdownCollection(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def eligible(
-            self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownOrigin]:
-            """Independently parsed origins."""
-            ...
-
-        @property
-        def collected(self) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
-            """Observed pre-selection items."""
-            ...
-
+        eligible: MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownOrigin]
+        collected: MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownItem]
         deselected: MutableSequence[str]
 
     @runtime_checkable
@@ -427,28 +417,9 @@ class FlextInfraProtocolsValidate:
         collection_failed_cases: t.StrTuple
         collection_skip_cases: t.StrTuple
         reported_node_ids: t.StrTuple
-
-        @property
-        def phase_outcomes(
-            self,
-        ) -> tuple[FlextInfraProtocolsValidate.PytestPhaseOutcome, ...]:
-            """Complete observed runtest outcomes, including failures."""
-            ...
-
-        @property
-        def markdown_attempts(
-            self,
-        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownAttempt, ...]:
-            """Observed SDK execution attempts."""
-            ...
-
-        @property
-        def markdown_items(
-            self,
-        ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]:
-            """Executed call-phase origins."""
-            ...
-
+        phase_outcomes: tuple[FlextInfraProtocolsValidate.PytestPhaseOutcome, ...]
+        markdown_attempts: tuple[FlextInfraProtocolsValidate.PytestMarkdownAttempt, ...]
+        markdown_items: tuple[FlextInfraProtocolsValidate.PytestMarkdownItem, ...]
         failed_cases: Sequence[str]
         error_traces: Sequence[str]
         warning_lines: Sequence[str]
@@ -501,21 +472,10 @@ class FlextInfraProtocolsValidate:
 
         reported_phases: MutableMapping[str, t.MutableStrMapping]
         connectivity_skip_cases: MutableSequence[str]
-
-        @property
-        def markdown_attempts(
-            self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownAttempt]:
-            """Call-phase attempt observations."""
-            ...
-
-        @property
-        def markdown_items(
-            self,
-        ) -> Sequence[FlextInfraProtocolsValidate.PytestMarkdownItem]:
-            """Call-phase origin observations."""
-            ...
-
+        markdown_attempts: MutableSequence[
+            FlextInfraProtocolsValidate.PytestMarkdownAttempt
+        ]
+        markdown_items: MutableSequence[FlextInfraProtocolsValidate.PytestMarkdownItem]
         collection_failed_cases: MutableSequence[str]
         collection_skip_cases: MutableSequence[str]
         failed_cases: MutableSequence[str]

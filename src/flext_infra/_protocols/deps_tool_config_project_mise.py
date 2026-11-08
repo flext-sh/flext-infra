@@ -30,14 +30,9 @@ class FlextInfraProtocolsDepsToolConfigProjectMise:
     class ProjectMiseConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def tools(
-            self,
-        ) -> Mapping[
+        tools: Mapping[
             t.NonEmptyStr, FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseTool
-        ]:
-            """Project-local Mise tools added to generated config."""
-            ...
+        ]
 
 
 __all__: list[str] = [
