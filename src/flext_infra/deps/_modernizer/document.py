@@ -353,28 +353,7 @@ class FlextInfraPyprojectModernizerDocument(
 
         """
         path, payload = state.pyproject_path, state.payload
-        is_root = path.parent.resolve() == self.root.resolve()
-        # Scaffold (pre-write) contexts have no on-disk project root yet: derive
-        # analyzer configuration from declared roots only; disk discovery
-        # converges on the first post-write conformance pass.
-        exists = path.is_file()
-        paths_manager = (
-            FlextInfraExtraPathsManager(
-                repository_root=self.root,
-                analysis_exclusions=topology.analysis_exclusions or (),
-            )
-            if exists
-            else None
-        )
-        analyzer_context = m.Infra.PyprojectAnalyzerContext(
-            is_root=is_root,
-            repository_root=self.root if exists else None,
-            project_dir=path.parent if exists else None,
-            declared_python_dirs=topology.declared_python_dirs,
-            declared_python_dirs_are_complete=(
-                topology.declared_python_dirs_are_complete
-            ),
-        )
+        analyzer_context, paths_manager = self._analyzer_inputs(path, topology)
         tooling = (
             u.Infra.load_tooling_inputs(path.parent).unwrap().document
             if tool_config is None
@@ -428,7 +407,7 @@ class FlextInfraPyprojectModernizerDocument(
                 payload,
                 context=(
                     analyzer_context
-                    if exists
+                    if paths_manager is not None
                     else analyzer_context.model_copy(
                         update={"declared_python_dirs_are_complete": True},
                     )
@@ -460,6 +439,65 @@ class FlextInfraPyprojectModernizerDocument(
                 ),
             )
         return changes
+
+    def _analyzer_inputs(
+        self,
+        path: Path,
+        topology: p.Infra.PyprojectDeclaredTopology,
+    ) -> tuple[p.Infra.PyprojectAnalyzerContext, FlextInfraExtraPathsManager | None]:
+        """Own the analyzer context and path manager of one manifest.
+
+        Scaffold (pre-write) contexts have no on-disk project root yet: they
+        derive analyzer configuration from declared roots only, and disk
+        discovery converges on the first post-write conformance pass.
+
+        Returns:
+            The analyzer context and, for an on-disk manifest, its path manager.
+
+        """
+        exists = path.is_file()
+        return (
+            m.Infra.PyprojectAnalyzerContext(
+                is_root=path.parent.resolve() == self.root.resolve(),
+                repository_root=self.root if exists else None,
+                project_dir=path.parent if exists else None,
+                declared_python_dirs=topology.declared_python_dirs,
+                declared_python_dirs_are_complete=(
+                    topology.declared_python_dirs_are_complete
+                ),
+            ),
+            FlextInfraExtraPathsManager(
+                repository_root=self.root,
+                analysis_exclusions=topology.analysis_exclusions or (),
+            )
+            if exists
+            else None,
+        )
+
+    def render_analyzer_source(
+        self,
+        source: str,
+        *,
+        path: Path,
+        topology: p.Infra.PyprojectDeclaredTopology,
+        codegen: p.Infra.CodegenConfigSpec,
+        tool_config: p.Infra.ToolConfigDocument,
+    ) -> p.Result[str]:
+        """Project only the analyzer table through full modernization's inputs.
+
+        Returns:
+            The manifest whose analyzer table equals full modernization's.
+
+        """
+        context, paths_manager = self._analyzer_inputs(path, topology)
+        return FlextInfraEnsurePyrightConfigPhase(
+            tool_config, codegen=codegen
+        ).render_source(
+            source,
+            context=context,
+            paths_manager=paths_manager,
+            analysis_exclusions=topology.analysis_exclusions,
+        )
 
     def _render_document_state(
         self,
