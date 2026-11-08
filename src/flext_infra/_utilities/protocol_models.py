@@ -2934,7 +2934,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, protocol, protocols_root
             )
             extra = (
-                {}
+                cast(Mapping[str, object], {})
                 if stale
                 else {name: actual[name] for name in sorted(set(actual) - expected)}
             )
