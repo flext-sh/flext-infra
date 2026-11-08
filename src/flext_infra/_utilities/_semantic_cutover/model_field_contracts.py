@@ -480,16 +480,15 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
 
         """
         if isinstance(node, ast.Subscript):
-            if not isinstance(node.value, (ast.Name, ast.Attribute)):
-                return None
-            base = self._model_spec(node.value)
-            if base is None:
-                return None
-            return ast.Subscript(
-                value=base,
-                slice=self._project(node.slice, field=False),
-                ctx=ast.Load(),
-            )
+            if isinstance(node.value, (ast.Name, ast.Attribute)):
+                base = self._model_spec(node.value)
+                if base is not None:
+                    return ast.Subscript(
+                        value=base,
+                        slice=self._project(node.slice, field=False),
+                        ctx=ast.Load(),
+                    )
+            return None
         if not isinstance(node, (ast.Name, ast.Attribute)) or (
             isinstance(node, ast.Attribute) and node.attr in self._NON_MODEL_M
         ):
