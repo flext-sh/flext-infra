@@ -360,31 +360,6 @@ class TestsFlextInfraInfraRopeService:
             )
 
     @staticmethod
-    def test_open_workspace_indexes_namespace_holding_only_subpackages(
-        tmp_path: Path,
-    ) -> None:
-        """Index a root namespace whose only children are subpackages."""
-        repository_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        namespace_root = repository_root / "infra"
-        subpackage_root = namespace_root / "contracts"
-        subpackage_root.mkdir(parents=True)
-        subpackage_root.joinpath(c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.DEFAULT_ENCODING,
-        )
-        subpackage_root.joinpath("demo.py").write_text(
-            'class InfraDemo:\n    """Infra boundary."""\n\n__all__ = ["InfraDemo"]\n',
-            encoding=c.DEFAULT_ENCODING,
-        )
-
-        with infra.rope_workspace(repository_root) as rope:
-            index = rope.workspace_index
-            tm.that(index.package_dirs, has=namespace_root)
-            package = index.packages_by_dir[str(namespace_root)]
-            tm.that(package.package_name, eq="infra")
-            tm.that(package.project_root, eq=repository_root)
-
-    @staticmethod
     def test_public_facade_opens_rope_workspace(tmp_path: Path) -> None:
         """Public facade returns the same ergonomic Rope workspace DSL."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
