@@ -574,18 +574,13 @@ class FlextInfraModTextGateEngine:
                     return r[tuple[Path, ...]].fail(
                         f"text Markdown include escapes repository: {pattern}",
                     )
-                matches = tuple(
-                    sorted(
-                        set(root.glob(pattern))
-                        if sources is None
-                        else {
-                            path
-                            for path in sources or ()
-                            if path.is_relative_to(root)
-                            and fnmatch(path.relative_to(root).as_posix(), pattern)
-                        }
-                    )
-                )
+                staged = {
+                    path
+                    for path in sources or ()
+                    if path.is_relative_to(root)
+                    and fnmatch(path.relative_to(root).as_posix(), pattern)
+                }
+                matches = tuple(sorted(staged | set(root.glob(pattern))))
                 if not matches:
                     return r[tuple[Path, ...]].fail(
                         f"text Markdown include has no source: {pattern}",
@@ -706,7 +701,7 @@ class FlextInfraModTextGateEngine:
             before = u.Infra.codegen_target_snapshot(path)
             if before.failure:
                 return outcome.from_failure(before)
-            if sources is not None:
+            if sources is not None and path in sources:
                 source = sources[path]
             elif before.value.content is None:
                 return outcome.fail(f"text source disappeared during inventory: {path}")
