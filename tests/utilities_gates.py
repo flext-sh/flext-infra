@@ -214,12 +214,17 @@ class TestsFlextInfraUtilitiesGates:
 
         """
         resolved = m.Infra.CensusInput() if options is None else options
-        values = resolved.model_dump(round_trip=True)
-        values.update(repository_root=workspace, rules=rules)
+        update: dict[str, object] = {"repository_root": workspace, "rules": rules}
         if kinds is not None:
-            values["kinds"] = kinds
+            update["kinds"] = kinds
         TestsFlextInfraUtilitiesToolingFixture.provision_checkout(workspace)
-        return tm.ok(infra.census(m.Infra.CensusInput.model_validate(values)))
+        return tm.ok(
+            infra.census(
+                m.Infra.CensusInput.model_validate(
+                    {**resolved.model_dump(round_trip=True), **update},
+                ),
+            ),
+        )
 
     @staticmethod
     def census_violations(report: p.Infra.WorkspaceReport) -> list[p.Infra.Violation]:
