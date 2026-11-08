@@ -11,8 +11,11 @@ config_version = "0"
 # jscpd configuration.
 exclude_patterns = [
   "**/__init__.py",
-  "**/_protocols/**",
   "**/_constants/**",
+  "**/_models/**",
+  "**/_protocols/**",
+  "**/_typings/**",
+  "**/_utilities/**",
   "**/constants.py",
   "**/models.py",
   "**/protocols.py",
