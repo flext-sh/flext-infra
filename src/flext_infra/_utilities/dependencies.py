@@ -12,7 +12,7 @@ from pathlib import Path
 from types import MappingProxyType
 from urllib.parse import quote
 
-from flext_cli import u
+from flext_cli import u as cli_u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
@@ -23,6 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesManagedConflicts,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitMutationScope
 from flext_infra._utilities._git.mutation_scope import (
     FlextInfraUtilitiesGitMutationScope,
 )
@@ -126,13 +127,13 @@ class FlextInfraUtilitiesDependencies(
             or inputs.lock.content is None
         ):
             return result_type.fail("dependency provenance lacks its native UV lock")
-        lock_payload = u.Cli.toml_mapping_from_text(
+        lock_payload = cli_u.Cli.toml_mapping_from_text(
             inputs.lock.content.decode(c.DEFAULT_ENCODING),
         )
         if lock_payload is None:
             return result_type.fail(f"invalid dependency lock: {inputs.lock.path}")
         locked = m.Infra.LockedEnvironment.model_validate_json(dumps(lock_payload))
-        document = u.Cli.toml_mapping_from_text(
+        document = cli_u.Cli.toml_mapping_from_text(
             scan.settings.content.decode(c.DEFAULT_ENCODING),
         )
         if document is None:
@@ -153,7 +154,7 @@ class FlextInfraUtilitiesDependencies(
 
         """
         result_type = r[p.Infra.MemberRequirements]
-        project = u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
+        project = cli_u.Cli.toml_mapping_child(document, c.Infra.PROJECT)
         if project is None:
             return result_type.fail(
                 f"project declaration is absent: {scan.settings.path}"
@@ -295,8 +296,8 @@ class FlextInfraUtilitiesDependencies(
         )
         if lease.failure:
             return r[bool].from_failure(lease)
-        with u.Cli.file_changes_lock(lease.value):
-            u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
+        with cli_u.Cli.file_changes_lock(lease.value):
+            cli_u.Cli.atomic_verify_binary_file_states(plan.inputs).unwrap()
             unchanged = cls._verified_deptry_sources(
                 plan.source,
                 moment="before publication",
@@ -320,17 +321,19 @@ class FlextInfraUtilitiesDependencies(
         """
         if plan.before.content is None:
             return r[bool].fail(f"dependency declaration is absent: {plan.before.path}")
-        document = u.Cli.toml_parse_text(plan.before.content.decode(c.DEFAULT_ENCODING))
+        document = cli_u.Cli.toml_parse_text(
+            plan.before.content.decode(c.DEFAULT_ENCODING)
+        )
         if document is None:
             return r[bool].fail(f"invalid dependency declaration: {plan.before.path}")
-        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        project = cli_u.Cli.toml_table_child(document, c.Infra.PROJECT)
         if project is None:
             return r[bool].fail(f"project declaration is absent: {plan.before.path}")
-        changed = u.Cli.toml_sync_string_list(
+        changed = cli_u.Cli.toml_sync_string_list(
             project, c.Infra.DEPENDENCIES, plan.dependencies
         )
         if changed:
-            u.Cli.atomic_write_binary_file_guarded(
+            cli_u.Cli.atomic_write_binary_file_guarded(
                 plan.before,
                 document.as_string().encode(c.DEFAULT_ENCODING),
                 permission_mode=plan.before.mode,
@@ -347,13 +350,14 @@ class FlextInfraUtilitiesDependencies(
             The resulting ``Mapping[str, Sequence[str]]``.
 
         """
-        project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
-        optional = u.Cli.json_as_mapping(
+        project = cli_u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
+        optional = cli_u.Cli.json_as_mapping(
             project.get(c.Infra.OPTIONAL_DEPENDENCIES, None),
         )
         groups = {
             str(group): tuple(
-                str(item) for item in u.Cli.json_as_sequence(optional.get(group, None))
+                str(item)
+                for item in cli_u.Cli.json_as_sequence(optional.get(group, None))
             )
             for group in c.Infra.CANONICAL_DEV_DEPENDENCY_GROUPS
         }
@@ -370,7 +374,7 @@ class FlextInfraUtilitiesDependencies(
             The resulting ``Mapping[str, Sequence[str]]``.
 
         """
-        normalized = u.Cli.toml_as_mapping(document) or {}
+        normalized = cli_u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             # Keep the empty mapping immutable and fully typed.
             return MappingProxyType(dict[str, tuple[str, ...]]())
@@ -387,7 +391,7 @@ class FlextInfraUtilitiesDependencies(
             The resulting ``Sequence[str]``.
 
         """
-        normalized = u.Cli.toml_as_mapping(document) or {}
+        normalized = cli_u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             return ()
         return cls.canonical_dev_dependencies_from_payload(normalized)
@@ -534,7 +538,7 @@ class FlextInfraUtilitiesDependencies(
         graph = cls.workspace_dependency_graph(
             root, repositories, planned_manifests=planned_manifests
         )
-        waves = u.Cli.dag_waves(graph)
+        waves = cli_u.Cli.dag_waves(graph)
         if waves.failure:
             raise ValueError(waves.error)
         return tuple(
@@ -569,8 +573,10 @@ class FlextInfraUtilitiesDependencies(
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
-        return u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
-            lambda closed: u.Cli.dag_order({name: graph[name] for name in closed}).map(
+        return cli_u.Cli.dag_closure(graph, frozenset((distribution,))).flat_map(
+            lambda closed: cli_u.Cli.dag_order({
+                name: graph[name] for name in closed
+            }).map(
                 lambda names: m.Infra.BootstrapRequirementsRenderSpec(
                     # requirements files are not shell: shlex quoting breaks
                     # uv pip; PEP 508 direct reference + URL-encoded path is
@@ -690,7 +696,7 @@ class FlextInfraUtilitiesDependencies(
             if recovered.exception is not None:
                 raise recovered.exception
             raise ValueError(recovered.error)
-        payload = u.Cli.toml_mapping_from_text(recovered.value)
+        payload = cli_u.Cli.toml_mapping_from_text(recovered.value)
         if payload is None:
             msg = f"invalid workspace manifest: {path}"
             raise ValueError(msg)
@@ -723,7 +729,7 @@ class FlextInfraUtilitiesDependencies(
                 msg = f"workspace manifest has no captured input: {path}"
                 raise ValueError(msg)
             return observed.content
-        physical = u.Cli.atomic_read_binary_file_state(path, required=True)
+        physical = cli_u.Cli.atomic_read_binary_file_state(path, required=True)
         if physical.failure:
             if physical.exception is not None:
                 raise physical.exception
@@ -879,7 +885,7 @@ class FlextInfraUtilitiesDependencies(
             Normalized dependency names from one TOML document.
 
         """
-        normalized = u.Cli.toml_as_mapping(document) or {}
+        normalized = cli_u.Cli.toml_as_mapping(document) or {}
         if not normalized:
             return ()
         return cls.declared_dependency_names_from_payload(normalized)
