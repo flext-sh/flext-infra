@@ -2967,7 +2967,10 @@ class FlextInfraUtilitiesModelsProtocol:
             for base in model.bases:
                 if not isinstance(base, ast.Subscript):
                     continue
-                binding = self.resolve_symbol(owner.get_scope(), base.value)
+                scope = owner.get_scope()
+                if scope is None or isinstance(scope, str):
+                    continue
+                binding = self.resolve_symbol(scope, base.value)
                 if binding is not None:
                     value = binding.get_object()
                     if self.py_class(value) and root in value.get_mro():
@@ -6425,9 +6428,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     # (``u.Field``) is no own family member: it keeps its
                     # spelling and the letter election binds the upstream.
                     return node
-                if declared[1] is None:
-                    continue
                 module, path = declared
+                if path is None:
+                    continue
                 family = module.rpartition(".")[0]
                 if not family.rpartition(".")[2].startswith("_"):
                     if letter != "p":
