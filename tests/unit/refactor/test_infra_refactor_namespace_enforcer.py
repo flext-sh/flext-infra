@@ -10,7 +10,7 @@ import json
 from typing import TYPE_CHECKING
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_infra.refactor import FlextInfraNamespaceEnforcer
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

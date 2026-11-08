@@ -177,6 +177,7 @@ class FlextInfraConstantsSharedInfra:
 
     # --- File extensions (was: class Extensions) ---
     EXT_PYTHON: ClassVar[str] = ".py"
+    EXT_SHELL: ClassVar[str] = ".sh"
     EXT_PYTHON_GLOB: ClassVar[str] = "*.py"
     EXT_PYTHON_STUB: ClassVar[str] = ".pyi"
     PYTHON_SOURCE_SUFFIXES: ClassVar[tuple[str, ...]] = (

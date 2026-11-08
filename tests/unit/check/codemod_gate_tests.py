@@ -10,11 +10,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from re import escape
 
-from flext_infra import config
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.cli import FlextInfraCli
+from flext_infra import FlextInfraCli, config
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import FlextInfraModGateEngine
-from flext_infra.gates.codemod import FlextInfraGatesCodemod
+from flext_infra.gates import FlextInfraGatesCodemod
 from tests import c, m, t, tm, u
 
 

@@ -13,9 +13,8 @@ import shutil
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import config, infra, u
+from flext_infra import FlextInfraWorktreeService, config, infra, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
-from flext_infra.worktree import FlextInfraWorktreeService
 from tests import c, m, p, t, tm
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture

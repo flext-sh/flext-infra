@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_infra.deps import FlextInfraDependencyDetectionService
 from tests import t, tm
 
 

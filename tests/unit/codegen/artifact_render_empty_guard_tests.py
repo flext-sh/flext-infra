@@ -31,7 +31,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tmp_path: Path,
         content: str,
     ) -> tuple[
-        FlextInfraCodegenConform.Generate, m.Infra.CodegenGenerateRequest, Path, Path
+        FlextInfraCodegenConform.Generate, p.Infra.CodegenGenerateRequest, Path, Path
     ]:
         """Declare a template through the target's repository-local config.
 

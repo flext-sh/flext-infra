@@ -13,7 +13,7 @@ from pathlib import Path
 from shlex import quote
 
 from flext_infra import config
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.workspace import (
     FlextInfraWorkspaceDetector,
     FlextInfraWorkspaceEnvironmentProvenance,

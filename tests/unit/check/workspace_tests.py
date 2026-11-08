@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, r, tm, u
 
 if TYPE_CHECKING:

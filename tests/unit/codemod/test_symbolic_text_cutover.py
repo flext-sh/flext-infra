@@ -11,9 +11,11 @@ import json
 import sys
 from pathlib import Path
 
-from flext_infra.codemod import FlextInfraModTextGateEngine
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.batch_replacements import FlextInfraModReplacements
+from flext_infra.codemod import (
+    FlextInfraModGateEngine,
+    FlextInfraModReplacements,
+    FlextInfraModTextGateEngine,
+)
 from tests import c, p, tm, u
 
 

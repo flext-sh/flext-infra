@@ -108,7 +108,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _uv_override_wire(
-        entries: Sequence[str | m.Infra.UvScopedOverride],
+        entries: Sequence[str | p.Infra.UvScopedOverride],
     ) -> list[t.JsonValue]:
         """Elect declared global overrides while preserving native scoped policy.
 
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
-        selected: list[str | m.Infra.UvScopedOverride] = []
+        selected: list[str | p.Infra.UvScopedOverride] = []
         seen: set[tuple[str, str | None]] = set()
         for entry in reversed(parsed.root):
             if isinstance(entry, str):
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         if lines.failure:
             return result_type.from_failure(lines)
         migrations: MutableMapping[
-            tuple[str, str], m.Infra.GitSourceReferenceMigration
+            tuple[str, str], p.Infra.GitSourceReferenceMigration
         ] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         project in a standalone lock. The scoped exclusion removes only that
         reciprocal requirement and does nothing where it is absent.
         """
-        overrides: list[str | m.Infra.UvScopedOverride] = list(
+        overrides: list[str | p.Infra.UvScopedOverride] = list(
             resolution.override_dependencies
         )
         for name, source in sorted(candidate_sources.items()):
@@ -319,6 +319,73 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         else:
             u.Cli.toml_remove_key_if_present(uv, "environments")
 
+    @staticmethod
+    def _sync_member_composition(
+        uv: t.Cli.TomlTable,
+        members: Sequence[p.Infra.RepositoryRef],
+        *,
+        candidate_sources: Mapping[str, str],
+    ) -> p.Result[Sequence[str]]:
+        """Exclude members from the uv workspace and bind them as editable paths.
+
+        ADR-030: each member locks its own ``uv.lock``; the root binds every
+        member as an editable path source and overrides it, so the root lock
+        is their composition. Legacy workspace sources migrate, and sources of
+        members no longer governed by ``.gitmodules`` retire with them.
+
+        Returns:
+            The member distributions the root overrides, or the conflicting source.
+
+        """
+        names = {canonicalize_name(item.distribution) for item in members}
+        conflicting = names & candidate_sources.keys()
+        if conflicting:
+            return r[Sequence[str]].fail(
+                "candidate source overrides local members: "
+                + ", ".join(sorted(conflicting)),
+            )
+        sources = u.Cli.toml_ensure_table(uv, "sources")
+        declared = u.json_mapping_adapter().validate_python(
+            u.Cli.toml_unwrap_item(sources)
+        )
+        legacy: t.JsonValue = {"workspace": True}
+        for member in members:
+            name = canonicalize_name(member.distribution)
+            expected: t.JsonValue = {"path": member.path.as_posix(), "editable": True}
+            found = tuple(key for key in declared if canonicalize_name(key) == name)
+            if len(found) > 1:
+                return r[Sequence[str]].fail(
+                    f"workspace member has duplicate native source names: {name}"
+                )
+            if (
+                found
+                and declared[found[0]] != expected
+                and declared[found[0]] != legacy
+            ):
+                return r[Sequence[str]].fail(
+                    "declared workspace member has a conflicting "
+                    f"native source: {name}",
+                )
+            if found and found[0] != name:
+                u.Cli.toml_remove_key_if_present(sources, found[0])
+            u.Cli.toml_sync_value(sources, name, expected)
+        for key, existing in declared.items():
+            if canonicalize_name(key) not in names and (
+                existing == legacy
+                or (isinstance(existing, Mapping) and existing.get("editable") is True)
+            ):
+                u.Cli.toml_remove_key_if_present(sources, key)
+        u.Cli.toml_remove_key_if_present(uv, "workspace")
+        if members:
+            native_workspace = u.Cli.toml_ensure_table(uv, "workspace")
+            u.Cli.toml_sync_value(native_workspace, "members", [])
+            u.Cli.toml_sync_string_list(
+                native_workspace,
+                "exclude",
+                tuple(member.path.as_posix() for member in members),
+            )
+        return r[Sequence[str]].ok(tuple(sorted(names)))
+
     @classmethod
     def _sync_uv_sources(
         cls,
@@ -329,75 +396,28 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         workspace: p.Infra.WorkspaceSpec,
         local_requirements: Sequence[str],
     ) -> p.Result[bool]:
-        """Publish native workspace membership without altering package requirements.
+        """Publish the root composition without altering package requirements.
 
-        Sources on the root are inherited by members. Their standalone PEP 508
-        declarations remain intact; UV owns source lowering and graph resolution.
+        A workspace root excludes every member from the native uv workspace,
+        binds each as an editable path source and overrides it (ADR-030), so
+        each member locks its own ``uv.lock`` and the root lock composes them.
+        Member PEP 508 declarations remain intact; UV owns source lowering.
 
         Returns:
             Successful declaration synchronization or a conflicting native source.
 
         """
         uv = cls._resolved_uv_table(document)
+        member_overrides: Sequence[str] = ()
         if workspace.repository.role is c.Infra.MakeProfile.WORKSPACE:
-            members = tuple(
-                member for member in workspace.subprojects if member.package
+            composed = cls._sync_member_composition(
+                uv,
+                tuple(member for member in workspace.subprojects if member.package),
+                candidate_sources=candidate_sources,
             )
-            repositories = (
-                *((workspace.repository,) if workspace.repository.package else ()),
-                *members,
-            )
-            conflicting = {
-                canonicalize_name(item.distribution) for item in repositories
-            } & candidate_sources.keys()
-            if conflicting:
-                return r[bool].fail(
-                    "candidate source overrides local members: "
-                    + ", ".join(sorted(conflicting)),
-                )
-            sources = u.Cli.toml_ensure_table(uv, "sources")
-            declared_sources = u.json_mapping_adapter().validate_python(
-                u.Cli.toml_unwrap_item(sources)
-            )
-            for repository in repositories:
-                name = canonicalize_name(repository.distribution)
-                names = tuple(
-                    source_name
-                    for source_name in declared_sources
-                    if canonicalize_name(source_name) == name
-                )
-                if len(names) > 1:
-                    return r[bool].fail(
-                        f"workspace member has duplicate native source names: {name}"
-                    )
-                if names:
-                    existing = declared_sources[names[0]]
-                    entries = existing if isinstance(existing, list) else [existing]
-                    if not entries or not all(
-                        isinstance(entry, Mapping) and entry.get("workspace") is True
-                        for entry in entries
-                    ):
-                        return r[bool].fail(
-                            "declared workspace member has a conflicting "
-                            f"native source: {name}",
-                        )
-                    continue
-                u.Cli.toml_sync_value(sources, name, {"workspace": True})
-            # A workspace source belongs to the declared membership: once
-            # .gitmodules no longer governs that member, uv rejects the source
-            # ("not a workspace member"), so it retires with the member.
-            declared = {canonicalize_name(item.distribution) for item in repositories}
-            for source_name, existing in declared_sources.items():
-                if canonicalize_name(source_name) not in declared and existing == {
-                    "workspace": True
-                }:
-                    u.Cli.toml_remove_key_if_present(sources, source_name)
-            native_workspace = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                native_workspace,
-                "members",
-                tuple(member.path.as_posix() for member in members),
-            )
+            if composed.failure:
+                return r[bool].from_failure(composed)
+            member_overrides = composed.value
         # A workspace root lowers its members through native workspace sources;
         # only a project resolving its internal requirements by URL derives them.
         derived = (
@@ -416,6 +436,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                 update={
                     "override_dependencies": (
                         *resolution.override_dependencies,
+                        *member_overrides,
                         *derived.value,
                     ),
                 },

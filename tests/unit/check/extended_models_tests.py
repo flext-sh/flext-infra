@@ -77,7 +77,7 @@ class TestsFlextInfraModels:
             tm.that(published_region, eq=region or {})
 
     @staticmethod
-    def _sample_issues() -> tuple[p.Infra.Issue, m.Infra.Issue, m.Infra.Issue]:
+    def _sample_issues() -> tuple[p.Infra.Issue, p.Infra.Issue, p.Infra.Issue]:
         """Build three distinct sample gate issues for summary assertions.
 
         Returns:

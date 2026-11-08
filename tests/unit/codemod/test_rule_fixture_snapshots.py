@@ -12,8 +12,10 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import FlextInfraCli
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.codemod import (
+    FlextInfraCodemodSnapshotReconciler,
+    FlextInfraModGateEngine,
+)
 from tests import c, m, t, tm, u
 
 

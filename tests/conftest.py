@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
+from flext_infra.services import FlextInfraCliModProgress
 from tests import c, m, p, tm, u
 
 # The installed flext-tests pytest11 plugin owns the shared fixture set; these
@@ -40,7 +40,7 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 @pytest.fixture
 def codegen_admission_cohort(
     infra_git_repo: Path,
-) -> tuple[tuple[p.Infra.CodegenFilePlan, ...], m.Cli.AtomicFileState]:
+) -> tuple[tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState]:
     """Provide real effects with an unchanged shared-observation carrier.
 
     Returns:

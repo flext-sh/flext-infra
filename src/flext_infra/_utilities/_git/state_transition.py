@@ -102,7 +102,7 @@ class FlextInfraUtilitiesGitStateTransition(
     @staticmethod
     def _state_require_encodable_symlinks(
         root: Path,
-        desired: Iterable[p.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState],
+        desired: Iterable[p.Infra.GitWorktreeIndexEntry | p.Infra.GitWorktreeFileState],
     ) -> None:
         """Require every desired symlink payload to decode as strict UTF-8."""
         for entry in desired:
@@ -123,7 +123,7 @@ class FlextInfraUtilitiesGitStateTransition(
         paths: Iterable[Path],
         desired: Mapping[
             Path,
-            m.Infra.GitWorktreeIndexEntry | m.Infra.GitWorktreeFileState,
+            p.Infra.GitWorktreeIndexEntry | p.Infra.GitWorktreeFileState,
         ],
     ) -> p.Infra.GitWorktreeFileState | None:
         """Return the working current state after obstruction and realize checks.

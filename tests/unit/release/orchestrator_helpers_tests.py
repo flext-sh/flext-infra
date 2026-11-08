@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+from flext_infra.gates import FlextInfraGatesMarkdownFormat
 from flext_infra.release import FlextInfraReleaseRelease
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, m, p, tm, u

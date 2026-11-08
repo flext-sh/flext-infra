@@ -15,7 +15,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli, config
-from flext_infra.gates.pyright import FlextInfraGatesPyright
+from flext_infra.gates import FlextInfraGatesPyright
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:

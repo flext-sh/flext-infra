@@ -21,7 +21,7 @@ from pathlib import Path
 from sys import modules, monitoring
 from traceback import format_exception
 from types import CodeType, ModuleType, SimpleNamespace
-from typing import ClassVar, TypeIs
+from typing import ClassVar, TypeIs, cast
 from warnings import WarningMessage
 
 import pytest
@@ -84,7 +84,6 @@ class FlextInfraUtilitiesPytestCollection:
         """Measure eligibility before the real collector can omit any item."""
         if not isinstance(collector, t.Infra.Pytest.MarkdownTextFile):
             return
-        state = collector.config.stash[cls.markdown_state]
         parser = collector.config.hook.pytest_markdown_docs_markdown_it()
         syntax = t.Infra.Pytest.FenceSyntax(
             collector.config.getoption("markdowndocs_syntax")
@@ -97,9 +96,13 @@ class FlextInfraUtilitiesPytestCollection:
             markdown_type=collector.path.suffix.removeprefix("."),
             fence_syntax=syntax,
         )
-        state.eligible.extend(
+        state = collector.config.stash[cls.markdown_state]
+        origins = tuple(
             cls.markdown_origin(definition, collector.config.rootpath)
             for definition in definitions
+        )
+        collector.config.stash[cls.markdown_state] = state.model_copy(
+            update={"eligible": (*state.eligible, *origins)},
         )
 
     @classmethod
@@ -107,12 +110,15 @@ class FlextInfraUtilitiesPytestCollection:
         """Retain actual Markdown node identities before selector hooks run."""
         if not cls.markdown_item(item):
             return
-        state = item.config.stash[cls.markdown_state]
+        origin = cls.markdown_origin(item.test_definition, item.config.rootpath)
         observation = m.Infra.PytestMarkdownItem(
             node_id=item.nodeid,
-            origin=cls.markdown_origin(item.test_definition, item.config.rootpath),
+            origin=m.Infra.PytestMarkdownOrigin.model_validate(origin.model_dump()),
         )
-        state.collected.append(observation)
+        state = item.config.stash[cls.markdown_state]
+        item.config.stash[cls.markdown_state] = state.model_copy(
+            update={"collected": (*state.collected, observation)},
+        )
         item.user_properties.append((
             "flext_markdown_origin",
             observation.model_dump_json(),
@@ -536,8 +542,12 @@ class FlextInfraUtilitiesPytestCollection:
         state = session.config.stash[cls.markdown_state]
         return m.Infra.PytestCollectionManifest(
             node_ids=tuple(item.nodeid for item in session.items),
-            markdown_eligible=tuple(state.eligible),
-            markdown_collected=tuple(state.collected),
+            markdown_eligible=tuple(
+                cast("m.Infra.PytestMarkdownOrigin", item) for item in state.eligible
+            ),
+            markdown_collected=tuple(
+                cast("m.Infra.PytestMarkdownItem", item) for item in state.collected
+            ),
             markdown_deselected=tuple(state.deselected),
         )
 

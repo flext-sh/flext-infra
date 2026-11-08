@@ -10,10 +10,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+from flext_infra.docs import (
+    FlextInfraDocBuilder,
+    FlextInfraDocGenerator,
+    FlextInfraDocValidator,
+)
+from flext_infra.gates import FlextInfraGatesMarkdownFormat
 from tests import c, m, p, r, t, tm, u
 
 if TYPE_CHECKING:
