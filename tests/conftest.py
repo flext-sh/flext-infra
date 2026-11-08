@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config
-from flext_infra.services.cli_mod_progress import FlextInfraCliModProgress
+from flext_infra.services import FlextInfraCliModProgress
 from tests import c, m, p, tm, u
 
 # The installed flext-tests pytest11 plugin owns the shared fixture set; these

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.services.cli_routes import FlextInfraCliRouteService
+from flext_infra.services import FlextInfraCliRouteService
 from tests import c, m, tm, u
 
 

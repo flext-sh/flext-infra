@@ -16,7 +16,7 @@ from tests import c, m, p, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGates
+    from flext_infra.gates import FlextInfraGates
 
 
 class TestsFlextInfraUtilitiesGates:
