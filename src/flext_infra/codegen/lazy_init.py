@@ -59,10 +59,10 @@ class FlextInfraCodegenLazyInit(
         cls,
         root: Path,
         *,
-        declared_files: tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
-    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan this candidate's exports through the existing public initializer.
 
         A selected facade retains its package and private-family projections,
