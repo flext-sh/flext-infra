@@ -162,13 +162,22 @@ class FlextInfraModelsConfigWorkspace:
         """Docs, scaffold, integration and analysis part of a repository delta."""
 
         docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            Annotated[
+                p.Infra.DocsAuditOverridesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                ),
+            ],
             m.Field(description="Universal documentation-audit declarations"),
         ] = m.Field(
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         project: Annotated[
-            FlextInfraModelsConfigContexts.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
+            ]
+            | None,
             m.Field(description="Explicit metadata for a new project scaffold"),
         ] = None
         integration: Annotated[
@@ -186,7 +195,17 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own namespace analysis roots"),
         ] = ()
         candidate_bootstrap_targets: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.CandidateBootstrapTargetSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Declared candidate worktrees and recovery surfaces"),
         ] = ()
         workspace_inventory_command: Annotated[
@@ -498,9 +517,6 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Member distribution it requires"),
         ]
 
-    type CandidateBootstrapTargets = tuple[CandidateBootstrapTargetSpec, ...]
-    """Shared declaration type for repeated candidate worktree target fields."""
-
     class WorkspaceBeadsServerSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Optional Dolt connection declared by a versioned workspace manifest."""
 
@@ -582,7 +598,12 @@ class FlextInfraModelsConfigWorkspace:
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         docs_audit: Annotated[
-            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
+            Annotated[
+                p.Infra.DocsAuditOverridesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
+                ),
+            ],
             m.Field(
                 description="Repository-owned documentation audit declarations",
             ),
@@ -612,15 +633,32 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Optional workspace-local Dolt connection"),
         ] = None
         repository: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                ),
+            ],
             m.Field(description="Root repository declaration"),
         ]
         project: Annotated[
-            FlextInfraModelsConfigContexts.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
+            ]
+            | None,
             m.Field(description="Optional project creation metadata"),
         ] = None
         members: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Declared member repository contracts"),
         ] = ()
         external_dependency_paths: Annotated[
@@ -636,7 +674,13 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Explicit workspace exclusions"),
         ] = ()
         integration: Annotated[
-            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
+                ),
+            ]
+            | None,
             m.Field(description="Optional integration provider overlay"),
         ] = None
         candidate_bootstrap_targets: Annotated[
@@ -902,7 +946,13 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = ()
         integration: Annotated[
-            FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec | None,
+            Annotated[
+                p.Infra.WorkspaceIntegrationSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.WorkspaceIntegrationSpec
+                ),
+            ]
+            | None,
             m.Field(
                 description=(
                     "Declared integration provider and branch from the workspace "
@@ -911,7 +961,17 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = None
         candidate_bootstrap_targets: Annotated[
-            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargets,
+            tuple[
+                Annotated[
+                    p.Infra.CandidateBootstrapTargetSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.CandidateBootstrapTargetSpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Declared candidate worktrees for bootstrap"),
         ] = ()
         subprojects: Annotated[
@@ -945,7 +1005,15 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
         external_consumers: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.ExternalConsumerSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ExternalConsumerSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigWorkspace.ExternalConsumerSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Out-of-workspace repositories propagation adjusts as"

@@ -570,7 +570,10 @@ class FlextInfraModelsCore:
         deselected: tuple[FlextInfraModelsCore.PytestMarkdownItem, ...] = m.Field(
             description="Origins not executed in this phase",
         )
-        diagnostics: FlextInfraModelsCore.PytestDiagnostics = m.Field(
+        diagnostics: Annotated[
+            p.Infra.PytestDiagnostics,
+            t.schema_for_model(lambda: FlextInfraModelsCore.PytestDiagnostics),
+        ] = m.Field(
             description="Unmodified observed phases, attempts and first causes",
         )
         cache_hit: bool = m.Field(
