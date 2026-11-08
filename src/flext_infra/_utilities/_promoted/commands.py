@@ -108,6 +108,20 @@ class FlextInfraUtilitiesPromotedCommands(
             )
         return command
 
+    @staticmethod
+    def promoted_command_stem(what: str, suffix: str) -> str:
+        """Return the one file stem that declares ``what`` for ``suffix``.
+
+        A shell command keeps WHAT exactly. A Python command is a module, so
+        its stem is the identifier form of WHAT: ``capacity-check`` lives in
+        ``capacity_check.py``, the name the module naming law accepts.
+
+        Returns:
+            The file stem of the command declaring ``what``.
+
+        """
+        return what.replace("-", "_") if suffix == c.Infra.EXT_PYTHON else what
+
     @classmethod
     def promoted_load_command(
         cls,
@@ -127,7 +141,11 @@ class FlextInfraUtilitiesPromotedCommands(
         what = cls._promoted_text(data, key.WHAT, path)
         for actual, expected, mismatch in (
             (verb, expected_verb, message.VERB_MISMATCH),
-            (what, path.stem, message.WHAT_MISMATCH),
+            (
+                path.stem,
+                cls.promoted_command_stem(what, path.suffix),
+                message.WHAT_MISMATCH,
+            ),
         ):
             if actual != expected:
                 cls.promoted_fail(
