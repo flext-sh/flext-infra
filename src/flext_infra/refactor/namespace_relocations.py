@@ -378,10 +378,10 @@ class FlextInfraNamespaceRelocationCascade:
                     pending.append((child, (*chain, declared.get_name())))
                 elif (
                     scope.get_kind() == "Class"
-                    and child.get_kind() == "Function"
+                    and isinstance(declared, p.Infra.RopeSourceFunction)
                     and declared.get_name() == name
-                    and getattr(declared.get_ast(), "lineno", None) == line
-                    and getattr(declared, "get_kind", lambda: None)()
+                    and declared.get_ast().lineno == line
+                    and declared.get_kind()
                     in {
                         c.Infra.RopeFunctionKind.STATICMETHOD,
                         c.Infra.RopeFunctionKind.CLASSMETHOD,
