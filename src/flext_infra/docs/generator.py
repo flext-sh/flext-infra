@@ -16,7 +16,7 @@ from flext_infra.docs._generator import FlextInfraDocsGeneratorBundle
 
 
 class FlextInfraDocGenerator(
-    FlextInfraDocServiceBase[p.Infra.DocsPhaseReports],
+    FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
     FlextInfraDocsGeneratorBundle,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
