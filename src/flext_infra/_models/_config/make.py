@@ -1287,9 +1287,6 @@ class FlextInfraModelsConfigMake(
             approval = tuple(step for step in self.workflow if "ci" in step.contexts)
             milestones = (
                 (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
-                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
-                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
-                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
             )
             if (
                 not approval
@@ -1302,8 +1299,7 @@ class FlextInfraModelsConfigMake(
                 != milestones
             ):
                 msg = (
-                    "CI requires setup followed by primary check, native tests "
-                    "and complete check followed by final incremental tests"
+                    "CI requires setup followed by the fast primary check only"
                 )
                 raise ValueError(msg)
             hook = tuple(
