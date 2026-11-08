@@ -176,7 +176,13 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
             f"{u.Cli.toml_dot_path(prefix, *path)} {outcome}"
             for operation in phase.operations
             for path, outcome in cls._apply_toml_operation(
-                table, cast(p.Infra.DepsTomlOperation, operation)
+                table,
+                cast(
+                    p.Infra.DepsToml.SetOp
+                    | p.Infra.DepsToml.ListOp
+                    | p.Infra.DepsToml.RemoveOp,
+                    operation,
+                ),
             )
         ]
         for nested in phase.nested_tables:
