@@ -235,7 +235,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         match = cls.FROM_PATTERN.match(text)
         if match is not None:
             names = list(cls._parse_names(match.group("names")))  # type: ignore[arg-type]
-            return match.group("module"), names
+            return match.group("module"), tuple(names)  # type: ignore[return-value]
         match = cls.IMPORT_PATTERN.match(text)
         if match is None:
             return None
