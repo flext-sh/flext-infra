@@ -693,7 +693,7 @@ $({{ group }}_DISPATCH):
 {% if ns.active %}
 $({{ group }}_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" '{{ make_profile }}'
-	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$({{ group }}_ACTIVATED))
 ifneq ($(strip $({{ group }}_DIRECT)),)
 $(addprefix _activated-,$({{ group }}_DIRECT)): _activated-%: _builtin-%
