@@ -1206,7 +1206,9 @@ _builtin_require_environment: _builtin_require_interpreter
 #   4. the locked toolchain is installed from that lock, so a missing, bumped
 #      or newly declared tool (Python and uv included) is the one used next.
 # _upg_lifecycle then runs, in a fresh Make, the native `uv lock --upgrade`
-# with that Python and the frozen installation, and last the isolated executor
+# with that Python once per project (ADR-030): each governed member in
+# .gitmodules order forms its own uv.lock, then this project, whose lock is
+# their composition; then the frozen installation, and last the isolated executor
 # (make.executor_environment) repairs the one gap Mise does not report: a
 # locked tool missing a declared platform. A project whose source no longer
 # imports still has every lock written. It generates no projection.
@@ -1326,7 +1328,15 @@ _upg_lifecycle:
 	fi; \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --upgrade --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \

@@ -317,12 +317,24 @@ class FlextInfraModelsCheck:
         severity: Annotated[str, m.Field(description="Issue severity level")] = (
             c.Infra.ERROR
         )
-        locations: tuple[SarifLocation, ...] = m.Field(
+        locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             default=(),
             description="Native primary source spans when supplied by the scanner",
             validate_default=True,
         )
-        related_locations: tuple[SarifLocation, ...] = m.Field(
+        related_locations: tuple[
+            Annotated[
+                p.Infra.SarifLocation,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.SarifLocation),
+            ],
+            ...,
+        ] = m.Field(
             default=(),
             description="All native comparison locations, including other projects",
             validate_default=True,
@@ -394,7 +406,13 @@ class FlextInfraModelsCheck:
             default=None,
             description="Declared native tool outcome; absent derives it from findings",
         )
-        issues: tuple[Issue, ...] = m.Field(
+        issues: tuple[
+            Annotated[
+                p.Infra.Issue,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
+            ],
+            ...,
+        ] = m.Field(
             description="Complete native diagnostics",
         )
         raw_output: Annotated[str, t.StringConstraints(strip_whitespace=False)] = (
@@ -411,7 +429,13 @@ class FlextInfraModelsCheck:
         ] = m.Field(
             description="Gate result model",
         )
-        issues: tuple[Issue, ...] = m.Field(
+        issues: tuple[
+            Annotated[
+                p.Infra.Issue,
+                t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
+            ],
+            ...,
+        ] = m.Field(
             default_factory=tuple,
             description=(
                 "Complete native gate diagnostics, including informative findings"
@@ -507,7 +531,7 @@ class FlextInfraModelsCheck:
                 t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
             ],
         ] = m.Field(
-            default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
+            default_factory=dict,
             description="Gate name to execution mapping",
         )
 
@@ -848,7 +872,3 @@ class FlextInfraModelsCheck:
 
 
 __all__: list[str] = ["FlextInfraModelsCheck"]
-
-
-SarifLocation = FlextInfraModelsCheck.SarifLocation
-Issue = FlextInfraModelsCheck.Issue

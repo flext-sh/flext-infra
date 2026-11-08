@@ -25,7 +25,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
     """Alias and lazy-module resolution part of the source-bases composite."""
 
     _export_bindings_memo: ClassVar[
-        dict[tuple[str, str, str, str], dict[str, m.Infra.SourceClassReference]]
+        dict[tuple[str, str, str, str], dict[str, p.Infra.SourceClassReference]]
     ] = {}
 
     @classmethod
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         *,
         project: p.Infra.RopeProject,
         pymodule: p.Infra.RopeSemanticModule | None = None,
-    ) -> Mapping[str, m.Infra.SourceClassReference]:
+    ) -> Mapping[str, p.Infra.SourceClassReference]:
         """Read native lazy routes without losing their exported attributes.
 
         ``install_lazy_exports`` accepts both a provider string and an explicit
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesRopeSourceBasesAliases:
         parsed = cls._parsed_initializer(project, source, pymodule)
         if key in cls._export_bindings_memo:
             return dict(cls._export_bindings_memo[key])
-        aliases: dict[str, m.Infra.SourceClassReference] = {}
+        aliases: dict[str, p.Infra.SourceClassReference] = {}
         for node in ast.walk(parsed.get_ast()):
             if not isinstance(node, ast.Call):
                 continue
