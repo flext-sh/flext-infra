@@ -508,6 +508,8 @@ Infra:
          - reportCallIssue
          - reportUntypedFunctionDecorator
          - reportAssignmentType
+         - reportReturnType
+         - reportAbstractUsage
          path-rules:
           # Source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
