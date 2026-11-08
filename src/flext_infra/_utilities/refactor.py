@@ -176,7 +176,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def _finding_repository(
-        entry: p.Infra.ModOccurrence | m.Infra.ModTextFinding,
+        entry: p.Infra.ModOccurrence | p.Infra.ModTextFinding,
         repository_root: Path | None,
         topology: Sequence[Path],
     ) -> str:
@@ -215,8 +215,8 @@ class FlextInfraUtilitiesRefactor:
     def _report_occurrence_indexes[FindingT: p.Infra.ModOccurrence](
         cls,
         report: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         repository_root: Path | None,
         topology: Sequence[Path],
     ) -> tuple[
@@ -240,7 +240,7 @@ class FlextInfraUtilitiesRefactor:
             tuple[str, str], MutableMapping[tuple[str, str], int]
         ] = defaultdict(Counter)
         positions: MutableMapping[tuple[str, str], list[int]] = defaultdict(list)
-        entries: Sequence[p.Infra.ModOccurrence | m.Infra.ModTextFinding] = (
+        entries: Sequence[p.Infra.ModOccurrence | p.Infra.ModTextFinding] = (
             report.entries
         )
         for index, entry in enumerate(entries):
@@ -303,11 +303,11 @@ class FlextInfraUtilitiesRefactor:
     @staticmethod
     def rule_deltas[FindingT: p.Infra.ModOccurrence](
         before: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         after: p.Infra.ModOccurrenceReport[FindingT]
-        | m.Infra.ModScanEvidence
-        | m.Infra.ModTextReport,
+        | p.Infra.ModScanEvidence
+        | p.Infra.ModTextReport,
         *,
         options: p.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
     ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:

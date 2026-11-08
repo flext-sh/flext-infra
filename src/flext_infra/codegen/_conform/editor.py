@@ -26,7 +26,7 @@ class FlextInfraCodegenConformEditor(
     @staticmethod
     def _editor_snapshots(
         root: Path, destinations: frozenset[str]
-    ) -> p.Result[Mapping[str, m.Cli.AtomicFileState]]:
+    ) -> p.Result[Mapping[str, p.Cli.AtomicFileState]]:
         """Read every destination before rendering its replacement.
 
         Returns:
@@ -34,7 +34,7 @@ class FlextInfraCodegenConformEditor(
 
         """
         result_type = r[Mapping[str, m.Cli.AtomicFileState]]
-        original: MutableMapping[str, m.Cli.AtomicFileState] = {}
+        original: MutableMapping[str, p.Cli.AtomicFileState] = {}
         for relative in sorted(destinations):
             observed = u.Infra.codegen_target_snapshot(root / relative)
             if observed.failure:

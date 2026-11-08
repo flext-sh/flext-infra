@@ -237,7 +237,7 @@ class FlextInfraRuntimeDependencyCollector:
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             context.runtime_root,
         ).unwrap()
-        repositories: Mapping[str, m.Infra.RepositoryRef] = {
+        repositories: Mapping[str, p.Infra.RepositoryRef] = {
             u.Infra.distribution_identity(repository.distribution): repository
             for repository in (workspace.repository, *workspace.subprojects)
         }

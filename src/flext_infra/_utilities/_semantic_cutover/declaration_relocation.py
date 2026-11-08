@@ -597,7 +597,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
         project: p.Infra.RopeProject,
         sources: Mapping[Path, str],
         declaration: tuple[Path, str],
-    ) -> tuple[Path, str, str] | m.Infra.DeclarationRelocationFinding:
+    ) -> tuple[Path, str, str] | p.Infra.DeclarationRelocationFinding:
         origin, name = declaration
         root = Path(project.root.real_path)
         packages = tuple(

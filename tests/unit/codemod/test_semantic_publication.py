@@ -202,7 +202,7 @@ class TestsFlextInfraSemanticPublication:
         kind: str = "callable",
         external_consumers: int = 0,
         executable: bool = False,
-    ) -> tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]:
+    ) -> tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState]:
         """Build a native artifact against an independent physical runtime.
 
         Returns:

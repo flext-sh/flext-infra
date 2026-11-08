@@ -307,7 +307,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         # ``-B``: a validator never writes into the checkout it validates, so
         # the probed sources leave no bytecode cache behind.
         def run_probe(
-            indexed: tuple[int, m.Infra.FreshImportProbe],
+            indexed: tuple[int, p.Infra.FreshImportProbe],
         ) -> p.Result[p.Cli.CommandOutput]:
             index, probe = indexed
             u.Cli.info(f"fresh-import: probe {index} start {probe.subject}")

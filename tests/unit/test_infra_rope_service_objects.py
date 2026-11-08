@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
-from tests import c, infra, m, tm, u
+from tests import c, infra, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +43,7 @@ class TestsFlextInfraInfraRopeServiceObjects:
     def _module_objects_by_name(
         repository_root: Path,
         module_path: Path,
-    ) -> MutableMapping[str, m.Infra.Object]:
+    ) -> MutableMapping[str, p.Infra.Object]:
         """Index one module's non-local objects by their declared name.
 
         Returns:

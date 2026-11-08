@@ -81,7 +81,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
                 if part
             ),
         )
-        assessment: m.Infra.DuplicationAssessment | None = None
+        assessment: p.Infra.DuplicationAssessment | None = None
         if report is not None and overrides.success:
             assessment_failures, assessment = self._publish_assessment(
                 (report, overrides.value),
@@ -144,7 +144,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             The parsed report, its issues, and whether the tool itself failed.
 
         """
-        report: m.Infra.JscpdReport | None = None
+        report: p.Infra.JscpdReport | None = None
         try:
             if scan.stdout.strip():
                 report = FlextInfraDuplicationEvidence.parse(scan.stdout)
@@ -166,11 +166,11 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
     def _publish_assessment(
         self,
-        assessed: tuple[p.Infra.JscpdReport, m.Infra.ProjectDuplicationOverrides],
+        assessed: tuple[p.Infra.JscpdReport, p.Infra.ProjectDuplicationOverrides],
         project_dir: Path,
         evidence: p.Infra.GateOutputReceipt,
         execution: str,
-    ) -> tuple[tuple[p.Infra.Issue, ...], m.Infra.DuplicationAssessment | None]:
+    ) -> tuple[tuple[p.Infra.Issue, ...], p.Infra.DuplicationAssessment | None]:
         """Publish the duplication assessment beside its receipt.
 
         Returns:

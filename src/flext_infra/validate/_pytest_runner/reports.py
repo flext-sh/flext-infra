@@ -441,7 +441,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         *,
         context: p.Infra.PytestRunContext,
         suite: p.Infra.PytestDiagnostics,
-    ) -> tuple[tuple[str, m.Infra.PytestDiagnostics], ...]:
+    ) -> tuple[tuple[str, p.Infra.PytestDiagnostics], ...]:
         """Read each subprocess receipt once in execution order.
 
         Whole-project FULL collection belongs to the suite process. Declared
@@ -453,7 +453,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         """
         if context.execution_mode == c.Infra.PytestExecutionMode.FULL:
             return (("suite", suite),)
-        phases: MutableSequence[tuple[str, m.Infra.PytestDiagnostics]] = []
+        phases: MutableSequence[tuple[str, p.Infra.PytestDiagnostics]] = []
         if context.testmon_db is not None:
             selection_plan = m.Infra.PytestSelectionPlan.model_validate_json(
                 (report_dir / "selection-plan.json").read_text(encoding="utf-8"),
@@ -527,7 +527,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         report_dir: Path,
         diagnostics: p.Infra.PytestDiagnostics,
         *,
-        phases: tuple[tuple[str, m.Infra.PytestDiagnostics], ...],
+        phases: tuple[tuple[str, p.Infra.PytestDiagnostics], ...],
     ) -> None:
         """Persist each typed diagnostics channel."""
         u.Cli.atomic_write_text_file(

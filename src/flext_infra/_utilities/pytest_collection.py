@@ -44,7 +44,7 @@ class FlextInfraUtilitiesPytestCollection:
         t.Infra.Pytest.StashKey[dict[str, tuple[str, ...]]]
     ] = pytest.StashKey()
     collection_worker_manifests: ClassVar[
-        t.Infra.Pytest.StashKey[dict[str, m.Infra.PytestCollectionManifest]]
+        t.Infra.Pytest.StashKey[dict[str, p.Infra.PytestCollectionManifest]]
     ] = pytest.StashKey()
 
     @staticmethod

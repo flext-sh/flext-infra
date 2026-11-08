@@ -73,7 +73,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             dependency_roots: tuple[Path, ...] = (),
             captures: tuple[
                 dict[str, Path],
-                dict[Path, m.Cli.AtomicFileState],
+                dict[Path, p.Cli.AtomicFileState],
                 dict[Path, set[str]],
                 set[Path],
                 bool,
@@ -89,7 +89,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
 
             """
             self._physical: dict[str, Path] = {}
-            self._states: dict[Path, m.Cli.AtomicFileState] = {}
+            self._states: dict[Path, p.Cli.AtomicFileState] = {}
             self._files: dict[Path, bytes] = {}
             self._hidden: set[Path] = set()
             self._directories: set[Path] = set()
@@ -121,7 +121,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
         ) -> tuple[
             dict[str, Path],
-            dict[Path, m.Cli.AtomicFileState],
+            dict[Path, p.Cli.AtomicFileState],
             dict[Path, set[str]],
             set[Path],
             bool,
@@ -401,7 +401,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
             plans: tuple[p.Infra.CodegenFilePlan, ...],
             views: Mapping[Path, bytes],
-        ) -> dict[Path, m.Infra.CodegenFilePlan]:
+        ) -> dict[Path, p.Infra.CodegenFilePlan]:
             """Select one consistent candidate plan per physical path.
 
             Returns:
@@ -412,7 +412,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                     plan for the same path, or an analysis view shadows it.
 
             """
-            selected: dict[Path, m.Infra.CodegenFilePlan] = {}
+            selected: dict[Path, p.Infra.CodegenFilePlan] = {}
             for plan in plans:
                 path = self._resolved(str(plan.path))
                 previous = selected.get(path)

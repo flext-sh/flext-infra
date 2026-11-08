@@ -27,7 +27,7 @@ class TestsFlextInfraIndexDeclarationsGate:
     @staticmethod
     def gate_result(
         tmp_path: Path,
-    ) -> Callable[..., m.Infra.GateResult]:
+    ) -> Callable[..., p.Infra.GateResult]:
         """Build a repository with the requested defects and run the gate over it.
 
         One owner for the whole arrange-act pair: the tests differ only in which
@@ -94,7 +94,7 @@ class TestsFlextInfraIndexDeclarationsGate:
 
     @staticmethod
     def test_consistent_repository_passes(
-        gate_result: Callable[..., m.Infra.GateResult],
+        gate_result: Callable[..., p.Infra.GateResult],
     ) -> None:
         """Test consistent repository passes."""
         result = gate_result()
@@ -103,7 +103,7 @@ class TestsFlextInfraIndexDeclarationsGate:
 
     @staticmethod
     def test_undeclared_gitlink_fails_naming_the_path(
-        gate_result: Callable[..., m.Infra.GateResult],
+        gate_result: Callable[..., p.Infra.GateResult],
     ) -> None:
         """Test undeclared gitlink fails naming the path."""
         result = gate_result(orphan_gitlink=True)
@@ -114,7 +114,7 @@ class TestsFlextInfraIndexDeclarationsGate:
 
     @staticmethod
     def test_declared_gitlink_passes(
-        gate_result: Callable[..., m.Infra.GateResult],
+        gate_result: Callable[..., p.Infra.GateResult],
     ) -> None:
         # The same gitlink, now declared, is legitimate topology and must not
         # be reported: the gate judges the declaration, never the mode.

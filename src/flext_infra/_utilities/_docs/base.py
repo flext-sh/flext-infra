@@ -234,7 +234,7 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
         *,
         projects: Sequence[str] | None,
         output_dir: Path | str,
-        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
+        handler: Callable[[p.Infra.DocScope], p.Infra.DocsPhaseReport],
     ) -> p.Result[Sequence[p.Infra.DocsPhaseReport]]:
         """Run the selected handler over the elected documentation scopes.
 

@@ -98,8 +98,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         source_matches: bool,
     ) -> tuple[
         Path,
-        m.Infra.WorkspaceSpec,
-        m.Infra.DependencyCommitSourceSpec,
+        p.Infra.WorkspaceSpec,
+        p.Infra.DependencyCommitSourceSpec,
     ]:
         """Render the modern fixture declaring one candidate dependency.
 

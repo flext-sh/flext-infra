@@ -164,7 +164,7 @@ class FlextInfraCProfileReport(s[bool]):
 
     def _recorded_context(
         self, parent: p.Infra.PytestRunContext
-    ) -> tuple[Path, m.Infra.PytestRunContext]:
+    ) -> tuple[Path, p.Infra.PytestRunContext]:
         """Load the run context recorded beside the parent receipt.
 
         Returns:

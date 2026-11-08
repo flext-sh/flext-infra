@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_infra import FlextInfraConfig, config, infra
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenMakeBootstrap
 from flext_infra.services import FlextInfraCodegenRoutes
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 pytestmark = [c.Tests.MARK.slow]
@@ -355,7 +355,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         tm.that(stat.S_IMODE(destination.stat().st_mode), eq=desired_mode)
 
     @staticmethod
-    def _workspace_fixture(tmp_path: Path) -> tuple[Path, m.Infra.WorkspaceSpec]:
+    def _workspace_fixture(tmp_path: Path) -> tuple[Path, p.Infra.WorkspaceSpec]:
         """Scaffold the governed workspace fixture.
 
         Returns:

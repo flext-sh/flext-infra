@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 plan.path: plan for plan in declared_files
             })
 
-        def authenticate(self, source: Path) -> Mapping[Path, m.Cli.AtomicFileState]:
+        def authenticate(self, source: Path) -> Mapping[Path, p.Cli.AtomicFileState]:
             """Require candidate text and witnesses to describe the same source view.
 
             Returns:
@@ -1448,11 +1448,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source: Path,
         target: Path,
         sources: Mapping[Path, str],
-        states: Mapping[Path, m.Cli.AtomicFileState],
+        states: Mapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[
         tuple[
-            m.Infra.ClassMoveRequest,
-            m.Infra.CodegenFilePlan,
+            p.Infra.ClassMoveRequest,
+            p.Infra.CodegenFilePlan,
             dict[Path, str],
             tuple[p.Infra.CodegenFilePlan, ...],
             str,

@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
 
     @staticmethod
     def collection_revision_digest(
-        artifacts: tuple[tuple[Path, m.Cli.AtomicFileState], ...],
+        artifacts: tuple[tuple[Path, p.Cli.AtomicFileState], ...],
     ) -> str:
         """Hash named plan and attachment bytes identically on collection and CI.
 
@@ -183,7 +183,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
     @staticmethod
     def collection_capture(
         path: Path,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Cli.AtomicFileState:
         """Bind every influential read, including absence, to its first state.
 
@@ -286,7 +286,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         canonical: Path,
         projection: Path | None,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> tuple[p.Infra.PlanCollectionManifest, tuple[Path, ...]]:
         """Exclude only outputs attested by the canonical generated manifest.
 
@@ -422,7 +422,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         roots: tuple[Path, Path | None],
         manifest: p.Infra.PlanCollectionManifest,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
         plans: set[Path],
         affected: set[Path],
     ) -> list[Path]:
@@ -461,7 +461,7 @@ class FlextInfraUtilitiesDocsCollectionSources:
         cls,
         canonical: Path,
         projection: Path,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
         before: p.Cli.AtomicFileState,
     ) -> Path | None:
         """Verify the mirrored manifest matches the canonical bytes.

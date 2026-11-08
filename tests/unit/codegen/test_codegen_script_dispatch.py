@@ -252,7 +252,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         # The regeneration contract published on every projection speaks gen.
         tm.ok("# @flext-regenerate: make gen" in rendered)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
-        handler_policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
+        handler_policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         for policy in handler_policies.values():

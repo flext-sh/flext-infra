@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             Candidate source or the original typed publication refusal.
 
         """
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite] = {}
         index = module.get_source_binding_index()
         imported = cls._import_provider_edits(
             index, package=package, moves=moves, edits=edits
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesRopeMovePublication:
         *,
         package: str,
         moves: Mapping[str, str],
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite],
     ) -> p.Result[bool]:
         """Record executable import providers relocated by the module move.
 
@@ -158,7 +158,7 @@ class FlextInfraUtilitiesRopeMovePublication:
         package: str,
         moves: Mapping[str, str],
         exports: Mapping[str, AbstractSet[str]] | None,
-        edits: dict[tuple[int, int], m.Infra.SourceRewrite],
+        edits: dict[tuple[int, int], p.Infra.SourceRewrite],
     ) -> p.Result[bool]:
         """Record relocated provider literals of one admitted installer mapping.
 

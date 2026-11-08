@@ -625,7 +625,7 @@ class FlextInfraWorkspaceChecker(
         admission_gates = prerequisites or gates
         pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
         targets = self._targets_for_gates(targets, admission_gates, effective_ctx)
-        reached: dict[Path, m.Infra.ProjectResult] = {}
+        reached: dict[Path, p.Infra.ProjectResult] = {}
         current_summary = m.Infra.CheckReportSummary(
             phase=phase,
             requested_gates=gates,
@@ -731,7 +731,7 @@ class FlextInfraWorkspaceChecker(
         ctx: p.Infra.GateContext,
         *,
         capture_identity: bool,
-    ) -> p.Result[tuple[tuple[p.Infra.CheckProjectTarget, ...], m.Infra.GateContext]]:
+    ) -> p.Result[tuple[tuple[p.Infra.CheckProjectTarget, ...], p.Infra.GateContext]]:
         """Capture ordered pre-gate identities before reserving the report leaf.
 
         Independent native reads share the existing check worker bound. Every
