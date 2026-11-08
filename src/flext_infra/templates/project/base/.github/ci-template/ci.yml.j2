@@ -24,8 +24,8 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
+{%- for step in make.workflow if "ci" in step.contexts %}
 
-{% for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.make_command }}
         run: {{ step.make_command }}
-{% endfor %}
+{%- endfor %}
