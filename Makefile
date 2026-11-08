@@ -537,9 +537,8 @@ _bootstrap_setup_tools:
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
-	bootstrap_stage=shims; \
-	"$${mise_binary}" -C "$(PROJECT_ROOT)" reshim; \
-	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$$(dirname "$${mise_binary}")" "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
+	bootstrap_stage=tool-paths; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "$(PROJECT_ROOT)" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \
@@ -1206,7 +1205,9 @@ _builtin_require_environment: _builtin_require_interpreter
 #   4. the locked toolchain is installed from that lock, so a missing, bumped
 #      or newly declared tool (Python and uv included) is the one used next.
 # _upg_lifecycle then runs, in a fresh Make, the native `uv lock --upgrade`
-# with that Python and the frozen installation, and last the isolated executor
+# with that Python once per project (ADR-030): each governed member in
+# .gitmodules order forms its own uv.lock, then this project, whose lock is
+# their composition; then the frozen installation, and last the isolated executor
 # (make.executor_environment) repairs the one gap Mise does not report: a
 # locked tool missing a declared platform. A project whose source no longer
 # imports still has every lock written. It generates no projection.
@@ -1326,7 +1327,15 @@ _upg_lifecycle:
 	fi; \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --upgrade --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
