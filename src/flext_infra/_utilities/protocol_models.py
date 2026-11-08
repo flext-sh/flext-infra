@@ -1850,7 +1850,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"{model_base_class}"
                 )
                 raise TypeError(msg)
-            if self._source_is_marker_class(model_base_class.get_ast()):
+            if self._source_is_marker_class(cast(ast.AST | None, model_base_class.get_ast())):
                 return None
             package_dir, package_name = package
             models_root = package_dir / "_models"
