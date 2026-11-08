@@ -1,0 +1,1 @@
+{"t": "read", "ts": "2026-11-06T13:18:00Z", "session": "01a1b0f4-9370-73d1-816a-d37e07cced2c", "tool": "Bash", "path": "AGENTS.md", "agent": "main", "client": "codex", "tool_use_id": "exec-012cfe4f-2164-4ccb-9044-e302f87c0e7b", "schema_version": 1}
