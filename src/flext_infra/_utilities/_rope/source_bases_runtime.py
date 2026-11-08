@@ -191,7 +191,7 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
 
             """
             self._prepare_ordering()
-            if isinstance(qualified, m.Infra.SourceClassReference):
+            if not isinstance(qualified, str):
                 return self._source_class_binding(qualified)
             receiver, _, member = qualified.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
@@ -462,6 +462,47 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 if "__init_subclass__" in self._definitions[identity].members:
                     return False
             return True
+
+        def derived_roots(
+            self,
+            roots: Sequence[str],
+            extra_module_aliases: Mapping[str, str],
+        ) -> t.StrTuple:
+            """Linearize every owned definition and collect the derived bases.
+
+            Facade alias maps read outside the captured sources extend the
+            captured alias map. Required provider parents participate in C3,
+            but only captured project expressions belong to the project's
+            generated Ruff configuration.
+
+            Returns:
+                The sorted union of configured roots and derived bases.
+
+            """
+            self._index_modules()
+            self._prepare_ordering()
+            for alias, absolute in extra_module_aliases.items():
+                if alias in self._modules or alias in self._namespaces:
+                    continue
+                self._module_aliases.setdefault(
+                    alias,
+                    m.Infra.SourceClassReference(
+                        target=absolute,
+                        attributes=(alias.rpartition(".")[2],),
+                        qualified_base=alias,
+                    ),
+                )
+            root_ids = frozenset(
+                self._resolve(self._root_reference(root)) for root in roots
+            )
+            derived = set(roots)
+            for definition in tuple(self._definitions.values()):
+                self._linearize(definition.identity)
+                for reference in definition.bases:
+                    lineage = self._linearize(self._resolve(reference))
+                    if root_ids.intersection(lineage):
+                        derived.add(reference.qualified_base)
+            return tuple(sorted(derived))
 
         def _prepare_ordering(self) -> None:
             """Build the namespace and alias maps once per resolver.
@@ -2297,12 +2338,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             Sorted configured roots and derived Ruff-qualified base expressions.
 
         """
-        return cls._RuntimeBaseResolver(
-            project,
-            sources,
-            roots,
-            extra_module_aliases,
-        ).run()
+        return cls._RuntimeBaseResolver(project, sources).derived_roots(
+            roots, extra_module_aliases or {}
+        )
 
     @classmethod
     def source_class_order(

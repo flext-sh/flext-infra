@@ -585,7 +585,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             }
             if scope is not None:
                 document["files"] = [cls._codemod_directory_glob(scope)]
-            ignores = [
+            ignores: list[t.JsonValue] = [
                 *(cls._codemod_directory_glob(directory) for directory in nested),
                 *cls._codemod_file_globs(carved),
             ]
@@ -964,7 +964,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         f"`{letter}` family of `{package}`."
                     ),
                     "utils": dict(cls._codemod_name_utils()),
-                    "files": cls._codemod_file_globs(bound_files),
+                    "files": [*cls._codemod_file_globs(bound_files)],
                     "rule": cls._codemod_header_rule(bound),
                     "fix": f"$ANCHOR\nfrom {upstream} import $USED",
                 }
@@ -1730,7 +1730,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             "pattern": "$NAME",
             "regex": "^[a-z]$",
         }
-        ignores = [f"**/{c.Infra.INIT_PY}"]
+        ignores: list[t.JsonValue] = [f"**/{c.Infra.INIT_PY}"]
         read = f"{shape}{separator}letter-local-alias"
         unread = f"{shape}{separator}dead-letter-alias"
         return {
