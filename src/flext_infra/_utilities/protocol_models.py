@@ -3933,8 +3933,8 @@ class FlextInfraUtilitiesModelsProtocol:
 
         @staticmethod
         def _source_bases_first(
-            contracts: list[p.Infra.ModelProtocolRenderContextModelProtocolContract],
-        ) -> list[p.Infra.ModelProtocolRenderContextModelProtocolContract]:
+            contracts: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Order contracts so every local base is declared before its heirs.
 
             Returns:
@@ -3942,7 +3942,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             names = {contract.name for contract in contracts}
-            ordered: list[p.Infra.ModelProtocolRenderContextModelProtocolContract] = []
+            ordered: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             placed: set[str] = set()
             pending = list(contracts)
             while pending:
@@ -7915,7 +7915,7 @@ class FlextInfraUtilitiesModelsProtocol:
             holder: p.Infra.RopeSourceClass,
             context: p.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[p.Infra.ModelProtocolRenderContextModelProtocolContract]:
+        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -7925,12 +7925,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[p.Infra.ModelProtocolRenderContextModelProtocolContract] = []
+            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
             for contract in cast(
-                Sequence[p.Infra.ModelProtocolRenderContextModelProtocolContract],
+                Sequence[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
                 context.contracts,
             ):
                 present = holder.get_attributes().get(contract.name)
