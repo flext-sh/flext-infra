@@ -36,6 +36,9 @@ files:
   - "**/*.py"
 ignores:
   - "**/config/rules/ast-grep/tests/**"
+  # Scenario-data roots (codegen.exclusions.scenario_data_roots) are no
+  # codemod's input; fixture holder classes there are aliased by conftest.
+  - "**/tests/fixtures/**"
 message: >-
   A class-body method without self or cls must be declared @staticmethod.
 fix: "$DECO\n@staticmethod"
