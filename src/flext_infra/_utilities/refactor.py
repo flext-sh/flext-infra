@@ -949,10 +949,7 @@ class FlextInfraUtilitiesRefactor:
                 "normalized scan evidence differs from its publication declaration"
             )
         content = (
-            evidence.model_dump_json(
-                indent=2, exclude=set(type(evidence).model_computed_fields)
-            )
-            + "\n"
+            evidence.model_dump_json(indent=2, exclude_computed_fields=True) + "\n"
         ).encode(c.DEFAULT_ENCODING)
         report_path = root.resolve() / publication.relative_path
         published = FlextInfraUtilitiesRefactor._published_mod_scan_bytes(
