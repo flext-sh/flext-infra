@@ -546,6 +546,8 @@ class FlextInfraConstantsRefactor:
     CODEMOD_FACADE_MODULE_SCOPE: ClassVar[str] = "facade-module"
     CODEMOD_FAMILY_SCOPE_PREFIX: ClassVar[str] = "facade-family-"
     CODEMOD_PRIVATE_FAMILY_SCOPE_PREFIX: ClassVar[str] = "private-family-"
+    CODEMOD_TOP_PACKAGE_SCOPE_PREFIX: ClassVar[str] = "top-package-"
+    "File scope: the modules whose dotted name starts with that top-level package."
     CODEMOD_LACKS_LAYER_SCOPE_PREFIX: ClassVar[str] = "lacks-layer-"
     CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: ClassVar[str] = "family-without-base"
     CODEMOD_FAMILY_BASE_SCOPE: ClassVar[str] = "family-base-file"
@@ -630,6 +632,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_FLAGS: ClassVar[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: ClassVar[str] = "expected"
     CODEMOD_TEXT_KEY_CAPTURE_EQUALS: ClassVar[str] = "capture_equals"
+    CODEMOD_TEXT_KEY_RENDER: ClassVar[str] = "render"
+
+    @unique
+    class ModTextRender(StrEnum):
+        """Closed renderers a text rule names instead of a replace template."""
+
+        PROMOTED_COMMAND_HEADER = "promoted-command-header"
+
     # ast-grep rejects unknown top-level keys, so an ast-grep rule declares
     # its finding-count receipt under the `metadata` mapping it does accept.
     CODEMOD_RULE_METADATA_KEY: ClassVar[str] = "metadata"

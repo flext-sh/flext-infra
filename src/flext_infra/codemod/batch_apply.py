@@ -395,7 +395,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         rule_plan: p.Infra.CodemodRulePlan,
         inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
-    ) -> dict[Path, m.Infra.SemanticFilePlan]:
+    ) -> dict[Path, p.Infra.SemanticFilePlan]:
         """Bind every native-cascade rewrite to its captured input state.
 
         Returns:
@@ -420,7 +420,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         after_ast: p.Infra.ModOccurrenceReport[p.Infra.ModScanFinding],
         native_ids: frozenset[str],
         state: tuple[
-            dict[Path, m.Infra.SemanticFilePlan],
+            dict[Path, p.Infra.SemanticFilePlan],
             MutableMapping[Path, p.Cli.AtomicFileState],
             p.Infra.StageSourcePlan,
         ],
@@ -451,7 +451,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _require_wave_progress(
         after_ast: p.Infra.ModOccurrenceReport[p.Infra.ModScanFinding],
         native_ids: frozenset[str],
-        plans: Mapping[Path, m.Infra.SemanticFilePlan],
+        plans: Mapping[Path, p.Infra.SemanticFilePlan],
         seen: set[tuple[tuple[str, str], ...]],
     ) -> None:
         """Refuse native residue and a repeated syntax candidate state.
@@ -486,9 +486,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
     @staticmethod
     def _merge_wave(
-        plans: dict[Path, m.Infra.SemanticFilePlan],
+        plans: dict[Path, p.Infra.SemanticFilePlan],
         inputs: MutableMapping[Path, p.Cli.AtomicFileState],
-        wave: Sequence[m.Infra.SemanticFilePlan],
+        wave: Sequence[p.Infra.SemanticFilePlan],
     ) -> None:
         """Fold one wave into the plans, keeping each file's first witness."""
         for plan in wave:
@@ -509,7 +509,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     @staticmethod
     def _admitted_syntax(
         root: Path,
-        plans: Mapping[Path, m.Infra.SemanticFilePlan],
+        plans: Mapping[Path, p.Infra.SemanticFilePlan],
         inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> p.Result[p.Infra.StageSourcePlan]:
@@ -522,7 +522,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """
         if not plans:
             return r[p.Infra.StageSourcePlan].ok(seed)
-        accepted = FlextInfraModReplacements.admit(root, tuple(plans.values()))
+        accepted = FlextInfraModReplacements.admit(
+            root, tuple(plans.values()), seed.updates
+        )
         if accepted.failure:
             return r[p.Infra.StageSourcePlan].from_failure(accepted)
         return FlextInfraStagedPackage.plan_sources(
@@ -642,7 +644,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     def _preview_ast_candidate(
         self,
         root: Path,
-        plans: Mapping[Path, m.Infra.SemanticFilePlan],
+        plans: Mapping[Path, p.Infra.SemanticFilePlan],
         inputs: MutableMapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
     ) -> p.Result[p.Infra.ModScanReport]:

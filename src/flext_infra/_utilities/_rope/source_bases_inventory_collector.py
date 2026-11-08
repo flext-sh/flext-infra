@@ -42,7 +42,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def collect(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         statements: Sequence[ast.stmt],
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _index_node(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.stmt,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _class_def(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.ClassDef,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -142,7 +142,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _import_from(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.ImportFrom,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
     ) -> None:
@@ -202,7 +202,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _assign(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
     ) -> None:
@@ -249,7 +249,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _non_name_assignment(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: Sequence[ast.expr],
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
@@ -285,7 +285,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _foreign_attribute_mutation(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: Sequence[ast.expr],
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
@@ -380,7 +380,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _mutation_message(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.stmt,
     ) -> str:
         """Describe one binding mutation the captured module cannot declare.
@@ -395,7 +395,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _provider_metadata_rebind(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: Sequence[ast.expr],
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
@@ -526,7 +526,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _complete_class_namespace(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         targets: Sequence[ast.expr],
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
@@ -611,7 +611,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _name_assignment(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Assign | ast.AnnAssign,
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
     ) -> p.Infra.SourceClassReference | None:
@@ -644,7 +644,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _aug_assign(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.AugAssign,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
     ) -> None:
@@ -688,7 +688,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _if(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.If,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -708,7 +708,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _bind_conditional_branches(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.If,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -737,7 +737,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _try(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         node: ast.Try | ast.TryStar,
         bindings: MutableMapping[str, p.Infra.SourceClassReference | None],
         scope: str,
@@ -771,7 +771,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _merge_exception_bindings(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         branches: Sequence[
             tuple[
                 Mapping[str, p.Infra.SourceClassReference | None],
@@ -854,7 +854,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _exception_binding_object(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         name: str,
         reference: p.Infra.SourceClassReference | None,
         statements: Sequence[ast.stmt],
@@ -911,7 +911,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
 
     @staticmethod
     def _imported_module_object(
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         target: str,
     ) -> p.Infra.RopePyObject:
         """Resolve one imported module the way Rope's own import name does.
@@ -964,7 +964,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     @classmethod
     def _runtime_guard(
         cls,
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
         test: ast.expr,
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
     ) -> bool | None:
@@ -1037,7 +1037,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         cls,
         expression: ast.expr,
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
     ) -> p.Infra.SourceClassReference:
         """Resolve one class base, including a ``type(<class>)`` metaclass base.
 
@@ -1099,7 +1099,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
     def _reference(
         expression: ast.expr,
         bindings: Mapping[str, p.Infra.SourceClassReference | None],
-        spec: m.Infra.SourceBindingCollectorSpec,
+        spec: p.Infra.SourceBindingCollectorSpec,
     ) -> p.Infra.SourceClassReference:
         """Capture the binding visible when a base expression is evaluated.
 

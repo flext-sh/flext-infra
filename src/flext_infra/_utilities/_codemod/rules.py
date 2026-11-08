@@ -908,7 +908,7 @@ class FlextInfraUtilitiesCodemodRules(
         cls,
         provider: str,
         provider_config: Path,
-        selected: MutableMapping[str, m.Infra.CodemodRule],
+        selected: MutableMapping[str, p.Infra.CodemodRule],
         root_name: str,
         runtime_closure: frozenset[str],
     ) -> p.Result[Sequence[p.Infra.CodemodRuleset]]:
@@ -963,7 +963,7 @@ class FlextInfraUtilitiesCodemodRules(
             The resulting ``p.Result[p.Infra.CodemodRulePlan]``.
 
         """
-        selected: MutableMapping[str, m.Infra.CodemodRule] = {}
+        selected: MutableMapping[str, p.Infra.CodemodRule] = {}
         rulesets: list[p.Infra.CodemodRuleset] = []
         provider_order: list[str] = []
         for provider, provider_config in providers:

@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps import FlextInfraExtraPathsManager
 from tests import c
 
 _TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent

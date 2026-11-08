@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, u
+from flext_infra import c, p, u
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
@@ -84,7 +84,7 @@ class FlextInfraWorkspaceCheckUnion:
         projects: Sequence[p.Infra.CheckProjectTarget],
         union_gates: Sequence[str],
         ctx: p.Infra.GateContext,
-    ) -> Mapping[str, Mapping[Path, m.Infra.GateExecution]]:
+    ) -> Mapping[str, Mapping[Path, p.Infra.GateExecution]]:
         """Run every union gate once per configuration group, split per project.
 
         Returns:
@@ -94,7 +94,7 @@ class FlextInfraWorkspaceCheckUnion:
             ValueError: If a union gate is not registered.
 
         """
-        executions: MutableMapping[str, Mapping[Path, m.Infra.GateExecution]] = {}
+        executions: MutableMapping[str, Mapping[Path, p.Infra.GateExecution]] = {}
         for gate_id in union_gates:
             gate = self._registry.create(gate_id, self._repository_root)
             if gate is None:
@@ -108,7 +108,7 @@ class FlextInfraWorkspaceCheckUnion:
                     groups.setdefault(gate.union_group_key(target.path), []).append(
                         target,
                     )
-            split: MutableMapping[Path, m.Infra.GateExecution] = {}
+            split: MutableMapping[Path, p.Infra.GateExecution] = {}
             for selected in groups.values():
                 owner_ctx = self._isolate_context(ctx, selected[0])
                 _ = u.Cli.ensure_dir(owner_ctx.reports_dir)
@@ -133,7 +133,7 @@ class FlextInfraWorkspaceCheckUnion:
     def _split_union_execution(
         execution: p.Infra.GateExecution,
         selected: Sequence[p.Infra.CheckProjectTarget],
-    ) -> Mapping[Path, m.Infra.GateExecution]:
+    ) -> Mapping[Path, p.Infra.GateExecution]:
         """Assign each finding of one union group to its deepest owning project.
 
         A native tool error fails every selected project with the complete
@@ -200,7 +200,7 @@ class FlextInfraWorkspaceCheckUnion:
     def _merged_union_result(
         project_result: p.Infra.ProjectResult,
         resolved_gates: Sequence[str],
-        union_executions: Mapping[str, m.Infra.GateExecution],
+        union_executions: Mapping[str, p.Infra.GateExecution],
     ) -> p.Infra.ProjectResult:
         """Report the union and per-project executions in declared gate order.
 

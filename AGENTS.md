@@ -49,9 +49,14 @@ src/flext_infra/
 
 ## Promoted command framework
 
-Repository-owned `scripts/<verb>/<WHAT>.{py,sh}` commands declare a `/// flext-command`
-header and are reached only through `make <verb> WHAT=<action>` when the repository
-declares `script_dispatch`.
+Repository-owned `scripts/<verb>/<WHAT>.{py,sh}` commands declare their header as one
+PEP 723 `# /// script` block holding the `[tool.flext.command]` table, with `params` as
+`[[tool.flext.command.params]]`, and are reached only through `make <verb>
+WHAT=<action>` when the repository declares `script_dispatch`. Ruff exempts that block
+from commented-out-code; `u.Infra.promoted_render_header` lays it out within the
+configured Ruff line length, and `make fix` never wraps a `# /// <type>` block. The
+parser reads only that block: a consumer converts each retired `# /// flext-command`
+block once, after `make upg`, with `make mod RULES=promoted-command-header-pep723`.
 
 - `FlextInfraPromoted` (`promoted.py`) composes registry state, discovery and dispatch
   from `_promoted/{registry,discovery,dispatch}.py`. `main(argv)` is the dispatcher

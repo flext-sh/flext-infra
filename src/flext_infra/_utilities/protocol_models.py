@@ -5387,6 +5387,14 @@ class FlextInfraUtilitiesModelsProtocol:
 
             class Project(ast.NodeTransformer):
                 @override
+                def visit_Constant(self, node: ast.Constant) -> ast.AST:
+                    # A quoted forward reference names a type like its
+                    # unquoted form; Literal payloads never reach here.
+                    if not isinstance(node.value, str):
+                        return node
+                    return self.visit(ast.parse(node.value, mode="eval").body)
+
+                @override
                 def visit_Name(self, node: ast.Name) -> ast.AST:
                     return self_owner._source_projected_name(node, member)
 
@@ -9039,31 +9047,24 @@ class FlextInfraUtilitiesModelsProtocol:
                 raise TypeError(message)
             return value
 
-
-__all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]
-
-
-try:
-    from flext_infra._utilities._semantic_cutover.contracts import (
-        FlextInfraUtilitiesSemanticContracts,
-    )
-except (ImportError, AttributeError):
-    # pragma: no cover - defensive during partial imports
-    FlextInfraUtilitiesSemanticContracts = None
-
-if FlextInfraUtilitiesSemanticContracts is not None:
-
-    def _flext_infra_model_protocol_routes(
+    @classmethod
+    def model_protocol_routes(
+        cls,
         workspace: p.Infra.RopeWorkspaceDsl,
     ) -> Mapping[str, str]:
-        protocol = FlextInfraUtilitiesModelsProtocol
-        pkg_names = protocol.protocol_model_package_names(
-            workspace.repository_root, workspace.rope_project
-        )
+        """Map every model route of the workspace to its projected protocol.
+
+        Returns:
+            Model identity routes of every projected package, with their
+            public protocol routes.
+
+        """
         routes: dict[str, str] = {}
-        for package_name in pkg_names:
+        for package_name in cls.protocol_model_package_names(
+            workspace.repository_root, workspace.rope_project
+        ):
             routes.update(
-                protocol.protocol_model_routes_from_source(
+                cls.protocol_model_routes_from_source(
                     workspace.repository_root,
                     workspace.rope_project,
                     package_name=package_name,
@@ -9071,6 +9072,5 @@ if FlextInfraUtilitiesSemanticContracts is not None:
             )
         return routes
 
-    FlextInfraUtilitiesSemanticContracts.register_model_protocol_routes(
-        _flext_infra_model_protocol_routes
-    )
+
+__all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]

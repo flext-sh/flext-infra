@@ -12,6 +12,7 @@ from __future__ import annotations
 from flext_infra._utilities._promoted import (
     FlextInfraUtilitiesPromotedCommands,
     FlextInfraUtilitiesPromotedExecution,
+    FlextInfraUtilitiesPromotedHeader,
     FlextInfraUtilitiesPromotedRendering,
 )
 
@@ -19,12 +20,14 @@ from flext_infra._utilities._promoted import (
 class FlextInfraUtilitiesPromoted(
     FlextInfraUtilitiesPromotedExecution,
     FlextInfraUtilitiesPromotedCommands,
+    FlextInfraUtilitiesPromotedHeader,
     FlextInfraUtilitiesPromotedRendering,
 ):
     """Stateless promoted-command primitives.
 
     Execution composes invocation validation and the workspace boundary;
-    header ingress and help rendering are independent leaves.
+    header ingress, header rendering and help rendering are independent
+    leaves.
     """
 
 

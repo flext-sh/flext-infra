@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig, config
-from flext_infra.gates.layout import FlextInfraGatesLayout
+from flext_infra.gates import FlextInfraGatesLayout
 from tests import c, m, p, t, tm, u
 from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSupport
 

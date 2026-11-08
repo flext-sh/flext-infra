@@ -660,7 +660,7 @@ class FlextInfraUtilitiesFacadeComponents:
         path: Path,
         directory: Path,
         *,
-        family: c.Infra.FacadeFamily | m.Infra.FacadeFamily,
+        family: c.Infra.FacadeFamily | p.Infra.FacadeFamily,
         owner_name: str | None = None,
     ) -> p.Result[str]:
         """Compose declared native providers while retaining authored source bodies.

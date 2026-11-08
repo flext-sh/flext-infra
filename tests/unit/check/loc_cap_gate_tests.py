@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.gates.loc_cap import FlextInfraGatesLocCap
+from flext_infra.gates import FlextInfraGatesLocCap
 from tests import c, m, tm, u
 
 if TYPE_CHECKING:

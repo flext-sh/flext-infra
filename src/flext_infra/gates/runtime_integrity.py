@@ -156,7 +156,7 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
                 ),
             ),
         )
-        components: dict[str, m.Infra.GateExecution] = {}
+        components: dict[str, p.Infra.GateExecution] = {}
         if ctx.fail_fast:
             for name, command in commands:
                 execution = self.native_execution(name, command, project_dir, ctx)

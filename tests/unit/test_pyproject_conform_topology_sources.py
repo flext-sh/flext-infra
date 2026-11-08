@@ -98,8 +98,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
         source_matches: bool,
     ) -> tuple[
         Path,
-        m.Infra.WorkspaceSpec,
-        m.Infra.DependencyCommitSourceSpec,
+        p.Infra.WorkspaceSpec,
+        p.Infra.DependencyCommitSourceSpec,
     ]:
         """Render the modern fixture declaring one candidate dependency.
 
@@ -246,7 +246,12 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.that(repeated, eq=rendered)
 
     def test_root_members_resolve_through_the_native_workspace(self) -> None:
-        """Member requirements stay as authored; uv resolves them natively."""
+        """Members leave the uv workspace and compose as editable overrides.
+
+        ADR-030: every member is excluded from the native workspace, bound as
+        an editable path source and overridden at the root, so each member
+        locks its own ``uv.lock``. A legacy workspace source migrates.
+        """
         workspace_line = u.Tests.integration().branch
         flext_member = self._member_ref("flext-core", "flext-core")
         other_member = self._member_ref("acme-charts", "apps/acme-charts")
@@ -265,6 +270,9 @@ class TestsFlextInfraPyprojectConformTopologySources(
             'dependencies = ["acme-charts", "flext-core", '
             f'"{infra_requirement}"]\n'
             '\n[dependency-groups]\nworkspace = ["flext-core"]\n'
+            "\n[tool.uv.sources]\nflext-core = { workspace = true }\n"
+            "workspace = { workspace = true }\n"
+            '\n[tool.uv.workspace]\nmembers = ["flext-core"]\n'
         )
         options = self._conform_options(workspace)
         rendered = tm.ok(
@@ -286,10 +294,27 @@ class TestsFlextInfraPyprojectConformTopologySources(
         )
         uv = u.Tests.toml_table_at(rendered, "tool", "uv")
         sources = u.Tests.toml_mapping(uv["sources"])
-        for ref in workspace.subprojects:
-            tm.that(
-                u.Tests.toml_mapping(sources[ref.distribution]), eq={"workspace": True}
-            )
+        tm.that(
+            {name: u.Tests.toml_mapping(entry) for name, entry in sources.items()},
+            eq={
+                ref.distribution: {"path": ref.path.as_posix(), "editable": True}
+                for ref in workspace.subprojects
+            },
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "members"),
+            eq=(),
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "workspace", "exclude"),
+            eq=tuple(ref.path.as_posix() for ref in workspace.subprojects),
+        )
+        tm.ok(
+            {ref.distribution for ref in workspace.subprojects}
+            <= set(
+                u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies")
+            ),
+        )
         tm.that(
             u.Tests.toml_strings_at(rendered, "dependency-groups", "dev"),
             eq=(),

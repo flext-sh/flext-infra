@@ -590,7 +590,10 @@ class FlextInfraPytestRunnerExecution(
             diagnostics.failed_count,
             diagnostics.error_count,
             warnings,
-            diagnostics.skipped_count,
+            # A connectivity prerequisite skip reports its unmet external
+            # service as not executed; every other skip stays red (operator
+            # decision 2026-11-08, AGENTS.md connectivity rule 2026-10-10).
+            diagnostics.skipped_count > len(diagnostics.connectivity_skip_cases),
             diagnostics.collection_failed_count,
             diagnostics.collection_skipped_count,
             not accounting_complete,
@@ -738,7 +741,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, p.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 

@@ -34,7 +34,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
     def _captured_source_states(
         py_files: Sequence[Path],
         inputs: tuple[p.Cli.AtomicFileState, ...],
-    ) -> p.Result[Mapping[Path, m.Cli.AtomicFileState]]:
+    ) -> p.Result[Mapping[Path, p.Cli.AtomicFileState]]:
         """Authenticate preflight snapshots against the sources read now.
 
         Returns:
@@ -42,7 +42,7 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
 
         """
         result_type = r[Mapping[Path, m.Cli.AtomicFileState]]
-        states: dict[Path, m.Cli.AtomicFileState] = {}
+        states: dict[Path, p.Cli.AtomicFileState] = {}
         for state in inputs:
             if states.setdefault(state.path, state) != state:
                 return result_type.fail(

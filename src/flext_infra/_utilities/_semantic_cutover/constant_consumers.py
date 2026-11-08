@@ -808,7 +808,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         workspace: p.Infra.RopeWorkspaceDsl,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]],
     ) -> bool:
         """Elect imported constants through their native declaration's role.
 
@@ -880,7 +880,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
     @staticmethod
     def _constant_imports(
         project: p.Infra.RopeProject, module: p.Infra.RopePyModule
-    ) -> tuple[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement], ...]:
+    ) -> tuple[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement], ...]:
         """Elect declared constants imports before resolving native suppliers.
 
         Returns:
@@ -888,7 +888,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        found: list[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]] = []
+        found: list[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]] = []
         for statement in FlextInfraUtilitiesRopeStructure.logical_statements(
             module.source_code
         ):
@@ -940,7 +940,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
         cls,
         project: p.Infra.RopeProject,
         module: p.Infra.RopePyModule,
-        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]],
         paths: Mapping[str, p.Infra.RopePyName],
         path: Path,
     ) -> tuple[tuple[p.Infra.SourceRewrite, ...], Mapping[int, set[str]]]:
@@ -1192,7 +1192,7 @@ class FlextInfraUtilitiesSemanticConstantConsumers(
 
     @staticmethod
     def _constant_facade_package(
-        statements: Sequence[tuple[p.Infra.RopeFromImport, m.Infra.LogicalStatement]],
+        statements: Sequence[tuple[p.Infra.RopeFromImport, p.Infra.LogicalStatement]],
         declared_package: str,
         path: Path,
     ) -> str:

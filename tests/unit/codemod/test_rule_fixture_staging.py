@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, tm, u
 
 

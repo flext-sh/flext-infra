@@ -16,7 +16,7 @@ from tests import c, m, p, tm
 from tests.utilities_fixture_tooling import TestsFlextInfraUtilitiesToolingFixture
 
 if TYPE_CHECKING:
-    from flext_infra.gates.base_gate import FlextInfraGates
+    from flext_infra.gates import FlextInfraGates
 
 
 class TestsFlextInfraUtilitiesGates:
@@ -138,7 +138,7 @@ class TestsFlextInfraUtilitiesGates:
     @staticmethod
     def make_project(
         name: str = "p",
-        gates: Mapping[str, m.Infra.GateExecution] | None = None,
+        gates: Mapping[str, p.Infra.GateExecution] | None = None,
     ) -> p.Infra.ProjectResult:
         """Create a typed project-result fixture.
 
@@ -146,7 +146,7 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        resolved_gates: Mapping[str, m.Infra.GateExecution] = (
+        resolved_gates: Mapping[str, p.Infra.GateExecution] = (
             gates
             if gates is not None
             else {"lint": TestsFlextInfraUtilitiesGates.create_gate_execution()}

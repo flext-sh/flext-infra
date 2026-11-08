@@ -197,7 +197,7 @@ class TestsFlextInfraConformSupport:
     @staticmethod
     def self_check_conform_service(
         root: Path,
-    ) -> tuple[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
+    ) -> tuple[FlextInfraCodegenConform.Generate, p.Infra.CodegenConformRequest]:
         """Materialize the standalone root fixture and its CHECK-mode conform service.
 
         Returns:
@@ -227,7 +227,7 @@ class TestsFlextInfraConformSupport:
         workspace: p.Infra.WorkspaceSpec,
         *,
         what: c.Infra.CodegenConformSurface = c.Infra.CodegenConformSurface.ALL,
-    ) -> tuple[FlextInfraCodegenConform.Generate, m.Infra.CodegenConformRequest]:
+    ) -> tuple[FlextInfraCodegenConform.Generate, p.Infra.CodegenConformRequest]:
         """Build the CHECK-mode conform service bound to one declared workspace.
 
         Returns:

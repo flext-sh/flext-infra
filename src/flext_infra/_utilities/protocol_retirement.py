@@ -195,7 +195,7 @@ class FlextInfraUtilitiesModelsProtocolRetirement:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         spans, declarations = cls._retired_declarations(project, protocols, routes)
         blocked: list[str] = []
-        rewrites: dict[Path, dict[tuple[int, int], m.Infra.SourceRewrite]] = {}
+        rewrites: dict[Path, dict[tuple[int, int], p.Infra.SourceRewrite]] = {}
         for path, offset, protocol, route in declarations:
             for site, position, line in cls._sites(project, path, offset):
                 if any(

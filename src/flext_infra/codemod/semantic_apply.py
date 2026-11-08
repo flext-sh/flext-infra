@@ -358,6 +358,11 @@ class FlextInfraCodemodSemanticApply(
                 )
             if replacement == name:
                 continue
+            # A sibling data directory (YAML/JSON resources, no Python source)
+            # owns the public basename; the private module keeps its prefix.
+            data_dir = path.parent / replacement
+            if data_dir.is_dir() and not any(data_dir.rglob("*.py")):
+                continue
             # A public name of the parent package (the `config`/`settings`
             # singletons) cannot also be a submodule: importing the submodule
             # rebinds the parent attribute and shadows the lazy export.
@@ -1175,7 +1180,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         request: p.Infra.ModCommand,
-    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState]]:
         """Authenticate the semantic rename driver and parse its artifact.
 
         Returns:
@@ -1201,7 +1206,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         request: p.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        pair: tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 

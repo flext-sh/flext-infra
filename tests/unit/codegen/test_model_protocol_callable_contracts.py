@@ -107,6 +107,34 @@ class TestsModelProtocolCallableContracts:
         ast.parse(generated, filename="generated-payload.py")
 
     @staticmethod
+    def test_quoted_root_model_reference_projects_sibling_protocol(
+        tmp_path: Path,
+    ) -> None:
+        """A quoted nested model reference maps to its projected protocol."""
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from __future__ import annotations\n"
+            "from typing import Literal\n"
+            "from pydantic import BaseModel, RootModel\n\n"
+            "class ModelsPayload:\n"
+            "    class Bead(BaseModel):\n"
+            "        status: Literal['open']\n\n"
+            "    class BeadShow(RootModel[tuple['ModelsPayload.Bead']]):\n"
+            "        pass\n",
+        )
+
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+
+        generated = projected[(package / "_protocols" / "payload.py").relative_to(root)]
+        tm.ok("def root(self) -> tuple[ProtocolsPayload.Bead]:" in generated)
+        tm.ok('Literal["open"]' in generated)
+        tm.fail("ModelsPayload.Bead" in generated)
+        ast.parse(generated, filename="generated-payload.py")
+
+    @staticmethod
     def test_sole_upstream_letter_must_expose_every_reference(
         tmp_path: Path,
     ) -> None:
