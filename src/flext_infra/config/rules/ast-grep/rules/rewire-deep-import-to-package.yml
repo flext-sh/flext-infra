@@ -14,7 +14,10 @@
 # file scope partitions the rule per top-level package of the project: an
 # import whose module path starts with that package never matches in its own
 # files, while every other top-level package's deep modules (a test tier
-# importing the production package) are still rewritten.
+# importing the production package) are still rewritten. As for every
+# partitioned rule, an exact selection names the rendered partitions
+# (`rewire-deep-import-to-package--<project package>[--<top package>]`) or the
+# laws below; the catalog id is not a selector alias.
 #
 # The `package-published-import` utility is the generated fact. It matches the
 # module-path node of `from <package>.<module> import ...` only when the

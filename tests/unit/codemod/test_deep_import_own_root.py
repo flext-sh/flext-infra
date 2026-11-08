@@ -66,11 +66,32 @@ class TestsFlextInfraCodemodDeepImportOwnRoot:
             tm.ok(u.Cli.atomic_write_text_file(path, content))
         own_root = (package / "api.py", tests_root / "helpers.py")
         consumer = tests_root / "unit" / "test_client.py"
+        # A partitioned catalog rule is selected by its rendered partitions:
+        # one per top-level package of the project and one for the rest.
+        with u.Infra.codemod_workspace_snapshot(root) as snapshot:
+            plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
+        partitions = tuple(
+            rule.id
+            for rule in plan.rules
+            if rule.partition_of == "rewire-deep-import-to-package"
+        )
+        rendered = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR.join((
+            "rewire-deep-import-to-package",
+            u.Infra.project_package_name(root),
+        ))
+        expected = {
+            rendered,
+            *(
+                c.Infra.CODEMOD_GENERATED_ID_SEPARATOR.join((rendered, top))
+                for top in ("deep_import", "tests")
+            ),
+        }
+        tm.that(set(partitions) >= expected, eq=True)
         report = tm.ok(
             FlextInfraModGateEngine.scan(
                 root,
                 fix=True,
-                selection=("rewire-deep-import-to-package",),
+                selection=partitions,
                 source_files=(*own_root, consumer),
             )
         )
