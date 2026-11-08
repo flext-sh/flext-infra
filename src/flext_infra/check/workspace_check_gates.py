@@ -152,7 +152,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: MutableMapping[str, m.Infra.ProjectResult] = {
+        results: MutableMapping[str, p.Infra.ProjectResult] = {
             result.project: result
             for result in (() if previous is None else previous.results)
         }
@@ -323,7 +323,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             else previous
         )
         mutating = ctx.apply_fixes and not ctx.check_only
-        executions: MutableMapping[str, m.Infra.GateExecution] = {}
+        executions: MutableMapping[str, p.Infra.GateExecution] = {}
         instances = self._gate_instances(gates, mutating=mutating)
         concurrent = (
             self._run_concurrent_stages(instances, project_dir, ctx, executions)
@@ -385,7 +385,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         instances: Sequence[FlextInfraGates],
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, m.Infra.GateExecution],
+        executions: MutableMapping[str, p.Infra.GateExecution],
     ) -> Mapping[str, p.Result[p.Cli.PipelineResult]]:
         """Run read-only gate stages concurrently in one signal wave.
 
@@ -439,7 +439,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, m.Infra.GateExecution],
+        executions: MutableMapping[str, p.Infra.GateExecution],
         signal_wave: p.Cli.SignalWave | None,
     ) -> p.Result[p.Cli.PipelineResult]:
         """Run one gate stage through the public CLI pipeline.
@@ -470,7 +470,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        gates_sink: MutableMapping[str, m.Infra.GateExecution],
+        gates_sink: MutableMapping[str, p.Infra.GateExecution],
     ) -> p.Cli.PipelineStage:
         """Build a pipeline stage handler that executes a single gate.
 

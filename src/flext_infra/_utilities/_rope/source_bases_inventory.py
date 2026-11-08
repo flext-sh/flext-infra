@@ -25,10 +25,10 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
     def inventory(
         cls,
         request: p.Infra.SourceBindingInventoryRequest,
-        definitions: MutableMapping[str, m.Infra.SourceClassDefinition],
+        definitions: MutableMapping[str, p.Infra.SourceClassDefinition],
         *,
         provider: t.Infra.RopePyModule | None = None,
-    ) -> Mapping[str, m.Infra.SourceClassReference | None]:
+    ) -> Mapping[str, p.Infra.SourceClassReference | None]:
         """Index lexical bindings without installing a cross-module Rope overlay.
 
         A provider class is indexed at its native declaration line. Unreferenced
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             if request.path.name == "__init__.py"
             else request.module.rpartition(".")[0]
         )
-        globals_: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
+        globals_: MutableMapping[str, p.Infra.SourceClassReference | None] = {}
         spec = m.Infra.SourceBindingCollectorSpec(
             module=request.module,
             provider=provider,

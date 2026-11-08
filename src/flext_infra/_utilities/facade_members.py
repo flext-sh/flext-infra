@@ -21,7 +21,7 @@ from pathlib import Path
 
 from rope.base import exceptions as rope_exceptions
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesImportLaw,
@@ -745,7 +745,7 @@ class FlextInfraUtilitiesFacadeMembers:
             str,
             p.Infra.RopeParsedModule,
             p.Infra.RopeSourceModule,
-            Mapping[str, m.Infra.SourceClassReference],
+            Mapping[str, p.Infra.SourceClassReference],
             frozenset[str],
         ],
         letter: str,

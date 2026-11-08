@@ -380,7 +380,7 @@ class FlextInfraMarkdownGateBase(FlextInfraGates):
         project_dir: Path,
         ctx: p.Infra.GateContext,
         target: str,
-    ) -> tuple[p.Cli.AtomicFileState, str, m.Cli.CommandOutput, str]:
+    ) -> tuple[p.Cli.AtomicFileState, str, p.Cli.CommandOutput, str]:
         """Run the stdin pass over one file's lint view and splice its blocks.
 
         The file is observed once through the atomic reader, so its state is

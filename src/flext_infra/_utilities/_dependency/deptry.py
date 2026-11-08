@@ -290,7 +290,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
     ) -> p.Result[
         tuple[
-            m.Cli.AtomicFileState,
+            p.Cli.AtomicFileState,
             t.StrTuple,
             tuple[p.Cli.AtomicPhysicalTreeManifest, ...],
         ]
@@ -378,7 +378,7 @@ class FlextInfraUtilitiesDependencyDeptry:
     @staticmethod
     def _parsed_deptry_report(
         json_output_path: Path,
-    ) -> p.Result[tuple[p.Cli.AtomicFileState, m.Infra.DeptryNativeReport]]:
+    ) -> p.Result[tuple[p.Cli.AtomicFileState, p.Infra.DeptryNativeReport]]:
         """Read and strictly parse the fresh native deptry report.
 
         Returns:
@@ -416,7 +416,7 @@ class FlextInfraUtilitiesDependencyDeptry:
         config_path: Path,
         json_output_path: Path,
     ) -> p.Result[
-        tuple[p.Cli.CommandOutput, m.Cli.AtomicFileState, m.Infra.DeptryNativeReport]
+        tuple[p.Cli.CommandOutput, p.Cli.AtomicFileState, p.Infra.DeptryNativeReport]
     ]:
         """Run deptry once and strictly parse its fresh native report.
 

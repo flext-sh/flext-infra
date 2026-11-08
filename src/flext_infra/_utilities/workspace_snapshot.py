@@ -334,7 +334,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             if source_project is not None
             else {}
         )
-        declarations: dict[Path, m.Infra.CodegenFilePlan] = {}
+        declarations: dict[Path, p.Infra.CodegenFilePlan] = {}
         for plan in declared_files:
             previous = declarations.get(plan.path)
             if previous is not None and previous != plan:
