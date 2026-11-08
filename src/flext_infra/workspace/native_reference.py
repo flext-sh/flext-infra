@@ -5568,15 +5568,9 @@ class FlextInfraWorkspaceNativeReference:
             m.Infra.NativeImportObservation(
                 runtime=Path(sys.executable).resolve(),
                 runtime_prefix=Path(sys.prefix).absolute(),
-                modules=cast(
-                    "tuple[p.Infra.SourceClassReference, ...]",
-                    nominations,
-                ),
+                modules=nominations,
                 sources=tuple(sorted(context.sources)),
-                bindings=cast(
-                    "tuple[p.Infra.NativeBindingEvidence, ...]",
-                    tuple(sorted(context.evidence, key=lambda item: item.binding)),
-                ),
+                bindings=tuple(sorted(context.evidence, key=lambda item: item.binding)),
             )
         )
 
