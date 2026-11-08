@@ -11,7 +11,7 @@ import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from flext_infra import c, m, p, r, u, workspace as workspace_services
 from flext_infra.codegen import FlextInfraCodegenLazyInit
