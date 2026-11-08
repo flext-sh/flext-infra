@@ -45,6 +45,21 @@ valid:
 - |
   class Matcher(m.Value):
       attrs_match: Mapping[str, Family.MatchRule[p.AttributeProbe]] | None = None
+- |
+  class Holder(m.Value):
+      entry: Annotated[
+          p.Ldif.Entry,
+          t.schema_for_model(lambda: FlextLdifModelsEntry.Entry),
+      ]
+- |
+  class Holder(m.Value):
+      entries: tuple[
+          Annotated[
+              p.Ldif.Entry,
+              t.schema_for_model(lambda: FlextLdifModelsEntry.Entry),
+          ],
+          ...,
+      ] = ()
 # `invalid` MUST match: bare protocols at any depth of a model field type.
 invalid:
 - |

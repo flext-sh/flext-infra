@@ -1,5 +1,11 @@
 id: consumer-annotation-names-protocol
 valid:
+- |
+  class Bootstrap(s[p.Infra.CodegenResult]):
+      state: Annotated[
+          m.Infra.CodegenConformState,
+          m.Field(description="State."),
+      ]
   - "def f(x: p.Infra.Leaf) -> p.Infra.Leaf: ..."
   - "leaf = m.Infra.Leaf(name='a')"
   - "def f(kind: type[m.Infra.Leaf]) -> None: ..."
