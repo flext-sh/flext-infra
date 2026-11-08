@@ -371,8 +371,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         planned = tuple(projected.values())
         with self._source_view(root, declared_files=planned) as binding:
             tooling = render_inputs.tooling_runtime
-            render_inputs.tooling_runtime = self.planned_source_tooling(
-                render_inputs, planned, source_project=binding[0]
+            render_inputs = render_inputs.model_copy(
+                update={
+                    "tooling_runtime": self.planned_source_tooling(
+                        render_inputs, planned, source_project=binding[0]
+                    )
+                }
             )
             if render_inputs.tooling_runtime is tooling:
                 return result_type.ok(planned)

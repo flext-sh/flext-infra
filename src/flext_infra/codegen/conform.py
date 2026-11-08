@@ -52,9 +52,13 @@ class FlextInfraCodegenConform:
             c.Infra.CodegenConformSurface.FACADES,
             c.Infra.CodegenConformSurface.LAZY_INIT,
         }:
+            ports = execution_context.codegen_conform_collaborators()
+            if ports is None:
+                return r[p.Infra.CodegenResult].fail(
+                    "source bootstrap requires bound generation collaborators"
+                )
             bootstrap = u.Infra.bootstrap_protocol_model_sources(
-                admitted.root.expanduser().resolve(),
-                ports=execution_context.codegen_conform_collaborators(),
+                admitted.root.expanduser().resolve(), ports=ports
             )
             if bootstrap.failure:
                 return r[p.Infra.CodegenResult].from_failure(bootstrap)

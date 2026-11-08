@@ -59,10 +59,10 @@ class FlextInfraCodegenLazyInit(
         cls,
         root: Path,
         *,
-        declared_files: tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...],
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...],
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot,
         selection: tuple[Path, c.Infra.FacadeFamily | None] | None = None,
-    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan this candidate's exports through the existing public initializer.
 
         A selected facade retains its package and private-family projections,
@@ -99,7 +99,7 @@ class FlextInfraCodegenLazyInit(
                     and plan.path.parent / c.Infra.INIT_PY in sources
                 }
                 files: dict[
-                    Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan
+                    Path, p.Infra.CodegenFilePlan
                 ] = {}
                 for target in sorted({destination, *consumers}):
                     module = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
@@ -108,7 +108,7 @@ class FlextInfraCodegenLazyInit(
                     if not module:
                         return r[
                             tuple[
-                                FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...
+                                p.Infra.CodegenFilePlan, ...
                             ]
                         ].fail(f"selected initializer has no native package: {target}")
                     planned = cls(
@@ -125,7 +125,7 @@ class FlextInfraCodegenLazyInit(
                         or file.path in consumers
                     )
                 return r[
-                    tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]
+                    tuple[p.Infra.CodegenFilePlan, ...]
                 ].ok(tuple(files[path] for path in sorted(files)))
             planned = cls(repository_root=root, project_scope_roots=(root,)).plan_files(
                 source_project=project, snapshot=snapshot
@@ -151,8 +151,8 @@ class FlextInfraCodegenLazyInit(
             }
 
             def family_files(
-                files: Sequence[FlextInfraModelsCodegenTransaction.CodegenFilePlan],
-            ) -> tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]:
+                files: Sequence[p.Infra.CodegenFilePlan],
+            ) -> tuple[p.Infra.CodegenFilePlan, ...]:
                 return tuple(
                     file
                     for file in files
@@ -194,7 +194,7 @@ class FlextInfraCodegenLazyInit(
         *,
         source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject | None = None,
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None = None,
-    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Return the immutable initializer plans; publication belongs to conform.
 
         The index of every selected root is a view over the run snapshot's
@@ -204,7 +204,7 @@ class FlextInfraCodegenLazyInit(
             The initializer file plans sorted by path, or the first failure.
 
         """
-        result_type = r[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]
+        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         message = c.Infra.LazyInitMessage
         workspace = self.repository_root.resolve()
         started = time.monotonic()
@@ -250,7 +250,7 @@ class FlextInfraCodegenLazyInit(
             targets = self._targets(indexes, scoped=scoped)
             if targets.failure:
                 return result_type.from_failure(targets)
-            by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
+            by_path: dict[Path, p.Infra.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
                     FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
@@ -285,7 +285,7 @@ class FlextInfraCodegenLazyInit(
 
     def _targets(
         self,
-        indexes: Mapping[Path, FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex],
+        indexes: Mapping[Path, p.Infra.RopeWorkspaceIndex],
         *,
         scoped: bool,
     ) -> p.Result[Mapping[Path, Path | None]]:
@@ -318,7 +318,7 @@ class FlextInfraCodegenLazyInit(
     def _plan_root(
         run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         target: Path | None,
-    ) -> p.Result[tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan and render one repository bottom-up from its source inventory.
 
         Returns:
@@ -328,7 +328,7 @@ class FlextInfraCodegenLazyInit(
         plans = FlextInfraUtilitiesLazyInitPlan.lazy_init_plan_root(run, target)
         if plans.failure:
             return r[
-                tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...]
+                tuple[p.Infra.CodegenFilePlan, ...]
             ].from_failure(plans)
         owners = {
             FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(

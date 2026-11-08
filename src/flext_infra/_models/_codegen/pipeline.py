@@ -209,7 +209,7 @@ class FlextInfraModelsCodegenPipeline:
                 ],
             ]
         ] = m.Field(
-            default_factory=dict[Path, m.Cli.AtomicFileState],
+            default_factory=dict[Path, p.Cli.AtomicFileState],
             description="Original source witnesses retained after native planning",
         )
         source_imports: t.Port[dict[Path, tuple[frozenset[str], frozenset[str]]]] = (

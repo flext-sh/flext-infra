@@ -114,8 +114,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             c.Infra.CodegenConformSurface.FACADES,
             c.Infra.CodegenConformSurface.LAZY_INIT,
         }:
+            ports = execution_context.codegen_conform_collaborators()
+            if ports is None:
+                return r[p.Infra.CodegenResult].fail(
+                    "source bootstrap requires bound generation collaborators"
+                )
             bootstrap = u.Infra.bootstrap_protocol_model_sources(
-                request.root, ports=execution_context.codegen_conform_collaborators()
+                request.root, ports=ports
             )
             if bootstrap.failure:
                 return r[p.Infra.CodegenResult].from_failure(bootstrap)
@@ -314,9 +319,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         planned = self._planned(request)
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
-        plan = planned.value
-        plan.files = u.Infra.codegen_compose_file_plans(
-            (*control_plan.value.files, *plan.files), ordered=True
+        plan = planned.value.model_copy(
+            update={
+                "files": u.Infra.codegen_compose_file_plans(
+                    (*control_plan.value.files, *planned.value.files), ordered=True
+                )
+            }
         )
         return self._published(
             request,
@@ -660,11 +668,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     outcome.repository == repository.name for outcome in plan.outcomes
                 )
             }
-            documentation_failure = self._ready_documentation_plans(
-                request, root, plan, ready
-            )
-            if documentation_failure is not None:
-                return result_type.from_failure(documentation_failure)
+            documents = self._ready_documentation_plans(request, root, plan, ready)
+            if documents.failure:
+                return result_type.from_failure(documents)
+            plan = plan.model_copy(update={"files": documents.value})
             cohorts = self._publication_cohorts(root, plan)
             if cohorts.failure:
                 return result_type.from_failure(cohorts)
@@ -685,14 +692,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         root: Path,
         plan: p.Infra.CodegenPlan,
         ready: Mapping[str, p.Infra.RepositoryRef],
-    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]] | None:
-        """Fold ready-repository documentation into the published plan.
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Plan ready-repository documentation into the published plan files.
 
         A documentation planning failure aborts publication before any effect.
 
         Returns:
-            ``None`` when the plan carries the documentation files, otherwise
-            the documentation planning failure.
+            The plan files including documentation, or the planning failure.
 
         """
         ready_roots = {
@@ -708,10 +714,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 uv_environments=plan.uv_environments,
             ),
         )
-        if documents.failure:
-            return documents
-        plan.files = documents.value
-        return None
+        return documents
 
     def _admitted_cohorts(
         self,

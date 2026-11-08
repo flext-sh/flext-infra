@@ -507,7 +507,7 @@ class FlextInfraModelsCheck:
                 t.schema_for_model(lambda: FlextInfraModelsCheck.GateExecution),
             ],
         ] = m.Field(
-            default_factory=dict[str, "FlextInfraModelsCheck.GateExecution"],
+            default_factory=dict[str, p.Infra.GateExecution],
             description="Gate name to execution mapping",
         )
 

@@ -49,7 +49,7 @@ class FlextInfraCandidateBootstrapService:
     @staticmethod
     def _resolved_roots(
         source_root: Path,
-        targets: p.Infra.CandidateBootstrapTargets,
+        targets: tuple[p.Infra.CandidateBootstrapTargetSpec, ...],
     ) -> p.Result[tuple[Path, ...]]:
         """Resolve each declared target to its exact elected worktree root.
 
@@ -80,7 +80,7 @@ class FlextInfraCandidateBootstrapService:
     def plan_candidates(
         self,
         roots: Sequence[Path],
-        targets: p.Infra.CandidateBootstrapTargets,
+        targets: tuple[p.Infra.CandidateBootstrapTargetSpec, ...],
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Compose the file plans of every declared target.
 
@@ -174,7 +174,7 @@ class FlextInfraCandidateBootstrapService:
     def _verify(
         self,
         roots: Sequence[Path],
-        targets: p.Infra.CandidateBootstrapTargets,
+        targets: tuple[p.Infra.CandidateBootstrapTargetSpec, ...],
     ) -> p.Result[bool]:
         """Require a complete fixed point for every declared target.
 

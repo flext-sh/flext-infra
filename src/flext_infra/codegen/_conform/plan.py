@@ -718,12 +718,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if lazy.repository != managed.repository:
             msg = "repository planning phases have different owners"
             raise ValueError(msg)
-        managed.files = u.Infra.codegen_compose_file_plans(
-            (*lazy.files, *managed.files),
-            ordered=True,
+        return managed.model_copy(
+            update={
+                "files": u.Infra.codegen_compose_file_plans(
+                    (*lazy.files, *managed.files),
+                    ordered=True,
+                ),
+                "elapsed": managed.elapsed + lazy.elapsed,
+            }
         )
-        managed.elapsed += lazy.elapsed
-        return managed
 
     @staticmethod
     def _planned_dependency_waves(

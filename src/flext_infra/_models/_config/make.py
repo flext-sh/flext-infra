@@ -24,11 +24,9 @@ from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 def _effective_custom_handler_policies(
-    base: FlextInfraModelsConfigMake.CustomHandlerPolicy,
-    overrides: tuple[
-        tuple[str, FlextInfraModelsConfigMake.CustomHandlerPolicyOverride], ...
-    ],
-) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+    base: p.Infra.CustomHandlerPolicy,
+    overrides: tuple[tuple[str, p.Infra.CustomHandlerPolicyOverride], ...],
+) -> Mapping[str, p.Infra.CustomHandlerPolicy]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -38,8 +36,7 @@ def _effective_custom_handler_policies(
         overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
 
     Returns:
-        The resulting ``Mapping[str,
-            FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
+        The resulting ``Mapping[str, p.Infra.CustomHandlerPolicy]``.
 
     """
     # Keys are normalised to the profile's string value: MakeProfile is a
@@ -1334,7 +1331,7 @@ class FlextInfraModelsConfigMake(
             self._validate_admission_requirements()
 
         def _validate_test_admission(
-            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
+            self, tests: p.Infra.MakeWorkflowStepSpec
         ) -> None:
             """Require primary evidence in every context of each test invocation.
 
@@ -1564,7 +1561,15 @@ class FlextInfraModelsConfigMake(
         @property
         def custom_handler_policies(
             self,
-        ) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+        ) -> Mapping[
+            str,
+            Annotated[
+                p.Infra.CustomHandlerPolicy,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
+                ),
+            ],
+        ]:
             """Effective custom-handler policy for every Make profile.
 
             The base policy states the strictest contract (private handlers

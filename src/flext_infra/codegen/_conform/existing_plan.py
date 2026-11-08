@@ -644,10 +644,14 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         tooling = render_inputs.tooling_runtime
         if contract.pyproject:
             try:
-                render_inputs.tooling_runtime = self.planned_source_tooling(
-                    render_inputs,
-                    [*initializers, *managed.value, *custom],
-                    source_project=source_project,
+                render_inputs = render_inputs.model_copy(
+                    update={
+                        "tooling_runtime": self.planned_source_tooling(
+                            render_inputs,
+                            [*initializers, *managed.value, *custom],
+                            source_project=source_project,
+                        )
+                    }
                 )
             except u.Infra.rope_unresolved_error_types() as exception:
                 notes = tuple(getattr(exception, "__notes__", ()))

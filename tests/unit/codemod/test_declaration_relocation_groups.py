@@ -82,7 +82,7 @@ class TestsFlextInfraDeclarationRelocationGroups:
         independent_before = tm.ok(
             u.Cli.atomic_read_binary_file_state(independent, required=True)
         )
-        plans = [
+        plans: list[p.Infra.CodegenFilePlan] = [
             m.Infra.CodegenFilePlan(
                 project=root,
                 path=independent,

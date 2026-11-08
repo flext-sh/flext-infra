@@ -314,7 +314,7 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ],
         ] = m.Field(
-            {},
+            default_factory=dict[str, p.Infra.PytestWorkerCeiling],
             alias="parallel-worker-overrides",
             description=(
                 "Per declared-project worker ceilings (``[project].name`` → absolute "

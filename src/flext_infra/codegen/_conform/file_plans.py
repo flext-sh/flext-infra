@@ -33,7 +33,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         effective = inputs.spec.repository
-        if "kind" in effective.model_fields_set and effective.kind != kind:
+        if effective.kind is not None and effective.kind != kind:
             return result_type.fail(
                 "bootstrap kind conflicts with the target's effective "
                 f"declaration: {root}",

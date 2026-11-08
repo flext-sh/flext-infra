@@ -454,7 +454,7 @@ class FlextInfraModelsConfigTemplates:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
-                    **dict(declaration),
+                    **declaration.model_dump(exclude_computed_fields=True),
                     "destination": destination,
                 })
                 for destination, declaration in self.catalog.items()
