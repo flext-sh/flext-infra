@@ -9,6 +9,7 @@ from __future__ import annotations
 import builtins
 import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
+from typing import cast
 from pathlib import Path
 from textwrap import dedent, indent
 
@@ -184,7 +185,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                         project,
                         working,
                         (path, candidate[1], candidate[2]),
-                        resolved,
+                        cast(tuple[Path, str, str], resolved),
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
