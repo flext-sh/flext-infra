@@ -21,6 +21,7 @@ import ast
 import re
 import sys
 from collections.abc import Mapping, Sequence
+from typing import cast
 from pathlib import Path
 
 from packaging.utils import canonicalize_name
@@ -844,7 +845,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
 
         """
         owner = FlextInfraUtilitiesPytest.Pytest
-        function_letter = config.Infra.tooling.facade_members.owners["function"]
+        function_letter = config.Infra.tooling.facade_members.owners[
+            c.Infra.FacadeMemberKind.FUNCTION
+        ]
         if letter != function_letter or library != owner.__name__.lower():
             return classified
         published = frozenset(name for name in dir(owner) if not name.startswith("_"))
@@ -1084,7 +1087,11 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         ] = [("", protocols, models, frozenset({id(protocols)}))]
         while pending:
             prefix, protocol, model, lineage = pending.pop()
-            twins = {} if model is None else model.get_attributes()
+            twins = (
+                cast(dict[str, object], {})
+                if model is None
+                else model.get_attributes()
+            )
             published = protocol.get_attributes()
             pairs.extend(
                 (f"{prefix}{name}", None, True)
