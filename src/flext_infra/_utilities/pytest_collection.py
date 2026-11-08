@@ -543,12 +543,10 @@ class FlextInfraUtilitiesPytestCollection:
         return m.Infra.PytestCollectionManifest(
             node_ids=tuple(item.nodeid for item in session.items),
             markdown_eligible=tuple(
-                cast("m.Infra.PytestMarkdownOrigin", item)
-                for item in state.eligible
+                cast("m.Infra.PytestMarkdownOrigin", item) for item in state.eligible
             ),
             markdown_collected=tuple(
-                cast("m.Infra.PytestMarkdownItem", item)
-                for item in state.collected
+                cast("m.Infra.PytestMarkdownItem", item) for item in state.collected
             ),
             markdown_deselected=tuple(state.deselected),
         )
