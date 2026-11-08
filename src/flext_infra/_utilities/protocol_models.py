@@ -3340,7 +3340,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """Return only nested namespace declarations owned by a models facade."""
             module = value.get_module()
             resource = module.get_resource() if module is not None else None
-            if resource is None or Path(resource.real_path).name != "models.py":
+            if resource is None or not isinstance(resource, p.Infra.RopeFile) or Path(resource.real_path).name != "models.py":
                 return ()
             facade = FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
                 self.project, resource
