@@ -3902,7 +3902,11 @@ and `make check` without `CI` run the complete active set. `CI=Y make check` run
 the commit and CI stages (`make.check_gates_ci`, Pyrefly included). The commit hook
 passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
 (`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
-other validator. Mypy, Pyright, codemod, smells and repository-owned validators
+other validator. Staged Python files run the lint and format gates on those files; a
+staged Markdown file runs the `markdown` and `markdown-format` gates over the
+repository, never a raw `rumdl` pass, so a declared foreign projected block
+(`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
+`make check` and `make fmt`. Mypy, Pyright, codemod, smells and repository-owned validators
 carry the push stage, so they block locally and at pre-push. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate.
