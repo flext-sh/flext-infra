@@ -9,15 +9,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 
-from flext_infra import c, config, m, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesMiseBinary
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyprojectTomlPhases:
@@ -186,9 +183,7 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
     @staticmethod
     def _apply_toml_operation(
         table: t.MutableJsonMapping,
-        operation: m.Infra.DepsToml.SetOp
-        | m.Infra.DepsToml.ListOp
-        | m.Infra.DepsToml.RemoveOp,
+        operation: p.Infra.SetOp | p.Infra.ListOp | p.Infra.RemoveOp,
     ) -> Sequence[tuple[Sequence[str], str]]:
         """Apply one operation; return its ``(relative key path, outcome)`` change.
 
@@ -196,14 +191,14 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
             The resulting ``Sequence[tuple[Sequence[str], str]]``.
 
         """
-        if isinstance(operation, m.Infra.DepsToml.SetOp):
+        if isinstance(operation, p.Infra.SetOp):
             changed = u.Cli.toml_mapping_sync_value(
                 table,
                 operation.key,
                 operation.value,
             )
             return (((operation.key,), f"set to {operation.value}"),) if changed else ()
-        if isinstance(operation, m.Infra.DepsToml.ListOp):
+        if isinstance(operation, p.Infra.ListOp):
             if operation.strategy == c.Infra.TomlMergeMode.REPLACE:
                 changed = u.Cli.toml_mapping_sync_string_list(
                     table,

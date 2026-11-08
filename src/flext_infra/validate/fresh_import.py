@@ -476,7 +476,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 # inheritance: any field left incomplete when `klass` was defined
                 # is re-evaluated in `probe_module` and fails through Pydantic's
                 # public TypeAdapter build.
-                probe_subclass = type(
+                probe_subclass: type[object] = type(
                     f"_Probe{klass.__name__}",
                     (klass,),
                     {"__module__": probe_module.__name__},
@@ -532,7 +532,8 @@ class FlextInfraValidateFreshImport(s[bool]):
                             "__pydantic_fields__" in vars(annotation)
                         ):
                             # A model field type builds in its own module namespace.
-                            u.type_adapter(annotation)
+                            field_model: type[object] = annotation
+                            u.type_adapter(field_model)
                         else:
                             u.type_adapter(
                                 annotation, config={"defer_build": True}

@@ -94,6 +94,26 @@ class FlextInfraWorkspaceRoutes:
         )
 
     @staticmethod
+    def _verify_lane(request: p.Infra.GitLaneVerificationRequest) -> p.Result[bool]:
+        """Admit the lane; the route reports its configured success message.
+
+        Returns:
+            ``True`` once admitted, or the unchanged admission failure.
+
+        """
+        return FlextInfraGitService.verify_lane(request).map(lambda _report: True)
+
+    @staticmethod
+    def _identity(request: p.Infra.GitRepoRequest) -> p.Result[bool]:
+        """Resolve checkout identity; the route reports its success message.
+
+        Returns:
+            ``True`` once resolved, or the unchanged identity failure.
+
+        """
+        return u.Infra.git_identity(request).map(lambda _report: True)
+
+    @staticmethod
     def _payload_json_formatter(payload: t.JsonPayload) -> str:
         """Serialize an erased command payload through the canonical JSON owner.
 
@@ -308,14 +328,14 @@ class FlextInfraWorkspaceRoutes:
                         "without effects"
                     ),
                     m.Infra.GitLaneVerificationRequest,
-                    FlextInfraGitService.verify_lane,
+                    cls._verify_lane,
                     "lane stash and live integration ancestry verified",
                 ),
                 (
                     "identity",
                     "Report canonical Git checkout identity",
                     m.Infra.GitRepoRequest,
-                    u.Infra.git_identity,
+                    cls._identity,
                     "workspace Git identity resolved",
                 ),
                 (

@@ -13,11 +13,11 @@ import time
 import traceback
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
@@ -25,8 +25,6 @@ from flext_infra.validate._pytest_runner import (
 )
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPytestRunnerExecution(
@@ -158,7 +156,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=execution_mode,
             database=database,
         )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if not isinstance(selection, p.Infra.PytestSelectionPlan):
             return selection
         if complete or not verify_inventory:
             return selection
@@ -914,7 +912,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=mode,
         )
         selection = self._selection_from_suite(report_dir, outcome)
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if not isinstance(selection, p.Infra.PytestSelectionPlan):
             return r.ok(selection.raw_return_code)
         if not u.Cli.process_succeeded(outcome) and not self._completed_failure(
             outcome, report_dir
@@ -1057,7 +1055,7 @@ class FlextInfraPytestRunnerExecution(
             ),
             execution_mode=execution_mode,
         )
-        if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+        if not isinstance(selection_plan, p.Infra.PytestSelectionPlan):
             return r.ok(selection_plan.raw_return_code)
         self._record_selection_plan(
             selection_plan, report_dir, cache_restored=cache_restored
@@ -1319,7 +1317,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             verify_inventory=False,
         )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if not isinstance(selection, p.Infra.PytestSelectionPlan):
             return r.ok(selection.raw_return_code)
         command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(

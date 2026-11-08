@@ -275,14 +275,15 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
-        values["inputs"] = (*observed.inputs, *sources)
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
                 tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
             ].from_failure(validated)
         return r[tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
-            validated.value,
+            validated.value.model_copy(
+                update={"inputs": (*observed.inputs, *sources)},
+            ),
             declaration.gascity_enabled,
             declaration.project,
         ))
@@ -467,7 +468,7 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(str(error), exception=error)
         if (
             declaration.integration is None
-            or "kind" not in declaration.model_fields_set
+            or declaration.kind is None
         ):
             return result_type.fail(
                 "new project requires its own integration and kind declarations: "
@@ -623,7 +624,7 @@ class FlextInfraWorkspaceDetector(
             )
             if loaded.failure:
                 return result_type.from_failure(loaded)
-            if isinstance(loaded.value, m.Infra.GitSubmoduleDeclaration):
+            if isinstance(loaded.value, p.Infra.GitSubmoduleDeclaration):
                 pending.append(loaded.value)
                 continue
             if isinstance(loaded.value, Path):
