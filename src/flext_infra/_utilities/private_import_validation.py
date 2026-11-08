@@ -35,9 +35,7 @@ class FlextInfraUtilitiesPrivateImportValidation:
                 or if public facade import.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            None, source
-        )
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
         layouts = module.get_source_binding_index().import_layouts()
         for module_name, symbols in removals.items():
             if any(

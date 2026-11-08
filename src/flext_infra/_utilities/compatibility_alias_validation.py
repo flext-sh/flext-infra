@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 
@@ -31,9 +30,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
         """
         if not aliases:
             return
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            None, source
-        )
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
         sequence = module.get_source_binding_index().assignment_string_sequence(
             "__all__"
         )
@@ -57,9 +54,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
             ValueError: If qualified alias residue; or if alias export residue in.
 
         """
-        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(
-            None, source
-        )
+        module = FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
         sequence = module.get_source_binding_index().assignment_string_sequence(
             "__all__"
         )

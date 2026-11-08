@@ -28,9 +28,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesResourceLimits,
 )
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeRuntimeModules,
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitMutationScope,
+    FlextInfraUtilitiesGitSemanticPaths,
+    FlextInfraUtilitiesGitStateCheckpoint,
 )
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -70,7 +73,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         del repository_root
         try:
             FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
-        except Exception as syntax_error:  # noqa: BLE001
+        except Exception as syntax_error:  # ruff: ignore[blind-except]
             raise SyntaxError(str(syntax_error)) from None
         if before_source is None:
             normalized = cls.normalize_python_text(path, source, settings=settings)
