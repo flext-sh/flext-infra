@@ -115,7 +115,7 @@ class TestsFlextInfraMisePinBootstrap:
             "\"sh -ec 'command -v mise > runtime-mise-path.txt; "
             "mise --version > runtime-mise-version.txt; "
             "printf recovered > recovered.txt'\", make, "
-            "bootstrap_report_shell_literal, bootstrap_report_relative_path, false) }}",
+            "bootstrap_report_shell_literal, bootstrap_report_relative_path) }}",
             encoding="utf-8",
         )
         recipe = tm.ok(
@@ -430,16 +430,16 @@ class TestsFlextInfraMisePinBootstrap:
         tm.that((tmp_path / "recovered.txt").read_text(), eq="recovered")
 
     @c.Tests.MARK.slow
-    def test_hosted_setup_publishes_the_release_shim_farm(
+    def test_hosted_setup_publishes_the_installed_tool_directories(
         self,
         tmp_path: Path,
     ) -> None:
-        """Later hosted steps resolve the declared tools through the setup farm.
+        """Later hosted steps run the declared tools from any working directory.
 
-        Premise (cosmos-charts CI run 38990572546): setup reshims into the
-        release-scoped farm only, while the runner PATH listed the host farm,
-        so `make check` died with "selected scanner is not provisioned: jscpd"
-        although setup had installed it.
+        Premise (flext-cli CI run 42473521346): setup published its shim farm,
+        and a shim resolves its version from the caller's working directory,
+        so a formatter run in a test's temporary directory failed with
+        "No version is set for shim: taplo".
         """
         self._project(tmp_path)
         lock = u.Tests.repo_mise_lock()
@@ -462,10 +462,26 @@ class TestsFlextInfraMisePinBootstrap:
             msg=setup.stdout + setup.stderr,
         )
         published = github_path.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
-        tm.that(published, len=1)
-        farm = Path(published[0])
-        tm.ok(farm.is_relative_to(tmp_path / "cache"))
-        tm.that(shutil.which("mise", path=str(farm)), none=False)
+        installs = tmp_path / "data/mise/installs"
+        tm.that(published, empty=False)
+        tm.ok(all(Path(entry).is_relative_to(installs) for entry in published))
+        mise = shutil.which("mise", path=os.pathsep.join(published))
+        tm.that(mise, none=False)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        version = tm.ok(
+            u.Cli.capture(
+                [str(mise), "--version"],
+                cwd=outside,
+                options=m.Cli.ProcessOptions(env=environment),
+            ),
+        )
+        tm.that(
+            version.split()[0],
+            eq=u.Tests.pinned_mise_version(
+                lock, config.Infra.codegen.toolchain.mise_selector
+            ),
+        )
 
     @c.Tests.MARK.slow
     def test_wrong_real_cached_release_is_replaced_before_lifecycle(

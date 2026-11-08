@@ -23,9 +23,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesManagedConflicts,
 )
-from flext_infra._utilities._git.mutation_scope import (
-    FlextInfraUtilitiesGitMutationScope,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitMutationScope
 
 
 class FlextInfraUtilitiesDependencies(

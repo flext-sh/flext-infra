@@ -319,7 +319,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = False
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Generated Make command contract"),
         ]
         mypy_timeout_exit_code: Annotated[
@@ -680,7 +683,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             return f"{self.dist.upper().replace('-', '_')}_"
 
         @property
-        def _config_base(self) -> FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec:
+        def _config_base(self) -> p.Infra.ScaffoldConfigBaseSpec:
             """ENFORCE-042 config base selected from declared requirements.
 
             The fleet-converged ``_config.py`` inherits only the project's frozen

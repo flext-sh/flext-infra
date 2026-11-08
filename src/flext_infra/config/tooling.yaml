@@ -4,7 +4,7 @@ Infra:
     raw-check-receipt-suffix: .raw.log
     derived-tool-roots: [ deptry, mypy, pyrefly, pyright, pytest, ruff, vulture ]
     derived-settings:
-      mypy: [ python_version, mypy_path, exclude, overrides, disable_error_code ]
+      mypy: [ python_version, mypy_path, namespace_packages, explicit_package_bases, exclude, overrides, disable_error_code ]
       pyrefly: [ python-version, sub-config ]
       pyright: [ pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath ]
       pytest.ini_options: [ flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value ]
@@ -227,8 +227,6 @@ Infra:
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]
-      - [ namespace_packages, false ]
-      - [ explicit_package_bases, false ]
       - [ check_untyped_defs, true ]
       - [ extra_checks, true ]
       - [ follow_untyped_imports, true ]

@@ -597,14 +597,28 @@ class FlextInfraModelsConfigArtifact(
             return value
 
         repository: Annotated[
-            FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec,
+            Annotated[
+                p.Infra.RepositoryDeltaSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.RepositoryDeltaSpec
+                ),
+            ],
             m.Field(
                 description="This repository's self-owned declaration differences",
             ),
         ]
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         retired_projections: Annotated[
-            tuple[str | FlextInfraModelsConfigArtifact.RetiredProjectionSpec, ...],
+            tuple[
+                str
+                | Annotated[
+                    p.Infra.RetiredProjectionSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigArtifact.RetiredProjectionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Repository-relative generated projections that no template "
@@ -627,19 +641,37 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         loc_cap: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenLocCapSpec,
+            Annotated[
+                p.Infra.CodegenLocCapSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenLocCapSpec
+                ),
+            ],
             m.Field(description="Per-module code-LOC ceiling policy"),
         ]
         ast_grep: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenAstGrepSpec,
+            Annotated[
+                p.Infra.CodegenAstGrepSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenAstGrepSpec
+                ),
+            ],
             m.Field(description="Generated native ast-grep utility rules"),
         ]
         modes: Annotated[
-            FlextInfraModelsConfigArtifact.CodegenModesSpec,
+            Annotated[
+                p.Infra.CodegenModesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.CodegenModesSpec
+                ),
+            ],
             m.Field(description="Filesystem modes the pipeline emits (the mode SSOT)"),
         ]
         toolchain: Annotated[
-            FlextInfraModelsMiseToolchain.ToolchainSpec,
+            Annotated[
+                p.Infra.ToolchainSpec,
+                t.schema_for_model(lambda: FlextInfraModelsMiseToolchain.ToolchainSpec),
+            ],
             m.Field(description="Exact generated toolchain"),
         ]
 
@@ -647,7 +679,15 @@ class FlextInfraModelsConfigArtifact(
         """GitHub Actions, CI checkout and analysis part of ``codegen.yaml``."""
 
         github_actions: Annotated[
-            Mapping[str, FlextInfraModelsConfigProvider.GithubActionPinSpec],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.GithubActionPinSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigProvider.GithubActionPinSpec
+                    ),
+                ],
+            ],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         checkout_submodules: Annotated[
@@ -673,7 +713,15 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         ci_private_submodules: Annotated[
-            Mapping[str, FlextInfraModelsConfigProvider.CiPrivateSubmodulesSpec],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.CiPrivateSubmodulesSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigProvider.CiPrivateSubmodulesSpec
+                    ),
+                ],
+            ],
             m.Field(
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
@@ -682,7 +730,17 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         ci_private_dependency_auth: Annotated[
-            Mapping[str, FlextInfraModelsConfigProvider.CiPrivateDependencyAuthSpec],
+            Mapping[
+                str,
+                Annotated[
+                    p.Infra.CiPrivateDependencyAuthSpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigProvider.CiPrivateDependencyAuthSpec
+                        )
+                    ),
+                ],
+            ],
             m.Field(
                 description=(
                     "Per-distribution GitHub App identity minting installation "
@@ -711,7 +769,10 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sonarcloud: Annotated[
-            FlextInfraModelsConfigRender.SonarcloudSpec,
+            Annotated[
+                p.Infra.SonarcloudSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigRender.SonarcloudSpec),
+            ],
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
         ]
 
@@ -719,27 +780,58 @@ class FlextInfraModelsConfigArtifact(
         """Infra source, branch, profile, Make and editor part of ``codegen.yaml``."""
 
         infra_repository: Annotated[
-            FlextInfraModelsConfigProvider.RepositorySourceSpec,
+            Annotated[
+                p.Infra.RepositorySourceSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigProvider.RepositorySourceSpec
+                ),
+            ],
             m.Field(description="Canonical infrastructure repository identity"),
         ]
         branch_policy: Annotated[
-            FlextInfraModelsConfigProvider.BranchPolicySpec,
+            Annotated[
+                p.Infra.BranchPolicySpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigProvider.BranchPolicySpec
+                ),
+            ],
             m.Field(description="Global branch policy (CI triggers, integration line)"),
         ]
         profiles: Annotated[
-            tuple[FlextInfraModelsConfigContexts.ProfileSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.ProfileSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigContexts.ProfileSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Canonical Make contract"),
         ]
         vscode: Annotated[
-            FlextInfraModelsConfigTemplates.CodegenVscodeSpec,
+            Annotated[
+                p.Infra.CodegenVscodeSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
+                ),
+            ],
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
         exclusions: Annotated[
-            FlextInfraModelsConfigArtifact.DeclaredExclusionsSpec,
+            Annotated[
+                p.Infra.DeclaredExclusionsSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigArtifact.DeclaredExclusionsSpec
+                ),
+            ],
             m.Field(
                 description=(
                     "Declared directory-exclusion registry: the one SSOT "
@@ -748,7 +840,10 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         layout: Annotated[
-            FlextInfraModelsLayout.LayoutSpec,
+            Annotated[
+                p.Infra.LayoutSpec,
+                t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutSpec),
+            ],
             m.Field(
                 description=(
                     "Declarative project-layout conformance contract consumed "
@@ -1146,11 +1241,19 @@ class FlextInfraModelsConfigArtifact(
             )
 
         scaffold: Annotated[
-            FlextInfraModelsConfigScaffold.ScaffoldSpec,
+            Annotated[
+                p.Infra.ScaffoldSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigScaffold.ScaffoldSpec),
+            ],
             m.Field(description="Typed new-project scaffold policy"),
         ]
         templates: Annotated[
-            FlextInfraModelsConfigTemplates.TemplatesSpec,
+            Annotated[
+                p.Infra.TemplatesSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigTemplates.TemplatesSpec
+                ),
+            ],
             m.Field(description="Single artifact declaration and ownership catalog"),
         ]
         # flext-infra owns generic conform policy only. The set

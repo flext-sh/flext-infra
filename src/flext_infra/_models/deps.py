@@ -115,7 +115,10 @@ class FlextInfraModelsDeps(
             ),
         ]
         package: Annotated[
-            FlextInfraModelsWorkspace.LockedPackage,
+            Annotated[
+                p.Infra.LockedPackage,
+                t.schema_for_model(lambda: FlextInfraModelsWorkspace.LockedPackage),
+            ],
             m.Field(description="Exact package selected by the target's native lock"),
         ]
         requirement: Annotated[
@@ -143,7 +146,15 @@ class FlextInfraModelsDeps(
             m.Field(description="Captured native UV lock of the selected runtime"),
         ]
         providers: Annotated[
-            tuple[FlextInfraModelsDeps.RuntimeDependencyProvider, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RuntimeDependencyProvider,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsDeps.RuntimeDependencyProvider
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="All matching suppliers; ambiguity is preserved"),
         ]
         development_only: Annotated[
