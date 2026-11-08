@@ -955,7 +955,9 @@ class FlextInfraUtilitiesLazyInitPlan:
             run.model, path, module_name
         )
         exports = FlextInfraUtilitiesPythonModel.python_model_exports(module) or ()
-        alias, family = cls._lazy_init_route_identity(run, path, module, exports)
+        alias, family = cls._lazy_init_route_identity(
+            run, path, cast(FlextInfraModelsCodegenLazyInit.PythonModuleFacts, module), exports
+        )
         weight = c.Infra.LazyInitScore
         score = 0
         if alias == name:
