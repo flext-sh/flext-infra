@@ -47,15 +47,15 @@ class TestsFlextInfraCodegenArtifactSsot:
         error: str,
     ) -> None:
         """A cyclic or undeclared artifact dependency rejects the catalog."""
-        payload = u.json_mapping_adapter().validate_python(
+        payload = u.json_dict_adapter().validate_python(
             codegen.templates.model_dump(
                 mode="json", by_alias=True, exclude_computed_fields=True
             )
         )
-        entries = u.json_mapping_adapter().validate_python(payload["entries"])
+        entries = u.json_dict_adapter().validate_python(payload["entries"])
         first, second = sorted(entries)[:2]
-        first_entry = u.json_mapping_adapter().validate_python(entries[first])
-        second_entry = u.json_mapping_adapter().validate_python(entries[second])
+        first_entry = u.json_dict_adapter().validate_python(entries[first])
+        second_entry = u.json_dict_adapter().validate_python(entries[second])
         first_entry["requires_artifacts"] = [second]
         second_entry["requires_artifacts"] = (
             [first] if dependencies == "cycle" else [f"{second}.undeclared"]
