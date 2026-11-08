@@ -7543,6 +7543,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 destination.relative_to(self.repository_root)
             )
             scope = self.project.get_module(module_name).get_scope()
+            if scope is None:
+                return ast.unparse(annotation)
             facade = self.project.get_module(
                 f"{self.source_package_name}.protocols"
             ).get_attribute("p")
