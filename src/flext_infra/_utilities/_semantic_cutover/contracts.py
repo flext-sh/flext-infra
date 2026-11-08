@@ -69,6 +69,18 @@ class FlextInfraUtilitiesSemanticContracts(
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
+    _model_protocol_routes: (
+        Callable[[p.Infra.RopeWorkspaceDsl], Mapping[str, str]] | None
+    ) = None
+
+    @classmethod
+    def register_model_protocol_routes(
+        cls,
+        fn: Callable[[p.Infra.RopeWorkspaceDsl], Mapping[str, str]],
+    ) -> None:
+        """Register the model protocol route provider for the semantic loop."""
+        cls._model_protocol_routes = fn
+
     class _AnnotationMemberOwner(NamedTuple):
         """Authenticated source and destination namespaces for one rule."""
 
@@ -136,7 +148,12 @@ class FlextInfraUtilitiesSemanticContracts(
             The resulting semantic migration edits.
 
         """
-        computed = cls.plan_computed_model_field_contracts(workspace, sources)
+        routes = (
+            cls._model_protocol_routes(workspace)
+            if cls._model_protocol_routes is not None
+            else {}
+        )
+        computed = cls.plan_computed_model_field_contracts(workspace, sources, routes)
         if computed.failure:
             return computed
         working: dict[t.Infra.RopeSourcePath, str] = dict(sources)

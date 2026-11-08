@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraCli
+from flext_infra import FlextInfraCli, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import (
     TestsFlextInfraUtilitiesGit,
@@ -21,7 +21,6 @@ from tests import (
     p,
     t,
     tm,
-    u,
 )
 
 

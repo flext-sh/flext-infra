@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import m, p, r
-from flext_infra._utilities import protocol_models
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeModulePatch,
@@ -35,6 +34,7 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
         cls,
         workspace: p.Infra.RopeWorkspaceDsl,
         sources: Mapping[Path, str],
+        routes: Mapping[str, str],
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Rewrite model fields and eager schemas to deferred protocol contracts.
 
@@ -42,7 +42,6 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
             The resulting semantic migration edits.
 
         """
-        routes = cls._model_protocol_routes(workspace)
         edits: list[p.Infra.SemanticMigrationEdit] = []
         for path, source in cls._editable_sources(sources):
             if path.suffix != ".py" or cls._is_projection(path):
@@ -102,31 +101,6 @@ class FlextInfraUtilitiesSemanticModelFieldContracts(
                 ),
             ),
         )
-
-    @classmethod
-    def _model_protocol_routes(
-        cls, workspace: p.Infra.RopeWorkspaceDsl
-    ) -> Mapping[str, str]:
-        """Obtain model to protocol route mappings from protocol model projection.
-
-        Returns:
-            Mapping from model class route to public protocol route.
-
-        """
-        routes: dict[str, str] = {}
-        protocol = protocol_models.FlextInfraUtilitiesModelsProtocol
-        pkg_names = protocol.protocol_model_package_names(
-            workspace.repository_root, workspace.rope_project
-        )
-        for package_name in pkg_names:
-            routes.update(
-                protocol.protocol_model_routes_from_source(
-                    workspace.repository_root,
-                    workspace.rope_project,
-                    package_name=package_name,
-                )
-            )
-        return routes
 
     @staticmethod
     def resolve_model_protocol(model_str: str, routes: Mapping[str, str]) -> str | None:
@@ -247,6 +221,9 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         "schema_for_model",
     })
     _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
+    _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset(
+        {"InstanceOf", "SettingsConfigDict"}
+    )
 
     def __init__(self, path: Path, routes: Mapping[str, str], tree: ast.Module) -> None:
         super().__init__()
@@ -505,7 +482,9 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
                 slice=self._project(node.slice, field=False),
                 ctx=ast.Load(),
             )
-        if not isinstance(node, (ast.Name, ast.Attribute)):
+        if not isinstance(node, (ast.Name, ast.Attribute)) or (
+            isinstance(node, ast.Attribute) and node.attr in self._NON_MODEL_M
+        ):
             return None
         reference = ast.unparse(node)
         protocol = (
