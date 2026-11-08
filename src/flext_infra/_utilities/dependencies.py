@@ -290,7 +290,9 @@ class FlextInfraUtilitiesDependencies(
                 "runtime import requires one authored, installed, locked supplier: "
                 + ", ".join(plan.unresolved_modules),
             )
-        lease = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(plan.before.path.parent)
+        lease = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(
+            plan.before.path.parent
+        )
         if lease.failure:
             return r[bool].from_failure(lease)
         with u.Cli.file_changes_lock(lease.value):
