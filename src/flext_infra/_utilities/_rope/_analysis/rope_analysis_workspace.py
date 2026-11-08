@@ -347,10 +347,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             package_dirs.add(package_dir)
             if package_name:
                 package_dir_by_name[package_name] = package_dir
-                # A namespace whose only children are subpackages (`infra/` with
-                # `infra/contracts/`) holds no module of its own; its dotted
-                # ancestors are packages too, so the planner reaches them.
-                package_dirs.update(package_dir.parents[: package_name.count(".")])
                 if (
                     project_root is not None
                     and "." not in package_name
@@ -439,22 +435,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if init_entry is not None
             else next((entry.package_name for entry in dir_modules), "")
         )
-        if init_entry is None and not dir_modules:
-            # A namespace holding only subpackages takes its identity from a
-            # descendant module: same project, name trimmed to this depth.
-            descendant = next(
-                (
-                    entry
-                    for entry in modules_by_path.values()
-                    if entry.package_name
-                    and entry.package_dir.is_relative_to(package_dir)
-                ),
-                None,
-            )
-            if descendant is not None:
-                depth = len(descendant.package_dir.relative_to(package_dir).parts)
-                project_root = descendant.project_root
-                package_name = descendant.package_name.rsplit(".", depth)[0]
         return dir_modules, init_path, project_root, package_name
 
     @staticmethod
