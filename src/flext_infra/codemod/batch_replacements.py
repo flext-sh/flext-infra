@@ -187,7 +187,7 @@ class FlextInfraModReplacements:
     @classmethod
     def compose[FindingT: p.Infra.ModOccurrence](
         cls, root: Path, report: p.Infra.ModOccurrenceReport[FindingT]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticFilePlan, ...]]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
@@ -198,7 +198,7 @@ class FlextInfraModReplacements:
         for finding in report.entries:
             if finding.actionable and finding.source_owner != "generator":
                 grouped.setdefault(root / finding.file, []).append(finding)
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
             planned = cls._path_plan(root, path, findings, compose_only=True)
             if planned.failure:

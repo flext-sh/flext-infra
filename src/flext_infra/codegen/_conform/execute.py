@@ -328,7 +328,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _control_plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the native file-only control cohort before Python inventory.
 
         Returns:
@@ -566,7 +566,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _checked(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Compare the injected publisher's normalized plan with the tree.
 
@@ -602,7 +602,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _planned(
         self,
         request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[m.Infra.CodegenPlan]:
+    ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the request; a planning exception propagates with its traceback.
 
         Returns:
@@ -627,7 +627,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     def _published(
         self,
         request: p.Infra.CodegenGenerateRequest,
-        plan: m.Infra.CodegenPlan,
+        plan: p.Infra.CodegenPlan,
         after_publication: tuple[Callable[[tuple[Path, ...]], p.Result[bool]], ...],
         *,
         after_cohort_publication: tuple[
@@ -796,7 +796,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         cls,
         files: tuple[p.Infra.CodegenFilePlan, ...],
         projects: dict[Path, set[str]],
-        outcomes: Mapping[str, m.Infra.CodegenRepositoryPlanOutcome],
+        outcomes: Mapping[str, p.Infra.CodegenRepositoryPlanOutcome],
     ) -> dict[str, set[str]]:
         """Wire each pending changed path to its owning repositories.
 
@@ -825,7 +825,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     @staticmethod
     def _component_cohort_plans(
         plan: p.Infra.CodegenPlan,
-        repositories: dict[str, m.Infra.RepositoryRef],
+        repositories: dict[str, p.Infra.RepositoryRef],
         projects: dict[Path, set[str]],
         edges: dict[str, set[str]],
     ) -> tuple[p.Infra.CodegenPlan, ...]:

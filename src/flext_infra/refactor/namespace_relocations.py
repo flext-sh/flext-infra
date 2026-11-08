@@ -82,7 +82,7 @@ class FlextInfraNamespaceRelocationCascade:
         entries: Sequence[p.Infra.ModScanFinding],
         *,
         scan_root: Path,
-    ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
+    ) -> tuple[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding], ...]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
@@ -118,7 +118,7 @@ class FlextInfraNamespaceRelocationCascade:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
         py_files: Sequence[Path],
         gates: Sequence[str] | None = None,
     ) -> None:
@@ -878,7 +878,7 @@ class FlextInfraNamespaceRelocationCascade:
     def import_relocation_targets(
         cls,
         project_root: Path,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
     ) -> Mapping[Path, Mapping[tuple[str, str], set[str]]]:
         """Map each file's import moves: ``(source module, target module)`` to aliases.
 
@@ -931,7 +931,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _grouped_targets(
         self,
         project_root: Path,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
     ) -> tuple[
         set[Path],
         MutableMapping[Path, list[tuple[int, int]]],

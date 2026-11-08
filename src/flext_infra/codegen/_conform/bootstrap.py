@@ -148,7 +148,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             ValueError: If config extra_verbs declares canonical verb.
 
         """
-        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
+        merged: MutableMapping[str, p.Infra.MakeVerbSpec] = {}
         for verb in discovered:
             if verb.name in canonical_names:
                 continue
@@ -288,6 +288,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     ) -> frozenset[str]:
         """Select the existing owners of editor, analyzer and ignore projections.
 
+        The qlty smells configuration is an analyzer projection like the
+        pyproject tool tables, so this surface refreshes it too.
+
         Returns:
             The governed paths published by the editor surface.
 
@@ -295,6 +298,9 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
         return frozenset({
             c.PYPROJECT_FILENAME,
             c.Infra.GITIGNORE,
+            (
+                Path(c.Infra.QLTY_CONFIG_DIRNAME) / c.Infra.QLTY_CONFIG_FILENAME
+            ).as_posix(),
             *(
                 item.path.as_posix()
                 for item in codegen.managed_file_specs

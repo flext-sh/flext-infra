@@ -738,7 +738,7 @@ class FlextInfraPytestRunnerExecution(
 
     @staticmethod
     def _phase_warning_lines(
-        phases: Sequence[tuple[str, m.Infra.PytestDiagnostics]],
+        phases: Sequence[tuple[str, p.Infra.PytestDiagnostics]],
     ) -> str:
         """Return one warnings line per phase.
 

@@ -1799,7 +1799,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         binding: t.Infra.RopePyName,
         child_name: str,
         namespace_name: str,
-    ) -> tuple[tuple[Path, m.Infra.SourceRewrite], ...]:
+    ) -> tuple[tuple[Path, p.Infra.SourceRewrite], ...]:
         """Collect consumer rewrites for one duplicate namespace declaration.
 
         Every non-defining occurrence of the duplicate child name across the
@@ -1816,7 +1816,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
             imports=True,
             in_hierarchy=False,
         )
-        collected: list[tuple[Path, m.Infra.SourceRewrite]] = []
+        collected: list[tuple[Path, p.Infra.SourceRewrite]] = []
         for consumer, _consumer_source in cls._editable_sources(cutover.sources):
             consumer_resource = cutover.project.get_resource(
                 consumer.relative_to(cutover.root).as_posix()
@@ -2138,7 +2138,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
         item: tuple[Path, str],
         native: tuple[p.Infra.RopeProject, Path | None],
         policy: tuple[
-            tuple[t.StrTuple, t.StrTuple, t.StrTuple], m.Infra.CodegenConfigSpec
+            tuple[t.StrTuple, t.StrTuple, t.StrTuple], p.Infra.CodegenConfigSpec
         ],
     ) -> p.Result[Mapping[str, str]]:
         """Select namespace-normalized native declarations under the same policy.
@@ -2169,7 +2169,7 @@ class FlextInfraUtilitiesSemanticCutoverNesting(
     def _orphan_nesting_destinations(
         cls,
         project: p.Infra.RopeProject,
-        modules: Mapping[Path, m.Infra.RopeModuleIndexEntry],
+        modules: Mapping[Path, p.Infra.RopeModuleIndexEntry],
         owned: Sequence[tuple[Path, str]],
         planned: p.Result[Sequence[Mapping[str, str]]],
     ) -> tuple[Mapping[Path, Mapping[str, str]], Mapping[Path, str]]:

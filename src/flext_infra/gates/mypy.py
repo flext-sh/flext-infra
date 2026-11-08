@@ -35,7 +35,7 @@ class FlextInfraGatesMypy(FlextInfraGates):
     ) -> None:
         """Keep one effective resource policy for each admitted analysis."""
         super().__init__(repository_root, runner=runner)
-        self._resource_limits: MutableMapping[Path, m.Infra.MypyResourceLimit] = {}
+        self._resource_limits: MutableMapping[Path, p.Infra.MypyResourceLimit] = {}
 
     def _project_limit(self, project_dir: Path) -> p.Infra.MypyResourceLimit:
         """Return the admitted policy shared by the child, runner and receipt.

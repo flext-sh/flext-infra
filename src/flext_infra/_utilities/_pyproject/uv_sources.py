@@ -108,7 +108,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
     @staticmethod
     def _uv_override_wire(
-        entries: Sequence[str | m.Infra.UvScopedOverride],
+        entries: Sequence[str | p.Infra.UvScopedOverride],
     ) -> list[t.JsonValue]:
         """Elect declared global overrides while preserving native scoped policy.
 
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
 
         """
         parsed = m.Infra.UvOverrideEntries.model_validate(list(entries), strict=True)
-        selected: list[str | m.Infra.UvScopedOverride] = []
+        selected: list[str | p.Infra.UvScopedOverride] = []
         seen: set[tuple[str, str | None]] = set()
         for entry in reversed(parsed.root):
             if isinstance(entry, str):
@@ -215,7 +215,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         if lines.failure:
             return result_type.from_failure(lines)
         migrations: MutableMapping[
-            tuple[str, str], m.Infra.GitSourceReferenceMigration
+            tuple[str, str], p.Infra.GitSourceReferenceMigration
         ] = {}
         for line in lines.value:
             name = cls._internal_dependency_name(
@@ -258,7 +258,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         project in a standalone lock. The scoped exclusion removes only that
         reciprocal requirement and does nothing where it is absent.
         """
-        overrides: list[str | m.Infra.UvScopedOverride] = list(
+        overrides: list[str | p.Infra.UvScopedOverride] = list(
             resolution.override_dependencies
         )
         for name, source in sorted(candidate_sources.items()):

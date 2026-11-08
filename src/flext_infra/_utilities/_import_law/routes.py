@@ -343,7 +343,7 @@ class FlextInfraUtilitiesImportLawRoutes(
         cls,
         state: p.Infra.ImportLawPass,
         paths: Sequence[t.StrTuple],
-        references: tuple[p.Infra.SourceClassReference, m.Infra.SourceClassReference],
+        references: tuple[p.Infra.SourceClassReference, p.Infra.SourceClassReference],
         members: p.Infra.RopeSourceMemberResolver,
     ) -> bool:
         """Prove that every consumed member retains its native declaration.

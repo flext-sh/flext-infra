@@ -89,7 +89,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             self.line_offsets = [0]
             for line in source.splitlines(keepends=True):
                 self.line_offsets.append(self.line_offsets[-1] + len(line))
-            self.quoted: MutableMapping[tuple[int, int], m.Infra.SourceRewrite] = {}
+            self.quoted: MutableMapping[tuple[int, int], p.Infra.SourceRewrite] = {}
             self.elected_source = source
             self.identities: list[
                 tuple[p.Infra.RopePyName, p.Infra.RopeSemanticModule, str]

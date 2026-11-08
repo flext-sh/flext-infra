@@ -1180,7 +1180,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         request: p.Infra.ModCommand,
-    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState]]:
         """Authenticate the semantic rename driver and parse its artifact.
 
         Returns:
@@ -1206,7 +1206,7 @@ class FlextInfraCodemodSemanticApply(
         cls,
         request: p.Infra.ModCommand,
         workspace: p.Infra.RopeWorkspaceDsl,
-        pair: tuple[p.Infra.SemanticRenamePlan, m.Cli.AtomicFileState],
+        pair: tuple[p.Infra.SemanticRenamePlan, p.Cli.AtomicFileState],
     ) -> p.Result[bool]:
         """Re-derive, candidate-validate, and re-authenticate the artifact.
 
