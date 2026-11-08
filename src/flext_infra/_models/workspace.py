@@ -194,7 +194,15 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    MutableMapping[str, FlextInfraModelsWorkspace.NativeBindingEvidence]
+                    MutableMapping[
+                        str,
+                        Annotated[
+                            p.Infra.NativeBindingEvidence,
+                            t.schema_for_model(
+                                lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+                            ),
+                        ],
+                    ]
                 )
             ),
             description="Invocation-local references to the first binding evidence",
