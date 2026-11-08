@@ -7576,7 +7576,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             msg = "Annotated field has no value type"
                             raise ValueError(msg)
                         return self.visit(node.slice.elts[0])
-                    return self.generic_visit(node)
+                    return cast(ast.expr, self.generic_visit(node))
 
             normalized = Normalize().visit(copy.deepcopy(annotation))
             return ast.unparse(ast.fix_missing_locations(normalized))
