@@ -334,7 +334,11 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
 
     @staticmethod
     def test_tool_cache_is_keyed_by_lock_state_and_saved_on_miss() -> None:
-        """One immutable entry per lock state, written only when the key missed."""
+        """One immutable entry per lock state, written only when the key missed.
+
+        Only the exact key restores: a prefix fallback carried each earlier
+        lock state's installs into the next entry until it filled the disk.
+        """
         spec, rendered = TestsFlextInfraCiIntegrationBranchTriggers._render_workflow(
             dist="cache-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -347,14 +351,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         restore_inputs = u.Cli.json_as_mapping(restore["with"])
         save_inputs = u.Cli.json_as_mapping(save["with"])
         primary_key = u.Cli.json_pick_str(restore_inputs, "key")
-        prefixes_text = u.Cli.json_pick_str(restore_inputs, "restore-keys")
         tm.that(primary_key, empty=False)
-        tm.that(prefixes_text, empty=False)
-        prefixes = prefixes_text.splitlines()
-        tm.that(len(prefixes), eq=1)
-        tm.ok(primary_key.startswith(prefixes[0]))
-        tm.ok(primary_key != prefixes[0])
-        tm.that(prefixes[0], has=spec.python_version)
+        tm.that(list(restore_inputs), lacks="restore-keys")
+        tm.that(primary_key, has=spec.python_version)
         tm.that(primary_key, has="hashFiles(")
         tm.that(
             primary_key,

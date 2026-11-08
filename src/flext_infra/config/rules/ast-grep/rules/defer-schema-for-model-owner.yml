@@ -5,7 +5,9 @@
 # incomplete at class creation and a subclass in another module must re-resolve it
 # in its own namespace (measured: DepsToml.MemberRequirements, `p` undefined).
 # Deferring the same expression changes no validation, serialization or JSON Schema.
-# Idempotent: a lambda owner does not match.
+# Idempotent: a lambda owner does not match. Only a qualified owner (`m.X`,
+# `Holder.X`) is rewritten: a bare name may be a class-local sibling, which a
+# lambda cannot see (class scope), so deferring it would raise NameError.
 id: defer-schema-for-model-owner
 language: python
 severity: error
@@ -15,11 +17,9 @@ ignores:
   - "**/config/rules/ast-grep/tests/**"
 rule:
   pattern: t.schema_for_model($OWNER)
-  not:
-    has:
-      field: arguments
-      has:
-        kind: lambda
+constraints:
+  OWNER:
+    kind: attribute
 fix: 't.schema_for_model(lambda: $OWNER)'
 message: >-
   The schema owner is deferred: t.schema_for_model(lambda: Model) keeps the field

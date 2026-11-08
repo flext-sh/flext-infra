@@ -31,6 +31,44 @@ class FlextInfraCodegenConform:
         """Expose the existing generation operation through its owning MRO."""
 
     @classmethod
+    def _admission_preflight(
+        cls,
+        execution_context: p.Infra.CodegenExecutionContext | None,
+        admitted: m.Infra.CodegenConformRequest,
+    ) -> p.Result[p.Infra.CodegenResult] | None:
+        """Run facade and kind admissions before any publication.
+
+        Returns:
+            The admission failure, or ``None`` when every admission passes.
+
+        """
+        if execution_context is None:
+            return r[p.Infra.CodegenResult].fail(
+                "source bootstrap requires bound generation collaborators"
+            )
+        # Preflight admissions run before any publication: a failing facade
+        # or undeclared governance kind must leave the tree untouched.
+        if admitted.what not in {
+            c.Infra.CodegenConformSurface.FACADES,
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+        }:
+            bootstrap = u.Infra.bootstrap_protocol_model_sources(
+                admitted.root.expanduser().resolve(),
+                ports=execution_context.codegen_conform_collaborators(),
+            )
+            if bootstrap.failure:
+                return r[p.Infra.CodegenResult].from_failure(bootstrap)
+        kind_admission = u.Infra.load_codegen_inputs(
+            admitted.root.expanduser().resolve(),
+            projections=cls._kind_projections(
+                admitted.root.expanduser().resolve(), admitted.declaration_kind
+            ),
+        )
+        if kind_admission.failure:
+            return r[p.Infra.CodegenResult].from_failure(kind_admission)
+        return None
+
+    @classmethod
     def execute_request(
         cls,
         request: p.Infra.CodegenConformRequest,
@@ -47,6 +85,9 @@ class FlextInfraCodegenConform:
         admitted = m.Infra.CodegenConformRequest.model_validate(
             request, from_attributes=True
         )
+        preflight = cls._admission_preflight(execution_context, admitted)
+        if preflight is not None:
+            return preflight
         bound = cls.Generate.from_request(
             admitted,
             execution_context=execution_context,
@@ -54,7 +95,14 @@ class FlextInfraCodegenConform:
         )
         if bound.failure:
             return r[p.Infra.CodegenResult].from_failure(bound)
-        executor = bound.value
+        return cls._execute_admitted(admitted, bound.value)
+
+    @classmethod
+    def _execute_admitted(
+        cls,
+        admitted: m.Infra.CodegenConformRequest,
+        executor: FlextInfraCodegenConformExecute,
+    ) -> p.Result[p.Infra.CodegenResult]:
         if admitted.mode is c.Infra.CodegenConformMode.CHECK:
             native = workspace_services.FlextInfraWorkspaceNativeReference
             with native.compilation_scope():

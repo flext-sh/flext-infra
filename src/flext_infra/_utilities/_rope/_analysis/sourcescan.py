@@ -336,7 +336,7 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
 
     @staticmethod
     def module_assignment_strings_source(
-        source_module: p.Infra.RopeSourceModule, name: str
+        source_module: p.Infra.RopePyModule, name: str
     ) -> Sequence[str]:
         """Read declared strings from the elected native binding index.
 

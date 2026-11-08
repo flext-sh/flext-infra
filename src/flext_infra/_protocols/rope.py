@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     )
 
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Literal, Protocol, Self, runtime_checkable
 
@@ -712,7 +712,7 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def definitions(
             self,
-        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
+        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
             """Cross-module definition inventory the walk extends."""
             ...
 

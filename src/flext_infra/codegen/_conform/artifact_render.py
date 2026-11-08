@@ -1061,6 +1061,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 render_inputs.target,
                 render_inputs.workspace,
                 render_inputs.codegen,
+                tuple(render_inputs.managed_artifacts.resolution.artifacts.Mise.tools),
             )
             if makefile.failure:
                 return r[p.BaseModel].from_failure(makefile)
@@ -1102,8 +1103,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         target: p.Infra.RepositoryConformTarget,
         workspace: p.Infra.WorkspaceSpec,
         codegen: p.Infra.CodegenConfigSpec,
+        project_mise_tools: tuple[str, ...],
     ) -> p.Result[p.Infra.MakefileRenderSpec]:
         """Resolve Makefile inputs directly from the declared repository topology.
+
+        Setup installs every tool the composed ``.mise.toml`` declares: the
+        packaged toolchain keys and the project's ManagedArtifacts Mise tools.
 
         Returns:
             The resulting ``p.Result[p.Infra.MakefileRenderSpec]``.
@@ -1177,7 +1182,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
-                mise_install_tools=codegen.toolchain.mise_install_keys,
+                mise_install_tools=(
+                    *codegen.toolchain.mise_install_keys,
+                    *project_mise_tools,
+                ),
                 # A project in the infrastructure distribution's runtime closure
                 # (read from the installed metadata, never listed) supplies part
                 # of the executor itself: the executor installs its locked
