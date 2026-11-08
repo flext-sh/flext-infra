@@ -109,8 +109,10 @@ rules:
   phase: constant-consumers
   families: [ c ]
   scope_kinds: [ Class ]
-  pattern: '${name}: ${final}[${contract}] = ${value}'
-  goal: '${name}: ClassVar[${contract}] = ${value}'
+  # Rewrite only the annotation: re-emitting a captured value drops the
+  # parentheses that wrap a multi-line value and breaks its indentation.
+  pattern: '${final}[${contract}]'
+  goal: 'ClassVar[${contract}]'
   arguments:
     final: name=typing.Final
   imports:
