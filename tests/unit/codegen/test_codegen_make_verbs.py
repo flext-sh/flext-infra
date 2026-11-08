@@ -301,34 +301,34 @@ class TestsFlextInfraCodegenMakeVerbs:
     def test_generated_make_dispatches_script_verbs_to_builtin_targets(
         tmp_path: Path,
     ) -> None:
-        """Auto-discovered script verbs get _builtin-<verb> dispatch targets."""
-        extra_verbs = (
-            m.Infra.MakeVerbSpec(
-                name="sync",
-                description="Dispatch sync through the declared script dispatcher.",
-            ),
-        )
+        """A header-declared script verb gets its _builtin-<verb> dispatch target."""
         script_dispatch = m.Infra.ScriptDispatchSpec(
             dispatcher="scripts/dispatch.py",
             roots=("scripts",),
         )
+        command = {
+            "verb": "sync",
+            "what": "all",
+            "domain": "sync",
+            "summary": "List sync actions",
+            "description": "List the declared sync actions.",
+            "example": "make sync",
+            "mutates": False,
+        }
         project_root, _repository_root = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
             shape=u.Tests.MakeEnvironmentShape(
-                extra_verbs=extra_verbs,
                 script_dispatch=script_dispatch,
+                commands=(("scripts/sync/all.sh", command),),
             ),
         )
-        (project_root / "scripts" / "sync").mkdir(parents=True)
-        (project_root / "scripts" / "sync" / "all.sh").write_text(
-            "#!/bin/sh\necho sync\n",
-            encoding="utf-8",
-        )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.ok("_builtin-sync:" in makefile)
-        tm.ok("scripts/dispatch.py" in makefile)
-        tm.ok("sync" in makefile)
+        tm.that(
+            makefile,
+            has="_builtin-sync: _builtin_require_environment\n\t$(call _dispatch,sync)",
+        )
+        tm.that(makefile, has="scripts/dispatch.py")
 
     @staticmethod
     def test_arbitrary_unknown_command_line_variable_is_ignored(

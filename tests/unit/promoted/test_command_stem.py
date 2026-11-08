@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Final
 
 from flext_infra import FlextInfraPromoted
-from tests import c, config, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraPromotedCommandStem:
@@ -26,9 +26,6 @@ class TestsFlextInfraPromotedCommandStem:
     VERB: Final = "finops"
     PYTHON_WHAT: Final = "krr-sizing"
     SHELL_WHAT: Final = "reconcile-oci-usage"
-    WIDTH: Final[int] = u.Infra.native_tool_setting(
-        config.Infra.tooling, "ruff", "line-length", int
-    )
 
     @classmethod
     def _write_command(cls, root: Path, name: str, what: str) -> Path:
@@ -38,7 +35,8 @@ class TestsFlextInfraPromotedCommandStem:
             The command file path.
 
         """
-        header = u.Infra.promoted_render_header(
+        return u.Tests.write_promoted_command(
+            root / c.Infra.DIR_SCRIPTS / cls.VERB / name,
             {
                 "verb": cls.VERB,
                 "what": what,
@@ -48,16 +46,7 @@ class TestsFlextInfraPromotedCommandStem:
                 "example": f"make {cls.VERB} WHAT={what}",
                 "mutates": False,
             },
-            width=cls.WIDTH,
         )
-        path = root / c.Infra.DIR_SCRIPTS / cls.VERB / name
-        shebang = (
-            "#!/usr/bin/env python3"
-            if path.suffix == c.Infra.EXT_PYTHON
-            else "#!/usr/bin/env bash"
-        )
-        tm.ok(u.Cli.atomic_write_text_file(path, f"{shebang}\n{header}\n"))
-        return path
 
     @staticmethod
     def _discover(root: Path) -> FlextInfraPromoted:
