@@ -391,7 +391,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if not matches:
                 return None
             match actual:
-                case m.Infra.RopeImportedName():
+                case p.Infra.RopeImportedName():
                     provider = (
                         FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                             actual.imported_module.get_object(),
