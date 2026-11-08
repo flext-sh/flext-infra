@@ -75,12 +75,30 @@ class TestsFlextInfraRootArtifactOwnership:
 
     @staticmethod
     def test_github_managed_owner_must_be_full() -> None:
-        """Reject weaker policies for every config-declared GitHub artifact."""
+        """Reject weaker policies for every config-declared GitHub artifact.
+
+        Raises:
+            TypeError: If a templates payload is not a mapping.
+
+        """
         spec = config.Infra.codegen
         payload = spec.model_dump(exclude_computed_fields=True)
-        for destination, entry in payload["templates"]["entries"].items():
+        templates = payload["templates"]
+        if not isinstance(templates, dict):
+            msg = "templates payload is not a mapping"
+            raise TypeError(msg)
+        entries = templates["entries"]
+        if not isinstance(entries, dict):
+            msg = "templates entries payload is not a mapping"
+            raise TypeError(msg)
+        for destination, entry in entries.items():
+            if not isinstance(entry, dict):
+                continue
+            ownership = entry.get("ownership")
+            if not isinstance(ownership, dict):
+                continue
             if Path(destination).parts[:1] == (".github",):
-                entry["ownership"]["policy"] = "merge"
+                ownership["policy"] = "merge"
 
         with u.Tests.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(payload)

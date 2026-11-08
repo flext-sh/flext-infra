@@ -85,7 +85,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     _quarantine: dict[Path, p.Infra.ModModuleQuarantine] = m.PrivateAttr(
         default_factory=dict
     )
-    _excluded: dict[str, m.Infra.ModQuarantineExclusion] = m.PrivateAttr(
+    _excluded: dict[str, p.Infra.ModQuarantineExclusion] = m.PrivateAttr(
         default_factory=dict
     )
     _plan: p.Infra.CodemodRulePlan | None = m.PrivateAttr(default=None)

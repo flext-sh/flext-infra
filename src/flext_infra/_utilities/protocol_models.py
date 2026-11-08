@@ -2967,7 +2967,10 @@ class FlextInfraUtilitiesModelsProtocol:
             for base in model.bases:
                 if not isinstance(base, ast.Subscript):
                     continue
-                binding = self.resolve_symbol(owner.get_scope(), base.value)
+                scope = owner.get_scope()
+                if scope is None or isinstance(scope, str):
+                    continue
+                binding = self.resolve_symbol(scope, base.value)
                 if binding is not None:
                     value = binding.get_object()
                     if self.py_class(value) and root in value.get_mro():
@@ -5489,7 +5492,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             visitor: ast.NodeTransformer,
             node: ast.Subscript,
-            context: tuple[p.Infra.RopeScope, frozenset[str]],
+            context: tuple[p.Infra.RopeScope | None, frozenset[str]],
         ) -> ast.AST:
             """Unwrap metadata wrappers and expose mutable containers read-only.
 
@@ -5504,7 +5507,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             scope, bindings = context
             name = ast.unparse(node.value)
-            if self._source_instance_wrapper(node, scope):
+            if scope is not None and self._source_instance_wrapper(node, scope):
                 return visitor.visit(node.slice)
             if name in bindings:
                 value = visitor.visit(self._source_annotated_value(node))
@@ -5518,7 +5521,11 @@ class FlextInfraUtilitiesModelsProtocol:
             if name.rpartition(".")[2] == "Literal":
                 # Literal members are runtime payload, not type identities.
                 return node
-            read_only = self._source_read_only_container(node.value, scope)
+            read_only = (
+                self._source_read_only_container(node.value, scope)
+                if scope is not None
+                else None
+            )
             if read_only is not None:
                 original = ast.dump(node.slice)
                 return self._source_read_only_rewrite(
@@ -6307,7 +6314,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def _source_family_references(
-            self, expression: ast.expr, scope: p.Infra.RopeScope
+            self, expression: ast.expr, scope: p.Infra.RopeScope | None
         ) -> ast.expr:
             """Spell every own-letter reference through its declaring family class.
 
@@ -6341,7 +6348,7 @@ class FlextInfraUtilitiesModelsProtocol:
             self,
             visitor: ast.NodeTransformer,
             node: ast.Attribute,
-            scope: p.Infra.RopeScope,
+            scope: p.Infra.RopeScope | None,
         ) -> ast.AST:
             """Respell one own ``p`` attribute chain through its family class.
 
@@ -6378,7 +6385,7 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def _source_letter_foreign_bound(
-            self, scope: p.Infra.RopeScope, letter: str
+            self, scope: p.Infra.RopeScope | None, letter: str
         ) -> bool:
             """Whether the source binds ``letter`` from an upstream package.
 
@@ -6390,6 +6397,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 True when the letter's binding declares outside the package.
 
             """
+            if scope is None:
+                return False
             bound = self.resolve_symbol(scope, letter)
             if bound is None:
                 return False
@@ -6433,9 +6442,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     # (``u.Field``) is no own family member: it keeps its
                     # spelling and the letter election binds the upstream.
                     return node
-                if declared[1] is None:
-                    continue
                 module, path = declared
+                if path is None:
+                    continue
                 family = module.rpartition(".")[0]
                 if not family.rpartition(".")[2].startswith("_"):
                     if letter != "p":

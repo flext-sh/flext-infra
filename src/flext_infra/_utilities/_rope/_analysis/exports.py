@@ -244,7 +244,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
 
     @staticmethod
     def public_export_names_source(
-        source_module: p.Infra.RopeSourceModule,
+        source_module: p.Infra.RopePyModule,
     ) -> Sequence[str]:
         """Return the explicit public ABI through the bound native module's DSL.
 
@@ -262,7 +262,7 @@ class FlextInfraUtilitiesRopeAnalysisExports:
     @staticmethod
     @FlextInfraUtilitiesRopeRuntime.semantic_matching_context()
     def assignment_docstrings_source(
-        source_module: p.Infra.RopeSourceModule,
+        source_module: p.Infra.RopePyModule,
     ) -> Sequence[str]:
         """Pair native direct assignment declarations with their following strings.
 

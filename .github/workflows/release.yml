@@ -121,6 +121,33 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      # Why: the cache keeps Mise's installs and downloads but never its shims.
+      # A restored shim points at the Mise binary of an earlier run, which Mise
+      # treats as unmanaged ("not replacing unmanaged file in shims directory",
+      # one warning per tool); Mise regenerates the shims from mise.lock.
+      # The key is the content hash of the locks that decide what is
+      # installed: one immutable entry per lock state, never one per run, so
+      # saving never evicts the testmon cache with duplicate generations.
+      - name: Restore tool caches
+        id: tool-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            __pycache__
+            .mypy_cache
+            .pytest_cache
+            .ruff_cache
+            .pyrefly_cache
+            .benchmarks
+            .hypothesis
+            .bin
+            ~/.cache/uv
+            ~/.local/share/mise
+            !~/.local/share/mise/shims
+          key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-3.13-tools-
+
       - name: Boot
         run: make setup
       - name: Admit validated integration commit
@@ -168,6 +195,33 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      # Why: the cache keeps Mise's installs and downloads but never its shims.
+      # A restored shim points at the Mise binary of an earlier run, which Mise
+      # treats as unmanaged ("not replacing unmanaged file in shims directory",
+      # one warning per tool); Mise regenerates the shims from mise.lock.
+      # The key is the content hash of the locks that decide what is
+      # installed: one immutable entry per lock state, never one per run, so
+      # saving never evicts the testmon cache with duplicate generations.
+      - name: Restore tool caches
+        id: tool-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            __pycache__
+            .mypy_cache
+            .pytest_cache
+            .ruff_cache
+            .pyrefly_cache
+            .benchmarks
+            .hypothesis
+            .bin
+            ~/.cache/uv
+            ~/.local/share/mise
+            !~/.local/share/mise/shims
+          key: ${{ runner.os }}-3.13-tools-${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', '.mise.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-3.13-tools-
+
       - name: Boot
         run: make setup
       - name: Tag

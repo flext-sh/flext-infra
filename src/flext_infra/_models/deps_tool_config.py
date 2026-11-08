@@ -194,7 +194,7 @@ class FlextInfraModelsDepsToolConfig(
         @m.model_validator(mode="after")
         def _require_exactly_one_form(
             self,
-        ) -> FlextInfraModelsDepsToolConfig.PytestWorkerCeiling:
+        ) -> p.Infra.PytestWorkerCeiling:
             """Reject ambiguous (both or neither) ceiling forms.
 
             Returns:

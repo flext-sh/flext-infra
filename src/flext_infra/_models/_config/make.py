@@ -24,11 +24,9 @@ from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
 def _effective_custom_handler_policies(
-    base: FlextInfraModelsConfigMake.CustomHandlerPolicy,
-    overrides: tuple[
-        tuple[str, FlextInfraModelsConfigMake.CustomHandlerPolicyOverride], ...
-    ],
-) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+    base: p.Infra.CustomHandlerPolicy,
+    overrides: tuple[tuple[str, p.Infra.CustomHandlerPolicyOverride], ...],
+) -> Mapping[str, p.Infra.CustomHandlerPolicy]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -38,8 +36,7 @@ def _effective_custom_handler_policies(
         overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
 
     Returns:
-        The resulting ``Mapping[str,
-            FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
+        The resulting ``Mapping[str, p.Infra.CustomHandlerPolicy]``.
 
     """
     # Keys are normalised to the profile's string value: MakeProfile is a
@@ -304,7 +301,15 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         requires: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowRequirementSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "
@@ -1042,6 +1047,15 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
+        bootstrap_bin_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-local directory of the bootstrap Mise binary, "
+                    "cached by the generated CI workflows"
+                ),
+            ),
+        ]
         clean: Annotated[
             Annotated[
                 p.Infra.MakeCleanSpec,
@@ -1333,9 +1347,7 @@ class FlextInfraModelsConfigMake(
                     self._validate_test_admission(step)
             self._validate_admission_requirements()
 
-        def _validate_test_admission(
-            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
-        ) -> None:
+        def _validate_test_admission(self, tests: p.Infra.MakeWorkflowStepSpec) -> None:
             """Require primary evidence in every context of each test invocation.
 
             Raises:
@@ -1564,7 +1576,15 @@ class FlextInfraModelsConfigMake(
         @property
         def custom_handler_policies(
             self,
-        ) -> Mapping[str, FlextInfraModelsConfigMake.CustomHandlerPolicy]:
+        ) -> Mapping[
+            str,
+            Annotated[
+                p.Infra.CustomHandlerPolicy,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
+                ),
+            ],
+        ]:
             """Effective custom-handler policy for every Make profile.
 
             The base policy states the strictest contract (private handlers
@@ -1574,8 +1594,7 @@ class FlextInfraModelsConfigMake(
             it is conforming.
 
             Returns:
-                The resulting ``Mapping[str,
-                    FlextInfraModelsConfigMake.CustomHandlerPolicy]``.
+                The resulting ``Mapping[str, p.Infra.CustomHandlerPolicy]``.
 
             """
             base = self.custom_handler_policy

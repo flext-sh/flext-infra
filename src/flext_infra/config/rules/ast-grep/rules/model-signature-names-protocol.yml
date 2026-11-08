@@ -1,0 +1,59 @@
+# Companion of consumer-annotation-names-protocol for the model layer. A
+# method or helper signature declared in a model module (validator body,
+# factory, module helper) is a consumer: it receives the protocol values that
+# model fields hand out, so its parameters and return name the protocol
+# mirror. Model modules refer to their own family through the holder class
+# (`FlextInfraModelsConfigMake`) because `m` there is the parent family's
+# facade; the mirror of `Flext<Family>Models<Holder>.<Member>` is
+# `p.<Family>.<Member>`, the family derived from the holder's own name.
+# Schema positions keep their declaration: class-body field annotations, and
+# any signature Pydantic evaluates to build a schema -- a `computed_field`
+# return or a `validate_call` signature -- are fields, not consumers (a bare
+# protocol there has no core schema and fails class creation). A nested member
+# (`Holder.Outer.Inner`) has no mirror and stays. Idempotent.
+id: model-signature-names-protocol
+language: python
+severity: error
+files:
+  - "**/_models/**/*.py"
+  - "**/models.py"
+ignores:
+  - "**/config/rules/ast-grep/tests/**"
+rule:
+  pattern: $HOLDER.$MEMBER
+  not:
+    inside:
+      kind: attribute
+  inside:
+    stopBy: end
+    kind: type
+    any:
+      - inside: { stopBy: end, kind: parameters }
+      - inside: { kind: function_definition }
+  all:
+    - not: { inside: { stopBy: end, kind: call } }
+    - not:
+        inside:
+          stopBy: end
+          kind: generic_type
+          has: { kind: identifier, regex: "^type$" }
+    - not:
+        inside:
+          stopBy: end
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: "(^|\\.)(computed_field|validate_call)\\b"
+constraints:
+  HOLDER: { kind: identifier, regex: "^Flext[A-Z][a-z]+Models[A-Za-z0-9_]*$" }
+  MEMBER: { regex: "^[A-Z][A-Za-z0-9_]*$" }
+transform:
+  FAMILY:
+    replace:
+      source: $HOLDER
+      replace: "^Flext([A-Z][a-z]+)Models[A-Za-z0-9_]*$"
+      by: "$1"
+fix: p.$FAMILY.$MEMBER
+message: >-
+  A model-module signature names the protocol mirror p.<Family>.<Member>; the
+  values it receives are the protocol contracts the fields hand out.
