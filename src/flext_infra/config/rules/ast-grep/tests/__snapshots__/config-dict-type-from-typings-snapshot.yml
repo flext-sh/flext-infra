@@ -22,25 +22,25 @@ snapshots:
       style: primary
       start: 68
       end: 132
-  "from flext_cli import m, t\nfrom typing import ClassVar\nclass F:\n    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)\n":
+  "from flext_cli import m, t\nfrom typing import ClassVar\nclass F:\n    model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)\n":
     fixed: |
       from flext_cli import m, t
       from typing import ClassVar
       class F:
           model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
     labels:
-    - source: "model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)"
+    - source: "model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)"
       style: primary
       start: 68
       end: 132
-  "from flext_cli import m, t\nfrom typing import ClassVar\nclass G:\n    model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(env_prefix=\"APP_\")\n":
+  "from flext_cli import m, t\nfrom typing import ClassVar\nclass G:\n    model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(env_prefix=\"APP_\")\n":
     fixed: |
       from flext_cli import m, t
       from typing import ClassVar
       class G:
           model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
     labels:
-    - source: "model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(env_prefix=\"APP_\")"
+    - source: "model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(env_prefix=\"APP_\")"
       style: primary
       start: 68
       end: 154

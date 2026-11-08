@@ -16,7 +16,7 @@ from flext_infra.docs._generator import FlextInfraDocsGeneratorBundle
 
 
 class FlextInfraDocGenerator(
-    FlextInfraDocServiceBase[m.Infra.DocsPhaseReports],
+    FlextInfraDocServiceBase[p.Infra.DocsPhaseReports],
     FlextInfraDocsGeneratorBundle,
 ):
     """Generate managed docs artifacts from package exports and docstrings."""
@@ -32,7 +32,7 @@ class FlextInfraDocGenerator(
     @classmethod
     def execute_request(
         cls, request: p.Infra.DocsGenerateRequest
-    ) -> p.Result[m.Infra.DocsPhaseReports]:
+    ) -> p.Result[p.Infra.DocsPhaseReports]:
         """Expose one fixed-effect CLI request without inherited mode controls.
 
         Returns:
@@ -154,7 +154,7 @@ class FlextInfraDocGenerator(
     @override
     def execute(
         self,
-    ) -> p.Result[m.Infra.DocsPhaseReports]:
+    ) -> p.Result[p.Infra.DocsPhaseReports]:
         """Execute the configured docs generation flow.
 
         Returns:

@@ -3933,8 +3933,8 @@ class FlextInfraUtilitiesModelsProtocol:
 
         @staticmethod
         def _source_bases_first(
-            contracts: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
-        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+            contracts: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract],
+        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Order contracts so every local base is declared before its heirs.
 
             Returns:
@@ -3942,7 +3942,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             names = {contract.name for contract in contracts}
-            ordered: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            ordered: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             placed: set[str] = set()
             pending = list(contracts)
             while pending:
@@ -7915,7 +7915,7 @@ class FlextInfraUtilitiesModelsProtocol:
             holder: p.Infra.RopeSourceClass,
             context: p.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+        ) -> list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -7925,7 +7925,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            missing: list[p.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()

@@ -5569,12 +5569,12 @@ class FlextInfraWorkspaceNativeReference:
                 runtime=Path(sys.executable).resolve(),
                 runtime_prefix=Path(sys.prefix).absolute(),
                 modules=cast(
-                    "tuple[m.Infra.SourceClassReference, ...]",
+                    "tuple[p.Infra.SourceClassReference, ...]",
                     nominations,
                 ),
                 sources=tuple(sorted(context.sources)),
                 bindings=cast(
-                    "tuple[m.Infra.NativeBindingEvidence, ...]",
+                    "tuple[p.Infra.NativeBindingEvidence, ...]",
                     tuple(sorted(context.evidence, key=lambda item: item.binding)),
                 ),
             )
