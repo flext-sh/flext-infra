@@ -1231,7 +1231,7 @@ class FlextInfraCodemodDuplicateApply(
 
         """
 
-        def key(side: tuple[t.JsonMapping, str, str]) -> tuple[int, str]:
+        def key(side: tuple[p.Infra.JscpdFile, str, str]) -> tuple[int, str]:
             """Layer then path.
 
             Returns:
