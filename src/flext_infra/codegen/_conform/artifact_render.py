@@ -1133,6 +1133,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         except ValueError as exc:
             return r[p.Infra.MakefileRenderSpec].fail(str(exc), exception=exc)
+        # Project-owned Mise tools are composed into .mise.toml; setup and upg
+        # install the same declared set, so they join the explicit install list.
+        managed = u.Infra.load_project_managed_artifacts(target.root)
+        if managed.failure:
+            return r[p.Infra.MakefileRenderSpec].from_failure(managed)
         return r[p.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_requirements=Path(
@@ -1177,7 +1182,10 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
                 mise_selector=codegen.toolchain.mise_selector,
                 mise_version=codegen.toolchain.mise_version,
-                mise_install_tools=codegen.toolchain.mise_install_keys,
+                mise_install_tools=(
+                    *codegen.toolchain.mise_install_keys,
+                    *managed.value.artifacts.Mise.tools,
+                ),
                 # A project in the infrastructure distribution's runtime closure
                 # (read from the installed metadata, never listed) supplies part
                 # of the executor itself: the executor installs its locked
