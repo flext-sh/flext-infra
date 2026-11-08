@@ -530,7 +530,12 @@ class FlextInfraModelsScan:
             ),
         ]
         inputs: Annotated[
-            FlextInfraModelsCodemod.CodemodBindingSnapshot,
+            Annotated[
+                p.Infra.CodemodBindingSnapshot,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsCodemod.CodemodBindingSnapshot
+                ),
+            ],
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
         native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(

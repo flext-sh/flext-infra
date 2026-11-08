@@ -22,7 +22,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """
 
     state: Annotated[
-        m.Infra.CodegenConformState,
+        p.Infra.CodegenConformState,
         m.Field(
             description="Mutable request-local data owned by one conform invocation.",
         ),
@@ -148,7 +148,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
             ValueError: If config extra_verbs declares canonical verb.
 
         """
-        merged: MutableMapping[str, m.Infra.MakeVerbSpec] = {}
+        merged: MutableMapping[str, p.Infra.MakeVerbSpec] = {}
         for verb in discovered:
             if verb.name in canonical_names:
                 continue

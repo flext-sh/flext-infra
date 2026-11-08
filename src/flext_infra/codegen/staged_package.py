@@ -557,12 +557,12 @@ class FlextInfraStagedPackage:
         workspace: Path,
         normalized: Mapping[Path, str | None],
         options: p.Infra.StageSourceOptions,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         source_project: p.Infra.RopeProject,
     ) -> p.Result[
         tuple[
             list[p.Infra.RopeProjectLayout],
-            MutableMapping[Path, m.Cli.AtomicFileState],
+            MutableMapping[Path, p.Cli.AtomicFileState],
         ]
     ]:
         """Elect the layouts and file states of the candidate tree.
@@ -587,7 +587,7 @@ class FlextInfraStagedPackage:
             ]
         ]
         selected: list[p.Infra.RopeProjectLayout] = []
-        states: MutableMapping[Path, m.Cli.AtomicFileState] = {}
+        states: MutableMapping[Path, p.Cli.AtomicFileState] = {}
         for state in inputs:
             states.setdefault(state.path, state)
         unchanged_imports: MutableMapping[Path, p.Result[tuple[str, ...]]] = {}
@@ -666,9 +666,9 @@ class FlextInfraStagedPackage:
     def _source_roots(
         cls,
         normalized: Mapping[Path, str | None],
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         source_project: p.Infra.RopeProject,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
     ) -> p.Result[list[tuple[p.Infra.RopeProjectLayout, bool]]]:
         """Elect rewrite roots while preserving original common-source witnesses.
 
@@ -727,7 +727,7 @@ class FlextInfraStagedPackage:
     def _declared_source_effects(
         workspace: Path,
         normalized: Mapping[Path, str | None],
-        states: Mapping[Path, m.Cli.AtomicFileState],
+        states: Mapping[Path, p.Cli.AtomicFileState],
         modes: Mapping[Path, int],
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
     ) -> tuple[p.Infra.CodegenFilePlan, ...]:
@@ -853,7 +853,7 @@ class FlextInfraStagedPackage:
         workspace: Path,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[MutableMapping[str, m.Infra.RopeProjectLayout]]:
+    ) -> p.Result[MutableMapping[str, p.Infra.RopeProjectLayout]]:
         """Retain Python providers independently of their generation participation.
 
         Returns:
@@ -868,7 +868,7 @@ class FlextInfraStagedPackage:
         )
         if targets.failure:
             return result_type.from_failure(targets)
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout] = {}
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout] = {}
         for target in targets.value:
             repository = target.root
             applicability = u.Infra.repository_operation_applicability(
@@ -1039,7 +1039,7 @@ class FlextInfraStagedPackage:
     def _layout_states(
         cls,
         layout: p.Infra.RopeProjectLayout,
-        states: MutableMapping[Path, m.Cli.AtomicFileState],
+        states: MutableMapping[Path, p.Cli.AtomicFileState],
         view: tuple[p.Infra.RopeProject, p.Infra.WorkspaceSnapshot | None],
         *,
         updates: Mapping[Path, str | None] | None = None,
@@ -1146,7 +1146,7 @@ class FlextInfraStagedPackage:
     def _closure(
         cls,
         local: p.Infra.RopeProjectLayout,
-        layouts: MutableMapping[str, m.Infra.RopeProjectLayout],
+        layouts: MutableMapping[str, p.Infra.RopeProjectLayout],
         read: Callable[
             [p.Infra.RopeProjectLayout, Mapping[Path, str | None] | None],
             p.Result[tuple[str, ...]],

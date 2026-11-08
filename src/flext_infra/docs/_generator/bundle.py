@@ -14,7 +14,7 @@ from time import perf_counter
 from flext_infra import c, m, p, r, u
 
 type _DocsScopeArtifacts = tuple[
-    m.Infra.DocScope,
+    p.Infra.DocScope,
     tuple[tuple[Path, Path, str | None], ...],
 ]
 
@@ -23,7 +23,7 @@ class FlextInfraDocsGeneratorBundle:
     """Render the configured docs inventory once before planning."""
 
     type _DocsPresentationInputs = tuple[
-        m.Infra.CodegenBootstrapSource | None,
+        p.Infra.CodegenBootstrapSource | None,
         tuple[p.Infra.CodegenFilePlan, ...],
         tuple[p.Infra.CodegenFilePlan, ...],
     ]

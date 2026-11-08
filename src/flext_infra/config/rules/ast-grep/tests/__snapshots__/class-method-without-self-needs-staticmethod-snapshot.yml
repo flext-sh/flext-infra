@@ -1,12 +1,7 @@
 id: class-method-without-self-needs-staticmethod
 snapshots:
-  ? |
-    import pytest
-    class T:
-        @pytest.fixture
-        def svc() -> int:
-            return 1
-  : fixed: |
+  "import pytest\nclass T:\n    @pytest.fixture\n    def svc() -> int:\n        return 1\n":
+    fixed: |
       import pytest
       class T:
           @pytest.fixture
@@ -14,7 +9,7 @@ snapshots:
           def svc() -> int:
               return 1
     labels:
-    - source: '@pytest.fixture'
+    - source: "@pytest.fixture"
       style: primary
       start: 27
       end: 42

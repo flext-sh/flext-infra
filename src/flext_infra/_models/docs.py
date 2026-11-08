@@ -164,7 +164,10 @@ class FlextInfraModelsDocs(
         version: Annotated[str, m.Field(description="Declared version")]
         description: Annotated[str, m.Field(description="Declared description")]
         links: Annotated[
-            FlextInfraModelsDocs.DocsGovernanceLinks,
+            Annotated[
+                p.Infra.DocsGovernanceLinks,
+                t.schema_for_model(lambda: FlextInfraModelsDocs.DocsGovernanceLinks),
+            ],
             m.Field(description="Governance pointers"),
         ]
 
@@ -178,7 +181,12 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         guides: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsGuideEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsGuideEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsGuideEntry),
+                ]
+            ],
             m.Field(description="Ordered guide rows"),
         ]
 
@@ -226,7 +234,12 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         modules: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsModuleEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsModuleEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsModuleEntry),
+                ]
+            ],
             m.Field(description="Ordered module page rows"),
         ]
 
@@ -240,7 +253,12 @@ class FlextInfraModelsDocs(
             t.NonNegativeInt, m.Field(description="Governed project count")
         ]
         class_counts: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsClassCount],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsClassCount,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsClassCount),
+                ]
+            ],
             m.Field(description="Projects per documentation class"),
         ]
 
@@ -248,7 +266,14 @@ class FlextInfraModelsDocs(
         """Context of the generated workspace module-page index."""
 
         entries: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsProjectIndexEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsProjectIndexEntry,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsDocs.DocsProjectIndexEntry
+                    ),
+                ]
+            ],
             m.Field(description="Per-project module page counts"),
         ]
 
@@ -256,7 +281,12 @@ class FlextInfraModelsDocs(
         """Context of the generated workspace project catalog."""
 
         entries: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsCatalogEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsCatalogEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsCatalogEntry),
+                ]
+            ],
             m.Field(description="Catalog rows that survive the exclusions"),
         ]
 
