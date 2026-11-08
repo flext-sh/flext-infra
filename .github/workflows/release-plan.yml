@@ -71,6 +71,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
@@ -98,6 +99,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims

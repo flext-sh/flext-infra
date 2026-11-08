@@ -1047,6 +1047,15 @@ class FlextInfraModelsConfigMake(
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Named controls accepted by every generated Make verb"),
         ] = ()
+        bootstrap_bin_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-local directory of the bootstrap Mise binary, "
+                    "cached by the generated CI workflows"
+                ),
+            ),
+        ]
         clean: Annotated[
             Annotated[
                 p.Infra.MakeCleanSpec,

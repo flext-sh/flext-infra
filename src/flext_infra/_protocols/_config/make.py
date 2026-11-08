@@ -733,6 +733,15 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def bootstrap_bin_dir(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Repository-local directory of the bootstrap Mise binary, cached by the
+            generated CI workflows.
+            """
+            ...
+
+        @property
         def clean(self) -> FlextInfraProtocolsConfigMakeClean.MakeCleanSpec:
             """Disposable artifacts removed by the clean verb."""
             ...
