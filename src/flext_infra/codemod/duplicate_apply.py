@@ -169,7 +169,7 @@ class FlextInfraCodemodDuplicateApply(
                 layers=layers,
                 working=working,
             )
-            if isinstance(planned, m.Infra.DuplicateCurePlan):
+            if not isinstance(planned, p.Infra.DuplicateGroupCure):
                 plans.append(planned)
                 continue
             for edit in planned.edits:
