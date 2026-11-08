@@ -128,3 +128,32 @@ class TestsFlextInfraPytestWorkerCeiling:
         command = runner.build_command(report)
         workers = command[command.index("-n") + 1]
         tm.that(workers == str(budget), truth=True)
+
+    @staticmethod
+    def test_ai_hub_parallelizes_within_the_machine_capacity(
+        cached_runner_project: Path,
+    ) -> None:
+        """ai-hub's suite exceeds the single-worker wall, so the SSOT declares it.
+
+        The runner reads this singleton, never a consumer's own tooling layer;
+        the expected budget is the declared ceiling bounded by this machine.
+        """
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.declared_project_runner(
+            cached_runner_project, "ai-hub"
+        )
+        declared = runner.resolve_worker_ceiling(
+            policy.parallel_worker_overrides["ai-hub"],
+            os.process_cpu_count(),
+        )
+        capacity = u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb)
+        budget = runner.parallel_worker_budget(policy)
+        tm.that(declared > policy.parallel_workers, truth=True)
+        tm.that(budget, eq=min(declared, capacity))
+        report = (
+            cached_runner_project
+            / config.Infra.codegen.make.testmon_cache.reports_directory
+        )
+        command = runner.build_command(report)
+        workers = command[command.index("-n") + 1]
+        tm.that(workers, eq=str(budget) if budget > 1 else "0")
