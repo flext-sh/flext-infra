@@ -10,8 +10,8 @@ import venv
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import config
-from tests import c, m, t, tm, u
+from flext_infra import config, u
+from tests import c, m, t, tm
 from tests.utilities_fixture_project import TestsFlextInfraUtilitiesProjectFixture
 
 
