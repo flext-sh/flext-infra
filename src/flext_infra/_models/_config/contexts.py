@@ -680,7 +680,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             return f"{self.dist.upper().replace('-', '_')}_"
 
         @property
-        def _config_base(self) -> FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec:
+        def _config_base(self) -> p.Infra.ScaffoldConfigBaseSpec:
             """ENFORCE-042 config base selected from declared requirements.
 
             The fleet-converged ``_config.py`` inherits only the project's frozen

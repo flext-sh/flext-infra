@@ -1334,7 +1334,7 @@ class FlextInfraModelsConfigMake(
             self._validate_admission_requirements()
 
         def _validate_test_admission(
-            self, tests: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
+            self, tests: p.Infra.MakeWorkflowStepSpec
         ) -> None:
             """Require primary evidence in every context of each test invocation.
 
