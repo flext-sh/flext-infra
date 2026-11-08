@@ -219,11 +219,11 @@ class FlextInfraModelsLayout:
 
         @m.computed_field
         @property
-        def actionable(self) -> tuple[FlextInfraModelsLayout.LayoutFinding, ...]:
+        def actionable(self) -> tuple[p.Infra.LayoutFinding, ...]:
             """Findings the engine acts on in apply mode (never review).
 
             Returns:
-                The resulting ``tuple[FlextInfraModelsLayout.LayoutFinding, ...]``.
+                The resulting ``tuple[p.Infra.LayoutFinding, ...]``.
 
             """
             return tuple(
