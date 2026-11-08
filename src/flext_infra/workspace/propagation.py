@@ -25,7 +25,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
     """
 
     conform_collaborators: Annotated[
-        m.Infra.CodegenConformPorts | None,
+        p.Infra.CodegenConformPorts | None,
         m.Field(
             exclude=True,
             description=(

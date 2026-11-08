@@ -136,7 +136,10 @@ class FlextInfraPytestRunnerBase(s[int]):
         ):
             msg = f"pytest requires a governed project context: {context.cwd}"
             raise ValueError(msg)
-        root = context.identity.repo_root
+        # The suite runs on the submitted project, the root `make check` wrote
+        # its receipt under; the Git toplevel is an ancestor when the project
+        # is a subdirectory of its checkout (CI checks out into <repo>/<repo>).
+        root = context.cwd
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         scratch = make.pytest_scratch

@@ -168,9 +168,13 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \
-	bootstrap_stage=shims; \
-	"$${mise_binary}" -C "{{ project_root }}" reshim; \
-	if [ -n "$${GITHUB_PATH:-}" ]; then printf '%s\n' "$$(dirname "$${mise_binary}")" "$${MISE_SHIMS_DIR}" >> "$${GITHUB_PATH}"; fi; \
+	{#- A hosted runner hands later steps only the GITHUB_PATH entries. They are
+	    the installed tool directories, as the local activation (.envrc) puts
+	    them on PATH; a shim resolves its version from the caller's working
+	    directory, so a tool run outside the checkout found none (flext-cli CI
+	    run 42473521346: "No version is set for shim: taplo"). #}
+	bootstrap_stage=tool-paths; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then "$${mise_binary}" -C "{{ project_root }}" bin-paths >> "$${GITHUB_PATH}"; fi; \
 	printf 'setup: mise %s provisioning complete\n' "$${mise_active}"; \
 	printf 'setup: entering lifecycle (submodules, environment, hooks) make=%s\n' "$(SELF_MAKE_EXECUTABLE)"; \
 	bootstrap_stage=lifecycle; \

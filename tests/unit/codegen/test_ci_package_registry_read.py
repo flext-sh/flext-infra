@@ -1,4 +1,4 @@
-"""Verify ci.yml grants packages: read only to declared registry consumers.
+"""Verify ci.yml and docs.yml grant packages: read only to declared consumers.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,13 +15,15 @@ from tests import c, t, tm, u
 class TestsFlextInfraCiPackageRegistryRead:
     """A GitHub Packages consumer reads its registry; nobody else can."""
 
-    ci_template = (
+    workflows = (
         Path(__file__).resolve().parents[3]
-        / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
+        / "src/flext_infra/templates/project/base/.github/workflows"
     )
 
     @classmethod
-    def _job_permissions(cls, *, packages_read: bool) -> Mapping[str, t.JsonValue]:
+    def _job_permissions(
+        cls, *, packages_read: bool, template: str = "ci.yml.j2"
+    ) -> Mapping[str, t.JsonValue]:
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="fixture-registry-consumer",
             make_profile=c.Infra.MakeProfile.STANDALONE,
@@ -31,7 +33,7 @@ class TestsFlextInfraCiPackageRegistryRead:
                 packages_read=packages_read,
             ),
         )
-        rendered = tm.ok(u.Cli.template_render(cls.ci_template, spec))
+        rendered = tm.ok(u.Cli.template_render(cls.workflows / template, spec))
         adapter = u.Cli.JSON_MAPPING_ADAPTER
         document = adapter.validate_python(tm.ok(u.Cli.yaml_parse(rendered)))
         permissions: t.MutableJsonMapping = {}
@@ -51,3 +53,22 @@ class TestsFlextInfraCiPackageRegistryRead:
 
         for job_permissions in permissions.values():
             tm.that(job_permissions, eq={"contents": "read"})
+
+    def test_declared_consumer_docs_jobs_read_packages(self) -> None:
+        """Docs generation resolves the same packages as the ci gates."""
+        declared = self._job_permissions(packages_read=True, template="docs.yml.j2")
+        undeclared = self._job_permissions(packages_read=False, template="docs.yml.j2")
+
+        for job in ("docs-quality", "build"):
+            tm.that(
+                u.Cli.JSON_MAPPING_ADAPTER.validate_python(declared[job]).get(
+                    "packages"
+                ),
+                eq="read",
+            )
+            tm.that(
+                u.Cli.JSON_MAPPING_ADAPTER.validate_python(undeclared[job]).get(
+                    "packages"
+                ),
+                eq=None,
+            )

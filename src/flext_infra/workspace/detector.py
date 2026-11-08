@@ -264,8 +264,8 @@ class FlextInfraWorkspaceDetector(
         along: ``True`` when the manifest declares no overlay.
 
         Returns:
-            The resulting ``p.Result[tuple[p.Infra.RepositoryRef, bool,
-                m.Infra.ProjectSpec | None]]``.
+            The resulting ``p.Result[tuple[m.Infra.RepositoryRef, bool,
+                p.Infra.ProjectSpec | None]]``.
 
         """
         values = observed.model_dump(round_trip=True)
@@ -275,13 +275,15 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
-        values["inputs"] = (*observed.inputs, *sources)
+        values["inputs"] = [
+            state.model_dump(round_trip=True) for state in (*observed.inputs, *sources)
+        ]
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
-                tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]
+                tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]
             ].from_failure(validated)
-        return r[tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None]].ok((
+        return r[tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None]].ok((
             validated.value,
             declaration.gascity_enabled,
             declaration.project,
@@ -465,12 +467,9 @@ class FlextInfraWorkspaceDetector(
                 f"project declaration: {repository_root}",
             )
             return result_type.fail(str(error), exception=error)
-        if (
-            declaration.integration is None
-            or "kind" not in declaration.model_fields_set
-        ):
+        if declaration.integration is None:
             return result_type.fail(
-                "new project requires its own integration and kind declarations: "
+                "new project requires its own integration declaration: "
                 f"{repository_root}",
             )
         if declaration.project.flext_source is None:
@@ -623,7 +622,7 @@ class FlextInfraWorkspaceDetector(
             )
             if loaded.failure:
                 return result_type.from_failure(loaded)
-            if isinstance(loaded.value, m.Infra.GitSubmoduleDeclaration):
+            if isinstance(loaded.value, p.Infra.GitSubmoduleDeclaration):
                 pending.append(loaded.value)
                 continue
             if isinstance(loaded.value, Path):
@@ -651,10 +650,10 @@ class FlextInfraWorkspaceDetector(
 
         Returns:
             The resulting ``p.Result[p.Infra.RepositoryRef | Path |
-            m.Infra.GitSubmoduleDeclaration]``.
+            p.Infra.GitSubmoduleDeclaration]``.
 
         """
-        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]
         contract = u.Infra.git_require_submodule_contract(declaration)
         if contract.failure:
             return result_type.from_failure(contract)
@@ -718,7 +717,7 @@ class FlextInfraWorkspaceDetector(
             Its observed identity, or the same native declaration for setup.
 
         """
-        result_type = r[p.Infra.RepositoryRef | Path | m.Infra.GitSubmoduleDeclaration]
+        result_type = r[p.Infra.RepositoryRef | Path | p.Infra.GitSubmoduleDeclaration]
         if not (subproject_root / c.Infra.GIT_DIR).exists():
             if not context.allow_unprovisioned_members:
                 error = FileNotFoundError(
@@ -1001,9 +1000,9 @@ class FlextInfraWorkspaceDetector(
         """
         result_type = r[
             tuple[
-                m.Infra.BeadsProjectSpec | None,
+                p.Infra.BeadsProjectSpec | None,
                 tuple[
-                    tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+                    tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
                     tuple[
                         Sequence[p.Infra.RepositoryRef],
                         Sequence[Path],
@@ -1203,7 +1202,7 @@ class FlextInfraWorkspaceDetector(
         """
         result_type = r[
             tuple[
-                tuple[p.Infra.RepositoryRef, bool, m.Infra.ProjectSpec | None],
+                tuple[m.Infra.RepositoryRef, bool, p.Infra.ProjectSpec | None],
                 tuple[
                     Sequence[p.Infra.RepositoryRef],
                     Sequence[Path],

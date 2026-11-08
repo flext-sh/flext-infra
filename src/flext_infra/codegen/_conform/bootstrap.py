@@ -22,7 +22,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """
 
     state: Annotated[
-        m.Infra.CodegenConformState,
+        p.Infra.CodegenConformState,
         m.Field(
             description="Mutable request-local data owned by one conform invocation.",
         ),
