@@ -193,7 +193,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._prepare_ordering()
             if isinstance(qualified, m.Infra.SourceClassReference):
                 return self._source_class_binding(qualified)
-            receiver, _, member = qualified.rpartition(".")
+            text = str(qualified)
+            receiver, _, member = text.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
             for ancestor in self._linearize(identity):
                 binding = self._declared_member_binding(ancestor, member)
