@@ -301,7 +301,15 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         requires: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeWorkflowRequirementSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(
                 description=(
                     "Earlier workflow identities whose green result admits this step "

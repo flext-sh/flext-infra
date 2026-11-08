@@ -132,10 +132,8 @@ class FlextInfraModelsConfigWorkspace:
         @classmethod
         def _validate_candidate_dependencies(
             cls,
-            values: tuple[
-                FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...
-            ],
-        ) -> tuple[FlextInfraModelsConfigWorkspace.DependencyCommitSourceSpec, ...]:
+            values: tuple[p.Infra.DependencyCommitSourceSpec, ...],
+        ) -> tuple[p.Infra.DependencyCommitSourceSpec, ...]:
             """Require one immutable candidate per distribution and repository.
 
             Returns:
@@ -218,7 +216,13 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = ()
         refactor: Annotated[
-            FlextInfraModelsConfigWorkspace.RefactorConfigSpec | None,
+            Annotated[
+                p.Infra.RefactorConfigSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.RefactorConfigSpec
+                ),
+            ]
+            | None,
             m.Field(description="Own refactor file-selection declaration"),
         ] = None
 
@@ -294,15 +298,35 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = None
         extra_verbs: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbSpec,
+                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
+                ],
+                ...,
+            ],
             m.Field(description="Own additional public Make commands"),
         ] = ()
         script_dispatch: Annotated[
-            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
+            Annotated[
+                p.Infra.ScriptDispatchSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.ScriptDispatchSpec
+                ),
+            ]
+            | None,
             m.Field(description="Own script command routing contract"),
         ] = None
         verb_groups: Annotated[
-            tuple[FlextInfraModelsConfigMake.MakeVerbGroupSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.MakeVerbGroupSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Own ordered `make help` sections"),
         ] = ()
 
@@ -405,13 +429,11 @@ class FlextInfraModelsConfigWorkspace:
             cls,
             groups: Mapping[
                 str,
-                tuple[
-                    str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...
-                ],
+                tuple[str | p.Infra.DependencyGroupInclude, ...],
             ],
         ) -> Mapping[
             str,
-            tuple[str | FlextInfraModelsConfigWorkspace.DependencyGroupInclude, ...],
+            tuple[str | p.Infra.DependencyGroupInclude, ...],
         ]:
             """Reject missing, ambiguous or cyclic local group inclusions.
 
@@ -629,7 +651,13 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Optional workspace issue-prefix identity"),
         ] = None
         beads_server: Annotated[
-            FlextInfraModelsConfigWorkspace.WorkspaceBeadsServerSpec | None,
+            Annotated[
+                p.Infra.WorkspaceBeadsServerSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.WorkspaceBeadsServerSpec
+                ),
+            ]
+            | None,
             m.Field(description="Optional workspace-local Dolt connection"),
         ] = None
         repository: Annotated[
@@ -670,7 +698,15 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Content-only Gitlink paths"),
         ] = ()
         exclusions: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.WorkspaceExclusionSpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.WorkspaceExclusionSpec,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigWorkspace.WorkspaceExclusionSpec
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Explicit workspace exclusions"),
         ] = ()
         integration: Annotated[
@@ -698,7 +734,17 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Declared candidate worktrees conformed by Infra"),
         ] = ()
         repository_policy_overlays: Annotated[
-            tuple[FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryPolicyOverlaySpec,
+                    t.schema_for_model(
+                        lambda: (
+                            FlextInfraModelsConfigWorkspace.RepositoryPolicyOverlaySpec
+                        )
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Repository-local policy overlays"),
         ] = ()
         external_consumers: Annotated[
@@ -719,7 +765,13 @@ class FlextInfraModelsConfigWorkspace:
             ),
         ] = ()
         refactor: Annotated[
-            FlextInfraModelsConfigWorkspace.RefactorConfigSpec | None,
+            Annotated[
+                p.Infra.RefactorConfigSpec,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigWorkspace.RefactorConfigSpec
+                ),
+            ]
+            | None,
             m.Field(description="Refactor file-selection configuration"),
         ] = None
 

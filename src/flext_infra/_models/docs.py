@@ -181,7 +181,12 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         guides: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsGuideEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsGuideEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsGuideEntry),
+                ]
+            ],
             m.Field(description="Ordered guide rows"),
         ]
 
@@ -229,7 +234,12 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         modules: Annotated[
-            Sequence[FlextInfraModelsDocs.DocsModuleEntry],
+            Sequence[
+                Annotated[
+                    p.Infra.DocsModuleEntry,
+                    t.schema_for_model(lambda: FlextInfraModelsDocs.DocsModuleEntry),
+                ]
+            ],
             m.Field(description="Ordered module page rows"),
         ]
 
