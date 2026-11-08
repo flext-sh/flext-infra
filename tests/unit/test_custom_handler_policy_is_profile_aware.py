@@ -25,7 +25,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         declared = frozenset(
             c.Infra.MakeProfile(profile.name) for profile in codegen_profiles
         )
-        handler_policies: Mapping[str, m.Infra.CustomHandlerPolicy] = (
+        handler_policies: Mapping[str, p.Infra.CustomHandlerPolicy] = (
             config.Infra.codegen.make.custom_handler_policies
         )
         covered = frozenset(
@@ -94,7 +94,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         to the strict base policy -- exactly the failure that made conform
         reject the repository root's own custom surface.
         """
-        policies: MutableMapping[str, m.Infra.CustomHandlerPolicy] = dict(
+        policies: MutableMapping[str, p.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies,
         )
         profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraGitSweepSemantics:
@@ -50,7 +50,7 @@ class TestsFlextInfraGitSweepSemantics:
     def _retained(
         repository: Path,
     ) -> tuple[
-        m.Infra.GitWorktreeStateCheckpoint, m.Infra.GitWorktreeCheckpointPublication
+        p.Infra.GitWorktreeStateCheckpoint, p.Infra.GitWorktreeCheckpointPublication
     ]:
         """Capture and publish actual index/working layers through their owner.
 

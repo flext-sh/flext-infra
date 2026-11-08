@@ -374,7 +374,7 @@ class FlextInfraPytestRunnerBase(s[int]):
     def _declared_worker_ceiling(
         self,
         policy: p.Infra.PytestConfig,
-    ) -> int | m.Infra.PytestWorkerCeiling:
+    ) -> int | p.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
 
         Returns:
@@ -390,7 +390,7 @@ class FlextInfraPytestRunnerBase(s[int]):
 
     @staticmethod
     def resolve_worker_ceiling(
-        ceiling: int | m.Infra.PytestWorkerCeiling,
+        ceiling: int | p.Infra.PytestWorkerCeiling,
         cpu_count: int,
     ) -> int:
         """Resolve a declared ceiling against the process CPU count.
