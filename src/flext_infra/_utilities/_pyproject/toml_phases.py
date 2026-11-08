@@ -178,9 +178,9 @@ class FlextInfraUtilitiesPyprojectTomlPhases:
             for path, outcome in cls._apply_toml_operation(
                 table,
                 cast(
-                    p.Infra.DepsToml.SetOp
-                    | p.Infra.DepsToml.ListOp
-                    | p.Infra.DepsToml.RemoveOp,
+                    m.Infra.DepsToml.SetOp
+                    | m.Infra.DepsToml.ListOp
+                    | m.Infra.DepsToml.RemoveOp,
                     operation,
                 ),
             )
