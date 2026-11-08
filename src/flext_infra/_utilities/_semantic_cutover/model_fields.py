@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
@@ -616,13 +616,17 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
         class PortWrapper(ast.NodeTransformer):
             changed = False
 
+            @override
             def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
-                if cls._is_port_annotation(node) or cls._is_callable_annotation(node):
-                    return node
-                return self.generic_visit(node)
+                if not (
+                    cls._is_port_annotation(node) or cls._is_callable_annotation(node)
+                ):
+                    self.generic_visit(node)
+                return node
 
+            @override
             def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
-                node = self.generic_visit(node)
+                self.generic_visit(node)
                 if not cls._is_public_protocol_reference(node):
                     return node
                 self.changed = True

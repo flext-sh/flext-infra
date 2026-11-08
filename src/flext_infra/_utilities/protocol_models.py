@@ -1609,7 +1609,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 .with_suffix("")
                 .parts,
             ))
-            source_module = self.project.get_module(module_name)
+            source_module = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(module_name)
+            )
             source = self.project.source_text(model_sibling)
             tree = ast.parse(source, filename=str(model_sibling))
             owners: list[tuple[ast.ClassDef, p.Infra.RopeSourceClass]] = []
@@ -1803,7 +1805,9 @@ class FlextInfraUtilitiesModelsProtocol:
             return bases, imports
 
         @staticmethod
-        def _source_is_marker_class(declaration: ast.AST | None) -> bool:
+        def _source_is_marker_class(
+            declaration: p.Infra.RopeAstNode | None,
+        ) -> bool:
             """Whether ``declaration`` is a baseless class declaring nothing.
 
             Returns:
@@ -2926,7 +2930,7 @@ class FlextInfraUtilitiesModelsProtocol:
             actual = self.protocol_contract_members(
                 self.project, protocol, protocols_root
             )
-            extra = (
+            extra: Mapping[str, tuple[t.Infra.AstStatement, Path]] = (
                 {}
                 if stale
                 else {name: actual[name] for name in sorted(set(actual) - expected)}
@@ -2958,7 +2962,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 The declared payload of the authenticated Pydantic root base.
 
             """
-            owner = self.project.get_module(self.source_module_names[id(tree)])
+            owner = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(self.source_module_names[id(tree)])
+            )
             for part in path:
                 owner = self._source_class(owner.get_attribute(part))
             root = self.qualified_name(
@@ -3277,14 +3283,15 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.py_class(port) or protocol_base not in port.get_mro():
                 msg = f"upstream port is not a Protocol: {public_path}"
                 raise ValueError(msg)
-            if not any(
+            declaration = port.get_ast()
+            if not isinstance(declaration, ast.ClassDef) or not any(
                 self._denotes(
                     decorator,
                     port.get_scope().parent,
                     "typing",
                     "runtime_checkable",
                 )
-                for decorator in port.get_ast().decorator_list
+                for decorator in declaration.decorator_list
             ):
                 msg = f"upstream port is not runtime_checkable: {public_path}"
                 raise ValueError(msg)
@@ -3330,7 +3337,10 @@ class FlextInfraUtilitiesModelsProtocol:
             """Return only nested namespace declarations owned by a models facade."""
             module = value.get_module()
             resource = module.get_resource() if module is not None else None
-            if resource is None or Path(resource.real_path).name != "models.py":
+            if (
+                not isinstance(resource, p.Infra.RopeFile)
+                or Path(resource.real_path).name != "models.py"
+            ):
                 return ()
             facade = FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
                 self.project, resource
@@ -3619,7 +3629,11 @@ class FlextInfraUtilitiesModelsProtocol:
                     for part in path[:-1]:
                         owner = owner.get_attribute(part).get_object()
                     source = self._source_class(owner.get_attribute(path[-1]))
-                    if source.get_ast().lineno != node.lineno:
+                    declaration = source.get_ast()
+                    if (
+                        not isinstance(declaration, ast.ClassDef)
+                        or declaration.lineno != node.lineno
+                    ):
                         message = (
                             f"model declaration identity changed: "
                             f"{module_name}.{'.'.join(path)}"
@@ -5371,7 +5385,9 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             bindings = self._source_typing_bindings(tree, model, "Annotated")
-            native = self.project.get_module(self.source_module_names[id(tree)])
+            native = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(self.source_module_names[id(tree)])
+            )
             path = next(
                 path
                 for candidate, path, source in classes
@@ -5680,7 +5696,9 @@ class FlextInfraUtilitiesModelsProtocol:
             if len(paths) != 1:
                 msg = "annotation has no unique native model scope"
                 raise ValueError(msg)
-            owner = self.project.get_module(module_name)
+            owner = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(module_name)
+            )
             for part in paths[0]:
                 owner = self._source_class(owner.get_attribute(part))
             binding = self.resolve_symbol(scope or owner.get_scope(), expression)
@@ -6412,9 +6430,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 spelling, or None when no family class declares the chain.
 
             """
-            facade = self.project.get_module(
-                f"{self.source_package_name}."
-                f"{FlextInfraUtilitiesCodegenNamespace.facade_families()[letter].module}"
+            facade = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(
+                    f"{self.source_package_name}."
+                    f"{FlextInfraUtilitiesCodegenNamespace.facade_families()[letter].module}"
+                )
             )
             for size in range(len(attributes), 0, -1):
                 prefix = ".".join((letter, *attributes[:size]))
@@ -6433,9 +6453,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     # (``u.Field``) is no own family member: it keeps its
                     # spelling and the letter election binds the upstream.
                     return node
-                if declared[1] is None:
-                    continue
                 module, path = declared
+                if path is None:
+                    continue
                 family = module.rpartition(".")[0]
                 if not family.rpartition(".")[2].startswith("_"):
                     if letter != "p":
@@ -7520,7 +7540,9 @@ class FlextInfraUtilitiesModelsProtocol:
             module_name = self.module_name_for(
                 destination.relative_to(self.repository_root)
             )
-            scope = self.project.get_module(module_name).get_scope()
+            scope = FlextInfraUtilitiesRopeRuntime.require_source_module(
+                self.project.get_module(module_name)
+            ).get_scope()
             facade = self.project.get_module(
                 f"{self.source_package_name}.protocols"
             ).get_attribute("p")
@@ -7552,7 +7574,8 @@ class FlextInfraUtilitiesModelsProtocol:
                             msg = "Annotated field has no value type"
                             raise ValueError(msg)
                         return self.visit(node.slice.elts[0])
-                    return self.generic_visit(node)
+                    self.generic_visit(node)
+                    return node
 
             normalized = Normalize().visit(copy.deepcopy(annotation))
             return ast.unparse(ast.fix_missing_locations(normalized))
@@ -7883,7 +7906,7 @@ class FlextInfraUtilitiesModelsProtocol:
             holder: p.Infra.RopeSourceClass,
             context: p.Infra.ModelProtocolRenderContext,
             destination: Path,
-        ) -> list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract]:
+        ) -> list[p.Infra.ModelProtocolRenderContextModelProtocolContract]:
             """Validate existing authored signatures before extending their holder.
 
             Returns:
@@ -7893,7 +7916,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 ValueError: An authored contract has an incompatible signature.
 
             """
-            missing: list[m.Infra.ModelProtocolRenderContext.ModelProtocolContract] = []
+            missing: list[p.Infra.ModelProtocolRenderContextModelProtocolContract] = []
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -8175,7 +8198,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
         def _inventory_module_models(
             self,
-            module: p.Infra.RopeSourceModule,
+            module: p.Infra.RopeSemanticModule,
             model_base: p.Infra.RopePyObject,
         ) -> p.Result[bool]:
             """Walk native declarations while excluding inherited foreign bindings.
