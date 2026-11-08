@@ -14,7 +14,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import c, m, p, r, u
 from flext_infra._models import FlextInfraModelsMixins
@@ -247,19 +247,19 @@ class FlextInfraCodegenLazyInit(
                 )
                 for root in roots
             }
-            targets = self._targets(indexes, scoped=scoped)
+            targets = self._targets(cast(Mapping[Path, FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex], indexes), scoped=scoped)
             if targets.failure:
                 return result_type.from_failure(targets)
             by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
-                    FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
-                        view,
-                        indexes[root],
-                        root=root,
-                        scoped=scoped,
-                        snapshot=shared,
-                    ),
+                        FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
+                            view,
+                            cast(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex, indexes[root]),
+                            root=root,
+                            scoped=scoped,
+                            snapshot=shared,
+                        ),
                     target,
                 )
                 if planned.failure:
