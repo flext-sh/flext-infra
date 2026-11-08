@@ -258,6 +258,7 @@ class FlextInfraProtocolsRope(Protocol):
         semantic_rename_planner: (
             FlextInfraProtocolsBase.NativeSemanticRenamePlanner
         ) | None
+        model_protocol_routes: Mapping[str, str]
 
         def facade_projection(
             self,
