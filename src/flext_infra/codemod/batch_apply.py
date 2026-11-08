@@ -522,7 +522,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         """
         if not plans:
             return r[p.Infra.StageSourcePlan].ok(seed)
-        accepted = FlextInfraModReplacements.admit(root, tuple(plans.values()))
+        accepted = FlextInfraModReplacements.admit(
+            root, tuple(plans.values()), seed.updates
+        )
         if accepted.failure:
             return r[p.Infra.StageSourcePlan].from_failure(accepted)
         return FlextInfraStagedPackage.plan_sources(

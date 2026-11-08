@@ -358,6 +358,11 @@ class FlextInfraCodemodSemanticApply(
                 )
             if replacement == name:
                 continue
+            # A sibling data directory (YAML/JSON resources, no Python source)
+            # owns the public basename; the private module keeps its prefix.
+            data_dir = path.parent / replacement
+            if data_dir.is_dir() and not any(data_dir.rglob("*.py")):
+                continue
             # A public name of the parent package (the `config`/`settings`
             # singletons) cannot also be a submodule: importing the submodule
             # rebinds the parent attribute and shadows the lazy export.
