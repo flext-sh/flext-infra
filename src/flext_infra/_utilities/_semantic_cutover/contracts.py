@@ -30,7 +30,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesImportLaw,
-    FlextInfraUtilitiesModelsProtocol,
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -69,6 +68,18 @@ class FlextInfraUtilitiesSemanticContracts(
     FlextInfraUtilitiesSemanticModelFieldContracts,
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
+
+    _model_protocol_routes: (
+        Callable[[p.Infra.RopeWorkspaceDsl], Mapping[str, str]] | None
+    ) = None
+
+    @classmethod
+    def register_model_protocol_routes(
+        cls,
+        fn: Callable[[p.Infra.RopeWorkspaceDsl], Mapping[str, str]],
+    ) -> None:
+        """Register the model protocol route provider for the semantic loop."""
+        cls._model_protocol_routes = fn
 
     class _AnnotationMemberOwner(NamedTuple):
         """Authenticated source and destination namespaces for one rule."""
@@ -137,19 +148,11 @@ class FlextInfraUtilitiesSemanticContracts(
             The resulting semantic migration edits.
 
         """
-        protocol = FlextInfraUtilitiesModelsProtocol
-        pkg_names = protocol.protocol_model_package_names(
-            workspace.repository_root, workspace.rope_project
+        routes = (
+            cls._model_protocol_routes(workspace)
+            if cls._model_protocol_routes is not None
+            else {}
         )
-        routes: dict[str, str] = {}
-        for package_name in pkg_names:
-            routes.update(
-                protocol.protocol_model_routes_from_source(
-                    workspace.repository_root,
-                    workspace.rope_project,
-                    package_name=package_name,
-                )
-            )
         computed = cls.plan_computed_model_field_contracts(workspace, sources, routes)
         if computed.failure:
             return computed

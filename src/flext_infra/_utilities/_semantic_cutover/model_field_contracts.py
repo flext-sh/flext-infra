@@ -221,6 +221,9 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         "schema_for_model",
     })
     _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
+    _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset(
+        {"InstanceOf", "SettingsConfigDict"}
+    )
 
     def __init__(self, path: Path, routes: Mapping[str, str], tree: ast.Module) -> None:
         super().__init__()
@@ -479,7 +482,9 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
                 slice=self._project(node.slice, field=False),
                 ctx=ast.Load(),
             )
-        if not isinstance(node, (ast.Name, ast.Attribute)):
+        if not isinstance(node, (ast.Name, ast.Attribute)) or (
+            isinstance(node, ast.Attribute) and node.attr in self._NON_MODEL_M
+        ):
             return None
         reference = ast.unparse(node)
         protocol = (
