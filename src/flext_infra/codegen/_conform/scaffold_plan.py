@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import override
 
@@ -45,14 +45,17 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         absent = self._absent_family_destinations(target, workspace, codegen)
         if existing.failure or not absent or not contract.templates:
             return existing
+        # The artifact graph is keyed by template destinations; the checkout
+        # paths they render to only filter the resulting plans.
         scaffold = self._plan_scaffold_repository(
             target=target,
             workspace=workspace,
             codegen=codegen,
             contract=contract.model_copy(
-                update={"destinations": absent, "pyproject": False}
+                update={"destinations": frozenset(absent), "pyproject": False}
             ),
         )
+        rendered = frozenset(absent.values())
         if scaffold.failure:
             return scaffold
         planned = {plan.path for plan in existing.value}
@@ -63,7 +66,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 plan
                 for plan in scaffold.value
                 if plan.path not in planned
-                and plan.path.relative_to(root).as_posix() in absent
+                and plan.path.relative_to(root).as_posix() in rendered
             ),
         ))
 
@@ -72,12 +75,12 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         target: p.Infra.RepositoryConformTarget,
         workspace: p.Infra.WorkspaceSpec,
         codegen: p.Infra.CodegenConfigSpec,
-    ) -> frozenset[str]:
+    ) -> Mapping[str, str]:
         """Select the scaffold-only family destinations absent from the checkout.
 
         Returns:
-            The absent destinations; empty outside an identified internal FLEXT
-            repository.
+            Each absent template destination mapped to the checkout path it
+            renders to; empty outside an identified internal FLEXT repository.
 
         """
         project = workspace.project
@@ -85,41 +88,43 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             project is None
             or target.repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
         ):
-            return frozenset()
+            return {}
         package = Path(c.Infra.DEFAULT_SRC_DIR) / project.package_name
+        # Only the family facade modules themselves: the scaffold's example
+        # and layer-zero members under a family directory belong to a new
+        # project, never to an existing repository.
         family_roots = tuple(
-            root
+            package / f"{family.module}.py"
             for family in u.Infra.facade_families().values()
-            for root in (
-                package / f"{family.module}.py",
-                package / family.directory,
-            )
         )
         destinations = (
-            Path(
-                entry.destination.format(
-                    package_name=project.package_name,
-                    ns=project.namespace,
-                    **u.Infra.runtime_module_names(
-                        project_name=target.repository.distribution,
-                        codegen=codegen,
-                    ),
-                )
+            (
+                entry.destination,
+                Path(
+                    entry.destination.format(
+                        package_name=project.package_name,
+                        ns=project.namespace,
+                        **u.Infra.runtime_module_names(
+                            project_name=target.repository.distribution,
+                            codegen=codegen,
+                        ),
+                    )
+                ),
             )
             for entry in codegen.templates.entries
             if entry.ownership is None
             and entry.source is not None
             and target.make_profile in entry.profiles
         )
-        return frozenset(
-            destination.as_posix()
-            for destination in destinations
+        return {
+            template: destination.as_posix()
+            for template, destination in destinations
             if any(
                 destination == family_root or destination.is_relative_to(family_root)
                 for family_root in family_roots
             )
             and not (target.root / destination).exists()
-        )
+        }
 
     def _plan_scaffold_repository(
         self,

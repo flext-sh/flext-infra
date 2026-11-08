@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_infra import c, config, m, p, r, s, u
+from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
@@ -25,7 +25,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
     """
 
     conform_collaborators: Annotated[
-        p.Infra.CodegenConformPorts | None,
+        t.Port[p.Infra.CodegenConformPorts] | None,
         m.Field(
             exclude=True,
             description=(

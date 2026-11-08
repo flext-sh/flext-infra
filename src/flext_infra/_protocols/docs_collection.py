@@ -277,28 +277,10 @@ class FlextInfraProtocolsDocsCollection:
     class PlanCollectionBundle(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def files(
-            self,
-        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
-            """Effects published through the shared publisher."""
-            ...
-
+        files: tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]
         prunable_directories: tuple[Path, ...]
-
-        @property
-        def revisions(
-            self,
-        ) -> tuple[FlextInfraProtocolsDocsCollection.PlanCollectionRevision, ...]:
-            """Latest newly observed revision per plan."""
-            ...
-
-        @property
-        def coverage(
-            self,
-        ) -> tuple[FlextInfraProtocolsDocsCollection.PlanCollectionCoverage, ...]:
-            """Explicit per-source collection coverage."""
-            ...
+        revisions: tuple[FlextInfraProtocolsDocsCollection.PlanCollectionRevision, ...]
+        coverage: tuple[FlextInfraProtocolsDocsCollection.PlanCollectionCoverage, ...]
 
 
 __all__: list[str] = [

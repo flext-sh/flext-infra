@@ -1800,6 +1800,9 @@ and sealed-source authentication.
 ### Make Activation, Packaged Resources, and Hatch Wheel Packaging
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
+Every generated `direnv` invocation, in Make and in `.envrc` publication, runs the
+executable the project's locked Mise toolchain resolves (`mise which direnv`), never
+a `direnv` found on the caller's `PATH`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
 required by default before handlers and hooks. Generation and its footprint
 inspection consume the declared physical interpreter and verify its environment

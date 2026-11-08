@@ -15,13 +15,20 @@ if TYPE_CHECKING:
     from tests.unit.promoted.test_command_header import (
         TestsFlextInfraPromotedCommandHeader,
     )
+    from tests.unit.promoted.test_command_stem import TestsFlextInfraPromotedCommandStem
 
 
-__all__: tuple[str, ...] = ("TestsFlextInfraPromotedCommandHeader",)
+__all__: tuple[str, ...] = (
+    "TestsFlextInfraPromotedCommandHeader",
+    "TestsFlextInfraPromotedCommandStem",
+)
 
 install_lazy_exports(
     __name__,
     globals(),
-    {"TestsFlextInfraPromotedCommandHeader": ".test_command_header"},
+    {
+        "TestsFlextInfraPromotedCommandHeader": ".test_command_header",
+        "TestsFlextInfraPromotedCommandStem": ".test_command_stem",
+    },
     public_exports=__all__,
 )

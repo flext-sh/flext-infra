@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
+import os
 import shutil
 import stat
 from pathlib import Path
@@ -279,6 +280,34 @@ class TestsFlextInfraCodegenConformPublicSurface:
             eq=tuple(item for item in before if item[0] != destination.name),
         )
         tm.that(tm.ok(infra.codegen_conform(request)).written_files, eq=())
+
+    @staticmethod
+    def test_envrc_publication_authorizes_through_the_locked_direnv(
+        infra_git_repo: Path,
+        tmp_path: Path,
+    ) -> None:
+        """Publishing activation never selects a direnv from the host PATH."""
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        destination = root / c.Infra.ENVRC_FILENAME
+        tm.ok(u.Cli.atomic_write_text_file(destination, "# stale activation\n"))
+        host_bin = tmp_path / "host-bin"
+        u.Tests.write_executable(
+            host_bin / "direnv",
+            "#!/bin/sh\nprintf 'host-direnv-selected\\n' >&2\nexit 97\n",
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.ENVRC,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        with u.Tests.env_vars_context({
+            "PATH": os.pathsep.join((str(host_bin), os.environ["PATH"])),
+            config.Infra.codegen.make.ci.variable: "",
+        }):
+            result = infra.codegen_conform(request)
+        tm.that(tm.ok(result).written_files, eq=(destination,))
 
     @staticmethod
     @c.Tests.MARK.parametrize(

@@ -34,7 +34,10 @@ class TestsFlextInfraMisePinBootstrap:
             ],
             m.Field(description="Original declared toolchain"),
         ]
-        make: Annotated[p.Infra.MakeSpec, m.Field(description="Original Make contract")]
+        make: Annotated[
+            Annotated[p.Infra.MakeSpec, t.schema_for_model(lambda: m.Infra.MakeSpec)],
+            m.Field(description="Original Make contract"),
+        ]
         bootstrap_report_shell_literal: Annotated[
             str, m.Field(description="Elected operation report scalar transport")
         ]

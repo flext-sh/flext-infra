@@ -4624,7 +4624,7 @@ class FlextInfraUtilitiesModelsProtocol:
             tree, node = owner
             # The root type is a base subscript, evaluated in the scope
             # that encloses the model class.
-            root_structural = self._source_structural_annotation(
+            root_structural, substitutions = self._source_structural_projection(
                 root_type,
                 tree,
                 node,
@@ -4638,9 +4638,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     value=None,
                     simple=1,
                 ),
-                # Same covariance law as declared fields: a rewritten
-                # (protocol or read-only container) root is a property.
-                read_only=frozen or ast.dump(root_structural) != ast.dump(root_type),
+                # Same covariance law as declared fields: a root whose model
+                # references became protocols is a property.
+                read_only=frozen or substitutions > 0,
             )
 
         def _source_model_class(
@@ -5243,7 +5243,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     description = ast.get_docstring(statement)
                 else:
                     continue
-                structural = self._source_structural_annotation(
+                structural, substitutions = self._source_structural_projection(
                     annotation,
                     tree,
                     node,
@@ -5257,22 +5257,17 @@ class FlextInfraUtilitiesModelsProtocol:
                             value=None,
                             simple=1,
                         ),
-                        # A field whose type the projection rewrote to a
-                        # protocol is covariant: only a read-only property lets
-                        # the concrete model satisfy its own contract. Pydantic
-                        # metadata is no rewrite: compare against the declared
-                        # value type with its ``Annotated`` wrappers removed.
-                        # The field name's casing is not a kind: a capitalized
+                        # A field whose type the projection rewrote from a model
+                        # to its protocol is covariant: only a read-only
+                        # property lets the concrete model satisfy its own
+                        # contract. Metadata, instance wrappers and family
+                        # route spelling are no rewrite, so a field already
+                        # typed by protocols keeps its read/write capability
+                        # (ADR-018: frozen fields alone have no setter). The
+                        # field name's casing is not a kind: a capitalized
                         # Pydantic field (``Mise``, ``Gitignore``) is owned data
-                        # exactly like a lowercase one, and declaring it as a
-                        # read-write attribute makes the protocol invariant.
-                        read_only=(
-                            read_only
-                            or ast.dump(structural)
-                            != ast.dump(
-                                self._source_without_annotated(annotation, tree, node)
-                            )
-                        ),
+                        # exactly like a lowercase one.
+                        read_only=read_only or substitutions > 0,
                         description=description,
                     )
                 )
@@ -5320,31 +5315,6 @@ class FlextInfraUtilitiesModelsProtocol:
             spelled = f"{model_facade}{route.removeprefix('m')}"
             return ast.parse(spelled, mode="eval").body
 
-        def _source_without_annotated(
-            self, annotation: ast.expr, tree: ast.Module, model: ast.ClassDef
-        ) -> ast.expr:
-            """Remove every ``Annotated`` wrapper, keeping each declared value type.
-
-            Returns:
-                The annotation as written, without its Pydantic metadata.
-
-            """
-            bindings = self._source_typing_bindings(tree, model, "Annotated")
-
-            class Unwrap(ast.NodeTransformer):
-                @override
-                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
-                    if ast.unparse(node.value) in bindings:
-                        value = (
-                            node.slice.elts[0]
-                            if isinstance(node.slice, ast.Tuple)
-                            else node.slice
-                        )
-                        return self.visit(value)
-                    return self.generic_visit(node)
-
-            return Unwrap().visit(copy.deepcopy(annotation))
-
         def _source_structural_annotation(
             self,
             annotation: ast.expr,
@@ -5354,7 +5324,26 @@ class FlextInfraUtilitiesModelsProtocol:
             *,
             lexical: p.Infra.RopeScope | None = None,
         ) -> ast.expr:
-            """Project a source annotation into a covariant structural read contract.
+            """Project a source annotation into its structural contract.
+
+            Returns:
+                The projected annotation of ``_source_structural_projection``.
+
+            """
+            return self._source_structural_projection(
+                annotation, tree, model, classes, lexical=lexical
+            )[0]
+
+        def _source_structural_projection(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            model: ast.ClassDef,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            *,
+            lexical: p.Infra.RopeScope | None = None,
+        ) -> tuple[ast.expr, int]:
+            """Project a source annotation and count its model substitutions.
 
             ``lexical`` names the scope a model base expression is evaluated in
             (the class enclosing the model), instead of the model's own body.
@@ -5362,12 +5351,15 @@ class FlextInfraUtilitiesModelsProtocol:
             The semantic projector already treats ``Annotated`` as its value
             type. Mirror that contract in the source bootstrap so Pydantic
             ``Field`` metadata remains owned by ``m`` and is never evaluated
-            while importing a Protocol mirror. Mutable containers are exposed
-            through their read-only ABCs, allowing nested model values to
-            conform covariantly through a Protocol property.
+            while importing a Protocol mirror. A model reference becomes its
+            protocol route; only then is the value covariant, so a mutable
+            container holding a substituted element is exposed through its
+            read-only ABC, and a container of unchanged elements keeps its
+            mutable contract.
 
             Returns:
-                The recursively unwrapped declared value type.
+                The recursively unwrapped declared value type and the number
+                of model references replaced by protocol routes.
 
             Raises:
                 TypeError: If the annotation has no tuple or value type.
@@ -5386,6 +5378,10 @@ class FlextInfraUtilitiesModelsProtocol:
             member = (tree, model, classes, lexical)
 
             class Project(ast.NodeTransformer):
+                def __init__(self) -> None:
+                    super().__init__()
+                    self.substitutions = 0
+
                 @override
                 def visit_Constant(self, node: ast.Constant) -> ast.AST:
                     # A quoted forward reference names a type like its
@@ -5396,27 +5392,46 @@ class FlextInfraUtilitiesModelsProtocol:
 
                 @override
                 def visit_Name(self, node: ast.Name) -> ast.AST:
-                    return self_owner._source_projected_name(node, member)
+                    projected = self_owner._source_projected_name(node, member)
+                    self.substitutions += projected is not node
+                    return projected
 
                 @override
                 def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
-                    return self_owner._source_projected_attribute(self, node, member)
+                    projected = self_owner._source_projected_attribute(
+                        self, node, member
+                    )
+                    self.substitutions += projected is not node
+                    return projected
 
                 @override
                 def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
-                    return self_owner._source_projected_subscript(
+                    container = (
+                        self_owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
+                    )
+                    before = self.substitutions
+                    projected = self_owner._source_projected_subscript(
                         self, node, (scope, bindings)
                     )
+                    if container is None or self.substitutions == before:
+                        return projected
+                    return self_owner._source_read_only_rewrite(container, projected)
 
             self_owner = self
-            projected = Project().visit(
+            visitor = Project()
+            projected = visitor.visit(
                 ast.parse(ast.unparse(annotation), mode="eval").body
             )
             if not isinstance(projected, ast.expr):
                 msg = "model annotation projection is not an expression"
                 raise TypeError(msg)
-            return self._source_family_references(
-                ast.fix_missing_locations(projected), scope
+            return (
+                self._source_family_references(
+                    ast.fix_missing_locations(projected), scope
+                ),
+                visitor.substitutions,
             )
 
         def _source_projected_name(
@@ -5494,11 +5509,10 @@ class FlextInfraUtilitiesModelsProtocol:
             node: ast.Subscript,
             context: tuple[p.Infra.RopeScope | None, frozenset[str]],
         ) -> ast.AST:
-            """Unwrap metadata wrappers and expose mutable containers read-only.
+            """Unwrap metadata and instance wrappers around a projected value.
 
             Returns:
-                The projected subscript, its unwrapped value type, or the
-                read-only container of rewritten elements.
+                The projected subscript or its unwrapped value type.
 
             Raises:
                 TypeError: If an ``Annotated`` field has no value type.
@@ -5521,16 +5535,6 @@ class FlextInfraUtilitiesModelsProtocol:
             if name.rpartition(".")[2] == "Literal":
                 # Literal members are runtime payload, not type identities.
                 return node
-            read_only = (
-                self._source_read_only_container(node.value, scope)
-                if scope is not None
-                else None
-            )
-            if read_only is not None:
-                original = ast.dump(node.slice)
-                return self._source_read_only_rewrite(
-                    read_only, original, visitor.generic_visit(node)
-                )
             return visitor.generic_visit(node)
 
         def _source_instance_wrapper(
@@ -5627,22 +5631,18 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         @staticmethod
-        def _source_read_only_rewrite(
-            read_only: str, original: str, visited: ast.AST
-        ) -> ast.AST:
-            """Expose a container of rewritten elements through its read-only ABC.
+        def _source_read_only_rewrite(read_only: str, visited: ast.AST) -> ast.AST:
+            """Expose a container of substituted elements through its read-only ABC.
 
-            Elements rewritten to protocols make the container covariant only
-            through its read-only ABC; a container of unchanged element types
-            keeps its mutable contract.
+            Elements rewritten from models to protocols make the container
+            covariant only through its read-only ABC; the projection calls
+            this only when such a substitution happened inside the container.
 
             Returns:
-                The read-only container, or the visited container unchanged.
+                The read-only container, or a non-subscript projection unchanged.
 
             """
-            if not isinstance(visited, ast.Subscript) or (
-                ast.dump(visited.slice) == original
-            ):
+            if not isinstance(visited, ast.Subscript):
                 return visited
             return ast.copy_location(
                 ast.Subscript(

@@ -82,12 +82,7 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         file_path: Path
-
-        @property
-        def violations(self) -> Sequence[FlextInfraProtocolsScan.ScanViolation]:
-            """Violations found in the file."""
-            ...
-
+        violations: Sequence[FlextInfraProtocolsScan.ScanViolation]
         detector_name: str
 
     @runtime_checkable
@@ -239,14 +234,7 @@ class FlextInfraProtocolsScan:
         project_source_roots: Mapping[Path, Path] | None
         inventory: Mapping[Path, p.Cli.AtomicFileState]
         repository_roots: tuple[Path, ...]
-
-        @property
-        def authenticated(
-            self,
-        ) -> Mapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]:
-            """One authentication per file."""
-            ...
-
+        authenticated: MutableMapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]
         repositories: MutableMapping[Path, str]
 
     @runtime_checkable
@@ -384,18 +372,10 @@ class FlextInfraProtocolsScan:
     class ModPhaseAdvance(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def report(self) -> FlextInfraProtocolsScan.ModScanReport:
-            """Scan of the post-iteration sources."""
-            ...
-
+        report: FlextInfraProtocolsScan.ModScanReport
         phase_states: tuple[tuple[tuple[str, str], ...], ...]
         drifted: tuple[Path, ...]
-
-        @property
-        def quarantined(self) -> FlextInfraProtocolsScan.ModModuleQuarantine | None:
-            """Module whose attributed failure voided the plan."""
-            ...
+        quarantined: FlextInfraProtocolsScan.ModModuleQuarantine | None
 
     @runtime_checkable
     class ModTextRule(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):

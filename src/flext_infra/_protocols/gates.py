@@ -36,11 +36,7 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         name: str
-
-        @property
-        def files(self) -> tuple[FlextInfraProtocolsGates.SccFile, ...]:
-            """Every scanned file in this language."""
-            ...
+        files: tuple[FlextInfraProtocolsGates.SccFile, ...]
 
     @runtime_checkable
     class SccReport(FlextCliProtocols.BaseModel, Protocol):

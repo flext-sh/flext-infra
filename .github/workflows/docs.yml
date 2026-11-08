@@ -25,6 +25,8 @@ jobs:
     name: docs-quality
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # packages: read only for distributions declared in codegen
+    # ci_package_registry_read: make gen/check resolve their GitHub Packages.
     permissions:
       contents: read
     # Why: GitHub-hosted runners share egress IPs, so the unauthenticated
@@ -71,6 +73,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
@@ -98,6 +101,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
@@ -199,6 +203,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
@@ -223,6 +228,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
