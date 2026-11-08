@@ -21,8 +21,8 @@ import ast
 import re
 import sys
 from collections.abc import Mapping, Sequence
-from typing import cast
 from pathlib import Path
+from typing import cast
 
 from packaging.utils import canonicalize_name
 
@@ -1088,7 +1088,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         while pending:
             prefix, protocol, model, lineage = pending.pop()
             twins = (
-                cast(dict[str, object], {})
+                cast(Mapping[str, p.Infra.RopePyName], {})
                 if model is None
                 else model.get_attributes()
             )
