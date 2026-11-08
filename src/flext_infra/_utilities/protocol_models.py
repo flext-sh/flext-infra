@@ -5697,7 +5697,10 @@ class FlextInfraUtilitiesModelsProtocol:
             owner = self.project.get_module(module_name)
             for part in paths[0]:
                 owner = self._source_class(owner.get_attribute(part))
-            binding = self.resolve_symbol(scope or owner.get_scope(), expression)
+            owner_scope = owner.get_scope()
+            if owner_scope is None:
+                return None
+            binding = self.resolve_symbol(scope if scope is not None else owner_scope, expression)
             if binding is None:
                 return None
             alias = self.annotation_alias_definition(binding)
