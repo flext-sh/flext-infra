@@ -33,7 +33,7 @@ class TestsFlextInfraModernizerPackagedManifest:
         project = u.Tests.project_spec(distribution).model_copy(
             update={"packaged_data_paths": (data_dir,), "cli_module": False},
         )
-        declaration = m.Infra.RepositoryDeltaSpec(project=project)
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({"project": project})
         tm.ok(
             u.Cli.yaml_dump(
                 infra_git_repo / data_dir / c.Infra.CODEGEN_CONFIG_FILENAME,

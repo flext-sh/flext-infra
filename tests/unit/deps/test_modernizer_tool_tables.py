@@ -145,13 +145,19 @@ class TestsFlextInfraDepsModernizerToolTables:
     ) -> None:
         """The typed policy cannot remove mandatory Pydantic 2 support."""
         tooling = config.Infra.tooling
-        payload = tooling.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["settings"] = {
-            **tooling.settings,
-            "mypy": (
-                *(pair for pair in tooling.settings["mypy"] if pair[0] != "plugins"),
-                ("plugins", list(plugins)),
-            ),
+        payload = {
+            **tooling.model_dump(by_alias=True, exclude_computed_fields=True),
+            "settings": {
+                **tooling.settings,
+                "mypy": (
+                    *(
+                        pair
+                        for pair in tooling.settings["mypy"]
+                        if pair[0] != "plugins"
+                    ),
+                    ("plugins", list(plugins)),
+                ),
+            },
         }
         with u.Tests.raises(e.PydanticValidationError, match=r"pydantic\.mypy"):
             m.Infra.ToolConfigDocument.model_validate(payload)
@@ -633,17 +639,17 @@ class TestsFlextInfraDepsModernizerToolTables:
             "\tflext-managed = false\n",
             encoding="utf-8",
         )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=workspace.repository.name,
-            repository=workspace.repository.model_copy(
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": workspace.repository.name,
+            "repository": workspace.repository.model_copy(
                 update={"role": c.Infra.MakeProfile.WORKSPACE},
             ),
-            exclusions=(
+            "exclusions": (
                 m.Infra.WorkspaceExclusionSpec(path=Path(excluded), reason="retired"),
             ),
-            external_dependency_paths=(Path(excluded),),
-        )
+            "external_dependency_paths": (Path(excluded),),
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 u.Infra.workspace_manifest_path(project_dir),

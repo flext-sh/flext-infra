@@ -275,12 +275,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     "packaged_data_excludes": tuple(resolved.packaged_data_excludes),
                 },
             )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=name,
-            repository=repository,
-            project=project,
-        )
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": name,
+            "repository": repository,
+            "project": project,
+        })
         if resolved.gascity_enabled is not None:
             manifest = manifest.model_copy(
                 update={

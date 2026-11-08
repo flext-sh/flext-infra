@@ -65,7 +65,7 @@ class TestsFlextInfraMiseVersionContract:
             if _RESOLVED_IDENTITY_SEPARATOR in entry.version
         ) + tuple(
             f"{field}={value}"
-            for field, value in toolchain
+            for field, value in toolchain.model_dump().items()
             if field.endswith("_version")
             and isinstance(value, str)
             and _RESOLVED_IDENTITY_SEPARATOR in value

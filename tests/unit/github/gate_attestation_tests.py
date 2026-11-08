@@ -1007,8 +1007,10 @@ class TestsFlextInfraGithubGateAttestation:
     ) -> None:
         """Test gate attestation rejects duplicate gate coverage."""
         _allowed_signers = signed_repository_factory(tmp_path)
-        values = self._request(tmp_path).model_dump()
-        values["gates"] = (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK)
+        values = {
+            **self._request(tmp_path).model_dump(),
+            "gates": (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK),
+        }
 
         with u.Tests.raises(ValueError, match="at most 1 item"):
             m.Infra.GateAttestationCreateRequest.model_validate(values)

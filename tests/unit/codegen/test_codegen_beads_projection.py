@@ -195,13 +195,16 @@ class TestsFlextInfraCodegenBeadsProjection:
     ) -> None:
         """Missing or empty selected policy never becomes a default backend."""
         policy = config.Infra.codegen.toolchain.beads
-        payload = policy.model_dump(round_trip=True)
-        if prefix is None:
-            del payload["ownership_command_prefix"]
-        else:
-            payload["ownership_command_prefix"] = prefix
+        payload = policy.model_dump(
+            round_trip=True, exclude={"ownership_command_prefix"}
+        )
+        declared = (
+            payload
+            if prefix is None
+            else {**payload, "ownership_command_prefix": prefix}
+        )
         with u.Tests.raises(ValueError, match="ownership_command_prefix"):
-            type(policy).model_validate(payload)
+            type(policy).model_validate(declared)
 
     @staticmethod
     def _project(

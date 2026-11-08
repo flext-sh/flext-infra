@@ -98,13 +98,15 @@ class TestsFlextInfraRuffProjectPolicy:
         """Changing explicit policy changes only delegation, never rule selection."""
         tooling = config.Infra.tooling
         declared = tooling.tools.ruff.lint
-        lint_payload = declared.model_dump(
-            mode="json",
-            by_alias=True,
-            exclude_computed_fields=True,
-        )
-        owners = dict(declared.rule_owners) if delegate else {}
-        lint_payload["rule-owners"] = owners
+        owners: dict[str, t.JsonValue] = dict(declared.rule_owners) if delegate else {}
+        lint_payload = {
+            **declared.model_dump(
+                mode="json",
+                by_alias=True,
+                exclude_computed_fields=True,
+            ),
+            "rule-owners": owners,
+        }
         lint = m.Infra.RuffLintConfig.model_validate_json(
             tm.ok(u.Cli.json_dumps(lint_payload)),
         )

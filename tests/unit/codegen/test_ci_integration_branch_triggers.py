@@ -534,10 +534,12 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_typed_approval_rejects_missing_stages(missing: str) -> None:
         """A truncated workflow cannot become an approval contract."""
         owner = config.Infra.codegen.make
-        payload = owner.model_dump(exclude=set(type(owner).model_computed_fields))
-        payload["workflow"] = [
-            step.model_dump() for step in owner.workflow if step.verb != missing
-        ]
+        payload = {
+            **owner.model_dump(exclude=set(m.Infra.MakeSpec.model_computed_fields)),
+            "workflow": [
+                step.model_dump() for step in owner.workflow if step.verb != missing
+            ],
+        }
         with u.Tests.raises(ValueError, match="workflow"):
             m.Infra.MakeSpec.model_validate(payload)
 
@@ -545,7 +547,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_typed_approval_cannot_disable_pre_commit() -> None:
         """Projection enablement is mandatory rather than a per-project option."""
         owner = config.Infra.codegen.make
-        payload = owner.model_dump(exclude=set(type(owner).model_computed_fields))
-        payload["pre_commit"] = False
+        payload = {
+            **owner.model_dump(exclude=set(m.Infra.MakeSpec.model_computed_fields)),
+            "pre_commit": False,
+        }
         with u.Tests.raises(ValueError, match="pre_commit"):
             m.Infra.MakeSpec.model_validate(payload)

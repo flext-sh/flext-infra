@@ -153,7 +153,10 @@ class TestsFlextInfraCodegenConformPublicSurface:
 
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(root))
         tm.that(declaration.spec.kind, eq=kind)
-        tm.that(declaration.spec.model_fields_set, has="kind")
+        persisted = u.Cli.json_walk_path(
+            tm.ok(u.Cli.yaml_safe_load(own)), ("Infra", "codegen", "repository")
+        )
+        tm.that(persisted, has="kind")
         tm.that(sibling.read_bytes(), eq=sibling_before)
         before = own.read_bytes()
         tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root, kind=kind).execute())

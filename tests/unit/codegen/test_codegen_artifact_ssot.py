@@ -56,15 +56,18 @@ class TestsFlextInfraCodegenArtifactSsot:
         first, second = sorted(entries)[:2]
         first_entry = u.json_mapping_adapter().validate_python(entries[first])
         second_entry = u.json_mapping_adapter().validate_python(entries[second])
-        first_entry["requires_artifacts"] = [second]
-        second_entry["requires_artifacts"] = (
+        second_requires = (
             [first] if dependencies == "cycle" else [f"{second}.undeclared"]
         )
-        entries[first] = first_entry
-        entries[second] = second_entry
-        payload["entries"] = entries
         with u.Tests.raises(c.ValidationError, match=error):
-            m.Infra.TemplatesSpec.model_validate(payload)
+            m.Infra.TemplatesSpec.model_validate({
+                **payload,
+                "entries": {
+                    **entries,
+                    first: {**first_entry, "requires_artifacts": [second]},
+                    second: {**second_entry, "requires_artifacts": second_requires},
+                },
+            })
 
     @staticmethod
     def test_artifact_names_are_unique(codegen: p.Infra.CodegenConfigSpec) -> None:

@@ -77,10 +77,26 @@ class TestsFlextInfraRootArtifactOwnership:
     def test_github_managed_owner_must_be_full() -> None:
         """Reject weaker policies for every config-declared GitHub artifact."""
         spec = config.Infra.codegen
-        payload = spec.model_dump(exclude_computed_fields=True)
-        for destination, entry in payload["templates"]["entries"].items():
-            if Path(destination).parts[:1] == (".github",):
-                entry["ownership"]["policy"] = "merge"
+        catalog = {
+            destination: {
+                **declaration.model_dump(exclude_computed_fields=True),
+                "ownership": {
+                    **declaration.ownership.model_dump(exclude_computed_fields=True),
+                    "policy": "merge",
+                },
+            }
+            if Path(destination).parts[:1] == (".github",)
+            and declaration.ownership is not None
+            else declaration.model_dump(exclude_computed_fields=True)
+            for destination, declaration in spec.templates.catalog.items()
+        }
+        payload = {
+            **spec.model_dump(exclude_computed_fields=True),
+            "templates": {
+                **spec.templates.model_dump(exclude_computed_fields=True),
+                "entries": catalog,
+            },
+        }
 
         with u.Tests.raises(ValueError, match="must be full-managed"):
             type(spec).model_validate(payload)

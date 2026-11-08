@@ -30,10 +30,12 @@ class TestsFlextInfraCodegenConformHatchHook:
             update={"role": c.Infra.MakeProfile.STANDALONE},
         )
         project_payload = u.Tests.project_spec("hook-project").model_dump()
-        project_payload["hatch_build_hook_path"] = hook_path
         return u.Tests.workspace_spec(
             repository,
-            project=m.Infra.ProjectSpec.model_validate(project_payload),
+            project=m.Infra.ProjectSpec.model_validate({
+                **project_payload,
+                "hatch_build_hook_path": hook_path,
+            }),
         )
 
     @staticmethod

@@ -309,7 +309,7 @@ class TestsFlextInfraMiseToolchainProof:
         with u.Tests.raises(ValueError, match="no npm backend"):
             m.Infra.ToolchainSpec.model_validate({
                 **declared,
-                "tools": [*declared["tools"], npm_tool],
+                "tools": [*(tool.model_dump() for tool in toolchain.tools), npm_tool],
             })
 
     @staticmethod

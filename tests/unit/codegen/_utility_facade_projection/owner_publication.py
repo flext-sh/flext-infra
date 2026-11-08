@@ -622,8 +622,8 @@ class UtilityFacadeOwnerPublication:
             FlextInfraCodegenConform.Generate(
                 state=m.Infra.CodegenConformState(repository_root=root),
             ).plan(
-                u.Tests.conform_request(
-                    root,
+                m.Infra.CodegenConformRequest(
+                    root=root,
                     what=c.Infra.CodegenConformSurface.FACADES,
                     scope=c.Infra.CodegenConformScope.SELF,
                     module=f"{package.name}.protocols",

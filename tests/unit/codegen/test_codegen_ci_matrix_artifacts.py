@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import config
@@ -125,27 +126,34 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         tm.that(len(selected.scopes), gt=0)
 
         scopes = {"all": ("sample.py",)}
+
+        def declared_scopes(*_args: object) -> Mapping[str, t.StrTuple]:
+            return scopes
+
+        def no_native(*_args: object, **_kwargs: object) -> Mapping[str, object]:
+            return {}
+
         with monkeypatch.context() as unselected:
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "codemod_native_scopes"
                 ),
                 "codemod_native_scopes",
-                classmethod(lambda *_args: scopes),
+                classmethod(declared_scopes),
             )
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "native_utilities"
                 ),
                 "native_utilities",
-                classmethod(lambda *_args: {}),
+                classmethod(no_native),
             )
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "codemod_native_rules"
                 ),
                 "codemod_native_rules",
-                classmethod(lambda *_args, **_kwargs: {}),
+                classmethod(no_native),
             )
             with u.Infra.codemod_workspace_snapshot(root) as snapshot:
                 default = u.Infra.codemod_native_generated(
