@@ -20,6 +20,7 @@ rule:
         has:
           kind: identifier
           regex: ^(self|cls)$
+          stopBy: end
   inside:
     kind: decorated_definition
     inside:
