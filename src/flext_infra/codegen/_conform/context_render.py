@@ -207,7 +207,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 repository.extra_verbs,
                 ()
                 if repository.script_dispatch is None
-                else self._discover_script_verbs(root),
+                else self._discover_script_verbs(root, repository.script_dispatch),
                 frozenset(verb.name for verb in (*codegen.make.verbs, *release_verbs)),
             ),
             *release_verbs,
