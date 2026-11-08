@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from flext_cli import c, t
+from flext_cli import c, m, t
 from pydantic_settings import SettingsConfigDict as PydanticSettingsConfigDict
 
 
