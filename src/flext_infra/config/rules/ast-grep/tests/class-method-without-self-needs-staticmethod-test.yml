@@ -1,0 +1,26 @@
+id: class-method-without-self-needs-staticmethod
+valid:
+- |
+  import pytest
+  class T:
+      @pytest.fixture
+      @staticmethod
+      def ok() -> int:
+          return 2
+- |
+  class T:
+      @property
+      def value(self) -> int:
+          return 1
+- |
+  class T:
+      @classmethod
+      def build(cls) -> "T":
+          return cls()
+invalid:
+- |
+  import pytest
+  class T:
+      @pytest.fixture
+      def svc() -> int:
+          return 1
