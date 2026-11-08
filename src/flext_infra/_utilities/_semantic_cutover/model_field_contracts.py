@@ -221,9 +221,10 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         "schema_for_model",
     })
     _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
-    _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset(
-        {"InstanceOf", "SettingsConfigDict"}
-    )
+    _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset({
+        "InstanceOf",
+        "SettingsConfigDict",
+    })
 
     def __init__(self, path: Path, routes: Mapping[str, str], tree: ast.Module) -> None:
         super().__init__()

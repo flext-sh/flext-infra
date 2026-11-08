@@ -193,7 +193,8 @@ class FlextInfraExtraPathsManager(
 
         """
         project = (
-            u.Infra.load_repository_declaration_inputs(project_dir)
+            u.Infra
+            .load_repository_declaration_inputs(project_dir)
             .unwrap()
             .spec.project
         )
