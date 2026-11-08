@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import m as cli_m, u
 
-from flext_infra import c, cli_m, m, p, r
+from flext_infra import c, m, p, r
 
 if TYPE_CHECKING:
     from pathlib import Path
