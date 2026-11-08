@@ -362,9 +362,11 @@ MYPY_PATHS := $(RUFF_PATHS)
 # === SECTION: project tool owner (managed) ===
 # Source: the repository's declared Mise toolchain, provisioned by make setup.
 # Native Mise interprets the lock and resolves each declared executable. The
-# owned acquisition binary, never host PATH, starts that read-only selection.
+# owned acquisition binary, never host PATH, starts that read-only selection;
+# activation and its authorization therefore never depend on a host direnv.
 override MISE = "$$(set -eu; mise_path="$$("$(BOOTSTRAP_MISE)" -C "$(RUNTIME_ROOT)" which mise)"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$mise_path"; else printf '%s\n' "$$mise_path"; fi)"
 override UV = "$$(set -eu; uv_mise=$(MISE); uv_path="$$("$$uv_mise" -C "$(RUNTIME_ROOT)" which "uv")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$uv_path"; else printf '%s\n' "$$uv_path"; fi)"
+override DIRENV = "$$(set -eu; direnv_mise=$(MISE); direnv_path="$$("$$direnv_mise" -C "$(RUNTIME_ROOT)" which "direnv")"; if [ "$${OS:-}" = Windows_NT ]; then cygpath --unix "$$direnv_path"; else printf '%s\n' "$$direnv_path"; fi)"
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
@@ -887,7 +889,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
 $(addprefix _activated-,$(PROFILE_VERBS_DIRECT)): _activated-%: _builtin-%
@@ -940,7 +942,7 @@ _setup_locked: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
-	@$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	@$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
 endif
 
 # Upgrade relocks Mise and provisions the locked toolchain, then resolves
@@ -993,7 +995,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(filter Y,$(CI)),$(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
 $(addprefix _activated-,$(SCRIPT_VERBS_DIRECT)): _activated-%: _builtin-%
@@ -1028,8 +1030,8 @@ _setup_lifecycle: _builtin_require_workspace
 		Y:*) ;; \
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),,direnv allow "$(PROJECT_ROOT)";) \
-	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
+	$(if $(filter Y,$(CI)),,$(DIRENV) allow "$(PROJECT_ROOT)";) \
+	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
 # Setup installs the committed locks as they are and never rewrites them.
 # Required input and native installation failures terminate immediately;
@@ -1206,7 +1208,9 @@ _builtin_require_environment: _builtin_require_interpreter
 #   4. the locked toolchain is installed from that lock, so a missing, bumped
 #      or newly declared tool (Python and uv included) is the one used next.
 # _upg_lifecycle then runs, in a fresh Make, the native `uv lock --upgrade`
-# with that Python and the frozen installation, and last the isolated executor
+# with that Python once per project (ADR-030): each governed member in
+# .gitmodules order forms its own uv.lock, then this project, whose lock is
+# their composition; then the frozen installation, and last the isolated executor
 # (make.executor_environment) repairs the one gap Mise does not report: a
 # locked tool missing a declared platform. A project whose source no longer
 # imports still has every lock written. It generates no projection.
@@ -1326,14 +1330,22 @@ _upg_lifecycle:
 	fi; \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(UV) lock --upgrade --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --upgrade --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
@@ -1386,7 +1398,7 @@ _builtin_gen_all: _builtin_require_interpreter
 	scope=all; \
 	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
 	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/codegen/gen.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
-	$(if $(filter Y,$(CI)),:,direnv allow "$(PROJECT_ROOT)")
+	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.
