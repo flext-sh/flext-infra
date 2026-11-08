@@ -260,6 +260,7 @@ class FlextInfraProtocolsRope(Protocol):
             """Map every model route of the session to its projected protocol."""
             ...
 
+    @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, RopeModelProtocolRoutes, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
