@@ -229,7 +229,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         )
 
     @staticmethod
-    def codegen_target_snapshot(path: Path) -> p.Result[cli_m.Cli.AtomicFileState]:
+    def codegen_target_snapshot(path: Path    ) -> p.Result[t.Cli.AtomicFileState]:
         """Observe the destination state a plan guards; absence is a state.
 
         Returns:
@@ -272,23 +272,23 @@ class FlextInfraUtilitiesCodegenFilePlan:
     @staticmethod
     def required_file_states(
         paths: Iterable[Path],
-    ) -> p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[tuple[t.Cli.AtomicFileState, ...]]:
         """Snapshot descriptor-authenticated states for an inventoried path set.
 
         Every path must exist: an absent input is a planning defect, not an empty
         snapshot.
 
         Returns:
-            The resulting ``p.Result[tuple[cli_m.Cli.AtomicFileState, ...]]``.
+            The resulting ``p.Result[tuple[t.Cli.AtomicFileState, ...]]``.
 
         """
-        states: list[cli_m.Cli.AtomicFileState] = []
+        states: list[t.Cli.AtomicFileState] = []
         for path in sorted(set(paths)):
             state = u.Cli.atomic_read_binary_file_state(path, required=True)
             if state.failure:
-                return r[tuple[cli_m.Cli.AtomicFileState, ...]].from_failure(state)
+                return r[tuple[t.Cli.AtomicFileState, ...]].from_failure(state)
             states.append(state.value)
-        return r[tuple[cli_m.Cli.AtomicFileState, ...]].ok(tuple(states))
+        return r[tuple[t.Cli.AtomicFileState, ...]].ok(tuple(states))
 
     @staticmethod
     def atomic_file_state_differs(
