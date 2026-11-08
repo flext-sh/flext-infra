@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
+from typing import cast
 from keyword import iskeyword
 from pathlib import Path
 
@@ -320,7 +321,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ),
             )
             run.contexts[pkg_dir] = context
-        return context
+        return cast(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, context)
 
     @classmethod
     def _lazy_init_build_plan(
