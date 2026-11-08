@@ -455,13 +455,17 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     MARKDOWN_MKDOCS_FLAVOR: ClassVar[str] = "mkdocs"
     "rumdl flavor of documents rendered by MkDocs (Python-Markdown)."
     MARKDOWN_LIST_MARKER_RE: ClassVar[t.RegexPattern] = re.compile(
-        r"(?P<indent> *)(?P<marker>[0-9]{1,9}[.)]|[-+*])(?P<gap> *)(?P<text>.*)",
+        r"(?P<indent> *)(?P<marker>\d{1,9}[.)]|[-+*])(?P<gap> *)(?P<text>.*)",
+        re.ASCII,
     )
     "CommonMark list item opening a line: indentation, marker, gap, text."
-    MARKDOWN_PARAGRAPH_INTERRUPTION_RE: ClassVar[t.RegexPattern] = re.compile(
-        r" *(?:>|#{1,6}(?: |$)|`{3}|~{3}|[-=]+ *$|(?:[*_] *){3,}$)",
+    MARKDOWN_PARAGRAPH_INTERRUPTIONS: ClassVar[tuple[t.RegexPattern, ...]] = (
+        re.compile(r" *(?:>|#{1,6}(?: |$)|`{3}|~{3})"),
+        re.compile(r" *[-=]+ *$"),
+        re.compile(r" *(?:[*_] *){3,}$"),
     )
-    "CommonMark block start that ends a paragraph instead of continuing it lazily."
+    "CommonMark block starts (quote, heading, fence; setext underline; thematic"
+    " break) that end a paragraph instead of continuing it lazily."
     MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[tuple[str, str]] = ("--- ", "+++ ")
     MARKDOWN_FORMAT_RE: ClassVar[t.RegexPattern] = re.compile(
         # Prettier applies terminal SGR styling to the warning label in CI.

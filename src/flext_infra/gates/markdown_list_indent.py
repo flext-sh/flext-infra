@@ -109,7 +109,10 @@ class FlextInfraMarkdownListIndent:
             elif cls._indent(line) >= content or (
                 paragraph
                 and cls._item(line) is None
-                and c.Infra.MARKDOWN_PARAGRAPH_INTERRUPTION_RE.match(line) is None
+                and not any(
+                    pattern.match(line)
+                    for pattern in c.Infra.MARKDOWN_PARAGRAPH_INTERRUPTIONS
+                )
             ):
                 last, paragraph = below, True
             else:
