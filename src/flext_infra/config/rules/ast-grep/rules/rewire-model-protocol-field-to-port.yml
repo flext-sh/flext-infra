@@ -64,8 +64,12 @@ rule:
   - not:
       inside:
         stopBy: end
-        kind: subscript
+        any:
+        - kind: subscript
+        - kind: generic_type
+        regex: "^Annotated\\["
         has:
+          stopBy: end
           kind: call
           regex: "^t\\.schema_for_model\\("
   - not:
