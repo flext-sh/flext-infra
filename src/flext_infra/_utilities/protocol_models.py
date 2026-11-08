@@ -8189,12 +8189,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 if resource is None:
                     message = f"indexed model source is unavailable: {entry.file_path}"
                     raise ValueError(message)
-            module = cast(p.Infra.RopeSourceModule, self.require_semantic_module(
-                FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
-            ))
-            registered = self._inventory_module_models(module, model_base)
-            if registered.failure:
-                return result_type.from_failure(registered)
+                module = cast(p.Infra.RopeSourceModule, self.require_semantic_module(
+                    FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
+                ))
+                registered = self._inventory_module_models(module, model_base)
+                if registered.failure:
+                    return result_type.from_failure(registered)
             return result_type.ok(value=True)
 
         def _inventory_module_models(
