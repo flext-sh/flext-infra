@@ -93,6 +93,22 @@ class FlextInfraConstantsSourceCode:
         r"^\s*\[\[?([^\[\]]+)\]\]?\s*(?:#.*)?$",
     )
     "Regex: one complete TOML table header with an optional comment."
+    TOML_BARE_KEY_RE: ClassVar[t.RegexPattern] = re.compile(r"[A-Za-z0-9_-]+")
+    "Regex: one TOML 1.0 bare key; every other key is quoted."
+    SCRIPT_METADATA_BLOCK_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"(?m)^# /// (?P<type>[a-zA-Z0-9-]+)$\s(?P<content>(^#(| .*)$\s)+)^# ///$",
+    )
+    "PEP 723 reference grammar of one ``# /// <type>`` structured comment block."
+    SCRIPT_METADATA_TYPE: ClassVar[str] = "script"
+    "PEP 723 block type of inline script metadata."
+    SCRIPT_METADATA_START: ClassVar[str] = "# /// "
+    "Opening of a structured comment block, before its type."
+    SCRIPT_METADATA_END: ClassVar[str] = "# ///"
+    "Closing line of a structured comment block."
+    SCRIPT_METADATA_COMMENT: ClassVar[str] = "#"
+    "Comment marker of an empty structured block line."
+    SCRIPT_METADATA_LINE_PREFIX: ClassVar[str] = "# "
+    "Comment marker PEP 723 removes from each structured block line."
 
     # NOTE: the directory-exclusion vocabulary is DERIVED from the declared
     # exclusion registry (config/codegen.yaml exclusions -> CodegenConfigSpec
