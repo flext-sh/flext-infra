@@ -783,7 +783,7 @@ class FlextInfraUtilitiesSemanticDeclarationRetirement(
 
         def resolves(node: p.Infra.RopeAstNode) -> p.Infra.RopePyName | None:
             scope = runtime.scope_at(module, runtime.source_offset(source, node))
-            key = (id(scope), ast.unparse(node))
+            key = (id(scope), node.to_source() if hasattr(node, "to_source") else str(node))
             if key not in resolutions:
                 resolutions[key] = runtime.resolve_symbol(scope, node)
             return resolutions[key]
