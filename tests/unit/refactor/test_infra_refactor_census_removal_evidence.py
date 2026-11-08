@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import infra
-from flext_infra.refactor.census import FlextInfraRefactorCensus
+from flext_infra.refactor import FlextInfraRefactorCensus
 from tests import m, p, tm
 
 

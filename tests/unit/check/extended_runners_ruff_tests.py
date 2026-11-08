@@ -9,9 +9,11 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra.gates.pyright import FlextInfraGatesPyright
-from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
-from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
+from flext_infra.gates import (
+    FlextInfraGatesPyright,
+    FlextInfraGatesRuffFormat,
+    FlextInfraGatesRuffLint,
+)
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:

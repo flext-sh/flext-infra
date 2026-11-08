@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check import FlextInfraWorkspaceChecker
 from tests import c, tm, u
 
 if TYPE_CHECKING:

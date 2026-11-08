@@ -689,7 +689,7 @@ class FlextInfraUtilitiesSemanticComposition(
         aliases: Sequence[
             tuple[p.Infra.RopeSourceClass, str, p.Infra.RopeSourceClass, str]
         ],
-    ) -> dict[tuple[int, int], m.Infra.SourceRewrite]:
+    ) -> dict[tuple[int, int], p.Infra.SourceRewrite]:
         """Rebind method receivers only after their complete native owner proof.
 
         Returns:
@@ -699,7 +699,7 @@ class FlextInfraUtilitiesSemanticComposition(
             ValueError: A behavior alias escapes as a class identity.
 
         """
-        rewritten: dict[tuple[int, int], m.Infra.SourceRewrite] = {}
+        rewritten: dict[tuple[int, int], p.Infra.SourceRewrite] = {}
         tree = module.get_ast()
         parents = cls.ast_parent_map(tree)
         for node in ast.walk(tree):

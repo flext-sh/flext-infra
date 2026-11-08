@@ -54,7 +54,7 @@ class FlextInfraUtilitiesDocsScopeSelection:
     def _selected_scope(
         repository_root: Path,
         name: str,
-        project_by_name: MutableMapping[str, m.Infra.ProjectInfo],
+        project_by_name: MutableMapping[str, p.Infra.ProjectInfo],
         output_dir: Path | str,
     ) -> p.Infra.DocScope | None:
         """Build one selected scope from discovery or a local path.
@@ -79,14 +79,14 @@ class FlextInfraUtilitiesDocsScopeSelection:
     @staticmethod
     def _project_by_name(
         discovered: Sequence[p.Infra.ProjectInfo],
-    ) -> MutableMapping[str, m.Infra.ProjectInfo]:
+    ) -> MutableMapping[str, p.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names.
 
         Returns:
             The resulting ``MutableMapping[str, m.Infra.ProjectInfo]``.
 
         """
-        project_by_name: MutableMapping[str, m.Infra.ProjectInfo] = {}
+        project_by_name: MutableMapping[str, p.Infra.ProjectInfo] = {}
         for project in discovered:
             project_by_name.setdefault(project.name, project)
             project_by_name.setdefault(project.path.name, project)

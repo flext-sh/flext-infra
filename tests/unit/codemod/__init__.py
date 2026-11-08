@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_concrete_mixin_shells import (
         TestsFlextInfraConcreteMixinShells,
     )
+    from tests.unit.codemod.test_deep_import_own_root import (
+        TestsFlextInfraCodemodDeepImportOwnRoot,
+    )
     from tests.unit.codemod.test_generated_module_utility import (
         TestsFlextInfraCodemodGeneratedModuleUtility,
     )
@@ -36,15 +39,20 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_namespace_import_cutover import (
         TestsFlextInfraTestNamespaceImportCutover,
     )
+    from tests.unit.codemod.test_promoted_header_migration import (
+        TestsFlextInfraPromotedHeaderMigration,
+    )
 
 
 __all__: tuple[str, ...] = (
+    "TestsFlextInfraCodemodDeepImportOwnRoot",
     "TestsFlextInfraCodemodGeneratedModuleUtility",
     "TestsFlextInfraCodemodImportCycleSourceScan",
     "TestsFlextInfraCodemodModuleMemberImportHeader",
     "TestsFlextInfraCodemodOwnPackageRoles",
     "TestsFlextInfraCodemodOwnPackageScans",
     "TestsFlextInfraConcreteMixinShells",
+    "TestsFlextInfraPromotedHeaderMigration",
     "TestsFlextInfraTestAssertionCutover",
     "TestsFlextInfraTestNamespaceImportCutover",
 )
@@ -53,6 +61,7 @@ install_lazy_exports(
     __name__,
     globals(),
     {
+        "TestsFlextInfraCodemodDeepImportOwnRoot": ".test_deep_import_own_root",
         "TestsFlextInfraCodemodGeneratedModuleUtility": (
             ".test_generated_module_utility"
         ),
@@ -65,6 +74,7 @@ install_lazy_exports(
         "TestsFlextInfraCodemodOwnPackageRoles": ".test_codemod_own_package_roles",
         "TestsFlextInfraCodemodOwnPackageScans": ".test_codemod_own_package_scans",
         "TestsFlextInfraConcreteMixinShells": ".test_concrete_mixin_shells",
+        "TestsFlextInfraPromotedHeaderMigration": ".test_promoted_header_migration",
         "TestsFlextInfraTestAssertionCutover": ".test_assertion_cutover",
         "TestsFlextInfraTestNamespaceImportCutover": ".test_namespace_import_cutover",
     },

@@ -151,7 +151,7 @@ class FlextInfraCheckWorkspaceCheckReports:
             The resulting ``m.Infra.SarifReport``.
 
         """
-        rules_by_id: MutableMapping[str, m.Infra.SarifRule] = {}
+        rules_by_id: MutableMapping[str, p.Infra.SarifRule] = {}
         sarif_results: list[p.Infra.SarifResult] = []
         for project in results:
             for gate in gates:

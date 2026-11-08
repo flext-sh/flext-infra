@@ -9,10 +9,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import config
-from flext_infra.__version__ import FlextInfraVersion
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
+from flext_infra import FlextInfraVersion, config
+from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.gates import FlextInfraGatesRuffFormat
 from tests import c, m, t, tm, u
 
 if TYPE_CHECKING:

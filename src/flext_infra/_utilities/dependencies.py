@@ -23,6 +23,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesManagedConflicts,
 )
+from flext_infra._utilities._git.mutation_scope import (
+    FlextInfraUtilitiesGitMutationScope,
+)
 
 
 class FlextInfraUtilitiesDependencies(
@@ -287,7 +290,9 @@ class FlextInfraUtilitiesDependencies(
                 "runtime import requires one authored, installed, locked supplier: "
                 + ", ".join(plan.unresolved_modules),
             )
-        lease = u.Infra.mutation_lock_path(plan.before.path.parent)
+        lease = FlextInfraUtilitiesGitMutationScope.mutation_lock_path(
+            plan.before.path.parent
+        )
         if lease.failure:
             return r[bool].from_failure(lease)
         with u.Cli.file_changes_lock(lease.value):
@@ -560,7 +565,7 @@ class FlextInfraUtilitiesDependencies(
             planned_manifests=planned_manifests,
             inputs=workspace.inputs,
         )
-        by_name: Mapping[str, m.Infra.RepositoryRef] = {
+        by_name: Mapping[str, p.Infra.RepositoryRef] = {
             canonicalize_name(repository.distribution): repository
             for repository in repositories
         }
@@ -642,9 +647,9 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_payload(
         cls,
         project: Path,
-        manifests: Mapping[Path, m.Infra.CodegenFilePlan],
+        manifests: Mapping[Path, p.Infra.CodegenFilePlan],
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None = None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None = None,
     ) -> t.JsonMapping:
         """Read one project's dependency manifest, planned payload first.
 
@@ -695,7 +700,7 @@ class FlextInfraUtilitiesDependencies(
     def _workspace_manifest_unplanned_content(
         path: Path,
         *,
-        observations: Mapping[Path, m.Cli.AtomicFileState] | None,
+        observations: Mapping[Path, p.Cli.AtomicFileState] | None,
     ) -> bytes:
         """Read an unplanned manifest from its captured input or from disk.
 

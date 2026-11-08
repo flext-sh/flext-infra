@@ -33,12 +33,16 @@ from flext_infra._config import FlextInfraConfig
 from flext_infra._utilities import (
     FlextInfraUtilitiesLintSourcePositions,
     FlextInfraUtilitiesProjectManagedArtifacts,
+    FlextInfraUtilitiesScriptMetadata,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 
 
-class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
+class FlextInfraUtilitiesLintRecipes(
+    FlextInfraUtilitiesLintSourcePositions,
+    FlextInfraUtilitiesScriptMetadata,
+):
     """Lint-gate policy and repair utilities behind the ``u.Infra`` facade."""
 
     @staticmethod
@@ -1368,19 +1372,34 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
         repaired module's AST must equal the original one. A line holding
         neither keeps its text and its finding.
 
+        A line inside a ``# /// <type>`` structured comment block keeps its
+        text and its finding: the block carries TOML that a reflow breaks
+        while the AST stays equal, so the repaired module must also keep
+        every such block byte for byte.
+
         Returns:
             The repaired source.
 
         Raises:
-            ValueError: If a repair would change the module AST.
+            ValueError: If a repair would change the module AST or the text of
+                a structured comment block.
 
         """
         before = FlextInfraUtilitiesRopeAnalysis.Tree.dump(
             FlextInfraUtilitiesRopeAnalysis.Tree.parse_module_source(source)
         )
+        blocks = cls.script_metadata_blocks(source)
+        structured = {
+            number
+            for block in blocks
+            for number in range(
+                source.count("\n", 0, block.start()) + 1,
+                source.count("\n", 0, block.end()) + 2,
+            )
+        }
         lines = source.splitlines(keepends=True)
         tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
-        for number in sorted(set(line_numbers), reverse=True):
+        for number in sorted(set(line_numbers) - structured, reverse=True):
             line = lines[number - 1]
             if len(line.rstrip("\r\n")) <= limit:
                 continue
@@ -1400,6 +1419,11 @@ class FlextInfraUtilitiesLintRecipes(FlextInfraUtilitiesLintSourcePositions):
             != before
         ):
             msg = "line wrap changed the module AST"
+            raise ValueError(msg)
+        if [block.group(0) for block in cls.script_metadata_blocks(repaired)] != [
+            block.group(0) for block in blocks
+        ]:
+            msg = "line wrap changed a structured comment block"
             raise ValueError(msg)
         return repaired
 

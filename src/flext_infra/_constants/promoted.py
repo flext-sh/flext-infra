@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum, unique
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import e
 from flext_core import c
 
 from flext_infra._constants import FlextInfraConstantsSharedInfra
+
+if TYPE_CHECKING:
+    from flext_core import t
 
 
 class FlextInfraConstantsPromoted:
@@ -24,7 +28,7 @@ class FlextInfraConstantsPromoted:
         _default_error_code: ClassVar[str] = "PROMOTED_REGISTRY_ERROR"
 
     class PromotedMissingHeaderError(PromotedRegistryError):
-        """Raised when a file carries no ``flext-command`` header at all.
+        """Raised when a file carries no ``[tool.flext.command]`` header at all.
 
         A file without a header is not a promoted command; a present but invalid
         header is a defect, so the two never share an exception type.
@@ -34,11 +38,8 @@ class FlextInfraConstantsPromoted:
 
     @unique
     class PromotedHeader(StrEnum):
-        """``flext-command`` header markers and TOML keys."""
+        """``[tool.flext.command]`` header TOML keys."""
 
-        START = "/// flext-command"
-        END = "///"
-        COMMENT = "#"
         VERB = "verb"
         WHAT = "what"
         DOMAIN = "domain"
@@ -90,11 +91,16 @@ class FlextInfraConstantsPromoted:
         VENV_BIN = "bin"
         VENV_PYTHON = "python"
         INCIDENT_DOMAIN = "incident"
-        SHELL_SUFFIX = ".sh"
 
     PROMOTED_HEADER_SCAN_LINES: ClassVar[int] = 160
+    PROMOTED_HEADER_TABLE: ClassVar[tuple[str, ...]] = ("tool", "flext", "command")
+    "Path of the command table inside the PEP 723 ``script`` block."
+    PROMOTED_HEADER_INDENT: ClassVar[str] = "    "
+    "Indentation of continued strings and one-per-line array elements."
+    PROMOTED_HEADER_WORD_RE: ClassVar[t.RegexPattern] = re.compile(r"[^ ]+ *| +")
+    "Regex: one word with its trailing spaces, or a leading run of spaces."
     PROMOTED_COMMAND_SUFFIXES: ClassVar[frozenset[str]] = frozenset({
-        PromotedSelector.SHELL_SUFFIX,
+        FlextInfraConstantsSharedInfra.EXT_SHELL,
         FlextInfraConstantsSharedInfra.EXT_PYTHON,
     })
     PROMOTED_NON_COMMAND_NAMES: ClassVar[frozenset[str]] = frozenset({

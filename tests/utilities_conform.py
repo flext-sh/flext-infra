@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import check, codegen
-from tests import TestsFlextInfraUtilitiesToml, c, config, m, p, t, u
+from flext_infra import check, codegen, u
+from tests import TestsFlextInfraUtilitiesToml, c, config, m, p, t
 
 
 class TestsFlextInfraUtilitiesConform:

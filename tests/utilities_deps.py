@@ -11,7 +11,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from uuid import uuid4
 
-from tests import config, m, p, t, u
+from flext_infra import u
+from tests import config, m, p, t
 
 
 class TestsFlextInfraUtilitiesDeps:

@@ -101,7 +101,7 @@ class TestsFlextInfraUtilitiesSemanticCutover:
 
         """
         repository_root.joinpath("pyproject.toml").write_text(
-            "[project]\nname = 'demo'\nversion = '0.1.0'\n",
+            c.Tests.SEMANTIC_CUTOVER_PYPROJECT,
             encoding=c.DEFAULT_ENCODING,
         )
         module_path = repository_root / relative

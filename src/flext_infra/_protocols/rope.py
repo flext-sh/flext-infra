@@ -252,7 +252,16 @@ class FlextInfraProtocolsRope(Protocol):
         def close(self) -> None: ...
 
     @runtime_checkable
-    class RopeWorkspaceDsl(RopeSessionLifecycleDsl, Protocol):
+    class RopeModelProtocolRoutes(Protocol):
+        """Model routes of one workspace session mapped to projected protocols."""
+
+        @property
+        def model_protocol_routes(self) -> Mapping[str, str]:
+            """Map every model route of the session to its projected protocol."""
+            ...
+
+    @runtime_checkable
+    class RopeWorkspaceDsl(RopeSessionLifecycleDsl, RopeModelProtocolRoutes, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
         semantic_rename_planner: (

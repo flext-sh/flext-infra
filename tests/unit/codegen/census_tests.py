@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra.codegen import FlextInfraCodegenCensus
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+from flext_infra.validate import FlextInfraNamespaceValidator
 from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:

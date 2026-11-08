@@ -187,7 +187,7 @@ class FlextInfraModReplacements:
     @classmethod
     def compose[FindingT: p.Infra.ModOccurrence](
         cls, root: Path, report: p.Infra.ModOccurrenceReport[FindingT]
-    ) -> p.Result[tuple[m.Infra.SemanticFilePlan, ...]]:
+    ) -> p.Result[tuple[p.Infra.SemanticFilePlan, ...]]:
         """Compose authenticated candidate bytes without admission or live effects.
 
         Returns:
@@ -198,7 +198,7 @@ class FlextInfraModReplacements:
         for finding in report.entries:
             if finding.actionable and finding.source_owner != "generator":
                 grouped.setdefault(root / finding.file, []).append(finding)
-        plans: list[m.Infra.SemanticFilePlan] = []
+        plans: list[p.Infra.SemanticFilePlan] = []
         for path, findings in sorted(grouped.items()):
             planned = cls._path_plan(root, path, findings, compose_only=True)
             if planned.failure:
@@ -208,9 +208,16 @@ class FlextInfraModReplacements:
 
     @classmethod
     def admit(
-        cls, root: Path, plans: Sequence[p.Infra.SemanticFilePlan]
+        cls,
+        root: Path,
+        plans: Sequence[p.Infra.SemanticFilePlan],
+        created: Mapping[Path, str | None],
     ) -> p.Result[tuple[p.Infra.SemanticFilePlan, ...]]:
         """Normalize and judge only complete syntax candidates against originals.
+
+        A path absent from the root but created by the staged seed candidate
+        (a semantic module rename) is judged against those seed bytes; a path
+        neither present nor created has no authenticated original.
 
         Returns:
             Accepted plans or the first native admission failure.
@@ -218,12 +225,21 @@ class FlextInfraModReplacements:
         """
         accepted: list[p.Infra.SemanticFilePlan] = []
         for plan in plans:
-            if plan.before.content is None or plan.desired_content is None:
+            original = (
+                plan.before.content
+                if plan.before.content is not None
+                else (
+                    None
+                    if (seeded := created.get(plan.path)) is None
+                    else seeded.encode(c.DEFAULT_ENCODING)
+                )
+            )
+            if original is None or plan.desired_content is None:
                 return r[tuple[p.Infra.SemanticFilePlan, ...]].fail(
                     f"syntax candidate lacks authenticated bytes: {plan.path}"
                 )
             normalized = cls._normalized_candidate(
-                root, plan.path, plan.before.content, plan.desired_content
+                root, plan.path, original, plan.desired_content
             )
             if normalized.failure:
                 return r[tuple[p.Infra.SemanticFilePlan, ...]].from_failure(normalized)

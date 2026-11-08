@@ -15,6 +15,12 @@ class TestsFlextInfraConstantsSemanticCutover:
     """Small scenario values rendered through the shared J2 templates."""
 
     SEMANTIC_CUTOVER_RELATIVE: ClassVar[str] = "tests/unit/test_sample.py"
+    SEMANTIC_CUTOVER_PYPROJECT: ClassVar[str] = (
+        "[project]\nname = 'demo'\nversion = '0.1.0'\n\n"
+        "[tool.ruff]\nline-length = 88\n\n"
+        '[tool.ruff.lint]\nselect = ["E501"]\n'
+    )
+    """Synthetic project carrying the fleet formatting width a rewrite must fit."""
     """Synthetic module path for semantic cutover behaviour tests."""
 
     SEMANTIC_CUTOVER_META_RELATIVE: ClassVar[str] = (
@@ -130,6 +136,96 @@ class TestsFlextInfraConstantsSemanticCutover:
             "untouched": {
                 "template": "module",
                 "body": "from tests import c\n\nvalue = c.Tests.VALUE",
+            },
+            "comprehension": {
+                "template": "assertions",
+                "assertions": (
+                    'not [d for d in docs if d.get("kind") == "ServiceAccount"]\n'
+                    '"x" in [d for d in docs if d]'
+                ),
+            },
+            "hash_in_string": {
+                "template": "assertions",
+                "assertions": 'value == "a#b"',
+            },
+            "compound": {
+                "template": "assertions",
+                "assertions": (
+                    "value == 1 and other == 2\n"
+                    "not value == expected\n"
+                    "low < value < high"
+                ),
+            },
+            "multiline": {
+                "template": "module",
+                "body": (
+                    "def test_probe() -> None:\n"
+                    "    assert value == (\n"
+                    "        expected\n"
+                    "    )\n"
+                    "    assert (\n"
+                    "        item in items\n"
+                    '    ), "message"\n'
+                ),
+            },
+            "parenthesized_import": {
+                "template": "module",
+                "body": (
+                    '"""Probe module."""\n'
+                    "\n"
+                    "from collections.abc import (\n"
+                    "    Mapping,\n"
+                    "    Sequence,\n"
+                    ")\n"
+                    "\n"
+                    "\n"
+                    "def test_probe() -> None:\n"
+                    "    assert value\n"
+                ),
+            },
+            "unformattable": {
+                "template": "module",
+                "body": (
+                    "def test_probe() -> None:\n"
+                    "    assert value == expected\n"
+                    "    assert (\n"
+                    '        "' + "word " * 15 + '"\n'
+                    "        in text\n"
+                    "    )\n"
+                ),
+            },
+            "typed_locals": {
+                "template": "module",
+                "body": (
+                    "def test_probe(payload: object) -> None:\n"
+                    "    rendered = load()\n"
+                    "    assert isinstance(rendered, dict)\n"
+                    '    assert payload is not None, "payload"\n'
+                    "    assert isinstance(shared, str)\n"
+                    "\n"
+                    "\n"
+                    "class TestsProbe:\n"
+                    "    def test_other(self) -> None:\n"
+                    "        assert isinstance(rendered, dict)\n"
+                ),
+            },
+            "object_message": {
+                "template": "module",
+                "body": (
+                    "def test_probe(route: dict[str, str]) -> None:\n"
+                    "    assert len(hosts) == 1, route\n"
+                    '    assert value == expected, f"{value}"\n'
+                ),
+            },
+            "comments": {
+                "template": "module",
+                "body": (
+                    "def test_probe() -> None:\n"
+                    "    assert value == expected  # why\n"
+                    "    assert other == (\n"
+                    "        expected  # inner\n"
+                    "    )\n"
+                ),
             },
         })
     )

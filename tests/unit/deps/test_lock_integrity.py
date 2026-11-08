@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.deps.lock_integrity import FlextInfraLockIntegrityVerifier
+from flext_infra.deps import FlextInfraLockIntegrityVerifier
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, tm, u
 

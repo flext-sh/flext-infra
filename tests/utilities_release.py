@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import FlextInfraCli
+from flext_infra import FlextInfraCli, u
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import (
     TestsFlextInfraUtilitiesGit,
@@ -21,7 +21,6 @@ from tests import (
     p,
     t,
     tm,
-    u,
 )
 
 
@@ -240,7 +239,7 @@ class TestsFlextInfraUtilitiesRelease:
         tmp_path: Path,
         *,
         projects: t.StrTuple = ("flext-a",),
-    ) -> tuple[Path, m.Infra.BuildReport]:
+    ) -> tuple[Path, p.Infra.BuildReport]:
         """Build members through the public CLI and tag their attested sources.
 
         Returns:

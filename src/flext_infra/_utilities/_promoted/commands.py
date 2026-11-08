@@ -1,4 +1,4 @@
-"""Promoted-command header ingress: ``flext-command`` TOML into commands.
+"""Promoted-command header ingress: PEP 723 ``script`` TOML into commands.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 
 from flext_infra import c, m
+from flext_infra._utilities import FlextInfraUtilitiesScriptMetadata
 from flext_infra._utilities._promoted import FlextInfraUtilitiesPromotedWorkspace
 
 if TYPE_CHECKING:
@@ -20,21 +21,26 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
+class FlextInfraUtilitiesPromotedCommands(
+    FlextInfraUtilitiesPromotedWorkspace,
+    FlextInfraUtilitiesScriptMetadata,
+):
     """Parse each verb-directory header once into canonical command models."""
 
-    @staticmethod
+    @classmethod
     def promoted_command_headers(
+        cls,
         verb_dir: Path,
     ) -> Mapping[Path, t.JsonMapping | c.Infra.PromotedRegistryError]:
-        """Parse every candidate header of one verb directory.
+        """Parse the ``[tool.flext.command]`` table of every candidate file.
+
+        Only the PEP 723 ``script`` block within the first
+        ``PROMOTED_HEADER_SCAN_LINES`` lines is read.
 
         Returns:
-            The resulting ``Mapping[Path, t.JsonMapping |
-                c.Infra.PromotedRegistryError]``.
+            The command table of each file, or its typed header error.
 
         """
-        header = c.Infra.PromotedHeader
         headers: MutableMapping[
             Path,
             t.JsonMapping | c.Infra.PromotedRegistryError,
@@ -46,33 +52,61 @@ class FlextInfraUtilitiesPromotedCommands(FlextInfraUtilitiesPromotedWorkspace):
                 or path.name in c.Infra.PROMOTED_NON_COMMAND_NAMES
             ):
                 continue
-            lines = path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines()
-            in_header = False
-            payload: list[str] = []
-            for raw in lines[: c.Infra.PROMOTED_HEADER_SCAN_LINES]:
-                content = raw.strip().removeprefix(header.COMMENT).strip()
-                if content == header.START:
-                    in_header = True
-                elif in_header and content == header.END:
-                    break
-                elif in_header:
-                    payload.append(content)
-            if not payload:
-                headers[path] = c.Infra.PromotedMissingHeaderError(
-                    c.Infra.PromotedMessage.MISSING_HEADER.format(path=path),
-                )
-                continue
-            parsed = u.Cli.toml_mapping_from_text(
-                c.Infra.PromotedJoin.LINES.join(payload),
+            lines = path.read_text(encoding=c.Infra.ENCODING_DEFAULT).splitlines(
+                keepends=True
             )
-            headers[path] = (
-                parsed
-                if parsed is not None
-                else c.Infra.PromotedRegistryError(
-                    c.Infra.PromotedMessage.INVALID_HEADER_TOML.format(path=path),
-                )
+            headers[path] = cls._promoted_command_header(
+                path, "".join(lines[: c.Infra.PROMOTED_HEADER_SCAN_LINES])
             )
         return headers
+
+    @classmethod
+    def _promoted_command_header(
+        cls,
+        path: Path,
+        text: str,
+    ) -> t.JsonMapping | c.Infra.PromotedRegistryError:
+        """Read the command table of one file's leading text.
+
+        A file without a ``script`` block, or whose block declares no
+        ``[tool.flext.command]``, is not a command. More than one ``script``
+        block, invalid TOML or a command entry that is no table is a defect.
+
+        Returns:
+            The command table, or its typed header error.
+
+        """
+        message = c.Infra.PromotedMessage
+        blocks = [
+            block
+            for block in cls.script_metadata_blocks(text)
+            if block.group("type") == c.Infra.SCRIPT_METADATA_TYPE
+        ]
+        if len(blocks) > 1:
+            return c.Infra.PromotedRegistryError(
+                message.MULTIPLE_SCRIPT_BLOCKS.format(path=path),
+            )
+        parsed: t.JsonMapping | None = (
+            u.Cli.toml_mapping_from_text(cls.script_metadata_toml(blocks[0]))
+            if blocks
+            else {}
+        )
+        if parsed is None:
+            return c.Infra.PromotedRegistryError(
+                message.INVALID_HEADER_TOML.format(path=path),
+            )
+        *owner_path, key = c.Infra.PROMOTED_HEADER_TABLE
+        owner = u.Cli.toml_mapping_path(parsed, owner_path)
+        command = owner.get(key) if owner is not None else None
+        if command is None:
+            return c.Infra.PromotedMissingHeaderError(
+                message.MISSING_HEADER.format(path=path),
+            )
+        if not isinstance(command, Mapping):
+            return c.Infra.PromotedRegistryError(
+                message.INVALID_HEADER_TABLE.format(path=path),
+            )
+        return command
 
     @classmethod
     def promoted_load_command(

@@ -18,7 +18,7 @@ import time
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.docs.server import FlextInfraDocServer
+from flext_infra.docs import FlextInfraDocServer
 from tests import c, p, r, tm
 
 if TYPE_CHECKING:

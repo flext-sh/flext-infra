@@ -136,7 +136,9 @@ class FlextInfraUtilitiesSemanticContracts(
             The resulting semantic migration edits.
 
         """
-        computed = cls.plan_computed_model_field_contracts(workspace, sources)
+        computed = cls.plan_computed_model_field_contracts(
+            workspace, sources, workspace.model_protocol_routes
+        )
         if computed.failure:
             return computed
         working: dict[t.Infra.RopeSourcePath, str] = dict(sources)
@@ -264,7 +266,7 @@ class FlextInfraUtilitiesSemanticContracts(
         catalogue: Path,
         owner_root: Path | None,
         rules: MutableSequence[p.Infra.RopeContractRule],
-    ) -> tuple[p.Infra.RopeContractRules, m.Cli.AtomicFileState]:
+    ) -> tuple[p.Infra.RopeContractRules, p.Cli.AtomicFileState]:
         """Decode one catalogue and admit only rules owned by its project.
 
         Returns:
@@ -1328,9 +1330,9 @@ class FlextInfraUtilitiesSemanticContracts(
         project: p.Infra.RopeProject,
         rule: (
             p.Infra.RopeContractRule
-            | m.Infra.RopeSignatureAddition
-            | m.Infra.RopeSignatureRemoval
-            | m.Infra.RopeMethodTransfer
+            | p.Infra.RopeSignatureAddition
+            | p.Infra.RopeSignatureRemoval
+            | p.Infra.RopeMethodTransfer
         ),
         members: Sequence[p.Infra.RopeChangeContents],
         state: tuple[

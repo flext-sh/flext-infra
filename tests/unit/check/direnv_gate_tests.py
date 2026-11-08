@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra.gates.direnv import FlextInfraGatesDirenv
+from flext_infra.gates import FlextInfraGatesDirenv
 from flext_infra.workspace import FlextInfraWorkspaceEnvironmentContracts
 from tests import c, p, tm, u
 
