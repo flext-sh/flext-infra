@@ -247,19 +247,28 @@ class FlextInfraCodegenLazyInit(
                 )
                 for root in roots
             }
-            targets = self._targets(cast(Mapping[Path, FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex], indexes), scoped=scoped)
+            targets = self._targets(
+                cast(
+                    Mapping[Path, FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex],
+                    indexes,
+                ),
+                scoped=scoped,
+            )
             if targets.failure:
                 return result_type.from_failure(targets)
             by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
-                        FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
-                            view,
-                            cast(FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex, indexes[root]),
-                            root=root,
-                            scoped=scoped,
-                            snapshot=shared,
+                    FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
+                        view,
+                        cast(
+                            FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
+                            indexes[root],
                         ),
+                        root=root,
+                        scoped=scoped,
+                        snapshot=shared,
+                    ),
                     target,
                 )
                 if planned.failure:

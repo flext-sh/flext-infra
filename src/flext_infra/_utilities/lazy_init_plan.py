@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
-from typing import cast
 from keyword import iskeyword
 from pathlib import Path
+from typing import cast
 
 from flext_cli import p, r, t, u
 
@@ -956,7 +956,10 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
         exports = FlextInfraUtilitiesPythonModel.python_model_exports(module) or ()
         alias, family = cls._lazy_init_route_identity(
-            run, path, cast(FlextInfraModelsCodegenLazyInit.PythonModuleFacts, module), exports
+            run,
+            path,
+            cast(FlextInfraModelsCodegenLazyInit.PythonModuleFacts, module),
+            exports,
         )
         weight = c.Infra.LazyInitScore
         score = 0

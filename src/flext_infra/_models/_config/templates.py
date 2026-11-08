@@ -199,7 +199,6 @@ class FlextInfraModelsConfigTemplates:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field
         @property
         def managed_tool_tables(self) -> tuple[str, ...]:
             """Derive tool-relative table paths from the owner's sections.

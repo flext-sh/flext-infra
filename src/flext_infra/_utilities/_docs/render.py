@@ -534,7 +534,10 @@ class FlextInfraUtilitiesDocsRender:
                 public_symbols=sequence(contract, "public_symbols"),
                 module_exports=sequence(contract, "module_exports"),
                 preview_limits=(
-                    cast(Mapping[str, int], config.Infra.codegen.make.docs.overview_preview_limits.model_dump())
+                    cast(
+                        Mapping[str, int],
+                        config.Infra.codegen.make.docs.overview_preview_limits.model_dump(),
+                    )
                 ),
                 module_count=len(modules),
             ),

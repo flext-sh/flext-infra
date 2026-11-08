@@ -950,7 +950,8 @@ class FlextInfraUtilitiesRefactor:
             )
         content = (
             evidence.model_dump_json(
-                indent=2, exclude=set(getattr(type(evidence), "model_computed_fields", ()))
+                indent=2,
+                exclude=set(getattr(type(evidence), "model_computed_fields", ())),
             )
             + "\n"
         ).encode(c.DEFAULT_ENCODING)

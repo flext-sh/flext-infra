@@ -9,9 +9,9 @@ from __future__ import annotations
 import builtins
 import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
-from typing import cast
 from pathlib import Path
 from textwrap import dedent, indent
+from typing import cast
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (

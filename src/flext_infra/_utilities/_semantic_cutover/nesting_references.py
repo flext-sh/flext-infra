@@ -24,7 +24,7 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
