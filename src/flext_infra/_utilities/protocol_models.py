@@ -6437,7 +6437,10 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             for size in range(len(attributes), 0, -1):
                 prefix = ".".join((letter, *attributes[:size]))
-                member = self.resolve_symbol(facade.get_scope(), prefix)
+                facade_scope = facade.get_scope()
+                if facade_scope is None:
+                    continue
+                member = self.resolve_symbol(facade_scope, prefix)
                 declared = (
                     self._source_binding_declaration(member)
                     if member is not None
