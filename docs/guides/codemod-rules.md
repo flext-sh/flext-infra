@@ -218,6 +218,15 @@ canonical cure, applied at the origin and never by suppression or rule change
   local typed function (`def pred(value: <concrete subject type>) -> bool`)
   and pass it by name. Lambdas cannot carry parameter annotations in Python,
   so no call-site annotation exists; the typed def is the strict form.
+- **`missing-attribute` on `type(x).model_computed_fields`** — a dump that
+  rebuilds its exclusion from the class reads class metadata through `type()`
+  of a protocol-typed instance. Cure: the native keyword
+  `exclude_computed_fields=True`, which `p.BaseModel.model_dump` declares
+  (`rewire-computed-field-exclude-to-native`).
+- **`unsupported-operation` (set item) on a validated payload** — a value
+  validated with `u.json_mapping_adapter()` is read-only, so editing it in place
+  fails. Cure: validate an edited payload with `u.json_dict_adapter()`
+  (`rewire-mutated-json-mapping-to-dict-adapter`).
 - **`missing-attribute` / `missing-module-attribute` on consumed APIs** — a
   consumer names an attribute that a refactor removed or moved (for example
   `u.chk`, `cli.ensure_dir`). Cure: rewire the consumer to the current owner
