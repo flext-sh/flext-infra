@@ -19,7 +19,7 @@ import tomllib
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, is_protocol, override
+from typing import ClassVar, cast, is_protocol, override
 
 from flext_cli import u
 
@@ -1612,6 +1612,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 .parts,
             ))
             source_module = self.project.get_module(module_name)
+            source_module = cast(p.Infra.RopePyModule, source_module)
             source = self.project.source_text(model_sibling)
             tree = ast.parse(source, filename=str(model_sibling))
             owners: list[tuple[ast.ClassDef, p.Infra.RopeSourceClass]] = []
