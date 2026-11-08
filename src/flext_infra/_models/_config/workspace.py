@@ -612,15 +612,32 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Optional workspace-local Dolt connection"),
         ] = None
         repository: Annotated[
-            FlextInfraModelsConfigContexts.RepositoryRef,
+            Annotated[
+                p.Infra.RepositoryRef,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                ),
+            ],
             m.Field(description="Root repository declaration"),
         ]
         project: Annotated[
-            FlextInfraModelsConfigContexts.ProjectSpec | None,
+            Annotated[
+                p.Infra.ProjectSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
+            ]
+            | None,
             m.Field(description="Optional project creation metadata"),
         ] = None
         members: Annotated[
-            tuple[FlextInfraModelsConfigContexts.RepositoryRef, ...],
+            tuple[
+                Annotated[
+                    p.Infra.RepositoryRef,
+                    t.schema_for_model(
+                        lambda: FlextInfraModelsConfigContexts.RepositoryRef
+                    ),
+                ],
+                ...,
+            ],
             m.Field(description="Declared member repository contracts"),
         ] = ()
         external_dependency_paths: Annotated[
