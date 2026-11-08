@@ -178,7 +178,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
         edit: p.Infra.SemanticMigrationEdit,
         *,
         source_project: p.Infra.RopeProject,
-        declared_files: Mapping[Path, m.Infra.CodegenFilePlan],
+        declared_files: Mapping[Path, p.Infra.CodegenFilePlan],
     ) -> p.Infra.CodegenFilePlan:
         """Bind a semantic edit to its original candidate publication witness.
 
