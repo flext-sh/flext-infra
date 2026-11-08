@@ -82,7 +82,7 @@ class FlextInfraNamespaceRelocationCascade:
         entries: Sequence[p.Infra.ModScanFinding],
         *,
         scan_root: Path,
-    ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
+    ) -> tuple[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding], ...]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
@@ -118,7 +118,7 @@ class FlextInfraNamespaceRelocationCascade:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
         py_files: Sequence[Path],
         gates: Sequence[str] | None = None,
     ) -> None:
@@ -345,7 +345,7 @@ class FlextInfraNamespaceRelocationCascade:
             binding = module.get_scope().get_defined_names().get(name)
             location = None if binding is None else binding.get_definition_location()
             module_level = location is not None and location[0] is module
-            if module_level and location[1] == line:
+            if location is not None and location[0] is module and location[1] == line:
                 declarations.append((path, name, target))
                 continue
             member = cls._transferable_member(module, name, line)
@@ -367,7 +367,9 @@ class FlextInfraNamespaceRelocationCascade:
             nested functions need receiver rewrites no derivation supplies).
 
         """
-        pending = [(module.get_scope(), ())]
+        pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [
+            (module.get_scope(), ())
+        ]
         while pending:
             scope, chain = pending.pop()
             for child in scope.get_scopes():
@@ -378,8 +380,8 @@ class FlextInfraNamespaceRelocationCascade:
                     scope.get_kind() == "Class"
                     and child.get_kind() == "Function"
                     and declared.get_name() == name
-                    and declared.get_ast().lineno == line
-                    and declared.get_kind()
+                    and getattr(declared.get_ast(), "lineno", None) == line
+                    and getattr(declared, "get_kind", lambda: None)()
                     in {
                         c.Infra.RopeFunctionKind.STATICMETHOD,
                         c.Infra.RopeFunctionKind.CLASSMETHOD,
@@ -878,7 +880,7 @@ class FlextInfraNamespaceRelocationCascade:
     def import_relocation_targets(
         cls,
         project_root: Path,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
     ) -> Mapping[Path, Mapping[tuple[str, str], set[str]]]:
         """Map each file's import moves: ``(source module, target module)`` to aliases.
 
@@ -931,7 +933,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _grouped_targets(
         self,
         project_root: Path,
-        findings: Sequence[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding]],
+        findings: Sequence[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding]],
     ) -> tuple[
         set[Path],
         MutableMapping[Path, list[tuple[int, int]]],
