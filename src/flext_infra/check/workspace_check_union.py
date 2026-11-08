@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, u
+from flext_infra import c, p, u
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry

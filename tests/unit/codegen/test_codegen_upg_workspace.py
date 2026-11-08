@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, p, r, tm, u
+from tests import c, p, r, tm, u
 
 pytestmark = [c.Tests.MARK.slow, c.Tests.MARK.remote]
 
