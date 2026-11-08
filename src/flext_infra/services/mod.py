@@ -687,17 +687,34 @@ class FlextInfraModHandlers:
         request: p.Infra.ModCommand,
         progress: p.Infra.ModProgress,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Run one theme over exact AST rule IDs: its own or its expanded laws.
+        """Run one theme over exact rule IDs: its own or its expanded laws.
 
         Laws expand inside this repository's own plan (static, generated and
         partitioned rules alike), once, over the batch's own snapshot; the
         batch accepts a theme its plan does not claim as nothing to check or
-        fix.
+        fix. Exact IDs that all name declarative text rules replay only those
+        rules to their verified fixed point; mixing them with catalog IDs is
+        refused, because each owner proves its own fixed point.
 
         Returns:
-            The exact batch result over the selected rule IDs.
+            The exact text or batch result over the selected rule IDs.
 
         """
+        if request.rule_ids is not None:
+            text_rules = codemod.FlextInfraModTextGateEngine.load_rules(root)
+            if text_rules.failure:
+                return r[t.Cli.ResultValue].from_failure(text_rules)
+            selected = frozenset(request.rule_ids)
+            text_ids = selected.intersection(rule.rule_id for rule in text_rules.value)
+            if text_ids == selected:
+                return codemod.FlextInfraModTextGateEngine.run(
+                    root, apply=request.apply, rule_ids=request.rule_ids
+                )
+            if text_ids:
+                return r[t.Cli.ResultValue].fail(
+                    "refactor mod --rule-ids mixes text rule IDs with catalog "
+                    "rule IDs: " + ", ".join(sorted(text_ids))
+                )
         return FlextInfraModHandlers._execute_batch(
             context,
             root,

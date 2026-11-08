@@ -36,6 +36,9 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_namespace_import_cutover import (
         TestsFlextInfraTestNamespaceImportCutover,
     )
+    from tests.unit.codemod.test_promoted_header_migration import (
+        TestsFlextInfraPromotedHeaderMigration,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -45,6 +48,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodemodOwnPackageRoles",
     "TestsFlextInfraCodemodOwnPackageScans",
     "TestsFlextInfraConcreteMixinShells",
+    "TestsFlextInfraPromotedHeaderMigration",
     "TestsFlextInfraTestAssertionCutover",
     "TestsFlextInfraTestNamespaceImportCutover",
 )
@@ -65,6 +69,7 @@ install_lazy_exports(
         "TestsFlextInfraCodemodOwnPackageRoles": ".test_codemod_own_package_roles",
         "TestsFlextInfraCodemodOwnPackageScans": ".test_codemod_own_package_scans",
         "TestsFlextInfraConcreteMixinShells": ".test_concrete_mixin_shells",
+        "TestsFlextInfraPromotedHeaderMigration": ".test_promoted_header_migration",
         "TestsFlextInfraTestAssertionCutover": ".test_assertion_cutover",
         "TestsFlextInfraTestNamespaceImportCutover": ".test_namespace_import_cutover",
     },
