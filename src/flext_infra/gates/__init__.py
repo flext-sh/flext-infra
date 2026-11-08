@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from flext_infra.gates.markdown_code import FlextInfraGatesMarkdownCode
     from flext_infra.gates.markdown_code_sources import FlextInfraMarkdownCodeSources
     from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
+    from flext_infra.gates.markdown_list_indent import FlextInfraMarkdownListIndent
     from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
     from flext_infra.gates.mypy import FlextInfraGatesMypy
     from flext_infra.gates.project_module import FlextInfraGatesProjectModule
@@ -73,6 +74,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesSmells",
     "FlextInfraMarkdownCodeSources",
     "FlextInfraMarkdownGateBase",
+    "FlextInfraMarkdownListIndent",
 )
 
 install_lazy_exports(
@@ -108,6 +110,7 @@ install_lazy_exports(
         "FlextInfraGatesSmells": ".smells",
         "FlextInfraMarkdownCodeSources": ".markdown_code_sources",
         "FlextInfraMarkdownGateBase": ".markdown_support",
+        "FlextInfraMarkdownListIndent": ".markdown_list_indent",
     },
     public_exports=__all__,
 )
