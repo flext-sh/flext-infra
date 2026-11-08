@@ -7935,12 +7935,7 @@ class FlextInfraUtilitiesModelsProtocol:
             ):
                 present = holder.get_attributes().get(contract.name)
                 if present is None:
-                    missing.append(
-                        cast(
-                            m.Infra.ModelProtocolRenderContext.ModelProtocolContract,
-                            contract,
-                        )
-                    )
+                    missing.append(contract)
                     continue
                 if (
                     protocol_base

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os as _os
 from typing import ClassVar
 
-from flext_core import FlextSettings, m, p
+from flext_core import FlextSettings, m
 from pydantic_settings import SettingsConfigDict as PydanticSettingsConfigDict
 
 from flext_infra._models import FlextInfraModelsSettings
