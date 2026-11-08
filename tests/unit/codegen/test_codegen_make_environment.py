@@ -53,6 +53,52 @@ class TestsFlextInfraCodegenMakeEnvironment:
         tm.that(global_config.read_text(encoding="utf-8"), eq=source)
 
     @staticmethod
+    def test_ci_dispatch_resolves_mise_tools_outside_the_project(
+        tmp_path: Path,
+    ) -> None:
+        """CI activates a verb inside the project Mise environment, as direnv does.
+
+        CI publishes only cwd-scoped Mise shims, so without that environment a
+        tool invoked from outside the project tree (a scratch repository a
+        test builds) finds no configured version and the verb diverges from
+        the same verb run locally.
+        """
+        project_root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.ok(u.Tests.create_python_environment(project_root))
+        checkout_mise = Path(__file__).resolve().parents[3] / ".bin" / "mise"
+        (project_root / ".bin").mkdir(exist_ok=True)
+        (project_root / ".bin" / "mise").symlink_to(checkout_mise)
+        outside = tmp_path / "outside-the-project"
+        outside.mkdir()
+        (project_root / "custom.mk").write_text(
+            "_custom-status:\n"
+            f'\t@cd "{outside}" && command -v uv > "$(PROJECT_ROOT)/tool.log"\n',
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"],
+                cwd=project_root,
+                env={
+                    config.Infra.codegen.make.ci.variable: (
+                        config.Infra.codegen.make.ci.value
+                    ),
+                    "PATH": os.pathsep.join(("/usr/bin", "/bin")),
+                },
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        resolved = (project_root / "tool.log").read_text(encoding="utf-8").strip()
+        tm.that(resolved, has=f"{os.sep}installs{os.sep}uv{os.sep}")
+
+    @staticmethod
     def test_make_hands_the_selected_credential_to_the_real_mise_child(
         tmp_path: Path,
     ) -> None:
