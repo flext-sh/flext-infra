@@ -48,7 +48,7 @@ from types import (
     UnionType,
     WrapperDescriptorType,
 )
-from typing import ClassVar, ForwardRef, Literal, TypeGuard, overload
+from typing import ClassVar, ForwardRef, Literal, TypeGuard, cast, overload
 from weakref import ReferenceType
 
 from flext_infra import c, m, p, r, t, u
@@ -1150,7 +1150,7 @@ class FlextInfraWorkspaceNativeReference:
 
         """
         result_type = r[tuple[p.Infra.SourceClassReference, ...]]
-        selected: dict[tuple[str, t.StrTuple], m.Infra.SourceClassReference] = {}
+        selected: dict[tuple[str, t.StrTuple], p.Infra.SourceClassReference] = {}
         for callable_root in (entrypoint, *collaborators):
             nominated = cls.producer_selection(callable_root)
             if nominated.failure:
@@ -4547,12 +4547,19 @@ class FlextInfraWorkspaceNativeReference:
         context: m.Infra.NativeObservationContext,
         facts: p.Infra.NativeFunctionObservationContext,
         instructions: t.Infra.NativeInstructionFacts,
-    ) -> None:
-        """Observe actual closure, globals and builtins before lexical expansion."""
-        facts.nonlocals.update(
+    ) -> p.Infra.NativeFunctionObservationContext:
+        """Observe actual closure, globals and builtins before lexical expansion.
+
+        Returns:
+            The updated function observation context.
+
+        """
+        nonlocals_update = dict(facts.nonlocals)
+        nonlocals_update.update(
             (name, cell.cell_contents)
             for name, cell in cls._function_cells(facts.value[0]).items()
         )
+        facts = facts.model_copy(update={"nonlocals": nonlocals_update})
         global_namespace = facts.value[0].__globals__
         # The native function slot retains its actual builtins dictionary.
         builtin_slot: p.Infra.NativeStorageSlot[dict[str, t.Infra.NativeOperand]] = (
@@ -4583,7 +4590,8 @@ class FlextInfraWorkspaceNativeReference:
         native_contains: Callable[[dict[str, t.Infra.NativeOperand], str], bool] = vars(
             dict
         )["__contains__"]
-        facts.global_bindings.update({
+        global_bindings_update = dict(facts.global_bindings)
+        global_bindings_update.update({
             name: (
                 native_getitem(global_namespace, name)
                 if native_contains(global_namespace, name)
@@ -4593,6 +4601,7 @@ class FlextInfraWorkspaceNativeReference:
             if native_contains(global_namespace, name)
             or native_contains(builtin_namespace, name)
         })
+        facts = facts.model_copy(update={"global_bindings": global_bindings_update})
         facts.operational_globals = frozenset(
             instruction.argval
             for unit in cls._code_units(facts.code)
@@ -4601,6 +4610,8 @@ class FlextInfraWorkspaceNativeReference:
             if instruction.opname in {"STORE_GLOBAL", "DELETE_GLOBAL"}
             and isinstance(instruction.argval, str)
         )
+
+        return facts
 
     @classmethod
     def _function_class_roots(
@@ -5221,7 +5232,7 @@ class FlextInfraWorkspaceNativeReference:
                 )
             )
             return r.ok(value=True)
-        cls._function_namespaces(context, facts, instructions)
+        facts = cls._function_namespaces(context, facts, instructions)
         if context.lexical:
             attributes = cls._function_attribute_edges(context, facts, instructions)
             if attributes.failure:
@@ -5557,24 +5568,30 @@ class FlextInfraWorkspaceNativeReference:
             m.Infra.NativeImportObservation(
                 runtime=Path(sys.executable).resolve(),
                 runtime_prefix=Path(sys.prefix).absolute(),
-                modules=nominations,
+                modules=cast(
+                    "tuple[m.Infra.SourceClassReference, ...]",
+                    nominations,
+                ),
                 sources=tuple(sorted(context.sources)),
-                bindings=tuple(sorted(context.evidence, key=lambda item: item.binding)),
+                bindings=cast(
+                    "tuple[m.Infra.NativeBindingEvidence, ...]",
+                    tuple(sorted(context.evidence, key=lambda item: item.binding)),
+                ),
             )
         )
 
     @staticmethod
     def _binding_index(
         snapshot: p.Infra.NativeImportObservation,
-    ) -> p.Result[dict[str, m.Infra.NativeBindingEvidence]]:
+    ) -> p.Result[dict[str, p.Infra.NativeBindingEvidence]]:
         """Index bindings and validate aliases after rejecting duplicates.
 
         Returns:
             The complete binding index, or its first validation failure.
 
         """
-        result_type = r[dict[str, m.Infra.NativeBindingEvidence]]
-        indexed: dict[str, m.Infra.NativeBindingEvidence] = {}
+        result_type = r[dict[str, p.Infra.NativeBindingEvidence]]
+        indexed: dict[str, p.Infra.NativeBindingEvidence] = {}
         for item in snapshot.bindings:
             if item.binding in indexed:
                 return result_type.fail(
@@ -5653,8 +5670,8 @@ class FlextInfraWorkspaceNativeReference:
 
     @staticmethod
     def _compare_inventory(
-        actual: Mapping[str, m.Infra.NativeBindingEvidence],
-        expected: Mapping[str, m.Infra.NativeBindingEvidence],
+        actual: Mapping[str, p.Infra.NativeBindingEvidence],
+        expected: Mapping[str, p.Infra.NativeBindingEvidence],
     ) -> p.Result[bool]:
         """Compare the exact elected native binding inventory.
 
@@ -5680,7 +5697,9 @@ class FlextInfraWorkspaceNativeReference:
                     context = tuple(
                         (
                             role,
-                            candidate.model_dump_json(include=identity_fields)
+                            cast(
+                                "m.Infra.NativeBindingEvidence", candidate
+                            ).model_dump_json(include=identity_fields)
                             if candidate is not None
                             else None,
                         )
@@ -5830,7 +5849,7 @@ class FlextInfraWorkspaceNativeReference:
         epoch = FlextInfraWorkspaceNativeReference._compare_epoch(observed, reference)
         if epoch.failure:
             return epoch
-        indexes: list[dict[str, m.Infra.NativeBindingEvidence]] = []
+        indexes: list[dict[str, p.Infra.NativeBindingEvidence]] = []
         for snapshot in (observed, reference):
             indexed = FlextInfraWorkspaceNativeReference._binding_index(snapshot)
             if indexed.failure:
@@ -5878,7 +5897,7 @@ class FlextInfraWorkspaceNativeReference:
         cls,
         binding: p.Infra.NativeBindingEvidence,
         executed: p.Infra.NativeCodeEvidence,
-        states: Mapping[Path, m.Cli.AtomicFileReceipt],
+        states: Mapping[Path, p.Cli.AtomicFileReceipt],
         module_spec: ModuleSpec,
     ) -> p.Result[tuple[t.Infra.NativeCode, ...]]:
         """Compile the elected source only after its physical receipt is proved.
