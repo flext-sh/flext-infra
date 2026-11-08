@@ -1,0 +1,71 @@
+id: model-annotation-to-protocol
+snapshots:
+  ? |
+    from flext_core import m
+    def collect(entries: list[m.Ldif.Entry] | None) -> None:
+        kept: tuple[m.Ldif.Entry, ...] = ()
+  : fixed: |
+      from flext_core import m
+      def collect(entries: list[p.Ldif.Entry] | None) -> None:
+          kept: tuple[m.Ldif.Entry, ...] = ()
+    labels:
+    - source: m.Ldif.Entry
+      style: primary
+      start: 51
+      end: 63
+    - source: |-
+        def collect(entries: list[m.Ldif.Entry] | None) -> None:
+            kept: tuple[m.Ldif.Entry, ...] = ()
+      style: secondary
+      start: 25
+      end: 121
+    - source: m.Ldif.Entry
+      style: secondary
+      start: 51
+      end: 63
+  ? |
+    from flext_core import m
+    def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
+        return entry
+  : fixed: |
+      from flext_core import m
+      def load(entry: p.Ldif.Entry) -> m.Ldif.Entry:
+          return entry
+    labels:
+    - source: m.Ldif.Entry
+      style: primary
+      start: 41
+      end: 53
+    - source: |-
+        def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
+            return entry
+      style: secondary
+      start: 25
+      end: 88
+    - source: m.Ldif.Entry
+      style: secondary
+      start: 41
+      end: 53
+  ? |
+    from flext_ldif import FlextLdifModels
+    def stats(entry: FlextLdifModels.Ldif.Entry) -> None:
+        return None
+  : fixed: |
+      from flext_ldif import FlextLdifModels
+      def stats(entry: p.Ldif.Entry) -> None:
+          return None
+    labels:
+    - source: FlextLdifModels.Ldif.Entry
+      style: primary
+      start: 56
+      end: 82
+    - source: |-
+        def stats(entry: FlextLdifModels.Ldif.Entry) -> None:
+            return None
+      style: secondary
+      start: 39
+      end: 108
+    - source: FlextLdifModels.Ldif.Entry
+      style: secondary
+      start: 56
+      end: 82
