@@ -1,10 +1,7 @@
 id: model-annotation-to-protocol
 snapshots:
-  ? |
-    from flext_core import m
-    def collect(entries: list[m.Ldif.Entry] | None) -> None:
-        kept: tuple[m.Ldif.Entry, ...] = ()
-  : fixed: |
+  "from flext_core import m\ndef collect(entries: list[m.Ldif.Entry] | None) -> None:\n    kept: tuple[m.Ldif.Entry, ...] = ()\n":
+    fixed: |
       from flext_core import m
       def collect(entries: list[p.Ldif.Entry] | None) -> None:
           kept: tuple[m.Ldif.Entry, ...] = ()
@@ -23,11 +20,8 @@ snapshots:
       style: secondary
       start: 51
       end: 63
-  ? |
-    from flext_core import m
-    def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
-        return entry
-  : fixed: |
+  "from flext_core import m\ndef load(entry: m.Ldif.Entry) -> m.Ldif.Entry:\n    return entry\n":
+    fixed: |
       from flext_core import m
       def load(entry: p.Ldif.Entry) -> m.Ldif.Entry:
           return entry
@@ -46,11 +40,8 @@ snapshots:
       style: secondary
       start: 41
       end: 53
-  ? |
-    from flext_ldif import FlextLdifModels
-    def stats(entry: FlextLdifModels.Ldif.Entry) -> None:
-        return None
-  : fixed: |
+  "from flext_ldif import FlextLdifModels\ndef stats(entry: FlextLdifModels.Ldif.Entry) -> None:\n    return None\n":
+    fixed: |
       from flext_ldif import FlextLdifModels
       def stats(entry: p.Ldif.Entry) -> None:
           return None
