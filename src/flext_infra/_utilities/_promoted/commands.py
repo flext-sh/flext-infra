@@ -124,10 +124,10 @@ class FlextInfraUtilitiesPromotedCommands(
         key = c.Infra.PromotedHeader
         message = c.Infra.PromotedMessage
         verb = cls._promoted_text(data, key.VERB, path)
-        what = cls._promoted_text(data, key.WHAT, path)
+        what = cls.promoted_what_slug(cls._promoted_text(data, key.WHAT, path))
         for actual, expected, mismatch in (
             (verb, expected_verb, message.VERB_MISMATCH),
-            (what, path.stem, message.WHAT_MISMATCH),
+            (what, cls.promoted_what_slug(path.stem), message.WHAT_MISMATCH),
         ):
             if actual != expected:
                 cls.promoted_fail(
@@ -182,6 +182,23 @@ class FlextInfraUtilitiesPromotedCommands(
             aliases=cls._promoted_texts(data.get(key.ALIASES, []), key.ALIASES, path),
             params=tuple(params),
             rules=cls._promoted_texts(data.get(key.RULES, []), key.RULES, path),
+        )
+
+    @staticmethod
+    def promoted_what_slug(name: str) -> str:
+        """Return the public WHAT slug of a header ``what``, request or file stem.
+
+        A Python module stem cannot hold ``-``, so ``helm_drift.py`` and
+        ``helm-drift.sh`` both publish ``helm-drift``; every WHAT comparison and
+        registry key goes through this one normalizer.
+
+        Returns:
+            ``name`` with each stem separator replaced by the slug separator.
+
+        """
+        return name.replace(
+            c.Infra.PROMOTED_STEM_SEPARATOR,
+            c.Infra.PROMOTED_WHAT_SEPARATOR,
         )
 
     @classmethod

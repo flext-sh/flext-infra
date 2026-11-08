@@ -37,7 +37,9 @@ class FlextInfraPromotedRegistry:
             name, separator, what = alias.partition(c.Infra.PromotedSelector.ALIAS)
             target = m.Infra.PromotedAliasTarget(
                 verb=command.verb,
-                what=what.strip() if separator else command.what,
+                what=u.Infra.promoted_what_slug(what.strip())
+                if separator
+                else command.what,
             )
             if not name.strip() or not target.what:
                 u.Infra.promoted_fail(
@@ -133,6 +135,7 @@ class FlextInfraPromotedRegistry:
 
         """
         commands = self.commands(verb)
+        what = u.Infra.promoted_what_slug(what)
         if what not in commands:
             u.Infra.promoted_fail(
                 c.Infra.PromotedMessage.INVALID_WHAT,
@@ -169,7 +172,7 @@ class FlextInfraPromotedRegistry:
             Whether a ``(verb, WHAT)`` command is registered.
 
         """
-        return what in self._commands.get(verb, {})
+        return u.Infra.promoted_what_slug(what) in self._commands.get(verb, {})
 
 
 __all__: list[str] = ["FlextInfraPromotedRegistry"]

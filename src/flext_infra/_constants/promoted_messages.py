@@ -65,7 +65,7 @@ class FlextInfraConstantsPromotedMessages:
         NESTED_DIR = "{path}: a nested directory is not a public command"
         INVALID_SUFFIX = "{path}: a public file must be .sh or .py"
         VERB_MISMATCH = "{path}: header verb={verb} differs from directory {expected}"
-        WHAT_MISMATCH = "{path}: header what={what} differs from file {expected}"
+        WHAT_MISMATCH = "{path}: header what={what} names a file other than {expected}"
         PARAMS_NOT_LIST = "{path}: params must be a list of TOML objects"
         PARAMS_NOT_TABLE = "{path}: params must contain TOML objects"
         PARAMS_REQUIRED_TYPE = "{path}: params.required must be a boolean"

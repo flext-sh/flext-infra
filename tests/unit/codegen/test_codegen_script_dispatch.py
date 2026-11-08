@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import FlextInfraPromoted, c, m, p, t, tm, u
 
 
 @c.Tests.MARK.slow
@@ -556,3 +556,34 @@ class TestsFlextInfraScriptDispatchMakefile:
         # repository's tree), never under /tmp, never a durable in-tree scratch.
         tm.that(rendered, lacks=["project_parent", ".test-tmp", "PROJECT_SCRATCH"])
         tm.that(rendered, lacks='TMPDIR="$$test_tmp"')
+
+    @staticmethod
+    def test_python_stem_publishes_the_hyphenated_what_slug(
+        tmp_path: Path,
+    ) -> None:
+        """A ``_`` module stem and its ``-`` WHAT slug name one command.
+
+        A Python command file cannot hold ``-`` in its stem, so the header and
+        every request resolve through one normalizer instead of failing the
+        WHAT mismatch check or the registry lookup.
+        """
+        verb_dir = tmp_path / "scripts" / "check"
+        verb_dir.mkdir(parents=True)
+        command: MutableMapping[str, t.JsonValue] = {
+            "verb": "check",
+            "what": "helm-drift",
+            "domain": "validation",
+            "summary": "Compare the desired render with the live cluster.",
+            "description": "Read-only drift comparison.",
+            "example": "make check WHAT=helm-drift",
+            "mutates": False,
+        }
+        header = u.Infra.promoted_render_header(command, width=88)
+        (verb_dir / "helm_drift.py").write_text(
+            f'{header}\n"""Check drift."""\n', encoding=c.DEFAULT_ENCODING
+        )
+        registry = FlextInfraPromoted.discover(script_roots=(tmp_path / "scripts",))
+        for requested in ("helm-drift", "helm_drift"):
+            tm.ok(registry.has("check", requested))
+            tm.that(registry.command("check", requested).what, eq="helm-drift")
+        tm.that(sorted(registry.commands("check")), eq=["helm-drift"])

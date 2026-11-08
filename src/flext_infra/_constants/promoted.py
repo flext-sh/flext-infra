@@ -92,6 +92,10 @@ class FlextInfraConstantsPromoted:
         VENV_PYTHON = "python"
         INCIDENT_DOMAIN = "incident"
 
+    PROMOTED_WHAT_SEPARATOR: ClassVar[str] = "-"
+    "Word separator of a public WHAT slug."
+    PROMOTED_STEM_SEPARATOR: ClassVar[str] = "_"
+    "Word separator a Python module stem uses where a WHAT slug uses ``-``."
     PROMOTED_HEADER_SCAN_LINES: ClassVar[int] = 160
     PROMOTED_HEADER_TABLE: ClassVar[tuple[str, ...]] = ("tool", "flext", "command")
     "Path of the command table inside the PEP 723 ``script`` block."

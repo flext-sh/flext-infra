@@ -40,16 +40,15 @@ class FlextInfraPromotedDiscovery(FlextInfraPromotedRegistry):
 
         """
         message = c.Infra.PromotedMessage
-        workspace = spec or u.Infra.promoted_discovered_workspace_spec()
-        roots = (
-            tuple(dict.fromkeys(script_roots))
-            if script_roots is not None
-            else (
+        if script_roots is not None:
+            roots = tuple(dict.fromkeys(script_roots))
+        else:
+            workspace = spec or u.Infra.promoted_discovered_workspace_spec()
+            roots = (
                 workspace.scripts,
                 *sorted(workspace.submodule_script_roots, key=str),
                 *filter(None, (workspace.consumer_scripts_root,)),
             )
-        )
         if not any(root.exists() for root in roots):
             u.Infra.promoted_fail(message.NO_SCRIPTS_DIR)
         registry = cls()
