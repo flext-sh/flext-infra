@@ -24,7 +24,12 @@ class FlextInfraUtilitiesPytest:
         # class declares ``__call__``), so ``u`` owns it beside ``exit``.
         # ``fail`` is not published: ``u.Tests`` inherits this class ahead of
         # its result matchers, and the matcher ``fail`` owns that name.
-        fixture = staticmethod(pytest.fixture)
+        # An overloaded pytest function (``fixture``'s bare and keyword-factory
+        # forms, ``raises``, ``warns``) is published bare: ``staticmethod``
+        # takes one ``Callable[P, R]``, so static type checkers keep only its
+        # first overload. Read through this class, a function is the function
+        # itself, with every overload.
+        fixture = pytest.fixture
         # ``pytest.hookimpl`` is a pluggy ``HookimplMarker`` instance, not a
         # function: it is not a descriptor, so wrapping it in ``staticmethod``
         # adds nothing at runtime and erases its overloaded ``__call__``
@@ -34,9 +39,9 @@ class FlextInfraUtilitiesPytest:
         main = staticmethod(pytest.main)
         monkeypatch_context = staticmethod(pytest.MonkeyPatch.context)
         param = staticmethod(pytest.param)
-        raises = staticmethod(pytest.raises)
+        raises = pytest.raises
         skip = staticmethod(pytest.skip)
-        warns = staticmethod(pytest.warns)
+        warns = pytest.warns
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPytest"]

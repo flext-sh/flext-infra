@@ -1,10 +1,20 @@
 # Import law (docs guide "Imports and family composition", ADR-028 D10): a
 # public name is imported from the package whose generated lazy initializer
 # publishes it, never from a module path below that package. This is the one
-# rule of that law for every tier (production, tests, examples) and for the
-# own package and its private families alike; the detection-only rules
-# (`ban-test-deep-module-import`, `ban-consumer-submodule-import`,
-# `ban-own-family-internal-import`) report what this rule cannot repair.
+# rule of that law for every tier (production, tests, examples); the
+# detection-only rules (`ban-test-deep-module-import`,
+# `ban-consumer-submodule-import`, `ban-own-family-internal-import`) report
+# what this rule cannot repair.
+#
+# A module keeps its deep imports of its own top-level package: inside
+# `<package>`, `from <package>.<module> import ...` stays. The package
+# initializer publishes the importing module itself, so rewriting the import
+# to the package (or to a package below it) closes a runtime import cycle
+# (`<package>.api` -> `<package>` -> `<package>.api`). The `top-package-`
+# file scope partitions the rule per top-level package of the project: an
+# import whose module path starts with that package never matches in its own
+# files, while every other top-level package's deep modules (a test tier
+# importing the production package) are still rewritten.
 #
 # The `package-published-import` utility is the generated fact. It matches the
 # module-path node of `from <package>.<module> import ...` only when the
@@ -32,6 +42,12 @@ ignores:
   - "**/config.py"
 metadata:
   enforce: [ENFORCE-015, ENFORCE-055, ENFORCE-068, ENFORCE-099]
+  scope:
+    partition:
+      variable: MODULE
+      holds: false
+      selectors: top-package-
+      pattern: "^{key}\\."
 rule:
   all:
     - kind: dotted_name
