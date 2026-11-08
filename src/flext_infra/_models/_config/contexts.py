@@ -319,7 +319,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = False
         make: Annotated[
-            FlextInfraModelsConfigMake.MakeSpec,
+            Annotated[
+                p.Infra.MakeSpec,
+                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
+            ],
             m.Field(description="Generated Make command contract"),
         ]
         mypy_timeout_exit_code: Annotated[

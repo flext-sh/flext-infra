@@ -63,15 +63,27 @@ class FlextInfraModelsWorkspace:
         generator_modules: tuple[tuple[str, Path], ...] = m.Field(
             description="Cold-elected physical producer namespaces"
         )
-        selections: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
+        selections: tuple[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
+            ],
+            ...,
+        ] = m.Field(
             min_length=1,
             description="Portable entrypoint, receiver and explicitly wired port roots",
         )
-        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
-            m.Field(
-                default=None,
-                description="Shared native epoch; cold authority carries none",
-            )
+        generator_reference: (
+            Annotated[
+                p.Infra.NativeImportReference,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.NativeImportReference
+                ),
+            ]
+            | None
+        ) = m.Field(
+            default=None,
+            description="Shared native epoch; cold authority carries none",
         )
 
     class NativeCodeEvidence(m.Value):
@@ -194,7 +206,15 @@ class FlextInfraModelsWorkspace:
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
-                    MutableMapping[str, FlextInfraModelsWorkspace.NativeBindingEvidence]
+                    MutableMapping[
+                        str,
+                        Annotated[
+                            p.Infra.NativeBindingEvidence,
+                            t.schema_for_model(
+                                lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+                            ),
+                        ],
+                    ]
                 )
             ),
             description="Invocation-local references to the first binding evidence",
@@ -362,16 +382,28 @@ class FlextInfraModelsWorkspace:
 
         runtime: Path = m.Field(description="Exact observed native interpreter")
         runtime_prefix: Path = m.Field(description="Physical interpreter environment")
-        modules: tuple[FlextInfraModelsRope.SourceClassReference, ...] = m.Field(
+        modules: tuple[
+            Annotated[
+                p.Infra.SourceClassReference,
+                t.schema_for_model(lambda: FlextInfraModelsRope.SourceClassReference),
+            ],
+            ...,
+        ] = m.Field(
             min_length=1,
             description="Selected modules and native lexical binding paths",
         )
         sources: tuple[tuple[str, str, str], ...] = m.Field(
             description="Physical supplier and generated declaration origins",
         )
-        bindings: tuple[FlextInfraModelsWorkspace.NativeBindingEvidence, ...] = m.Field(
-            description="Complete static native binding observations"
-        )
+        bindings: tuple[
+            Annotated[
+                p.Infra.NativeBindingEvidence,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+                ),
+            ],
+            ...,
+        ] = m.Field(description="Complete static native binding observations")
         executed_sources: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             default=(),
             description="Sources authenticated before compilation in the cold import",
@@ -381,7 +413,12 @@ class FlextInfraModelsWorkspace:
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""
 
-        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
+        source_authority: Annotated[
+            p.Infra.CodegenSourceAuthority,
+            t.schema_for_model(
+                lambda: FlextInfraModelsWorkspace.CodegenSourceAuthority
+            ),
+        ] = m.Field(
             description="Cold authority pinned by the capture call",
         )
         _native_birth: tuple[int, str] | None = m.PrivateAttr(default=None)

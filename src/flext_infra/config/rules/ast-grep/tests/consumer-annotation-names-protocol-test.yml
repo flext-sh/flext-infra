@@ -1,0 +1,10 @@
+id: consumer-annotation-names-protocol
+valid:
+  - "def f(x: p.Infra.Leaf) -> p.Infra.Leaf: ..."
+  - "leaf = m.Infra.Leaf(name='a')"
+  - "def f(kind: type[m.Infra.Leaf]) -> None: ..."
+  - "def f(op: m.Infra.DepsToml.SetOp) -> None: ..."
+invalid:
+  - "def f(x: m.Infra.Leaf) -> None: ..."
+  - "def f() -> tuple[m.Infra.Leaf, ...]: ..."
+  - "items: dict[str, m.Cli.AtomicFileState] = {}"

@@ -156,7 +156,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         report: Annotated[
-            FlextInfraModelsGates.DeptryNativeReport,
+            Annotated[
+                p.Infra.DeptryNativeReport,
+                t.schema_for_model(lambda: FlextInfraModelsGates.DeptryNativeReport),
+            ],
             m.Field(description="Complete native findings"),
         ]
 
