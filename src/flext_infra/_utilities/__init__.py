@@ -146,6 +146,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
     from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
     from flext_infra._utilities.rope import FlextInfraUtilitiesRope
+    from flext_infra._utilities.script_metadata import FlextInfraUtilitiesScriptMetadata
     from flext_infra._utilities.semantic_cutover import (
         FlextInfraUtilitiesSemanticCutover,
     )
@@ -242,6 +243,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
     "FlextInfraUtilitiesRope",
+    "FlextInfraUtilitiesScriptMetadata",
     "FlextInfraUtilitiesSemanticCutover",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
@@ -331,6 +333,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRepository": ".repository",
         "FlextInfraUtilitiesResourceLimits": ".resource_limits",
         "FlextInfraUtilitiesRope": ".rope",
+        "FlextInfraUtilitiesScriptMetadata": ".script_metadata",
         "FlextInfraUtilitiesSemanticCutover": ".semantic_cutover",
         "FlextInfraUtilitiesTransformerHeader": ".transformer_header",
         "FlextInfraUtilitiesTransformerHeaderParser": ".transformer_header_parser",

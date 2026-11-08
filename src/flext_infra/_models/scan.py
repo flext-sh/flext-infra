@@ -473,6 +473,10 @@ class FlextInfraModelsScan:
                 description="Exact finding count the rule must produce when set",
             ),
         ] = None
+        render: Annotated[
+            c.Infra.ModTextRender | None,
+            m.Field(description="Declared renderer replacing each match instead"),
+        ] = None
 
     class ModTextFinding(FlextInfraModelsBase.FrozenArbitrary):
         """One text-rule match with its computed replacement."""

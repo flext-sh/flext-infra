@@ -455,6 +455,11 @@ class FlextInfraProtocolsScan:
             """Exact finding count the rule must produce when set."""
             ...
 
+        @property
+        def render(self) -> c.Infra.ModTextRender | None:
+            """Declared renderer replacing each match instead."""
+            ...
+
     @runtime_checkable
     class ModTextFinding(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""

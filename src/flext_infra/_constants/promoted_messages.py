@@ -24,8 +24,12 @@ class FlextInfraConstantsPromotedMessages:
     class PromotedMessage(StrEnum):
         """Registry, discovery, and execution diagnostics."""
 
-        MISSING_HEADER = "{path}: missing flext-command header"
+        MISSING_HEADER = (
+            "{path}: missing [tool.flext.command] in a PEP 723 script block"
+        )
         INVALID_HEADER_TOML = "{path}: invalid header TOML"
+        INVALID_HEADER_TABLE = "{path}: [tool.flext.command] must be a table"
+        MULTIPLE_SCRIPT_BLOCKS = "{path}: more than one PEP 723 script block"
         REQUIRED_STRING = "{path}: missing required field: {key}"
         REQUIRED_BOOL = "{path}: missing required boolean field: {key}"
         INVALID_ALIAS = "{path}: invalid alias {alias!r}; use alias or alias=WHAT"
@@ -140,7 +144,10 @@ class FlextInfraConstantsPromotedMessages:
             " OPTIONS=Y shows one action."
         ),
         "Mutating commands execute their declared operation directly.",
-        "New commands live in scripts/<verb>/<WHAT>.sh|py with a flext-command header.",
+        (
+            "New commands live in scripts/<verb>/<WHAT>.sh|py with a PEP 723"
+            " script block holding [tool.flext.command]."
+        ),
     )
 
 

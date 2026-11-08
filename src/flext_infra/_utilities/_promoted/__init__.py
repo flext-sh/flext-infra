@@ -18,6 +18,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._promoted.execution import (
         FlextInfraUtilitiesPromotedExecution,
     )
+    from flext_infra._utilities._promoted.header import (
+        FlextInfraUtilitiesPromotedHeader,
+    )
     from flext_infra._utilities._promoted.invocation import (
         FlextInfraUtilitiesPromotedInvocation,
     )
@@ -32,6 +35,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesPromotedCommands",
     "FlextInfraUtilitiesPromotedExecution",
+    "FlextInfraUtilitiesPromotedHeader",
     "FlextInfraUtilitiesPromotedInvocation",
     "FlextInfraUtilitiesPromotedRendering",
     "FlextInfraUtilitiesPromotedWorkspace",
@@ -43,6 +47,7 @@ install_lazy_exports(
     {
         "FlextInfraUtilitiesPromotedCommands": ".commands",
         "FlextInfraUtilitiesPromotedExecution": ".execution",
+        "FlextInfraUtilitiesPromotedHeader": ".header",
         "FlextInfraUtilitiesPromotedInvocation": ".invocation",
         "FlextInfraUtilitiesPromotedRendering": ".rendering",
         "FlextInfraUtilitiesPromotedWorkspace": ".workspace",

@@ -630,6 +630,14 @@ class FlextInfraConstantsRefactor:
     CODEMOD_TEXT_KEY_FLAGS: ClassVar[str] = "flags"
     CODEMOD_TEXT_KEY_EXPECTED: ClassVar[str] = "expected"
     CODEMOD_TEXT_KEY_CAPTURE_EQUALS: ClassVar[str] = "capture_equals"
+    CODEMOD_TEXT_KEY_RENDER: ClassVar[str] = "render"
+
+    @unique
+    class ModTextRender(StrEnum):
+        """Closed renderers a text rule names instead of a replace template."""
+
+        PROMOTED_COMMAND_HEADER = "promoted-command-header"
+
     # ast-grep rejects unknown top-level keys, so an ast-grep rule declares
     # its finding-count receipt under the `metadata` mapping it does accept.
     CODEMOD_RULE_METADATA_KEY: ClassVar[str] = "metadata"
