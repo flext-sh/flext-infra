@@ -138,7 +138,7 @@ class FlextInfraUtilitiesRopeModulePatch:
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
             source,
-            (m.Infra.SourceRewrite(start=start, end=end, text=rendered),),
+            (FlextInfraModels.Infra.SourceRewrite(start=start, end=end, text=rendered),),
         ).new_contents
 
     @staticmethod
@@ -407,7 +407,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                         resource,
                         source,
                         (
-                            m.Infra.SourceRewrite(
+                            FlextInfraModels.Infra.SourceRewrite(
                                 start=fragment.start, end=fragment.end, text=original
                             ),
                         ),

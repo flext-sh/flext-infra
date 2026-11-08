@@ -11,7 +11,7 @@ from collections.abc import Mapping, Set as AbstractSet
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r
+from flext_infra import c, m, p, r, FlextInfraModels
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             relocated = moves.get(absolute)
             if relocated is not None:
                 start, end = declaration.module_region
-                edits[start, end] = m.Infra.SourceRewrite(
+                edits[start, end] = FlextInfraModels.Infra.SourceRewrite(
                     start=start, end=end, text=relocated
                 )
         return r[bool].ok(value=True)
@@ -196,7 +196,7 @@ class FlextInfraUtilitiesRopeMovePublication:
             if literal.failure:
                 return r[bool].from_failure(literal)
             start, end = regions[0]
-            edits[start, end] = m.Infra.SourceRewrite(
+            edits[start, end] = FlextInfraModels.Infra.SourceRewrite(
                 start=start, end=end, text=literal.value
             )
         return r[bool].ok(value=True)
