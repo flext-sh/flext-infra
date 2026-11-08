@@ -427,7 +427,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                     )
                     if projected.failure:
                         return result_type.from_failure(projected)
-                    files.update(dict((file.path, file) for file in projected.value[0]))
+                    cast(MutableMapping[Path, object], files).update(
+                        dict((file.path, file) for file in projected.value[0])
+                    )
                     self._retain_source_facts(self.state.snapshot, project)
             finally:
                 self.state.snapshot, self.state.provider_plans = previous
