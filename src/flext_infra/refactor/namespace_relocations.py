@@ -345,7 +345,7 @@ class FlextInfraNamespaceRelocationCascade:
             binding = module.get_scope().get_defined_names().get(name)
             location = None if binding is None else binding.get_definition_location()
             module_level = location is not None and location[0] is module
-            if module_level and location[1] == line:
+            if location is not None and location[0] is module and location[1] == line:
                 declarations.append((path, name, target))
                 continue
             member = cls._transferable_member(module, name, line)
@@ -367,7 +367,9 @@ class FlextInfraNamespaceRelocationCascade:
             nested functions need receiver rewrites no derivation supplies).
 
         """
-        pending = [(module.get_scope(), ())]
+        pending: list[tuple[p.Infra.RopeScope, tuple[str, ...]]] = [
+            (module.get_scope(), ())
+        ]
         while pending:
             scope, chain = pending.pop()
             for child in scope.get_scopes():
@@ -376,7 +378,7 @@ class FlextInfraNamespaceRelocationCascade:
                     pending.append((child, (*chain, declared.get_name())))
                 elif (
                     scope.get_kind() == "Class"
-                    and child.get_kind() == "Function"
+                    and isinstance(declared, p.Infra.RopeSourceFunction)
                     and declared.get_name() == name
                     and declared.get_ast().lineno == line
                     and declared.get_kind()

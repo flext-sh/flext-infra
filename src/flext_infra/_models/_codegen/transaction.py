@@ -56,7 +56,13 @@ class FlextInfraModelsCodegenTransaction:
             m.Field(description="Declared persistence policy of this artifact"),
         ] = "versioned"
         index_before: Annotated[
-            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
+            Annotated[
+                p.Infra.GitWorktreeIndexEntry,
+                t.schema_for_model(
+                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
+                ),
+            ]
+            | None,
             m.Field(description="Captured index entry scheduled for retirement"),
         ] = None
         tracking_dependencies: Annotated[

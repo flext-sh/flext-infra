@@ -187,7 +187,11 @@ class FlextInfraToolTablesPhase:
             operations=(m.Infra.DepsToml.SetOp(key=path[-1], value=payload),),
         )
 
-    def _mypy_phase(self, mypy_search_paths: Sequence[str]) -> p.Infra.PhaseConfig:
+    def _mypy_phase(
+        self,
+        mypy_search_paths: Sequence[str],
+        repository_namespace_packages: Sequence[str] = (),
+    ) -> p.Infra.PhaseConfig:
         """Combine native options with the Mypy execution policy.
 
         Returns:
@@ -202,6 +206,11 @@ class FlextInfraToolTablesPhase:
             self._codegen.toolchain.python_version
         )
         payload["mypy_path"] = list(mypy_search_paths)
+        # A declared repository namespace has no __init__.py: mypy names its
+        # modules from explicit package bases, never from the file's directory.
+        implicit_namespaces = bool(repository_namespace_packages)
+        payload["namespace_packages"] = implicit_namespaces
+        payload["explicit_package_bases"] = implicit_namespaces
         # One exclusion owner: the codegen artifact registry, as Mypy's regex.
         payload["exclude"] = FlextInfraUtilitiesNativeTooling.native_exclude_regex(
             self._codegen.analyzer_exclude_globs
@@ -363,7 +372,7 @@ class FlextInfraToolTablesPhase:
             native_phases.append(self._native_phase(table, image))
         return (
             *native_phases,
-            self._mypy_phase(mypy_search_paths),
+            self._mypy_phase(mypy_search_paths, repository_namespace_packages),
             self._pytest_phase(),
             self._vulture_phase(path),
             self._deptry_phase(path, repository_namespace_packages),

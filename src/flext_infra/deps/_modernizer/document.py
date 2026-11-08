@@ -70,7 +70,7 @@ class FlextInfraPyprojectModernizerDocument(
         ),
     ] = False
     managed_artifacts: Annotated[
-        m.Infra.ProjectManagedArtifactsResolution | None,
+        p.Infra.ProjectManagedArtifactsResolution | None,
         m.Field(
             default=None,
             exclude=True,

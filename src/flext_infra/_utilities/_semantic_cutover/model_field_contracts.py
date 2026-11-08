@@ -237,6 +237,13 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             for alias in node.names
             if alias.name == "m"
         )
+        self.model_aliases: dict[str, str] = {
+            alias.asname or alias.name: node.module or ""
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+            if alias.name == "m"
+        }
         self.fields: set[int] = set()
         self.changed = False
         self.needs_annotated = False
@@ -498,6 +505,10 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         root = node
         while isinstance(root, ast.Attribute):
             root = root.value
+        if isinstance(root, ast.Name) and root.id in self.model_aliases:
+            alias_protocol = self._aliased_model_protocol(reference, root.id)
+            if alias_protocol is not None:
+                return alias_protocol
         if isinstance(node, ast.Attribute) and (
             isinstance(root, ast.Name) and root.id in self.model_roots
         ):
@@ -506,6 +517,30 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
                 "has no projected protocol route"
             )
             raise ValueError(msg)
+        return None
+
+    def _aliased_model_protocol(self, reference: str, local: str) -> ast.expr | None:
+        """Resolve through an `m` facade alias to the owning package route.
+
+        Returns:
+            The protocol route, or None when the alias names no model.
+
+        """
+        rest = reference[len(local) :]
+        candidates: list[str] = []
+        module = self.model_aliases.get(local, "")
+        if module:
+            candidates.append(f"{module}.m{rest}")
+        if local != "m":
+            candidates.append(f"m{rest}")
+        for candidate in candidates:
+            protocol = (
+                FlextInfraUtilitiesSemanticModelFieldContracts.resolve_model_protocol(
+                    candidate, self.routes
+                )
+            )
+            if protocol is not None:
+                return ast.parse(protocol, mode="eval").body
         return None
 
     def _schema(self, model: ast.expr) -> ast.expr:

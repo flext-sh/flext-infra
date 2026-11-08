@@ -1106,17 +1106,23 @@ class FlextInfraUtilitiesFacadeComponents:
             )
         ):
             return declarations
-        declared = {
-            (provider.get_module().get_name(), provider.get_name()): (path, provider)
-            for path, provider in declarations
-            if provider.get_module() is not None
-        }
-        selected = tuple(
-            declared[provider.get_module().get_name(), provider.get_name()]
-            for provider in namespace.get_superclasses()
-            if provider.get_module() is not None
-            and (provider.get_module().get_name(), provider.get_name()) in declared
-        )
+        declared = {}
+        for path, provider in declarations:
+            module = provider.get_module()
+            if module is None:
+                continue
+            declared[module.get_name(), provider.get_name()] = (path, provider)
+        selected = []
+        for provider in namespace.get_superclasses():
+            if not isinstance(provider, p.Infra.RopeNamedObject):
+                continue
+            module = provider.get_module()
+            if module is None:
+                continue
+            key = (module.get_name(), provider.get_name())
+            if key in declared:
+                selected.append(declared[key])
+        selected = tuple(selected)
         return selected or declarations
 
     @classmethod
@@ -1823,7 +1829,10 @@ class FlextInfraUtilitiesFacadeComponents:
         # surface; any other inherited instance callable, a model base's
         # included, keeps the provider nominal.
         def from_utility_facade(value: p.Infra.RopePyObject) -> bool:
-            module = value.get_module().get_name()
+            module_obj = value.get_module()
+            if module_obj is None:
+                return False
+            module = module_obj.get_name()
             return module.endswith(".utilities") or "._utilities" in module
 
         inherited_instance = any(
