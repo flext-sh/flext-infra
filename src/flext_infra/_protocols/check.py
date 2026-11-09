@@ -151,15 +151,6 @@ class FlextInfraProtocolsCheck(Protocol):
         def submodule_search_locations(self) -> Sequence[str] | None: ...
 
     @runtime_checkable
-    class GlobalCheckTargetPlanner(Protocol):
-        """Plan native global coverage on demand at the admission boundary."""
-
-        def __call__(
-            self,
-            gates: Sequence[str],
-        ) -> p.Result[tuple[FlextInfraProtocolsCheck.CheckProjectTarget, ...]]: ...
-
-    @runtime_checkable
     class PytestRunContextReceiver(Protocol):
         """Receive the runner's immutable Pydantic receipt through explicit DI."""
 

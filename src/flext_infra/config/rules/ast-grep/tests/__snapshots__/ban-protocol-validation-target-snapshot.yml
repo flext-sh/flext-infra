@@ -34,7 +34,7 @@ snapshots:
   "from flext_infra import p, t, u\nadapter = u.type_adapter(t.TypeForm(list[p.ConfigDocument]))\n":
     fixed: |
       from flext_infra import p, t, u
-      adapter = u.type_adapter(t.TypeForm(list[p.ConfigDocument]))
+      adapter = u.type_adapter(t.TypeForm(list[m.ConfigDocument]))
     labels:
     - source: p.ConfigDocument
       style: primary
@@ -65,7 +65,7 @@ snapshots:
   "from flext_infra import p, u\nadapter = u.type_adapter(tuple[p.Infra.FacadeFamily, ...])\n":
     fixed: |
       from flext_infra import p, u
-      adapter = u.type_adapter(tuple[p.Infra.FacadeFamily, ...])
+      adapter = u.type_adapter(tuple[m.Infra.FacadeFamily, ...])
     labels:
     - source: p.Infra.FacadeFamily
       style: primary

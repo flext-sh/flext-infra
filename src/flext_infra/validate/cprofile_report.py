@@ -199,7 +199,7 @@ class FlextInfraCProfileReport(s[bool]):
         directory: Path,
         suite_outcome: Path,
     ) -> bool:
-        """Report whether the leased run executed a whole-project FULL suite.
+        """Report whether the native run executed a whole-project FULL suite.
 
         Returns:
             True when the recorded intent selects the whole project.
@@ -209,8 +209,7 @@ class FlextInfraCProfileReport(s[bool]):
 
         """
         if not (
-            parent.testmon_lease_acquired
-            and parent.execution_mode == c.Infra.PytestExecutionMode.FULL
+            parent.execution_mode == c.Infra.PytestExecutionMode.FULL
             and (suite_outcome.exists() or suite_outcome.is_symlink())
         ):
             return False
@@ -380,8 +379,11 @@ class FlextInfraCProfileReport(s[bool]):
         if not self.profile.is_file():
             return r[bool].fail(f"cProfile artifact does not exist: {self.profile}")
         stream = io.StringIO()
-        self._render_profiles(stream)
-        self.output.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self._render_profiles(stream)
+            self.output.parent.mkdir(parents=True, exist_ok=True)
+        except (OSError, ValueError) as failure:
+            return r[bool].fail(str(failure), exception=failure)
         return u.Cli.atomic_write_text_file(self.output, stream.getvalue())
 
     def _render_profiles(self, stream: io.StringIO) -> None:

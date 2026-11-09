@@ -108,14 +108,18 @@ case "{{ d }}{OS:-}" in (Windows_NT) reader_mise="{{ d }}{reader_root}/.bin/mise
 if [ -L "{{ d }}{reader_root}/.bin" ] || [ -L "{{ d }}{reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "{{ d }}{reader_mise}" >&2; exit 2; fi; \
 reader_mise="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which mise)"; \
 if [ "{{ d }}{OS:-}" = Windows_NT ]; then reader_mise="{{ d }}(cygpath --unix "{{ d }}{reader_mise}")"; fi; \
-uv_binary="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}")"; \
-if [ "{{ d }}{OS:-}" = Windows_NT ]; then uv_binary="{{ d }}(cygpath --unix "{{ d }}{uv_binary}")"; fi; \
-if [ ! -x "{{ d }}{uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
-owner="{{ d }}("{{ d }}{uv_binary}" workspace dir --project "{{ d }}{project_root}")"; \
-if [ "{{ d }}{OS:-}" = Windows_NT ]; then owner="{{ d }}(cygpath --unix "{{ d }}{owner}")"; fi; \
-case "{{ d }}{owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \
-owner="{{ d }}(cd "{{ d }}{owner}" && pwd -P)"; \
-case "{{ d }}{owner}/" in ("{{ d }}{scope}/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \
-case "{{ d }}{project_root}/" in ("{{ d }}{owner}/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "{{ d }}{owner}" >&2; exit 2 ;; esac; \
-printf '%s\n' "{{ d }}{owner}"
+if [ "{{ d }}{reader_root}" != "{{ d }}{project_root}" ]; then \
+	owner="{{ d }}{reader_root}"; \
+else \
+	uv_binary="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which "{{ uv_tool.version_probe.binary }}")"; \
+	if [ "{{ d }}{OS:-}" = Windows_NT ]; then uv_binary="{{ d}}(cygpath --unix "{{ d}}{uv_binary}")"; fi; \
+	if [ ! -x "{{ d}}{uv_binary}" ]; then printf 'ERROR: native workspace reader is not provisioned; run make setup\n' >&2; exit 2; fi; \
+	owner="{{ d }}("{{ d }}{uv_binary}" workspace dir --project "{{ d }}{project_root}")"; \
+	if [ "{{ d}}{OS:-}" = Windows_NT ]; then owner="{{ d}}(cygpath --unix "{{ d}}{owner}")"; fi; \
+fi; \
+case "{{ d}}{owner}" in (/*) ;; (*) printf 'ERROR: native UV workspace owner is not absolute: %s\n' "{{ d}}{owner}" >&2; exit 2 ;; esac; \
+owner="{{ d}}(cd "{{ d}}{owner}" && pwd -P)"; \
+case "{{ d}}{owner}/" in ("{{ d}}{scope}/"*) ;; (*) printf 'ERROR: native UV workspace owner leaves its Git scope: %s\n' "{{ d}}{owner}" >&2; exit 2 ;; esac; \
+case "{{ d}}{project_root}/" in ("{{ d}}{owner}/"*) ;; (*) printf 'ERROR: native UV workspace owner does not contain this project: %s\n' "{{ d}}{owner}" >&2; exit 2 ;; esac; \
+printf '%s\n' "{{ d}}{owner}"
 {%- endmacro %}

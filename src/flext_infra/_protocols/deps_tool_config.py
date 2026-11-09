@@ -42,7 +42,17 @@ class FlextInfraProtocolsDepsToolConfig:
 
         import_alignment: bool
         pass_cap: int
-        stages: tuple[FlextInfraProtocolsDepsToolConfig.ModStageConfig, ...]
+
+        @property
+        def stages(
+            self,
+        ) -> tuple[FlextInfraProtocolsDepsToolConfig.ModStageConfig, ...]:
+            """Structural member projected from the owning model.
+
+            Ordered native cascade stages of make mod: ast-grep stages apply
+            natively, the ruff stage repairs imports.
+            """
+            ...
 
     @runtime_checkable
     class ModConfig(FlextCliProtocols.BaseModel, Protocol):
@@ -78,9 +88,22 @@ class FlextInfraProtocolsDepsToolConfig:
         parallel_distribution: Literal["load", "loadscope"]
         loadscope_reorder: bool
         parallel_schedule_chunk: int
-        parallel_worker_overrides: Mapping[
-            str, FlextInfraProtocolsDepsToolConfig.PytestWorkerCeiling
-        ]
+
+        @property
+        def parallel_worker_overrides(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsDepsToolConfig.PytestWorkerCeiling]:
+            """Structural member projected from the owning model.
+
+            Per declared-project worker ceilings (``[project].name`` → absolute
+            ``workers`` or CPU ``cpu_fraction``) resolved by the runner over the
+            fleet-wide ``parallel-workers`` default: a consumer whose measured suite
+            cannot fit the single-worker process boundary declares its ceiling here,
+            inside the fleet cycle. The legacy bare-integer form still reads as an
+            absolute ``workers`` ceiling.
+            """
+            ...
+
         profile_sort: Literal[
             "calls",
             "cumulative",
@@ -160,9 +183,17 @@ class FlextInfraProtocolsDepsToolConfig:
     class MarkdownConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        projected_blocks: tuple[
-            FlextInfraProtocolsDepsToolConfig.MarkdownProjectedBlock, ...
-        ]
+        @property
+        def projected_blocks(
+            self,
+        ) -> tuple[FlextInfraProtocolsDepsToolConfig.MarkdownProjectedBlock, ...]:
+            """Structural member projected from the owning model.
+
+            Foreign writers whose marker-delimited blocks the Markdown lint reads as
+            masked lines; FLEXT-owned blocks never appear.
+            """
+            ...
+
         findings_exit_codes: tuple[int, ...]
         default_enabled: bool
         extend_enable: t.StrTuple
@@ -178,10 +209,29 @@ class FlextInfraProtocolsDepsToolConfig:
             """Markdown lint settings."""
             ...
 
-        ruff: FlextInfraProtocolsDepsToolConfigLinters.RuffConfig
-        mypy: FlextInfraProtocolsDepsToolConfigLinters.MypyConfig
-        pyright: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig
-        pyrefly: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig
+        @property
+        def ruff(self) -> FlextInfraProtocolsDepsToolConfigLinters.RuffConfig:
+            """Ruff settings."""
+            ...
+
+        @property
+        def mypy(self) -> FlextInfraProtocolsDepsToolConfigLinters.MypyConfig:
+            """Mypy settings."""
+            ...
+
+        @property
+        def pyright(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig:
+            """Pyright settings."""
+            ...
+
+        @property
+        def pyrefly(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig:
+            """Pyrefly settings."""
+            ...
 
         @property
         def pytest(self) -> FlextInfraProtocolsDepsToolConfig.PytestConfig:
@@ -335,7 +385,13 @@ class FlextInfraProtocolsDepsToolConfig:
     class ToolingRuntimeContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        document: FlextInfraProtocolsDepsToolConfig.ToolConfigDocument | None
+        @property
+        def document(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfig.ToolConfigDocument | None:
+            """The elected tooling policy shared by every render context."""
+            ...
+
         project_kind: t.NonEmptyStr
         configuration: str
         tool_options: Mapping[str, t.JsonMapping]

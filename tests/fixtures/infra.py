@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, settings, workspace
-from tests import c, m, p, t, tm, u
+from tests import c, p, t, tm, u
 
 _FIXTURES_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -65,8 +65,6 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
         "import importlib, pathlib, sys\n"
         "from pathlib import Path\n"
         "from flext_infra import m\n"
-        "from flext_infra.codegen import FlextInfraCodegenPreconditions as "
-        "preconditions\n"
         "from flext_infra.workspace import "
         "FlextInfraWorkspaceNativeReference as native\n"
         f"runtime_root = Path({str(runtime)!r})\n"
@@ -343,6 +341,7 @@ def cached_runner_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
     monkeypatch.setenv("XDG_CACHE_HOME", str(external_cache))
     monkeypatch.setenv("LOCALAPPDATA", str(external_cache))
     project_root = tmp_path / "cached_runner_project"
+    u.Tests.declare_governed_kind(project_root)
     policy = config.Infra.codegen.make.testmon_cache
     package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
     tests_root = project_root / policy.target_directory

@@ -6,11 +6,11 @@ valid:
           m.Infra.CodegenConformState,
           m.Field(description="State."),
       ]
-  - "def f(x: p.Infra.Leaf) -> p.Infra.Leaf: ..."
-  - "leaf = m.Infra.Leaf(name='a')"
-  - "def f(kind: type[p.Infra.Leaf]) -> None: ..."
-  - "def f(op: m.Infra.DepsToml.SetOp) -> None: ..."
+- "def f(x: p.Infra.Leaf) -> p.Infra.Leaf: ..."
+- "leaf = m.Infra.Leaf(name='a')"
+- "def f(kind: type[p.Infra.Leaf]) -> None: ..."
+- "def f(op: m.Infra.DepsToml.SetOp) -> None: ..."
 invalid:
 - "def f(x: m.Infra.Leaf) -> None: ..."
-- "def f() -> tuple[p.Infra.Leaf, ...]: ..."
+- "def f() -> tuple[m.Infra.Leaf, ...]: ..."
 - "items: dict[str, m.Cli.AtomicFileState] = {}"

@@ -275,7 +275,7 @@ class FlextInfraWorkspaceRoutes:
             *u.Infra.result_routes((
                 (
                     c.Infra.VERB_TEST,
-                    "Run persistent incremental tests after global source admission",
+                    "Run native persistent incremental tests",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests,
                     None,

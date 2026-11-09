@@ -27,8 +27,8 @@ invalid:
       return entry
 - |
   from flext_core import m
-  def collect(entries: list[p.Ldif.Entry] | None) -> None:
-      kept: tuple[p.Ldif.Entry, ...] = ()
+  def collect(entries: list[m.Ldif.Entry] | None) -> None:
+      kept: tuple[m.Ldif.Entry, ...] = ()
 - |
   from flext_ldif import FlextLdifModels
   def stats(entry: FlextLdifModels.Ldif.Entry) -> None:

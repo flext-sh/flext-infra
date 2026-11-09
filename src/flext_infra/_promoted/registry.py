@@ -63,8 +63,6 @@ class FlextInfraPromotedRegistry:
         help unless the verb declares one.
         """
         message = c.Infra.PromotedMessage
-        if not self._commands:
-            u.Infra.promoted_fail(message.NO_COMMANDS)
         for verb, commands in sorted(self._commands.items()):
             domains = sorted({command.domain for command in commands.values()})
             if len(domains) != 1:

@@ -16,9 +16,8 @@
 # `Callable[...]` signatures or `type[...]`, and type arguments of a generic
 # model (`Family.Rule[p.X]`, whose own field owns the port) are left
 # untouched: a callable's parameter and return types and a class object are
-# never instance-checked, so wrapping them would be wrong. A protocol whose
-# Annotated field delegates its schema through t.schema_for_model is persisted
-# data and is left untouched too. A second pass changes nothing.
+# never instance-checked, so wrapping them would be wrong. Persisted fields
+# retain concrete model types. A second pass changes nothing.
 id: rewire-model-protocol-field-to-port
 language: python
 severity: error
@@ -56,6 +55,7 @@ rule:
   - not:
       inside:
         stopBy: end
+        kind: call
   - not:
       inside:
         stopBy: end

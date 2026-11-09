@@ -25,7 +25,6 @@ from flext_infra import (
     u,
     workspace as workspace_services,
 )
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformPlan
 
 
@@ -182,9 +181,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             f"profile_output={settings.Infra.profile_output}"
         )
         root = request.root.expanduser().resolve()
-        ready = FlextInfraCodegenPreconditions.rendering_engine(root)
-        if ready.failure:
-            return r[p.Infra.CodegenResult].from_failure(ready)
         # Concurrent writers are the normal operating state: planning reads
         # without a tree-wide lock, the atomic publisher verifies every
         # destination's observed state, and a destination changed by another
@@ -568,12 +564,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan when every projection is current, or the stale paths.
 
         """
-        root = request.root.expanduser().resolve()
-        return (
-            FlextInfraCodegenPreconditions
-            .rendering_engine(root)
-            .flat_map(lambda _: self._planned(request))
-            .flat_map(lambda plan: self._checked(request, plan))
+        return self._planned(request).flat_map(
+            lambda plan: self._checked(request, plan)
         )
 
     def _checked(

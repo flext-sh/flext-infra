@@ -31,14 +31,31 @@ class FlextInfraProtocolsProjectArtifacts:
     class ProjectManagedArtifactsConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        Mise: FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig
-        Gitignore: FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig
+        @property
+        def Mise(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig:
+            """Mise additions owned by the current project."""
+            ...
+
+        @property
+        def Gitignore(
+            self,
+        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig:
+            """Ignore patterns owned by the current project."""
+            ...
 
     @runtime_checkable
     class ProjectManagedArtifactsResolution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        artifacts: FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsConfig
+        @property
+        def artifacts(
+            self,
+        ) -> FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsConfig:
+            """Composed managed-artifact configuration."""
+            ...
+
         mise_tool_sources: Mapping[t.NonEmptyStr, Path]
 
     @runtime_checkable
@@ -46,9 +63,13 @@ class FlextInfraProtocolsProjectArtifacts:
         """Structural data contract projected from the owning model."""
 
         sources: tuple[p.Cli.AtomicFileState, ...]
-        resolution: (
-            FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsResolution
-        )
+
+        @property
+        def resolution(
+            self,
+        ) -> FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsResolution:
+            """Managed artifacts parsed from those exact sources."""
+            ...
 
 
 __all__: list[str] = [

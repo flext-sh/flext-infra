@@ -23,7 +23,7 @@ from contextvars import ContextVar
 from functools import partial
 from pathlib import Path
 from threading import get_ident
-from types import BuiltinMethodType, FrameType, MethodType, TracebackType
+from types import FrameType, TracebackType
 from typing import IO, ClassVar, Self
 from uuid import uuid4
 
@@ -38,13 +38,6 @@ class FlextInfraPytestClock:
         "flext_infra_operation_profile", default=None
     )
     profiler: ClassVar[cProfile.Profile | None] = None
-
-    @staticmethod
-    def _gate[**P, R](callback: Callable[P, R], owner: int) -> Callable[P, R | None]:
-        def dispatch(*args: P.args, **kwargs: P.kwargs) -> R | None:
-            return callback(*args, **kwargs) if get_ident() == owner else None
-
-        return dispatch
 
     class FailureCapture:
         """Retain the first failure of a guarded step for later surfacing."""
@@ -68,58 +61,16 @@ class FlextInfraPytestClock:
 
     @classmethod
     def create_profiler(cls) -> cProfile.Profile:
-        """Gate native callbacks before productive events.
+        """Start the native interpreter profiler without wrapping its callbacks.
 
         Returns:
-            The actual owning-thread cProfile engine.
+            The native cProfile engine owned by this publishing thread.
 
         """
         profile = cProfile.Profile()
-        owner = cls._threads[profile] = get_ident()
-        try:
-            profile.enable()
-            cls._gate_monitoring_events(profile, owner)
-        except BaseException as failure:
-            failure.add_note(
-                "native profiler acquisition failed; registration state is "
-                "unrecovered; retained engine, no foreign-owner cleanup attempted"
-            )
-            raise
+        cls._threads[profile] = get_ident()
+        profile.enable()
         return profile
-
-    @staticmethod
-    def _gate_monitoring_events(profile: cProfile.Profile, owner: int) -> None:
-        """Restrict every native monitoring callback to the owning thread.
-
-        Raises:
-            RuntimeError: If the engine enabled no events or a callback belongs to
-                another engine.
-
-        """
-        tool = sys.monitoring.PROFILER_ID
-        mask = sys.monitoring.get_events(tool)
-        sys.monitoring.set_events(tool, 0)
-        if not mask:
-            msg = "native profiler enabled no monitoring events"
-            raise RuntimeError(msg)
-        remaining = mask
-        if mask & sys.monitoring.events.CALL:
-            remaining |= sys.monitoring.events.C_RETURN | sys.monitoring.events.C_RAISE
-        while remaining:
-            event = remaining & -remaining
-            remaining ^= event
-            callback = sys.monitoring.register_callback(tool, event, None)
-            if not isinstance(callback, (BuiltinMethodType, MethodType)) or (
-                callback.__self__ is not profile
-            ):
-                sys.monitoring.register_callback(tool, event, callback)
-                msg = "monitoring callback belongs to another engine"
-                raise RuntimeError(msg)
-            sys.monitoring.register_callback(
-                tool, event, FlextInfraPytestClock._gate(callback, owner)
-            )
-        profile.clear()
-        sys.monitoring.set_events(tool, mask)
 
     class SignalCheckpoint:
         """Observe once, preserving native actions and deferred publication failure."""
@@ -476,9 +427,9 @@ class FlextInfraPytestClock:
                     "Native profile snapshot, not operation acceptance.\n"
                     f"Raw capture: {immutable_output.name}\n"
                     f"Process ID: {os.getpid()}\n"
-                    f"Owner thread: {owner_thread}\n"
+                    f"Publishing thread: {owner_thread}\n"
                     f"Partial completed-entry checkpoint: {partial}\n"
-                    "Owner-thread wall timing, not worker CPU "
+                    "Native interpreter cProfile timing, not worker CPU "
                     "or elapsed-time proof.\n"
                     f"Capture monotonic ns: {time.monotonic_ns()}\n\n"
                 )

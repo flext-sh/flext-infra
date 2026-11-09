@@ -14,6 +14,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 
 from flext_infra import t
+from flext_infra._protocols import FlextInfraProtocolsWorktree
 
 
 class FlextInfraModelsWorktree:
@@ -116,10 +117,9 @@ class FlextInfraModelsWorktree:
             tuple[Path, ...],
             m.Field(description="Repository roots whose registry is scanned"),
         ]
-        policy: Annotated[
-            FlextInfraModelsWorktree.WorktreeFactsPolicy,
-            m.Field(description="Layout and dependency vocabulary to apply"),
-        ]
+        policy: t.Port[FlextInfraProtocolsWorktree.WorktreeFactsPolicy] = m.Field(
+            description="Layout and dependency vocabulary to apply",
+        )
         now: Annotated[float, m.Field(description="Current epoch seconds")]
         activity_window_days: Annotated[
             int,

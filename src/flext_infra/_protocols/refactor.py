@@ -105,7 +105,12 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         path: Path
-        inventory: FlextInfraProtocolsRefactor.SemanticBehaviorOwners
+
+        @property
+        def inventory(self) -> FlextInfraProtocolsRefactor.SemanticBehaviorOwners:
+            """Declared behavior owners."""
+            ...
+
         typing_directory: str
         identities: frozenset[tuple[str, str]]
         lineages: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]
@@ -350,7 +355,14 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         project_root: str
-        rule_deltas: tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]
+
+        @property
+        def rule_deltas(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]:
+            """Full catalog occurrence comparison, including zero rows."""
+            ...
+
         relocation_resolved: t.NonNegativeInt
         relocation_persisted: t.NonNegativeInt
         relocation_introduced: t.NonNegativeInt
@@ -391,7 +403,13 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         workspace: t.NonEmptyStr
-        projects: Sequence[FlextInfraProtocolsRefactor.ProjectEnforcementReport]
+
+        @property
+        def projects(
+            self,
+        ) -> Sequence[FlextInfraProtocolsRefactor.ProjectEnforcementReport]:
+            """Per-project enforcement reports for the workspace."""
+            ...
 
         @property
         def has_violations(self) -> bool:

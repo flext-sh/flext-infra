@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableSequence, MutableSet, Sequence
+from collections.abc import MutableSet, Sequence
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
@@ -27,12 +27,20 @@ class FlextInfraProtocolsCodegenFix:
     class AutoFixResult(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        violations_fixed: MutableSequence[
-            FlextInfraProtocolsCodegenScaffold.CensusViolation
-        ]
-        violations_skipped: MutableSequence[
-            FlextInfraProtocolsCodegenScaffold.CensusViolation
-        ]
+        @property
+        def violations_fixed(
+            self,
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+            """Fixed violations."""
+            ...
+
+        @property
+        def violations_skipped(
+            self,
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+            """Skipped violations (not auto-fixable)."""
+            ...
+
         files_modified: Sequence[str]
 
     @runtime_checkable
@@ -137,12 +145,20 @@ class FlextInfraProtocolsCodegenFix:
     class FixContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        violations_fixed: MutableSequence[
-            FlextInfraProtocolsCodegenScaffold.CensusViolation
-        ]
-        violations_skipped: MutableSequence[
-            FlextInfraProtocolsCodegenScaffold.CensusViolation
-        ]
+        @property
+        def violations_fixed(
+            self,
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+            """List of violations that were fixed."""
+            ...
+
+        @property
+        def violations_skipped(
+            self,
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+            """List of violations that were skipped."""
+            ...
+
         files_modified: MutableSet[str]
 
         @property

@@ -314,7 +314,7 @@ class FlextInfraModGateEngine:
         temp_root: Path,
         owner_rules: Sequence[Path],
     ) -> None:
-        """Stage every rule document in one native multi-document file.
+        """Stage bound native documents under their owning catalog filenames.
 
         Every binding-sensitive utility a document references (catalog or
         fixture value) is embedded as its local, so a fixture binds
@@ -344,13 +344,12 @@ class FlextInfraModGateEngine:
             temp_root / c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
         ))
         sensitive = u.Infra.codemod_binding_sensitive(bodies)
-        rendered: list[t.JsonMapping] = []
         for rule in sorted(source_rules):
             documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
             ).unwrap()
             temp_rule = temp_root / rule.relative_to(config_root)
-            temp_rule.unlink()
+            rendered: list[t.JsonMapping] = []
             for document in documents:
                 rule_id = document.get(c.Infra.CODEMOD_RULE_TEST_ID_KEY)
                 if not isinstance(rule_id, str) or not rule_id:
@@ -359,11 +358,8 @@ class FlextInfraModGateEngine:
                 rendered.append(
                     u.Infra.codemod_bound_document(document, bodies, sensitive)
                 )
-        if rendered:
             u.Infra.codemod_write_native_documents(
-                temp_root
-                / directories.rule_dirs[0].relative_to(config_root)
-                / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME,
+                temp_rule,
                 tuple(rendered),
             )
 

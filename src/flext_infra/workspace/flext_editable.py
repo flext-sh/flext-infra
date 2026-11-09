@@ -87,27 +87,13 @@ class FlextInfraWorkspaceFlextEditable:
                 f"FLEXT={request.flext_root} is a local development input; "
                 "CI installs frozen locks only",
             )
-        lock_path = context.value.lock_path
-        return (
-            cls
-            ._elect(
-                runtime_root,
-                request.flext_root.expanduser().resolve(),
-                candidate_environment=environment,
-            )
-            .flat_map(
-                # Each selected source must be the commit the lock pins before
-                # it replaces the locked install (flext-92rpb).
-                lambda selection: (
-                    FlextInfraWorkspaceEnvironment.editable_sources_at_lock(
-                        lock_path, selection.distributions
-                    ).map(lambda _at_lock: selection)
-                )
-            )
-            .flat_map(
-                lambda selection: cls._install(
-                    runtime_root, selection, candidate_environment=environment
-                )
+        return cls._elect(
+            runtime_root,
+            request.flext_root.expanduser().resolve(),
+            candidate_environment=environment,
+        ).flat_map(
+            lambda selection: cls._install(
+                runtime_root, selection, candidate_environment=environment
             )
         )
 

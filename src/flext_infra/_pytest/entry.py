@@ -23,8 +23,8 @@ class FlextInfraPytestEntry:
     def main(cls) -> int:
         """Parse the Make boundary and return the exact child process status.
 
-        ``global`` incrementally selects from FULL's entire inventory, under
-        the same green-check prerequisite. ``full`` explicitly executes that
+        ``global`` incrementally selects from FULL's entire inventory,
+        independently of quality-check receipts. ``full`` explicitly executes that
         complete inventory once without Testmon or a preceding incremental
         run. ``profile`` profiles the global incremental run.
         ``coverage`` selects coverage alone; the default remains the local

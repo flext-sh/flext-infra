@@ -88,7 +88,11 @@ class FlextInfraProtocolsDepsToolConfigLinters:
         """Structural data contract projected from the owning model."""
 
         findings_exit_codes: tuple[int, ...]
-        lint: FlextInfraProtocolsDepsToolConfigLinters.RuffLintConfig
+
+        @property
+        def lint(self) -> FlextInfraProtocolsDepsToolConfigLinters.RuffLintConfig:
+            """Ruff lint configuration."""
+            ...
 
     @runtime_checkable
     class MypyOverrideConfig(FlextCliProtocols.BaseModel, Protocol):
@@ -105,9 +109,13 @@ class FlextInfraProtocolsDepsToolConfigLinters:
         timeout_seconds: int
         max_timeout_seconds: int
         ruling_disable_error_codes: tuple[t.NonEmptyStr, ...]
-        overrides: tuple[
-            FlextInfraProtocolsDepsToolConfigLinters.MypyOverrideConfig, ...
-        ]
+
+        @property
+        def overrides(
+            self,
+        ) -> tuple[FlextInfraProtocolsDepsToolConfigLinters.MypyOverrideConfig, ...]:
+            """Module scopes and justified native option pairs."""
+            ...
 
 
 __all__: list[str] = [

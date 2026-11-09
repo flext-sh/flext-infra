@@ -455,7 +455,7 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
 	if [ -n "$(strip $(FLEXT))" ]; then \
 		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --python "$$install_python" --requirement "{{ bootstrap_requirements }}"); \
+		(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
 		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}

@@ -1,18 +1,18 @@
 id: model-annotation-to-protocol
 snapshots:
-  "from flext_core import m\ndef collect(entries: list[p.Ldif.Entry] | None) -> None:\n    kept: tuple[p.Ldif.Entry, ...] = ()\n":
+  "from flext_core import m\ndef collect(entries: list[m.Ldif.Entry] | None) -> None:\n    kept: tuple[m.Ldif.Entry, ...] = ()\n":
     fixed: |
       from flext_core import m
       def collect(entries: list[p.Ldif.Entry] | None) -> None:
-          kept: tuple[p.Ldif.Entry, ...] = ()
+          kept: tuple[m.Ldif.Entry, ...] = ()
     labels:
     - source: m.Ldif.Entry
       style: primary
       start: 51
       end: 63
     - source: |-
-        def collect(entries: list[p.Ldif.Entry] | None) -> None:
-            kept: tuple[p.Ldif.Entry, ...] = ()
+        def collect(entries: list[m.Ldif.Entry] | None) -> None:
+            kept: tuple[m.Ldif.Entry, ...] = ()
       style: secondary
       start: 25
       end: 121

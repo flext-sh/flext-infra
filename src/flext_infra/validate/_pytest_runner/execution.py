@@ -13,20 +13,16 @@ import time
 import traceback
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, r, t, u
-from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.validate._pytest_runner import (
     FlextInfraPytestRunnerCommand,
     FlextInfraPytestRunnerReports,
 )
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPytestRunnerExecution(
@@ -705,13 +701,13 @@ class FlextInfraPytestRunnerExecution(
             msg = "original suite checkpoint has no native test selection"
             raise ValueError(msg)
         u.Infra.git_finish_gate_capture(
-            m.Infra.GateCaptureFinishRequest(
-                started=start,
-                process=outcome,
-                reports=reports,
-                report_root=report_dir,
-                runtime_identity=self.testmon_environment(selection.execution_mode),
-            ),
+            m.Infra.GateCaptureFinishRequest.model_validate({
+                "started": start,
+                "process": outcome,
+                "reports": reports,
+                "report_root": report_dir,
+                "runtime_identity": self.testmon_environment(selection.execution_mode),
+            }),
             inputs=u.Infra.load_codegen_inputs(self.repository_root),
         ).unwrap()
 
@@ -755,11 +751,9 @@ class FlextInfraPytestRunnerExecution(
 
     @override
     def execute(self) -> p.Result[int]:
-        """Admit the global check before applicable Testmon impact selection.
+        """Execute applicable Testmon impact selection independently of checks.
 
-        Direct public callers retain the same original receipt guard as the
-        workspace composition. Slow items remain eligible without replaying
-        unchanged cases.
+        Slow items remain eligible without replaying unchanged cases.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -823,7 +817,7 @@ class FlextInfraPytestRunnerExecution(
                 )
 
     def execute_full(self) -> p.Result[int]:
-        """Run the complete suite once after global primary source admission.
+        """Run the complete suite once independently of quality-check receipts.
 
         Returns:
             The resulting ``p.Result[int]``.
@@ -838,10 +832,10 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Select impacted global cases, retaining primary source admission.
+        """Select impacted global cases independently of quality checks.
 
         Explicit FULL executes once without Testmon. Both operations retain
-        the same marker inventory and original primary-source prerequisite.
+        the same marker inventory and native execution evidence.
 
         Returns:
             The native status with selection, inventory and execution evidence.
@@ -853,20 +847,6 @@ class FlextInfraPytestRunnerExecution(
         if not execution_mode.is_global:
             msg = f"global pytest operation requires a global mode: {execution_mode}"
             raise ValueError(msg)
-        # The admission receipt is the one the project's own check wrote under
-        # its repository root; a workspace member never writes it under the
-        # workspace that owns the shared runtime.
-        root = self.repository_root.resolve()
-        approved = u.Infra.git_require_green_check_receipt(
-            root,
-            u.Infra.load_codegen_inputs(root).unwrap().spec.make,
-            phase=c.Infra.CheckPhase.PRIMARY,
-            plan_global_targets=lambda gates: FlextInfraWorkspaceChecker(
-                repository_root=root,
-            ).plan_global_targets(gates),
-        )
-        if approved.failure:
-            return r.from_failure(approved)
         return (
             self._execute_complete_suite()
             if execution_mode == c.Infra.PytestExecutionMode.FULL

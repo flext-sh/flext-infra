@@ -120,7 +120,12 @@ class FlextInfraProtocolsCodegenPipeline:
             """Workspace governing the selection."""
             ...
 
-        uv_environments: tuple[FlextInfraProtocolsConfigRelease.UvEnvironmentPlan, ...]
+        @property
+        def uv_environments(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigRelease.UvEnvironmentPlan, ...]:
+            """Uv plans paired with selected repositories."""
+            ...
 
         @property
         def files(
@@ -129,9 +134,14 @@ class FlextInfraProtocolsCodegenPipeline:
             """All render results validated before application."""
             ...
 
-        outcomes: tuple[
+        @property
+        def outcomes(
+            self,
+        ) -> tuple[
             FlextInfraProtocolsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
-        ]
+        ]:
+            """Original repository outcomes retained for coherent admission."""
+            ...
 
     @runtime_checkable
     class CodegenResult(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):

@@ -69,7 +69,7 @@ class FlextInfraPytestProfile:
     ) -> int:
         """Profile global incremental execution at the typed runner's repository.
 
-        Match the regular Make tests inventory and green-check prerequisite;
+        Match the regular Make tests inventory independently of quality checks;
         profiling never changes dependency selection or the operation deadline.
 
         Returns:

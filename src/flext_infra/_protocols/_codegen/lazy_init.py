@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -93,10 +93,17 @@ class FlextInfraProtocolsCodegenLazyInit:
 
         source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject
         module_files: Mapping[str, Path]
-        modules: MutableMapping[
+
+        @property
+        def modules(
+            self,
+        ) -> Mapping[
             FlextInfraTypesRopeNative.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]
+        ]:
+            """Facts of each parsed module, keyed by the run's parse."""
+            ...
+
         project_notices: dict[
             Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]
         ]
@@ -316,10 +323,31 @@ class FlextInfraProtocolsCodegenLazyInit:
 
         root: Path
         scoped: bool
-        index: FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex
-        model: FlextInfraProtocolsCodegenLazyInit.PythonModelRun
-        plans: dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]
-        contexts: dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]
+
+        @property
+        def index(self) -> FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex:
+            """The repository's shared source inventory."""
+            ...
+
+        @property
+        def model(self) -> FlextInfraProtocolsCodegenLazyInit.PythonModelRun:
+            """The run's parse-once static Python model."""
+            ...
+
+        @property
+        def plans(
+            self,
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
+            """Decided plans, children first."""
+            ...
+
+        @property
+        def contexts(
+            self,
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
+            """Package contexts by directory."""
+            ...
+
         parents: dict[Path, Sequence[str]]
         declared: dict[str, frozenset[str]]
         declarations: dict[tuple[str, str], tuple[str, bool]]

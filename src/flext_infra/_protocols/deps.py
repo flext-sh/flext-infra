@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -291,7 +291,11 @@ class FlextInfraProtocolsDeps(Protocol):
             ...
 
         metadata: p.ProjectMetadata
-        packaging: FlextInfraProtocolsDeps.ProjectPackagingDeclaration
+
+        @property
+        def packaging(self) -> FlextInfraProtocolsDeps.ProjectPackagingDeclaration:
+            """Packaging facts from the same parsed document."""
+            ...
 
     @runtime_checkable
     class RuntimeDependencyProvider(FlextCliProtocols.BaseModel, Protocol):
@@ -520,7 +524,13 @@ class FlextInfraProtocolsDeps(Protocol):
         """Structural data contract projected from the owning model."""
 
         workspace: str
-        projects: MutableMapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]
+
+        @property
+        def projects(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]:
+            """Per-project reports."""
+            ...
 
         @property
         def pip_check(self) -> FlextInfraProtocolsDeps.PipCheckReport | None:
@@ -536,8 +546,17 @@ class FlextInfraProtocolsDeps(Protocol):
         project_name: t.NonEmptyStr
         package_name: t.NonEmptyStr
         path: Path
-        topology: FlextInfraProtocolsDeps.PyprojectDeclaredTopology
-        codegen: FlextInfraProtocolsConfigArtifact.CodegenConfigSpec
+
+        @property
+        def topology(self) -> FlextInfraProtocolsDeps.PyprojectDeclaredTopology:
+            """Declared repository topology."""
+            ...
+
+        @property
+        def codegen(self) -> FlextInfraProtocolsConfigArtifact.CodegenConfigSpec:
+            """Elected effective target codegen policy."""
+            ...
+
         runtime_dependency_overlay: Sequence[str]
         declared_project_dependencies: Sequence[str]
 
