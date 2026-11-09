@@ -152,7 +152,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def codegen_conform_collaborators(
             self,
-        ) -> FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None: ...
+        ) -> FlextInfraProtocolsCodegenPipeline.CodegenConformPorts: ...
 
     @runtime_checkable
     class CodegenService(
