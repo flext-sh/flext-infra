@@ -45,7 +45,12 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
     def _source_identity(
         project: p.Infra.RopeProject, value: p.Infra.RopePyObject
     ) -> str:
-        """Keep the native declaration under its authenticated source module."""
+        """Keep the native declaration under its authenticated source module.
+
+        Returns:
+            The source identity, retaining its complete native class scope.
+
+        """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         if isinstance(value, p.Infra.RopeSourceClass):
             module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
@@ -55,61 +60,6 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
                 f"{module}.{runtime.native_object_identity(value).partition('::')[2]}"
             )
         return runtime.native_object_identity(value).replace("::", ".")
-
-    @classmethod
-    def _projected_twins(
-        cls, project: p.Infra.RopeProject, routes: Mapping[str, str]
-    ) -> Mapping[str, str]:
-        """Read each model's protocol from its owning package's source inventory."""
-        from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-        from flext_infra._utilities.protocol_models import (
-            FlextInfraUtilitiesModelsProtocol,
-        )
-
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        roots: dict[Path, set[Path]] = {}
-        for model in routes:
-            if model.startswith("m."):
-                continue
-            concrete = runtime.qualified_name(project, model).get_object()
-            if not isinstance(concrete, p.Infra.RopeSourceClass):
-                continue
-            resource = concrete.get_module().get_resource()
-            if resource is not None:
-                root = FlextInfraUtilitiesDiscovery.project_root(
-                    Path(resource.real_path), source_project=project
-                )
-                if root is not None:
-                    roots.setdefault(root, set()).add(Path(resource.real_path))
-        twins: dict[str, str] = {}
-        for root in sorted(roots):
-            for (
-                package
-            ) in FlextInfraUtilitiesModelsProtocol.protocol_model_package_names(
-                root, project
-            ):
-                projection = FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection(
-                    root, project, package_name=package
-                )
-                layout = projection.source_layout()
-                if layout is None or not any(
-                    path.is_relative_to(layout[0]) for path in roots[root]
-                ):
-                    continue
-                if projection.source_model_inventory() is None:
-                    continue
-                for model in projection.source_model_protocols:
-                    protocol = projection.source_model_protocol_routes.get(model)
-                    if protocol is None or routes.get(model) != protocol:
-                        continue
-                    concrete = runtime.qualified_name(project, model).get_object()
-                    target = runtime.qualified_name(
-                        project, f"{package}.{protocol}"
-                    ).get_object()
-                    twins[cls._source_identity(project, concrete)] = (
-                        cls._source_identity(project, target)
-                    )
-        return twins
 
     @staticmethod
     def _diagnostic_pair(issue: p.Infra.Issue) -> tuple[str, str, str, str] | None:
@@ -446,6 +396,34 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             rows[0].append(cls._Diagnostic(issue, *pair))
         return admitted
 
+    @staticmethod
+    def _constructor_matches(
+        project: p.Infra.RopeProject,
+        model: p.Infra.RopeSourceClass,
+        binding: p.Infra.RopePyName,
+        constructor: str,
+    ) -> bool:
+        """Resolve Pyrefly's constructor at its authenticated native declaration.
+
+        Returns:
+            Whether the checker spelling reaches the actual constructor binding.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = model.get_scope().parent
+        if scope is None:
+            return False
+        expression = constructor.removesuffix(".__init__")
+        module, separator, member = expression.rpartition(".")
+        qualified = project.find_module(module) if separator else None
+        return runtime.same_name(
+            binding, runtime.expression_name(scope, expression)
+        ) or (
+            qualified is not None
+            and qualified == model.get_module().get_resource()
+            and runtime.same_name(binding, runtime.expression_name(scope, member))
+        )
+
     @classmethod
     def _model_envelope_call(
         cls,
@@ -507,20 +485,12 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         ):
             return False
         constructor = f"{cls._source_identity(context[0], model)}.__init__"
-        declaration_scope = model.get_scope().parent
         # One protocol-valued field cannot admit an unrelated invalid keyword.
         accepted = all(
             (
                 constructor == finding.constructor
-                or (
-                    declaration_scope is not None
-                    and runtime.same_name(
-                        binding,
-                        runtime.expression_name(
-                            declaration_scope,
-                            finding.constructor.removesuffix(".__init__"),
-                        ),
-                    )
+                or cls._constructor_matches(
+                    context[0], model, binding, finding.constructor
                 )
             )
             and cls._protocol_twin(
@@ -612,6 +582,9 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
     ) -> list[p.Infra.RopeChangeContents]:
         """Delegate admitted keyword shapes to native Rope in reverse source order.
 
+        ``routes`` contains full native model/protocol declaration identities
+        supplied by the source projection owner.
+
         Returns:
             Native content plans; no source is written by this operation.
 
@@ -619,7 +592,6 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         model_base = runtime.qualified_name(project, "pydantic.BaseModel").get_object()
         admitted = cls._model_envelope_issues(project, issues)
-        twins = cls._projected_twins(project, routes)
 
         updates: dict[Path, str] = {}
         planned: dict[Path, p.Infra.RopeChangeContents] = {}
@@ -642,7 +614,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
                         module,
                         node,
                         admitted[path][0],
-                        (project, model_base, twins, admitted[path][1]),
+                        (project, model_base, routes, admitted[path][1]),
                     )
                 ),
                 key=lambda node: runtime.source_offset(module.source_code, node),
