@@ -1247,7 +1247,8 @@ class FlextInfraUtilitiesFacadeComponents:
         A sibling owner ``x.py`` composes the parts of ``_x`` through that
         family package, so resolving its bases needs the package initializer
         and every part module, including parts this run projects but that
-        are not on disk yet (the project view carries the candidate).
+        are not on disk yet (the project view carries the candidate). Each
+        domain is listed through that view; the repository is not rescanned.
 
         Returns:
             The domain modules not already captured, keyed by module name.
@@ -1258,10 +1259,14 @@ class FlextInfraUtilitiesFacadeComponents:
             origin.parent / f"_{origin.stem}" for origin, _source in sources.values()
         }
         captured: dict[str, tuple[Path, str]] = {}
-        for resource in project.get_python_files():
-            candidate = Path(resource.real_path)
-            if candidate.parent not in domains:
-                continue
+        for candidate in (
+            child
+            for domain in sorted(domains)
+            if project.source_query(domain, "isdir")
+            for child in project.source_children(domain)
+            if child.suffix == c.Infra.EXT_PYTHON
+            and project.source_query(child, "isfile")
+        ):
             name = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
                 candidate, project_root=root, source_project=project
             )
