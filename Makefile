@@ -512,7 +512,7 @@ _bootstrap_setup_tools:
 	esac; \
 	fi; \
 	export MISE_SHIMS_DIR="$(PROJECT_ROOT)/.bin/shims"; \
-	export MISE_LOCKED=1; \
+	export MISE_LOCKED=0; \
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" install --yes "python" "github:jdx/mise" "uv" "github:direnv/direnv" "taplo" "aqua:ast-grep/ast-grep" "gitleaks" "aqua:boyter/scc" "node" "github:qltysh/qlty" "github:kucherenko/jscpd" "github:microsoft/waza" "aqua:j178/prek"; \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "$(PROJECT_ROOT)" tool "github:jdx/mise" --active)"; \
@@ -797,7 +797,7 @@ VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish
 VERB_ARGUMENTS_gen := ROOT
 
 VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
-VERB_ARGUMENTS_gen-scope := WHAT MODULE SCOPE
+VERB_ARGUMENTS_gen-scope := ROOT WHAT MODULE SCOPE
 
 VERB_DESCRIPTION_mod := Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).
 VERB_ARGUMENTS_mod := LAWS RULES
@@ -1164,7 +1164,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # Source: computed (MAKE_PROFILE routing)
 # Setup provisions tooling and the native project's declared dependencies.
 # It never generates or mutates project source; `make gen` owns source generation.
-# The lifecycle above owns the single native locked installation.
+# The lifecycle above owns the single native toolchain installation.
 # Attached members delegate publicly before entering it; there is no second
 # private installer or alternative source-selection pipeline.
 # End SECTION: setup environment
@@ -1387,10 +1387,11 @@ _builtin_gen_all: _builtin_require_interpreter
 # facades, one module) through the identical engine, lock and budget.
 _builtin_gen_scope_all: _builtin_require_interpreter
 	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope="$(or $(strip $(SCOPE)),self)"; \
 	module_args=""; \
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/.reports/codegen/gen.pstats)-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses

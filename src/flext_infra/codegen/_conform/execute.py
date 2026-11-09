@@ -112,10 +112,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         # Facades and their initializers precede the protocols projected
         # through them: those surfaces publish first, and the next generation
         # projects the members.
-        if request.what not in {
-            c.Infra.CodegenConformSurface.FACADES,
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-        }:
+        if request.what is c.Infra.CodegenConformSurface.ALL:
             bootstrap = u.Infra.bootstrap_protocol_model_sources(
                 request.root, ports=execution_context.codegen_conform_collaborators()
             )
@@ -255,8 +252,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             finally:
                 self.state.snapshot = previous
 
-    @staticmethod
     def authorize_published_envrc(
+        self,
         written_files: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Authorize with native direnv every ``.envrc`` this publication wrote.
@@ -282,7 +279,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if path.name == c.Infra.ENVRC_FILENAME
         }
         for root in sorted(roots):
-            direnv = u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, root)
+            direnv = u.Infra.managed_mise_binary(
+                c.Infra.CLI_DIRENV, self.state.repository_root
+            )
             if direnv.failure:
                 return r[bool].from_failure(direnv)
             result = u.Cli.run_raw(
@@ -963,6 +962,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     },
                     exception=completed.exception,
                 )
+        plan.files = admitted
         payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
             "plan": (plan),
             "written_files": (published.value),

@@ -66,6 +66,31 @@ class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     )
 
     @property
+    def model_protocol_routes(self) -> Mapping[str, str]:
+        """Read the projection owner's public model/protocol routes.
+
+        Returns:
+            The routes of this authenticated source context.
+
+        """
+        return u.Infra.model_protocol_routes(self.repository_root, self.rope_project)
+
+    @property
+    def model_protocol_identities(self) -> Mapping[str, str]:
+        """Read the same projection's native declaration identity view.
+
+        Returns:
+            Fully qualified model and protocol identities.
+
+        """
+        return {
+            model: protocol
+            for model, protocol, _destination in u.Infra.model_protocol_declarations(
+                self.repository_root, self.rope_project
+            )
+        }
+
+    @property
     def rope_repository_root(self) -> Path:
         """Canonical root used for the shared Rope project."""
         return self._rope_repository_root

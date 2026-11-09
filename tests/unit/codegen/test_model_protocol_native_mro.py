@@ -48,13 +48,20 @@ class TestsModelProtocolNativeMro:
                 "class Protocols:\n    class Project(ProtocolsReader):\n        pass\n"
                 "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ),
+            package / "consumer.py": (
+                f"from {package.name}.protocols import p\n"
+                "def read(value: p.Project.Packet) -> str:\n"
+                f"    return value.{requested}\n"
+            ),
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
             tm.ok(u.Cli.atomic_write_text_file(path, content))
         with u.Infra.facade_source_project(root) as binding:
             if requested == "foreign":
-                with u.Tests.raises(ValueError, match="model contract collides"):
+                with u.Tests.raises(
+                    ValueError, match="declares members its model lacks"
+                ):
                     u.Infra.protocol_model_sources_from_source(root, binding[0])
                 return
             projected = tm.ok(
@@ -154,69 +161,69 @@ class TestsModelProtocolNativeMro:
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
     ) -> None:
-        """Protocol imports and type hints do not execute Pydantic Field metadata."""
+        """Model metadata stays concrete while consumers use real protocol facades."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources = {
             package / "models.py": (
-                "class Models:\n    class Project:\n        pass\n"
+                "from flext_cli import m as cli_m\n"
+                f"from {package.name}._models.payload import ModelsPayload\n"
+                f"from {package.name}._models.workspace import ModelsWorkspace\n"
+                "class Models(cli_m):\n"
+                "    class Project(ModelsPayload, ModelsWorkspace): pass\n"
                 "m = Models\n__all__ = ['Models', 'm']\n"
             ),
             package / "protocols.py": (
-                "class Protocols:\n"
-                "    class Project:\n        pass\n"
-                "    class Cli:\n"
-                "        class AtomicFileState:\n            pass\n"
-                "    class Infra:\n"
-                "        class WorkspaceThing:\n            pass\n"
+                "from flext_cli import p as cli_p\n"
+                "class Protocols(cli_p):\n    class Project: pass\n"
                 "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ),
+            package / "_models" / "workspace.py": (
+                "from flext_cli import m\n"
+                "class ModelsWorkspace:\n"
+                "    class WorkspaceThing(m.ContractModel):\n        value: str\n"
+                "__all__ = ['ModelsWorkspace']\n"
+            ),
             package / "_models" / "payload.py": (
+                "from __future__ import annotations\n"
                 "from typing import Annotated as TypeMetadata\n"
                 "from flext_cli import m\n"
-                "from pydantic import BaseModel\n\n"
-                "class FlextInfraModelsWorkspace:\n"
-                "    class WorkspaceThing:\n        pass\n\n"
+                f"from {package.name}._models.workspace import ModelsWorkspace\n"
                 "class ModelsPayload:\n"
-                "    class Request(BaseModel):\n"
+                "    class Request(m.ContractModel):\n"
                 "        title: TypeMetadata[str, m.Field(description='title')]\n"
-                "        receipt: TypeMetadata[p.Cli.AtomicFileState | None, "
-                "m.Field()]\n"
-                "        workspace: FlextInfraModelsWorkspace.WorkspaceThing\n"
+                "        receipt: TypeMetadata[m.Cli.AtomicFileState | None, "
+                "m.Field(default=None)]\n"
+                "        workspace: ModelsWorkspace.WorkspaceThing\n"
+                "__all__ = ['ModelsPayload']\n"
             ),
         }
-        for path, source in sources.items():
+        for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
-            tm.ok(u.Cli.atomic_write_text_file(path, source))
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
         with u.Infra.facade_source_project(root) as binding:
             projected = tm.ok(
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
-        destination = (package / "_protocols" / "payload.py").relative_to(root)
-        generated = projected[destination]
-        tm.ok("title: str" in generated)
-        tm.ok("receipt: p.Cli.AtomicFileState | None" in generated)
-        tm.ok(f"from {package.name}.protocols import p" in generated)
-        tm.ok("m.Field" not in generated)
-        tm.ok("m.Cli" not in generated)
-        tm.ok("FlextInfraModelsWorkspace" not in generated)
-        tm.ok("TypeMetadata" not in generated)
-        tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
-        owner = u.derive_class_stem(package.name.replace("_", "-"))
-        owner += "ProtocolsPayload"
-        module_name = package.name + "._protocols.payload"
+        generated = projected[(package / "_protocols" / "payload.py").relative_to(root)]
+        tm.fail("m.Field" in generated)
+        tm.fail("TypeMetadata" in generated)
+        for relative, content in projected.items():
+            tm.ok(u.Cli.ensure_dir((root / relative).parent))
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         native_consumer(
-            "from typing import get_type_hints, is_protocol\n"
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
-            f"module = importlib.import_module({module_name!r})\n"
-            f"owner = getattr(module, {owner!r})\n"
-            "tm.ok(is_protocol(owner.Request))\n"
-            "tm.that(get_type_hints(owner.Request)['title'], eq=str)\n"
-            "tm.that(get_type_hints(owner.Request)['receipt'], "
-            "eq=module.p.Cli.AtomicFileState | None)\n"
-            "tm.that(get_type_hints(owner.Request.workspace.fget)['return'], "
-            "eq=module.p.Infra.WorkspaceThing)\n"
-            "tm.ok('m' not in vars(module))\n",
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            "thing = m.Project.WorkspaceThing(value='ready')\n"
+            "value = m.Project.Request(title='metadata', workspace=thing)\n"
+            "tm.ok(isinstance(value, p.Project.Request))\n"
+            "tm.ok(isinstance(value.workspace, p.Project.WorkspaceThing))\n"
+            "tm.ok(value.workspace is thing)\n"
+            "tm.that(value.title, eq='metadata')\n"
+            "tm.that(value.receipt, eq=None)\n"
+            "tm.that(value.model_dump()['workspace']['value'], eq='ready')\n"
+            "tm.ok(isinstance(m.Project.Request.model_json_schema(), dict))\n",
             cwd=root,
         )
 
@@ -267,7 +274,13 @@ class TestsModelProtocolNativeMro:
         """Inherited cross-module fields retain the public Protocol facade import."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         sources = {
-            package / "models.py": "class Models:\n    pass\nm = Models\n",
+            package / "models.py": (
+                f"from {package.name}._models.holder import ModelHolderB\n"
+                f"from {package.name}._models.consumer import ModelHolderA\n"
+                "class Models:\n"
+                "    class Infra(ModelHolderA, ModelHolderB): pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
+            ),
             package / "protocols.py": (
                 "class Protocols:\n    class Infra:\n        pass\np = Protocols\n"
             ),
@@ -306,18 +319,18 @@ class TestsModelProtocolNativeMro:
         for relative, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / relative).parent))
             tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
-        owner = u.derive_class_stem(package.name.replace("_", "-"))
-        owner += "ProtocolsConsumer"
         native_consumer(
-            "from typing import get_type_hints\n"
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
-            f"module = importlib.import_module('{package.name}._protocols.consumer')\n"
+            f"from {package.name}.models import m\n"
             f"from {package.name}.protocols import p\n"
-            f"owner = getattr(module, {owner!r})\n"
-            "for contract in (owner.Base, owner.Request):\n"
-            "    tm.that(get_type_hints(contract.entity.fget)['return'], "
-            "eq=p.Infra.Entity)\n",
+            "entity = m.Infra.Entity(title='inherited')\n"
+            "value = m.Infra.Request(entity=entity)\n"
+            "tm.ok(value.entity is entity)\n"
+            "tm.ok(isinstance(value, p.Infra.Request))\n"
+            "tm.ok(isinstance(value.entity, p.Infra.Entity))\n"
+            "tm.ok(m.Infra.Request.model_fields['entity'].annotation is m.Infra.Entity)\n"
+            "tm.ok(isinstance(m.Infra.Request.model_json_schema(), dict))\n",
             cwd=root,
         )
 
@@ -377,15 +390,13 @@ class TestsModelProtocolNativeMro:
         for path, source in projected.items():
             tm.ok(u.Cli.ensure_dir((root / path).parent))
             tm.ok(u.Cli.atomic_write_text_file(root / path, source))
-        owner = u.derive_class_stem(package.name.replace("_", "-"))
-        owner += "ProtocolsDiamond"
         native_consumer(
             "from typing import get_type_hints, is_protocol\n"
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.models import m\n"
             f"module = importlib.import_module('{package.name}._protocols.diamond')\n"
-            f"contract = getattr(module, {owner!r}).Payload\n"
+            "contract = getattr(module, module.__all__[0]).Payload\n"
             "tm.ok(is_protocol(contract))\n"
             "model = m.Domain.Payload\n"
             "hints = get_type_hints(contract)\n"
@@ -468,7 +479,7 @@ class TestsModelProtocolNativeMro:
             "from flext_tests import tm\n"
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"module = importlib.import_module({module_name!r})\n"
-            f"owner = getattr(module, {owner!r})\n"
+            "owner = getattr(module, module.__all__[0])\n"
             "tm.ok(is_protocol(owner.Request))\n"
             "tm.that(get_type_hints(owner.Request)['title'], eq=str)\n"
             "tm.that(get_type_hints(owner.Response)['count'], eq=int)\n"
@@ -520,10 +531,11 @@ class TestsModelProtocolNativeMro:
         tm.that(destination.read_text(), eq=authored)
 
     @staticmethod
-    def test_normalized_authored_contract_converges_with_field_model_source(
+    def test_model_projection_owns_existing_structural_contract(
         tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
     ) -> None:
-        """A normalized protocol holder compares structurally with its model."""
+        """The model owns nested field validation and its generated consumer contract."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         destination = package / "_protocols" / "payload.py"
         owner = u.derive_class_stem(package.name.replace("_", "-"))
@@ -540,13 +552,16 @@ class TestsModelProtocolNativeMro:
         )
         sources = {
             package / "models.py": (
-                "class Models:\n    pass\nm = Models\n__all__ = ['Models', 'm']\n"
+                f"from {package.name}._models.payload import FlextInfraModelsPayload\n"
+                "class Models(FlextInfraModelsPayload): pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
             ),
             package / "protocols.py": (
                 "class Protocols:\n    class Infra:\n        pass\n"
                 "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ),
             package / "_models" / "payload.py": (
+                "from __future__ import annotations\n"
                 "from typing import Annotated\n"
                 "from flext_cli import m\n"
                 "from pydantic import BaseModel\n"
@@ -566,7 +581,25 @@ class TestsModelProtocolNativeMro:
                 u.Infra.protocol_model_sources_from_source(root, binding[0])
             )
         relative = destination.relative_to(root)
-        tm.that(projected[relative], eq=authored)
+        tm.ok(relative in projected)
+        for path, content in projected.items():
+            tm.ok(u.Cli.ensure_dir((root / path).parent))
+            tm.ok(u.Cli.atomic_write_text_file(root / path, content))
+        native_consumer(
+            "from flext_tests import tm\n"
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            "m.Request.model_rebuild()\n"
+            "target = m.Target(title='native')\n"
+            "value = m.Request(target=target)\n"
+            "tm.ok(isinstance(value, p.Request))\n"
+            "tm.ok(isinstance(value.target, p.Target))\n"
+            "restored = m.Request.model_validate(value.model_dump())\n"
+            "tm.ok(type(restored.target) is m.Target)\n"
+            "tm.that(restored.target.title, eq=target.title)\n",
+            cwd=root,
+        )
 
     @staticmethod
     def test_model_projection_replaces_duplicate_authored_property(
@@ -629,14 +662,14 @@ class TestsModelProtocolNativeMro:
         owner = "FlextTestProjectProtocolsPayload"
         authored = (
             "from __future__ import annotations\n"
-            "from typing import TYPE_CHECKING\n"
+            "from typing import TYPE_CHECKING, Protocol\n"
             "if TYPE_CHECKING:\n"
-            "    from flext_test_project import p, t\n\n"
+            "    from flext_core import p as core_p, t\n\n"
             f"class {owner}:\n"
-            "    class Reader(t.Protocol):\n"
-            "        record: p.Infra.Record\n"
+            "    class Reader(Protocol):\n"
+            "        record: core_p.Result[str]\n"
             "        value: t.JsonValue\n"
-            "        def read(self, value: t.JsonValue) -> p.Infra.Record: ...\n"
+            "        def read(self, value: t.JsonValue) -> core_p.Result[str]: ...\n"
             f"__all__ = ['{owner}']\n"
         )
         sources = {
@@ -648,14 +681,15 @@ class TestsModelProtocolNativeMro:
                 "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ),
             package / "typings.py": (
-                "class Typings:\n    JsonValue = str\nt = Typings\n"
+                "from flext_core import t as core_t\n"
+                "class Typings(core_t): pass\n"
+                "t = Typings\n__all__ = ['Typings', 't']\n"
             ),
             package / "_models" / "payload.py": (
-                "from flext_test_project import p, t\n"
+                "from flext_core import t\n"
                 "from pydantic import BaseModel\n"
                 "class FlextTestProjectModelsPayload:\n"
                 "    class Payload(BaseModel):\n"
-                "        record: p.Infra.Record\n"
                 "        value: t.JsonValue\n"
             ),
             destination: authored,
@@ -668,9 +702,48 @@ class TestsModelProtocolNativeMro:
             projected = tm.ok(u.Infra.protocol_model_sources(workspace))
 
         rendered = projected[destination.relative_to(root)]
-        tm.ok("if TYPE_CHECKING:\n    from flext_test_project import p, t" in rendered)
-        tm.fail("\nfrom flext_test_project import p\n" in rendered)
-        tm.fail("\nfrom flext_test_project import t\n" in rendered)
+        module = ast.parse(rendered)
+        guarded = {
+            alias.asname or alias.name
+            for node in module.body
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+            for statement in node.body
+            if isinstance(statement, ast.ImportFrom)
+            for alias in statement.names
+        }
+        imports = {
+            alias.asname or alias.name
+            for node in ast.walk(module)
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        }
+        annotations = (
+            node.annotation
+            for node in ast.walk(module)
+            if isinstance(node, ast.AnnAssign | ast.arg) and node.annotation is not None
+        )
+        referenced = {
+            name.id
+            for annotation in annotations
+            for name in ast.walk(annotation)
+            if isinstance(name, ast.Name) and name.id in imports
+        }
+        runtime_names = {
+            name.id
+            for node in ast.walk(module)
+            if isinstance(node, ast.ClassDef)
+            for expression in (*node.bases, *node.decorator_list)
+            for name in ast.walk(expression)
+            if isinstance(name, ast.Name)
+        }
+        annotation_only = referenced - runtime_names
+        tm.that(annotation_only, empty=False)
+        tm.ok(
+            annotation_only <= guarded,
+            msg=f"unguarded annotation imports: {annotation_only - guarded}\n{rendered}",
+        )
 
     @staticmethod
     def test_type_checking_annotation_imports_reach_the_projection(

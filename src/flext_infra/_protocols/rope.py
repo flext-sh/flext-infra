@@ -275,6 +275,11 @@ class FlextInfraProtocolsRope(Protocol):
             """Map every model route of the session to its projected protocol."""
             ...
 
+        @property
+        def model_protocol_identities(self) -> Mapping[str, str]:
+            """Canonical native identities from the same source projection."""
+            ...
+
     @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, RopeModelProtocolRoutes, Protocol):
         """Public DSL contract for one shared Rope workspace session."""

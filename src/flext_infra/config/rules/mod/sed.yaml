@@ -12,11 +12,6 @@
 # length; a consumer applies it once after `make upg` with
 # `make mod RULES=promoted-command-header-pep723`.
 rules:
-- id: retire-obsolete-make-recipe-tests
-  description: remove the retired accessor pipeline assertion and executable-spy test
-  include: [ "tests/unit/codegen/test_codegen_make_verbs.py" ]
-  find: '(?ms)^    @staticmethod\n(?:(?!^    @staticmethod|^    def ).)*^    def (?:test_accessor_recipe_preserves_backend_workspace_scope|test_standalone_check_resolves_its_gates_at_runtime)\(.*?(?=^    @staticmethod|\Z)'
-  replace: ''
 - id: retire-repository-kind-declaration
   description: governance kind is derived from native project facts
   include: [ "config/codegen.yaml", "config/codegen.local.yaml" ]

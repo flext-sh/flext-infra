@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p
+from flext_infra import m, p, u
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
@@ -141,6 +141,15 @@ class FlextInfraRefactorCensusCollect(
             "expected_rescan": (len(fixable_rows)),
         })
         return m.Infra.WorkspaceReport(
+            protocol_placement=u.Infra.protocol_contract_census(
+                rope,
+                sources=sources,
+                objects=tuple(
+                    item
+                    for entries in findings.project_objects.values()
+                    for item in entries
+                ),
+            ),
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),
             total_violations=sum(report.violations_total for report in project_reports),

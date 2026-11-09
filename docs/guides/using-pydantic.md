@@ -135,6 +135,9 @@ The semantic rewrite proves the model/protocol identities and declared container
 contracts through Rope, including unions and native covariant containers; unrelated
 element types, incompatible collection shapes and unhandled constructor diagnostics
 prevent a rewrite.
+`protocol_model_declarations_from_source` exposes model and protocol source identities
+and the protocol destination from that same authenticated projector. Composition derives
+the envelope's identity mapping from these records; consumers do not rebuild its index.
 Railway callbacks preserve original exceptions; only the declared error boundary
 converts a validation failure into a result.
 

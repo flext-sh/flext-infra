@@ -431,6 +431,11 @@ class FlextInfraModHandlers:
         *,
         apply: bool,
         rope: p.Infra.RopeWorkspaceDsl,
+        artifact_planner: Callable[
+            [Path, p.Infra.SemanticSourcePlan],
+            p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
+        ]
+        | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Plan and converge one callback without global mod triage.
 
@@ -446,7 +451,20 @@ class FlextInfraModHandlers:
             sources = codemod.FlextInfraCodemodSemanticApply.source_inventory(
                 root, preflight.value, source_project=rope.rope_project
             )
-            return callback.plan(root, preflight.value, rope, sources=sources)
+            effects = callback.plan(root, preflight.value, rope, sources=sources)
+            if effects.failure or not effects.value or artifact_planner is None:
+                return effects
+            seed = codemod.FlextInfraCodemodSemanticApply.build_source_plan(root)
+            if seed.failure:
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(seed)
+            composed = codemod.FlextInfraCodemodSemanticApply.compose_candidate(
+                seed.value, effects.value
+            )
+            if composed.failure:
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(composed)
+            return artifact_planner(root, composed.value).map(
+                lambda artifacts: (*effects.value, *artifacts)
+            )
 
         return FlextInfraModHandlers._converge_selected(
             root, plan, apply=apply, rope=rope, owner=f"callback {callback.name}"
@@ -553,6 +571,7 @@ class FlextInfraModHandlers:
                     "owners": (campaigns.owners),
                     "semantic_plan": (campaigns.semantic_plan),
                     "semantic_decisions": (campaigns.semantic_decisions),
+                    "rewire_directory": campaigns.rewire_directory,
                 }),
             )
             return (
@@ -589,11 +608,24 @@ class FlextInfraModHandlers:
                 return r[t.Cli.ResultValue].fail(
                     "declared callback owner has no callback"
                 )
+            facade = FlextInfraCodemodLoopPhaseFacadeComponents()
+            callback = (
+                facade
+                if owner.callback == facade.name
+                else FlextInfraModHandlers._callback(owner.callback, rope.rope_project)
+            )
             return FlextInfraModHandlers._focused_callback(
                 root,
-                FlextInfraModHandlers._callback(owner.callback, rope.rope_project),
+                callback,
                 apply=request.apply,
                 rope=rope,
+                artifact_planner=partial(
+                    FlextInfraModHandlers._protocol_artifact_files,
+                    organization=lambda: facade.protocol_organization,
+                    directory=campaigns.rewire_directory,
+                )
+                if callback is facade
+                else None,
             )
 
     @staticmethod
@@ -700,6 +732,27 @@ class FlextInfraModHandlers:
         )
 
     @staticmethod
+    def _protocol_artifact_files(
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        *,
+        organization: Callable[[], p.Infra.ProtocolOrganizationPlan | None],
+        directory: Path,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Bind phase metadata to its existing native artifact planning owner.
+
+        Returns:
+            The admitted cohort's immutable artifact file plan, when one exists.
+
+        """
+        observed = organization()
+        if observed is None:
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
+        return codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
+            root, source_plan, observed, directory=directory
+        )
+
+    @staticmethod
     def _execute_batch(
         context: p.Infra.ModExecutionContext,
         root: Path,
@@ -721,6 +774,7 @@ class FlextInfraModHandlers:
         structural_root = u.Infra.import_project_roots(root)[0].resolve()
         source_preview = context.source_preview(structural_root)
         with context.rope_workspace(root, structural_root) as rope:
+            facade = FlextInfraCodemodLoopPhaseFacadeComponents()
             return codemod.FlextInfraCodemodBatchApply(
                 workspace_factory=context.rope_workspace,
                 source_preview=source_preview,
@@ -755,7 +809,7 @@ class FlextInfraModHandlers:
                 phase_callbacks=(
                     (
                         FlextInfraCodemodLoopPhaseImportNormalization(),
-                        FlextInfraCodemodLoopPhaseFacadeComponents(),
+                        facade,
                         FlextInfraCodemodLoopPhaseNamespaceRelocation(),
                         FlextInfraCodemodLoopPhaseDuplicateApply(),
                         FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
@@ -763,6 +817,13 @@ class FlextInfraModHandlers:
                     if campaigns is not None
                     else ()
                 ),
+                artifact_planner=partial(
+                    FlextInfraModHandlers._protocol_artifact_files,
+                    organization=lambda: facade.protocol_organization,
+                    directory=campaigns.rewire_directory,
+                )
+                if campaigns is not None
+                else None,
             ).execute()
 
     @staticmethod

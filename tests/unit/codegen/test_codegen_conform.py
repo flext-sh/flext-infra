@@ -729,6 +729,13 @@ class TestsFlextInfraCodegenConform:
         )
         tm.ok(infra.codegen_conform(editor))
         tm.that(manifest.read_text(encoding=c.DEFAULT_ENCODING), eq=full)
+        qlty = root / c.Infra.QLTY_CONFIG_DIRNAME / c.Infra.QLTY_CONFIG_FILENAME
+        qlty_plan = next(file for file in planned.files if file.path == qlty)
+        tm.ok(u.Cli.toml_read_document(qlty))
+        tm.that(
+            qlty.read_text(encoding=c.DEFAULT_ENCODING),
+            eq=u.Tests.codegen_file_text(qlty_plan),
+        )
         tm.that(tm.ok(infra.codegen_conform(editor)).written_files, eq=())
 
     @staticmethod

@@ -170,30 +170,14 @@ def _provision_consumer_template(
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
     if member_dependencies:
         _declare_fleet_members(root, distribution, member_dependencies)
-    workspace = u.Tests.workspace_spec(
-        repository,
-        project=u.Tests.project_spec(root.name),
-        subprojects=tuple(
-            u.Tests.repository_ref(name, path=Path(name))
-            for name in (() if member_dependencies is None else member_dependencies)
-        ),
-    )
-    conform_request = u.Tests.conform_request(
-        root,
-        what=c.Infra.CodegenConformSurface.MAKEFILE,
-    )
-    conform = codegen.FlextInfraCodegenConform.Generate(
-        repository_root=root,
-        state=m.Infra.CodegenConformState(
-            repository_root=root,
-            initial_workspace=workspace,
-            request=conform_request,
-        ),
-    )
-    planned = conform.plan(conform_request)
-    tm.ok(planned)
     tm.ok(
-        u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
+        infra.codegen_generate(
+            m.Infra.CodegenGenerateRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+            )
+        ),
     )
     tm.ok(
         infra.codegen_conform(

@@ -10,7 +10,7 @@ import ast
 import builtins
 import hashlib
 import types as python_types
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
@@ -18,7 +18,6 @@ from flext_cli import u
 
 from flext_infra import m, p, r, t
 from flext_infra._models.transformers import FlextInfraModelsTransformers
-from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
@@ -1218,6 +1217,40 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         return mover
 
     @classmethod
+    def move_class_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        origin_offset: int,
+        destination: p.Infra.RopeResource,
+        *,
+        resources: Sequence[p.Infra.RopeResource] | None = None,
+        destination_offset: int | None = None,
+        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
+    ) -> p.Infra.RopeChangeSet:
+        """Delegate nested-class transfer to its native SDK owner without effects.
+
+        Returns:
+            The native unapplied changes, preserving its first refusal.
+
+        Raises:
+            TypeError: The installed native mover lacks the class-transfer contract.
+
+        """
+        mover = cls.create_move(project, origin, origin_offset)
+        if not isinstance(
+            mover, cls.runtime_type("rope.refactor.move", "MoveClass")
+        ) or not isinstance(mover, p.Infra.RopeMoveClass):
+            message = "native Rope class transfer requires MoveClass"
+            raise TypeError(message)
+        return mover.get_changes(
+            destination,
+            resources=resources,
+            destination_offset=destination_offset,
+            match_filter=match_filter,
+        )
+
+    @classmethod
     def rename_changes(
         cls,
         rope_project: t.Infra.RopeProject,
@@ -1280,9 +1313,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             msg = "native rename requires a producer project"
             raise ValueError(msg)
         producer = cls.require_semantic_module(projects[0].get_pymodule(resource))
-        module_name = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-            producer, source_project=projects[0]
-        )
+        module_name = producer.get_name()
         # Each project edits only its own sources that carry the identifier.
         retired = (
             module_name.rpartition(".")[2]

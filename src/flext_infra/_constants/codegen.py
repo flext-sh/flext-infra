@@ -59,6 +59,7 @@ class FlextInfraConstantsCodegen(
         frozenset[FlextInfraConstantsConfig.CodegenConformSurface]
     ] = frozenset((
         FlextInfraConstantsConfig.CodegenConformSurface.ENVRC,
+        FlextInfraConstantsConfig.CodegenConformSurface.GITIGNORE,
         FlextInfraConstantsConfig.CodegenConformSurface.MISE_CONFIG,
     ))
     "Surfaces restricted to the self repository scope."

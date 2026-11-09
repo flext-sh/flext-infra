@@ -118,7 +118,7 @@ class FlextInfraModelsConfigRepository:
         upstream: Annotated[
             t.NonEmptyStr,
             m.Field(description="Upstream FLEXT facade module"),
-        ]
+        ] = "flext_cli"
         namespace_scan_dirs: Annotated[
             Sequence[str],
             m.Field(

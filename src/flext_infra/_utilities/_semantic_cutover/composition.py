@@ -13,7 +13,6 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
-    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope import (
@@ -466,13 +465,23 @@ class FlextInfraUtilitiesSemanticComposition(
                 or cls._facade_declares_protocols(project, module)
             ):
                 continue
-            result[path] = FlextInfraUtilitiesFacadeComponents.facade_component_source(
-                project,
-                path,
-                layout.package_dir / family.directory,
-                family=c.Infra.FacadeFamily(family.letter),
-                owner_name=name,
-            ).unwrap()
+            declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {**sources, **result},
+                source_project=project,
+            )
+            projected = workspace.facade_projection(
+                declared_files=declared,
+                selection=(path, c.Infra.FacadeFamily(family.letter)),
+            )
+            for plan in projected.files:
+                if plan.desired_content is None:
+                    message = (
+                        f"facade adoption requires a source retirement: {plan.path}"
+                    )
+                    raise ValueError(message)
+                result[plan.path] = plan.desired_content.decode(c.DEFAULT_ENCODING)
         return result
 
     @classmethod

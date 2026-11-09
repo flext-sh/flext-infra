@@ -6,9 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
+from collections.abc import (
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    MutableSet,
+    Sequence,
+)
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar
 
 from flext_core import m
 
@@ -19,6 +25,7 @@ from flext_infra._models import (
     FlextInfraModelsRope,
     FlextInfraModelsTransformers,
 )
+from flext_infra._models._codegen.transaction import FlextInfraModelsCodegenTransaction
 
 
 class FlextInfraModelsCensus:
@@ -33,7 +40,7 @@ class FlextInfraModelsCensus:
         source_class: str = m.Field(description="Full nested declaring class identity")
         source_path: Path = m.Field(description="Repository-relative source path")
         line: int = m.Field(ge=1, description="Native declaration line")
-        category: Literal["model", "service", "external", "unresolved"] = m.Field(
+        category: c.Infra.ProtocolOrigin = m.Field(
             description="Origin classification proven before any source movement"
         )
         destination_module: str = m.Field(
@@ -66,6 +73,23 @@ class FlextInfraModelsCensus:
         )
         findings: tuple[str, ...] = m.Field(
             default=(), description="Origin facts requiring resolution"
+        )
+
+    class ProtocolOrganizationPlan(m.ArbitraryTypesModel):
+        """One censused placement cohort and the source epoch native moves consumed."""
+
+        census: FlextInfraModelsCensus.ProtocolPlacementCensus = m.Field(
+            description="The admitted coherent placements, excluding unrelated unresolved origins"
+        )
+        files: tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...] = m.Field(
+            default=(), description="Native movement and dependent source effects"
+        )
+        pre_move_sources: Mapping[Path, str] = m.Field(
+            description="Authenticated before epoch including empty destination scaffolds"
+        )
+        findings: tuple[str, ...] = m.Field(
+            default=(),
+            description="Unresolved census facts kept outside admitted move cohorts",
         )
 
     class ReferenceSite(
@@ -648,7 +672,7 @@ class FlextInfraModelsCensus:
         """Workspace-wide census summary."""
 
         protocol_placement: FlextInfraModelsCensus.ProtocolPlacementCensus = m.Field(
-            default_factory=lambda: FlextInfraModelsCensus.ProtocolPlacementCensus(),
+            default_factory=FlextInfraModelsCensus.ProtocolPlacementCensus,
             description="Protocol origins and placements inventoried before migration",
         )
 

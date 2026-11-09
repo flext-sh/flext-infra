@@ -1,6 +1,6 @@
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
 {% from "lifecycle_lock_recipe.j2" import lifecycle_lock_recipe -%}
-{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, mise_staging_cleanup, mise_acquisition, mise_locked_install, toml_projection_preflight, mise_lock_changed -%}
+{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, mise_staging_cleanup, mise_acquisition, mise_install, toml_projection_preflight, mise_lock_changed -%}
 {% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, bootstrap_root_reader, runtime_root_reader -%}
 {% set direnv_tool = toolchain.tools | selectattr("name", "equalto", "direnv") | first -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
@@ -779,9 +779,9 @@ _setup_lifecycle: _builtin_require_workspace
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),,$(DIRENV) allow "$(PROJECT_ROOT)";) \
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(SELF_MAKE) _setup_activated,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
-# Setup installs the committed locks as they are and never rewrites them.
-# Required input and native installation failures terminate immediately;
-# generation and explicit upgrade own their respective repairs. Quality gates
+# Setup installs UV's frozen resolution; Mise completes missing native tool
+# pins during provisioning. Required input and installation failures terminate
+# immediately. Generation and upgrade own their respective repairs. Quality gates
 # remain separate operations and no failure selects another producer or source.
 .PHONY: _setup_activated
 # Check owns quality verdicts after provisioning.
@@ -853,7 +853,7 @@ _builtin_require_environment: _builtin_require_interpreter
 # Source: computed (MAKE_PROFILE routing)
 # Setup provisions tooling and the native project's declared dependencies.
 # It never generates or mutates project source; `make gen` owns source generation.
-# The lifecycle above owns the single native locked installation.
+# The lifecycle above owns the single native toolchain installation.
 # Attached members delegate publicly before entering it; there is no second
 # private installer or alternative source-selection pipeline.
 # End SECTION: setup environment
@@ -904,7 +904,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		{{ mise_lock_changed("$(BOOTSTRAP_MISE)", '"$$lock_root"', mise_install_tools) }} \
 	done; \
 	set +f; \
-	{{ mise_locked_install("$(PROJECT_ROOT)", mise_install_tools) }} \
+	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools) }} \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:
@@ -988,10 +988,11 @@ _builtin_gen_all: _builtin_require_interpreter
 # facades, one module) through the identical engine, lock and budget.
 _builtin_gen_scope_all: _builtin_require_interpreter
 	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope="$(or $(strip $(SCOPE)),self)"; \
 	module_args=""; \
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(basename $(PROJECT_ROOT)/{{ make.generation_profile_path }})-scope.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path | replace('.pstats', '-scope.pstats') }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses

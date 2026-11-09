@@ -193,6 +193,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         destinations = contract.destinations
         if destinations is None or destinations not in {
             frozenset({c.Infra.ENVRC_FILENAME}),
+            frozenset({c.Infra.GITIGNORE}),
             frozenset({c.Infra.MISE_TOML_FILENAME}),
             c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
         }:
@@ -220,10 +221,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
-        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(
-            target.root,
-            read_committed_directory=u.Infra.git_committed_directory_blobs,
-        )
+        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(target.root)
         if managed_artifacts.failure:
             return result_type.from_failure(managed_artifacts)
         if not (contract.tooling or contract.custom):
@@ -855,9 +853,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.fail(
                 f"control requires original project metadata: {root}"
             )
-        managed = u.Infra.snapshot_committed_project_managed_artifacts(
-            root, read_committed_directory=u.Infra.git_committed_directory_blobs
-        )
+        managed = u.Infra.snapshot_project_managed_artifacts(root)
         if managed.failure:
             return result_type.from_failure(managed)
         render_inputs = self.resolve_render_inputs(
@@ -1002,9 +998,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         absent = self._scaffold_absent_metadata(root)
         if absent.failure:
             return result_type.from_failure(absent)
-        managed = u.Infra.snapshot_committed_project_managed_artifacts(
-            root, read_committed_directory=u.Infra.git_committed_directory_blobs
-        )
+        managed = u.Infra.snapshot_project_managed_artifacts(root)
         if managed.failure:
             return result_type.from_failure(managed)
         tooling = self._scaffold_control_tooling(

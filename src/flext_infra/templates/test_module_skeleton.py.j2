@@ -11,15 +11,15 @@ from collections.abc import (
     Sequence,
 )
 
-from flext_tests import {{ base_class }}
+from flext_tests import {{ alias }} as test_{{ alias }}
 
-from {{ project_module }} import {{ alias }}
+from {{ project_module }} import {{ alias }} as source_{{ alias }}
 
 
-class {{ class_name }}({{ base_class }}, {{ alias }}):
+class {{ class_name }}(source_{{ alias }}):
     """{{ docstring }}"""
 
-    class {{ namespace }}({{ base_class }}.Tests, {{ alias }}.{{ project_namespace }}):
+    class {{ namespace }}(test_{{ alias }}.Tests):
         """Test namespace composed from shared and project contracts."""
 
 

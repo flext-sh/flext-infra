@@ -518,7 +518,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             if current_target_result.failure:
                 return result_type.from_failure(current_target_result)
-            current_target = current_target_result.value
+            current_target = current_target_result.value.model_copy(
+                update={"toolchain_root": self.state.repository_root},
+            )
             current_repository = current_target.repository
         else:
             current_target = m.Infra.RepositoryConformTarget(

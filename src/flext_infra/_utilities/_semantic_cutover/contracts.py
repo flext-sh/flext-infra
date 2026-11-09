@@ -1412,7 +1412,12 @@ class FlextInfraUtilitiesSemanticContracts(
                 rule,
                 cls._contract_scope_resources(project, rule, tuple(context[1])),
                 checker(context[1]),
-                workspace.model_protocol_routes,
+                (
+                    workspace.model_protocol_identities
+                    if rule.operation
+                    == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                    else workspace.model_protocol_routes
+                ),
             )
         if rule.annotation_member_source is not None:
             return cls._annotation_member_changes(

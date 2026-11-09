@@ -26,6 +26,7 @@ from flext_cli import u
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDiscovery,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesProjectDiscovery,
@@ -255,6 +256,32 @@ class FlextInfraUtilitiesModelsProtocol:
         return (
             *(layout[2] for layout in projection.namespacesource_layouts()),
             *(() if primary is None else (primary[2],)),
+        )
+
+    @classmethod
+    def protocol_model_declarations_from_source(
+        cls,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
+        *,
+        package_name: str | None = None,
+    ) -> tuple[tuple[str, str, Path], ...]:
+        """Read native model, protocol and destination witnesses from one projector.
+
+        Returns:
+            Source identities and their protocol declaration destinations.
+
+        """
+        projection = cls._ModelProtocolProjection(
+            repository_root.expanduser().resolve(),
+            source_project,
+            package_name=package_name,
+        )
+        inventory = projection.source_model_inventory()
+        return (
+            ()
+            if inventory is None
+            else projection.source_model_declarations(inventory[1])
         )
 
     @classmethod
@@ -998,6 +1025,58 @@ class FlextInfraUtilitiesModelsProtocol:
                 ),
                 declaration,
             )
+
+        def source_model_declarations(
+            self, package_name: str
+        ) -> tuple[tuple[str, str, Path], ...]:
+            """Expose the admitted inventory's original native declaration pairs.
+
+            Returns:
+                Model identity, protocol identity and its declaring destination.
+
+            Raises:
+                ValueError: An admitted declaration has no native binding or source.
+
+            """
+            declarations: list[tuple[str, str, Path]] = []
+            if self.project.find_module(f"{package_name}.protocols") is None:
+                return ()
+            for classes in self.source_model_protocol_classes.values():
+                for _node, path, tree in classes:
+                    module_name = self.source_module_names[id(tree)]
+                    model_resource = self.project.find_module(module_name)
+                    if model_resource is None:
+                        continue
+                    model_module = (
+                        FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+                            self.project.get_pymodule(model_resource)
+                        )
+                    )
+                    model = ".".join((module_name, *path))
+                    source = FlextInfraUtilitiesRopeRuntime.expression_name(
+                        model_module.get_scope(), ".".join(path)
+                    )
+                    if source is None:
+                        message = f"native model binding absent: {model}"
+                        raise ValueError(message)
+                    target = self._source_class(
+                        self.qualified_name(
+                            self.project,
+                            f"{package_name}.{self.source_model_protocol_routes[model]}",
+                        )
+                    )
+                    resource = target.get_module().get_resource()
+                    if resource is None:
+                        message = f"protocol declaration has no source: {model}"
+                        raise ValueError(message)
+                    declarations.append((
+                        ".".join(
+                            self._source_class_identity(self._source_class(source))
+                        ),
+                        ".".join(self._source_class_identity(target)),
+                        Path(resource.real_path),
+                    ))
+            return tuple(declarations)
 
         def source_model_inventory(
             self,
@@ -9059,7 +9138,8 @@ class FlextInfraUtilitiesModelsProtocol:
     @classmethod
     def model_protocol_routes(
         cls,
-        workspace: p.Infra.RopeWorkspaceDsl,
+        repository_root: Path,
+        source_project: p.Infra.RopeProject,
     ) -> Mapping[str, str]:
         """Map every model route of the workspace to its projected protocol.
 
@@ -9070,16 +9150,59 @@ class FlextInfraUtilitiesModelsProtocol:
         """
         routes: dict[str, str] = {}
         for package_name in cls.protocol_model_package_names(
-            workspace.repository_root, workspace.rope_project
+            repository_root, source_project
         ):
             routes.update(
                 cls.protocol_model_routes_from_source(
-                    workspace.repository_root,
-                    workspace.rope_project,
+                    repository_root,
+                    source_project,
                     package_name=package_name,
                 )
             )
         return routes
+
+    @classmethod
+    def model_protocol_declarations(
+        cls, repository_root: Path, source_project: p.Infra.RopeProject
+    ) -> tuple[tuple[str, str, Path], ...]:
+        """Compose native declaration witnesses for selected model suppliers.
+
+        Returns:
+            One canonical declaration record per model, ordered by source identity.
+
+        Raises:
+            ValueError: A model has competing protocol declaration witnesses.
+
+        """
+        project = source_project
+        roots = {repository_root}
+        for model in cls.model_protocol_routes(repository_root, project):
+            if model.startswith("m."):
+                continue
+            value = FlextInfraUtilitiesRopeRuntime.qualified_name(
+                project, model
+            ).get_object()
+            if not FlextInfraUtilitiesRopeRuntime.py_class(value):
+                continue
+            resource = value.get_module().get_resource()
+            if resource is not None:
+                root = FlextInfraUtilitiesDiscovery.project_root(
+                    Path(resource.real_path),
+                    source_project=project,
+                )
+                if root is not None:
+                    roots.add(root)
+        declarations: dict[str, tuple[str, str, Path]] = {}
+        for root in sorted(roots):
+            for package in cls.protocol_model_package_names(root, project):
+                for record in cls.protocol_model_declarations_from_source(
+                    root, project, package_name=package
+                ):
+                    previous = declarations.setdefault(record[0], record)
+                    if previous != record:
+                        message = f"competing native protocol declarations: {record[0]}"
+                        raise ValueError(message)
+        return tuple(declarations[key] for key in sorted(declarations))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesModelsProtocol"]

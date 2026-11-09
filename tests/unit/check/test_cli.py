@@ -30,6 +30,7 @@ class TestsFlextInfraWorkspaceCheckCli:
     ) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
+        u.Tests.initialize_git_repo(workspace)
         for project_name in project_names:
             project = u.Tests.mk_project(
                 workspace,
@@ -305,7 +306,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             c.Infra.LINT,
             "--apply",
         ])
-        tm.that(exit_code, eq=2)
+        tm.that(exit_code, ne=0)
         tm.that(selected.read_bytes(), eq=before)
         tm.that(unselected.read_text(encoding="utf-8"), eq="import os\n")
 

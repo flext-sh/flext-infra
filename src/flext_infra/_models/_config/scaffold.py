@@ -213,6 +213,13 @@ class FlextInfraModelsConfigScaffold:
     class ScaffoldSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 
+        source_stems: tuple[t.NonEmptyStr, ...] = m.Field(
+            description="Required component stems in every production facade family"
+        )
+        auxiliary_stems: tuple[t.NonEmptyStr, ...] = m.Field(
+            description="Required component stems in every auxiliary facade family"
+        )
+
         build: Annotated[
             FlextInfraModelsConfigScaffold.ScaffoldBuildSpec,
             m.Field(description="Build-system policy"),

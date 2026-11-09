@@ -26,7 +26,7 @@ class TestsFlextInfraCodegenConfigLifecycle:
     ) -> None:
         """The real generated package loads typed YAML and freezes only config."""
         root = test_codegen_ci_matrix.TestsFlextInfraCodegenCiMatrix.render_project(
-            installed_artifact_consumer,
+            installed_artifact_consumer / "generated-contract",
         )
         test_paths = tuple(
             sorted({

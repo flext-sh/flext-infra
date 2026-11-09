@@ -915,6 +915,9 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeOccurrence(Protocol):
         """Rope occurrence shape."""
 
+        @property
+        def resource(self) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
+
         offset: int
 
         lineno: int
@@ -929,10 +932,13 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
 
         def get_primary_and_pyname(
             self,
-        ) -> tuple[
-            FlextInfraProtocolsRopeRuntime.RopePyName | None,
-            FlextInfraProtocolsRopeRuntime.RopePyName | None,
-        ]: ...
+        ) -> (
+            tuple[
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+            ]
+            | None
+        ): ...
 
     @runtime_checkable
     class RopeOccurrenceFinder(Protocol):

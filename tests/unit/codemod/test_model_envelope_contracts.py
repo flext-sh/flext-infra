@@ -20,6 +20,41 @@ class TestsFlextInfraModelEnvelopeContracts:
     """Prove analyzer admission, native transformation and retained model identity."""
 
     @staticmethod
+    def test_source_declaration_records_match_loaded_public_owners(
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
+    ) -> None:
+        """The canonical record names the actual protocol's declaring resource."""
+        workspace, _path = rope_contract_consumer
+        with workspace.rope_project.source_view(
+            declared_files=None, additional_source_folders=None
+        ) as project:
+            records = tuple(
+                record
+                for record in u.Infra.protocol_model_declarations_from_source(
+                    tm.not_none(
+                        u.Infra.project_root(Path(getfile(m.Cli.AtomicFileState)))
+                    ),
+                    project,
+                )
+                if record[0]
+                == (
+                    f"{m.Cli.AtomicFileState.__module__}."
+                    f"{m.Cli.AtomicFileState.__qualname__}"
+                )
+            )
+        tm.that(len(records), eq=1)
+        tm.that(
+            records[0][1],
+            eq=(
+                f"{p.Cli.AtomicFileState.__module__}."
+                f"{p.Cli.AtomicFileState.__qualname__}"
+            ),
+        )
+        tm.that(
+            records[0][2].resolve(), eq=Path(getfile(p.Cli.AtomicFileState)).resolve()
+        )
+
+    @staticmethod
     @c.Tests.MARK.slow
     def test_public_nested_namespace_envelopes_retain_native_references(
         tmp_path: Path,

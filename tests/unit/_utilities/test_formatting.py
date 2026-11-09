@@ -16,6 +16,165 @@ from tests import c, m, p, tm, u
 
 class TestsFlextInfraUtilitiesformatting:
     @staticmethod
+    def test_contracting_logical_range_never_formats_a_later_untouched_statement(
+        tmp_path: Path,
+    ) -> None:
+        """Two edits in one collapsing header cannot retarget the later range."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "contracting.py"
+        prefix = "prefix =  [1,2]\n\n\n"
+        untouched = "\n\nsuffix =  [3,4]\n"
+        original = (
+            prefix + "def target(\n"
+            "    value: int = (\n"
+            "        (\n"
+            "            (\n"
+            "                0\n"
+            "            )\n"
+            "        )\n"
+            "    ),\n"
+            "    other: int = (\n"
+            "        0\n"
+            "    ),\n"
+            ") -> int:\n"
+            "    return value + other\n" + untouched
+        )
+        candidate = original.replace("                0\n", "                1\n")
+        candidate = candidate.replace("        0\n", "        2\n")
+        tm.ok(u.Cli.atomic_write_text_file(path, original))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        tm.ok(
+            u.Infra.publish_codegen_plans(
+                root,
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=before,
+                        desired_content=candidate.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+            )
+        )
+        published = path.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(published, has=prefix)
+        tm.that(published, has=untouched)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("multiline", [False, True])
+    def test_publication_formats_disjoint_edits_and_retains_authored_debt(
+        tmp_path: Path,
+        *,
+        multiline: bool,
+    ) -> None:
+        """Native statement ranges leave unrelated UTF-8 source bytes intact."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+        path = package / "ranges.py"
+        untouched = (
+            "prefix =  [1,2]\n\n\n",
+            "middle =  {'ação':[ 3,4 ]}\n\n\n",
+            "suffix =  [5,6]\n",
+        )
+        first = "def first(ação: int) -> int:\n    return ação\n\n\n"
+        second = "def second(value: int) -> int:\n    return value\n\n\n"
+        original = untouched[0] + first + untouched[1] + second + untouched[2]
+        parameters = ", ".join(f"extra_{index}: int = 0" for index in range(width // 8))
+        candidate = original
+        for name, argument in (("first", "ação"), ("second", "value")):
+            original_header = f"def {name}({argument}: int) -> int:\n"
+            rewritten_header = (
+                f"def {name}(\n    {argument}: int, {parameters}\n) -> int:\n"
+                if multiline
+                else f"def {name}({argument}: int, {parameters}) -> int:\n"
+            )
+            candidate = candidate.replace(original_header, rewritten_header)
+        tm.ok(u.Cli.atomic_write_text_file(path, original))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=path,
+            before=before,
+            desired_content=candidate.encode(c.DEFAULT_ENCODING),
+            desired_mode=before.mode,
+        )
+        tm.ok(u.Infra.publish_codegen_plans(root, (plan,)))
+        published = path.read_bytes()
+        for piece in untouched:
+            tm.that(piece.encode(c.DEFAULT_ENCODING) in published, eq=True)
+        source = published.decode(c.DEFAULT_ENCODING)
+        tm.that(
+            tm.ok(u.Infra.normalize_source(root, path, source, before_source=source)),
+            eq=source,
+        )
+        executed = tm.ok(
+            u.Cli.run_raw((
+                sys.executable,
+                "-c",
+                (
+                    "import runpy, sys; namespace = runpy.run_path(sys.argv[1]); "
+                    "assert namespace['first'](7) == 7; "
+                    "assert namespace['second'](9) == 9"
+                ),
+                str(path),
+            ))
+        )
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True, msg=executed.stderr)
+
+    @staticmethod
+    def test_unbreakable_native_reference_keeps_width_failure_and_live_bytes(
+        tmp_path: Path,
+    ) -> None:
+        """Range formatting cannot rename a reference to satisfy its width."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        qualified = "asyncio.base_subprocess.BaseSubprocessTransport"
+        pyproject = root / c.PYPROJECT_FILENAME
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                pyproject,
+                re.sub(
+                    r"(?m)^line-length = \d+$",
+                    f"line-length = {len(qualified) - 1}",
+                    pyproject.read_text(encoding=c.DEFAULT_ENCODING),
+                    count=1,
+                ),
+            )
+        )
+        path = package / "unbreakable.py"
+        original = (
+            tm.ok(
+                u.Infra.normalize_source(
+                    root,
+                    path,
+                    "from asyncio.base_subprocess import BaseSubprocessTransport\n"
+                    "def inspect(value: BaseSubprocessTransport) -> object:\n"
+                    "    return value\n",
+                )
+            )
+            + "untouched =  [1,2]\n"
+        )
+        candidate = (
+            "import asyncio.base_subprocess\n\n\n"
+            f"def inspect(value: {qualified}) -> object:\n"
+            "    return value\n"
+            "untouched =  [1,2]\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(path, original))
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
+        plan = m.Infra.CodegenFilePlan(
+            project=root,
+            path=path,
+            before=before,
+            desired_content=candidate.encode(c.DEFAULT_ENCODING),
+            desired_mode=before.mode,
+        )
+        tm.fail(u.Infra.publish_codegen_plans(root, (plan,)), has="E501")
+        tm.that(path.read_bytes(), eq=before.content)
+
+    @staticmethod
     def test_missing_native_width_never_invents_a_formatting_policy(
         tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:

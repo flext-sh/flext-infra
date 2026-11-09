@@ -19,9 +19,9 @@ from typing_extensions import TypeForm
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesManagedConflicts,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
@@ -532,7 +532,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """
         if not (repository_root / c.Infra.GITMODULES).exists(follow_symlinks=False):
             return ()
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
+            repository_root
+        )
         if declared.failure:
             msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
@@ -563,13 +565,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             ValueError: If the topology root or the declarations are invalid.
 
         """
-        topology = FlextInfraUtilitiesGit.git_repository_root(
+        topology = FlextInfraUtilitiesGitWorktreeRoots.git_repository_root(
             m.Infra.GitRepoRequest(repo_root=project_root),
         )
         if topology.failure:
             msg = topology.error or f"invalid repository topology: {project_root}"
             raise ValueError(msg)
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
             topology.value.repository_root,
         )
         if declared.failure:

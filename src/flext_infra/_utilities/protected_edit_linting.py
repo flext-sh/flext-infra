@@ -57,9 +57,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
         binding or pre-existing finding is touched; a whole new file receives
         the declared full repair. Formatting follows the same law: a
         generated projection (``c.Infra.AUTOGEN_HEADER``) is always formatted,
-        but an authored module is formatted only when its existing bytes are
-        already formatter-clean. Pending format debt in authored code belongs
-        to ``make fmt``; a rewrite never reformats untouched authored lines.
+        but an authored module with existing format debt receives only native
+        range formatting of changed lines. Ruff owns logical-line expansion;
+        untouched authored format debt remains for ``make fmt``.
         ``settings`` carry the staged pyproject's Ruff table when the same
         plan set rewrites it.
 
@@ -130,12 +130,19 @@ class FlextInfraUtilitiesProtectedEditLinting:
             repaired = FlextInfraUtilitiesLintRecipes.wrap_long_lines(
                 normalized.value, rows, limit=limit
             )
-            return cls._ruff_stdin_pass(
-                path,
-                repaired,
-                (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply),
-                settings=arguments,
-            ).flat_map(
+            formatted = (
+                cls._ruff_stdin_pass(
+                    path,
+                    repaired,
+                    (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply),
+                    settings=arguments,
+                )
+                if before_source is None
+                else cls._format_rewrite(
+                    path, (before_source, repaired), settings=arguments
+                )
+            )
+            return formatted.flat_map(
                 lambda formatted: cls._checked_width_repair(
                     path, formatted, original, settings=arguments
                 )
@@ -207,9 +214,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         ``rewrite`` pairs the existing bytes with the repaired candidate. A
         generated projection (``c.Infra.AUTOGEN_HEADER``) is formatted in
-        full. An authored module is formatted only when its existing bytes are
-        already formatter-clean; otherwise the repaired candidate is returned
-        unformatted, because its format debt belongs to ``make fmt``.
+        full. An already formatter-clean authored module also receives the
+        full native pass. Otherwise stdlib diff ranges select only changed
+        candidate lines, and Ruff owns their logical-statement expansion.
 
         Returns:
             The candidate, formatted when the law allows, or Ruff's failure.
@@ -219,15 +226,32 @@ class FlextInfraUtilitiesProtectedEditLinting:
         arguments = (c.Infra.FORMAT, *config.Infra.codegen.make.ruff.format_apply)
         if source.startswith(c.Infra.AUTOGEN_HEADER):
             return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
-        return cls._ruff_stdin_pass(
+        formatted = cls._ruff_stdin_pass(
             path, before_source, arguments, settings=settings
-        ).flat_map(
-            lambda formatted: (
-                cls._ruff_stdin_pass(path, source, arguments, settings=settings)
-                if formatted == before_source
-                else r[str].ok(source)
-            )
         )
+        if formatted.failure:
+            return formatted
+        if formatted.value == before_source:
+            return cls._ruff_stdin_pass(path, source, arguments, settings=settings)
+        changes = difflib.SequenceMatcher(
+            a=before_source.splitlines(keepends=True),
+            b=source.splitlines(keepends=True),
+            autojunk=False,
+        ).get_opcodes()
+        # Descending ranges keep earlier line coordinates stable as Ruff expands.
+        for operation, _before_start, _before_end, start, end in reversed(changes):
+            if operation == "equal" or start == end:
+                continue
+            formatted = cls._ruff_stdin_pass(
+                path,
+                source,
+                (*arguments, "--range", f"{start + 1}-{end + 1}"),
+                settings=settings,
+            )
+            if formatted.failure:
+                return formatted
+            source = formatted.value
+        return r[str].ok(source)
 
     @classmethod
     def normalized_codegen_changes(

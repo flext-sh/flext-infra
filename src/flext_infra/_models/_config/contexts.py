@@ -611,6 +611,9 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 for requirement in self.project_dependencies
             } | {t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(self.upstream)}
             for base in self.scaffold.project.config_bases:
+                if base.module == self.upstream:
+                    return base
+            for base in self.scaffold.project.config_bases:
                 if base.distribution in depended:
                     return base
             msg = (

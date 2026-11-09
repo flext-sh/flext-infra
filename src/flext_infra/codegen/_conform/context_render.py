@@ -207,12 +207,42 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return (
             *self._merge_extra_verbs(
                 repository.extra_verbs,
-                ()
-                if repository.script_dispatch is None
-                else self._discover_script_verbs(root, repository.script_dispatch),
+                (
+                    *self._discover_custom_verbs(root, codegen),
+                    *(
+                        ()
+                        if repository.script_dispatch is None
+                        else self._discover_script_verbs(
+                            root, repository.script_dispatch
+                        )
+                    ),
+                ),
                 frozenset(verb.name for verb in (*codegen.make.verbs, *release_verbs)),
             ),
             *release_verbs,
+        )
+
+    @staticmethod
+    def _discover_custom_verbs(
+        root: Path, codegen: p.Infra.CodegenConfigSpec
+    ) -> tuple[p.Infra.MakeVerbSpec, ...]:
+        """Publish existing whole-verb handlers without a second command list.
+
+        Returns:
+            The public names declared by private custom Make targets.
+
+        """
+        path = root / codegen.make.custom_handler_policy.filename
+        if not path.is_file():
+            return ()
+        content = u.Cli.files_read_text(path).unwrap()
+        return tuple(
+            m.Infra.MakeVerbSpec(name=name, description=f"Project command: {name}")
+            for name in sorted({
+                line.partition(":")[0].removeprefix("_custom-")
+                for line in content.splitlines()
+                if line.startswith("_custom-") and ":" in line
+            })
         )
 
     def make_render_context(

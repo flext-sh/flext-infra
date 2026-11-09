@@ -263,6 +263,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                 )
             case (
                 c.Infra.CodegenConformSurface.ENVRC
+                | c.Infra.CodegenConformSurface.GITIGNORE
                 | c.Infra.CodegenConformSurface.MISE_CONFIG
                 | c.Infra.CodegenConformSurface.MARKDOWN
             ):
@@ -271,6 +272,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
                     destinations=frozenset({
                         {
                             c.Infra.CodegenConformSurface.ENVRC: c.Infra.ENVRC_FILENAME,
+                            c.Infra.CodegenConformSurface.GITIGNORE: c.Infra.GITIGNORE,
                             c.Infra.CodegenConformSurface.MISE_CONFIG: (
                                 c.Infra.MISE_TOML_FILENAME
                             ),

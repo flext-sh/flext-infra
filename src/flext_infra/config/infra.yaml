@@ -80,4 +80,5 @@ Infra:
   # reaches all consumers. A campaign is declared only once every `new` name
   # already exists in the released definer.
   refactor_csv_campaigns:
+    rewire_directory: config/rewires
     campaigns: []

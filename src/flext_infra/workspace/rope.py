@@ -63,16 +63,6 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             ),
         )
 
-    @property
-    def model_protocol_routes(self) -> Mapping[str, str]:
-        """Map every model route of the session to its projected protocol.
-
-        Returns:
-            Model identity routes with their public protocol routes.
-
-        """
-        return u.Infra.model_protocol_routes(self)
-
     def domain_owner_projection(
         self,
         *,

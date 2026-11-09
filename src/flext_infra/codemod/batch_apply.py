@@ -59,6 +59,17 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             " renames)"
         ),
     )
+    artifact_planner: (
+        Callable[
+            [Path, p.Infra.SemanticSourcePlan],
+            p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
+        ]
+        | None
+    ) = m.Field(
+        default=None,
+        exclude=True,
+        description="Injected source-artifact planning after final phase composition",
+    )
     consumer_roots: tuple[Path, ...] = m.Field(
         default=(),
         description="Explicit read scopes; not additional syntax targets",
@@ -990,8 +1001,16 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         callbacks = self._plan_phase_callbacks(root, seed, graph)
         if callbacks.failure:
             return callbacks
-        return self._plan_text_phase(
+        text = self._plan_text_phase(
             root, callbacks.value, text_precondition_pending=False
+        )
+        if text.failure or self.artifact_planner is None:
+            return text
+        artifacts = self.artifact_planner(root, text.value)
+        if artifacts.failure:
+            return r[p.Infra.SemanticSourcePlan].from_failure(artifacts)
+        return FlextInfraCodemodSemanticApply.compose_candidate(
+            text.value, artifacts.value
         )
 
     @staticmethod
@@ -1072,12 +1091,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if loaded.failure:
             return r[p.Infra.SemanticSourcePlan].from_failure(loaded)
         seed, driver = loaded.value
-        current = FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+        current = FlextInfraCodemodSemanticApply.plan_rename_artifact(
             root, seed, driver, rope_workspace
         )
         if current.failure:
             return r[p.Infra.SemanticSourcePlan].from_failure(current)
-        return self._admitted_rename_seed(seed)
+        return self._admitted_rename_seed(current.value)
 
     def _campaign_seed(self, root: Path) -> p.Result[p.Infra.SemanticSourcePlan]:
         """Capture the source campaign and its module-naming rename candidate.

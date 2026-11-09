@@ -513,11 +513,10 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> tuple[p.Infra.Issue, ...]:
-        """Report declared formats outside this phase's existing source contract.
+        """Reject text input declarations outside the repository boundary.
 
         Returns:
-            Central issues for unsupported explicit input declarations. A scope
-            glob without a suffix still selects the canonical Python inventory.
+            Central issues for escaping explicit input declarations.
 
         """
         return tuple(
@@ -526,14 +525,12 @@ class FlextInfraModTextGateEngine:
                 line=0,
                 column=0,
                 code=c.Infra.ToolOutcome.ERROR.value,
-                message=f"text rule {rule.rule_id} declares an unsupported input: "
+                message=f"text rule {rule.rule_id} declares an escaping input: "
                 f"{pattern}",
             )
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix
-            and Path(pattern).suffix
-            not in {c.Infra.EXT_PYTHON, ".md", c.Infra.EXT_SHELL, ".yaml", ".yml"}
+            if Path(pattern).is_absolute() or ".." in Path(pattern).parts
         )
 
     @classmethod
@@ -636,7 +633,7 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> p.Result[tuple[Path, ...]]:
-        """Authenticate the physical shell and YAML sources the rules declare.
+        """Authenticate the non-Python text sources explicitly declared by rules.
 
         Shell sources are a repository inventory, like Python, not named
         documents, like Markdown: a declared glob that selects nothing is no
@@ -651,7 +648,7 @@ class FlextInfraModTextGateEngine:
             Path(pattern)
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix in {c.Infra.EXT_SHELL, ".yaml", ".yml"}
+            if Path(pattern).suffix not in {c.Infra.EXT_PYTHON, ".md"}
         ]
         escaped = [
             pattern

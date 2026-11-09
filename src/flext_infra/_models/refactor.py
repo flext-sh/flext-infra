@@ -229,6 +229,49 @@ class FlextInfraModelsRefactor(
             description="Explicit external consumer checkout roots for this run",
         )
 
+    class SemanticRewireIntent(m.ImmutableValueModel):
+        """Portable native identities backed by the producer's captured sources."""
+
+        supplier_root: Path = m.Field(
+            description="Supplier repository relative to the artifact workspace"
+        )
+        source_path: Path = m.Field(description="Supplier-relative original module")
+        destination_path: Path = m.Field(
+            description="Supplier-relative destination module"
+        )
+        source_module: t.NonEmptyStr = m.Field(description="Original import identity")
+        source_class: t.NonEmptyStr = m.Field(description="Original class scope")
+        destination_module: t.NonEmptyStr = m.Field(
+            description="Current supplier import identity"
+        )
+        destination_class: t.NonEmptyStr = m.Field(description="Current class scope")
+        public_routes: tuple[str, ...] = m.Field(
+            default=(), description="Native public facade routes preserved by placement"
+        )
+
+        @m.model_validator(mode="after")
+        def relative_supplier_paths(self) -> Self:
+            """Keep supplier provenance independent of machine checkout paths.
+
+            Returns:
+                The validated native identity intent.
+
+            Raises:
+                ValueError: Supplier paths escape their declared relative owner.
+
+            """
+            if any(
+                path.is_absolute() or ".." in path.parts
+                for path in (
+                    self.supplier_root,
+                    self.source_path,
+                    self.destination_path,
+                )
+            ):
+                msg = "portable supplier paths must remain relative to their owner"
+                raise ValueError(msg)
+            return self
+
     class SemanticRenamePlan(FlextInfraModelsCodegenTransaction.SemanticSourcePlan):
         """Reversible native rename artifact with its complete authenticated closure."""
 
@@ -236,8 +279,16 @@ class FlextInfraModelsRefactor(
             FlextInfraModelsRefactor.SemanticRenameDecision,
             ...,
         ] = m.Field(
-            min_length=1,
+            default=(),
             description="Resolved declarations and their domain naming decisions",
+        )
+        rewires: tuple[FlextInfraModelsRefactor.SemanticRewireIntent, ...] = m.Field(
+            default=(),
+            description="Census-derived portable identities for external consumers",
+        )
+        rewire_sources: Mapping[Path, str] = m.Field(
+            default_factory=lambda: MappingProxyType[Path, str]({}),
+            description="Workspace-relative pre-move source/scaffold overlay bytes",
         )
         edits: tuple[
             FlextInfraModelsTransformers.SemanticMigrationEdit,
@@ -246,6 +297,30 @@ class FlextInfraModelsRefactor(
         moves: tuple[tuple[Path, Path], ...] = m.Field(
             default=(), description="Native module source and destination effects"
         )
+
+        @m.model_validator(mode="after")
+        def observed_native_intent(self) -> Self:
+            """Require naming decisions or an observed declaration relocation.
+
+            Returns:
+                The artifact with its native execution intent.
+
+            Raises:
+                ValueError: The artifact has no native identity transformation.
+
+            """
+            if not self.decisions and not self.rewires:
+                msg = (
+                    "semantic rename artifact requires naming decisions "
+                    "or portable rewires"
+                )
+                raise ValueError(msg)
+            if any(
+                path.is_absolute() or ".." in path.parts for path in self.rewire_sources
+            ):
+                msg = "portable source overlays must remain workspace-relative"
+                raise ValueError(msg)
+            return self
 
     class RuleDeltaOptions(FlextInfraModelsBase.FrozenArbitrary):
         """Optional scope and authentication inputs for one rule delta comparison."""

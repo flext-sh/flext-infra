@@ -6,9 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_cli import FlextCli
 
-from flext_infra import codegen, h, m, p, t
+from flext_infra import codegen, h, m, p, t, u
 
 
 class FlextInfraCodegenHandlers:
@@ -72,9 +74,12 @@ class FlextInfraCodegenHandlers:
             The delegated generation Result, including any reported failure.
 
         """
-        return codegen.FlextInfraCodegenConform.Generate.execute_request(
-            request,
-            execution_context=self,
+        return u.Infra.runtime_owner_root(Path.cwd()).flat_map(
+            lambda runtime: codegen.FlextInfraCodegenConform.Generate.execute_request(
+                request,
+                execution_context=self,
+                repository_root=runtime,
+            )
         )
 
     @h.handler(command=m.Infra.CodegenConformRequest)
