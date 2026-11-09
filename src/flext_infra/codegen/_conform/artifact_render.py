@@ -290,7 +290,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             artifacts = resolved.value.artifacts
         else:
             artifacts = render_inputs.managed_artifacts.resolution.artifacts
-        suffix = u.Infra.gitignore_runtime_suffix(config.Infra.codegen)
+        suffix = u.Infra.gitignore_runtime_suffix(
+            config.Infra.codegen if render_inputs is None else render_inputs.codegen
+        )
         if suffix.failure:
             return r[str].from_failure(suffix)
         return u.Infra.preserve_project_gitignore_blocks(
