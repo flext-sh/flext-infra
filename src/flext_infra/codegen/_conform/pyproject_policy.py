@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, config, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra.__version__ import __version__
 from flext_infra.codegen._conform.file_plans import FlextInfraCodegenConformFilePlans
 
@@ -71,6 +71,43 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             directory
             for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
             if directory in generated_roots and (package or directory != source_dir)
+        )
+
+    @classmethod
+    def _existing_topology(
+        cls,
+        target: p.Infra.RepositoryConformTarget,
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> p.Infra.PyprojectDeclaredTopology:
+        """Declare one existing repository's topology for every manifest owner.
+
+        Returns:
+            The declared shipped shape, scaffold roots and analysis exclusions.
+
+        """
+        project = target.project
+        return m.Infra.PyprojectDeclaredTopology(
+            root_modules=project.root_modules if project is not None else (),
+            root_packages=project.root_packages if project is not None else (),
+            repository_namespace_packages=(
+                project.repository_namespace_packages if project is not None else ()
+            ),
+            packaged_data_paths=(
+                project.packaged_data_paths if project is not None else ()
+            ),
+            packaged_data_excludes=(
+                project.packaged_data_excludes if project is not None else ()
+            ),
+            declared_python_dirs=tuple(
+                cls._scaffold_python_dirs(
+                    codegen.templates.entries,
+                    target.make_profile,
+                    package=target.repository.package,
+                ),
+            ),
+            analysis_exclusions=tuple(
+                path.as_posix() for path in target.external_dependency_paths
+            ),
         )
 
     @classmethod
