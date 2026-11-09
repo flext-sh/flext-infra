@@ -341,10 +341,7 @@ class FlextInfraModelsTransformers:
             m.Field(description="Local names bound by from-import statements"),
         ]
         span: Annotated[
-            Annotated[
-                p.Infra.HeaderSpan,
-                t.schema_for_model(lambda: FlextInfraModelsTransformers.HeaderSpan),
-            ],
+            Annotated[FlextInfraModelsTransformers.HeaderSpan,],
             m.Field(description="Byte offsets for the header sections"),
         ]
 

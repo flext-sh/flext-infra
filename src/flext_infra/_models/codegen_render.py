@@ -145,10 +145,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         ] = False
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                Annotated[FlextInfraModelsConfigMake.MakeVerbSpec,],
                 ...,
             ],
             m.Field(description="Elected repository-owned public commands"),
@@ -221,10 +218,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            Annotated[FlextInfraModelsConfigMake.MakeSpec,],
             m.Field(description="Canonical workflow command contract"),
         ]
 
@@ -417,10 +411,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            Annotated[FlextInfraModelsConfigMake.MakeSpec,],
             m.Field(description="Canonical workflow command contract"),
         ]
         scenario_data_roots: Annotated[
@@ -453,10 +444,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Python major.minor line"),
         ]
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            Annotated[FlextInfraModelsConfigMake.MakeSpec,],
             m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
         ]
 
@@ -508,10 +496,7 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         """Typed input consumed only by the generated ``.sonarcloud.properties``."""
 
         sonarcloud: Annotated[
-            Annotated[
-                p.Infra.SonarcloudSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigRender.SonarcloudSpec),
-            ],
+            Annotated[FlextInfraModelsConfigRender.SonarcloudSpec,],
             m.Field(description="Fleet SonarCloud scope policy"),
         ]
         tests_dir: Annotated[

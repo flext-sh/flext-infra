@@ -990,8 +990,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         candidate: Annotated[
-            p.Infra.GateCandidateIdentity,
-            t.schema_for_model(lambda: FlextInfraModelsGates.GateCandidateIdentity),
+            FlextInfraModelsGates.GateCandidateIdentity,
             m.Field(description="Exact candidate identity"),
         ]
         allowed_signers: Annotated[
@@ -1058,8 +1057,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ] = ()
         attestation: (
             Annotated[
-                p.Infra.GateAttestationReport,
-                t.schema_for_model(lambda: FlextInfraModelsGates.GateAttestationReport),
+                FlextInfraModelsGates.GateAttestationReport,
                 m.Field(description="Verified attestation if eligible"),
             ]
             | None

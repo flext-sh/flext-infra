@@ -50,10 +50,7 @@ class FlextInfraModelsConfigRoot:
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
-            Annotated[
-                p.Infra.SourceScanSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigStatic.SourceScanSpec),
-            ],
+            Annotated[FlextInfraModelsConfigStatic.SourceScanSpec,],
             m.Field(description="Production-only source discovery contract"),
         ]
         mutation_lock: Annotated[
@@ -94,8 +91,7 @@ class FlextInfraModelsConfigRoot:
         """
 
         Infra: Annotated[
-            p.Infra.Infra,
-            t.schema_for_model(lambda: FlextInfraModelsConfigRoot.Infra),
+            FlextInfraModelsConfigRoot.Infra,
             m.Field(description="Validated flext-infra namespace"),
         ]
 

@@ -115,10 +115,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         package: Annotated[
-            Annotated[
-                p.Infra.LockedPackage,
-                t.schema_for_model(lambda: FlextInfraModelsWorkspace.LockedPackage),
-            ],
+            Annotated[FlextInfraModelsWorkspace.LockedPackage,],
             m.Field(description="Exact package selected by the target's native lock"),
         ]
         requirement: Annotated[
@@ -578,10 +575,9 @@ class FlextInfraModelsDeps(
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: Annotated[
-            p.Infra.DeptryReport,
-            t.schema_for_model(lambda: FlextInfraModelsDeps.DeptryReport),
-        ] = m.Field(description="Deptry report")
+        deptry: Annotated[FlextInfraModelsDeps.DeptryReport,] = m.Field(
+            description="Deptry report"
+        )
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects.
@@ -600,13 +596,7 @@ class FlextInfraModelsDeps(
                 ),
             ],
         ] = m.Field(description="Per-project reports")
-        pip_check: (
-            Annotated[
-                p.Infra.PipCheckReport,
-                t.schema_for_model(lambda: FlextInfraModelsDeps.PipCheckReport),
-            ]
-            | None
-        ) = m.Field(
+        pip_check: Annotated[FlextInfraModelsDeps.PipCheckReport,] | None = m.Field(
             None,
             description="Pip check report",
             validate_default=True,

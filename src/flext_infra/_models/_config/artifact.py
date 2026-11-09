@@ -668,10 +668,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Filesystem modes the pipeline emits (the mode SSOT)"),
         ]
         toolchain: Annotated[
-            Annotated[
-                p.Infra.ToolchainSpec,
-                t.schema_for_model(lambda: FlextInfraModelsMiseToolchain.ToolchainSpec),
-            ],
+            Annotated[FlextInfraModelsMiseToolchain.ToolchainSpec,],
             m.Field(description="Exact generated toolchain"),
         ]
 
@@ -769,10 +766,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sonarcloud: Annotated[
-            Annotated[
-                p.Infra.SonarcloudSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigRender.SonarcloudSpec),
-            ],
+            Annotated[FlextInfraModelsConfigRender.SonarcloudSpec,],
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
         ]
 
@@ -810,10 +804,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            Annotated[FlextInfraModelsConfigMake.MakeSpec,],
             m.Field(description="Canonical Make contract"),
         ]
         vscode: Annotated[
@@ -840,10 +831,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         layout: Annotated[
-            Annotated[
-                p.Infra.LayoutSpec,
-                t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutSpec),
-            ],
+            Annotated[FlextInfraModelsLayout.LayoutSpec,],
             m.Field(
                 description=(
                     "Declarative project-layout conformance contract consumed "
@@ -1243,10 +1231,7 @@ class FlextInfraModelsConfigArtifact(
             )
 
         scaffold: Annotated[
-            Annotated[
-                p.Infra.ScaffoldSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigScaffold.ScaffoldSpec),
-            ],
+            Annotated[FlextInfraModelsConfigScaffold.ScaffoldSpec,],
             m.Field(description="Typed new-project scaffold policy"),
         ]
         templates: Annotated[

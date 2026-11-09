@@ -171,11 +171,7 @@ class FlextInfraModelsConfigWorkspace:
             default_factory=FlextInfraModelsConfigContract.DocsAuditOverridesSpec
         )
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
-            ]
-            | None,
+            Annotated[FlextInfraModelsConfigContexts.ProjectSpec,] | None,
             m.Field(description="Explicit metadata for a new project scaffold"),
         ] = None
         integration: Annotated[
@@ -299,10 +295,7 @@ class FlextInfraModelsConfigWorkspace:
         ] = None
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                Annotated[FlextInfraModelsConfigMake.MakeVerbSpec,],
                 ...,
             ],
             m.Field(description="Own additional public Make commands"),
@@ -670,11 +663,7 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Root repository declaration"),
         ]
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
-            ]
-            | None,
+            Annotated[FlextInfraModelsConfigContexts.ProjectSpec,] | None,
             m.Field(description="Optional project creation metadata"),
         ] = None
         members: Annotated[
@@ -965,11 +954,7 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Local repository Git contract"),
         ]
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigContexts.ProjectSpec),
-            ]
-            | None,
+            Annotated[FlextInfraModelsConfigContexts.ProjectSpec,] | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
         flext_source: Annotated[

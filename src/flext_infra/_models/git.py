@@ -274,10 +274,7 @@ class FlextInfraModelsGit(
         ]
         entries: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitWorktreeEntry,
-                    t.schema_for_model(lambda: FlextInfraModelsGit.GitWorktreeEntry),
-                ],
+                Annotated[FlextInfraModelsGit.GitWorktreeEntry,],
                 ...,
             ],
             m.Field(description="Every registered worktree, primary first"),

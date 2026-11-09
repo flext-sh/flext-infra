@@ -21,8 +21,7 @@ valid:
     class FlextModelsHandler:
         class HandlerRuntimeState(Base):
             execution_context: Annotated[
-                p.ExecutionContext,
-                t.schema_for_model(lambda: FlextModelsHandler.ExecutionContext),
+                FlextModelsHandler.ExecutionContext,
             ]
 invalid:
   - |

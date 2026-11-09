@@ -144,10 +144,7 @@ class FlextInfraModelsDepsToolConfig(
     class ModConfig(m.ArbitraryTypesModel):
         """Declarative policy for the unified modernize verb ``mod``."""
 
-        phases: Annotated[
-            p.Infra.ModPhasesConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModPhasesConfig),
-        ] = m.Field(
+        phases: Annotated[FlextInfraModelsDepsToolConfig.ModPhasesConfig,] = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
 
@@ -536,10 +533,7 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ]
         semantic: Annotated[
-            Annotated[
-                p.Infra.JscpdSemantic,
-                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdSemantic),
-            ],
+            Annotated[FlextInfraModelsDuplication.JscpdSemantic,],
             m.Field(description="Embedding pass host (--semantic)."),
         ]
         ignore_patterns: t.StrTuple = m.Field(
@@ -677,10 +671,7 @@ class FlextInfraModelsDepsToolConfig(
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
-        markdown: Annotated[
-            p.Infra.MarkdownConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.MarkdownConfig),
-        ] = m.Field(
+        markdown: Annotated[FlextInfraModelsDepsToolConfig.MarkdownConfig,] = m.Field(
             description="Markdown lint settings",
         )
         ruff: Annotated[
@@ -715,22 +706,13 @@ class FlextInfraModelsDepsToolConfig(
         ] = m.Field(
             description="Pyrefly settings",
         )
-        pytest: Annotated[
-            p.Infra.PytestConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
-        ] = m.Field(
+        pytest: Annotated[FlextInfraModelsDepsToolConfig.PytestConfig,] = m.Field(
             description="Pytest settings",
         )
-        tomlsort: Annotated[
-            p.Infra.TomlsortConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.TomlsortConfig),
-        ] = m.Field(
+        tomlsort: Annotated[FlextInfraModelsDepsToolConfig.TomlsortConfig,] = m.Field(
             description="Tomlsort settings",
         )
-        jscpd: Annotated[
-            p.Infra.JscpdToolConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.JscpdToolConfig),
-        ] = m.Field(
+        jscpd: Annotated[FlextInfraModelsDepsToolConfig.JscpdToolConfig,] = m.Field(
             description="jscpd clone-semantics passes",
         )
 
@@ -921,16 +903,10 @@ class FlextInfraModelsDepsToolConfig(
             pattern="^\\.[A-Za-z0-9_.-]+$",
             description="Filename suffix for verbatim native check receipts.",
         )
-        tools: Annotated[
-            p.Infra.ToolConfigTools,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ToolConfigTools),
-        ] = m.Field(
+        tools: Annotated[FlextInfraModelsDepsToolConfig.ToolConfigTools,] = m.Field(
             description="Tools",
         )
-        lazy_init: Annotated[
-            p.Infra.LazyInitConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.LazyInitConfig),
-        ] = m.Field(
+        lazy_init: Annotated[FlextInfraModelsDepsToolConfig.LazyInitConfig,] = m.Field(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
         )
@@ -943,10 +919,7 @@ class FlextInfraModelsDepsToolConfig(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
         )
-        smells: Annotated[
-            p.Infra.SmellsConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.SmellsConfig),
-        ] = m.Field(
+        smells: Annotated[FlextInfraModelsDepsToolConfig.SmellsConfig,] = m.Field(
             description="Repair guidance for qlty smell findings.",
         )
         accessor_policy: Annotated[
@@ -959,10 +932,7 @@ class FlextInfraModelsDepsToolConfig(
             description="Accessor naming policy of the accessor migration.",
         )
 
-        mod: Annotated[
-            p.Infra.ModConfig,
-            t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.ModConfig),
-        ] = m.Field(
+        mod: Annotated[FlextInfraModelsDepsToolConfig.ModConfig,] = m.Field(
             description="Declarative make-mod phase policy.",
         )
 

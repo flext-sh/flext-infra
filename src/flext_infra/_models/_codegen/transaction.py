@@ -28,10 +28,7 @@ class FlextInfraModelsCodegenTransaction:
 
         inputs: Annotated[
             tuple[
-                Annotated[
-                    p.Cli.AtomicFileState,
-                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
-                ],
+                Annotated[m.Cli.AtomicFileState,],
                 ...,
             ],
             m.Field(
