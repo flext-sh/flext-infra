@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 @c.Tests.MARK.slow
@@ -23,6 +23,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         *,
         extra_verbs: tuple[p.Infra.MakeVerbSpec, ...],
         script_dispatch: p.Infra.ScriptDispatchSpec | None,
+        commands: tuple[tuple[str, t.JsonMapping], ...] = (),
     ) -> str:
         # The engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
@@ -50,12 +51,82 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         root = tmp_path / root_repository.name
         root.mkdir()
+        for relative, command in commands:
+            u.Tests.write_promoted_command(root / relative, command)
         u.Tests.initialize_git_repo(root, origin_url=root_repository.url)
         rendered: str = u.Tests.conform_makefile_text(
             root,
             workspace,
         )
         return rendered
+
+    @staticmethod
+    def _command(
+        verb: str,
+        what: str,
+        aliases: tuple[str, ...] = (),
+    ) -> t.JsonMapping:
+        """Return one promoted command header table.
+
+        Returns:
+            The ``[tool.flext.command]`` table of one read-only command.
+
+        """
+        return {
+            "verb": verb,
+            "what": what,
+            "domain": verb,
+            "summary": f"Run {verb} {what}",
+            "description": f"Run the {verb} {what} action.",
+            "example": f"make {verb} WHAT={what}",
+            "mutates": False,
+            "aliases": [*aliases],
+        }
+
+    def test_header_declared_verbs_and_aliases_get_public_targets(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Every verb and alias a command header declares is a public target.
+
+        No ``all.sh`` entrypoint and no ``extra_verbs`` entry declares them:
+        the promoted registry the dispatcher builds, over every declared
+        root, is the only source of the script verbs.
+        """
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(),
+            script_dispatch=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py",
+                roots=("scripts", "apps/demo-app/scripts"),
+            ),
+            commands=(
+                ("scripts/finops/krr_sizing.py", self._command("finops", "krr-sizing")),
+                (
+                    "scripts/incidente/all.sh",
+                    self._command("incidente", "all", ("breakglass",)),
+                ),
+                (
+                    "apps/demo-app/scripts/charts/adopt.py",
+                    self._command("charts", "adopt"),
+                ),
+            ),
+        )
+        script_verbs = next(
+            line for line in rendered.splitlines() if line.startswith("SCRIPT_VERBS :=")
+        )
+        tm.that(
+            script_verbs.split()[2:],
+            eq=["breakglass", "charts", "finops", "incidente"],
+        )
+        tm.that(
+            rendered,
+            has=[
+                f"_builtin-{verb}: _builtin_require_environment\n"
+                f"\t$(call _dispatch,{verb})"
+                for verb in ("breakglass", "charts", "finops", "incidente")
+            ],
+        )
 
     def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
         self,
@@ -78,6 +149,7 @@ class TestsFlextInfraScriptDispatchMakefile:
                 dispatcher="scripts/dispatch.py",
                 roots=("scripts", "apps/demo-app/scripts"),
             ),
+            commands=(("scripts/incidente/all.sh", self._command("incidente", "all")),),
         )
         # Extra verbs are public targets the dispatcher can reach.
         tm.ok("incidente" in rendered)
@@ -485,6 +557,9 @@ class TestsFlextInfraScriptDispatchMakefile:
             tmp_path,
             extra_verbs=(),
             script_dispatch=script_dispatch,
+            commands=()
+            if script_dispatch is None
+            else (("scripts/sync/all.sh", self._command("sync", "all")),),
         )
         env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
         tm.ok(f"for directory in {env_dirs}; do" in rendered)
