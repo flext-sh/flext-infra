@@ -127,11 +127,19 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_ignore_artifacts_are_exact_projection(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Preserve configured order while rendering directory suffixes."""
-        expected = tuple(
-            f"{artifact.name}/" if artifact.is_dir else artifact.name
-            for artifact in codegen.artifacts
-            if artifact.gitignore and not artifact.generated_source
+        """Preserve configured order, then ignore the executor's state directory.
+
+        Setup keeps the executor environment and its publication and lifecycle
+        locks in one runtime state directory; none of it is source.
+        """
+        state = codegen.make.executor_environment.directory.parent.as_posix()
+        expected = (
+            *(
+                f"{artifact.name}/" if artifact.is_dir else artifact.name
+                for artifact in codegen.artifacts
+                if artifact.gitignore and not artifact.generated_source
+            ),
+            f"/{state}/",
         )
         tm.that(codegen.gitignore_artifact_patterns, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))

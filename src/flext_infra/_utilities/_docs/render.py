@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from glob import translate
 from pathlib import Path, PurePosixPath
 from posixpath import normpath
-from typing import ClassVar
+from typing import ClassVar, cast
 from urllib.parse import urlsplit
 
 from flext_cli import u
@@ -534,7 +534,10 @@ class FlextInfraUtilitiesDocsRender:
                 public_symbols=sequence(contract, "public_symbols"),
                 module_exports=sequence(contract, "module_exports"),
                 preview_limits=(
-                    config.Infra.codegen.make.docs.overview_preview_limits.model_dump()
+                    cast(
+                        Mapping[str, int],
+                        config.Infra.codegen.make.docs.overview_preview_limits.model_dump(),
+                    )
                 ),
                 module_count=len(modules),
             ),

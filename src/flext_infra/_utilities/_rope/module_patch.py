@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from flext_infra import c, m, p, r
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
@@ -138,7 +139,11 @@ class FlextInfraUtilitiesRopeModulePatch:
         return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
             resource,
             source,
-            (m.Infra.SourceRewrite(start=start, end=end, text=rendered),),
+            (
+                FlextInfraModelsTransformers.SourceRewrite(
+                    start=start, end=end, text=rendered
+                ),
+            ),
         ).new_contents
 
     @staticmethod
@@ -407,7 +412,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                         resource,
                         source,
                         (
-                            m.Infra.SourceRewrite(
+                            FlextInfraModelsTransformers.SourceRewrite(
                                 start=fragment.start, end=fragment.end, text=original
                             ),
                         ),

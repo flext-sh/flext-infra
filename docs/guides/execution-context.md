@@ -655,7 +655,10 @@ data and invokes that dispatcher exactly once. The dispatcher owns discovery,
 selection, validation and its original exit status. Make does not interpolate the
 selector into shell source, scan script roots, select an `all.sh` substitute or
 probe selector-named private targets. Explicit verb-level custom handlers retain
-their declared hook contract; they are not a second selector registry.
+their declared hook contract; they are not a second selector registry. Generation
+renders the script verbs from that same registry: every verb and alias a command
+header declares in a declared root gets one public target, without an `all.sh`
+entrypoint or a mirroring `extra_verbs` entry.
 
 Facade planning preserves the complete import identity elected by the project
 discovery owner, including nested and namespace packages. A directory basename is

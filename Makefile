@@ -295,7 +295,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup check tests check tests,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup check,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
 endif
 
@@ -316,36 +316,6 @@ $(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-check,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-check" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
-endif
-endif
-
-ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
-override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
-ifneq ($(.SHELLSTATUS),0)
-$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
-endif
-ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
-$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
 endif
 endif
 

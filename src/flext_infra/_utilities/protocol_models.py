@@ -19,7 +19,7 @@ import tomllib
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, is_protocol, override
+from typing import ClassVar, cast, is_protocol, override
 
 from flext_cli import u
 
@@ -1612,6 +1612,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 .parts,
             ))
             source_module = self.project.get_module(module_name)
+            source_module = cast(p.Infra.RopePyModule, source_module)
             source = self.project.source_text(model_sibling)
             tree = ast.parse(source, filename=str(model_sibling))
             owners: list[tuple[ast.ClassDef, p.Infra.RopeSourceClass]] = []
@@ -1849,7 +1850,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     f"{model_base_class}"
                 )
                 raise TypeError(msg)
-            if self._source_is_marker_class(model_base_class.get_ast()):
+            if self._source_is_marker_class(
+                cast(ast.AST | None, model_base_class.get_ast())
+            ):
                 return None
             package_dir, package_name = package
             models_root = package_dir / "_models"
@@ -2933,7 +2936,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, protocol, protocols_root
             )
             extra = (
-                {}
+                cast(Mapping[str, tuple[t.Infra.AstStatement, Path]], {})
                 if stale
                 else {name: actual[name] for name in sorted(set(actual) - expected)}
             )
@@ -3339,7 +3342,11 @@ class FlextInfraUtilitiesModelsProtocol:
             """Return only nested namespace declarations owned by a models facade."""
             module = value.get_module()
             resource = module.get_resource() if module is not None else None
-            if resource is None or Path(resource.real_path).name != "models.py":
+            if (
+                resource is None
+                or not isinstance(resource, p.Infra.RopeFile)
+                or Path(resource.real_path).name != "models.py"
+            ):
                 return ()
             facade = FlextInfraUtilitiesRopeAnalysis.published_facade_owner(
                 self.project, resource
@@ -5696,7 +5703,12 @@ class FlextInfraUtilitiesModelsProtocol:
             owner = self.project.get_module(module_name)
             for part in paths[0]:
                 owner = self._source_class(owner.get_attribute(part))
-            binding = self.resolve_symbol(scope or owner.get_scope(), expression)
+            owner_scope = owner.get_scope()
+            if owner_scope is None:
+                return None
+            binding = self.resolve_symbol(
+                scope if scope is not None else owner_scope, expression
+            )
             if binding is None:
                 return None
             alias = self.annotation_alias_definition(binding)
@@ -6433,7 +6445,10 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             for size in range(len(attributes), 0, -1):
                 prefix = ".".join((letter, *attributes[:size]))
-                member = self.resolve_symbol(facade.get_scope(), prefix)
+                facade_scope = facade.get_scope()
+                if facade_scope is None:
+                    continue
+                member = self.resolve_symbol(facade_scope, prefix)
                 declared = (
                     self._source_binding_declaration(member)
                     if member is not None
@@ -7536,6 +7551,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 destination.relative_to(self.repository_root)
             )
             scope = self.project.get_module(module_name).get_scope()
+            if scope is None:
+                return ast.unparse(annotation)
             facade = self.project.get_module(
                 f"{self.source_package_name}.protocols"
             ).get_attribute("p")
@@ -7567,7 +7584,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             msg = "Annotated field has no value type"
                             raise ValueError(msg)
                         return self.visit(node.slice.elts[0])
-                    return self.generic_visit(node)
+                    return cast(ast.expr, self.generic_visit(node))
 
             normalized = Normalize().visit(copy.deepcopy(annotation))
             return ast.unparse(ast.fix_missing_locations(normalized))
@@ -7912,7 +7929,10 @@ class FlextInfraUtilitiesModelsProtocol:
             protocol_base = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
-            for contract in context.contracts:
+            for contract in cast(
+                Sequence[m.Infra.ModelProtocolRenderContext.ModelProtocolContract],
+                context.contracts,
+            ):
                 present = holder.get_attributes().get(contract.name)
                 if present is None:
                     missing.append(contract)
@@ -8180,8 +8200,13 @@ class FlextInfraUtilitiesModelsProtocol:
                 if resource is None:
                     message = f"indexed model source is unavailable: {entry.file_path}"
                     raise ValueError(message)
-                module = self.require_semantic_module(
-                    FlextInfraUtilitiesRopeCore.resolve_pymodule(self.project, resource)
+                module = cast(
+                    p.Infra.RopeSourceModule,
+                    self.require_semantic_module(
+                        FlextInfraUtilitiesRopeCore.resolve_pymodule(
+                            self.project, resource
+                        )
+                    ),
                 )
                 registered = self._inventory_module_models(module, model_base)
                 if registered.failure:

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
-from contextlib import ExitStack
 from pathlib import Path
 
 from flext_infra import c, config, m, p, t
@@ -19,12 +18,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._rope.runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope.source_bases_aliases import (
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.source_bases_runtime import (
-    FlextInfraUtilitiesRopeSourceBasesRuntime,
-)
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -62,90 +55,6 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     ):
                         packages.add(package)
         return tuple(sorted(packages))
-
-    @classmethod
-    def runtime_evaluated_base_classes(
-        cls,
-        project_root: Path,
-        planned_sources: Mapping[Path, str],
-        roots: Sequence[str],
-        *,
-        source_project: p.Infra.RopeProject | None = None,
-    ) -> t.StrTuple:
-        """Return the class bases whose subclasses evaluate annotations at runtime.
-
-        Captured source supplies declaration identities, while import bindings
-        supply Ruff's qualified expressions. Planned bytes override disk and
-        providers before aliases, members and ordered C3 parents are resolved.
-        No project package is imported during generation.
-
-        Returns:
-            The declared roots and the derived bases, by qualified name.
-
-        """
-        root = project_root.resolve()
-        with ExitStack() as stack:
-            if source_project is None:
-                source_project, captured = stack.enter_context(
-                    FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-                        root,
-                        planned_sources=planned_sources,
-                    )
-                )
-            else:
-                captured = cls._project_sources(
-                    root, planned_sources, source_project=source_project
-                )
-            native_roots = {
-                Path(folder.real_path) for folder in source_project.get_source_folders()
-            }
-            provider_roots = tuple(
-                Path(folder.real_path)
-                for folder in source_project.get_python_path_folders()
-                if Path(folder.real_path) not in native_roots
-                and Path(folder.real_path).is_relative_to(root)
-            )
-            planned = frozenset(path.resolve() for path in planned_sources)
-            sources: MutableMapping[str, tuple[Path, str]] = {}
-            for path, source in captured.items():
-                # Providers remain in their native import election, not the owned
-                # declaration census. Explicit plans retain their authority.
-                if path not in planned and any(
-                    path.is_relative_to(provider_root)
-                    for provider_root in provider_roots
-                ):
-                    continue
-                module = FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
-                    path, project_root=root, source_project=source_project
-                )
-                if module:
-                    sources[module] = path, source
-            if not sources:
-                return tuple(sorted(roots))
-            # The original or proposed initializer owns each public alias.
-            extra_module_aliases: dict[str, str] = {}
-            for init_module, (init_path, init_source) in sorted(sources.items()):
-                if init_path.name != c.Infra.INIT_PY:
-                    continue
-                for (
-                    alias,
-                    absolute,
-                ) in FlextInfraUtilitiesRopeSourceBasesAliases.lazy_module_aliases(
-                    init_module,
-                    init_path,
-                    init_source,
-                    project=source_project,
-                ).items():
-                    extra_module_aliases.setdefault(
-                        f"{init_module}.{alias}",
-                        absolute,
-                    )
-            return FlextInfraUtilitiesRopeSourceBasesRuntime.runtime_bases(
-                source_project,
-                sources,
-                roots,
-                extra_module_aliases=extra_module_aliases,
-            )
 
     @staticmethod
     def _project_sources(

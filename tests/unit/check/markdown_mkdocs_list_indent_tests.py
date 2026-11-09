@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import config
 from flext_infra.gates import FlextInfraGatesMarkdown
-from tests import c, m, tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -64,10 +64,8 @@ class TestsFlextInfraMarkdownMkdocsListIndent:
             The repair's execution.
 
         """
-        context = m.Infra.GateContext(
-            repository_root=tmp_path,
-            reports_dir=tmp_path,
-            apply_fixes=True,
+        context = u.Tests.gate_context(tmp_path).model_copy(
+            update={"apply_fixes": True}
         )
         return FlextInfraGatesMarkdown(tmp_path).fix(project_dir, context)
 

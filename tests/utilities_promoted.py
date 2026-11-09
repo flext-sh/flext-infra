@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from flext_infra import u
-from tests import m, p
+from flext_infra import config, u
+from tests import c, m, p, tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,6 +56,29 @@ class TestsFlextInfraUtilitiesPromoted:
             msg = "retired flext-command block carries invalid TOML"
             raise ValueError(msg)
         return "".join(lines[start : end + 1]), mapping
+
+    @staticmethod
+    def write_promoted_command(path: Path, command: t.JsonMapping) -> Path:
+        """Write one command file whose canonical header declares ``command``.
+
+        The header is the PEP 723 block the dispatcher and the Makefile
+        projection both read, rendered within the configured Ruff width.
+
+        Returns:
+            The written command path.
+
+        """
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+        shebang = (
+            "#!/usr/bin/env python3"
+            if path.suffix == c.Infra.EXT_PYTHON
+            else "#!/usr/bin/env bash"
+        )
+        header = u.Infra.promoted_render_header(command, width=width)
+        tm.ok(u.Cli.atomic_write_text_file(path, f"{shebang}\n{header}\n"))
+        return path
 
     @staticmethod
     def promoted_command(

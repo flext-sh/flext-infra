@@ -5,7 +5,7 @@ id: ban-protocol-validation-target
 valid:
 - |
   from flext_infra import m, p, u
-  adapter = u.type_adapter(tuple[m.Infra.FacadeFamily, ...])
+  adapter = u.type_adapter(tuple[p.Infra.FacadeFamily, ...])
 - |
   from flext_infra import p, u
   adapter = u.type_adapter(tuple[p.Infra.RopeImportedName, ...])

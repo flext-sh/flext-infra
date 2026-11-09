@@ -17,9 +17,10 @@ from inspect import getsource
 from pathlib import Path
 from textwrap import dedent, indent
 from types import ModuleType
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from pydantic.warnings import UnsupportedFieldAttributeWarning
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, s, settings, t, u
 from flext_infra.workspace._environment.provenance_module_source import (
@@ -491,7 +492,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                     }
                     | {klass.__name__: klass}
                 )
-                u.type_adapter(probe_subclass).rebuild(
+                u.type_adapter(cast(TypeForm[object], probe_subclass)).rebuild(
                     force=True,
                     raise_errors=True,
                     _types_namespace=parent_namespace,
@@ -532,10 +533,11 @@ class FlextInfraValidateFreshImport(s[bool]):
                             "__pydantic_fields__" in vars(annotation)
                         ):
                             # A model field type builds in its own module namespace.
-                            u.type_adapter(annotation)
+                            u.type_adapter(cast(TypeForm[object], annotation))
                         else:
                             u.type_adapter(
-                                annotation, config={"defer_build": True}
+                                cast(TypeForm[object], annotation),
+                                config={"defer_build": True},
                             ).rebuild(
                                 force=True,
                                 raise_errors=True,

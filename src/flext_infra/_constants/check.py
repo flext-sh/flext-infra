@@ -431,6 +431,41 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Lint-neutral line replacing each inner line of a foreign projected block."
     MARKDOWN_STDIN_BATCH_SEPARATOR: ClassVar[str] = "\0"
     "rumdl ``--stdin-batch`` delimiter after each path and after each content."
+    MARKDOWN_MKDOCS_NESTED_ITEM_RULE: ClassVar[str] = "MD007"
+    "rumdl rule reporting a bullet nested below its ordered parent's MkDocs column."
+    MARKDOWN_MKDOCS_ITEM_CONTENT_RULE: ClassVar[str] = "MD077"
+    "rumdl rule reporting loose item content below its owner's MkDocs column."
+    MARKDOWN_MKDOCS_LIST_RULES: ClassVar[tuple[str, ...]] = (
+        MARKDOWN_MKDOCS_NESTED_ITEM_RULE,
+        MARKDOWN_MKDOCS_ITEM_CONTENT_RULE,
+    )
+    (
+        "Phase order of the ``make fix`` re-indent: a nested item moves before "
+        "the content whose column its new position sets."
+    )
+    MARKDOWN_MKDOCS_LIST_INDENT: ClassVar[int] = 4
+    "Python-Markdown ``tab_length``: an item's blocks sit four columns per level."
+    MARKDOWN_LIST_MAX_MARKER_GAP: ClassVar[int] = 4
+    (
+        "CommonMark: past four spaces after a marker the text is indented code, "
+        "so the item's content starts one column after the marker."
+    )
+    MARKDOWN_PER_FILE_FLAVOR_TABLE: ClassVar[str] = "per-file-flavor"
+    "rumdl native table mapping path globs to their Markdown flavor."
+    MARKDOWN_MKDOCS_FLAVOR: ClassVar[str] = "mkdocs"
+    "rumdl flavor of documents rendered by MkDocs (Python-Markdown)."
+    MARKDOWN_LIST_MARKER_RE: ClassVar[t.RegexPattern] = re.compile(
+        r"(?P<indent> *)(?P<marker>\d{1,9}[.)]|[-+*])(?P<gap> *)(?P<text>.*)",
+        re.ASCII,
+    )
+    "CommonMark list item opening a line: indentation, marker, gap, text."
+    MARKDOWN_PARAGRAPH_INTERRUPTIONS: ClassVar[tuple[t.RegexPattern, ...]] = (
+        re.compile(r" *(?:>|#{1,6}(?: |$)|`{3}|~{3})"),
+        re.compile(r" *[-=]+ *$"),
+        re.compile(r" *(?:[*_] *){3,}$"),
+    )
+    "CommonMark block starts (quote, heading, fence; setext underline; thematic"
+    " break) that end a paragraph instead of continuing it lazily."
     MARKDOWN_FORMAT_DIFF_HEADERS: ClassVar[tuple[str, str]] = ("--- ", "+++ ")
     MARKDOWN_FORMAT_RE: ClassVar[t.RegexPattern] = re.compile(
         # Prettier applies terminal SGR styling to the warning label in CI.

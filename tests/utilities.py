@@ -245,6 +245,9 @@ class TestsFlextInfraUtilities(flext_infra_u):
             script_dispatch: p.Infra.ScriptDispatchSpec | None = None
             verb_groups: tuple[p.Infra.MakeVerbGroupSpec, ...] = ()
             version: str | None = None
+            # Repository-relative promoted command files and their header
+            # tables, written before rendering because headers declare verbs.
+            commands: tuple[tuple[str, t.JsonMapping], ...] = ()
 
         @staticmethod
         def render_make_environment(
@@ -284,6 +287,8 @@ class TestsFlextInfraUtilities(flext_infra_u):
                 repository.distribution,
             )
             u.Tests.declare_governed_kind(project_root)
+            for relative, command in shape.commands:
+                u.Tests.write_promoted_command(project_root / relative, command)
             if shape.version is not None:
                 tm.ok(u.Infra.replace_project_version(project_root, shape.version))
             # The generated Makefile consumes the tracked Mise launcher for every
