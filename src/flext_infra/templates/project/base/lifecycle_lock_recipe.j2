@@ -3,7 +3,7 @@ set -eu; \
 lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
 lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
 if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
-mkdir -p "$$lifecycle_state"; \
+mkdir -p "$$lifecycle_state" 2>/dev/null || true; \
 if [ -e "$$lifecycle_lock" ] && [ ! -f "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease is not a regular file\n' >&2; exit 2; fi; \
 : >>"$$lifecycle_lock"; \
 lifecycle_identity="$$(stat -c '%d:%i' "$$lifecycle_lock")"; \

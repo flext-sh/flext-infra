@@ -44,7 +44,6 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         )
         files: tuple[
             FlextInfraModelsGates.SccFile,
-            FlextInfraModelsGates.SccFile,
             ...,
         ] = m.Field(alias="Files", description="Every scanned file in this language")
 

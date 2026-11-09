@@ -48,7 +48,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 for name, equal in (
                     ("project", previous.project == file.project),
                     ("path", previous.path == file.path),
-                    ("before", previous.before == file.before),
+                    ("before", previous.before is file.before or (previous.before is not None and file.before is not None and previous.before.content == file.before.content)),
                     ("owner", previous.owner == file.owner),
                     ("policy", previous.policy == file.policy),
                     ("tracking", previous.tracking == file.tracking),
