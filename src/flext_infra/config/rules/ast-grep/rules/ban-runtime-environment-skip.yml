@@ -1,0 +1,38 @@
+# A test whose run depends on an external environment value declares it as a
+# connectivity prerequisite (AGENTS.md "Production Readiness And Connectivity
+# Tests", operator rule 2026-10-10; operator decision 2026-11-08, tracker key
+# `operator-decision-2026-11-08-connectivity-skips-not-red`). The flext-tests
+# plugin deselects such a test before its fixtures run and the runner reports
+# it as an unmet prerequisite. A skip raised inside the test or a fixture after
+# reading the environment is an ordinary skip: the runner rejects the run, and
+# the prerequisite stays invisible until execution.
+#
+# Detection only: moving the prerequisite to the marker needs the variable
+# names the code reads, which belong to the test's own constants.
+id: ban-runtime-environment-skip
+language: python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  kind: call
+  has:
+    field: function
+    any:
+      - pattern: $OWNER.skip
+      - pattern: skip
+  inside:
+    kind: function_definition
+    stopBy: end
+    has:
+      stopBy: end
+      any:
+        - pattern: $READER.env_read($$$)
+        - pattern: os.environ
+        - pattern: os.getenv($$$)
+        - pattern: getenv($$$)
+message: >-
+  A skip after reading the environment is an ordinary skip, and the run fails
+  on it. Declare the external prerequisite on the test or its class instead:
+  `@c.Tests.MARK.connectivity(required_vars=<the names>)`.

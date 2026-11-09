@@ -31,48 +31,24 @@ class FlextInfraProtocolsProjectArtifacts:
     class ProjectManagedArtifactsConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def Mise(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig:
-            """Mise additions owned by the current project."""
-            ...
-
-        @property
-        def Gitignore(
-            self,
-        ) -> FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig:
-            """Ignore patterns owned by the current project."""
-            ...
+        Mise: FlextInfraProtocolsDepsToolConfigProjectMise.ProjectMiseConfig
+        Gitignore: FlextInfraProtocolsProjectGitignore.ProjectGitignoreConfig
 
     @runtime_checkable
     class ProjectManagedArtifactsResolution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def artifacts(
-            self,
-        ) -> FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsConfig:
-            """Composed managed-artifact configuration."""
-            ...
-
+        artifacts: FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsConfig
         mise_tool_sources: Mapping[t.NonEmptyStr, Path]
 
     @runtime_checkable
     class ProjectManagedArtifactsSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
-            """Ordered exact project configuration sources."""
-            ...
-
-        @property
-        def resolution(
-            self,
-        ) -> FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsResolution:
-            """Managed artifacts parsed from those exact sources."""
-            ...
+        sources: tuple[p.Cli.AtomicFileState, ...]
+        resolution: (
+            FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsResolution
+        )
 
 
 __all__: list[str] = [

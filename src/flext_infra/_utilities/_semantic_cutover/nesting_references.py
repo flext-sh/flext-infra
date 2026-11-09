@@ -24,7 +24,7 @@ from libcst.metadata import (
     ScopeProvider,
 )
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
@@ -391,7 +391,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             if not matches:
                 return None
             match actual:
-                case m.Infra.RopeImportedName():
+                case p.Infra.RopeImportedName():
                     provider = (
                         FlextInfraUtilitiesRopeRuntimeTypes.require_semantic_module(
                             actual.imported_module.get_object(),

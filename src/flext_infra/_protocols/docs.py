@@ -542,7 +542,7 @@ class FlextInfraProtocolsDocs(Protocol):
             ...
 
         @property
-        def class_counts(self) -> Sequence[FlextInfraProtocolsDocs.DocsClassCount]:
+        def class_counts(self) -> Sequence[FlextInfraProtocolsDocs.DocsClassCount,]:
             """Projects per documentation class."""
             ...
 
@@ -551,7 +551,7 @@ class FlextInfraProtocolsDocs(Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def entries(self) -> Sequence[FlextInfraProtocolsDocs.DocsProjectIndexEntry]:
+        def entries(self) -> Sequence[FlextInfraProtocolsDocs.DocsProjectIndexEntry,]:
             """Per-project module page counts."""
             ...
 
@@ -562,7 +562,7 @@ class FlextInfraProtocolsDocs(Protocol):
         @property
         def entries(
             self,
-        ) -> Sequence[FlextInfraProtocolsDocsGeneration.DocsCatalogEntry]:
+        ) -> Sequence[FlextInfraProtocolsDocsGeneration.DocsCatalogEntry,]:
             """Catalog rows that survive the exclusions."""
             ...
 
