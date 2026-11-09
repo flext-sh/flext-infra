@@ -11,7 +11,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 
 
@@ -49,10 +49,7 @@ class FlextInfraModelsRopeMove:
         """One class move whose Rope identities are resolved before any rewrite."""
 
         request: Annotated[
-            Annotated[
-                p.Infra.ClassMoveRequest,
-                t.schema_for_model(lambda: FlextInfraModelsRopeMove.ClassMoveRequest),
-            ],
+            FlextInfraModelsRopeMove.ClassMoveRequest,
             m.Field(description="Prevalidated class-move request being planned"),
         ]
         declaration: Annotated[

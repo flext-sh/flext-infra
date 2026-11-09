@@ -31,10 +31,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
 
         release_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(
@@ -69,10 +66,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ]
         pytest: Annotated[
-            Annotated[
-                p.Infra.PytestConfig,
-                t.schema_for_model(lambda: FlextInfraModelsDepsToolConfig.PytestConfig),
-            ],
+            FlextInfraModelsDepsToolConfig.PytestConfig,
             m.Field(description="Typed pytest execution policy"),
         ]
         environment_directory: Annotated[
@@ -219,18 +213,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Typed render input for an existing repository Makefile."""
 
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(description="Repository-specific public Make verbs"),
@@ -319,10 +307,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = False
         make: Annotated[
-            Annotated[
-                p.Infra.MakeSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeSpec),
-            ],
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
         mypy_timeout_exit_code: Annotated[
@@ -382,10 +367,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ] = ()
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(description="Repository-specific additional public Make verbs"),
@@ -480,10 +462,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         """Scaffold, dependency, tooling and ownership of a rendered project."""
 
         scaffold: Annotated[
-            Annotated[
-                p.Infra.ScaffoldSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigScaffold.ScaffoldSpec),
-            ],
+            FlextInfraModelsConfigScaffold.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[

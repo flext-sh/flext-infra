@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-from flext_cli import m, p, t
+from flext_cli import m, t
 
 from flext_infra import c
 
@@ -251,10 +251,7 @@ class FlextInfraModelsBase:
             m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
         output: Annotated[
-            Annotated[
-                p.Cli.CommandOutput, t.schema_for_model(lambda: m.Cli.CommandOutput)
-            ]
-            | None,
+            Annotated[m.Cli.CommandOutput] | None,
             m.Field(
                 description="Original native streams, duration and process outcome"
             ),

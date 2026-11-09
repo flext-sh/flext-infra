@@ -1,14 +1,14 @@
 id: defer-schema-for-model-owner
 snapshots:
   "leaf: Annotated[p.Infra.Leaf, t.schema_for_model(FlextInfraModelsX.Leaf)]":
-    fixed: "leaf: Annotated[p.Infra.Leaf, t.schema_for_model(lambda: FlextInfraModelsX.Leaf)]"
+    fixed: "leaf: Annotated[FlextInfraModelsX.Leaf]"
     labels:
     - source: t.schema_for_model(FlextInfraModelsX.Leaf)
       style: primary
       start: 30
       end: 72
   "leaf: Annotated[p.Leaf, t.schema_for_model(m.Leaf)]":
-    fixed: "leaf: Annotated[p.Leaf, t.schema_for_model(lambda: m.Leaf)]"
+    fixed: "leaf: Annotated[m.Leaf]"
     labels:
     - source: t.schema_for_model(m.Leaf)
       style: primary

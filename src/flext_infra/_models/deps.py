@@ -87,9 +87,9 @@ class FlextInfraModelsDeps(
     class ProjectMetadataState(m.ArbitraryTypesModel):
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
-        source: Annotated[
-            p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-        ] = m.Field(exclude=True, description="Original TOML observation parsed here")
+        source: Annotated[m.Cli.AtomicFileState] = m.Field(
+            exclude=True, description="Original TOML observation parsed here"
+        )
         metadata: Annotated[
             t.Port[p.ProjectMetadata],
             m.Field(description="Original canonical PEP 621 and FLEXT metadata"),
@@ -115,10 +115,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         package: Annotated[
-            Annotated[
-                p.Infra.LockedPackage,
-                t.schema_for_model(lambda: FlextInfraModelsWorkspace.LockedPackage),
-            ],
+            FlextInfraModelsWorkspace.LockedPackage,
             m.Field(description="Exact package selected by the target's native lock"),
         ]
         requirement: Annotated[
@@ -140,9 +137,7 @@ class FlextInfraModelsDeps(
         target_root: Annotated[Path, m.Field(description="Selected repository root")]
         python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
         lock: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            Annotated[m.Cli.AtomicFileState],
             m.Field(description="Captured native UV lock of the selected runtime"),
         ]
         providers: Annotated[
@@ -199,9 +194,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         before: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            Annotated[m.Cli.AtomicFileState],
             m.Field(
                 description="Authenticated pyproject state consumed by native deptry"
             ),
@@ -329,6 +322,7 @@ class FlextInfraModelsDeps(
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
 
+        m.Cli.AtomicFileState
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """
@@ -336,12 +330,7 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
-        before: (
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ]
-            | None
-        ) = m.Field(
+        before: Annotated[m.Cli.AtomicFileState] | None = m.Field(
             None,
             exclude=True,
             description="Original physical read; absent for pure source rendering",
@@ -578,10 +567,9 @@ class FlextInfraModelsDeps(
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: Annotated[
-            p.Infra.DeptryReport,
-            t.schema_for_model(lambda: FlextInfraModelsDeps.DeptryReport),
-        ] = m.Field(description="Deptry report")
+        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(
+            description="Deptry report"
+        )
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects.
@@ -600,13 +588,7 @@ class FlextInfraModelsDeps(
                 ),
             ],
         ] = m.Field(description="Per-project reports")
-        pip_check: (
-            Annotated[
-                p.Infra.PipCheckReport,
-                t.schema_for_model(lambda: FlextInfraModelsDeps.PipCheckReport),
-            ]
-            | None
-        ) = m.Field(
+        pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None,
             description="Pip check report",
             validate_default=True,

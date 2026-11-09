@@ -252,10 +252,7 @@ class FlextInfraModelsDocsGeneration:
         """One scope paired with its complete rendered artifact inventory."""
 
         scope: Annotated[
-            Annotated[
-                p.Infra.DocScope,
-                t.schema_for_model(lambda: FlextInfraModelsDocsGeneration.DocScope),
-            ],
+            FlextInfraModelsDocsGeneration.DocScope,
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
         artifacts: Annotated[

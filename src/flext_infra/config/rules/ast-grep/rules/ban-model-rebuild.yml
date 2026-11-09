@@ -21,7 +21,7 @@ rule:
   pattern: $$$TARGET.model_rebuild($$$ARGS)
 message: >-
   `model_rebuild()` is a declaration defect: type model fields by their protocol
-  and defer the schema owner (`Annotated[p.X, t.schema_for_model(lambda: ...)]`),
+  and defer the schema owner (`Annotated[...]`),
   export the symbol through its facade, break the import cycle at its owner, or
   hoist the model out of the function scope. A strict fleet never calls
   `model_rebuild`.

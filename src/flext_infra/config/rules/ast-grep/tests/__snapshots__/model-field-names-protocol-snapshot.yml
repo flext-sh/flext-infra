@@ -3,7 +3,7 @@ snapshots:
   "class A(m.FrozenModel):\n    leaf: FlextInfraModelsX.Leaf":
     fixed: |-
       class A(m.FrozenModel):
-          leaf: Annotated[p.Infra.Leaf, t.schema_for_model(lambda: FlextInfraModelsX.Leaf)]
+          leaf: Annotated[FlextInfraModelsX.Leaf]
     labels:
     - source: FlextInfraModelsX.Leaf
       style: primary
@@ -34,7 +34,7 @@ snapshots:
   "class A(m.FrozenModel):\n    leaf: FlextInfraModelsX.Leaf | None = None":
     fixed: |-
       class A(m.FrozenModel):
-          leaf: Annotated[p.Infra.Leaf, t.schema_for_model(lambda: FlextInfraModelsX.Leaf)] | None = None
+          leaf: Annotated[FlextInfraModelsX.Leaf] | None = None
     labels:
     - source: FlextInfraModelsX.Leaf
       style: primary
@@ -65,7 +65,7 @@ snapshots:
   "class A(m.FrozenModel):\n    leaves: tuple[FlextInfraModelsX.Leaf, ...] = ()":
     fixed: |-
       class A(m.FrozenModel):
-          leaves: tuple[Annotated[p.Infra.Leaf, t.schema_for_model(lambda: FlextInfraModelsX.Leaf)], ...] = ()
+          leaves: tuple[Annotated[FlextInfraModelsX.Leaf], ...] = ()
     labels:
     - source: FlextInfraModelsX.Leaf
       style: primary

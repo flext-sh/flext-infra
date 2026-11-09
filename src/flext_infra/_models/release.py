@@ -41,11 +41,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Pull-request title to validate against the protocol"),
         ] = ""
         ownership: Annotated[
-            Annotated[
-                p.Infra.GitLaneOwnershipReceipt,
-                t.schema_for_model(lambda: FlextInfraModelsGit.GitLaneOwnershipReceipt),
-            ]
-            | None,
+            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
             m.Field(
                 description="Authenticated integrated prior-state ownership receipt"
             ),
@@ -237,10 +233,7 @@ class FlextInfraModelsRelease:
         ]
         artifacts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.BuildArtifact,
-                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildArtifact),
-                ],
+                FlextInfraModelsRelease.BuildArtifact,
                 ...,
             ],
             m.Field(description="Validated wheel and sdist artifacts"),
@@ -341,10 +334,7 @@ class FlextInfraModelsRelease:
         ]
         records: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.BuildRecord,
-                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildRecord),
-                ],
+                FlextInfraModelsRelease.BuildRecord,
                 ...,
             ],
             m.Field(description="Per-project build records"),

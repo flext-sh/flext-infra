@@ -430,10 +430,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(

@@ -48,15 +48,13 @@ valid:
 - |
   class Holder(m.Value):
       entry: Annotated[
-          p.Ldif.Entry,
-          t.schema_for_model(lambda: FlextLdifModelsEntry.Entry),
+          FlextLdifModelsEntry.Entry,
       ]
 - |
   class Holder(m.Value):
       entries: tuple[
           Annotated[
-              p.Ldif.Entry,
-              t.schema_for_model(lambda: FlextLdifModelsEntry.Entry),
+              FlextLdifModelsEntry.Entry,
           ],
           ...,
       ] = ()

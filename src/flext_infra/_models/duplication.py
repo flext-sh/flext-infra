@@ -159,11 +159,7 @@ class FlextInfraModelsDuplication:
             m.Field(gt=0, le=1, description="Structural near-miss pass ratio"),
         ]
         semantic: Annotated[
-            Annotated[
-                p.Infra.JscpdSemantic,
-                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdSemantic),
-            ]
-            | None,
+            FlextInfraModelsDuplication.JscpdSemantic | None,
             m.Field(description="Embedding pass; absent where it is not executed"),
         ] = None
 
@@ -201,10 +197,9 @@ class FlextInfraModelsDuplication:
         )
 
         end: Annotated[t.PositiveInt, m.Field(description="Exclusive clone end offset")]
-        end_location: Annotated[
-            p.Infra.JscpdLocation,
-            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdLocation),
-        ] = m.Field(alias="endLoc", description="Clone end coordinate")
+        end_location: FlextInfraModelsDuplication.JscpdLocation = m.Field(
+            alias="endLoc", description="Clone end coordinate"
+        )
         name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Absolute scanned source path"),
@@ -217,10 +212,9 @@ class FlextInfraModelsDuplication:
             t.NonNegativeInt,
             m.Field(description="Inclusive clone start offset"),
         ]
-        start_location: Annotated[
-            p.Infra.JscpdLocation,
-            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdLocation),
-        ] = m.Field(alias="startLoc", description="Clone start coordinate")
+        start_location: FlextInfraModelsDuplication.JscpdLocation = m.Field(
+            alias="startLoc", description="Clone start coordinate"
+        )
 
     class JscpdDuplicate(m.ContractModel):
         """One complete two-sided clone from jscpd."""
@@ -231,10 +225,9 @@ class FlextInfraModelsDuplication:
             populate_by_name=True,
         )
 
-        first_file: Annotated[
-            p.Infra.JscpdFile,
-            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdFile),
-        ] = m.Field(alias="firstFile", description="First clone source")
+        first_file: FlextInfraModelsDuplication.JscpdFile = m.Field(
+            alias="firstFile", description="First clone source"
+        )
         format_name: t.NonEmptyStr = m.Field(
             alias="format", description="jscpd parser format name"
         )
@@ -263,10 +256,9 @@ class FlextInfraModelsDuplication:
             t.PositiveInt,
             m.Field(description="Duplicated logical line count"),
         ]
-        second_file: Annotated[
-            p.Infra.JscpdFile,
-            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdFile),
-        ] = m.Field(alias="secondFile", description="Second clone source")
+        second_file: FlextInfraModelsDuplication.JscpdFile = m.Field(
+            alias="secondFile", description="Second clone source"
+        )
         tokens: Annotated[t.PositiveInt, m.Field(description="Duplicated token count")]
         similarity: Annotated[
             float | None,
@@ -365,10 +357,7 @@ class FlextInfraModelsDuplication:
             m.Field(description="Complete detected clone records"),
         ]
         statistics: Annotated[
-            Annotated[
-                p.Infra.JscpdStatistics,
-                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdStatistics),
-            ],
+            FlextInfraModelsDuplication.JscpdStatistics,
             m.Field(description="Validated scan statistics"),
         ]
 
@@ -468,10 +457,9 @@ class FlextInfraModelsDuplication:
             description="Versioned non-promoting policy"
         )
         raw_sha256: str = m.Field(description="Digest of the exact published receipt")
-        report: Annotated[
-            p.Infra.JscpdReport,
-            t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdReport),
-        ] = m.Field(description="Complete raw typed inventory and counters")
+        report: FlextInfraModelsDuplication.JscpdReport = m.Field(
+            description="Complete raw typed inventory and counters"
+        )
         candidates: tuple[
             Annotated[
                 p.Infra.DuplicationCandidateEvidence,
@@ -525,10 +513,7 @@ class FlextInfraModelsDuplication:
             m.Field(le=255, description="Raw jscpd process exit code"),
         ]
         report: Annotated[
-            Annotated[
-                p.Infra.JscpdReport,
-                t.schema_for_model(lambda: FlextInfraModelsDuplication.JscpdReport),
-            ],
+            FlextInfraModelsDuplication.JscpdReport,
             m.Field(description="Validated report from this exact scan"),
         ]
         stderr: Annotated[str, m.Field(description="Raw jscpd standard error")]
