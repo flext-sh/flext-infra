@@ -250,12 +250,10 @@ class FlextInfraModelsBase:
             Sequence[str],
             m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
-        output: Annotated[
-            Annotated[m.Cli.CommandOutput] | None,
-            m.Field(
-                description="Original native streams, duration and process outcome"
-            ),
-        ] = None
+        output: m.Cli.CommandOutput | None = m.Field(
+            None,
+            description="Original native streams, duration and process outcome",
+        )
         execution_error: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Execution or report failure, independent of findings"),
