@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
@@ -372,7 +373,9 @@ class FlextInfraUtilitiesSemanticModelAliases:
         lines = source.splitlines(keepends=True)
         begin = sum(map(len, lines[: owner.lineno - 1]))
         end = sum(map(len, lines[: owner.end_lineno]))
-        edits = [p.Infra.SourceRewrite(start=begin, end=end, text="")]
+        edits = [
+            FlextInfraModelsTransformers.SourceRewrite(start=begin, end=end, text="")
+        ]
         for item in tree.body:
             if isinstance(item, c.Infra.AST_ASSIGNMENT_TYPES):
                 assign_targets = (
@@ -394,7 +397,7 @@ class FlextInfraUtilitiesSemanticModelAliases:
                         )
                         raise ValueError(msg)
                     edits.append(
-                        m.Infra.SourceRewrite(
+                        FlextInfraModelsTransformers.SourceRewrite(
                             start=sum(map(len, lines[: item.lineno - 1])),
                             end=sum(map(len, lines[: item.end_lineno])),
                             text="",

@@ -350,7 +350,7 @@ class FlextInfraModelsDocs(
 
         file: Annotated[str, m.Field(description="File path relative to scope")]
         issue_type: Annotated[str, m.Field(description="Issue category")]
-        severity: Annotated[str, m.Field(description="Issue severity")]
+        severity: Annotated[str, m.Field(description="Audit issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
     class DocsPublicContract(FlextInfraModelsBase.FrozenArbitrary):

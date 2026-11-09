@@ -873,7 +873,7 @@ class FlextInfraUtilitiesImportLawNormalization(
 
         """
         scope = state.scope
-        if scope.family_letter is None or scope.direct_imports:
+        if scope.family_letter is None:
             return r[str].ok(value=source)
         elected = cls._import_law_own_family_imports(state)
         if not elected:

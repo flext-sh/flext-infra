@@ -165,6 +165,61 @@ class TestsFlextInfraRopeRuntimePymodule:
         tm.that(output.stdout, eq=f"{expected_value} foreign\n")
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "value",
+        [
+            '(\n        "first"\n        " second"\n    )',
+            '(\n        "only"\n    )',
+            "call(\n        1,\n    )",
+        ],
+    )
+    def test_contract_restructuring_keeps_multiline_values_parseable(
+        tmp_path: Path,
+        value: str,
+    ) -> None:
+        """A wildcard whose source spans lines keeps the brackets it relied on."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        consumer = package / "consumer.py"
+        source = (
+            "from typing import Final\n\n"
+            "def call(item: int) -> str:\n    return str(item)\n\n"
+            f"class Owner:\n    VALUE: Final[str] = {value}\n"
+        )
+        consumer.write_text(source, encoding=c.DEFAULT_ENCODING)
+        rule = m.Infra.RopeContractRule(
+            id="final-to-classvar",
+            pattern="${name}: ${final}[${contract}] = ${value}",
+            goal="${name}: ClassVar[${contract}] = ${value}",
+            arguments={"final": "name=typing.Final"},
+            imports={"ClassVar": "from typing import ClassVar"},
+        )
+        with infra.rope_workspace(root) as workspace:
+            edits = tm.ok(
+                u.Infra.plan_contract_rules(workspace, {consumer: source}, (rule,))
+            )
+        tm.that(len(edits), eq=1)
+        updated = edits[0].updated_source
+        tm.that(updated, contains="VALUE: ClassVar[str] = ")
+        values: list[str] = []
+        for text in (source, updated):
+            consumer.write_text(text, encoding=c.DEFAULT_ENCODING)
+            output = tm.ok(
+                u.Cli.run(
+                    (
+                        sys.executable,
+                        "-c",
+                        f"from {package.name}.consumer import Owner; print(Owner.VALUE)",
+                    ),
+                    cwd=root,
+                    options=m.Cli.ProcessOptions(
+                        env={"PYTHONPATH": str(package.parent)}
+                    ),
+                )
+            )
+            values.append(output.stdout)
+        tm.that(values[1], eq=values[0])
+
+    @staticmethod
     @c.Tests.MARK.parametrize("package", [False, True])
     def test_selected_source_resource_preserves_native_public_scope(
         tmp_path: Path,

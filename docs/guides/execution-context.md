@@ -655,7 +655,10 @@ data and invokes that dispatcher exactly once. The dispatcher owns discovery,
 selection, validation and its original exit status. Make does not interpolate the
 selector into shell source, scan script roots, select an `all.sh` substitute or
 probe selector-named private targets. Explicit verb-level custom handlers retain
-their declared hook contract; they are not a second selector registry.
+their declared hook contract; they are not a second selector registry. Generation
+renders the script verbs from that same registry: every verb and alias a command
+header declares in a declared root gets one public target, without an `all.sh`
+entrypoint or a mirroring `extra_verbs` entry.
 
 Facade planning preserves the complete import identity elected by the project
 discovery owner, including nested and namespace packages. A directory basename is
@@ -1800,6 +1803,9 @@ and sealed-source authentication.
 ### Make Activation, Packaged Resources, and Hatch Wheel Packaging
 
 The `make setup` contract includes approving the `.envrc` with `direnv allow`.
+Every generated `direnv` invocation, in Make and in `.envrc` publication, runs the
+executable the project's locked Mise toolchain resolves (`mise which direnv`), never
+a `direnv` found on the caller's `PATH`.
 Make verbs declare their activation requirement in `make.verbs`; activation is
 required by default before handlers and hooks. Generation and its footprint
 inspection consume the declared physical interpreter and verify its environment
@@ -3902,7 +3908,11 @@ and `make check` without `CI` run the complete active set. `CI=Y make check` run
 the commit and CI stages (`make.check_gates_ci`, Pyrefly included). The commit hook
 passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
 (`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
-other validator. Mypy, Pyright, codemod, smells and repository-owned validators
+other validator. Staged Python files run the lint and format gates on those files; a
+staged Markdown file runs the `markdown` and `markdown-format` gates over the
+repository, never a raw `rumdl` pass, so a declared foreign projected block
+(`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
+`make check` and `make fmt`. Mypy, Pyright, codemod, smells and repository-owned validators
 carry the push stage, so they block locally and at pre-push. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate.
@@ -4153,6 +4163,13 @@ verification;
 their required trust input and native key/signature failures remain fail-loud. A valid
 observation is never signed proof, and absent signing material does not gate unrelated
 offline producers.
+
+Candidate admission (`u.Infra.git_admit_gate_candidate`) builds on the V3 attestation
+primitives and decides whether an attested proof corresponds to a specific Git
+candidate (repository, head, tree, base, merge). It requires exact identity match,
+clean outcome under the clean-quality policy, TTL validity, and runtime identity
+agreement. It does not invoke Make, publish GitHub checks, or modify repository
+state. Absent or incompatible proof never approves implicitly.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. Each smell

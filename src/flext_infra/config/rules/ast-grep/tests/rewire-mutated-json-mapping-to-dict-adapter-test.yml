@@ -1,0 +1,21 @@
+id: rewire-mutated-json-mapping-to-dict-adapter
+valid:
+  - |
+    def read_only(raw):
+        entries = u.json_mapping_adapter().validate_python(raw)
+        return entries["name"]
+  - |
+    def edited(raw):
+        entries = u.json_dict_adapter().validate_python(raw)
+        entries["name"] = "x"
+invalid:
+  - |
+    def edited(raw):
+        entries = u.json_mapping_adapter().validate_python(raw)
+        entries["name"] = "x"
+        return entries
+  - |
+    def nested(document):
+        tools = u.json_mapping_adapter().validate_python(document["tools"])
+        mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
+        mypy["overrides"] = []

@@ -104,20 +104,9 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
         test_like_dirs: Sequence[str]
         default_excludes: Sequence[str]
         ignored_diagnostic_globs: Sequence[str]
-
-        @property
-        def diagnostic_path_exceptions(
-            self,
-        ) -> tuple[
+        diagnostic_path_exceptions: tuple[
             FlextInfraProtocolsDepsToolConfigTypeCheckers.DiagnosticPathException, ...
-        ]:
-            """Structural member projected from the owning model.
-
-            Authorized rule exceptions; each entry renders its Pyright environment
-            and its Pyrefly sub-config.
-            """
-            ...
-
+        ]
         source_report_private_usage: str
         test_like_report_private_usage: str
         other_report_private_usage: str

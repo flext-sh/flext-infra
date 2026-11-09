@@ -312,6 +312,7 @@ class FlextInfraModelsDeps(
     class PyprojectDocumentState(m.ArbitraryTypesModel):
         """Centralized normalized TOML state reused across deps workflows.
 
+        m.Cli.AtomicFileState
         Enforcement exemption: internal tooling model with intentional
         mutable state.
         """

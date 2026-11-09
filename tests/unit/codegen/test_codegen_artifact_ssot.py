@@ -47,15 +47,15 @@ class TestsFlextInfraCodegenArtifactSsot:
         error: str,
     ) -> None:
         """A cyclic or undeclared artifact dependency rejects the catalog."""
-        payload = u.json_mapping_adapter().validate_python(
+        payload = u.json_dict_adapter().validate_python(
             codegen.templates.model_dump(
                 mode="json", by_alias=True, exclude_computed_fields=True
             )
         )
-        entries = u.json_mapping_adapter().validate_python(payload["entries"])
+        entries = u.json_dict_adapter().validate_python(payload["entries"])
         first, second = sorted(entries)[:2]
-        first_entry = u.json_mapping_adapter().validate_python(entries[first])
-        second_entry = u.json_mapping_adapter().validate_python(entries[second])
+        first_entry = u.json_dict_adapter().validate_python(entries[first])
+        second_entry = u.json_dict_adapter().validate_python(entries[second])
         first_entry["requires_artifacts"] = [second]
         second_entry["requires_artifacts"] = (
             [first] if dependencies == "cycle" else [f"{second}.undeclared"]
@@ -127,11 +127,19 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_ignore_artifacts_are_exact_projection(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Preserve configured order while rendering directory suffixes."""
-        expected = tuple(
-            f"{artifact.name}/" if artifact.is_dir else artifact.name
-            for artifact in codegen.artifacts
-            if artifact.gitignore and not artifact.generated_source
+        """Preserve configured order, then ignore the executor's state directory.
+
+        Setup keeps the executor environment and its publication and lifecycle
+        locks in one runtime state directory; none of it is source.
+        """
+        state = codegen.make.executor_environment.directory.parent.as_posix()
+        expected = (
+            *(
+                f"{artifact.name}/" if artifact.is_dir else artifact.name
+                for artifact in codegen.artifacts
+                if artifact.gitignore and not artifact.generated_source
+            ),
+            f"/{state}/",
         )
         tm.that(codegen.gitignore_artifact_patterns, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))

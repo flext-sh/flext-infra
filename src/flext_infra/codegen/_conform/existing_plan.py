@@ -824,39 +824,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             codegen=codegen,
             runtime_dependency_overlay=project.runtime_dependency_overlay,
             declared_project_dependencies=metadata.project.dependencies,
-            topology=m.Infra.PyprojectDeclaredTopology(
-                root_modules=(
-                    target.project.root_modules if target.project is not None else ()
-                ),
-                root_packages=(
-                    target.project.root_packages if target.project is not None else ()
-                ),
-                repository_namespace_packages=(
-                    target.project.repository_namespace_packages
-                    if target.project is not None
-                    else ()
-                ),
-                packaged_data_paths=(
-                    target.project.packaged_data_paths
-                    if target.project is not None
-                    else ()
-                ),
-                packaged_data_excludes=(
-                    target.project.packaged_data_excludes
-                    if target.project is not None
-                    else ()
-                ),
-                declared_python_dirs=tuple(
-                    self._scaffold_python_dirs(
-                        codegen.templates.entries,
-                        target.make_profile,
-                        package=repository.package,
-                    ),
-                ),
-                analysis_exclusions=tuple(
-                    path.as_posix() for path in target.external_dependency_paths
-                ),
-            ),
+            topology=self._existing_topology(target, codegen),
         )
 
     def _plan_existing_control(

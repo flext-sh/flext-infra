@@ -533,6 +533,41 @@ class TestsFlextInfraSemanticConstantCutover:
         tm.fail(planned, has="requires exactly one declared module owner")
 
     @staticmethod
+    @staticmethod
+    def test_final_constant_cutover_keeps_parenthesized_values_intact(
+        tmp_path: Path,
+    ) -> None:
+        """A wrapped constant value keeps its parentheses and indentation."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        family = u.Infra.facade_family_declared_by(c.Infra.CONSTANTS_PY)
+        owner = f"{u.derive_class_stem(root.name)}{family.suffix}"
+        path = package / c.Infra.CONSTANTS_PY
+        value = '(\n        "chore: promote "\n        "develop to main"\n    )'
+        sources = {
+            path: (
+                "from typing import Final\n"
+                f"class {owner}:\n"
+                f"    TITLE: Final[str] = {value}\n"
+                f"c = {owner}\n"
+                f'__all__ = ["{owner}", "c"]\n'
+            ),
+            package / c.Infra.INIT_PY: 'from .constants import c\n__all__ = ["c"]\n',
+        }
+        for source_path, source in sources.items():
+            source_path.write_text(source, encoding="utf-8")
+        with infra.rope_workspace(root) as rope:
+            planned = u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONSTANT_CONSUMERS,
+                rope_workspace=rope,
+                sources=sources,
+            )
+        tm.ok(planned)
+        tm.that(tuple(edit.file_path for edit in planned.value), eq=(path,))
+        updated = planned.value[0].updated_source
+        tm.that(updated, has=f"    TITLE: ClassVar[str] = {value}\n")
+        compile(updated, str(path), "exec")
+
+    @staticmethod
     @c.Tests.MARK.parametrize(
         "rule_id", ["require-uppercase-constant-name", "ban-mutable-constant-value"]
     )

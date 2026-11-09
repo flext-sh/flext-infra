@@ -1,5 +1,67 @@
 id: tests-fixture-method-missing-staticmethod
 snapshots:
+  "class Holder:\n    @pytest.fixture\n    def streams(logging_streams: int) -> int:\n        return logging_streams\n":
+    fixed: |
+      class Holder:
+          @pytest.fixture
+          @staticmethod
+          def streams(logging_streams: int) -> int:
+              return logging_streams
+    labels:
+    - source: |-
+        def streams(logging_streams: int) -> int:
+                return logging_streams
+      style: primary
+      start: 38
+      end: 110
+    - source: |-
+        class Holder:
+            @pytest.fixture
+            def streams(logging_streams: int) -> int:
+                return logging_streams
+      style: secondary
+      start: 0
+      end: 110
+    - source: |-
+        @pytest.fixture
+            def streams(logging_streams: int) -> int:
+                return logging_streams
+      style: secondary
+      start: 18
+      end: 110
+    - source: |-
+        @pytest.fixture
+            def streams(logging_streams: int) -> int:
+                return logging_streams
+      style: secondary
+      start: 18
+      end: 110
+  "class T:\n    def helper(value: int) -> int:\n        return value\n":
+    fixed: |
+      class T:
+          @staticmethod
+          def helper(value: int) -> int:
+              return value
+    labels:
+    - source: |-
+        def helper(value: int) -> int:
+                return value
+      style: primary
+      start: 13
+      end: 64
+    - source: |-
+        class T:
+            def helper(value: int) -> int:
+                return value
+      style: secondary
+      start: 0
+      end: 64
+    - source: |-
+        def helper(value: int) -> int:
+                return value
+      style: secondary
+      start: 13
+      end: 64
   "class TestsSample:\n    @pytest.fixture\n    def settings() -> int:\n        return 1\n":
     fixed: |
       class TestsSample:
@@ -14,10 +76,6 @@ snapshots:
       style: primary
       start: 43
       end: 82
-    - source: "@pytest.fixture"
-      style: secondary
-      start: 23
-      end: 38
     - source: |-
         class TestsSample:
             @pytest.fixture
@@ -54,10 +112,6 @@ snapshots:
       style: primary
       start: 44
       end: 105
-    - source: "@u.Tests.fixture"
-      style: secondary
-      start: 23
-      end: 39
     - source: |-
         class TestsSample:
             @u.Tests.fixture

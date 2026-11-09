@@ -30,13 +30,7 @@ class FlextInfraProtocolsRelease:
         phase: c.Infra.ReleasePhase
         index: bool
         pr_title: str
-
-        @property
-        def ownership(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
-            """Authenticated integrated prior-state ownership receipt."""
-            ...
+        ownership: FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None
 
     @runtime_checkable
     class ReleaseRunCommand(

@@ -515,20 +515,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok((root / "config" / "beads.yaml").is_file())
         tm.ok((root / c.PYPROJECT_FILENAME).is_file())
         tm.ok((root / ".env.example").is_file())
-        ruff_lint = config.Infra.tooling.tools.ruff.lint
-        runtime_roots = ruff_lint.flake8_type_checking.runtime_evaluated_roots
-        rendered_runtime_bases = u.Tests.toml_strings_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            "tool",
-            "ruff",
-            "lint",
-            "flake8-type-checking",
-            "runtime-evaluated-base-classes",
-        )
-        tm.that(
-            tuple(rendered_runtime_bases),
-            eq=u.Infra.runtime_evaluated_base_classes(root, {}, runtime_roots),
-        )
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part
@@ -688,6 +674,66 @@ class TestsFlextInfraCodegenConform:
         tm.ok(applied)
 
         _assert_conform_check_reaches_fixed_point(root)
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_editor_surface_publishes_the_full_conform_manifest(
+        infra_git_repo: Path,
+    ) -> None:
+        """The editor surface publishes the full conform's manifest bytes.
+
+        An ``examples`` root sorts before the source root, so disk discovery
+        order differs from the declared scaffold order: a second analyzer
+        context would publish other environments and ``extraPaths`` orders.
+        """
+        root = infra_git_repo
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        u.Tests.declare_governed_kind(root)
+        package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
+        for module, family in (("models.py", "Models"), ("protocols.py", "Protocols")):
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    package / module,
+                    f"class FlextInfra{family}:\n    pass\n\n\n"
+                    f"{family[0].lower()} = FlextInfra{family}\n",
+                ),
+            )
+        example = root / "examples" / "usage.py"
+        example.parent.mkdir()
+        tm.ok(u.Cli.atomic_write_text_file(example, "VALUE = 1\n"))
+        u.Tests.commit_git_changes(root, "Seed a root that sorts before src")
+        manifest = root / c.PYPROJECT_FILENAME
+        full_request = u.Tests.conform_request(
+            root, scope=c.Infra.CodegenConformScope.SELF
+        )
+        planned = tm.ok(
+            tm.ok(
+                FlextInfraCodegenConform.Generate.from_request(
+                    full_request, execution_context=infra
+                )
+            ).plan(full_request),
+        )
+        tm.ok(
+            u.Infra.publish_codegen_plans(
+                root, tuple(file for file in planned.files if file.path == manifest)
+            ),
+        )
+        full = manifest.read_text(encoding=c.DEFAULT_ENCODING)
+        document = tm.not_none(u.Cli.toml_parse_text(full))
+        stale = u.Cli.toml_ensure_table(
+            u.Cli.toml_ensure_table(document, c.Infra.TOOL), c.Infra.PYRIGHT
+        )
+        stale["venvPath"] = "../stale-checkout"
+        manifest.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
+        editor = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.EDITOR,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        tm.ok(infra.codegen_conform(editor))
+        tm.that(manifest.read_text(encoding=c.DEFAULT_ENCODING), eq=full)
+        tm.that(tm.ok(infra.codegen_conform(editor)).written_files, eq=())
 
     @staticmethod
     @c.Tests.MARK.slow

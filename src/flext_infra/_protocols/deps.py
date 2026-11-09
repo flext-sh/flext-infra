@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
 from flext_infra import t
+from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
         FlextInfraProtocolsGates,
         FlextInfraProtocolsWorkspace,
     )
-    from flext_infra._protocols._config import FlextInfraProtocolsConfigArtifact
 
 
 @runtime_checkable
@@ -286,16 +286,8 @@ class FlextInfraProtocolsDeps(Protocol):
         """Structural data contract projected from the owning model."""
 
         source: p.Cli.AtomicFileState
-
-        @property
-        def metadata(self) -> p.ProjectMetadata:
-            """Original canonical PEP 621 and FLEXT metadata."""
-            ...
-
-        @property
-        def packaging(self) -> FlextInfraProtocolsDeps.ProjectPackagingDeclaration:
-            """Packaging facts from the same parsed document."""
-            ...
+        metadata: p.ProjectMetadata
+        packaging: FlextInfraProtocolsDeps.ProjectPackagingDeclaration
 
     @runtime_checkable
     class RuntimeDependencyProvider(FlextCliProtocols.BaseModel, Protocol):
@@ -477,11 +469,7 @@ class FlextInfraProtocolsDeps(Protocol):
         original_rendered: str
         rendered: str
         payload: t.MutableJsonMapping
-
-        @property
-        def document(self) -> t.Cli.TomlDocument | None:
-            """Original parsed TOML tree retaining authored layout and comments."""
-            ...
+        document: t.Cli.TomlDocument | None
 
     @runtime_checkable
     class PipCheckReport(FlextCliProtocols.BaseModel, Protocol):
@@ -513,28 +501,15 @@ class FlextInfraProtocolsDeps(Protocol):
     class ProjectDependencyReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def deptry(self) -> FlextInfraProtocolsDeps.DeptryReport:
-            """Deptry report."""
-            ...
+        deptry: FlextInfraProtocolsDeps.DeptryReport
 
     @runtime_checkable
     class WorkspaceDependencyReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
         workspace: str
-
-        @property
-        def projects(
-            self,
-        ) -> Mapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]:
-            """Per-project reports."""
-            ...
-
-        @property
-        def pip_check(self) -> FlextInfraProtocolsDeps.PipCheckReport | None:
-            """Pip check report."""
-            ...
+        projects: MutableMapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]
+        pip_check: FlextInfraProtocolsDeps.PipCheckReport | None
 
     @runtime_checkable
     class ToolingContextRequest(FlextCliProtocols.BaseModel, Protocol):
@@ -545,17 +520,8 @@ class FlextInfraProtocolsDeps(Protocol):
         project_name: t.NonEmptyStr
         package_name: t.NonEmptyStr
         path: Path
-
-        @property
-        def topology(self) -> FlextInfraProtocolsDeps.PyprojectDeclaredTopology:
-            """Declared repository topology."""
-            ...
-
-        @property
-        def codegen(self) -> FlextInfraProtocolsConfigArtifact.CodegenConfigSpec:
-            """Elected effective target codegen policy."""
-            ...
-
+        topology: FlextInfraProtocolsDeps.PyprojectDeclaredTopology
+        codegen: FlextInfraProtocolsConfigArtifact.CodegenConfigSpec
         runtime_dependency_overlay: Sequence[str]
         declared_project_dependencies: Sequence[str]
 

@@ -11,13 +11,13 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, r, t, u
-from flext_infra.deps import FlextInfraExtraPathsManager
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import p
+    from flext_infra.deps import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyrightConfigPhase:
@@ -634,8 +634,12 @@ class FlextInfraEnsurePyrightConfigPhase:
         source: str,
         *,
         context: p.Infra.PyprojectAnalyzerContext,
+        paths_manager: FlextInfraExtraPathsManager | None = None,
+        analysis_exclusions: Sequence[str] | None = None,
     ) -> p.Result[str]:
         """Project only the analyzer table, preserving the rest of the document.
+
+        The caller injects the analyzer inputs its full modernization owns.
 
         Returns:
             TOML with the same configuration emitted by full modernization.
@@ -645,17 +649,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         if parsed.failure:
             return r[str].from_failure(parsed)
         payload: t.MutableJsonMapping = dict(parsed.value)
-        project_root = (
-            context.repository_root if context.is_root else context.project_dir
-        )
         self.apply_payload(
             payload,
             context=context,
-            paths_manager=(
-                FlextInfraExtraPathsManager(repository_root=project_root)
-                if project_root is not None
-                else None
-            ),
+            paths_manager=paths_manager,
+            analysis_exclusions=analysis_exclusions,
         )
         document = u.Cli.toml_parse_text(source)
         if document is None:

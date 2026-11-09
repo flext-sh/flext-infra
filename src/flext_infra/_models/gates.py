@@ -44,6 +44,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         )
         files: tuple[
             FlextInfraModelsGates.SccFile,
+            FlextInfraModelsGates.SccFile,
             ...,
         ] = m.Field(alias="Files", description="Every scanned file in this language")
 
@@ -911,6 +912,141 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         reused: Annotated[
             bool, m.Field(description="Existing immutable proof was reused")
         ] = False
+
+    class GateCandidateIdentity(m.ContractModel):
+        """Exact Git candidate identity for admission decisions."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=False, use_enum_values=False
+        )
+
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="Observed origin remote URL")
+        ]
+        head_oid: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Candidate HEAD commit"),
+        ]
+        base_oid: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Optional base commit for PR checks",
+            ),
+        ] = None
+        tree_oid: Annotated[
+            str,
+            m.Field(pattern=r"^[a-f0-9]{40}$", description="Candidate commit tree"),
+        ]
+        merge_oid: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Optional synthetic merge commit for PR checks",
+            ),
+        ] = None
+        dirty: Annotated[bool, m.Field(description="Candidate has uncommitted WIP")]
+        changed_paths_digest: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Digest of changed paths when dirty",
+            ),
+        ] = None
+
+    class GateCandidateAdmissionRequest(m.ContractModel):
+        """Request to admit a candidate against an attested proof."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
+
+        workspace: Annotated[str, m.Field(description="Git repository root")] = "."
+        candidate: Annotated[
+            FlextInfraModelsGates.GateCandidateIdentity,
+            m.Field(description="Exact candidate identity"),
+        ]
+        allowed_signers: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="OpenSSH allowed_signers file"),
+        ]
+        expected_gates: Annotated[
+            Sequence[str],
+            m.Field(min_length=1, max_length=1, description="Required original stage"),
+        ]
+        context_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$",
+                description="Expected execution context",
+            ),
+        ]
+        policy: Annotated[
+            c.Infra.GateAcceptancePolicy,
+            m.Field(description="Required policy for stage reuse"),
+        ]
+        policy_digest: Annotated[
+            str,
+            m.Field(
+                pattern=r"^sha256:[a-f0-9]{64}$", description="Required recorded policy"
+            ),
+        ]
+        receipt: Annotated[
+            Path, m.Field(description="Exact original workspace receipt")
+        ]
+        require_clean: Annotated[
+            bool,
+            m.Field(
+                description="Require native_outcome CLEAN (not just complete_execution)"
+            ),
+        ] = True
+        merge_check: Annotated[
+            bool,
+            m.Field(description="Admit for PR merge (requires clean candidate)"),
+        ] = False
+        ttl_seconds: Annotated[
+            int,
+            m.Field(ge=0, description="Maximum attestation age in seconds"),
+        ] = 86400
+
+        @m.model_validator(mode="after")
+        def _validate_expected_gates(self) -> Self:
+            if len(self.expected_gates) != len(set(self.expected_gates)):
+                msg = "expected admission gates must be unique"
+                raise ValueError(msg)
+            return self
+
+    class GateCandidateAdmissionReport(m.ContractModel):
+        """Result of a candidate admission decision."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=False, use_enum_values=False
+        )
+
+        eligible: Annotated[bool, m.Field(description="Candidate is eligible")]
+        reasons: Annotated[
+            tuple[str, ...],
+            m.Field(description="Human-readable admission reasons"),
+        ] = ()
+        attestation: (
+            Annotated[
+                FlextInfraModelsGates.GateAttestationReport,
+                m.Field(description="Verified attestation if eligible"),
+            ]
+            | None
+        ) = None
+        candidate_head: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Candidate head that was evaluated",
+            ),
+        ] = None
+        attested_head: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[a-f0-9]{40}$",
+                description="Attested head from the proof",
+            ),
+        ] = None
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

@@ -1,21 +1,18 @@
 id: model-annotation-to-protocol
 snapshots:
-  ? |
-    from flext_core import m
-    def collect(entries: list[m.Ldif.Entry] | None) -> None:
-        kept: tuple[m.Ldif.Entry, ...] = ()
-  : fixed: |
+  "from flext_core import m\ndef collect(entries: list[p.Ldif.Entry] | None) -> None:\n    kept: tuple[p.Ldif.Entry, ...] = ()\n":
+    fixed: |
       from flext_core import m
       def collect(entries: list[p.Ldif.Entry] | None) -> None:
-          kept: tuple[m.Ldif.Entry, ...] = ()
+          kept: tuple[p.Ldif.Entry, ...] = ()
     labels:
     - source: m.Ldif.Entry
       style: primary
       start: 51
       end: 63
     - source: |-
-        def collect(entries: list[m.Ldif.Entry] | None) -> None:
-            kept: tuple[m.Ldif.Entry, ...] = ()
+        def collect(entries: list[p.Ldif.Entry] | None) -> None:
+            kept: tuple[p.Ldif.Entry, ...] = ()
       style: secondary
       start: 25
       end: 121
@@ -23,13 +20,10 @@ snapshots:
       style: secondary
       start: 51
       end: 63
-  ? |
-    from flext_core import m
-    def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
-        return entry
-  : fixed: |
+  "from flext_core import m\ndef load(entry: m.Ldif.Entry) -> p.Ldif.Entry:\n    return entry\n":
+    fixed: |
       from flext_core import m
-      def load(entry: p.Ldif.Entry) -> m.Ldif.Entry:
+      def load(entry: p.Ldif.Entry) -> p.Ldif.Entry:
           return entry
     labels:
     - source: m.Ldif.Entry
@@ -37,7 +31,7 @@ snapshots:
       start: 41
       end: 53
     - source: |-
-        def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
+        def load(entry: m.Ldif.Entry) -> p.Ldif.Entry:
             return entry
       style: secondary
       start: 25
@@ -46,11 +40,8 @@ snapshots:
       style: secondary
       start: 41
       end: 53
-  ? |
-    from flext_ldif import FlextLdifModels
-    def stats(entry: FlextLdifModels.Ldif.Entry) -> None:
-        return None
-  : fixed: |
+  "from flext_ldif import FlextLdifModels\ndef stats(entry: FlextLdifModels.Ldif.Entry) -> None:\n    return None\n":
+    fixed: |
       from flext_ldif import FlextLdifModels
       def stats(entry: p.Ldif.Entry) -> None:
           return None

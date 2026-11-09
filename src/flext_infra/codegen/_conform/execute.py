@@ -16,6 +16,7 @@ from typing import Self, override
 from flext_infra import (
     c,
     config,
+    e,
     m,
     p,
     r,
@@ -190,9 +191,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         # actor triggers a reconciling replan over the new state instead of
         # waiting for, or failing because of, that actor.
         attempts = config.Infra.mutation_lock.reconcile_attempts
-        result = self._execute_once(
-            request, root, after_publication, after_cohort_publication
-        )
+
+        def _run_once() -> p.Result[p.Infra.CodegenResult]:
+            try:
+                return self._execute_once(
+                    request, root, after_publication, after_cohort_publication
+                )
+            except e.OperationError as exc:
+                if c.Infra.ATOMIC_SOURCE_CHANGED not in str(exc):
+                    raise
+                return r[p.Infra.CodegenResult].fail(str(exc))
+
+        result = _run_once()
         while (
             attempts > 0
             and result.failure
@@ -203,9 +213,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 f"operation=generate root={root} reconcile=replan "
                 f"cause={(result.error or '').split(';', 1)[0]}"
             )
-            result = self._execute_once(
-                request, root, after_publication, after_cohort_publication
-            )
+            result = _run_once()
         return result
 
     def _execute_once(
@@ -257,7 +265,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         changes its content hash, and direnv then blocks every later command
         in that checkout, including a workspace member's ``make check`` and
         its commit hook. The publisher therefore authorizes each published
-        ``.envrc`` (root and members alike) in the same operation, outside CI.
+        ``.envrc`` (root and members alike) in the same operation, outside CI,
+        with the direnv the root's locked Mise toolchain resolves, never one
+        found on the caller's PATH.
 
         Returns:
             Whether any file was authorized, or the first native failure.
@@ -272,8 +282,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if path.name == c.Infra.ENVRC_FILENAME
         }
         for root in sorted(roots):
+            direnv = u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, root)
+            if direnv.failure:
+                return r[bool].from_failure(direnv)
             result = u.Cli.run_raw(
-                (c.Infra.CLI_DIRENV, "allow", str(root)),
+                (str(direnv.value), "allow", str(root)),
                 cwd=root,
                 timeout=c.Infra.TIMEOUT_SHORT,
             )

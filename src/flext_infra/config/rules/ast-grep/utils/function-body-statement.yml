@@ -1,0 +1,18 @@
+# A statement directly in a function body: the unit before which a local
+# binding can be introduced and among whose siblings a value repeats.
+id: function-body-statement
+language: python
+rule:
+  any:
+    - kind: expression_statement
+    - kind: with_statement
+    - kind: return_statement
+    - kind: if_statement
+    - kind: for_statement
+    - kind: while_statement
+    - kind: try_statement
+    - kind: assert_statement
+    - kind: delete_statement
+  inside:
+    kind: block
+    inside: {kind: function_definition}

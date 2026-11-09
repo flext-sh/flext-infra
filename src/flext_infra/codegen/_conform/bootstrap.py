@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, assert_never
 
 from flext_infra import c, m, p, s, u
+from flext_infra.promoted import FlextInfraPromoted
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -22,7 +23,7 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """
 
     state: Annotated[
-        p.Infra.CodegenConformState,
+        m.Infra.CodegenConformState,
         m.Field(
             description="Mutable request-local data owned by one conform invocation.",
         ),
@@ -44,28 +45,32 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     @staticmethod
     def _discover_script_verbs(
         repository_root: Path,
+        script_dispatch: p.Infra.ScriptDispatchSpec,
     ) -> tuple[p.Infra.MakeVerbSpec, ...]:
-        """Discover script verbs from scripts/<verb>/all.sh in the repository root.
+        """Discover every verb and alias the declared command headers name.
 
-        The filesystem is the SSOT: a verb is emitted only when its all.sh
-        entrypoint exists. No manual list is required.
+        The promoted registry the dispatcher builds over the declared
+        ``script_dispatch`` roots is the only source: a verb declared only in
+        headers, or owned by another declared root, still gets its target.
 
         Returns:
-            The resulting ``tuple[p.Infra.MakeVerbSpec, ...],``.
+            One verb spec per registered verb and alias, in name order.
 
         """
-        scripts_dir = repository_root / c.Infra.DIR_SCRIPTS
-        if not scripts_dir.is_dir():
-            return ()
-        discovered = [
-            m.Infra.MakeVerbSpec(
-                name=entry.name,
-                description=f"Script command: {entry.name}",
-            )
-            for entry in sorted(scripts_dir.iterdir())
-            if entry.is_dir() and (entry / "all.sh").is_file()
-        ]
-        return tuple(discovered)
+        registry = FlextInfraPromoted.discover(
+            script_roots=tuple(
+                repository_root / root for root in script_dispatch.roots
+            ),
+        )
+        names = {
+            name
+            for verb in registry.verbs()
+            for name in (verb, *registry.aliases_for(verb))
+        }
+        return tuple(
+            m.Infra.MakeVerbSpec(name=name, description=f"Script command: {name}")
+            for name in sorted(names)
+        )
 
     def _declared_environment_imports(
         self,

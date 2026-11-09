@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, cast
 
 from flext_cli import m
 
@@ -186,7 +186,7 @@ class FlextInfraModelsDepsToolConfig(
         @m.model_validator(mode="after")
         def _require_exactly_one_form(
             self,
-        ) -> p.Infra.PytestWorkerCeiling:
+        ) -> Self:
             """Reject ambiguous (both or neither) ceiling forms.
 
             Returns:
@@ -301,7 +301,7 @@ class FlextInfraModelsDepsToolConfig(
             str,
             FlextInfraModelsDepsToolConfig.PytestWorkerCeiling,
         ] = m.Field(
-            {},
+            cast(Mapping[str, p.Infra.PytestWorkerCeiling], {}),
             alias="parallel-worker-overrides",
             description=(
                 "Per declared-project worker ceilings (``[project].name`` → absolute "

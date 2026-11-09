@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 from packaging.version import Version
 
 from flext_infra import config
-from tests import c, m, p, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -32,7 +32,10 @@ class TestsFlextInfraMisePinBootstrap:
             m.Infra.ToolchainSpec,
             m.Field(description="Original declared toolchain"),
         ]
-        make: Annotated[p.Infra.MakeSpec, m.Field(description="Original Make contract")]
+        make: Annotated[
+            Annotated[m.Infra.MakeSpec],
+            m.Field(description="Original Make contract"),
+        ]
         bootstrap_report_shell_literal: Annotated[
             str, m.Field(description="Elected operation report scalar transport")
         ]
