@@ -1,0 +1,15 @@
+id: rewire-computed-field-exclude-to-native
+valid:
+  - |
+    payload = owner.model_dump(exclude_computed_fields=True)
+  - |
+    payload = owner.model_dump(exclude={"workflow"})
+  - |
+    names = set(type(owner).model_computed_fields)
+invalid:
+  - |
+    payload = owner.model_dump(exclude=set(type(owner).model_computed_fields))
+  - |
+    text = evidence.model_dump_json(
+        indent=2, exclude=set(type(evidence).model_computed_fields)
+    )

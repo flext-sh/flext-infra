@@ -189,7 +189,7 @@ class TestsFlextInfraMypyFleetMandatoryDefaults:
             document.model_dump(by_alias=True, exclude_computed_fields=True)
         )
         tools = u.json_mapping_adapter().validate_python(document_payload["tools"])
-        mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
+        mypy = u.json_dict_adapter().validate_python(tools["mypy"])
         mypy["overrides"] = [
             {
                 "modules": ["arbitrary_dependency.*"],
