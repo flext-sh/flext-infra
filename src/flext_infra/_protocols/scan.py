@@ -82,7 +82,12 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         file_path: Path
-        violations: Sequence[FlextInfraProtocolsScan.ScanViolation]
+
+        @property
+        def violations(self) -> Sequence[FlextInfraProtocolsScan.ScanViolation]:
+            """Violations found in the file."""
+            ...
+
         detector_name: str
 
     @runtime_checkable
@@ -232,9 +237,21 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         project_source_roots: Mapping[Path, Path] | None
-        inventory: Mapping[Path, p.Cli.AtomicFileState]
+
+        @property
+        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState]:
+            """Exact sources captured before the native scan."""
+            ...
+
         repository_roots: tuple[Path, ...]
-        authenticated: MutableMapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]
+
+        @property
+        def authenticated(
+            self,
+        ) -> Mapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]:
+            """One authentication per file."""
+            ...
+
         repositories: MutableMapping[Path, str]
 
     @runtime_checkable
@@ -372,10 +389,18 @@ class FlextInfraProtocolsScan:
     class ModPhaseAdvance(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        report: FlextInfraProtocolsScan.ModScanReport
+        @property
+        def report(self) -> FlextInfraProtocolsScan.ModScanReport:
+            """Scan of the post-iteration sources."""
+            ...
+
         phase_states: tuple[tuple[tuple[str, str], ...], ...]
         drifted: tuple[Path, ...]
-        quarantined: FlextInfraProtocolsScan.ModModuleQuarantine | None
+
+        @property
+        def quarantined(self) -> FlextInfraProtocolsScan.ModModuleQuarantine | None:
+            """Module whose attributed failure voided the plan."""
+            ...
 
     @runtime_checkable
     class ModTextRule(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):

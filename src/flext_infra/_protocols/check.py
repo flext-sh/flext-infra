@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -19,6 +19,8 @@ from flext_infra import c
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from flext_cli import p
 
     from flext_infra import t
@@ -594,13 +596,30 @@ class FlextInfraProtocolsCheck(Protocol):
     class GateExecution(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        result: FlextInfraProtocolsCheck.GateResult
-        issues: tuple[FlextInfraProtocolsCheck.Issue, ...]
+        @property
+        def result(self) -> FlextInfraProtocolsCheck.GateResult:
+            """Gate result model."""
+            ...
+
+        @property
+        def issues(self) -> tuple[FlextInfraProtocolsCheck.Issue, ...]:
+            """Complete native gate diagnostics, including informative findings."""
+            ...
+
         raw_output: str
         raw_receipt: Path | None
         outcome: c.Infra.ToolOutcome
-        process: p.Cli.ProcessOutcome | None
-        components: MutableMapping[str, FlextInfraProtocolsCheck.GateExecution]
+
+        @property
+        def process(self) -> p.Cli.ProcessOutcome | None:
+            """Original native process, when this gate invoked one."""
+            ...
+
+        @property
+        def components(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:
+            """Executions owned by a composite gate."""
+            ...
+
         requested_components: Sequence[str]
 
         @property
@@ -625,7 +644,10 @@ class FlextInfraProtocolsCheck(Protocol):
     class ProjectResult(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        gates: MutableMapping[str, FlextInfraProtocolsCheck.GateExecution]
+        @property
+        def gates(self) -> Mapping[str, FlextInfraProtocolsCheck.GateExecution]:
+            """Gate name to execution mapping."""
+            ...
 
         @property
         def passed(self) -> bool:
@@ -641,7 +663,11 @@ class FlextInfraProtocolsCheck(Protocol):
     class LoopOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        results: tuple[FlextInfraProtocolsCheck.ProjectResult, ...]
+        @property
+        def results(self) -> tuple[FlextInfraProtocolsCheck.ProjectResult, ...]:
+            """Individual project execution results."""
+            ...
+
         failed: int
         total_elapsed: float
 
@@ -651,8 +677,16 @@ class FlextInfraProtocolsCheck(Protocol):
 
         schema_uri: c.Infra.SarifSchema
         version: c.Infra.SarifVersion
-        runs: tuple[FlextInfraProtocolsCheck.SarifRun, ...]
-        properties: FlextInfraProtocolsCheck.CheckReportSummary | None
+
+        @property
+        def runs(self) -> tuple[FlextInfraProtocolsCheck.SarifRun, ...]:
+            """SARIF runs."""
+            ...
+
+        @property
+        def properties(self) -> FlextInfraProtocolsCheck.CheckReportSummary | None:
+            """Typed invocation targets and executions; absent is unknown."""
+            ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsCheck"]

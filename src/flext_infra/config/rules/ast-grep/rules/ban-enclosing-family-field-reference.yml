@@ -73,6 +73,6 @@ note: >-
   while its body executes, so an eager reference cannot resolve when the model
   is built and leaves the model incomplete (no lazy rebuild is acceptable). How:
   type the field by its protocol (`p.X`) and defer the schema owner through a
-  lambda (`Annotated[p.X, t.schema_for_model(lambda: $OUTER.X)]`), which
+  lambda (`$OUTER.X`), which
   evaluates `$OUTER` only during schema generation after the holder class is
   bound.

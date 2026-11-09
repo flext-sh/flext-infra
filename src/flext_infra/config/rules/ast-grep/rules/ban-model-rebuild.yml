@@ -7,7 +7,7 @@
 # its body runs), and a subclass in another module then re-resolves it in its
 # own namespace. A bare sibling name is no cure: static checkers report it as
 # undefined. The cure is the deferred schema owner of ADR-018 (amendment
-# 2026-11-03): type by the protocol, ``t.schema_for_model(lambda: Outer.Name)``.
+# 2026-11-03): type by the protocol, ``Outer.Name``.
 # The fleet had zero real calls when the rule was re-enabled.
 id: ban-model-rebuild
 language: python

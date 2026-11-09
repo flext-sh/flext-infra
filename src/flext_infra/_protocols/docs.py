@@ -648,7 +648,7 @@ class FlextInfraProtocolsDocs(Protocol):
 
         @property
         def severity(self) -> str:
-            """Issue severity."""
+            """Audit issue severity."""
             ...
 
         @property

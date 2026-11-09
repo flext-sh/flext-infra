@@ -40,8 +40,7 @@ rule:
         has: { kind: identifier, regex: "^type$" }
   - not: { inside: { stopBy: end, pattern: "t.ModelClass[$$$]" } }
   # A class-body field is a Pydantic schema position (services are models
-  # too): a bare protocol there has no core schema. Fields take the
-  # schema_for_model form of model-field-names-protocol instead.
+  # too): a bare protocol there has no core schema. Fields keep the model.
   - not:
       inside:
         stopBy: end
