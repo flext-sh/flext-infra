@@ -490,6 +490,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The resulting ``p.Result[Sequence[p.Infra.CodegenFilePlan]]``.
 
         """
+        root = root.resolve()
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
@@ -529,6 +530,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
         planned: list[p.Infra.CodegenFilePlan] = []
+        # Python-source patterns use the repository's native inventory, which
+        # prunes nested repositories and artifact roots before traversal.
+        sources = u.Infra.discover_python_files(
+            root,
+            workspace_excluded_top_dirs=frozenset(),
+        )
         # A retired directory retires each file under it; the generated
         # marker (or declared evidence) below still guards every removal.
         candidates = (
@@ -539,7 +546,15 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                     item for item in (root / destination).rglob("*") if item.is_file()
                 )
                 if (root / destination).is_dir()
-                else ((root / destination),)
+                else (
+                    ((root / destination),)
+                    if (root / destination).is_file()
+                    else tuple(
+                        path
+                        for path in sources
+                        if path.relative_to(root).full_match(destination)
+                    )
+                )
             )
         )
         for destination, path in candidates:

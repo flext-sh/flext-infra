@@ -978,10 +978,11 @@ CHECK_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope=all; \
-	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
-	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,$(DIRENV) allow "$(PROJECT_ROOT)")
+	if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
+	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,$(DIRENV) allow "$$root")
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.

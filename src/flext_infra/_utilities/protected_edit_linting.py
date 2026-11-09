@@ -74,7 +74,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         arguments, line_limit = settings
         try:
             FlextInfraUtilitiesRopeRuntimeModules.build_string_module(None, source)
-        except Exception as syntax_error:  # ruff: ignore[blind-except]
+        except Exception as syntax_error:  # ruff: ignore[blind-except] - convert any rope parse failure to SyntaxError
             raise SyntaxError(str(syntax_error)) from None
         if before_source is None:
             normalized = cls.normalize_python_text(path, source, settings=arguments)

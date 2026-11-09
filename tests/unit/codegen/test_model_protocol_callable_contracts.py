@@ -388,7 +388,7 @@ class TestsModelProtocolCallableContracts:
         tm.ok("class Request(FlextCliProtocols.ModelCopy, Protocol):" in generated)
         tm.fail("from flext_core import p\n" in generated)
         namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execution validates the rendered module
+        exec(  # ruff: ignore[exec-builtin] - execute generated protocol module to validate it loads
             compile(generated, "<generated-_protocols/base.py>", "exec"), namespace
         )
         holder = namespace["FlextInfraProtocolsPayload"]
@@ -447,7 +447,7 @@ class TestsModelProtocolCallableContracts:
         tm.ok("from flext_cli import FlextCliProtocols\n" in generated)
         tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
         namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execution validates the persisted module
+        exec(  # ruff: ignore[exec-builtin] - execute generated protocol module to validate it loads
             compile(
                 (root / destination).read_text(encoding="utf-8"),
                 str(root / destination),
@@ -615,10 +615,6 @@ class TestsModelProtocolCallableContracts:
         tm.ok("pages: dict[str, p.EnvelopePage]" in generated)
         tm.fail("def child(" in generated)
         tm.fail("def pages(" in generated)
-        conformance = planned[
-            (package / "_protocols" / "model_conformance.py").relative_to(root)
-        ]
-        tm.ok("isinstance(value, m.Envelope)" in conformance)
         native_consumer(
             f"sys.path.insert(0, {str(package.parent)!r})\n"
             f"from {package.name}.models import m\n"
@@ -662,16 +658,15 @@ class TestsModelProtocolCallableContracts:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        ("language", "model_text", "evidence_text"),
+        ("language", "model_text"),
         [
-            ("en", "Source-derived structural", "Static instance-to-protocol"),
-            ("pt-BR", "Contratos estruturais", "Prova estática de instância"),
+            ("en", "Source-derived structural"),
+            ("pt-BR", "Contratos estruturais"),
         ],
     )
     def test_protocol_templates_preserve_the_declared_documentation_language(
         language: t.Infra.DocumentationLanguage,
         model_text: str,
-        evidence_text: str,
     ) -> None:
         """The same native render contexts serve English and Portuguese owners."""
         templates = u.Infra.codegen_templates_root(config.Infra.codegen)
@@ -693,19 +688,3 @@ class TestsModelProtocolCallableContracts:
         )
         tm.ok(model_text in rendered)
         ast.parse(rendered)
-        conformance = m.Infra.ModelProtocolConformanceRenderContext(
-            header=c.Infra.AUTOGEN_HEADER,
-            copyright_notice="Copyright (c) 2026 FLEXT Team.",
-            package_name="flext_test_project",
-            facades=("Models", "Protocols"),
-            imports=(),
-            checks=(),
-            documentation_language=language,
-        )
-        evidence = tm.ok(
-            u.Cli.template_render(
-                templates / c.Infra.TEMPLATE_MODEL_PROTOCOL_CONFORMANCE, conformance
-            )
-        )
-        tm.ok(evidence_text in evidence)
-        ast.parse(evidence)

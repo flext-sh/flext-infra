@@ -95,7 +95,7 @@ unexport GITHUB_API_TOKEN
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace
+MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -531,7 +531,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # process the root and every governed member together in one checker run
 # (operator ruling 2026-10-25: never member by member); each multi-root tool
 # runs once over their union.
-GATE_SCOPE := $(if $(filter Y,$(CI)),self,all)
+GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -749,10 +749,10 @@ SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -794,7 +794,7 @@ VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish
 VERB_ARGUMENTS_upg :=
 
 VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
-VERB_ARGUMENTS_gen :=
+VERB_ARGUMENTS_gen := ROOT
 
 VERB_DESCRIPTION_gen-scope := Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
 VERB_ARGUMENTS_gen-scope := WHAT MODULE SCOPE
@@ -857,7 +857,7 @@ PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INT
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
 
 $(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	$(call RUN_PUBLIC,$@)
 
 
@@ -866,7 +866,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -972,7 +972,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1027,7 +1027,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [workspace]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1377,10 +1377,11 @@ CHECK_PROFILE ?=
 
 _builtin_gen_all: _builtin_require_interpreter
 	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope=all; \
-	if [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/codegen/gen.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --scope "$$scope"; \
-	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
+	if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $(CI))" = "Y" ]; then scope=self; fi; \
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/.reports/codegen/gen.pstats" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
+	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$$root")
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_core import m
 
@@ -25,6 +25,48 @@ class FlextInfraModelsCensus:
     """Unified census pipeline models scoped under m.Infra.Census.*."""
 
     """Namespace for unified census pipeline data contracts."""
+
+    class ProtocolContractPlacement(FlextInfraModelsBase.FrozenArbitrary):
+        """Portable native origin and destination of one structural contract."""
+
+        source_module: str = m.Field(description="Authenticated source module identity")
+        source_class: str = m.Field(description="Full nested declaring class identity")
+        source_path: Path = m.Field(description="Repository-relative source path")
+        line: int = m.Field(ge=1, description="Native declaration line")
+        category: Literal["model", "service", "external", "unresolved"] = m.Field(
+            description="Origin classification proven before any source movement"
+        )
+        destination_module: str = m.Field(
+            description="Canonical destination module identity"
+        )
+        destination_class: str = m.Field(
+            description="Full nested destination class identity"
+        )
+        destination_path: Path = m.Field(
+            description="Repository-relative destination path"
+        )
+        public_routes: tuple[str, ...] = m.Field(
+            default=(), description="Public facade routes retained by composition"
+        )
+        evidence: tuple[str, ...] = m.Field(
+            default=(), description="Native origin and consumer observations"
+        )
+        dependencies: tuple[str, ...] = m.Field(
+            default=(), description="Native protocol dependencies of this contract"
+        )
+
+    class ProtocolPlacementCensus(FlextInfraModelsBase.FrozenArbitrary):
+        """Complete protocol inventory, with unresolved origins kept explicit."""
+
+        contracts: tuple[FlextInfraModelsCensus.ProtocolContractPlacement, ...] = (
+            m.Field(
+                default=(),
+                description="Every discovered structural contract and its placement",
+            )
+        )
+        findings: tuple[str, ...] = m.Field(
+            default=(), description="Origin facts requiring resolution"
+        )
 
     class ReferenceSite(
         FlextInfraModelsMixins.AbsoluteFilePathTextMixin,
@@ -604,6 +646,11 @@ class FlextInfraModelsCensus:
 
     class WorkspaceReport(m.ArbitraryTypesModel):
         """Workspace-wide census summary."""
+
+        protocol_placement: FlextInfraModelsCensus.ProtocolPlacementCensus = m.Field(
+            default_factory=lambda: FlextInfraModelsCensus.ProtocolPlacementCensus(),
+            description="Protocol origins and placements inventoried before migration",
+        )
 
         constant_consumer_files: Annotated[
             t.NonNegativeInt,

@@ -23,6 +23,7 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover.declaration_payload import (
     FlextInfraUtilitiesDeclarationPayload,
 )
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.workspace_snapshot import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -39,6 +40,76 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         parameter: str
         expected: str
         constructor: str
+
+    @staticmethod
+    def _source_identity(
+        project: p.Infra.RopeProject, value: p.Infra.RopePyObject
+    ) -> str:
+        """Keep the native declaration under its authenticated source module."""
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if isinstance(value, p.Infra.RopeSourceClass):
+            module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                value.get_module(), source_project=project
+            )
+            return (
+                f"{module}.{runtime.native_object_identity(value).partition('::')[2]}"
+            )
+        return runtime.native_object_identity(value).replace("::", ".")
+
+    @classmethod
+    def _projected_twins(
+        cls, project: p.Infra.RopeProject, routes: Mapping[str, str]
+    ) -> Mapping[str, str]:
+        """Read each model's protocol from its owning package's source inventory."""
+        from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+        from flext_infra._utilities.protocol_models import (
+            FlextInfraUtilitiesModelsProtocol,
+        )
+
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        roots: dict[Path, set[Path]] = {}
+        for model in routes:
+            if model.startswith("m."):
+                continue
+            concrete = runtime.qualified_name(project, model).get_object()
+            if not isinstance(concrete, p.Infra.RopeSourceClass):
+                continue
+            resource = concrete.get_module().get_resource()
+            if resource is not None:
+                root = FlextInfraUtilitiesDiscovery.project_root(
+                    Path(resource.real_path), source_project=project
+                )
+                if root is not None:
+                    roots.setdefault(root, set()).add(Path(resource.real_path))
+        twins: dict[str, str] = {}
+        for root in sorted(roots):
+            for (
+                package
+            ) in FlextInfraUtilitiesModelsProtocol.protocol_model_package_names(
+                root, project
+            ):
+                projection = FlextInfraUtilitiesModelsProtocol._ModelProtocolProjection(
+                    root, project, package_name=package
+                )
+                layout = projection.source_layout()
+                if layout is None or not any(
+                    path.is_relative_to(layout[0]) for path in roots[root]
+                ):
+                    continue
+                if projection.source_model_inventory() is None:
+                    continue
+                for model in projection.source_model_protocols:
+                    protocol = projection.source_model_protocol_routes.get(model)
+                    if protocol is None or routes.get(model) != protocol:
+                        continue
+                    concrete = runtime.qualified_name(project, model).get_object()
+                    target = runtime.qualified_name(
+                        project, f"{package}.{protocol}"
+                    ).get_object()
+                    twins[cls._source_identity(project, concrete)] = (
+                        cls._source_identity(project, target)
+                    )
+        return twins
 
     @staticmethod
     def _diagnostic_pair(issue: p.Infra.Issue) -> tuple[str, str, str, str] | None:
@@ -67,8 +138,8 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         cls,
         project: p.Infra.RopeProject,
         types: tuple[str, str],
-        routes: Mapping[str, str],
-        bindings: tuple[p.Infra.RopeSourceClass, p.Infra.RopeScope, str],
+        twins: Mapping[str, str],
+        bindings: tuple[p.Infra.RopeSourceClass, p.Infra.RopeScope, str, ast.expr],
     ) -> bool:
         """Authenticate protocol substitutions through generated source bindings.
 
@@ -77,40 +148,13 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        actual, expected = types
-        replaced = expected
-        for model, protocol in routes.items():
-            if model.startswith("m.") or model not in replaced:
-                continue
-            concrete = runtime.qualified_name(project, model).get_object()
-            identity = runtime.native_object_identity(concrete).replace("::", ".")
-            if identity != model:
-                continue
-            target = runtime.qualified_name(
-                project, f"{model.partition('.')[0]}.{protocol}"
-            ).get_object()
-            projected = runtime.native_object_identity(target).replace("::", ".")
-            if projected:
-                replaced = replaced.replace(identity, projected)
-        return replaced != expected and (
-            replaced == actual
-            or cls._covariant_argument(project, (actual, replaced), bindings)
-        )
-
-    @classmethod
-    def _covariant_argument(
-        cls,
-        project: p.Infra.RopeProject,
-        types: tuple[str, str],
-        bindings: tuple[p.Infra.RopeSourceClass, p.Infra.RopeScope, str],
-    ) -> bool:
-        """Use native syntax, field bindings and builtin Sequence membership.
-
-        Returns:
-            Whether an optional member or a proved Sequence accepts the value.
-
-        """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        field = runtime.expression_name(bindings[0].get_scope(), bindings[2])
+        if field is None:
+            return False
+        owner, line = runtime.definition_location(field)
+        if owner is None or line is None:
+            return False
+        field_scope = owner.get_scope().get_inner_scope_for_line(line)
         expressions = tuple(
             runtime.build_string_module(project, value).get_ast().body[0]
             for value in types
@@ -120,116 +164,252 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         supplied, requested = (
             value.value for value in expressions if isinstance(value, ast.Expr)
         )
-        if isinstance(requested, ast.BinOp) and isinstance(requested.op, ast.BitOr):
-            if (
-                isinstance(requested.right, ast.Constant)
-                and requested.right.value is None
-            ):
-                requested = requested.left
-            elif (
-                isinstance(requested.left, ast.Constant)
-                and requested.left.value is None
-            ):
-                requested = requested.right
-        if ast.dump(supplied) == ast.dump(requested) or cls._fixed_tuple_matches(
-            project, types[0], ast.unparse(requested)
-        ):
-            return True
-        if not isinstance(supplied, ast.Subscript) or not isinstance(
-            requested, ast.Subscript
-        ):
-            return False
-        field = runtime.expression_name(bindings[0].get_scope(), bindings[2])
-        if field is None:
-            return False
-        owner, line = field.get_definition_location()
-        if owner is None or line is None:
-            return False
-        scope = owner.get_scope().get_inner_scope_for_line(line)
-        return cls._sequence_argument(
-            project, (supplied, requested), (bindings[1], scope)
+        accepted, changed = cls._annotation_match(
+            project,
+            (supplied, requested),
+            (bindings[1], field_scope),
+            twins,
+            cls._argument_origin(project, bindings[3], bindings[1]),
         )
+        return accepted and changed
 
     @staticmethod
-    def _sequence_argument(
+    def _argument_origin(
+        project: p.Infra.RopeProject,
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+    ) -> p.Infra.RopePyObject | None:
+        """Retain the native annotation owner behind a diagnosed container alias.
+
+        Returns:
+            Its original native outer type, or None without declaration proof.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        origin = None
+        if isinstance(expression, ast.Name | ast.Attribute):
+            binding = runtime.resolve_symbol(scope, expression)
+            declared = (
+                None
+                if binding is None
+                else runtime.annotation_assignment_outer_type(project, binding)
+            )
+            origin = None if declared is None else declared[0]
+        elif isinstance(expression, ast.Call):
+            binding = runtime.resolve_symbol(scope, expression.func)
+            function = None if binding is None else binding.get_object()
+            if function is not None and FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+                function
+            ):
+                returns = function.get_ast().returns
+                if returns is not None:
+                    origin = runtime.annotation_origin(
+                        project, returns, function.get_scope()
+                    )
+        alias = None if origin is None else runtime.annotation_alias_definition(origin)
+        if alias is not None:
+            origin = runtime.annotation_origin(project, alias[0].value, alias[1])
+        return None if origin is None else origin.get_object()
+
+    @classmethod
+    def _atom_identity(
+        cls,
+        project: p.Infra.RopeProject,
+        expression: ast.expr,
+        scope: p.Infra.RopeScope,
+        twins: Mapping[str, str],
+    ) -> str:
+        """Resolve diagnostic names at their native lexical declaration.
+
+        Returns:
+            The original source identity, or empty without a native binding.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        text = ast.unparse(expression)
+        if text in twins or text in twins.values():
+            return text
+        bound = runtime.expression_name(scope, text)
+        return (
+            "" if bound is None else cls._source_identity(project, bound.get_object())
+        )
+
+    @classmethod
+    def _annotation_match(
+        cls,
+        project: p.Infra.RopeProject,
+        expressions: tuple[ast.expr, ast.expr],
+        scopes: tuple[p.Infra.RopeScope, p.Infra.RopeScope],
+        twins: Mapping[str, str],
+        actual_origin: p.Infra.RopePyObject | None = None,
+    ) -> tuple[bool, bool]:
+        """Prove compatibility and an actual model/protocol difference.
+
+        Returns:
+            Whether the shape is accepted and contains a proved protocol twin.
+
+        """
+        supplied, requested = expressions
+        if ast.dump(supplied) == ast.dump(requested):
+            return True, False
+        if isinstance(supplied, ast.BinOp) and isinstance(supplied.op, ast.BitOr):
+            matches = tuple(
+                cls._annotation_match(project, (member, requested), scopes, twins)
+                for member in (supplied.left, supplied.right)
+            )
+            return all(item[0] for item in matches), any(item[1] for item in matches)
+        if isinstance(requested, ast.BinOp) and isinstance(requested.op, ast.BitOr):
+            matches = tuple(
+                cls._annotation_match(project, (supplied, member), scopes, twins)
+                for member in (requested.left, requested.right)
+            )
+            return any(item[0] for item in matches), any(
+                item[0] and item[1] for item in matches
+            )
+        if isinstance(supplied, ast.Subscript) and isinstance(requested, ast.Subscript):
+            return cls._container_match(
+                project, (supplied, requested), scopes, twins, actual_origin
+            )
+        if not isinstance(supplied, ast.Name | ast.Attribute) or not isinstance(
+            requested, ast.Name | ast.Attribute
+        ):
+            return False, False
+        expected = cls._atom_identity(project, requested, scopes[1], twins)
+        actual = cls._atom_identity(project, supplied, scopes[0], twins)
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if not actual and expected in twins:
+            origin = runtime.qualified_name(project, twins[expected]).get_object()
+            if FlextInfraUtilitiesRopeRuntimeTypes.py_class(origin):
+                actual = cls._atom_identity(
+                    project, supplied, origin.get_scope(), twins
+                )
+        return bool(actual) and actual in {expected, twins.get(expected)}, (
+            expected in twins and actual == twins[expected]
+        )
+
+    @classmethod
+    def _container_match(
+        cls,
         project: p.Infra.RopeProject,
         expressions: tuple[ast.Subscript, ast.Subscript],
         scopes: tuple[p.Infra.RopeScope, p.Infra.RopeScope],
-    ) -> bool:
-        """Prove stdlib Sequence identity and each supplied element contract.
+        twins: Mapping[str, str],
+        actual_origin: p.Infra.RopePyObject | None,
+    ) -> tuple[bool, bool]:
+        """Use native collection identities and their real covariance contract.
 
         Returns:
-            Whether native list or tuple elements satisfy this Sequence field.
+            Whether the collection is accepted and carries a protocol twin.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         supplied, requested = expressions
-        expected = runtime.resolve_symbol(scopes[1], requested.value)
-        if not runtime.same_name(
-            runtime.qualified_name(project, "collections.abc.Sequence"), expected
-        ):
-            return False
-        actual = runtime.resolve_symbol(scopes[0], supplied.value)
-        if runtime.same_name(runtime.qualified_name(project, "builtins.list"), actual):
-            return issubclass(list, Sequence) and ast.dump(supplied.slice) == ast.dump(
-                requested.slice
+        origins = {
+            name: runtime.native_object_identity(
+                runtime.qualified_name(project, name).get_object()
+            ).replace("::", ".")
+            for name in (
+                "builtins.dict",
+                "builtins.list",
+                "builtins.tuple",
+                "collections.abc.Mapping",
+                "collections.abc.MutableMapping",
+                "collections.abc.Sequence",
+                "collections.abc.MutableSequence",
             )
-        if not runtime.same_name(
-            runtime.qualified_name(project, "builtins.tuple"), actual
-        ) or not issubclass(tuple, Sequence):
-            return False
-        items = (
-            supplied.slice.elts
+        }
+        actual = cls._atom_identity(project, supplied.value, scopes[0], twins)
+        if actual_origin is not None:
+            actual = (
+                runtime.native_object_identity(actual_origin).replace("::", ".")
+                or actual
+            )
+        expected = cls._atom_identity(project, requested.value, scopes[1], twins)
+        source = (
+            list(supplied.slice.elts)
             if isinstance(supplied.slice, ast.Tuple)
             else [supplied.slice]
         )
-        match items:
-            case [element, ast.Constant(value=variadic)] if variadic is Ellipsis:
-                items = [element]
-            case _:
-                pass
-        return all(ast.dump(item) == ast.dump(requested.slice) for item in items)
+        target = (
+            list(requested.slice.elts)
+            if isinstance(requested.slice, ast.Tuple)
+            else [requested.slice]
+        )
+        if expected == origins["collections.abc.Sequence"]:
+            admitted = {
+                origins[name]
+                for name in (
+                    "builtins.list",
+                    "builtins.tuple",
+                    "collections.abc.Sequence",
+                    "collections.abc.MutableSequence",
+                )
+            }
+            if actual not in admitted or len(target) != 1:
+                return False, False
+            source = cls._variadic_items(source)
+            target *= len(source)
+        elif expected == origins["collections.abc.Mapping"]:
+            if (
+                actual
+                not in {
+                    origins[name]
+                    for name in (
+                        "builtins.dict",
+                        "collections.abc.Mapping",
+                        "collections.abc.MutableMapping",
+                    )
+                }
+                or not cls._mapping_arity(source, target)
+                or cls._annotation_match(project, (source[0], target[0]), scopes, twins)
+                != (True, False)
+            ):
+                return False, False
+        elif actual == expected == origins["builtins.tuple"]:
+            match target:
+                case [element, ast.Constant(value=variadic)] if variadic is Ellipsis:
+                    source = cls._variadic_items(source)
+                    target = [element] * len(source)
+                case _:
+                    pass
+        elif actual != expected or actual not in {
+            origins["builtins.dict"],
+            origins["builtins.list"],
+        }:
+            return False, False
+        if len(source) != len(target):
+            return False, False
+        matches = tuple(
+            cls._annotation_match(project, pair, scopes, twins)
+            for pair in zip(source, target, strict=True)
+        )
+        return all(item[0] for item in matches), any(item[1] for item in matches)
 
     @staticmethod
-    def _fixed_tuple_matches(
-        project: p.Infra.RopeProject, actual: str, expected: str
-    ) -> bool:
-        """Admit only fixed homogeneous tuples of an authenticated protocol twin.
+    def _variadic_items(items: list[ast.expr]) -> list[ast.expr]:
+        """Read the native variadic tuple form without treating Ellipsis as a type.
 
         Returns:
-            Whether native tuple identity and every fixed element match.
+            One repeated type or the original fixed members.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        if not all(value.startswith("tuple[") for value in (actual, expected)):
-            return False
-        provided = runtime.build_string_module(project, actual)
-        required = runtime.build_string_module(project, expected)
-        expressions: list[ast.Subscript] = []
-        container = runtime.qualified_name(project, "builtins.tuple")
-        for module in (provided, required):
-            statement = module.get_ast().body[0]
-            if not isinstance(statement, ast.Expr) or not isinstance(
-                statement.value, ast.Subscript
-            ):
-                return False
-            expression = statement.value
-            if not runtime.same_name(
-                container, runtime.resolve_symbol(module.get_scope(), expression.value)
-            ):
-                return False
-            expressions.append(expression)
-        supplied, requested = expressions
-        match requested.slice:
-            case ast.Tuple(elts=[element, ast.Constant(value=variadic)]) if (
-                variadic is Ellipsis
-            ):
-                items = (
-                    supplied.slice.elts
-                    if isinstance(supplied.slice, ast.Tuple)
-                    else (supplied.slice,)
-                )
-                return all(ast.dump(item) == ast.dump(element) for item in items)
+        match items:
+            case [element, ast.Constant(value=variadic)] if variadic is Ellipsis:
+                return [element]
+            case _:
+                return items
+
+    @staticmethod
+    def _mapping_arity(source: list[ast.expr], target: list[ast.expr]) -> bool:
+        """Retain exactly one key and value for a native mapping annotation.
+
+        Returns:
+            Whether both collections have the native key/value arity.
+
+        """
+        match source, target:
+            case [_, _], [_, _]:
+                return True
             case _:
                 return False
 
@@ -238,7 +418,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         cls,
         project: p.Infra.RopeProject,
         issues: Sequence[p.Infra.Issue],
-    ) -> Mapping[Path, Sequence[_Diagnostic]]:
+    ) -> Mapping[Path, tuple[Sequence[_Diagnostic], Sequence[p.Infra.Issue]]]:
         """Retain diagnostics whose type difference has a source-owned twin.
 
         Returns:
@@ -247,17 +427,23 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         """
         root = Path(project.root.real_path)
         admitted: dict[
-            Path, list[FlextInfraUtilitiesSemanticModelEnvelopes._Diagnostic]
+            Path,
+            tuple[
+                list[FlextInfraUtilitiesSemanticModelEnvelopes._Diagnostic],
+                list[p.Infra.Issue],
+            ],
         ] = {}
         for issue in issues:
+            path = Path(issue.file)
+            path = path if path.is_absolute() else root / path
+            rows = admitted.setdefault(path, ([], []))
+            rows[1].append(issue)
             pair = cls._diagnostic_pair(issue)
             if pair is None:
                 continue
             if not pair[-1].endswith(".__init__"):
                 continue
-            path = Path(issue.file)
-            path = path if path.is_absolute() else root / path
-            admitted.setdefault(path, []).append(cls._Diagnostic(issue, *pair))
+            rows[0].append(cls._Diagnostic(issue, *pair))
         return admitted
 
     @classmethod
@@ -266,7 +452,12 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         module: p.Infra.RopePyModule,
         invocation: ast.Call,
         findings: Sequence[_Diagnostic],
-        context: tuple[p.Infra.RopeProject, p.Infra.RopePyObject, Mapping[str, str]],
+        context: tuple[
+            p.Infra.RopeProject,
+            p.Infra.RopePyObject,
+            Mapping[str, str],
+            Sequence[p.Infra.Issue],
+        ],
     ) -> bool:
         """Prove the native constructor and its diagnosed keyword.
 
@@ -292,6 +483,16 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             not located
             or invocation.args
             or any(keyword.arg is None for keyword in invocation.keywords)
+            or invocation.end_lineno is None
+            or invocation.end_col_offset is None
+        ):
+            return False
+        if any(
+            (invocation.lineno, invocation.col_offset + 1)
+            <= (issue.line, issue.column)
+            <= (invocation.end_lineno, invocation.end_col_offset + 1)
+            and not any(issue is finding.issue for finding in located)
+            for issue in context[3]
         ):
             return False
         scope = runtime.scope_at(
@@ -305,17 +506,37 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(model)
         ):
             return False
-        module_name, _separator, qualified = runtime.native_object_identity(
-            binding.get_object()
-        ).partition("::")
-        constructor = f"{module_name}.{qualified.rpartition('.')[2]}.__init__"
-        accepted = any(
-            constructor == finding.constructor
+        constructor = f"{cls._source_identity(context[0], model)}.__init__"
+        declaration_scope = model.get_scope().parent
+        # One protocol-valued field cannot admit an unrelated invalid keyword.
+        accepted = all(
+            (
+                constructor == finding.constructor
+                or (
+                    declaration_scope is not None
+                    and runtime.same_name(
+                        binding,
+                        runtime.expression_name(
+                            declaration_scope,
+                            finding.constructor.removesuffix(".__init__"),
+                        ),
+                    )
+                )
+            )
             and cls._protocol_twin(
                 context[0],
                 (finding.actual, finding.expected),
                 context[2],
-                (model, scope, finding.parameter),
+                (
+                    model,
+                    scope,
+                    finding.parameter,
+                    next(
+                        keyword.value
+                        for keyword in invocation.keywords
+                        if keyword.arg == finding.parameter
+                    ),
+                ),
             )
             for finding in located
         )
@@ -398,12 +619,13 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         model_base = runtime.qualified_name(project, "pydantic.BaseModel").get_object()
         admitted = cls._model_envelope_issues(project, issues)
+        twins = cls._projected_twins(project, routes)
 
         updates: dict[Path, str] = {}
         planned: dict[Path, p.Infra.RopeChangeContents] = {}
         for resource in resources:
             path = Path(resource.real_path)
-            if path not in admitted:
+            if path not in admitted or not admitted[path][0]:
                 continue
             module = FlextInfraUtilitiesRopeCore.resolve_pymodule(
                 project,
@@ -417,7 +639,10 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
                     for node in ast.walk(module.get_ast())
                     if isinstance(node, ast.Call)
                     and cls._model_envelope_call(
-                        module, node, admitted[path], (project, model_base, routes)
+                        module,
+                        node,
+                        admitted[path][0],
+                        (project, model_base, twins, admitted[path][1]),
                     )
                 ),
                 key=lambda node: runtime.source_offset(module.source_code, node),
@@ -425,7 +650,8 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             )
             u.Cli.info(
                 f"mod: model-envelope source={path} "
-                f"diagnostics={len(admitted[path])} admitted_calls={len(invocations)}"
+                f"diagnostics={len(admitted[path][0])} "
+                f"admitted_calls={len(invocations)}"
             )
             for invocation in invocations:
                 offset = runtime.source_offset(module.source_code, invocation)

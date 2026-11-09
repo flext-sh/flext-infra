@@ -131,6 +131,10 @@ When assembling a new boundary model from protocol-typed values, use its native
 `model_validate` entry with those values, retaining their references. This creates
 the new envelope once; it does not dump or revalidate an existing envelope or
 claim that a structural protocol is a concrete model type to the constructor.
+The semantic rewrite proves the model/protocol identities and declared container
+contracts through Rope, including unions and native covariant containers; unrelated
+element types, incompatible collection shapes and unhandled constructor diagnostics
+prevent a rewrite.
 Railway callbacks preserve original exceptions; only the declared error boundary
 converts a validation failure into a result.
 

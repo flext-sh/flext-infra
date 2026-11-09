@@ -1288,6 +1288,12 @@ silently omitted model or an empty successful inventory.
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Authored dependency ports
 retain their consumer-owned capability contracts and normal `p` facade composition.
+Protocol placement follows ADR-018: model mirrors correspond to `_models/`,
+internal service contracts and DI ports use `_protocols/_services/`, and external
+integration capabilities use `_protocols/_external/`. The public `p` identities
+stay unchanged. `make mod` owns the semantic moves and consumer rewiring;
+`make gen` projects declarations and retires generated conformance witnesses.
+Candidate admission requires no separate model-to-protocol witness module.
 The accepted 2026-10-28 [model and service protocol
 projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
 contract owns the automatic first-party projection, extending the model-to-`p`
@@ -2522,6 +2528,8 @@ configuration never
 declares kind (tracker `operator-order-2026-11-02-kind-detected`).
 The native `refactor mod-text --rule-ids retire-repository-kind-declaration --apply`
 retires the obsolete YAML key through the existing authenticated text publisher.
+Write containment uses native project facts without loading the policy being
+rewritten; policy consumers retain their strict full-configuration boundary.
 Text rules can select physical YAML sources by explicit include glob, using the
 same inventory boundary as shell sources; unrelated YAML keys remain untouched.
 Projects without FLEXT consumption retain ordinary internal governance. A distinct

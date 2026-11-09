@@ -79,20 +79,12 @@ back to the aggregate, which can reverse native C3 precedence. Explicit exports 
 read through the native source binding index, including annotated `__all__` declarations.
 Generated modules are projections, not independent declaration authorities.
 
-The declared conformance module, named by
-`c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME`, contains constructor-to-port type
-assignments for the authenticated public model inventory. It constructs no records and
-uses no model annotations. The shared candidate validator checks that cohort with the
-configured native Pyrefly gate. A narrower existing Protocol can remain the owner when
-the model satisfies its required capabilities; comparing annotation strings or requiring
-identical field inventories is not an assignability proof. Runtime-checkable membership
-alone checks attribute presence and cannot replace this static proof.
-
-The shared validator rejects a missing witness beside a public models facade.
-It checks the complete witness batch in one native Pyrefly invocation, retaining
-each staged project's nearest configuration and explicit staged source roots.
-The physical runtime still owns the interpreter. Ordinary Pyrefly gate execution
-without injected source roots retains its existing project configuration.
+The shared candidate validator checks cold imports of the actual staged declarations.
+Ordinary native type gates check their real consumers; no generated conformance witness
+is required. Generation retires obsolete generated witnesses through its existing
+retirement publisher. Runtime-checkable membership checks attribute presence and does
+not replace static signature validation. Protocol family placement and ownership follow
+the workspace ADR-018 model and service projection contract.
 
 Independent native field-schema checks include the declaring class's PEP 695
 type parameters in its lexical namespace. This preserves actual generic identities;

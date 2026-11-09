@@ -159,10 +159,15 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
             return None
         scope = owner.get_scope()
         destination = runtime.expression_name(scope, twins[element][1])
+        destination_id = (
+            None
+            if destination is None
+            else runtime.native_object_identity(destination.get_object())
+        )
         u.Cli.info(
             f"mod: opaque-port owner={runtime.native_object_identity(owner)} "
             f"field={field} goal={twins[element][1]} "
-            f"destination={None if destination is None else runtime.native_object_identity(destination.get_object())} "
+            f"destination={destination_id} "
             f"expected={element}"
         )
         if (
@@ -186,9 +191,12 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
         offsets = []
         for opaque in ast.walk(annotation):
             if isinstance(opaque, ast.Subscript):
+                port_match = runtime.same_name(
+                    port, runtime.resolve_symbol(scope, opaque.value)
+                )
                 u.Cli.info(
                     f"mod: opaque-port annotation={ast.unparse(opaque.value)} "
-                    f"port={runtime.same_name(port, runtime.resolve_symbol(scope, opaque.value))} "
+                    f"port={port_match} "
                     f"origin={cls._identity(scope, opaque.value)}"
                 )
             if not isinstance(opaque, ast.Subscript) or not runtime.same_name(

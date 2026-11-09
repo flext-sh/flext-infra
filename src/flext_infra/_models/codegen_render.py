@@ -27,33 +27,6 @@ from flext_infra._models._config import (
 class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     """Typed render contexts for generated codegen artifacts."""
 
-    class ModelProtocolConformanceRenderContext(m.ContractModel):
-        """Source-bound constructor types checked before protocol publication."""
-
-        header: str = m.Field(description="Generated source ownership marker")
-        copyright_notice: str = m.Field(description="The owning project's legal notice")
-        package_name: t.NonEmptyStr = m.Field(
-            description="Authenticated public package"
-        )
-        imports: tuple[str, ...] = m.Field(description="Native generic-bound imports")
-        facades: tuple[str, str] = m.Field(
-            description="Published model and protocol facade classes of the package"
-        )
-        checks: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...] = m.Field(
-            description="Native constructor, structural port, parameters and arguments"
-        )
-        documentation_language: t.Infra.DocumentationLanguage = m.Field(
-            default="en", description="Project-local generated documentation language"
-        )
-
-        @m.computed_field
-        @property
-        def module_description(self) -> str:
-            """The instance-to-protocol evidence description."""
-            return c.Infra.DocumentationText.MODEL_PROTOCOL_CONFORMANCE.localized(
-                self.documentation_language
-            )
-
     class ModelProtocolRenderContext(m.ContractModel):
         """Exact declarations supplied to one mirrored protocol module."""
 

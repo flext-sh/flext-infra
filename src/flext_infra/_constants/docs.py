@@ -38,13 +38,6 @@ class FlextInfraConstantsDocs:
             "Structural member projected from the owning model.",
             "Membro estrutural projetado do modelo responsável.",
         )
-        MODEL_PROTOCOL_CONFORMANCE = (
-            "Static instance-to-protocol evidence required by candidate admission.",
-            (
-                "Prova estática de instância para protocolo exigida no aceite "
-                "do candidato."
-            ),
-        )
         VERSION = ("Version", "Versão")
         PROJECT_CLASS = ("Project class", "Classe do projeto")
         PACKAGE = ("Package", "Pacote")

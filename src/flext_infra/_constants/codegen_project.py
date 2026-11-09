@@ -245,10 +245,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
-    TEMPLATE_MODEL_PROTOCOL_CONFORMANCE: ClassVar[str] = (
-        "model_protocol_conformance.py.j2"
-    )
-    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "model_conformance.py"
     PROTOCOL_EXCLUDED_DUNDERS: ClassVar[frozenset[str]] = frozenset({
         "__init__",
         "__new__",

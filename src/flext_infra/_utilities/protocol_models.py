@@ -1078,9 +1078,6 @@ class FlextInfraUtilitiesModelsProtocol:
             if inventory is None:
                 return result_type.ok({})
             package_dir, package_name, grouped = inventory
-            conformance = self._source_model_conformance_source(
-                package_dir, package_name, grouped
-            )
             grouped = self._source_owned_model_protocols(grouped)
             rendered: dict[Path, str] = {}
             for destination, classes in sorted(grouped.items()):
@@ -1135,9 +1132,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     self.repository_root / relative,
                     relative.with_suffix("").name,
                 )
-            if conformance is not None:
-                path, source = conformance
-                rendered[path.relative_to(self.repository_root)] = source
             return result_type.ok(rendered)
 
         def _source_apply_protocol_rewrites(
@@ -1222,147 +1216,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     normalized,
                     tuple(rewrite.text for rewrite in planned_rewrites),
                 )
-
-        def _source_model_conformance_source(
-            self,
-            package_dir: Path,
-            package_name: str,
-            grouped: Mapping[
-                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
-            ],
-        ) -> tuple[Path, str] | None:
-            """Render the mandatory candidate checker's constructor-to-port pairs.
-
-            Returns:
-                The candidate's structural evidence source, or no public model pairs.
-
-            """
-            public = {
-                source: route
-                for route, source in self.source_model_facade_model_routes.items()
-            }
-            checks: list[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = []
-            imports: list[str] = []
-            # Inside the protocol family the own letters are the facades under
-            # assembly (ENFORCE-051): the witness names the published facade
-            # classes of its package root instead of its own ``m``/``p``.
-            model_facade = self._source_facade_class_name(
-                package_dir / "models.py", "m"
-            )
-            protocol_facade = self._source_facade_class_name(
-                package_dir / "protocols.py", "p"
-            )
-            alias_ctx = self._source_model_alias_names_by_tree(grouped)
-            for classes in grouped.values():
-                imports.extend(self.source_annotation_imports(classes, package_name))
-                for node, path, tree in classes:
-                    # A type alias is not a model to witness: its protocol
-                    # mirror is the target class contract, not a conversion.
-                    if path and path[-1] in alias_ctx[0].get(id(tree), set()):
-                        continue
-                    identity = ".".join((self.source_module_names[id(tree)], *path))
-                    model, port = (
-                        public.get(identity),
-                        self.source_model_protocol_routes.get(identity),
-                    )
-                    # A private model is no public facade member: its witness
-                    # would read a private name across the facade boundary.
-                    if (
-                        model is None
-                        or port is None
-                        or any(part.startswith("_") for part in path)
-                        or bool(node.type_params)
-                    ):
-                        continue
-                    if model.rsplit(".", 1)[-1] in (alias_ctx[1] | alias_ctx[2]):
-                        continue
-                    parameters = self._source_witness_parameters(
-                        (tree, node, path), classes, (model_facade, public)
-                    )
-                    arguments = tuple(
-                        ("*" if isinstance(parameter, ast.TypeVarTuple) else "")
-                        + parameter.name
-                        for parameter in node.type_params
-                        if isinstance(
-                            parameter, ast.TypeVar | ast.TypeVarTuple | ast.ParamSpec
-                        )
-                    )
-                    checks.append((
-                        f"{model_facade}{model.removeprefix('m')}",
-                        f"{protocol_facade}{port.removeprefix('p')}",
-                        parameters,
-                        arguments,
-                    ))
-            imports = [
-                ast.unparse(
-                    ast.ImportFrom(module=node.module, names=names, level=node.level)
-                )
-                if isinstance(node, ast.ImportFrom)
-                else ast.unparse(ast.Import(names=names))
-                for statement in imports
-                for node in ast.walk(ast.parse(statement))
-                if isinstance(node, ast.Import | ast.ImportFrom)
-                for names in (
-                    [
-                        alias
-                        for alias in node.names
-                        if (alias.asname or alias.name) not in {"m", "p"}
-                    ],
-                )
-                if names
-            ]
-            path = (
-                package_dir / "_protocols" / c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME
-            )
-            context = m.Infra.ModelProtocolConformanceRenderContext(
-                header=c.Infra.AUTOGEN_HEADER,
-                documentation_language=self.documentation_language,
-                copyright_notice=FlextInfraUtilitiesLintRecipes.copyright_notice(
-                    package_dir, module=path, source_project=self.project
-                ),
-                package_name=package_name,
-                imports=tuple(dict.fromkeys(imports)),
-                facades=(model_facade, protocol_facade),
-                checks=tuple(sorted(checks)),
-            )
-            template = (
-                FlextInfraUtilitiesGitignore.codegen_templates_root(
-                    config.Infra.codegen
-                )
-                / c.Infra.TEMPLATE_MODEL_PROTOCOL_CONFORMANCE
-            )
-            source = u.Cli.template_render(template, context).unwrap()
-            return path, FlextInfraUtilitiesProtectedEditLinting.normalize_python_text(
-                path, source
-            ).unwrap()
-
-        def _source_witness_parameters(
-            self,
-            declaration: tuple[ast.Module, ast.ClassDef, tuple[str, ...]],
-            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
-            facades: tuple[str, Mapping[str, str]],
-        ) -> tuple[str, ...]:
-            """Render a witnessed model's type parameters with public bounds.
-
-            Returns:
-                Each type parameter source with its bound and default rewritten.
-
-            """
-            parameters: list[str] = []
-            for original in declaration[1].type_params:
-                parameter = copy.deepcopy(original)
-                for name in ("bound", "default_value"):
-                    value = getattr(parameter, name, None)
-                    if isinstance(value, ast.expr):
-                        setattr(
-                            parameter,
-                            name,
-                            self._source_witness_bound(
-                                value, declaration, classes, facades
-                            ),
-                        )
-                parameters.append(ast.unparse(parameter))
-            return tuple(parameters)
 
         def _source_domain_facade_protocols(
             self,
@@ -5442,48 +5295,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                 )
             return fields
-
-        def _source_witness_bound(
-            self,
-            value: ast.expr,
-            owner: tuple[ast.Module, ast.ClassDef, tuple[str, ...]],
-            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
-            models: tuple[str, Mapping[str, str]],
-        ) -> ast.expr:
-            """Spell a witness type-parameter bound in the witness module's scope.
-
-            The witness parameter must admit the native generic, so a bound
-            naming a public model keeps that model, read through the published
-            model facade exactly as the witness spells constructors; the
-            model's own projection is valid only in its module. The bound
-            resolves as its annotation scope does: from the class enclosing the
-            model outward to the module.
-
-            Returns:
-                The facade-spelled model, or the structural projection otherwise.
-
-            """
-            tree, model, path = owner
-            module = self.source_module_names[id(tree)]
-            spelled_bound = ast.unparse(value)
-            model_facade, public = models
-            route = next(
-                (
-                    found
-                    for depth in range(len(path) - 1, -1, -1)
-                    if (
-                        found := public.get(
-                            ".".join((module, *path[:depth], spelled_bound))
-                        )
-                    )
-                    is not None
-                ),
-                None,
-            )
-            if route is None:
-                return self._source_structural_annotation(value, tree, model, classes)
-            spelled = f"{model_facade}{route.removeprefix('m')}"
-            return ast.parse(spelled, mode="eval").body
 
         def _source_structural_annotation(
             self,

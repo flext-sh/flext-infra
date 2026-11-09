@@ -31,6 +31,9 @@ Infra:
     # pair and its lock publisher/converger retired with mise self-management
     # — the pinned release is the [tools] entry mise.lock provisions).
     retired_projections:
+    # Model contracts are checked through their actual consumers. The former
+    # generated assignment witnesses retire in every discovered Python tier.
+    - '**/_protocols/model_conformance.py'
     # The former full-managed JSON template had no generated banner. Its exact
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
@@ -936,6 +939,7 @@ Infra:
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
+        arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
         requires_activation: false
       - name: gen-scope

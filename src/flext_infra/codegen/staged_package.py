@@ -276,7 +276,7 @@ class FlextInfraStagedPackage:
                     durability=c.Cli.WriteDurability.SCRATCH,
                 ),
             )
-        except Exception as error:  # ruff: ignore[blind-except]
+        except Exception as error:  # ruff: ignore[blind-except] - retain the original filesystem exception on ordered failure
             # Results are consumed in source order after the concurrent wave;
             # retain the original filesystem exception on that ordered failure.
             return r[bool].fail(str(error), exception=error)

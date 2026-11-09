@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
@@ -895,6 +895,23 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
 
     @runtime_checkable
+    class RopeMoveClass(Protocol):
+        """Native nested-class transfer, distinct from global/module moves."""
+
+        def get_changes(
+            self,
+            target: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resources: Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]
+            | None = None,
+            *,
+            destination_offset: int | None = None,
+            match_filter: Callable[
+                [FlextInfraProtocolsRopeRuntime.RopeOccurrence], bool
+            ]
+            | None = None,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
+
+    @runtime_checkable
     class RopeOccurrence(Protocol):
         """Rope occurrence shape."""
 
@@ -909,6 +926,13 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def is_written(self) -> bool: ...
 
         def is_defined(self) -> bool: ...
+
+        def get_primary_and_pyname(
+            self,
+        ) -> tuple[
+            FlextInfraProtocolsRopeRuntime.RopePyName | None,
+            FlextInfraProtocolsRopeRuntime.RopePyName | None,
+        ]: ...
 
     @runtime_checkable
     class RopeOccurrenceFinder(Protocol):

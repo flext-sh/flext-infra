@@ -155,14 +155,15 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         project = project_root.resolve()
-        inputs = cls.load_codegen_inputs(project).unwrap()
-        if inputs.kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
+        # Containment must not parse the obsolete policy a migration replaces.
+        kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(project)
+        if kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
             msg = f"third-party fork is never a FLEXT write target: {project}"
             raise ValueError(msg)
         if (
             authority is not None
             and not project.is_relative_to(authority.resolve())
-            and inputs.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
+            and kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
         ):
             msg = (
                 f"write project {project} is outside the selected root "

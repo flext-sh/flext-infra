@@ -686,6 +686,18 @@ class FlextInfraUtilitiesProjectDiscovery(
             for artifact in config.Infra.codegen.artifacts
             if artifact.source_scan_ignore and not artifact.retired_typing_root
         ) | {c.Infra.GIT_DIR}
+        source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+        source_containers = (
+            None
+            if source_paths is None
+            else frozenset(
+                parent
+                for path in source_paths
+                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                for parent in path.parents
+                if parent.is_relative_to(directory)
+            )
+        )
         walk = (
             directory.walk(on_error=on_error)
             if source_project is None
@@ -705,6 +717,15 @@ class FlextInfraUtilitiesProjectDiscovery(
                     )
                 )
                 and parent / name not in excluded_paths
+                and (
+                    source_containers is None
+                    or parent / name in source_containers
+                    or any((parent / name).is_relative_to(root) for root in owned_roots)
+                    or any(
+                        (parent / name).is_relative_to(directory / root)
+                        for root in config.Infra.source_scan.roots
+                    )
+                )
                 and (
                     not (parent / name).is_symlink() if source_project is None else True
                 )
