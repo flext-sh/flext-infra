@@ -23,41 +23,38 @@ class TestsFlextInfraModelEnvelopeContracts:
     def test_source_declaration_records_match_loaded_public_owners(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
-        """The canonical record names the actual protocol's declaring resource."""
+        """Facade and inherited-base records name their actual native declarations."""
         workspace, _path = rope_contract_consumer
         with workspace.rope_project.source_view(
             declared_files=None, additional_source_folders=None
         ) as project:
-            repository_root = tm.not_none(
-                u.Infra.project_root(Path(getfile(m.Cli.AtomicFileState)))
-            )
-            records = tuple(
-                record
-                for package in u.Infra.protocol_model_package_names(
-                    repository_root, project
+            for model_type, protocol_type in (
+                (m.Cli.AtomicFileState, p.Cli.AtomicFileState),
+                (m.ProjectMetadata.__mro__[1], p.ProjectMetadata.__mro__[1]),
+            ):
+                repository_root = tm.not_none(
+                    u.Infra.project_root(Path(getfile(model_type)))
                 )
-                for record in u.Infra.protocol_model_declarations_from_source(
-                    repository_root,
-                    project,
-                    package_name=package,
+                records = tuple(
+                    record
+                    for package in u.Infra.protocol_model_package_names(
+                        repository_root, project
+                    )
+                    for record in u.Infra.protocol_model_declarations_from_source(
+                        repository_root,
+                        project,
+                        package_name=package,
+                    )
+                    if record[0] == f"{model_type.__module__}.{model_type.__qualname__}"
                 )
-                if record[0]
-                == (
-                    f"{m.Cli.AtomicFileState.__module__}."
-                    f"{m.Cli.AtomicFileState.__qualname__}"
+                tm.that(len(records), eq=1)
+                tm.that(
+                    records[0][1],
+                    eq=f"{protocol_type.__module__}.{protocol_type.__qualname__}",
                 )
-            )
-        tm.that(len(records), eq=1)
-        tm.that(
-            records[0][1],
-            eq=(
-                f"{p.Cli.AtomicFileState.__module__}."
-                f"{p.Cli.AtomicFileState.__qualname__}"
-            ),
-        )
-        tm.that(
-            records[0][2].resolve(), eq=Path(getfile(p.Cli.AtomicFileState)).resolve()
-        )
+                tm.that(
+                    records[0][2].resolve(), eq=Path(getfile(protocol_type)).resolve()
+                )
 
     @staticmethod
     @c.Tests.MARK.slow

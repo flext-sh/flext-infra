@@ -284,11 +284,7 @@ class FlextInfraUtilitiesModelsProtocol:
         ):
             return ()
         inventory = projection.source_model_inventory()
-        return (
-            ()
-            if inventory is None
-            else projection.source_model_declarations(inventory[1])
-        )
+        return () if inventory is None else projection.source_model_declarations()
 
     @classmethod
     def bootstrap_protocol_model_sources(
@@ -1032,9 +1028,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration,
             )
 
-        def source_model_declarations(
-            self, package_name: str
-        ) -> tuple[tuple[str, str, Path], ...]:
+        def source_model_declarations(self) -> tuple[tuple[str, str, Path], ...]:
             """Expose the admitted inventory's original native declaration pairs.
 
             Returns:
@@ -1045,7 +1039,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             declarations: list[tuple[str, str, Path]] = []
-            for classes in self.source_model_protocol_classes.values():
+            for destination, classes in self.source_model_protocol_classes.items():
                 for _node, path, tree in classes:
                     module_name = self.source_module_names[id(tree)]
                     model_resource = self.project.find_module(module_name)
@@ -1066,7 +1060,15 @@ class FlextInfraUtilitiesModelsProtocol:
                     target = self._source_class(
                         self.qualified_name(
                             self.project,
-                            f"{package_name}.{self.source_model_protocol_routes[model]}",
+                            ".".join((
+                                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                                    destination,
+                                    project_root=self.repository_root,
+                                    source_project=self.project,
+                                ),
+                                self._source_destination_holder(destination),
+                                self.source_model_protocols[model],
+                            )),
                         )
                     )
                     resource = target.get_module().get_resource()
