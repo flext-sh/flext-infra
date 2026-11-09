@@ -4164,6 +4164,13 @@ their required trust input and native key/signature failures remain fail-loud. A
 observation is never signed proof, and absent signing material does not gate unrelated
 offline producers.
 
+Candidate admission (`u.Infra.git_admit_gate_candidate`) builds on the V3 attestation
+primitives and decides whether an attested proof corresponds to a specific Git
+candidate (repository, head, tree, base, merge). It requires exact identity match,
+clean outcome under the clean-quality policy, TTL validity, and runtime identity
+agreement. It does not invoke Make, publish GitHub checks, or modify repository
+state. Absent or incompatible proof never approves implicitly.
+
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. Each smell
 finding carries the repair text declared under `smells.fix-text` in

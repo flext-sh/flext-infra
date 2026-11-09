@@ -1004,6 +1004,133 @@ class FlextInfraProtocolsGates:
             """Existing immutable proof was reused."""
             ...
 
+    @runtime_checkable
+    class GateCandidateIdentity(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def repository(self) -> t.NonEmptyStr:
+            """Observed origin remote URL."""
+            ...
+
+        @property
+        def head_oid(self) -> str:
+            """Candidate HEAD commit."""
+            ...
+
+        @property
+        def base_oid(self) -> str | None:
+            """Optional base commit for PR checks."""
+            ...
+
+        @property
+        def tree_oid(self) -> str:
+            """Candidate commit tree."""
+            ...
+
+        @property
+        def merge_oid(self) -> str | None:
+            """Optional synthetic merge commit for PR checks."""
+            ...
+
+        @property
+        def dirty(self) -> bool:
+            """Candidate has uncommitted WIP."""
+            ...
+
+        @property
+        def changed_paths_digest(self) -> str | None:
+            """Digest of changed paths when dirty."""
+            ...
+
+    @runtime_checkable
+    class GateCandidateAdmissionRequest(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace(self) -> str:
+            """Git repository root."""
+            ...
+
+        @property
+        def candidate(self) -> FlextInfraProtocolsGates.GateCandidateIdentity:
+            """Exact candidate identity."""
+            ...
+
+        @property
+        def allowed_signers(self) -> t.NonEmptyStr:
+            """OpenSSH allowed_signers file."""
+            ...
+
+        @property
+        def expected_gates(self) -> Sequence[str]:
+            """Required original stage."""
+            ...
+
+        @property
+        def context_digest(self) -> str:
+            """Expected execution context."""
+            ...
+
+        @property
+        def policy(self) -> c.Infra.GateAcceptancePolicy:
+            """Required policy for stage reuse."""
+            ...
+
+        @property
+        def policy_digest(self) -> str:
+            """Required recorded policy."""
+            ...
+
+        @property
+        def receipt(self) -> Path:
+            """Exact original workspace receipt."""
+            ...
+
+        @property
+        def require_clean(self) -> bool:
+            """Require native_outcome CLEAN."""
+            ...
+
+        @property
+        def merge_check(self) -> bool:
+            """Admit for PR merge (requires clean candidate)."""
+            ...
+
+        @property
+        def ttl_seconds(self) -> int:
+            """Maximum attestation age in seconds."""
+            ...
+
+    @runtime_checkable
+    class GateCandidateAdmissionReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def eligible(self) -> bool:
+            """Candidate is eligible."""
+            ...
+
+        @property
+        def reasons(self) -> tuple[str, ...]:
+            """Human-readable admission reasons."""
+            ...
+
+        @property
+        def attestation(self) -> FlextInfraProtocolsGates.GateAttestationReport | None:
+            """Verified attestation if eligible."""
+            ...
+
+        @property
+        def candidate_head(self) -> str | None:
+            """Candidate head that was evaluated."""
+            ...
+
+        @property
+        def attested_head(self) -> str | None:
+            """Attested head from the proof."""
+            ...
+
 
 __all__: list[str] = [
     "FlextInfraProtocolsGates",
