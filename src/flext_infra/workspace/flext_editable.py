@@ -279,10 +279,25 @@ class FlextInfraWorkspaceFlextEditable:
     ) -> p.Result[int]:
         """Reinstall the selection editable, then publish its receipt.
 
+        The workspace declaration is captured before the installation: this
+        command runs from the distribution it reinstalls, so loading the
+        workspace after the editable install would read the packaged
+        configuration of a distribution whose files were just replaced.
+
         Returns:
             The number of distributions installed editable.
 
         """
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            selection.flext_root
+        )
+        if workspace.failure:
+            return r[int].from_failure(workspace)
+        provided = {
+            canonicalize_name(repository.distribution)
+            for repository in (workspace.value.repository, *workspace.value.subprojects)
+            if repository.package
+        }
         uv = u.Infra.managed_mise_binary("uv", runtime_root)
         if uv.failure:
             return r[int].from_failure(uv)
@@ -301,6 +316,7 @@ class FlextInfraWorkspaceFlextEditable:
             selection,
             python=python,
             candidate_environment=candidate_environment,
+            provided=provided,
         )
 
     @classmethod
@@ -311,6 +327,7 @@ class FlextInfraWorkspaceFlextEditable:
         *,
         python: str,
         candidate_environment: Path,
+        provided: set[NormalizedName],
     ) -> p.Result[int]:
         """Verify installed editables and publish their selection receipt.
 
@@ -326,16 +343,6 @@ class FlextInfraWorkspaceFlextEditable:
         )
         if observed.failure:
             return r[int].from_failure(observed)
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            selection.flext_root
-        )
-        if workspace.failure:
-            return r[int].from_failure(workspace)
-        provided = {
-            canonicalize_name(repository.distribution)
-            for repository in (workspace.value.repository, *workspace.value.subprojects)
-            if repository.package
-        }
         packages = cls._editable_package_sources(selection, provided, observed.value)
         if packages.failure:
             return r[int].from_failure(packages)
