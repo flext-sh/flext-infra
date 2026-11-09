@@ -643,6 +643,7 @@ Infra:
         - "slow: slow-running tests"
         - "docker: tests requiring Docker"
         - "oracle: tests requiring the shared Oracle database"
+        - "ldap: tests requiring the shared LDAP service"
         - "remote: tests requiring remote/external network services"
         - "e2e: end-to-end integration tests"
         - "edge_cases: edge case tests"
