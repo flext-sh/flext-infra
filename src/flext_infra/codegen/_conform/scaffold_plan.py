@@ -42,8 +42,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         existing = super()._plan_existing_repository(
             target=target, workspace=workspace, codegen=codegen, contract=contract
         )
+        if existing.failure or not (contract.templates and contract.custom):
+            return existing
         absent = self._absent_family_destinations(target, workspace, codegen)
-        if existing.failure or not absent or not contract.templates:
+        if not absent:
             return existing
         # The artifact graph is keyed by template destinations; the checkout
         # paths they render to only filter the resulting plans.
