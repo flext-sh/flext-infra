@@ -1225,6 +1225,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
+            u.Cli.toml_remove_key_if_present(pyrefly, "python")
 
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:

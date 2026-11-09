@@ -128,6 +128,7 @@ exclude-newer = "7 days"
 exclude-newer-package = {{ cryptography = false }}
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
+python = ".venv/bin/python"
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -159,6 +160,9 @@ python-interpreter-path = "../.venv/bin/python"
             "python-interpreter-path"
             not in u.Tests.toml_table_at(first, "tool", "pyrefly"),
             eq=True,
+        )
+        tm.that(
+            "python" not in u.Tests.toml_table_at(first, "tool", "pyrefly"), eq=True
         )
         dev_group = u.Tests.toml_strings_at(first, "dependency-groups", "dev")
         tm.ok("custom-tool>=1" in dev_group)
