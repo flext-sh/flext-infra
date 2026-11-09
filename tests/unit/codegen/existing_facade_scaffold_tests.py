@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import codegen
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -64,7 +64,7 @@ class TestsFlextInfraCodegenExistingFacadeScaffold:
         return root, project.package_name
 
     @staticmethod
-    def _planned(root: Path) -> m.Infra.CodegenPlan:
+    def _planned(root: Path) -> p.Infra.CodegenPlan:
         """Run the public conform planner read-only.
 
         Returns:

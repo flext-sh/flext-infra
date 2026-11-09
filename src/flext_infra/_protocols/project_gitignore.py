@@ -31,19 +31,9 @@ class FlextInfraProtocolsProjectGitignore:
         """Structural data contract projected from the owning model."""
 
         patterns: tuple[t.NonEmptyStr, ...]
-
-        @property
-        def preserved_blocks(
-            self,
-        ) -> tuple[
+        preserved_blocks: tuple[
             FlextInfraProtocolsProjectGitignore.ProjectGitignorePreservedBlock, ...
-        ]:
-            """Structural member projected from the owning model.
-
-            External generated blocks preserved from the live .gitignore; the
-            external owner alone supplies their contents.
-            """
-            ...
+        ]
 
 
 __all__: list[str] = [

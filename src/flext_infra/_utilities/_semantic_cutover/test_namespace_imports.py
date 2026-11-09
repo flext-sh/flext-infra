@@ -234,8 +234,8 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         text = logical.split("#", 1)[0].strip()
         match = cls.FROM_PATTERN.match(text)
         if match is not None:
-            names = cls._parse_names(match.group("names"))
-            return match.group("module"), names
+            names = list(cls._parse_names(match.group("names")))  # type: ignore[arg-type]
+            return match.group("module"), tuple(names)  # type: ignore[return-value]
         match = cls.IMPORT_PATTERN.match(text)
         if match is None:
             return None
@@ -268,7 +268,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
             name = parts[0]
             alias = cls._alias(parts)
             names.append((name, alias))
-        return tuple(names)
+        return tuple(names)  # type: ignore[return-value]
 
     @classmethod
     def _alias(cls, parts: Sequence[str]) -> str | None:

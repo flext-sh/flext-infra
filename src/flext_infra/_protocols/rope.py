@@ -22,6 +22,7 @@ from typing import Literal, Protocol, Self, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
+from flext_infra import t
 from flext_infra._protocols.base import FlextInfraProtocolsBase
 from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
@@ -38,7 +39,6 @@ SPDX-License-Identifier: MIT
 if TYPE_CHECKING:
     from types import TracebackType
 
-    from flext_infra import t
     from flext_infra._protocols import (
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,
@@ -719,7 +719,7 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def lexical(
             self,
-        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
+        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
             """Module-scope bindings visible to every nested base."""
             ...
 
@@ -1027,46 +1027,20 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeInventoryRecordInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def rope_project(self) -> t.Infra.RopeProject:
-            """Rope project used for reference discovery."""
-            ...
-
-        @property
-        def resource(self) -> t.Infra.RopeResource:
-            """Rope resource containing the symbol definition."""
-            ...
-
+        rope_project: t.Infra.RopeProject
+        resource: t.Infra.RopeResource
         source: str
         parameter_lines: Mapping[tuple[int, str], int]
         constant_bindings: frozenset[tuple[int, str]]
         name: str
-
-        @property
-        def pyname(self) -> t.Infra.RopePyName:
-            """Rope pyname node for the symbol."""
-            ...
-
+        pyname: t.Infra.RopePyName
         module_name: str
         project_name: str
-
-        @property
-        def convention(self) -> FlextInfraProtocolsRope.RopeModuleConvention:
-            """Module convention metadata for tier/facade checks."""
-            ...
-
+        convention: FlextInfraProtocolsRope.RopeModuleConvention
         scope_chain: Sequence[str]
         class_chain: Sequence[str]
-
-        @property
-        def child_scope(self) -> FlextInfraProtocolsRope.RopeScopeDsl | None:
-            """Optional child scope object from rope."""
-            ...
-
-        @property
-        def rope_workspace(self) -> FlextInfraProtocolsRope.RopeWorkspaceDsl:
-            """Shared rope workspace/session owning the resource."""
-            ...
+        child_scope: FlextInfraProtocolsRope.RopeScopeDsl | None
+        rope_workspace: FlextInfraProtocolsRope.RopeWorkspaceDsl
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

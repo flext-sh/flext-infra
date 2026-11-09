@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from flext_cli import c, m, t
+from pydantic_settings import SettingsConfigDict as PydanticSettingsConfigDict
 
 
 class FlextInfraModelsSettings:
@@ -19,7 +20,7 @@ class FlextInfraModelsSettings:
         """Validated process-start settings owned by flext-infra."""
 
         # Validate every external alias before singleton export.
-        model_config = m.SettingsConfigDict(
+        model_config = PydanticSettingsConfigDict(
             env_prefix="",
             env_ignore_empty=True,
             enable_decoding=False,

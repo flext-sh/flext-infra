@@ -1138,6 +1138,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         except ValueError as exc:
             return r[p.Infra.MakefileRenderSpec].fail(str(exc), exception=exc)
+        # Project-owned Mise tools are composed into .mise.toml; setup and upg
+        # install the same declared set, so they join the explicit install list.
+        managed = u.Infra.load_project_managed_artifacts(target.root)
+        if managed.failure:
+            return r[p.Infra.MakefileRenderSpec].from_failure(managed)
         return r[p.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec(
                 bootstrap_requirements=Path(
