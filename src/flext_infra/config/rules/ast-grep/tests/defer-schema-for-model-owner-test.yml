@@ -1,8 +1,0 @@
-id: defer-schema-for-model-owner
-valid:
-  - "leaf: Annotated[FlextInfraModelsX.Leaf]"
-  - "leaf: Annotated[m.Leaf]"
-  - "entries: Annotated[p.Entry, t.schema_for_model(EntryResult)]"
-invalid:
-  - "leaf: Annotated[p.Infra.Leaf, t.schema_for_model(FlextInfraModelsX.Leaf)]"
-  - "leaf: Annotated[p.Leaf, t.schema_for_model(m.Leaf)]"

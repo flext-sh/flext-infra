@@ -943,7 +943,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         for path in u.Infra.workspace_python_files(snapshot, member):
             source = u.Infra.workspace_source(snapshot, path)
             previous = self.state.source_inputs.setdefault(path, source.state)
-            if previous != source.state:
+            if previous.content != source.state.content:
                 message = f"generation has conflicting source witnesses: {path}"
                 raise ValueError(message)
             imports = u.Infra.workspace_module_imports(snapshot, path)

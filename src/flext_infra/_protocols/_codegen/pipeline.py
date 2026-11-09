@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -85,8 +85,21 @@ class FlextInfraProtocolsCodegenPipeline:
         """Structural data contract projected from the owning model."""
 
         repository: t.NonEmptyStr
-        files: tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]
-        environment: FlextInfraProtocolsConfigRelease.UvEnvironmentPlan | None
+
+        @property
+        def files(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
+            """Governed and retired file plans."""
+            ...
+
+        @property
+        def environment(
+            self,
+        ) -> FlextInfraProtocolsConfigRelease.UvEnvironmentPlan | None:
+            """Uv environment plan of the repository."""
+            ...
+
         elapsed: float
 
     @runtime_checkable
@@ -94,10 +107,28 @@ class FlextInfraProtocolsCodegenPipeline:
         """Structural data contract projected from the owning model."""
 
         request: FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest
-        repositories: tuple[FlextInfraProtocolsConfigRepository.RepositoryRef, ...]
-        workspace: FlextInfraProtocolsConfigWorkspace.WorkspaceSpec
+
+        @property
+        def repositories(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigRepository.RepositoryRef, ...]:
+            """Selected repositories in deterministic order."""
+            ...
+
+        @property
+        def workspace(self) -> FlextInfraProtocolsConfigWorkspace.WorkspaceSpec:
+            """Workspace governing the selection."""
+            ...
+
         uv_environments: tuple[FlextInfraProtocolsConfigRelease.UvEnvironmentPlan, ...]
-        files: tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]
+
+        @property
+        def files(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
+            """All render results validated before application."""
+            ...
+
         outcomes: tuple[
             FlextInfraProtocolsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
         ]
@@ -156,14 +187,30 @@ class FlextInfraProtocolsCodegenPipeline:
     class CodegenConformState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        source_inputs: dict[Path, p.Cli.AtomicFileState]
+        @property
+        def source_inputs(self) -> Mapping[Path, p.Cli.AtomicFileState]:
+            """Original source witnesses retained after native planning."""
+            ...
+
         source_imports: dict[Path, tuple[frozenset[str], frozenset[str]]]
         request: FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest | None
-        provider_plans: (
-            tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...] | None
-        )
+
+        @property
+        def provider_plans(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...] | None:
+            """Original cohort plans available to native source reads."""
+            ...
+
         repository_root: Path
-        initial_workspace: FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None
+
+        @property
+        def initial_workspace(
+            self,
+        ) -> FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None:
+            """Declared scaffold specification."""
+            ...
+
         ports: FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None
         docs_planner: FlextInfraProtocolsBase.DocsArtifactPlanner | None
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None

@@ -1036,7 +1036,12 @@ class FlextInfraProtocolsRope(Protocol):
         pyname: t.Infra.RopePyName
         module_name: str
         project_name: str
-        convention: FlextInfraProtocolsRope.RopeModuleConvention
+
+        @property
+        def convention(self) -> FlextInfraProtocolsRope.RopeModuleConvention:
+            """Module convention metadata for tier/facade checks."""
+            ...
+
         scope_chain: Sequence[str]
         class_chain: Sequence[str]
         child_scope: FlextInfraProtocolsRope.RopeScopeDsl | None

@@ -285,7 +285,11 @@ class FlextInfraProtocolsDeps(Protocol):
     class ProjectMetadataState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        source: p.Cli.AtomicFileState
+        @property
+        def source(self) -> p.Cli.AtomicFileState:
+            """Original TOML observation parsed here."""
+            ...
+
         metadata: p.ProjectMetadata
         packaging: FlextInfraProtocolsDeps.ProjectPackagingDeclaration
 
@@ -465,7 +469,12 @@ class FlextInfraProtocolsDeps(Protocol):
         """Structural data contract projected from the owning model."""
 
         pyproject_path: Path
-        before: p.Cli.AtomicFileState | None
+
+        @property
+        def before(self) -> p.Cli.AtomicFileState | None:
+            """Original physical read; absent for pure source rendering."""
+            ...
+
         original_rendered: str
         rendered: str
         payload: t.MutableJsonMapping
@@ -501,7 +510,10 @@ class FlextInfraProtocolsDeps(Protocol):
     class ProjectDependencyReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        deptry: FlextInfraProtocolsDeps.DeptryReport
+        @property
+        def deptry(self) -> FlextInfraProtocolsDeps.DeptryReport:
+            """Deptry report."""
+            ...
 
     @runtime_checkable
     class WorkspaceDependencyReport(FlextCliProtocols.BaseModel, Protocol):
@@ -509,7 +521,11 @@ class FlextInfraProtocolsDeps(Protocol):
 
         workspace: str
         projects: MutableMapping[str, FlextInfraProtocolsDeps.ProjectDependencyReport]
-        pip_check: FlextInfraProtocolsDeps.PipCheckReport | None
+
+        @property
+        def pip_check(self) -> FlextInfraProtocolsDeps.PipCheckReport | None:
+            """Pip check report."""
+            ...
 
     @runtime_checkable
     class ToolingContextRequest(FlextCliProtocols.BaseModel, Protocol):

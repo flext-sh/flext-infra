@@ -8,7 +8,7 @@
 # Scope: annotations inside a function (parameters, return, locals). A class
 # position (`type[...]`, a PEP 695 bound, `t.ModelClass[...]`) keeps the class:
 # the Pydantic class API is called there. Model field annotations in a class
-# body are owned by rewire-model-protocol-field-to-port and schema_for_model,
+# body are owned by rewire-model-protocol-field-to-port,
 # never by this rule. Idempotent: a rewritten reference no longer matches.
 id: model-annotation-to-protocol
 language: python

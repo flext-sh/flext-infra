@@ -48,7 +48,10 @@ class FlextInfraProtocolsDepsToolConfig:
     class ModConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        phases: FlextInfraProtocolsDepsToolConfig.ModPhasesConfig
+        @property
+        def phases(self) -> FlextInfraProtocolsDepsToolConfig.ModPhasesConfig:
+            """Phase toggles read from config/tooling.yaml."""
+            ...
 
     @runtime_checkable
     class PytestWorkerCeiling(FlextCliProtocols.BaseModel, Protocol):
@@ -136,7 +139,12 @@ class FlextInfraProtocolsDepsToolConfig:
         """Structural data contract projected from the owning model."""
 
         similarity: float
-        semantic: FlextInfraProtocolsDuplication.JscpdSemantic
+
+        @property
+        def semantic(self) -> FlextInfraProtocolsDuplication.JscpdSemantic:
+            """Embedding pass host (--semantic)."""
+            ...
+
         ignore_patterns: t.StrTuple
         ignore: Sequence[str]
 
@@ -165,14 +173,30 @@ class FlextInfraProtocolsDepsToolConfig:
     class ToolConfigTools(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        markdown: FlextInfraProtocolsDepsToolConfig.MarkdownConfig
+        @property
+        def markdown(self) -> FlextInfraProtocolsDepsToolConfig.MarkdownConfig:
+            """Markdown lint settings."""
+            ...
+
         ruff: FlextInfraProtocolsDepsToolConfigLinters.RuffConfig
         mypy: FlextInfraProtocolsDepsToolConfigLinters.MypyConfig
         pyright: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig
         pyrefly: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig
-        pytest: FlextInfraProtocolsDepsToolConfig.PytestConfig
-        tomlsort: FlextInfraProtocolsDepsToolConfig.TomlsortConfig
-        jscpd: FlextInfraProtocolsDepsToolConfig.JscpdToolConfig
+
+        @property
+        def pytest(self) -> FlextInfraProtocolsDepsToolConfig.PytestConfig:
+            """Pytest settings."""
+            ...
+
+        @property
+        def tomlsort(self) -> FlextInfraProtocolsDepsToolConfig.TomlsortConfig:
+            """Tomlsort settings."""
+            ...
+
+        @property
+        def jscpd(self) -> FlextInfraProtocolsDepsToolConfig.JscpdToolConfig:
+            """Jscpd clone-semantics passes."""
+            ...
 
     @runtime_checkable
     class LazyInitConfig(FlextCliProtocols.BaseModel, Protocol):

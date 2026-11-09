@@ -36,7 +36,11 @@ class FlextInfraProtocolsGates:
         """Structural data contract projected from the owning model."""
 
         name: str
-        files: tuple[FlextInfraProtocolsGates.SccFile, ...]
+
+        @property
+        def files(self) -> tuple[FlextInfraProtocolsGates.SccFile, ...]:
+            """Every scanned file in this language."""
+            ...
 
     @runtime_checkable
     class SccReport(FlextCliProtocols.BaseModel, Protocol):
@@ -1089,7 +1093,7 @@ class FlextInfraProtocolsGates:
 
         @property
         def require_clean(self) -> bool:
-            """Require native_outcome CLEAN."""
+            """Require native_outcome CLEAN (not just complete_execution)."""
             ...
 
         @property

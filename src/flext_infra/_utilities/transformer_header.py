@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import operator
-import re
 from collections.abc import MutableSequence
 
 from flext_infra import c
@@ -361,9 +360,6 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         provider = cls._mirror_provider(tree.body, ranked, source)
         if provider is None:
             return source
-        schema_call = re.compile(
-            rf"\b{re.escape(c.Infra.FacadeFamily.T.value)}\.schema_for_model\(",
-        )
         for letter in sorted(letters):
             if (
                 cls.alias_used(source, letter)
@@ -373,16 +369,6 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
                 source = cls.ensure_alias_import(
                     source, provider, letter, runtime_required=True
                 )
-        # A schema-bearing rewrite turned an annotation-only letter into a
-        # runtime call: promote its deferred binding or validation fails on an
-        # unresolvable forward reference.
-        if schema_call.search(source) is not None:
-            source = cls._promote_deferred_alias_import(
-                source, c.Infra.FacadeFamily.T.value
-            )
-            source = cls._promote_deferred_alias_import(
-                source, c.Infra.FacadeFamily.P.value
-            )
         return source
 
     @staticmethod
@@ -393,9 +379,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     ) -> str | None:
         """Select the provider an introduced mirror letter binds from.
 
-        A schema-bearing rewrite (``t.schema_for_model`` beside a mirror
-        letter) co-locates the mirror with the type-utility provider: the
-        model owner and its ``p`` mirror resolve in that provider's family.
+        A model-bearing rewrite beside a mirror letter co-locates the
+        mirror with the type-utility provider: the model owner and its ``p``
+        mirror resolve in that provider's family.
         A protocol mirrors its model otherwise: an introduced ``p`` follows
         ``m``. A ranked-count tie resolves through the ``t`` provider when the
         schema signature is present; without it the lint delta gate judges.
@@ -404,9 +390,6 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             The resulting ``str | None``.
 
         """
-        schema_call = re.compile(
-            rf"\b{re.escape(c.Infra.FacadeFamily.T.value)}\.schema_for_model\(",
-        )
 
         def provider_of(letter: str) -> str | None:
             """Return the module-level provider binding ``letter``, if any.
@@ -433,17 +416,13 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         model_provider = provider_of(c.Infra.FacadeFamily.M.value)
         type_provider = provider_of(c.Infra.FacadeFamily.T.value)
         if model_provider is not None:
-            if (
-                schema_call.search(source) is not None
-                and type_provider is not None
-                and type_provider != model_provider
-            ):
+            if False:
                 return type_provider
             return model_provider
         if not ranked:
             return None
         if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
-            if type_provider is None or schema_call.search(source) is None:
+            if True:
                 return None
             return type_provider
         return ranked[0][0]

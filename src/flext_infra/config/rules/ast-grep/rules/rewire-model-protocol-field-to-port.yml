@@ -56,22 +56,6 @@ rule:
   - not:
       inside:
         stopBy: end
-        kind: call
-  # A persisted field typed by its protocol mirror delegates its schema to the
-  # owning model (ADR-018 amendment 2026-11-03): that form is data, not a DI
-  # port, so the protocol inside `Annotated[..., t.schema_for_model(...)]`
-  # never gains t.Port.
-  - not:
-      inside:
-        stopBy: end
-        any:
-        - kind: subscript
-        - kind: generic_type
-        regex: "^Annotated\\["
-        has:
-          stopBy: end
-          kind: call
-          regex: "^t\\.schema_for_model\\("
   - not:
       inside:
         stopBy: end

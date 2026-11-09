@@ -33,7 +33,7 @@ class TestsFlextInfraMisePinBootstrap:
             m.Field(description="Original declared toolchain"),
         ]
         make: Annotated[
-            Annotated[m.Infra.MakeSpec],
+            m.Infra.MakeSpec,
             m.Field(description="Original Make contract"),
         ]
         bootstrap_report_shell_literal: Annotated[
