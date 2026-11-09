@@ -8,7 +8,7 @@ valid:
       marker: Literal["m.Field is payload text"]
 - |
   class Holder(Protocol):
-      def receive(self, value: Annotated[str, "metadata"]) -> m.Infra.Payload: ...
+      def receive(self, value: Annotated[str, "metadata"]) -> p.Infra.Payload: ...
 - |
   class Model(m.Value):
       value: Annotated[str, m.Field(description="model metadata")]

@@ -36,12 +36,12 @@ invalid:
   from flext_cli import m, t
   from typing import ClassVar
   class F:
-      model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+      model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 - |
   from flext_cli import m, t
   from typing import ClassVar
   class G:
-      model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
+      model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(env_prefix="APP_")
 - |
   from flext_cli import c, m, t
   from typing import ClassVar

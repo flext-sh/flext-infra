@@ -48,7 +48,7 @@ if TYPE_CHECKING:
         ),
     ]
 
-    model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
+    model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
         env_file=FlextSettings.resolve_env_file(

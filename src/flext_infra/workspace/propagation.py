@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import c, config, m, p, r, s, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
@@ -255,7 +255,7 @@ class FlextInfraWorkspacePropagation(s[bool]):
                     root=member_root,
                     scope=c.Infra.CodegenConformScope.ALL,
                 ),
-                execution_context=self,
+                execution_context=cast(p.Infra.CodegenExecutionContext, self),
             ).map(conformed),
         )
         if published.failure:

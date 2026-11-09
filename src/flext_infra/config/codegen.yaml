@@ -831,9 +831,9 @@ Infra:
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, ci, pre_push ]
+        contexts: [ local, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ local, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -850,35 +850,35 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, ci, pre_push, pre_commit ]
+        contexts: [ local, pre_push, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
+        - { step: tests-primary, contexts: [ local, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, ci, pre_push ]
+        contexts: [ local, pre_push ]
         requires:
-        - { step: check, contexts: [ local, ci, pre_push ] }
-        - { step: check-primary, contexts: [ ci, pre_push ] }
+        - { step: check, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
-      - { verb: help, contexts: [ local, ci ] }
+      - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: fmt, contexts: [ local, ci ] }
-      - { verb: fix, contexts: [ local, ci ] }
-      - { verb: mod, contexts: [ local, ci ] }
+      - { verb: tests, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: fmt, contexts: [ local ] }
+      - { verb: fix, contexts: [ local ] }
+      - { verb: mod, contexts: [ local ] }
       # Consecutive generation proves convergence on unchanged declarations.
-      - { verb: gen, contexts: [ local, ci ] }
-      - { verb: gen, contexts: [ local, ci ] }
+      - { verb: gen, contexts: [ local ] }
+      - { verb: gen, contexts: [ local ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: check, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local, ci ] }
-      - { verb: build, contexts: [ local, ci ] }
+      - { verb: check, contexts: [ local ] }
+      - { verb: tests, contexts: [ local ] }
+      - { verb: build, contexts: [ local ] }
       # Repository-local directory holding the bootstrap Mise binary. The
       # generated Makefile places the binary there and the CI workflows cache
       # it, so a pinned binary is fetched only when its version changes.

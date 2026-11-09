@@ -14,6 +14,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from keyword import iskeyword
 from pathlib import Path
+from typing import cast
 
 from flext_cli import p, r, t, u
 
@@ -320,7 +321,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ),
             )
             run.contexts[pkg_dir] = context
-        return context
+        return cast(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, context)
 
     @classmethod
     def _lazy_init_build_plan(
@@ -954,7 +955,12 @@ class FlextInfraUtilitiesLazyInitPlan:
             run.model, path, module_name
         )
         exports = FlextInfraUtilitiesPythonModel.python_model_exports(module) or ()
-        alias, family = cls._lazy_init_route_identity(run, path, module, exports)
+        alias, family = cls._lazy_init_route_identity(
+            run,
+            path,
+            cast(FlextInfraModelsCodegenLazyInit.PythonModuleFacts, module),
+            exports,
+        )
         weight = c.Infra.LazyInitScore
         score = 0
         if alias == name:

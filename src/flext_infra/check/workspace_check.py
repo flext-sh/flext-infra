@@ -839,12 +839,12 @@ class FlextInfraWorkspaceChecker(
 
         """
         return tuple(
-            project
-            if isinstance(project, m.Infra.CheckProjectTarget)
-            else m.Infra.CheckProjectTarget(
+            m.Infra.CheckProjectTarget(
                 name=project,
                 path=self._repository_root / project,
             )
+            if isinstance(project, str)
+            else project
             for project in projects
         )
 

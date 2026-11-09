@@ -22,7 +22,7 @@ from collections.abc import Mapping, MutableMapping, MutableSet, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, r, u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.refactor import FlextInfraRefactorCensus
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
@@ -169,7 +169,7 @@ class FlextInfraCodemodDuplicateApply(
                 layers=layers,
                 working=working,
             )
-            if isinstance(planned, m.Infra.DuplicateCurePlan):
+            if not isinstance(planned, p.Infra.DuplicateGroupCure):
                 plans.append(planned)
                 continue
             for edit in planned.edits:
@@ -1231,7 +1231,7 @@ class FlextInfraCodemodDuplicateApply(
 
         """
 
-        def key(side: tuple[t.JsonMapping, str, str]) -> tuple[int, str]:
+        def key(side: tuple[p.Infra.JscpdFile, str, str]) -> tuple[int, str]:
             """Layer then path.
 
             Returns:

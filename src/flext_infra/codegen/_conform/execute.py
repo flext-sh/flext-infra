@@ -16,6 +16,7 @@ from typing import Self, override
 from flext_infra import (
     c,
     config,
+    e,
     m,
     p,
     r,
@@ -190,9 +191,18 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         # actor triggers a reconciling replan over the new state instead of
         # waiting for, or failing because of, that actor.
         attempts = config.Infra.mutation_lock.reconcile_attempts
-        result = self._execute_once(
-            request, root, after_publication, after_cohort_publication
-        )
+
+        def _run_once() -> p.Result[p.Infra.CodegenResult]:
+            try:
+                return self._execute_once(
+                    request, root, after_publication, after_cohort_publication
+                )
+            except e.OperationError as exc:
+                if c.Infra.ATOMIC_SOURCE_CHANGED not in str(exc):
+                    raise
+                return r[p.Infra.CodegenResult].fail(str(exc))
+
+        result = _run_once()
         while (
             attempts > 0
             and result.failure
@@ -203,9 +213,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 f"operation=generate root={root} reconcile=replan "
                 f"cause={(result.error or '').split(';', 1)[0]}"
             )
-            result = self._execute_once(
-                request, root, after_publication, after_cohort_publication
-            )
+            result = _run_once()
         return result
 
     def _execute_once(

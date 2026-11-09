@@ -585,7 +585,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
             }
             if scope is not None:
                 document["files"] = [cls._codemod_directory_glob(scope)]
-            ignores = [
+            ignores: list[t.JsonValue] = [
                 *(cls._codemod_directory_glob(directory) for directory in nested),
                 *cls._codemod_file_globs(carved),
             ]
@@ -964,7 +964,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                         f"`{letter}` family of `{package}`."
                     ),
                     "utils": dict(cls._codemod_name_utils()),
-                    "files": cls._codemod_file_globs(bound_files),
+                    "files": [*cls._codemod_file_globs(bound_files)],
                     "rule": cls._codemod_header_rule(bound),
                     "fix": f"$ANCHOR\nfrom {upstream} import $USED",
                 }
@@ -1741,7 +1741,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                     "Letter `$NAME` read through its local alias `$ROOT`: read "
                     "the letter by name."
                 ),
-                "ignores": ignores,
+                "ignores": [*ignores],
                 "utils": dict(utils),
                 "rule": {
                     "kind": "attribute",
@@ -1766,7 +1766,7 @@ class FlextInfraUtilitiesCodemodNativePackage:
                 "id": unread,
                 "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
                 "message": "Local alias `$ROOT` of the letter `$NAME` is never read.",
-                "ignores": ignores,
+                "ignores": [*ignores],
                 "rule": {
                     "kind": "expression_statement",
                     "inside": {"kind": "function_definition", "stopBy": "end"},

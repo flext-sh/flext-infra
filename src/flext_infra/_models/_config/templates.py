@@ -199,7 +199,6 @@ class FlextInfraModelsConfigTemplates:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field
         @property
         def managed_tool_tables(self) -> tuple[str, ...]:
             """Derive tool-relative table paths from the owner's sections.
@@ -454,7 +453,7 @@ class FlextInfraModelsConfigTemplates:
             """Expose the typed consumer view, validated once per catalog instance."""
             return tuple(
                 FlextInfraModelsConfigTemplates.TemplateEntrySpec.model_validate({
-                    **dict(declaration),
+                    **declaration.model_dump(),
                     "destination": destination,
                 })
                 for destination, declaration in self.catalog.items()

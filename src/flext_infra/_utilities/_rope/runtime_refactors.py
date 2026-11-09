@@ -17,6 +17,7 @@ from typing import cast
 from flext_cli import u
 
 from flext_infra import m, p, r, t
+from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
@@ -642,7 +643,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         prefix = lines.get_line(layout.header_start)
         prefix = prefix[: len(prefix) - len(prefix.lstrip())]
         edits = [
-            m.Infra.SourceRewrite(
+            FlextInfraModelsTransformers.SourceRewrite(
                 start=start,
                 end=end,
                 text="".join(
@@ -667,7 +668,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 msg = "Rope wrapper body has inconsistent indentation"
                 raise ValueError(msg)
             edits.append(
-                m.Infra.SourceRewrite(
+                FlextInfraModelsTransformers.SourceRewrite(
                     start=offset,
                     end=offset + layout.indentation,
                     text="",
@@ -675,7 +676,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             )
         if layout.docstring_span is not None:
             edits.append(
-                m.Infra.SourceRewrite(
+                FlextInfraModelsTransformers.SourceRewrite(
                     start=lines.get_line_start(layout.docstring_span[0]),
                     end=min(
                         lines.get_line_end(layout.docstring_span[1]) + 1,
