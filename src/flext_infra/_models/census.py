@@ -79,13 +79,18 @@ class FlextInfraModelsCensus:
         """One censused placement cohort and the source epoch native moves consumed."""
 
         census: FlextInfraModelsCensus.ProtocolPlacementCensus = m.Field(
-            description="The admitted coherent placements, excluding unrelated unresolved origins"
+            description=(
+                "The admitted coherent placements, excluding unrelated "
+                "unresolved origins"
+            )
         )
         files: tuple[FlextInfraModelsCodegenTransaction.CodegenFilePlan, ...] = m.Field(
             default=(), description="Native movement and dependent source effects"
         )
         pre_move_sources: Mapping[Path, str] = m.Field(
-            description="Authenticated before epoch including empty destination scaffolds"
+            description=(
+                "Authenticated before epoch including empty destination scaffolds"
+            )
         )
         findings: tuple[str, ...] = m.Field(
             default=(),
@@ -672,7 +677,6 @@ class FlextInfraModelsCensus:
         """Workspace-wide census summary."""
 
         protocol_placement: FlextInfraModelsCensus.ProtocolPlacementCensus = m.Field(
-            default_factory=FlextInfraModelsCensus.ProtocolPlacementCensus,
             description="Protocol origins and placements inventoried before migration",
         )
 
