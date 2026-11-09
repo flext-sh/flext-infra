@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 from packaging.version import Version
 
 from flext_infra import config
-from tests import c, m, p, t, tm, u
+from tests import c, m, p, tm, u
 
 
 class TestsFlextInfraMisePinBootstrap:
@@ -29,9 +29,7 @@ class TestsFlextInfraMisePinBootstrap:
         """Declared bootstrap inputs passed through the real template consumer."""
 
         toolchain: Annotated[
-            Annotated[
-                p.Infra.ToolchainSpec, t.schema_for_model(lambda: m.Infra.ToolchainSpec)
-            ],
+            m.Infra.ToolchainSpec,
             m.Field(description="Original declared toolchain"),
         ]
         make: Annotated[p.Infra.MakeSpec, m.Field(description="Original Make contract")]

@@ -12,7 +12,7 @@ from typing import Annotated, Self
 
 from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsGit,
@@ -41,11 +41,7 @@ class FlextInfraModelsRelease:
             m.Field(description="Pull-request title to validate against the protocol"),
         ] = ""
         ownership: Annotated[
-            Annotated[
-                p.Infra.GitLaneOwnershipReceipt,
-                t.schema_for_model(lambda: FlextInfraModelsGit.GitLaneOwnershipReceipt),
-            ]
-            | None,
+            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
             m.Field(
                 description="Authenticated integrated prior-state ownership receipt"
             ),
@@ -97,12 +93,7 @@ class FlextInfraModelsRelease:
 
         assets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GithubReleaseAsset,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRelease.GithubReleaseAsset
-                    ),
-                ],
+                FlextInfraModelsRelease.GithubReleaseAsset,
                 ...,
             ],
             m.Field(description="All release assets across API pages"),
@@ -123,12 +114,7 @@ class FlextInfraModelsRelease:
 
         releases: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GithubReleaseIdentity,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRelease.GithubReleaseIdentity
-                    ),
-                ],
+                FlextInfraModelsRelease.GithubReleaseIdentity,
                 ...,
             ],
             m.Field(description="All repository releases across API pages"),
@@ -237,10 +223,7 @@ class FlextInfraModelsRelease:
         ]
         artifacts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.BuildArtifact,
-                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildArtifact),
-                ],
+                FlextInfraModelsRelease.BuildArtifact,
                 ...,
             ],
             m.Field(description="Validated wheel and sdist artifacts"),
@@ -341,10 +324,7 @@ class FlextInfraModelsRelease:
         ]
         records: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.BuildRecord,
-                    t.schema_for_model(lambda: FlextInfraModelsRelease.BuildRecord),
-                ],
+                FlextInfraModelsRelease.BuildRecord,
                 ...,
             ],
             m.Field(description="Per-project build records"),

@@ -263,13 +263,7 @@ class FlextInfraModelsConfigTemplates:
             m.Field(min_length=1, description="Profiles that consume the artifact"),
         ]
         ownership: Annotated[
-            Annotated[
-                p.Infra.ManagedFileOwnership,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.ManagedFileOwnership
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigTemplates.ManagedFileOwnership | None,
             m.Field(
                 description=(
                     "Explicit generated-file ownership, or null for an authored "
@@ -436,12 +430,7 @@ class FlextInfraModelsConfigTemplates:
         root: Annotated[Path, m.Field(description="Package-relative template root")]
         catalog: Mapping[
             t.NonEmptyStr,
-            Annotated[
-                p.Infra.TemplateDeclarationSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.TemplateDeclarationSpec
-                ),
-            ],
+            FlextInfraModelsConfigTemplates.TemplateDeclarationSpec,
         ] = m.Field(
             alias="entries",
             description="Ordered template bodies keyed by destination",
@@ -561,14 +550,7 @@ class FlextInfraModelsConfigTemplates:
 
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
@@ -579,14 +561,7 @@ class FlextInfraModelsConfigTemplates:
 
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(

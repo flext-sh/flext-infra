@@ -10,7 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsDepsToolConfig
 from flext_infra._models._config import (
     FlextInfraModelsConfigArtifact,
@@ -32,55 +32,27 @@ class FlextInfraModelsConfigRoot:
             m.Field(description="Version seeded into a newly scaffolded project"),
         ]
         codegen: Annotated[
-            Annotated[
-                p.Infra.CodegenConfigSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.CodegenConfigSpec
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.CodegenConfigSpec,
             m.Field(description="Unified project and workspace codegen contract"),
         ]
         tooling: Annotated[
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
-            Annotated[
-                p.Infra.SourceScanSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfigStatic.SourceScanSpec),
-            ],
+            FlextInfraModelsConfigStatic.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
         ]
         mutation_lock: Annotated[
-            Annotated[
-                p.Infra.MutationLockSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigStatic.MutationLockSpec
-                ),
-            ],
+            FlextInfraModelsConfigStatic.MutationLockSpec,
             m.Field(description="Bounded wait for a mutation scope lock"),
         ]
         release: Annotated[
-            Annotated[
-                p.Infra.ReleasePolicySpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRelease.ReleasePolicySpec
-                ),
-            ],
+            FlextInfraModelsConfigRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy"),
         ]
         refactor_csv_campaigns: Annotated[
-            Annotated[
-                p.Infra.RefactorCsvCampaignsSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.RefactorCsvCampaignsSpec,
             m.Field(
                 description="Declared CSV-driven rename campaigns for the mod verb",
             ),
@@ -94,8 +66,7 @@ class FlextInfraModelsConfigRoot:
         """
 
         Infra: Annotated[
-            p.Infra.Infra,
-            t.schema_for_model(lambda: FlextInfraModelsConfigRoot.Infra),
+            FlextInfraModelsConfigRoot.Infra,
             m.Field(description="Validated flext-infra namespace"),
         ]
 

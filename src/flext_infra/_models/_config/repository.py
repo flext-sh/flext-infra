@@ -207,12 +207,7 @@ class FlextInfraModelsConfigRepository:
         ] = True
         console_scripts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ConsoleScriptSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
-                    ),
-                ],
+                FlextInfraModelsConfigRepository.ConsoleScriptSpec,
                 ...,
             ],
             m.Field(
@@ -430,10 +425,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         extra_verbs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsConfigMake.MakeVerbSpec),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(
@@ -444,13 +436,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ] = ()
         script_dispatch: Annotated[
-            Annotated[
-                p.Infra.ScriptDispatchSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.ScriptDispatchSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigRepository.ScriptDispatchSpec | None,
             m.Field(
                 description=(
                     "Opt-in script command-framework routing for non-builtin "
@@ -460,12 +446,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         verb_groups: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbGroupSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbGroupSpec,
                 ...,
             ],
             m.Field(
@@ -509,12 +490,7 @@ class FlextInfraModelsConfigRepository:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            Annotated[
-                p.Infra.RepositoryRef,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.RepositoryRef
-                ),
-            ],
+            FlextInfraModelsConfigRepository.RepositoryRef,
             m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
@@ -528,13 +504,7 @@ class FlextInfraModelsConfigRepository:
             ),
         ]
         vscode_spec: Annotated[
-            Annotated[
-                p.Infra.CodegenVscodeSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigTemplates.CodegenVscodeSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigTemplates.CodegenVscodeSpec | None,
             m.Field(description="Repository-rooted resolved editor declarations"),
         ] = None
         vscode_sources: Annotated[
@@ -548,23 +518,11 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            Annotated[
-                p.Infra.BeadsProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         project: Annotated[
-            Annotated[
-                p.Infra.ProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.ProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigRepository.ProjectSpec | None,
             m.Field(
                 description=(
                     "Declared project metadata of the manifest, when the "

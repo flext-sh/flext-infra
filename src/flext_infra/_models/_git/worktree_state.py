@@ -12,8 +12,6 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 from flext_core import t
 
-from flext_infra import p
-
 
 class FlextInfraModelsGitWorktreeState:
     """Declarations for independently recoverable index and working files."""
@@ -87,13 +85,7 @@ class FlextInfraModelsGitWorktreeState:
         """One exact tracked artifact and its immutable staged content."""
 
         entry: Annotated[
-            Annotated[
-                p.Infra.GitWorktreeIndexEntry,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry | None,
             m.Field(description="Stage-zero entry, absent for an untracked file"),
         ]
         content: bytes | None = m.Field(
@@ -105,12 +97,7 @@ class FlextInfraModelsGitWorktreeState:
 
         repo_root: Annotated[Path, m.Field(description="Exact owning repository")]
         entry: Annotated[
-            Annotated[
-                p.Infra.GitWorktreeIndexEntry,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
-                ),
-            ],
+            FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry,
             m.Field(description="Required immutable preimage of the index entry"),
         ]
 
@@ -190,12 +177,7 @@ class FlextInfraModelsGitWorktreeState:
         ] = ()
         head_entries: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitWorktreeIndexEntry,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
-                    ),
-                ],
+                FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry,
                 ...,
             ],
             m.Field(
@@ -221,24 +203,14 @@ class FlextInfraModelsGitWorktreeState:
         ]
         index_entries: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitWorktreeIndexEntry,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry
-                    ),
-                ],
+                FlextInfraModelsGitWorktreeState.GitWorktreeIndexEntry,
                 ...,
             ],
             m.Field(description="Captured stage-zero index entries"),
         ]
         files: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitWorktreeFileState,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitWorktreeState.GitWorktreeFileState
-                    ),
-                ],
+                FlextInfraModelsGitWorktreeState.GitWorktreeFileState,
                 ...,
             ],
             m.Field(description="Captured raw working files and gitlink heads"),
@@ -249,12 +221,7 @@ class FlextInfraModelsGitWorktreeState:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
         snapshot: Annotated[
-            Annotated[
-                p.Infra.GitWorktreeStateSnapshot,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot
-                ),
-            ],
+            FlextInfraModelsGitWorktreeState.GitWorktreeStateSnapshot,
             m.Field(description="Original immutable ownership and state evidence"),
         ]
         checkpoint_ref: Annotated[
@@ -278,12 +245,7 @@ class FlextInfraModelsGitWorktreeState:
         """Existing owned Git state retained remotely and integrated before a lane."""
 
         checkpoint: Annotated[
-            Annotated[
-                p.Infra.GitWorktreeStateCheckpoint,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint
-                ),
-            ],
+            FlextInfraModelsGitWorktreeState.GitWorktreeStateCheckpoint,
             m.Field(
                 description=(
                     "Full-repository capture identifying the prior owned branch"
@@ -291,14 +253,7 @@ class FlextInfraModelsGitWorktreeState:
             ),
         ]
         publication: Annotated[
-            Annotated[
-                p.Infra.GitWorktreeCheckpointPublication,
-                t.schema_for_model(
-                    lambda: (
-                        FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication
-                    )
-                ),
-            ],
+            (FlextInfraModelsGitWorktreeState.GitWorktreeCheckpointPublication),
             m.Field(description="Live independently retained checkpoint publication"),
         ]
 

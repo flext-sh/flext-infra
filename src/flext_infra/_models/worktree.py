@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraModelsWorktree:
@@ -117,12 +117,7 @@ class FlextInfraModelsWorktree:
             m.Field(description="Repository roots whose registry is scanned"),
         ]
         policy: Annotated[
-            Annotated[
-                p.Infra.WorktreeFactsPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorktree.WorktreeFactsPolicy
-                ),
-            ],
+            FlextInfraModelsWorktree.WorktreeFactsPolicy,
             m.Field(description="Layout and dependency vocabulary to apply"),
         ]
         now: Annotated[float, m.Field(description="Current epoch seconds")]
@@ -220,10 +215,7 @@ class FlextInfraModelsWorktree:
         apply: Annotated[bool, m.Field(description="Whether this plan will execute")]
         actions: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.PruneAction,
-                    t.schema_for_model(lambda: FlextInfraModelsWorktree.PruneAction),
-                ],
+                FlextInfraModelsWorktree.PruneAction,
                 ...,
             ],
             m.Field(description="Planned actions in stable order"),
@@ -238,20 +230,13 @@ class FlextInfraModelsWorktree:
 
         facts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.WorktreeFact,
-                    t.schema_for_model(lambda: FlextInfraModelsWorktree.WorktreeFact),
-                ],
+                FlextInfraModelsWorktree.WorktreeFact,
                 ...,
             ],
             m.Field(description="Every measured registered worktree"),
         ] = ()
         plan: Annotated[
-            Annotated[
-                p.Infra.PrunePlan,
-                t.schema_for_model(lambda: FlextInfraModelsWorktree.PrunePlan),
-            ]
-            | None,
+            FlextInfraModelsWorktree.PrunePlan | None,
             m.Field(description="Planned stale-deps pruning, when any"),
         ] = None
 

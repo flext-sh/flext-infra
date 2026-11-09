@@ -66,20 +66,13 @@ class FlextInfraModelsCodegenPipeline:
         ]
         files: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CodegenFilePlan,
-                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
-                ],
+                FlextInfraModelsConfig.CodegenFilePlan,
                 ...,
             ],
             m.Field(description="Governed and retired file plans"),
         ] = ()
         environment: Annotated[
-            Annotated[
-                p.Infra.UvEnvironmentPlan,
-                t.schema_for_model(lambda: FlextInfraModelsConfig.UvEnvironmentPlan),
-            ]
-            | None,
+            FlextInfraModelsConfig.UvEnvironmentPlan | None,
             m.Field(description="uv environment plan of the repository"),
         ] = None
         elapsed: Annotated[
@@ -99,50 +92,31 @@ class FlextInfraModelsCodegenPipeline:
         ]
         repositories: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.RepositoryRef,
-                    t.schema_for_model(lambda: FlextInfraModelsConfig.RepositoryRef),
-                ],
+                FlextInfraModelsConfig.RepositoryRef,
                 ...,
             ],
             m.Field(description="Selected repositories in deterministic order"),
         ]
         workspace: Annotated[
-            Annotated[
-                p.Infra.WorkspaceSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfig.WorkspaceSpec),
-            ],
+            FlextInfraModelsConfig.WorkspaceSpec,
             m.Field(description="Workspace governing the selection"),
         ]
         uv_environments: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.UvEnvironmentPlan,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfig.UvEnvironmentPlan
-                    ),
-                ],
+                FlextInfraModelsConfig.UvEnvironmentPlan,
                 ...,
             ],
             m.Field(description="uv plans paired with selected repositories"),
         ]
         files: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CodegenFilePlan,
-                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
-                ],
+                FlextInfraModelsConfig.CodegenFilePlan,
                 ...,
             ],
             m.Field(description="All render results validated before application"),
         ]
         outcomes: tuple[
-            Annotated[
-                p.Infra.CodegenRepositoryPlanOutcome,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome
-                ),
-            ],
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome,
             ...,
         ] = m.Field(
             default=(),
@@ -153,10 +127,7 @@ class FlextInfraModelsCodegenPipeline:
         """The generation plan and the files its publication changed."""
 
         plan: Annotated[
-            Annotated[
-                p.Infra.CodegenPlan,
-                t.schema_for_model(lambda: FlextInfraModelsCodegenPipeline.CodegenPlan),
-            ],
+            FlextInfraModelsCodegenPipeline.CodegenPlan,
             m.Field(description="The plan actually used by the producer"),
         ]
         written_files: tuple[Path, ...] = m.Field(
@@ -203,10 +174,7 @@ class FlextInfraModelsCodegenPipeline:
         source_inputs: t.Port[
             dict[
                 Path,
-                Annotated[
-                    p.Cli.AtomicFileState,
-                    t.schema_for_model(lambda: m.Cli.AtomicFileState),
-                ],
+                m.Cli.AtomicFileState,
             ]
         ] = m.Field(
             default_factory=dict,
@@ -227,10 +195,7 @@ class FlextInfraModelsCodegenPipeline:
         )
         provider_plans: (
             tuple[
-                Annotated[
-                    p.Infra.CodegenFilePlan,
-                    t.schema_for_model(lambda: FlextInfraModelsConfig.CodegenFilePlan),
-                ],
+                FlextInfraModelsConfig.CodegenFilePlan,
                 ...,
             ]
             | None
@@ -243,13 +208,7 @@ class FlextInfraModelsCodegenPipeline:
             default=Path(),
             description="Generation tool repository",
         )
-        initial_workspace: (
-            Annotated[
-                p.Infra.WorkspaceSpec,
-                t.schema_for_model(lambda: FlextInfraModelsConfig.WorkspaceSpec),
-            ]
-            | None
-        ) = m.Field(
+        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
             default=None,
             description="Declared scaffold specification",
         )

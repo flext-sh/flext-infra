@@ -15,9 +15,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from flext_cli import m, t
+from flext_cli import m
 
-from flext_infra import p
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -64,10 +63,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
         ]
         params: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.PromotedParam,
-                    t.schema_for_model(lambda: FlextInfraModelsPromoted.PromotedParam),
-                ],
+                FlextInfraModelsPromoted.PromotedParam,
                 ...,
             ],
             m.Field(description="Declared command parameters"),

@@ -10,7 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsGitLaneInputs
 
 
@@ -31,13 +31,7 @@ class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
             m.Field(description="Latest Bead activity"),
         ]
         metadata: Annotated[
-            Annotated[
-                p.Infra.GitLaneBeadMetadata,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitLaneInputs.GitLaneBeadMetadata
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitLaneInputs.GitLaneBeadMetadata | None,
             m.Field(description="Explicit branch/worktree ownership correlation"),
         ] = None
 
@@ -45,12 +39,7 @@ class FlextInfraModelsGitLaneOwnership(FlextInfraModelsGitLaneInputs):
         """Minimal typed view of the global governance SSOT."""
 
         coordination: Annotated[
-            Annotated[
-                p.Infra.GitLaneCoordinationPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitLaneInputs.GitLaneCoordinationPolicy
-                ),
-            ],
+            FlextInfraModelsGitLaneInputs.GitLaneCoordinationPolicy,
             m.Field(description="Global coordination policy"),
         ]
 

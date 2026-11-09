@@ -15,7 +15,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import (
     FlextInfraModelsMiseToolchainBase,
     FlextInfraModelsMixins,
@@ -44,10 +44,7 @@ class FlextInfraModelsLayout:
         ] = ()
         moves: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.LayoutMoveSpec,
-                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutMoveSpec),
-                ],
+                FlextInfraModelsLayout.LayoutMoveSpec,
                 ...,
             ],
             m.Field(description="Explicit nested source/target moves"),
@@ -164,12 +161,7 @@ class FlextInfraModelsLayout:
         project_overrides: Annotated[
             Mapping[
                 str,
-                Annotated[
-                    p.Infra.LayoutProjectOverrideSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsLayout.LayoutProjectOverrideSpec
-                    ),
-                ],
+                FlextInfraModelsLayout.LayoutProjectOverrideSpec,
             ],
             m.Field(description="Per-project layout deltas keyed by project name"),
         ] = m.Field(
@@ -208,10 +200,7 @@ class FlextInfraModelsLayout:
 
         findings: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.LayoutFinding,
-                    t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutFinding),
-                ],
+                FlextInfraModelsLayout.LayoutFinding,
                 ...,
             ],
             m.Field(description="All layout decisions for the project"),
@@ -222,10 +211,7 @@ class FlextInfraModelsLayout:
         def actionable(
             self,
         ) -> tuple[
-            Annotated[
-                p.Infra.LayoutFinding,
-                t.schema_for_model(lambda: FlextInfraModelsLayout.LayoutFinding),
-            ],
+            FlextInfraModelsLayout.LayoutFinding,
             ...,
         ]:
             """Findings the engine acts on in apply mode (never review).
@@ -254,12 +240,7 @@ class FlextInfraModelsLayout:
 
         reports: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.LayoutProjectReport,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsLayout.LayoutProjectReport
-                    ),
-                ],
+                FlextInfraModelsLayout.LayoutProjectReport,
                 ...,
             ],
             m.Field(description="Per-project layout outcomes"),
