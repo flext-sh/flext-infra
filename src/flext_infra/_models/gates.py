@@ -123,15 +123,15 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             ),
         ]
         native: Annotated[
-            Annotated[m.Cli.CommandOutput],
+            m.Cli.CommandOutput,
             m.Field(description="Native deptry process completion and raw output"),
         ]
         settings: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Consumed pyproject state"),
         ]
         report_state: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Fresh native report state"),
         ]
         report_sha256: Annotated[
@@ -469,10 +469,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         requested_gates: Annotated[
             t.StrTuple, m.Field(description="Requested native checker gates")
         ] = ()
-        test_selection: Annotated[
-            FlextInfraModelsGates.GateTestIntent | None,
-            m.Field(description="Original test selection; absent for checker"),
-        ] = None
+        test_selection: FlextInfraModelsGates.GateTestIntent | None = m.Field(
+            None,
+            description="Original test selection; absent for checker",
+        )
 
         @m.model_validator(mode="after")
         def _validate_producer(self) -> Self:
