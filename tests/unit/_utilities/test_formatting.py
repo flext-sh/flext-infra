@@ -16,6 +16,42 @@ from tests import c, m, p, tm, u
 
 class TestsFlextInfraUtilitiesformatting:
     @staticmethod
+    def test_literal_width_repair_preserves_unrelated_authored_bytes(
+        tmp_path: Path,
+    ) -> None:
+        """A repaired literal retains its value without full-file formatting."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "literal.py"
+        width = u.Infra.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+        piece = "word " * (width // 10)
+        needle = piece * 3
+        untouched = "untouched =  {'ação':[ 1,2 ]}\n\n\n"
+        original = (
+            untouched + "def accepts(text: str) -> bool:\n"
+            "    return (\n" + f"        {piece!r}\n" * 3 + "        in text\n    )\n"
+        )
+        candidate = (
+            untouched + "def accepts(text: str) -> bool:\n"
+            f"    return text.find({needle!r}) >= 0\n"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(path, original))
+        normalized = tm.ok(
+            u.Infra.normalize_source(root, path, candidate, before_source=original)
+        )
+        tm.that(normalized, has=untouched)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
+        executed = tm.ok(
+            u.Cli.run_raw((
+                sys.executable,
+                "-c",
+                normalized + f"\nassert accepts({needle!r})\nassert not accepts('')\n",
+            ))
+        )
+        tm.that(u.Cli.process_succeeded(executed.outcome), eq=True, msg=executed.stderr)
+
+    @staticmethod
     def test_contracting_logical_range_never_formats_a_later_untouched_statement(
         tmp_path: Path,
     ) -> None:
@@ -41,6 +77,7 @@ class TestsFlextInfraUtilitiesformatting:
         )
         candidate = original.replace("                0\n", "                1\n")
         candidate = candidate.replace("        0\n", "        2\n")
+        candidate = candidate.replace("    ),\n) -> int:", "    )\n) -> int:")
         tm.ok(u.Cli.atomic_write_text_file(path, original))
         before = tm.ok(u.Cli.atomic_read_binary_file_state(path))
         tm.ok(
@@ -79,9 +116,13 @@ class TestsFlextInfraUtilitiesformatting:
             "middle =  {'ação':[ 3,4 ]}\n\n\n",
             "suffix =  [5,6]\n",
         )
-        first = "def first(ação: int) -> int:\n    return ação\n\n\n"
-        second = "def second(value: int) -> int:\n    return value\n\n\n"
-        original = untouched[0] + first + untouched[1] + second + untouched[2]
+        original = (
+            untouched[0]
+            + "def first(ação: int) -> int:\n    return ação\n\n\n"
+            + untouched[1]
+            + "def second(value: int) -> int:\n    return value\n\n\n"
+            + untouched[2]
+        )
         parameters = ", ".join(f"extra_{index}: int = 0" for index in range(width // 8))
         candidate = original
         for name, argument in (("first", "ação"), ("second", "value")):

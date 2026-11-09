@@ -238,10 +238,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             b=source.splitlines(keepends=True),
             autojunk=False,
         ).get_opcodes()
-        # Descending ranges keep earlier line coordinates stable as Ruff expands.
-        for operation, _before_start, _before_end, start, end in reversed(changes):
-            if operation == "equal" or start == end:
-                continue
+        pending = [
+            (start, end)
+            for operation, _before_start, _before_end, start, end in changes
+            if operation != "equal" and start < end
+        ]
+        while pending:
+            start, end = pending.pop()
             formatted = cls._ruff_stdin_pass(
                 path,
                 source,
@@ -250,6 +253,24 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
             if formatted.failure:
                 return formatted
+            changes = difflib.SequenceMatcher(
+                a=source.splitlines(keepends=True),
+                b=formatted.value.splitlines(keepends=True),
+                autojunk=False,
+            ).get_opcodes()
+            # Ruff may expand or contract the enclosing logical statement.
+            remapped: list[tuple[int, int]] = []
+            for pending_start, pending_end in pending:
+                for operation, left, right, new_start, _new_end in changes:
+                    if operation != "equal":
+                        continue
+                    lower, upper = max(pending_start, left), min(pending_end, right)
+                    if lower < upper:
+                        remapped.append((
+                            new_start + lower - left,
+                            new_start + upper - left,
+                        ))
+            pending = remapped
             source = formatted.value
         return r[str].ok(source)
 
