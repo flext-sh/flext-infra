@@ -5,8 +5,8 @@
 # rejects a model/protocol mix in either direction. So a parameter, return,
 # local or container element written outside the model, protocol and typing
 # layers names `p.<Family>.<Member>` where it wrote `m.<Family>.<Member>`.
-# Construction (`m.X(...)`), class positions (`type[m.X]`,
-# `t.ModelClass[m.X]`) and the declaring layers stay untouched. Only a
+# Construction (`m.X(...)`), class positions (`type[p.X]`,
+# `t.ModelClass[p.X]`) and the declaring layers stay untouched. Only a
 # family member (`m.<Family>.<Member>`) is rewritten: that is the depth the
 # protocol mirror projects; a nested member (`m.Infra.DepsToml.SetOp`) has no
 # mirror and keeps its model. Idempotent: a rewritten `p.*` does not match.
@@ -14,15 +14,15 @@ id: consumer-annotation-names-protocol
 language: python
 severity: error
 files:
-  - "**/*.py"
+- "**/*.py"
 ignores:
-  - "**/config/rules/ast-grep/tests/**"
-  - "**/_models/**"
-  - "**/models.py"
-  - "**/_protocols/**"
-  - "**/protocols.py"
-  - "**/_typings/**"
-  - "**/typings.py"
+- "**/config/rules/ast-grep/tests/**"
+- "**/_models/**"
+- "**/models.py"
+- "**/_protocols/**"
+- "**/protocols.py"
+- "**/_typings/**"
+- "**/typings.py"
 rule:
   pattern: m.$FAMILY.$MEMBER
   not:
@@ -32,17 +32,29 @@ rule:
     stopBy: end
     kind: type
   all:
-    - not: { inside: { stopBy: end, kind: call } }
-    - not:
+  - not: { inside: { stopBy: end, kind: call } }
+  - not:
+      inside:
+        stopBy: end
+        kind: generic_type
+        has: { kind: identifier, regex: "^type$" }
+  - not: { inside: { stopBy: end, pattern: "t.ModelClass[$$$]" } }
+  # A class-body field is a Pydantic schema position (services are models
+  # too): a bare protocol there has no core schema. Fields take the
+  # schema_for_model form of model-field-names-protocol instead.
+  - not:
+      inside:
+        stopBy: end
+        kind: assignment
         inside:
-          stopBy: end
-          kind: generic_type
-          has: { kind: identifier, regex: "^type$" }
-    - not: { inside: { stopBy: end, pattern: "t.ModelClass[$$$]" } }
+          kind: expression_statement
+          inside:
+            kind: block
+            inside:
+              kind: class_definition
 constraints:
   FAMILY: { regex: "^[A-Z][A-Za-z0-9_]*$" }
   MEMBER: { regex: "^[A-Z][A-Za-z0-9_]*$" }
 fix: p.$FAMILY.$MEMBER
 message: >-
-  A consumer annotation names the protocol mirror p.<Family>.<Member>, not the
-  concrete model.
+  A consumer annotation names the protocol mirror p.<Family>.<Member>, not the concrete model.

@@ -1,6 +1,6 @@
 id: consumer-annotation-names-protocol
 snapshots:
-  "def f() -> tuple[m.Infra.Leaf, ...]: ...":
+  "def f() -> tuple[p.Infra.Leaf, ...]: ...":
     fixed: "def f() -> tuple[p.Infra.Leaf, ...]: ..."
     labels:
     - source: m.Infra.Leaf

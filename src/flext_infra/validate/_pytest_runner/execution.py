@@ -914,7 +914,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=mode,
         )
         selection = self._selection_from_suite(report_dir, outcome)
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
         if not u.Cli.process_succeeded(outcome) and not self._completed_failure(
             outcome, report_dir
@@ -1057,7 +1057,7 @@ class FlextInfraPytestRunnerExecution(
             ),
             execution_mode=execution_mode,
         )
-        if not isinstance(selection_plan, m.Infra.PytestSelectionPlan):
+        if isinstance(selection_plan, p.Cli.ProcessOutcome):
             return r.ok(selection_plan.raw_return_code)
         self._record_selection_plan(
             selection_plan, report_dir, cache_restored=cache_restored
@@ -1319,7 +1319,7 @@ class FlextInfraPytestRunnerExecution(
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
             verify_inventory=False,
         )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
+        if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
         command = self.build_coverage_command(report_dir)
         outcome = self._run_suite(

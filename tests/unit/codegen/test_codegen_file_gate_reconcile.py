@@ -167,9 +167,9 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
     ) -> None:
         """Setup never invokes removed routes and authorizes direnv natively.
 
-        Outside CI the lifecycle runs native ``direnv allow`` itself; the
-        retired ``workspace sync-environment`` route and the provenance check
-        (owned by ``make check``) never run from setup.
+        Outside CI the lifecycle runs the Mise-provisioned ``direnv allow``
+        itself; the retired ``workspace sync-environment`` route and the
+        provenance check (owned by ``make check``) never run from setup.
         """
         rendered = self._render_root_makefile(
             tmp_path,
@@ -189,7 +189,7 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
                 "workspace verify-environment",
             ],
         )
-        tm.that(lifecycle, has='direnv allow "$(PROJECT_ROOT)"')
+        tm.that(lifecycle, has='$(DIRENV) allow "$(PROJECT_ROOT)"')
 
     def test_standalone_render_omits_the_reconcile_step(
         self,

@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, assert_never
 
-from flext_infra import c, m, p, s, u
+from flext_infra import c, m, p, s, t, u
 
 
 class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
@@ -22,7 +22,10 @@ class FlextInfraCodegenConformBootstrap(s[p.Infra.CodegenResult]):
     """
 
     state: Annotated[
-        p.Infra.CodegenConformState,
+        Annotated[
+            p.Infra.CodegenConformState,
+            t.schema_for_model(lambda: m.Infra.CodegenConformState),
+        ],
         m.Field(
             description="Mutable request-local data owned by one conform invocation.",
         ),

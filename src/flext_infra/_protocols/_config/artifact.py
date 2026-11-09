@@ -886,54 +886,22 @@ class FlextInfraProtocolsConfigArtifact:
 
         destination: str
         failure_prefix: str
-
-        @property
-        def project_context(
-            self,
-        ) -> FlextInfraProtocolsConfigContexts.ProjectRenderContext | None:
-            """Project-scoped render context, when declared."""
-            ...
-
-        @property
-        def planned_manifests(
-            self,
-        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
-            """Planned manifests the bootstrap closure reads."""
-            ...
+        project_context: FlextInfraProtocolsConfigContexts.ProjectRenderContext | None
+        planned_manifests: tuple[
+            FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...
+        ]
 
     @runtime_checkable
     class CodegenRenderInputs(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def target(self) -> FlextInfraProtocolsConfigRepository.RepositoryConformTarget:
-            """Conformance identity and root being rendered."""
-            ...
-
-        @property
-        def workspace(self) -> FlextInfraProtocolsConfigWorkspace.WorkspaceSpec:
-            """Workspace manifest governing the repository."""
-            ...
-
-        @property
-        def codegen(self) -> FlextInfraProtocolsConfigArtifact.CodegenConfigSpec:
-            """Codegen contract the repository renders under."""
-            ...
-
-        @property
-        def tooling_runtime(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfig.ToolingRuntimeContext | None:
-            """Tooling values resolved only when outputs consume them."""
-            ...
-
-        @property
-        def managed_artifacts(
-            self,
-        ) -> FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsSnapshot:
-            """Project managed-artifact catalog overlaid on renders."""
-            ...
-
+        target: FlextInfraProtocolsConfigRepository.RepositoryConformTarget
+        workspace: FlextInfraProtocolsConfigWorkspace.WorkspaceSpec
+        codegen: FlextInfraProtocolsConfigArtifact.CodegenConfigSpec
+        tooling_runtime: FlextInfraProtocolsDepsToolConfig.ToolingRuntimeContext | None
+        managed_artifacts: (
+            FlextInfraProtocolsProjectArtifacts.ProjectManagedArtifactsSnapshot
+        )
         integration_branch: str | None
         planned_direct_sources: tuple[str, ...] | None
 

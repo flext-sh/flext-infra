@@ -73,9 +73,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         working: MutableMapping[Path, str]
-
         originals: MutableMapping[Path, p.Cli.AtomicFileState]
-
         modes: MutableMapping[Path, int | None]
 
     @runtime_checkable
@@ -102,12 +100,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         path: Path
-
-        @property
-        def inventory(self) -> FlextInfraProtocolsRefactor.SemanticBehaviorOwners:
-            """Declared behavior owners."""
-            ...
-
+        inventory: FlextInfraProtocolsRefactor.SemanticBehaviorOwners
         typing_directory: str
         identities: frozenset[tuple[str, str]]
         lineages: MutableMapping[tuple[str, str], tuple[tuple[str, str], ...]]
@@ -145,11 +138,7 @@ class FlextInfraProtocolsRefactor:
     class RopeRenameOptions(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def resources(self) -> Sequence[t.Infra.RopeResource]:
-            """Resources included in the semantic rename scope."""
-            ...
-
+        resources: Sequence[t.Infra.RopeResource]
         in_hierarchy: bool
         docs: bool
 
@@ -356,14 +345,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         project_root: str
-
-        @property
-        def rule_deltas(
-            self,
-        ) -> tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]:
-            """Full catalog occurrence comparison, including zero rows."""
-            ...
-
+        rule_deltas: tuple[FlextInfraProtocolsRefactor.ViolationsRuleDelta, ...]
         relocation_resolved: t.NonNegativeInt
         relocation_persisted: t.NonNegativeInt
         relocation_introduced: t.NonNegativeInt
@@ -404,13 +386,7 @@ class FlextInfraProtocolsRefactor:
         """Structural data contract projected from the owning model."""
 
         workspace: t.NonEmptyStr
-
-        @property
-        def projects(
-            self,
-        ) -> Sequence[FlextInfraProtocolsRefactor.ProjectEnforcementReport]:
-            """Per-project enforcement reports for the workspace."""
-            ...
+        projects: Sequence[FlextInfraProtocolsRefactor.ProjectEnforcementReport]
 
         @property
         def has_violations(self) -> bool:

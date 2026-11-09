@@ -373,9 +373,16 @@ class FlextInfraWorkspaceDetector(
         if canonical_url.failure:
             return r[p.Infra.RepositoryRef].from_failure(canonical_url)
         effective_url = canonical_url.value
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
+        )
+        if identity.failure:
+            return r[p.Infra.RepositoryRef].from_failure(identity)
+        is_submodule = identity.value.is_submodule
+        has_gitmodules = (repository_root / c.Infra.GITMODULES).is_file()
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if (repository_root / c.Infra.GITMODULES).is_file()
+            if is_submodule or has_gitmodules
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(

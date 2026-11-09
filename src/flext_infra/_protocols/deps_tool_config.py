@@ -42,26 +42,13 @@ class FlextInfraProtocolsDepsToolConfig:
 
         import_alignment: bool
         pass_cap: int
-
-        @property
-        def stages(
-            self,
-        ) -> tuple[FlextInfraProtocolsDepsToolConfig.ModStageConfig, ...]:
-            """Structural member projected from the owning model.
-
-            Ordered native cascade stages of make mod: ast-grep stages apply
-            natively, the ruff stage repairs imports.
-            """
-            ...
+        stages: tuple[FlextInfraProtocolsDepsToolConfig.ModStageConfig, ...]
 
     @runtime_checkable
     class ModConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def phases(self) -> FlextInfraProtocolsDepsToolConfig.ModPhasesConfig:
-            """Phase toggles read from config/tooling.yaml."""
-            ...
+        phases: FlextInfraProtocolsDepsToolConfig.ModPhasesConfig
 
     @runtime_checkable
     class PytestWorkerCeiling(FlextCliProtocols.BaseModel, Protocol):
@@ -88,22 +75,9 @@ class FlextInfraProtocolsDepsToolConfig:
         parallel_distribution: Literal["load", "loadscope"]
         loadscope_reorder: bool
         parallel_schedule_chunk: int
-
-        @property
-        def parallel_worker_overrides(
-            self,
-        ) -> Mapping[str, FlextInfraProtocolsDepsToolConfig.PytestWorkerCeiling]:
-            """Structural member projected from the owning model.
-
-            Per declared-project worker ceilings (``[project].name`` → absolute
-            ``workers`` or CPU ``cpu_fraction``) resolved by the runner over the
-            fleet-wide ``parallel-workers`` default: a consumer whose measured suite
-            cannot fit the single-worker process boundary declares its ceiling here,
-            inside the fleet cycle. The legacy bare-integer form still reads as an
-            absolute ``workers`` ceiling.
-            """
-            ...
-
+        parallel_worker_overrides: Mapping[
+            str, FlextInfraProtocolsDepsToolConfig.PytestWorkerCeiling
+        ]
         profile_sort: Literal[
             "calls",
             "cumulative",
@@ -162,12 +136,7 @@ class FlextInfraProtocolsDepsToolConfig:
         """Structural data contract projected from the owning model."""
 
         similarity: float
-
-        @property
-        def semantic(self) -> FlextInfraProtocolsDuplication.JscpdSemantic:
-            """Embedding pass host (--semantic)."""
-            ...
-
+        semantic: FlextInfraProtocolsDuplication.JscpdSemantic
         ignore_patterns: t.StrTuple
         ignore: Sequence[str]
 
@@ -183,17 +152,9 @@ class FlextInfraProtocolsDepsToolConfig:
     class MarkdownConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def projected_blocks(
-            self,
-        ) -> tuple[FlextInfraProtocolsDepsToolConfig.MarkdownProjectedBlock, ...]:
-            """Structural member projected from the owning model.
-
-            Foreign writers whose marker-delimited blocks the Markdown lint reads as
-            masked lines; FLEXT-owned blocks never appear.
-            """
-            ...
-
+        projected_blocks: tuple[
+            FlextInfraProtocolsDepsToolConfig.MarkdownProjectedBlock, ...
+        ]
         findings_exit_codes: tuple[int, ...]
         default_enabled: bool
         extend_enable: t.StrTuple
@@ -204,49 +165,14 @@ class FlextInfraProtocolsDepsToolConfig:
     class ToolConfigTools(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def markdown(self) -> FlextInfraProtocolsDepsToolConfig.MarkdownConfig:
-            """Markdown lint settings."""
-            ...
-
-        @property
-        def ruff(self) -> FlextInfraProtocolsDepsToolConfigLinters.RuffConfig:
-            """Ruff settings."""
-            ...
-
-        @property
-        def mypy(self) -> FlextInfraProtocolsDepsToolConfigLinters.MypyConfig:
-            """Mypy settings."""
-            ...
-
-        @property
-        def pyright(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig:
-            """Pyright settings."""
-            ...
-
-        @property
-        def pyrefly(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig:
-            """Pyrefly settings."""
-            ...
-
-        @property
-        def pytest(self) -> FlextInfraProtocolsDepsToolConfig.PytestConfig:
-            """Pytest settings."""
-            ...
-
-        @property
-        def tomlsort(self) -> FlextInfraProtocolsDepsToolConfig.TomlsortConfig:
-            """Tomlsort settings."""
-            ...
-
-        @property
-        def jscpd(self) -> FlextInfraProtocolsDepsToolConfig.JscpdToolConfig:
-            """Jscpd clone-semantics passes."""
-            ...
+        markdown: FlextInfraProtocolsDepsToolConfig.MarkdownConfig
+        ruff: FlextInfraProtocolsDepsToolConfigLinters.RuffConfig
+        mypy: FlextInfraProtocolsDepsToolConfigLinters.MypyConfig
+        pyright: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig
+        pyrefly: FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig
+        pytest: FlextInfraProtocolsDepsToolConfig.PytestConfig
+        tomlsort: FlextInfraProtocolsDepsToolConfig.TomlsortConfig
+        jscpd: FlextInfraProtocolsDepsToolConfig.JscpdToolConfig
 
     @runtime_checkable
     class LazyInitConfig(FlextCliProtocols.BaseModel, Protocol):
@@ -385,21 +311,11 @@ class FlextInfraProtocolsDepsToolConfig:
     class ToolingRuntimeContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def document(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfig.ToolConfigDocument | None:
-            """The elected tooling policy shared by every render context."""
-            ...
-
+        document: FlextInfraProtocolsDepsToolConfig.ToolConfigDocument | None
         project_kind: t.NonEmptyStr
         configuration: str
         tool_options: Mapping[str, t.JsonMapping]
-
-        @property
-        def sources(self) -> tuple[p.Cli.AtomicFileState, ...]:
-            """Original configuration layers bound to the render."""
-            ...
+        sources: tuple[p.Cli.AtomicFileState, ...]
 
 
 __all__: list[str] = [

@@ -85,9 +85,30 @@ class FlextInfraCodegenConform:
         admitted = m.Infra.CodegenConformRequest.model_validate(
             request, from_attributes=True
         )
-        preflight = cls._admission_preflight(execution_context, admitted)
-        if preflight is not None:
-            return preflight
+        if execution_context is None:
+            return r[p.Infra.CodegenResult].fail(
+                "source bootstrap requires bound generation collaborators"
+            )
+        # Preflight admissions run before any publication: a failing facade
+        # or undeclared governance kind must leave the tree untouched.
+        if admitted.what not in {
+            c.Infra.CodegenConformSurface.FACADES,
+            c.Infra.CodegenConformSurface.LAZY_INIT,
+        }:
+            bootstrap = u.Infra.bootstrap_protocol_model_sources(
+                admitted.root.expanduser().resolve(),
+                ports=execution_context.codegen_conform_collaborators(),
+            )
+            if bootstrap.failure:
+                return r[p.Infra.CodegenResult].from_failure(bootstrap)
+        kind_admission = u.Infra.load_codegen_inputs(
+            admitted.root.expanduser().resolve(),
+            projections=cls._kind_projections(
+                admitted.root.expanduser().resolve(), admitted.declaration_kind
+            ),
+        )
+        if kind_admission.failure:
+            return r[p.Infra.CodegenResult].from_failure(kind_admission)
         bound = cls.Generate.from_request(
             admitted,
             execution_context=execution_context,

@@ -164,7 +164,7 @@ class TestsFlextInfraGenRespectsInvocationScope:
                 ),
             )
             expected_invocation = (
-                f'direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) {activation_target}'
+                f'$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) {activation_target}'
             )
             activation_commands = tuple(
                 line.strip()

@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSet, Sequence
+from collections.abc import MutableMapping, MutableSequence, MutableSet, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -304,7 +304,7 @@ class FlextInfraProtocolsCensus:
         @property
         def project_objects(
             self,
-        ) -> Mapping[str, Sequence[FlextInfraProtocolsCensus.Object]]:
+        ) -> MutableMapping[str, MutableSequence[FlextInfraProtocolsCensus.Object]]:
             """Object inventory accumulated per project."""
             ...
 
@@ -599,7 +599,7 @@ class FlextInfraProtocolsCensus:
             ...
 
         @property
-        def definitions(self) -> Sequence[FlextInfraProtocolsCensus.Object]:
+        def definitions(self) -> MutableSequence[FlextInfraProtocolsCensus.Object]:
             """All definitions of this object."""
             ...
 
@@ -781,61 +781,18 @@ class FlextInfraProtocolsCensus:
         duplicate_cure_files: t.NonNegativeInt
         duplicate_cure_copies: t.NonNegativeInt
         duplicate_cure_bindings: t.NonNegativeInt
-
-        @property
-        def projects(self) -> tuple[FlextInfraProtocolsCensus.ProjectReport, ...]:
-            """Per-project reports."""
-            ...
-
+        projects: tuple[FlextInfraProtocolsCensus.ProjectReport, ...]
         total_objects: t.NonNegativeInt
         total_violations: t.NonNegativeInt
-
-        @property
-        def duplicates(self) -> tuple[FlextInfraProtocolsCensus.DuplicateGroup, ...]:
-            """Cross-project duplicate groups."""
-            ...
-
-        @property
-        def duplicate_cure_plans(
-            self,
-        ) -> tuple[FlextInfraProtocolsCensus.DuplicateCurePlan, ...]:
-            """Manual assisted-cure plans for structural duplicates."""
-            ...
-
+        duplicates: tuple[FlextInfraProtocolsCensus.DuplicateGroup, ...]
+        duplicate_cure_plans: tuple[FlextInfraProtocolsCensus.DuplicateCurePlan, ...]
         unused_count: t.NonNegativeInt
         removal_candidate_count: t.NonNegativeInt
-
-        @property
-        def removal_candidates(
-            self,
-        ) -> tuple[FlextInfraProtocolsCensus.RemovalCandidate, ...]:
-            """Explicit aggressive-removal candidates across workspace."""
-            ...
-
-        @property
-        def alias_census(self) -> tuple[FlextInfraProtocolsCensus.AliasCensus, ...]:
-            """Compatibility aliases with canonical target and users."""
-            ...
-
-        @property
-        def duplicate_census(
-            self,
-        ) -> tuple[FlextInfraProtocolsCensus.DuplicateCensus, ...]:
-            """Duplicate declarations with elected canonical owner."""
-            ...
-
-        @property
-        def shortest_form_census(
-            self,
-        ) -> tuple[FlextInfraProtocolsCensus.ShortestFormCensus, ...]:
-            """Declarations or uses longer than their canonical form."""
-            ...
-
-        @property
-        def census_fix_plan(self) -> FlextInfraProtocolsCensus.CensusFixPlan:
-            """Typed extermination plan over this report's rows."""
-            ...
-
+        removal_candidates: tuple[FlextInfraProtocolsCensus.RemovalCandidate, ...]
+        alias_census: tuple[FlextInfraProtocolsCensus.AliasCensus, ...]
+        duplicate_census: tuple[FlextInfraProtocolsCensus.DuplicateCensus, ...]
+        shortest_form_census: tuple[FlextInfraProtocolsCensus.ShortestFormCensus, ...]
+        census_fix_plan: FlextInfraProtocolsCensus.CensusFixPlan
         scan_duration_seconds: float
         parse_errors: t.NonNegativeInt
 
