@@ -543,7 +543,7 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 # Its frozen packages, editable receipt and real consumers precede one atomic
 # publication; the displaced physical environment remains recoverable.
 PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
-	install_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
+	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
 	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
 		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
 	fi; \
@@ -887,7 +887,7 @@ endif
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 setup:
 	+@set -eu; \
-lifecycle_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
 lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
 if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
 mkdir -p "$$lifecycle_state"; \
@@ -926,7 +926,7 @@ endif
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg:
 	+@set -eu; \
-lifecycle_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
 lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
 if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
 mkdir -p "$$lifecycle_state"; \
