@@ -230,9 +230,14 @@ $(error Cannot resolve the physical bootstrap scope for $(MAKEFILE_ROOT))
 endif
 # Setup and upg provision the toolchain the native workspace reader needs, so
 # they elect the physical bootstrap scope without running that reader.
+# When attached to a workspace (BOOTSTRAP_ROOT != PROJECT_ROOT), all verbs use
+# the workspace root so they share the workspace's .venv. Standalone checkouts
+# use the native uv workspace reader for non-setup/upg/help verbs.
 ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg _setup_locked _upg_locked,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
+override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
+else ifneq ($(BOOTSTRAP_ROOT),$(PROJECT_ROOT))
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else
 override REPOSITORY_ROOT := $(shell set -eu; \
@@ -538,7 +543,7 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 # Its frozen packages, editable receipt and real consumers precede one atomic
 # publication; the displaced physical environment remains recoverable.
 PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
-	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
+	install_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
 	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
 		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
 	fi; \
@@ -701,7 +706,7 @@ REQUIRE_WORKSPACE_ENVIRONMENT = case "$(PROJECT_ROOT)/" in \
 	"$(RUNTIME_ROOT)/"*) ;; \
 	*) printf 'ERROR: runtime workspace does not contain this project: %s\n' "$(RUNTIME_ROOT)" >&2; exit 2 ;; \
 	esac; \
-	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts" "$(SETUP_BIN)" "$(BOOTSTRAP_MISE)" "$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")" "$(FLEXT_INFRA_EXECUTOR_VENV)"; do \
+	for environment_path in "$$(dirname "$(RUNTIME_VENV)")" "$(RUNTIME_VENV)" "$(RUNTIME_BIN)" "$(PROJECT_ROOT)/.venv" "$(PROJECT_ROOT)/.venv/bin" "$(PROJECT_ROOT)/.venv/Scripts" "$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")" "$(FLEXT_INFRA_EXECUTOR_VENV)"; do \
 		if [ -L "$$environment_path" ]; then \
 			printf 'ERROR: workspace environment must be physical, not a symlink: %s\n' "$$environment_path" >&2; exit 2; \
 		fi; \
@@ -882,7 +887,7 @@ endif
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 setup:
 	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+lifecycle_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
 lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
 if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
 mkdir -p "$$lifecycle_state"; \
@@ -921,7 +926,7 @@ endif
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg:
 	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+lifecycle_state=""$$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
 lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
 if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
 mkdir -p "$$lifecycle_state"; \
