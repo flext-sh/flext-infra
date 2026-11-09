@@ -277,6 +277,12 @@ class FlextInfraUtilitiesModelsProtocol:
             source_project,
             package_name=package_name,
         )
+        layout = projection.source_layout()
+        if (
+            layout is None
+            or source_project.find_module(f"{layout[2]}.protocols") is None
+        ):
+            return ()
         inventory = projection.source_model_inventory()
         return (
             ()
@@ -1039,8 +1045,6 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             declarations: list[tuple[str, str, Path]] = []
-            if self.project.find_module(f"{package_name}.protocols") is None:
-                return ()
             for classes in self.source_model_protocol_classes.values():
                 for _node, path, tree in classes:
                     module_name = self.source_module_names[id(tree)]
@@ -1120,14 +1124,16 @@ class FlextInfraUtilitiesModelsProtocol:
                         or source_path.name == c.Infra.INIT_PY
                     ):
                         continue
-                    tree = ast.parse(
-                        self.project.source_text(source_path), filename=str(source_path)
-                    )
                     model_module = ".".join((
                         package_name,
                         "_models",
                         *source_path.relative_to(models_root).with_suffix("").parts,
                     ))
+                    if self.project.find_module(model_module) is None:
+                        continue
+                    tree = ast.parse(
+                        self.project.source_text(source_path), filename=str(source_path)
+                    )
                     self.source_module_names[id(tree)] = model_module
                     classes = self._source_model_classes(tree, model_module)
                     if not classes:

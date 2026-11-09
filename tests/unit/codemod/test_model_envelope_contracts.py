@@ -28,13 +28,18 @@ class TestsFlextInfraModelEnvelopeContracts:
         with workspace.rope_project.source_view(
             declared_files=None, additional_source_folders=None
         ) as project:
+            repository_root = tm.not_none(
+                u.Infra.project_root(Path(getfile(m.Cli.AtomicFileState)))
+            )
             records = tuple(
                 record
+                for package in u.Infra.protocol_model_package_names(
+                    repository_root, project
+                )
                 for record in u.Infra.protocol_model_declarations_from_source(
-                    tm.not_none(
-                        u.Infra.project_root(Path(getfile(m.Cli.AtomicFileState)))
-                    ),
+                    repository_root,
                     project,
+                    package_name=package,
                 )
                 if record[0]
                 == (
@@ -143,7 +148,8 @@ class TestsFlextInfraModelEnvelopeContracts:
             "    inputs: Mapping[str, tuple[Payload, ...]] = {'nested': (value,)}\n"
             "    return Envelope(inputs=inputs)\n"
             "def invalid(value: p.Payload):\n"
-            "    inputs: Mapping[str, tuple[p.Payload, str]] = {'nested': (value, 'wrong')}\n"
+            "    inputs: Mapping[str, tuple[p.Payload, str]] = "
+            "{'nested': (value, 'wrong')}\n"
             "    return Envelope(inputs=inputs)\n"
         )
         consumer.write_text(original, encoding=c.DEFAULT_ENCODING)
@@ -171,8 +177,8 @@ class TestsFlextInfraModelEnvelopeContracts:
             ),
         )
         tm.that(
-            sum(issue.code == "bad-argument-type" for issue in checked.issues) >= 2,
-            eq=True,
+            sum(issue.code == "bad-argument-type" for issue in checked.issues),
+            gte=2,
             msg=checked.raw_output,
         )
         route = [
@@ -193,7 +199,11 @@ class TestsFlextInfraModelEnvelopeContracts:
         capture = capsys.readouterr()
         tm.that(applied, eq=0, msg=capture.out + capture.err)
         migrated = consumer.read_text(encoding=c.DEFAULT_ENCODING)
-        tm.that(migrated.count(".model_validate("), eq=2, msg=capture.out + capture.err)
+        tm.that(
+            migrated.count(".model_validate("),
+            eq=2,
+            msg=capture.out + capture.err,
+        )
         tm.that(migrated, has="Envelope(inputs=inputs)")
         native_consumer(
             f"sys.path[:0] = [{str(primary.parent)!r}, {str(root)!r}]\n"
