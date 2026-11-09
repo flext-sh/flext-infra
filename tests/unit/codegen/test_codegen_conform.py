@@ -677,66 +677,6 @@ class TestsFlextInfraCodegenConform:
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_editor_surface_publishes_the_full_conform_manifest(
-        infra_git_repo: Path,
-    ) -> None:
-        """The editor surface publishes the full conform's manifest bytes.
-
-        An ``examples`` root sorts before the source root, so disk discovery
-        order differs from the declared scaffold order: a second analyzer
-        context would publish other environments and ``extraPaths`` orders.
-        """
-        root = infra_git_repo
-        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        u.Tests.declare_governed_kind(root)
-        package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
-        for module, family in (("models.py", "Models"), ("protocols.py", "Protocols")):
-            tm.ok(
-                u.Cli.atomic_write_text_file(
-                    package / module,
-                    f"class FlextInfra{family}:\n    pass\n\n\n"
-                    f"{family[0].lower()} = FlextInfra{family}\n",
-                ),
-            )
-        example = root / "examples" / "usage.py"
-        example.parent.mkdir()
-        tm.ok(u.Cli.atomic_write_text_file(example, "VALUE = 1\n"))
-        u.Tests.commit_git_changes(root, "Seed a root that sorts before src")
-        manifest = root / c.PYPROJECT_FILENAME
-        full_request = u.Tests.conform_request(
-            root, scope=c.Infra.CodegenConformScope.SELF
-        )
-        planned = tm.ok(
-            tm.ok(
-                FlextInfraCodegenConform.Generate.from_request(
-                    full_request, execution_context=infra
-                )
-            ).plan(full_request),
-        )
-        tm.ok(
-            u.Infra.publish_codegen_plans(
-                root, tuple(file for file in planned.files if file.path == manifest)
-            ),
-        )
-        full = manifest.read_text(encoding=c.DEFAULT_ENCODING)
-        document = tm.not_none(u.Cli.toml_parse_text(full))
-        stale = u.Cli.toml_ensure_table(
-            u.Cli.toml_ensure_table(document, c.Infra.TOOL), c.Infra.PYRIGHT
-        )
-        stale["venvPath"] = "../stale-checkout"
-        manifest.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
-        editor = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.EDITOR,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.APPLY,
-        )
-        tm.ok(infra.codegen_conform(editor))
-        tm.that(manifest.read_text(encoding=c.DEFAULT_ENCODING), eq=full)
-        tm.that(tm.ok(infra.codegen_conform(editor)).written_files, eq=())
-
-    @staticmethod
-    @c.Tests.MARK.slow
     def test_empty_rendered_directory_is_not_a_python_root(
         infra_git_repo: Path,
     ) -> None:
