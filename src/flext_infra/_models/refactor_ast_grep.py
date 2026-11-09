@@ -440,11 +440,11 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Unified diff preview for the file"),
         ] = ""
         lint_before: Annotated[
-            t.Infra.LintSnapshot[Annotated[FlextInfraModelsBase.LintGateResult,]],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output before the proposed rewrite"),
         ]
         lint_after: Annotated[
-            t.Infra.LintSnapshot[Annotated[FlextInfraModelsBase.LintGateResult,]],
+            t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             m.Field(description="Lint output after the proposed rewrite"),
         ]
         new_lint_errors: Annotated[

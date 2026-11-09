@@ -211,19 +211,19 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Native receiver access category"),
         ]
         base: Annotated[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             m.Field(description="Native module or class identity of the receiver"),
         ]
         accessor: Annotated[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             m.Field(description="Native __getattribute__ declaration identity"),
         ]
         member: Annotated[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             m.Field(description="Native owner and identity of the requested member"),
         ]
         descriptor: Annotated[
-            Annotated[FlextInfraModelsRope.SourceClassReference,] | None,
+            FlextInfraModelsRope.SourceClassReference | None,
             m.Field(
                 description="Builtin descriptor identity, or none for a plain value"
             ),
@@ -519,7 +519,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         matches: Annotated[
             Sequence[
                 tuple[
-                    Annotated[FlextInfraModelsRope.SymbolInfo,],
+                    FlextInfraModelsRope.SymbolInfo,
                     str,
                     str,
                 ]
@@ -532,7 +532,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
 
         class_infos: Annotated[
             tuple[
-                Annotated[FlextInfraModelsRope.ClassInfo,],
+                FlextInfraModelsRope.ClassInfo,
                 ...,
             ],
             m.Field(description="Local classes discovered in the module"),
@@ -633,7 +633,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.Field(description="Resolved project name for census attribution"),
         ]
         convention: Annotated[
-            Annotated[FlextInfraModelsRope.RopeModuleConvention,],
+            FlextInfraModelsRope.RopeModuleConvention,
             m.Field(description="Module convention metadata for tier/facade checks"),
         ]
         scope_chain: Annotated[

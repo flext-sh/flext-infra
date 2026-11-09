@@ -600,7 +600,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """Detected integration provenance for internal requirements and dev floors."""
 
         flext_line: Annotated[
-            Annotated[m.Infra.WorkspaceIntegrationSpec,] | None,
+            m.Infra.WorkspaceIntegrationSpec | None,
             m.Field(
                 description="Detected provider and branch for internal requirements",
             ),

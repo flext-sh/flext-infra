@@ -421,7 +421,7 @@ class FlextInfraModelsMiseToolchain:
         """Validated immutable inputs for one native toolchain proof."""
 
         entry: Annotated[
-            Annotated[FlextInfraModelsMiseToolchain.MiseToolEntry,],
+            FlextInfraModelsMiseToolchain.MiseToolEntry,
             m.Field(description="Declared tool entry currently under proof."),
         ]
         lock: Annotated[
@@ -690,7 +690,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         beads: Annotated[
-            Annotated[FlextInfraModelsMiseToolchain.BeadsToolSpec,],
+            FlextInfraModelsMiseToolchain.BeadsToolSpec,
             m.Field(description="Beads ledger projection (.beads config)"),
         ]
 

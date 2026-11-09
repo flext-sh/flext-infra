@@ -52,7 +52,7 @@ class FlextInfraModelsRefactor(
         findings: Sequence[
             tuple[
                 c.Infra.CodemodRelocation,
-                Annotated[FlextInfraModelsScan.ModScanFinding,],
+                FlextInfraModelsScan.ModScanFinding,
             ]
         ] = m.Field(description="Native relocation selections")
         py_files: Sequence[Path] = m.Field(description="Selected Python sources")
@@ -66,9 +66,7 @@ class FlextInfraModelsRefactor(
         )
         originals: MutableMapping[
             Path,
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            Annotated[m.Cli.AtomicFileState],
         ] = m.Field(description="Complete original dependency closure")
         modes: MutableMapping[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
@@ -186,7 +184,7 @@ class FlextInfraModelsRefactor(
         """Domain-selected name for an observed introducing declaration."""
 
         declaration: Annotated[
-            Annotated[FlextInfraModelsCensus.Object,],
+            FlextInfraModelsCensus.Object,
             m.Field(
                 description="Actual introducing declaration from semantic discovery"
             ),
@@ -199,7 +197,7 @@ class FlextInfraModelsRefactor(
         ]
         contracts: Annotated[
             tuple[
-                Annotated[FlextInfraModelsCensus.Object,],
+                FlextInfraModelsCensus.Object,
                 ...,
             ],
             m.Field(
@@ -454,19 +452,19 @@ class FlextInfraModelsRefactor(
             m.Field(description="Observed governed project topology"),
         ]
         ast_report: Annotated[
-            Annotated[FlextInfraModelsScan.ModScanEvidence,] | None,
+            FlextInfraModelsScan.ModScanEvidence | None,
             m.Field(
                 description="Complete normalized scan evidence, None if unobserved"
             ),
         ] = None
         text_report: Annotated[
-            Annotated[FlextInfraModelsScan.ModTextReport,] | None,
+            FlextInfraModelsScan.ModTextReport | None,
             m.Field(description="Actual native text scan, None if unobserved"),
         ] = None
         lint: Annotated[
             Mapping[
                 str,
-                t.Infra.LintSnapshot[Annotated[FlextInfraModelsBase.LintGateResult,]],
+                t.Infra.LintSnapshot[FlextInfraModelsBase.LintGateResult],
             ]
             | None,
             m.Field(description="Canonical Ruff snapshots by source path"),
@@ -552,10 +550,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Whether Make was invoked"),
         ] = True
         outcome: Annotated[
-            Annotated[
-                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
-            ]
-            | None,
+            Annotated[m.Cli.ProcessOutcome] | None,
             m.Field(description="Original process exit, timeout and signal state"),
         ]
         error: Annotated[
@@ -624,7 +619,7 @@ class FlextInfraModelsRefactor(
         ] = None
         introduced_text: Annotated[
             tuple[
-                Annotated[FlextInfraModelsScan.ModTextFinding,],
+                FlextInfraModelsScan.ModTextFinding,
                 ...,
             ]
             | None,
@@ -676,11 +671,11 @@ class FlextInfraModelsRefactor(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         before: Annotated[
-            Annotated[FlextInfraModelsRefactor.ViolationsTotals,] | None,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals before the repair sequence"),
         ]
         after: Annotated[
-            Annotated[FlextInfraModelsRefactor.ViolationsTotals,] | None,
+            FlextInfraModelsRefactor.ViolationsTotals | None,
             m.Field(description="Scan totals after the repair sequence"),
         ]
         rule_deltas: Annotated[
@@ -740,13 +735,13 @@ class FlextInfraModelsRefactor(
             ),
         ] = None
         before_evidence: Annotated[
-            Annotated[FlextInfraModelsScan.ModScanEvidenceReceipt,] | None,
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
             m.Field(
                 description="Invocation-local full before evidence and byte digest"
             ),
         ] = None
         after_evidence: Annotated[
-            Annotated[FlextInfraModelsScan.ModScanEvidenceReceipt,] | None,
+            FlextInfraModelsScan.ModScanEvidenceReceipt | None,
             m.Field(description="Invocation-local full after evidence and byte digest"),
         ] = None
         before_plan: Annotated[
@@ -1286,7 +1281,7 @@ class FlextInfraModelsRefactor(
         """One parsed module and the facts one import-law pass reads from it."""
 
         scope: Annotated[
-            Annotated[FlextInfraModelsRefactor.ImportLawScope,],
+            FlextInfraModelsRefactor.ImportLawScope,
             m.Field(description="Module facts of the pass"),
         ]
         tree: Annotated[t.Port[ast.Module], m.Field(description="Parsed module")]

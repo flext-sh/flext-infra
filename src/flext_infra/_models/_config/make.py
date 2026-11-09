@@ -558,7 +558,7 @@ class FlextInfraModelsConfigMake(
             m.Field(ge=1, le=32, description="Concurrent governed submodule clones"),
         ]
         ruff: Annotated[
-            Annotated[FlextInfraModelsConfigMake.MakeRuffSpec,],
+            FlextInfraModelsConfigMake.MakeRuffSpec,
             m.Field(description="Ruff CLI flags for fmt/fix/check Make verbs"),
         ]
         fmt_gates: Annotated[
@@ -614,7 +614,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         ci: Annotated[
-            Annotated[FlextInfraModelsConfigMake.MakeCiSpec,],
+            FlextInfraModelsConfigMake.MakeCiSpec,
             m.Field(description="Config-owned CI-only environment delta"),
         ]
         native_environment_unset: Annotated[
@@ -964,13 +964,13 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         mypy_cache: Annotated[
-            Annotated[FlextInfraModelsConfigMake.MypyCacheSpec,],
+            FlextInfraModelsConfigMake.MypyCacheSpec,
             m.Field(
                 description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[
-            Annotated[FlextInfraModelsConfigMake.RuffCacheSpec,],
+            FlextInfraModelsConfigMake.RuffCacheSpec,
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
 
@@ -979,7 +979,7 @@ class FlextInfraModelsConfigMake(
 
         verbs: Annotated[
             tuple[
-                Annotated[FlextInfraModelsConfigMake.MakeVerbSpec,],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(description="Ordered canonical public verbs"),
@@ -1051,7 +1051,7 @@ class FlextInfraModelsConfigMake(
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
-            Annotated[FlextInfraModelsConfigMakeDocs.MakeDocsSpec,],
+            FlextInfraModelsConfigMakeDocs.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
         ]
 

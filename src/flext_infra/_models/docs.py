@@ -40,7 +40,7 @@ class FlextInfraModelsDocs(
             alias="data-toc-label", description="Explicit TOC label"
         )
         children: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsTocToken,]],
+            Sequence[FlextInfraModelsDocs.DocsTocToken],
             m.Field(description="Nested heading tokens"),
         ]
 
@@ -48,7 +48,7 @@ class FlextInfraModelsDocs(
         """Validated output of Python-Markdown's registered TOC extension."""
 
         toc_tokens: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsTocToken,]],
+            Sequence[FlextInfraModelsDocs.DocsTocToken],
             m.Field(description="Rendered table of contents tokens"),
         ]
 
@@ -154,7 +154,7 @@ class FlextInfraModelsDocs(
         version: Annotated[str, m.Field(description="Declared version")]
         description: Annotated[str, m.Field(description="Declared description")]
         links: Annotated[
-            Annotated[FlextInfraModelsDocs.DocsGovernanceLinks,],
+            FlextInfraModelsDocs.DocsGovernanceLinks,
             m.Field(description="Governance pointers"),
         ]
 
@@ -168,7 +168,7 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         guides: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsGuideEntry,]],
+            Sequence[FlextInfraModelsDocs.DocsGuideEntry],
             m.Field(description="Ordered guide rows"),
         ]
 
@@ -216,7 +216,7 @@ class FlextInfraModelsDocs(
 
         name: Annotated[str, m.Field(description="Project name")]
         modules: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsModuleEntry,]],
+            Sequence[FlextInfraModelsDocs.DocsModuleEntry],
             m.Field(description="Ordered module page rows"),
         ]
 
@@ -230,7 +230,7 @@ class FlextInfraModelsDocs(
             t.NonNegativeInt, m.Field(description="Governed project count")
         ]
         class_counts: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsClassCount,],],
+            Sequence[FlextInfraModelsDocs.DocsClassCount,],
             m.Field(description="Projects per documentation class"),
         ]
 
@@ -253,7 +253,7 @@ class FlextInfraModelsDocs(
         """Context of the generated workspace project catalog."""
 
         entries: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsCatalogEntry,],],
+            Sequence[FlextInfraModelsDocs.DocsCatalogEntry,],
             m.Field(description="Catalog rows that survive the exclusions"),
         ]
 
@@ -357,18 +357,18 @@ class FlextInfraModelsDocs(
 
         file: Annotated[str, m.Field(description="File path relative to scope")]
         issue_type: Annotated[str, m.Field(description="Issue category")]
-        severity: Annotated[str, m.Field(description="Issue severity")]
+        severity: Annom.ProjectMetadata
         message: Annotated[str, m.Field(description="Issue description")]
 
     class DocsPublicContract(FlextInfraModelsBase.FrozenArbitrary):
         """Exact project/config objects plus derived public API analysis."""
 
         metadata: Annotated[
-            Annotated[p.ProjectMetadata, t.schema_for_model(lambda: m.ProjectMetadata)],
+            Annotated[m.ProjectMetadata],
             m.Field(description="Exact canonical project metadata model"),
         ]
         repository: Annotated[
-            Annotated[FlextInfraModelsConfig.RepositoryRef,] | None,
+            FlextInfraModelsConfig.RepositoryRef | None,
             m.Field(description="Exact repository catalog model"),
         ] = None
         package_name: Annotated[str, m.Field(description="Documented package name")]
@@ -395,7 +395,7 @@ class FlextInfraModelsDocs(
         ] = ()
         export_bindings: Annotated[
             tuple[
-                Annotated[FlextInfraModelsDocs.DocsExportBinding,],
+                FlextInfraModelsDocs.DocsExportBinding,
                 ...,
             ],
             m.Field(default=(), description="Export-to-module bindings"),
@@ -476,7 +476,7 @@ class FlextInfraModelsDocs(
             m.Field(description="Whether TODOS.md was written"),
         ] = False
         items: Annotated[
-            Sequence[Annotated[FlextInfraModelsDocs.DocsPhaseItemModel,]],
+            Sequence[FlextInfraModelsDocs.DocsPhaseItemModel],
             m.Field(description="Phase-specific item payloads"),
         ] = m.Field(default_factory=tuple)
 

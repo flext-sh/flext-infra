@@ -668,7 +668,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Filesystem modes the pipeline emits (the mode SSOT)"),
         ]
         toolchain: Annotated[
-            Annotated[FlextInfraModelsMiseToolchain.ToolchainSpec,],
+            FlextInfraModelsMiseToolchain.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
         ]
 
@@ -766,7 +766,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         sonarcloud: Annotated[
-            Annotated[FlextInfraModelsConfigRender.SonarcloudSpec,],
+            FlextInfraModelsConfigRender.SonarcloudSpec,
             m.Field(description="Fleet SonarCloud automatic-analysis scope policy"),
         ]
 
@@ -804,7 +804,7 @@ class FlextInfraModelsConfigArtifact(
             m.Field(description="Ordered Make profiles"),
         ]
         make: Annotated[
-            Annotated[FlextInfraModelsConfigMake.MakeSpec,],
+            FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Canonical Make contract"),
         ]
         vscode: Annotated[
@@ -831,7 +831,7 @@ class FlextInfraModelsConfigArtifact(
             ),
         ]
         layout: Annotated[
-            Annotated[FlextInfraModelsLayout.LayoutSpec,],
+            FlextInfraModelsLayout.LayoutSpec,
             m.Field(
                 description=(
                     "Declarative project-layout conformance contract consumed "
@@ -1231,7 +1231,7 @@ class FlextInfraModelsConfigArtifact(
             )
 
         scaffold: Annotated[
-            Annotated[FlextInfraModelsConfigScaffold.ScaffoldSpec,],
+            FlextInfraModelsConfigScaffold.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),
         ]
         templates: Annotated[

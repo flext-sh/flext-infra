@@ -102,7 +102,7 @@ class FlextInfraModelsCodemod:
             ]
         ] = m.Field(default=(), description="Native additions in this same source pass")
         method_transfers: Sequence[
-            Annotated[FlextInfraModelsCodemod.RopeMethodTransfer,]
+            FlextInfraModelsCodemod.RopeMethodTransfer
         ] = m.Field(default=(), description="Native transfers in this same source pass")
         signature_removals: Sequence[
             Annotated[
@@ -376,7 +376,7 @@ class FlextInfraModelsCodemod:
             description="Explicit Git revision authenticating retired provider "
             "declarations",
         )
-        scope: Annotated[FlextInfraModelsCodemod.RopeContractScope,] | None = m.Field(
+        scope: FlextInfraModelsCodemod.RopeContractScope | None = m.Field(
             default=None,
             description=(
                 "Closed distribution/module admission set; absent keeps the rule "
@@ -638,7 +638,7 @@ class FlextInfraModelsCodemod:
             ]
         ] = m.Field(default=(), description="Ordered native required keyword additions")
         method_transfers: Sequence[
-            Annotated[FlextInfraModelsCodemod.RopeMethodTransfer,]
+            FlextInfraModelsCodemod.RopeMethodTransfer
         ] = m.Field(default=(), description="Ordered native method ownership transfers")
         signature_removals: Sequence[
             Annotated[

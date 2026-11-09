@@ -430,7 +430,7 @@ class FlextInfraModelsConfigRepository:
         ] = None
         extra_verbs: Annotated[
             tuple[
-                Annotated[FlextInfraModelsConfigMake.MakeVerbSpec,],
+                FlextInfraModelsConfigMake.MakeVerbSpec,
                 ...,
             ],
             m.Field(

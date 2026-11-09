@@ -64,9 +64,7 @@ class FlextInfraModelsTransformers:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            Annotated[
-                p.Cli.AtomicFileState, t.schema_for_model(lambda: m.Cli.AtomicFileState)
-            ],
+            Annotated[m.Cli.AtomicFileState],
             m.Field(description="Descriptor-authenticated file state before migration"),
         ]
         desired_content: Annotated[
@@ -341,7 +339,7 @@ class FlextInfraModelsTransformers:
             m.Field(description="Local names bound by from-import statements"),
         ]
         span: Annotated[
-            Annotated[FlextInfraModelsTransformers.HeaderSpan,],
+            FlextInfraModelsTransformers.HeaderSpan,
             m.Field(description="Byte offsets for the header sections"),
         ]
 

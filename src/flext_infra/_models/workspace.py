@@ -64,7 +64,7 @@ class FlextInfraModelsWorkspace:
             description="Cold-elected physical producer namespaces"
         )
         selections: tuple[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             ...,
         ] = m.Field(
             min_length=1,
@@ -380,7 +380,7 @@ class FlextInfraModelsWorkspace:
         runtime: Path = m.Field(description="Exact observed native interpreter")
         runtime_prefix: Path = m.Field(description="Physical interpreter environment")
         modules: tuple[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             ...,
         ] = m.Field(
             min_length=1,
@@ -429,7 +429,7 @@ class FlextInfraModelsWorkspace:
             description="Declared resolution owner of the elected physical runtime",
         )
         modules: tuple[
-            Annotated[FlextInfraModelsRope.SourceClassReference,],
+            FlextInfraModelsRope.SourceClassReference,
             ...,
         ] = m.Field(
             min_length=1,
@@ -535,7 +535,7 @@ class FlextInfraModelsWorkspace:
         ]
         installation_inputs: Annotated[
             tuple[
-                Annotated[m.Cli.AtomicFileState,],
+                m.Cli.AtomicFileState,
                 ...,
             ],
             m.Field(
@@ -599,7 +599,7 @@ class FlextInfraModelsWorkspace:
         ] = ()
         issues: Annotated[
             tuple[
-                Annotated[FlextInfraModelsCheck.Issue,],
+                FlextInfraModelsCheck.Issue,
                 ...,
             ],
             m.Field(description="Native findings at their actual repository."),
@@ -672,7 +672,7 @@ class FlextInfraModelsWorkspace:
             ),
         ]
         workspace_beads: Annotated[
-            Annotated[FlextInfraModelsConfig.BeadsProjectSpec,] | None,
+            FlextInfraModelsConfig.BeadsProjectSpec | None,
             m.Field(description="Workspace Beads ledger spec; absent disables routing"),
         ] = None
         allow_unprovisioned_members: Annotated[
@@ -733,7 +733,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Observed Git identity, absent outside a repository"),
         ] = None
         workspace: Annotated[
-            Annotated[FlextInfraModelsConfig.WorkspaceSpec,] | None,
+            FlextInfraModelsConfig.WorkspaceSpec | None,
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
@@ -821,7 +821,7 @@ class FlextInfraModelsWorkspace:
             t.NonEmptyStr,
             m.Field(description="Required PEP 610 origin URL"),
         ]
-        vcs_info: Annotated[FlextInfraModelsWorkspace.DirectUrlVcsInfo,] | None = (
+        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = (
             m.Field(
                 default=None,
                 description="Installed immutable VCS identity",
@@ -951,7 +951,7 @@ class FlextInfraModelsWorkspace:
 
         package: Annotated[
             tuple[
-                Annotated[FlextInfraModelsWorkspace.LockedPackage,],
+                FlextInfraModelsWorkspace.LockedPackage,
                 ...,
             ],
             m.Field(min_length=1, description="Nonempty lock-owned package inventory"),
@@ -1087,7 +1087,7 @@ class FlextInfraModelsWorkspace:
         workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
         repos: Annotated[
             tuple[
-                Annotated[FlextInfraModelsWorkspace.FleetRepoGaps,],
+                FlextInfraModelsWorkspace.FleetRepoGaps,
                 ...,
             ],
             m.Field(description="One row per declared member and external consumer"),

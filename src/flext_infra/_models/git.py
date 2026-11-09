@@ -56,9 +56,7 @@ class FlextInfraModelsGit(
             None, exclude=True, description="Private native config value for projection"
         )
         process: Annotated[
-            Annotated[
-                p.Cli.ProcessOutcome, t.schema_for_model(lambda: m.Cli.ProcessOutcome)
-            ],
+            Annotated[m.Cli.ProcessOutcome],
             m.Field(description="Original native query outcome"),
         ]
 
@@ -274,7 +272,7 @@ class FlextInfraModelsGit(
         ]
         entries: Annotated[
             tuple[
-                Annotated[FlextInfraModelsGit.GitWorktreeEntry,],
+                FlextInfraModelsGit.GitWorktreeEntry,
                 ...,
             ],
             m.Field(description="Every registered worktree, primary first"),

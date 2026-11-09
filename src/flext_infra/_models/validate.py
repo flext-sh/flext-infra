@@ -65,7 +65,7 @@ class FlextInfraModelsCore:
     class FreshImportMetadata(m.ExternalContractModel):
         """Typed entrypoint view of the published pyproject document."""
 
-        project: Annotated[FlextInfraModelsCore.FreshImportEntryPoints,] = m.Field(
+        project: FlextInfraModelsCore.FreshImportEntryPoints = m.Field(
             description="Executable metadata from the published project table",
         )
 
@@ -140,7 +140,7 @@ class FlextInfraModelsCore:
         """Actual collected node bound to its definition, not its display name."""
 
         node_id: t.NonEmptyStr = m.Field(description="Actual collected pytest node ID")
-        origin: Annotated[FlextInfraModelsCore.PytestMarkdownOrigin,] = m.Field(
+        origin: FlextInfraModelsCore.PytestMarkdownOrigin = m.Field(
             description="Definition supplied by the installed Markdown collector",
         )
 
@@ -148,7 +148,7 @@ class FlextInfraModelsCore:
         """Session-owned public collection-hook observations."""
 
         eligible: MutableSequence[
-            Annotated[FlextInfraModelsCore.PytestMarkdownOrigin,]
+            FlextInfraModelsCore.PytestMarkdownOrigin
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -159,7 +159,7 @@ class FlextInfraModelsCore:
             description="Independently parsed origins",
         )
         collected: MutableSequence[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,]
+            FlextInfraModelsCore.PytestMarkdownItem
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -193,11 +193,11 @@ class FlextInfraModelsCore:
 
         node_ids: t.StrTuple = m.Field(description="Unique node IDs in execution order")
         markdown_eligible: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownOrigin,],
+            FlextInfraModelsCore.PytestMarkdownOrigin,
             ...,
         ] = m.Field(default_factory=tuple, description="Independent plugin eligibility")
         markdown_collected: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,],
+            FlextInfraModelsCore.PytestMarkdownItem,
             ...,
         ] = m.Field(default_factory=tuple, description="Collection before deselection")
         markdown_deselected: t.StrTuple = m.Field(
@@ -504,21 +504,21 @@ class FlextInfraModelsCore:
             description="Unique node IDs with real TestReport events",
         )
         phase_outcomes: tuple[
-            Annotated[FlextInfraModelsCore.PytestPhaseOutcome,],
+            FlextInfraModelsCore.PytestPhaseOutcome,
             ...,
         ] = m.Field(
             default_factory=tuple,
             description="Complete observed runtest outcomes, including failures",
         )
         markdown_attempts: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownAttempt,],
+            FlextInfraModelsCore.PytestMarkdownAttempt,
             ...,
         ] = m.Field(
             default_factory=tuple,
             description="Observed SDK execution attempts",
         )
         markdown_items: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,],
+            FlextInfraModelsCore.PytestMarkdownItem,
             ...,
         ] = m.Field(default_factory=tuple, description="Executed call-phase origins")
         failed_cases: Annotated[
@@ -546,24 +546,24 @@ class FlextInfraModelsCore:
         """Origin and phase accounting; deselection is never execution."""
 
         eligible: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownOrigin,],
+            FlextInfraModelsCore.PytestMarkdownOrigin,
             ...,
         ] = m.Field(
             description="Independent parser eligibility",
         )
         selected: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,],
+            FlextInfraModelsCore.PytestMarkdownItem,
             ...,
         ] = m.Field(
             description="Actual selected identities",
         )
         deselected: tuple[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,],
+            FlextInfraModelsCore.PytestMarkdownItem,
             ...,
         ] = m.Field(
             description="Origins not executed in this phase",
         )
-        diagnostics: Annotated[FlextInfraModelsCore.PytestDiagnostics,] = m.Field(
+        diagnostics: FlextInfraModelsCore.PytestDiagnostics = m.Field(
             description="Unmodified observed phases, attempts and first causes",
         )
         cache_hit: bool = m.Field(
@@ -587,7 +587,7 @@ class FlextInfraModelsCore:
             description="Shared-plugin prerequisite skips retained in JUnit",
         )
         markdown_attempts: MutableSequence[
-            Annotated[FlextInfraModelsCore.PytestMarkdownAttempt,]
+            FlextInfraModelsCore.PytestMarkdownAttempt
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
@@ -598,7 +598,7 @@ class FlextInfraModelsCore:
             description="Call-phase attempt observations",
         )
         markdown_items: MutableSequence[
-            Annotated[FlextInfraModelsCore.PytestMarkdownItem,]
+            FlextInfraModelsCore.PytestMarkdownItem
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(

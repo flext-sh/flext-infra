@@ -220,7 +220,7 @@ class FlextInfraModelsWorktree:
         apply: Annotated[bool, m.Field(description="Whether this plan will execute")]
         actions: Annotated[
             tuple[
-                Annotated[FlextInfraModelsWorktree.PruneAction,],
+                FlextInfraModelsWorktree.PruneAction,
                 ...,
             ],
             m.Field(description="Planned actions in stable order"),
@@ -235,13 +235,13 @@ class FlextInfraModelsWorktree:
 
         facts: Annotated[
             tuple[
-                Annotated[FlextInfraModelsWorktree.WorktreeFact,],
+                FlextInfraModelsWorktree.WorktreeFact,
                 ...,
             ],
             m.Field(description="Every measured registered worktree"),
         ] = ()
         plan: Annotated[
-            Annotated[FlextInfraModelsWorktree.PrunePlan,] | None,
+            FlextInfraModelsWorktree.PrunePlan | None,
             m.Field(description="Planned stale-deps pruning, when any"),
         ] = None
 

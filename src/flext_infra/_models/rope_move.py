@@ -49,7 +49,7 @@ class FlextInfraModelsRopeMove:
         """One class move whose Rope identities are resolved before any rewrite."""
 
         request: Annotated[
-            Annotated[FlextInfraModelsRopeMove.ClassMoveRequest,],
+            FlextInfraModelsRopeMove.ClassMoveRequest,
             m.Field(description="Prevalidated class-move request being planned"),
         ]
         declaration: Annotated[

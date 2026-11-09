@@ -63,7 +63,7 @@ class FlextInfraModelsPromoted(FlextInfraModelsBase):
         ]
         params: Annotated[
             tuple[
-                Annotated[FlextInfraModelsPromoted.PromotedParam,],
+                FlextInfraModelsPromoted.PromotedParam,
                 ...,
             ],
             m.Field(description="Declared command parameters"),

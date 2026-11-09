@@ -44,7 +44,7 @@ class FlextInfraModelsLayout:
         ] = ()
         moves: Annotated[
             tuple[
-                Annotated[FlextInfraModelsLayout.LayoutMoveSpec,],
+                FlextInfraModelsLayout.LayoutMoveSpec,
                 ...,
             ],
             m.Field(description="Explicit nested source/target moves"),
@@ -205,7 +205,7 @@ class FlextInfraModelsLayout:
 
         findings: Annotated[
             tuple[
-                Annotated[FlextInfraModelsLayout.LayoutFinding,],
+                FlextInfraModelsLayout.LayoutFinding,
                 ...,
             ],
             m.Field(description="All layout decisions for the project"),
@@ -216,7 +216,7 @@ class FlextInfraModelsLayout:
         def actionable(
             self,
         ) -> tuple[
-            Annotated[FlextInfraModelsLayout.LayoutFinding,],
+            FlextInfraModelsLayout.LayoutFinding,
             ...,
         ]:
             """Findings the engine acts on in apply mode (never review).

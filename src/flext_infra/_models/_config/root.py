@@ -50,7 +50,7 @@ class FlextInfraModelsConfigRoot:
             m.Field(description="Validated lint, typecheck, and scaffold policy"),
         ]
         source_scan: Annotated[
-            Annotated[FlextInfraModelsConfigStatic.SourceScanSpec,],
+            FlextInfraModelsConfigStatic.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
         ]
         mutation_lock: Annotated[
