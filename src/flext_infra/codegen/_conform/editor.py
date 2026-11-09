@@ -13,7 +13,7 @@ from flext_infra import c, m, p, r, u
 from flext_infra.codegen._conform.artifact_render import (
     FlextInfraCodegenConformArtifactRender,
 )
-from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
+from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services._codegen import FlextInfraCodegenVscode
 
 
@@ -63,15 +63,14 @@ class FlextInfraCodegenConformEditor(
             return result_type.fail(
                 f"editor projection requires {c.PYPROJECT_FILENAME}"
             )
-        manifest = FlextInfraEnsurePyrightConfigPhase(
-            tool_config, codegen=codegen
-        ).render_source(
+        manifest = FlextInfraPyprojectModernizer(
+            repository_root=target.root, skip_check=True
+        ).render_analyzer_source(
             captured.content.decode(c.DEFAULT_ENCODING),
-            context=m.Infra.PyprojectAnalyzerContext(
-                is_root=target.make_profile is c.Infra.MakeProfile.WORKSPACE,
-                repository_root=target.root,
-                project_dir=target.root,
-            ),
+            path=captured.path,
+            topology=self._existing_topology(target, codegen),
+            codegen=codegen,
+            tool_config=tool_config,
         )
         if manifest.failure:
             return result_type.from_failure(manifest)
