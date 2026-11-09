@@ -199,7 +199,6 @@ class TestsFlextInfraApplyRenames:
                     + "\n",
                     encoding=c.DEFAULT_ENCODING,
                 )
-                u.Tests.declare_governed_kind(root)
         provider = package / "owner.py"
         provider.write_text(
             '"""Public provider identity."""\n'

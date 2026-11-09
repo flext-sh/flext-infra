@@ -190,7 +190,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
                 update={"upstream": "flext_cli"}
             ),
             integration=integration,
-            kind=repository.kind,
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -212,7 +211,6 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=repository.kind,
                 apply_changes=True,
             ).execute(),
         )

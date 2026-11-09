@@ -885,6 +885,11 @@ selection follows that typed catalog. Preview and staged runtime admission must
 precede publication through the native publisher. A scoped recovery is not
 complete fleet validation.
 
+Selected syntax rules normalize imports in the files their authenticated candidate
+changes, with the complete captured workspace available for resolving providers.
+A no-op selection does not turn into an unrelated full import rewrite. Full runs
+retain their complete import inventory and runtime-cycle validation.
+
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
 callable, or module and its intended name. `consumer_roots` is an optional JSON
@@ -2509,13 +2514,23 @@ request with a read-only context fails before scanning or writing; it never
 dispatches a different operation.
 The native `codegen init` adapter acts on its explicitly selected target only.
 An existing project uses the bounded Makefile recovery surface and its declared
-artifact dependencies. An explicit kind may author that target's declaration
-through the existing guarded transaction; a conflicting kind fails.
+artifact dependencies. The shared detector derives governance kind from native
+dependency declarations, native source imports and managed workspace composition;
+configuration never
+declares kind (tracker `operator-order-2026-11-02-kind-detected`).
+The native `refactor mod-text --rule-ids retire-repository-kind-declaration --apply`
+retires the obsolete YAML key through the existing authenticated text publisher.
+Text rules can select physical YAML sources by explicit include glob, using the
+same inventory boundary as shell sources; unrelated YAML keys remain untouched.
+Projects without FLEXT consumption retain ordinary internal governance. A distinct
+native Git upstream identifies an external fork; its upstream architecture remains
+outside FLEXT rewrites. The detector reuses the injected source view or a native
+Rope project and its import inventory, without a second parser or stored kind cache.
 A target without project metadata must instead pass the workspace detector's
-positive new-tree admission using its own complete project, integration, kind
+positive new-tree admission using its own complete project and integration
 and dependency-provenance declarations and prepared Git checkout. That case uses
 the same complete generation planner and publisher as `make gen`, with bound
-collaborators from the adapter's actual tool runtime. No kind, Beads identity or
+collaborators from the adapter's actual tool runtime. No Beads identity or
 dependency provenance is synthesized. A declared new workspace member should
 normally be materialized by the workspace's `make gen`.
 For a standalone target without a Makefile, a preinstalled generation tool
@@ -4351,7 +4366,10 @@ only when its published provider belongs to that namespace's family. A root
 publication that forwards an upstream facade retains the upstream identity;
 sharing the same facade letter does not make it an own-family dependency.
 Native member identity must also prove every consumed reference's declaring
-owner and its nearest published export. The semantic cutover owner preserves
+owner and its nearest published export through the same captured member resolver.
+Its source project supplies the physical root for a derived source view; a member
+repository does not replace the enclosing workspace's physical identity.
+The semantic cutover owner preserves
 lexical bindings and the placement the import law calculates. Same-module owners
 are spelled locally and quoted annotations are rewritten by the same owner; only
 unresolved native identities and captured bindings fail, with their evidence.

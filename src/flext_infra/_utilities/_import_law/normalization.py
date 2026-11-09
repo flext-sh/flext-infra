@@ -53,8 +53,9 @@ class FlextInfraUtilitiesImportLawNormalization(
     1. Every import lives at module level; ``try/except ImportError`` guards
        become plain imports.
     2. Imports follow the tooling layer order (settings, config, c, p, t, p, m,
-       u, other, base, services, api, cli): a reverse import read only in
-       annotations moves under ``if TYPE_CHECKING:``; a reverse import read
+       u, other, base, services, api, cli). An enclosing facade that depends on
+       its fragment is also a reverse edge, even at the same layer. A reverse
+       import read only in annotations moves under ``if TYPE_CHECKING:``; a reverse import read
        at runtime keeps its place and its finding, for manual repair.
     3. A root alias (facade and operational letters, ``config``,
        ``settings``, names the namespace root re-exports) binds through the
@@ -899,7 +900,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 upstream[bound] = next(iter(providers.value))
         cls._import_law_own_family_annotations(state.tree, scope.file_path)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            scope.project_root,
+            Path(state.source_project.root.real_path),
             planned_sources={scope.file_path: source},
             source_project=state.source_project,
         ) as (project, _sources):
@@ -1061,18 +1062,22 @@ class FlextInfraUtilitiesImportLawNormalization(
             return declaring, owners[0], suffix
         module = declaring.rpartition(".")[0]
         cls._import_law_own_family_publication(state, project, module, owners[0])
-        exported = cls.resolve_declared_binding(
-            project, (module, owners[0]), state.scope.project_root, state.sources or {}
+        exported = member_resolver(
+            m.Infra.SourceClassReference(target=module, attributes=(owners[0],))
         )
         declared = holder.get_scope().get_defined_names().get(owners[0])
         after = member_resolver(f"{module}.{owners[0]}.{suffix}")
         if (
-            exported is None
-            or declared is None
+            declared is None
             or not FlextInfraUtilitiesRopeRuntime.same_name(exported, declared)
             or not FlextInfraUtilitiesRopeRuntime.same_name(before, after)
         ):
-            message = "Own-family replacement changes native identity"
+            message = (
+                "Own-family replacement changes native identity: "
+                f"path={state.scope.file_path} original={qualified} "
+                f"replacement={module}.{owners[0]}.{suffix} "
+                f"declared_owner={declared is not None}"
+            )
             raise ValueError(message)
         return module, owners[0], suffix
 

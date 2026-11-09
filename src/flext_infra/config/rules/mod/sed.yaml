@@ -12,6 +12,11 @@
 # length; a consumer applies it once after `make upg` with
 # `make mod RULES=promoted-command-header-pep723`.
 rules:
+- id: retire-repository-kind-declaration
+  description: governance kind is derived from native project facts
+  include: [ "config/codegen.yaml", "config/codegen.local.yaml" ]
+  find: '(?m)(^Infra:[^\n]*\n(?:(?!^  codegen:) [^\n]*\n)*^  codegen:[^\n]*\n(?:(?!^    repository:)    [^\n]*\n)*^    repository:[^\n]*\n(?:(?!^      kind:)      [^\n]*\n)*)^      kind:[^\n]*(?:\n|$)'
+  replace: '\1'
 - id: promoted-command-header-pep723
   description: a promoted command declares its header as a PEP 723 script block
   include: [ "scripts/**/*.py", "scripts/**/*.sh" ]

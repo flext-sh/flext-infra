@@ -20,6 +20,12 @@ from flext_infra import c, m, p, s, t, u
 class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
+    model_envelope_checker: t.Port[p.Infra.ModelEnvelopeChecker] | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Composition-owned native checker for model-envelope admission",
+    )
+
     semantic_rename_planner: t.Port[p.Infra.NativeSemanticRenamePlanner] | None = (
         m.Field(
             default=None,

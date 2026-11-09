@@ -1,5 +1,6 @@
-# A model field typed by a protocol from `p` carries a runtime dependency, not
-# a schema value. Pydantic 2 has no schema path for a protocol and its official
+# A capability protocol without a model twin carries a runtime dependency.
+# Data contracts with model twins belong to model-field-schema-owner.
+# Pydantic 2 has no schema path for a protocol and its official
 # mechanism for a hook-less type is a field-level `Annotated` marker: the
 # flext-core owner `t.Port[P]` validates with `isinstance` on construction and
 # assignment and skips the JSON Schema. A bare `p.*` reference in a model field
@@ -30,6 +31,13 @@ ignores:
 rule:
   all:
   - pattern: $PORT
+  - not:
+      any:
+      - matches: protocol-model-path
+      - kind: subscript
+        has:
+          field: value
+          matches: protocol-model-path
   - any:
     - kind: attribute
       regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"

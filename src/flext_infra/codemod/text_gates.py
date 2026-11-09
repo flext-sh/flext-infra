@@ -533,7 +533,7 @@ class FlextInfraModTextGateEngine:
             for pattern in rule.include
             if Path(pattern).suffix
             and Path(pattern).suffix
-            not in {c.Infra.EXT_PYTHON, ".md", c.Infra.EXT_SHELL}
+            not in {c.Infra.EXT_PYTHON, ".md", c.Infra.EXT_SHELL, ".yaml", ".yml"}
         )
 
     @classmethod
@@ -568,10 +568,10 @@ class FlextInfraModTextGateEngine:
         if markdown.failure:
             return markdown
         paths.update(markdown.value)
-        shell = cls._shell_source_paths(root, rules)
-        if shell.failure:
-            return shell
-        paths.update(shell.value)
+        declared = cls._declared_source_paths(root, rules)
+        if declared.failure:
+            return declared
+        paths.update(declared.value)
         members = tuple(
             project
             for project in u.Infra.governed_project_roots(root)
@@ -631,12 +631,12 @@ class FlextInfraModTextGateEngine:
         return r[tuple[Path, ...]].ok(tuple(paths))
 
     @classmethod
-    def _shell_source_paths(
+    def _declared_source_paths(
         cls,
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> p.Result[tuple[Path, ...]]:
-        """Authenticate the physical shell sources the rules declare.
+        """Authenticate the physical shell and YAML sources the rules declare.
 
         Shell sources are a repository inventory, like Python, not named
         documents, like Markdown: a declared glob that selects nothing is no
@@ -651,7 +651,7 @@ class FlextInfraModTextGateEngine:
             Path(pattern)
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix == c.Infra.EXT_SHELL
+            if Path(pattern).suffix in {c.Infra.EXT_SHELL, ".yaml", ".yml"}
         ]
         escaped = [
             pattern
@@ -660,7 +660,7 @@ class FlextInfraModTextGateEngine:
         ]
         if escaped:
             return r[tuple[Path, ...]].fail(
-                f"text shell include escapes repository: {escaped[0]}",
+                f"text source include escapes repository: {escaped[0]}",
             )
         paths = sorted({
             path for pattern in patterns for path in root.glob(str(pattern))
@@ -668,7 +668,7 @@ class FlextInfraModTextGateEngine:
         aliased = [path for path in paths if not cls._physical_source(path)]
         if aliased:
             return r[tuple[Path, ...]].fail(
-                f"text shell source must be physical: {aliased[0]}",
+                f"text source must be physical: {aliased[0]}",
             )
         return r[tuple[Path, ...]].ok(tuple(paths))
 

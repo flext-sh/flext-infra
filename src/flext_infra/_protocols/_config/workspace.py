@@ -257,17 +257,6 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
-        def kind(self) -> FlextInfraConstantsConfig.ProjectKind | None:
-            """Structural member projected from the owning model.
-
-            Own governance profile and architecture boundary. The package base
-            bundle declares no project and so no kind; every project declares it in
-            its own layer, and the project-boundary read fails closed when it is
-            absent.
-            """
-            ...
-
-        @property
         def state(self) -> FlextInfraConstantsConfig.RepositoryState:
             """Own lifecycle participation policy."""
             ...

@@ -522,7 +522,7 @@ class TestsProtocolSourceBootstrap:
             )
             barrel = protocol_root / "__init__.py"
             barrel.write_text(
-                "# AUTO-GENERATED FILE - Source bootstrap protocol exports.\n"
+                "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
                 "from types import MappingProxyType\n"
                 "from flext_core.lazy import install_lazy_exports\n"
                 "__all__ = ('ExistingBarrelExport',)\n"
@@ -659,10 +659,10 @@ class TestsProtocolSourceBootstrap:
             )
 
         @staticmethod
-        def test_aliases_uniquely_owned_nested_protocol_members_on_aggregate_facade(
+        def test_inherits_nested_protocol_members_on_aggregate_facade(
             tmp_path: Path,
         ) -> None:
-            """The facade exposes nested protocols directly to static analyzers."""
+            """The facade exposes the original nested protocol through its MRO."""
             root = tmp_path / "repository"
             package = root / "src" / "flext_infra"
             protocol_root = package / "_protocols"
@@ -697,9 +697,6 @@ class TestsProtocolSourceBootstrap:
 
             u.Infra.publish_protocol_facades(root)
 
-            facade = (package / "protocols.py").read_text(encoding="utf-8")
-            tm.that(facade, has="Unique = FlextInfraProtocolsAlpha.Unique")
-            tm.that(facade, lacks="Duplicate =")
             environment = {**os.environ, "PYTHONPATH": str(root / "src")}
             TestsProtocolSourceBootstrap.checked_run(
                 (
@@ -882,6 +879,9 @@ class TestsProtocolSourceBootstrap:
                 "        def name(self) -> str: ...\n"
             )
 
+            (root / "pyproject.toml").write_text(
+                '[project]\nname="flext-infra"\n', encoding="utf-8"
+            )
             retired = consolidate_protocol_owners(
                 root,
                 {workspace.relative_to(root): projected},
@@ -970,6 +970,9 @@ class TestsProtocolSourceBootstrap:
                 encoding="utf-8",
             )
 
+            (root / "pyproject.toml").write_text(
+                '[project]\nname="flext-infra"\n', encoding="utf-8"
+            )
             consolidate_protocol_owners(root, {workspace.relative_to(root): projected})
             planned = plan_protocol_facades(root)
 
@@ -1029,6 +1032,9 @@ class TestsProtocolSourceBootstrap:
                 "        name: str\n"
             )
 
+            (root / "pyproject.toml").write_text(
+                '[project]\nname="flext-infra"\n', encoding="utf-8"
+            )
             with u.Tests.raises(
                 ValueError, match="incompatible legacy protocol contract"
             ):

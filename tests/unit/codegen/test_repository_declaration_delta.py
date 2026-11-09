@@ -85,7 +85,7 @@ class TestsFlextInfraRepositoryDeclarationDelta:
 
                     declaration = tm.ok(u.Infra.repository_declaration_delta(legacy))
 
-                    tm.ok(declaration.kind is kind)
+                    tm.fail("kind" in declaration.model_dump())
                     tm.ok(declaration.state is state)
                     tm.ok(declaration.codegen is codegen)
 

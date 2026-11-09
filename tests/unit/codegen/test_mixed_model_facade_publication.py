@@ -58,6 +58,12 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         "__all__ = ['Credential']\n",
         encoding=c.Infra.ENCODING_DEFAULT,
     )
+    (directory / "containers.py").write_text(
+        "class FrozenList(list[str]): pass\n"
+        "class FrozenMapping(dict[str, str]): pass\n"
+        "__all__ = ['FrozenList', 'FrozenMapping']\n",
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
     (directory / c.Infra.INIT_PY).write_text("", encoding=c.Infra.ENCODING_DEFAULT)
     imports += f"from {package.name}.{family.directory}.credential import Credential\n"
     password_annotation = ": ClassVar[type[Credential]]" if annotated else ""
@@ -83,12 +89,18 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         f"sys.path.insert(0, {str(package.parent)!r})\n"
         "from pydantic import BaseModel\n"
         f"from {package.name}.models import m\n"
+        f"from {package.name}.{family.directory}.containers import FrozenList, "
+        f"FrozenMapping\n"
         + imports
         + "owners = (Actions, Connections, Queries, Catalog)\n"
         "assert m.Sample.__bases__ == owners\n"
         "assert m.Sample.__mro__ == (m.Sample, *owners, object)\n"
         "assert not issubclass(m.Sample, BaseModel)\n"
         "assert Credential not in m.Sample.__mro__\n"
+        "assert m.Sample.FrozenList is FrozenList\n"
+        "assert m.Sample.FrozenMapping is FrozenMapping\n"
+        "assert m.Sample.FrozenList(['item']) == ['item']\n"
+        "assert m.Sample.FrozenMapping(key='value') == {'key': 'value'}\n"
         "assert m.Sample.Password is Credential\n"
         "assert m.Sample.Operation is Actions.Operation\n"
         "assert m.Sample.Health is Connections.Health\n"
@@ -104,8 +116,8 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         "assert password.model_json_schema() == Credential.model_json_schema()\n"
         "assert password.model_dump_json() == original.model_dump_json()\n"
         "class Envelope(BaseModel):\n"
-        "    password: p.Sample.Password\n"
-        "    column: p.Sample.Column\n"
+        "    password: m.Sample.Password\n"
+        "    column: m.Sample.Column\n"
         "column = Catalog.Column(value='native-column')\n"
         "envelope = Envelope(password=password, column=column)\n"
         "assert envelope.password is password\n"

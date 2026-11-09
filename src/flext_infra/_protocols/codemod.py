@@ -322,7 +322,7 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def goal(self) -> t.NonEmptyStr:
+        def goal(self) -> str:
             """Native Rope replacement."""
             ...
 

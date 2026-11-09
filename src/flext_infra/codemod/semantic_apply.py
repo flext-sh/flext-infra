@@ -1099,7 +1099,17 @@ class FlextInfraCodemodSemanticApply(
                 message = f"candidate source has no authenticated input witness: {path}"
                 raise ValueError(message)
             desired = None if source is None else source.encode(c.DEFAULT_ENCODING)
-            if before.content == desired:
+            mode = (
+                None
+                if source is None
+                else candidate.modes.get(
+                    path,
+                    before.mode
+                    if before.content is not None
+                    else config.Infra.codegen.modes.file_default,
+                )
+            )
+            if before.content == desired and before.mode == mode:
                 continue
             planned.append(
                 m.Infra.CodegenFilePlan(
@@ -1107,14 +1117,7 @@ class FlextInfraCodemodSemanticApply(
                     path=path,
                     before=before,
                     desired_content=desired,
-                    desired_mode=None
-                    if desired is None
-                    else candidate.modes.get(
-                        path,
-                        before.mode
-                        if before.content is not None
-                        else config.Infra.codegen.modes.file_default,
-                    ),
+                    desired_mode=mode,
                 )
             )
         return tuple(planned)

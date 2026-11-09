@@ -19,17 +19,13 @@ class TestsFlextInfraCodegenBeadsProjection:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        ("distribution", "kind"),
-        [
-            ("sample-library", c.Infra.ProjectKind.INTERNAL_FLEXT),
-            ("acme-service", c.Infra.ProjectKind.INTERNAL),
-        ],
+        "distribution",
+        ["sample-library", "acme-service"],
     )
     @c.Tests.MARK.slow
     def test_governed_builder_uses_project_owned_catalogue(
         tmp_path: Path,
         distribution: str,
-        kind: c.Infra.ProjectKind,
     ) -> None:
         """Plan real repositories without borrowing another project's identity."""
         root = tmp_path / distribution
@@ -63,7 +59,6 @@ class TestsFlextInfraCodegenBeadsProjection:
                     "Infra": {
                         "codegen": {
                             "repository": {
-                                "kind": kind.value,
                                 "project": project.model_dump(mode="json"),
                             },
                         },
@@ -81,7 +76,10 @@ class TestsFlextInfraCodegenBeadsProjection:
         plan = u.Tests.governed_project_plan(root)
 
         tm.that(plan.workspace.repository, eq=declared.repository)
-        tm.that(plan.workspace.repository.kind, eq=kind)
+        tm.that(
+            plan.workspace.repository.kind,
+            eq=u.Infra.detected_project_kind(root),
+        )
         tm.that(plan.workspace.repository.package, eq=True)
         tm.that(plan.workspace.project, eq=declared.project)
         for managed in inputs.spec.managed_file_specs:

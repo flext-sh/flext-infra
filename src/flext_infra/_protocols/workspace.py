@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -323,8 +323,13 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceRequest(FlextInfraProtocolsMixins.RepositoryRootPathMixin, Protocol):
+    class WorkspaceRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root path."""
+            ...
 
     @runtime_checkable
     class WorkspaceTestsRequest(WorkspaceRequest, Protocol):
@@ -585,10 +590,13 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class EnvironmentContractViolation(
-        FlextInfraProtocolsMixins.PositiveLineMixin, Protocol
-    ):
+    class EnvironmentContractViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def message(self) -> str:
@@ -967,8 +975,13 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class ProjectInfo(FlextInfraProtocolsMixins.ProjectEntryNameMixin, Protocol):
+    class ProjectInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def path(self) -> Path:

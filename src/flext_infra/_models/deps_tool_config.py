@@ -597,11 +597,11 @@ class FlextInfraModelsDepsToolConfig(
             m.BeforeValidator(
                 lambda value: tuple(value) if isinstance(value, list) else value
             ),
-            m.Field(
-                alias="extend-enable",
-                description="Opt-in rules activated on top of the default set.",
-            ),
-        ] = ()
+        ] = m.Field(
+            (),
+            alias="extend-enable",
+            description="Opt-in rules activated on top of the default set.",
+        )
         rules: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Ordered rumdl rules and their options."),

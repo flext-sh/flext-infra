@@ -11,16 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraConfig,
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-    workspace as workspace_services,
-)
+from flext_infra import c, m, p, r, t, u, workspace as workspace_services
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
 
 
@@ -36,7 +27,7 @@ class FlextInfraCodegenConform:
         execution_context: p.Infra.CodegenExecutionContext | None,
         admitted: m.Infra.CodegenConformRequest,
     ) -> p.Result[p.Infra.CodegenResult] | None:
-        """Run facade and kind admissions before any publication.
+        """Run facade and configuration admissions before publication.
 
         Returns:
             The admission failure, or ``None`` when every admission passes.
@@ -47,7 +38,7 @@ class FlextInfraCodegenConform:
                 "source bootstrap requires bound generation collaborators"
             )
         # Preflight admissions run before any publication: a failing facade
-        # or undeclared governance kind must leave the tree untouched.
+        # or invalid project configuration must leave the tree untouched.
         if admitted.what not in {
             c.Infra.CodegenConformSurface.FACADES,
             c.Infra.CodegenConformSurface.LAZY_INIT,
@@ -60,9 +51,6 @@ class FlextInfraCodegenConform:
                 return r[p.Infra.CodegenResult].from_failure(bootstrap)
         kind_admission = u.Infra.load_codegen_inputs(
             admitted.root.expanduser().resolve(),
-            projections=cls._kind_projections(
-                admitted.root.expanduser().resolve(), admitted.declaration_kind
-            ),
         )
         if kind_admission.failure:
             return r[p.Infra.CodegenResult].from_failure(kind_admission)
@@ -85,30 +73,9 @@ class FlextInfraCodegenConform:
         admitted = m.Infra.CodegenConformRequest.model_validate(
             request, from_attributes=True
         )
-        if execution_context is None:
-            return r[p.Infra.CodegenResult].fail(
-                "source bootstrap requires bound generation collaborators"
-            )
-        # Preflight admissions run before any publication: a failing facade
-        # or undeclared governance kind must leave the tree untouched.
-        if admitted.what not in {
-            c.Infra.CodegenConformSurface.FACADES,
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-        }:
-            bootstrap = u.Infra.bootstrap_protocol_model_sources(
-                admitted.root.expanduser().resolve(),
-                ports=execution_context.codegen_conform_collaborators(),
-            )
-            if bootstrap.failure:
-                return r[p.Infra.CodegenResult].from_failure(bootstrap)
-        kind_admission = u.Infra.load_codegen_inputs(
-            admitted.root.expanduser().resolve(),
-            projections=cls._kind_projections(
-                admitted.root.expanduser().resolve(), admitted.declaration_kind
-            ),
-        )
-        if kind_admission.failure:
-            return r[p.Infra.CodegenResult].from_failure(kind_admission)
+        preflight = cls._admission_preflight(execution_context, admitted)
+        if preflight is not None:
+            return preflight
         bound = cls.Generate.from_request(
             admitted,
             execution_context=execution_context,
@@ -149,7 +116,7 @@ class FlextInfraCodegenConform:
         executor: FlextInfraCodegenConformExecute,
         request: p.Infra.CodegenConformRequest,
     ) -> p.Result[bool]:
-        """Migrate declarations when the surface is governed or kind-declared.
+        """Migrate declarations when the surface is governed.
 
         Returns:
             Success when no migration is due or its only failure is a retained
@@ -157,13 +124,11 @@ class FlextInfraCodegenConform:
 
         """
         root = request.root.expanduser().resolve()
-        inputs = u.Infra.load_codegen_inputs(
-            root, projections=cls._kind_projections(root, request.declaration_kind)
-        )
+        inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
             return r[bool].from_failure(inputs)
         contract = executor.surface_contract(request.what, codegen=inputs.value.spec)
-        if not (contract.complete_governed or request.declaration_kind is not None):
+        if not contract.complete_governed:
             return r[bool].ok(value=True)
         return cls._migrate_repository_declarations(executor, request)
 
@@ -182,30 +147,18 @@ class FlextInfraCodegenConform:
         targets = u.Infra.repository_operation_targets(request.root, request.scope)
         if targets.failure:
             return r[bool].from_failure(targets)
-        kind = request.declaration_kind
         files: list[p.Infra.CodegenFilePlan] = []
         for target in targets.value:
-            if target.managed is False or not (
-                u.Infra.workspace_manifest_path(target.root).is_file()
-                or (
-                    request.declaration_kind is not None
-                    and target.root.resolve() == request.root.resolve()
-                )
+            if (
+                target.managed is False
+                or not u.Infra.workspace_manifest_path(target.root).is_file()
             ):
                 continue
-            inputs = u.Infra.load_codegen_inputs(
-                target.root, projections=cls._kind_projections(target.root, kind)
-            )
+            inputs = u.Infra.load_codegen_inputs(target.root)
             if inputs.failure:
                 return r[bool].from_failure(inputs)
-            planned = (
-                executor.repository_kind_declaration_plans(
-                    target.root, inputs.value, kind
-                )
-                if kind is not None
-                else executor.repository_declaration_migration_plans(
-                    target.root, inputs.value
-                )
+            planned = executor.repository_declaration_migration_plans(
+                target.root, inputs.value
             )
             if planned.failure:
                 return r[bool].from_failure(planned)
@@ -219,32 +172,6 @@ class FlextInfraCodegenConform:
 
         return ports.file_publisher.publish_codegen_plans(request.root, files).map(
             published
-        )
-
-    @staticmethod
-    def _kind_projections(
-        root: Path, kind: c.Infra.ProjectKind | None
-    ) -> tuple[p.Infra.CodegenLayerProjection, ...]:
-        """Project an explicitly requested kind onto the target's own layer.
-
-        Kind bootstrap is the one flow that reads a repository before its own
-        layer declares a kind; the operator-requested value is projected, never
-        assumed, and the own layer's raw bytes still guard against a conflict.
-
-        Returns:
-            The own-layer kind projection, or none without a requested kind.
-
-        """
-        if kind is None:
-            return ()
-        layers = FlextInfraConfig.config_layer_paths_for_repository(
-            root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
-        )
-        return (
-            m.Infra.CodegenLayerProjection(
-                path=layers[1],
-                values={"Infra": {"codegen": {"repository": {"kind": kind.value}}}},
-            ),
         )
 
     @staticmethod

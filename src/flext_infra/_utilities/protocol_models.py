@@ -1858,7 +1858,7 @@ class FlextInfraUtilitiesModelsProtocol:
             models_root = package_dir / "_models"
             protocols_root = package_dir / "_protocols"
             base_module = model_base_class.get_module()
-            resource = base_module.get_resource() if base_module is not None else None
+            resource = base_module.get_resource()
             if resource is None:
                 msg = (
                     f"model domain base has no source module: "
@@ -2090,9 +2090,6 @@ class FlextInfraUtilitiesModelsProtocol:
             name_end = offset + len("class ") + len(holder.name)
             if holder.type_params:
                 parameter = holder.type_params[-1]
-                if parameter.end_lineno is None or parameter.end_col_offset is None:
-                    msg = f"protocol type parameters have no source extent: {owner}"
-                    raise ValueError(msg)
                 parameter_end = (
                     sum(map(len, lines[: parameter.end_lineno - 1]))
                     + parameter.end_col_offset
@@ -2857,7 +2854,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 if not self.py_class(holder):
                     continue
                 module = holder.get_module()
-                resource = module.get_resource() if module is not None else None
+                resource = module.get_resource()
                 if resource is None:
                     continue
                 source_path = self.resolved_paths.get(resource.real_path)
@@ -3072,7 +3069,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration = ancestor.get_ast()
                 if not isinstance(declaration, ast.ClassDef):
                     module = ancestor.get_module()
-                    if module is not None and module.get_name().startswith("pydantic."):
+                    if module.get_name().startswith("pydantic."):
                         continue
                     msg = "model MRO contains a class without source config"
                     raise ValueError(msg)
@@ -3785,6 +3782,10 @@ class FlextInfraUtilitiesModelsProtocol:
             tree = next(
                 source for candidate, _path, source in classes if candidate is node
             )
+            module_name, qualified = self._source_class_identity(model)
+            frozen = self._source_effective_model_frozen(
+                self.qualified_name(self.project, qualified, module_name=module_name)
+            )
             # A subscripted model base keeps its type arguments on the protocol
             # base, projected like any field annotation (model -> protocol).
             subscripts = {
@@ -3803,6 +3804,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 route = f"{module_name}.{qualified}"
                 target = self.source_model_protocol_destinations.get(route)
                 if target is None:
+                    continue
+                if frozen and not self._source_effective_model_frozen(
+                    self.qualified_name(
+                        self.project, qualified, module_name=module_name
+                    )
+                ):
                     continue
                 fields, methods = self._source_mirror_base_members(route, target)
                 name = self.source_model_protocols[route]
@@ -4566,6 +4573,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 declaration, ancestor_tree = self._source_register_ancestor(
                     ancestor, declarations
                 )
+                arguments = self._source_ancestor_arguments(
+                    model, ancestor, declarations
+                )
                 for projection in self._source_declared_fields(
                     declaration,
                     ancestor_tree,
@@ -4576,6 +4586,9 @@ class FlextInfraUtilitiesModelsProtocol:
                     if not isinstance(projection.declaration.target, ast.Name):
                         message = "model field target is not an authenticated name"
                         raise TypeError(message)
+                    projection.declaration.annotation = self._source_bind_annotation(
+                        projection.declaration.annotation, arguments
+                    )
                     fields[projection.declaration.target.id] = projection
             root = self._source_root_field(
                 route, (tree, node), declarations, frozen=frozen
@@ -4584,6 +4597,109 @@ class FlextInfraUtilitiesModelsProtocol:
                 fields["root"] = root
             self.source_field_cache[route] = tuple(fields.values())
             return list(self.source_field_cache[route])
+
+        def _source_ancestor_arguments(
+            self,
+            model: p.Infra.RopeSourceClass,
+            ancestor: p.Infra.RopeSourceClass,
+            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+        ) -> tuple[tuple[str, ast.expr], ...]:
+            """Bind an ancestor's parameters through authenticated native bases.
+
+            Returns:
+                Source parameter names paired with descendant-scope annotations.
+
+            Raises:
+                TypeError: If a class base has no enclosing source scope.
+
+            """
+            if model is ancestor:
+                return ()
+            target, _ = self._source_register_ancestor(ancestor, classes)
+            if not target.type_params:
+                return ()
+            definition, tree = self._source_register_ancestor(model, classes)
+            scope = model.get_scope().parent
+            if scope is None:
+                message = "generic class base has no enclosing source scope"
+                raise TypeError(message)
+            for base in definition.bases:
+                expression = base.value if isinstance(base, ast.Subscript) else base
+                binding = self.resolve_symbol(scope, expression)
+                if binding is None:
+                    continue
+                parent = binding.get_object()
+                if not self.py_class(parent) or ancestor not in parent.get_mro():
+                    continue
+                declaration, _ = self._source_register_ancestor(parent, classes)
+                actual = (
+                    tuple(base.slice.elts)
+                    if isinstance(base, ast.Subscript)
+                    and isinstance(base.slice, ast.Tuple)
+                    else (base.slice,)
+                    if isinstance(base, ast.Subscript)
+                    else ()
+                )
+                arguments = tuple(
+                    (
+                        parameter.name,
+                        self._source_structural_annotation(
+                            value,
+                            tree,
+                            definition,
+                            classes,
+                            lexical=scope,
+                        ),
+                    )
+                    for parameter, value in zip(
+                        declaration.type_params, actual, strict=False
+                    )
+                    if isinstance(
+                        parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple
+                    )
+                )
+                if parent is ancestor:
+                    return arguments
+                return tuple(
+                    (name, self._source_bind_annotation(value, arguments))
+                    for name, value in self._source_ancestor_arguments(
+                        parent, ancestor, classes
+                    )
+                )
+            return ()
+
+        @staticmethod
+        def _source_bind_annotation(
+            annotation: ast.expr,
+            arguments: tuple[tuple[str, ast.expr], ...],
+        ) -> ast.expr:
+            """Apply source-derived generic arguments to one structural annotation.
+
+            Returns:
+                A fresh expression retaining non-parameter names and literals.
+
+            Raises:
+                TypeError: If annotation binding produces no expression.
+
+            """
+
+            class Bind(ast.NodeTransformer):
+                @override
+                def visit_Name(self, node: ast.Name) -> ast.AST:
+                    return next(
+                        (
+                            copy.deepcopy(value)
+                            for name, value in arguments
+                            if name == node.id
+                        ),
+                        node,
+                    )
+
+            rewritten = Bind().visit(copy.deepcopy(annotation))
+            if not isinstance(rewritten, ast.expr):
+                message = "generic annotation binding is not an expression"
+                raise TypeError(message)
+            return rewritten
 
         def _source_register_ancestor(
             self,
@@ -4610,11 +4726,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ancestor_module, qualified = self._source_class_identity(ancestor)
             self.source_module_names[id(ancestor_tree)] = ancestor_module
             self.source_field_trees[id(ancestor_tree)] = ancestor_tree
-            declarations.append((
-                declaration,
-                tuple(qualified.split(".")),
-                ancestor_tree,
-            ))
+            if not any(
+                candidate is declaration and source is ancestor_tree
+                for candidate, _path, source in declarations
+            ):
+                declarations.append((
+                    declaration,
+                    tuple(qualified.split(".")),
+                    ancestor_tree,
+                ))
             return declaration, ancestor_tree
 
         def _source_root_field(
@@ -4871,9 +4991,43 @@ class FlextInfraUtilitiesModelsProtocol:
                         method, definition, tree, declarations, ancestor.get_scope()
                     )
                     if projected is not None:
+                        self._source_bind_callable(
+                            projected,
+                            self._source_ancestor_arguments(
+                                model, ancestor, declarations
+                            ),
+                        )
                         methods[method.name] = projected
             self.source_method_cache[route] = tuple(methods.values())
             return self.source_method_cache[route]
+
+        def _source_bind_callable(
+            self,
+            method: ast.FunctionDef | ast.AsyncFunctionDef,
+            arguments: tuple[tuple[str, ast.expr], ...],
+        ) -> None:
+            """Specialize inherited signatures while keeping method-local generics."""
+            local = {
+                parameter.name
+                for parameter in method.type_params
+                if isinstance(parameter, ast.TypeVar | ast.ParamSpec | ast.TypeVarTuple)
+            }
+            bindings = tuple(
+                (name, value) for name, value in arguments if name not in local
+            )
+            for argument in (
+                *method.args.posonlyargs,
+                *method.args.args,
+                *method.args.kwonlyargs,
+                method.args.vararg,
+                method.args.kwarg,
+            ):
+                if argument is not None and argument.annotation is not None:
+                    argument.annotation = self._source_bind_annotation(
+                        argument.annotation, bindings
+                    )
+            if method.returns is not None:
+                method.returns = self._source_bind_annotation(method.returns, bindings)
 
         def _source_method_owner(
             self, ancestor: p.Infra.RopeSourceClass
@@ -5698,7 +5852,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 if node is model and source is tree
             ]
             if len(paths) != 1:
-                msg = "annotation has no unique native model scope"
+                msg = (
+                    "annotation has no unique native model scope: "
+                    f"annotation={expression!r} module={module_name!r} "
+                    f"model={model.name!r} paths={paths!r}"
+                )
                 raise ValueError(msg)
             owner = self.project.get_module(module_name)
             for part in paths[0]:

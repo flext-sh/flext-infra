@@ -59,6 +59,9 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities._semantic_cutover.model_envelopes import (
+    FlextInfraUtilitiesSemanticModelEnvelopes,
+)
 from flext_infra._utilities._semantic_cutover.model_field_contracts import (
     FlextInfraUtilitiesSemanticModelFieldContracts,
 )
@@ -67,6 +70,7 @@ from flext_infra._utilities._semantic_cutover.model_field_contracts import (
 class FlextInfraUtilitiesSemanticContracts(
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticModelFieldContracts,
+    FlextInfraUtilitiesSemanticModelEnvelopes,
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
@@ -1125,7 +1129,7 @@ class FlextInfraUtilitiesSemanticContracts(
                             project,
                             rule,
                             proposed_sources,
-                            (implementation_owners, working, owned_modules),
+                            (implementation_owners, working, owned_modules, workspace),
                             restrictions,
                         ),
                         (working, applied),
@@ -1371,9 +1375,23 @@ class FlextInfraUtilitiesSemanticContracts(
             MutableMapping[tuple[str, str], t.Infra.RopeImplementationPaths],
             Mapping[Path, str],
             Mapping[str, Path],
+            p.Infra.RopeWorkspaceDsl,
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
+        if rule.operation == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES:
+            workspace = context[3]
+            checker = workspace.model_envelope_checker
+            if checker is None:
+                message = "model-envelope admission requires its native checker"
+                raise RuntimeError(message)
+            return cls.model_envelope_changes(
+                project,
+                rule,
+                cls._contract_scope_resources(project, rule, tuple(context[1])),
+                checker(context[1]),
+                workspace.model_protocol_routes,
+            )
         if rule.annotation_member_source is not None:
             return cls._annotation_member_changes(
                 project, rule, sources, tuple(context[1])

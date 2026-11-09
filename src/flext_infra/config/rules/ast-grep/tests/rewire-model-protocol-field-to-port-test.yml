@@ -4,6 +4,9 @@ id: rewire-model-protocol-field-to-port
 # plain namespaces and enums.
 valid:
 - |
+  class Payload(m.Value):
+      document: p.ConfigDocument
+- |
   class Probe(m.Value):
       assertion_message: Annotated[
           t.Port[p.AttributeProbe] | None,

@@ -96,7 +96,6 @@ class TestsFlextInfraFreshImportPublication:
             f'packages = ["src/{package.name}"]\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        u.Tests.declare_governed_kind(tmp_path)
         tm.not_none(u.Infra.layout(tmp_path))
         report = _probe_report(
             tmp_path,
@@ -444,7 +443,6 @@ class TestsFlextInfraFreshImportPublication:
             '[project]\nname = "flext-import-probe"\nversion = "1.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        u.Tests.declare_governed_kind(tmp_path)
         publication = _probe_publication(
             package,
             init_path=initializer,

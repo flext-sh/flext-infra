@@ -314,6 +314,7 @@ class FlextInfraConstantsRefactor:
         MATERIALIZE_DELEGATIONS = "materialize-delegations"
         RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
         NORMALIZE_EXHAUSTIVE_ENUM = "normalize-exhaustive-enum"
+        NORMALIZE_MODEL_ENVELOPES = "normalize-model-envelopes"
 
     @unique
     class SemanticCutoverPhase(StrEnum):

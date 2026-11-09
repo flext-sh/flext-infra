@@ -1733,6 +1733,14 @@ class FlextInfraUtilitiesFacadeComponents:
             kind = FlextInfraUtilitiesFacadeMembers.class_kind(
                 provider, resolver_factory=resolver_factory, source_project=project
             )
+            if family is c.Infra.FacadeFamily.M and any(
+                isinstance(ancestor, p.Infra.RopeBuiltinClass)
+                and isinstance(ancestor.builtin, type)
+                and ancestor.builtin is not object
+                for ancestor in provider.get_mro()[1:]
+            ):
+                nominal.append(provider)
+                continue
             # A constants part is a namespace holder whatever its MRO carries
             # (ENFORCE-042 makes it descend from FlextSettings): it composes.
             # A utility provider is judged by its own storage role below:

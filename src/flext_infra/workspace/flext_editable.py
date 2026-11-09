@@ -126,15 +126,9 @@ class FlextInfraWorkspaceFlextEditable:
                 for repository in spec.value.subprojects
             ),
         )
-        # Every distribution the consumer DECLARES and the workspace PROVIDES is
-        # an editable candidate — not only the currently-installed ones. The
-        # frozen sync before this step may have removed a member entirely;
-        # electing from installed
-        # state alone then never restores it and the consumer's pin check fails
-        # forever. The declared-deps intersection keeps workspace members the
-        # consumer does not use (e.g. the umbrella meta-distribution) out of the
-        # receipt — the provenance gate needs an installed distribution per
-        # receipt member.
+        # Direct declarations restore missing installs; native installed metadata
+        # also elects transitive providers. Both use the same workspace sources.
+        # Otherwise a local Core can consume an incompatible locked Web wheel.
         document = u.Cli.toml_read_document(runtime_root / c.PYPROJECT_FILENAME)
         if document.failure:
             return r[tuple[dict[str, Path], tuple[str, ...]]].from_failure(document)
@@ -148,6 +142,11 @@ class FlextInfraWorkspaceFlextEditable:
             for name in u.Infra.declared_dependency_names(document.value)
         }
         declared.add(consumer_name)
+        declared.update(
+            canonicalize_name(distribution)
+            for providers in observed.value.package_distributions.values()
+            for distribution in providers
+        )
         distributions = {
             repository.distribution: (
                 runtime_root

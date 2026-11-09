@@ -140,7 +140,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
-            u.Tests.declare_governed_kind(root)
         return root
 
     def test_declared_trees_enter_the_scan_and_fail_on_clones(

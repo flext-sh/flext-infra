@@ -503,6 +503,8 @@ class FlextInfraUtilitiesImportLawPlacement(
         if isinstance(node, ast.Import):
             target = alias.name
         elif node.module == scope.namespace:
+            if alias.name in scope.facade_dependencies:
+                return True
             target = (
                 f"{scope.namespace}.{alias.name}"
                 if alias.name in FlextInfraUtilitiesCodegenNamespace.facade_families()

@@ -2274,23 +2274,16 @@ def _lazy_export_mapping(node: ast.AST) -> ast.Dict | None:
 def _existing_protocol_exports(
     protocol_root: Path, *, sources: Mapping[Path, str]
 ) -> dict[str, str]:
-    """Read live mappings from the source-bootstrap-owned protocol barrel only.
+    """Read live mappings from the protocol barrel's native lazy exports.
 
     Returns:
         The resulting ``dict[str, str]``.
-
-    Raises:
-        ValueError: If protocol barrel is not source-bootstrap-owned.
 
     """
     initializer = protocol_root / "__init__.py"
     if initializer not in sources and not initializer.is_file():
         return {}
     source = _protocol_source(initializer, sources=sources)
-    marker = "# AUTO-GENERATED FILE - Source bootstrap protocol exports."
-    if not source.startswith(marker):
-        msg = f"protocol barrel is not source-bootstrap-owned: {initializer}"
-        raise ValueError(msg)
     tree = ast.parse(source, filename=str(initializer))
     contents = next(
         (

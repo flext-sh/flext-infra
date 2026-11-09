@@ -1,6 +1,12 @@
 # Universal rules include the flext-core foundation required by flext-infra.
 # Other project identities belong to their owning repository's overlay.
 rules:
+- id: pydantic-native-protocol-model-envelope
+  operation: normalize-model-envelopes
+  phase: contract-normalization
+  pattern: '${model}(${arguments})'
+  goal: '${model}.model_validate({${arguments}})'
+  arguments: {}
 - id: core-retire-generic-typing-wrappers
   operation: retire-generic-typing-wrappers
   source_revision: 35f2da92c92aa99be5beef560380ea79f659d901

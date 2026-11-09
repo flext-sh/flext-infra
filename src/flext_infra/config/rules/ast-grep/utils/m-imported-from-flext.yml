@@ -20,7 +20,7 @@ rule:
     - any:
         - has:
             field: module_name
-            regex: "^flext(?:_[a-z0-9_]+)?$"
+            matches: facade-package
         - has:
             kind: relative_import
     - not:

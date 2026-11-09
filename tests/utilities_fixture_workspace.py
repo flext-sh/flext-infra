@@ -112,7 +112,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return project_dir
 
     @staticmethod
@@ -297,7 +296,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return manifest_path
 
     @staticmethod
@@ -483,7 +481,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
         for filename, content in files.items():
             (pkg / filename).write_text(content, encoding="utf-8")
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project)
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 

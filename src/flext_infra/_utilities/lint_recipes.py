@@ -273,8 +273,8 @@ class FlextInfraUtilitiesLintRecipes(
         whose declared author signs the notice; the notice is derived only
         when a copyright finding asks for it.
 
-        Whole-module import normalization and line wrapping belong to the Ruff
-        lint gate, which runs them before passing planned edits to this utility.
+        Callers compose whole-module import normalization and line wrapping
+        before passing planned edits to this utility.
 
         Returns:
             The repaired module source.

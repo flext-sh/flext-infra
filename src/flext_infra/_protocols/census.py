@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -28,13 +28,18 @@ class FlextInfraProtocolsCensus:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ReferenceSite(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class ReferenceSite(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def surface(self) -> str:
@@ -47,15 +52,28 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class Object(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsMixins.NestedClassPathMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class Object(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def class_path(self) -> str:
+            """Nested class path."""
+            ...
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def name(self) -> t.NonEmptyStr:
@@ -167,14 +185,23 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class RemovalCandidate(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class RemovalCandidate(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def object_name(self) -> t.NonEmptyStr:
@@ -216,12 +243,13 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class Violation(
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class Violation(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def object_name(self) -> t.NonEmptyStr:
@@ -723,12 +751,13 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class ProjectReport(
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class ProjectReport(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def objects(self) -> tuple[FlextInfraProtocolsCensus.Object, ...]:

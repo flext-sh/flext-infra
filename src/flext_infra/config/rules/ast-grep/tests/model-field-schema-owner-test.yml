@@ -1,0 +1,37 @@
+id: model-field-schema-owner
+valid:
+- |
+  from flext_infra import m, p
+  class Payload(m.Value):
+      document: m.ConfigDocument
+- |
+  from flext_infra import m, p, t
+  class Payload(m.Value):
+      reader: t.Port[p.Infra.Reader]
+      callback: Callable[[p.ConfigDocument], p.ConfigDocument]
+      owner: type[p.ConfigDocument]
+- |
+  from flext_infra import m, p
+  class Consumer:
+      document: p.ConfigDocument
+- |
+  from flext_infra import m, p
+  def read(document: p.ConfigDocument) -> p.ConfigDocument:
+      return document
+- |
+  from thirdparty import p
+  class Payload(m.Value):
+      document: p.ConfigDocument
+invalid:
+- |
+  from flext_infra import m, p
+  class Payload(m.Value):
+      document: p.ConfigDocument
+- |
+  from flext_infra import m, p
+  class Payload(m.Value):
+      documents: Annotated[Sequence[p.ConfigDocument] | None, m.Field(description='Docs')]
+- |
+  from flext_infra import m, p
+  class Payload(m.Value):
+      nested: Mapping[str, p.Infra.Outer.Inner]

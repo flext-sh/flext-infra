@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
@@ -103,6 +104,9 @@ class FlextInfra(
             resolved_root, rope_repository_root=rope_repository_root
         )
         session.semantic_rename_planner = FlextInfraCodemodRenameSymbols
+        session.model_envelope_checker = partial(
+            FlextInfraModHandlers.model_envelope_diagnostics, session.repository_root
+        )
         return session
 
     @staticmethod
@@ -464,7 +468,9 @@ class FlextInfra(
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        return codemod.FlextInfraModTextGateEngine.run(root, apply=request.apply)
+        return codemod.FlextInfraModTextGateEngine.run(
+            root, apply=request.apply, rule_ids=request.rule_ids
+        )
 
     @staticmethod
     def mod_text_candidate(

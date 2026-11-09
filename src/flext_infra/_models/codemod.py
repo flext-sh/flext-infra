@@ -382,7 +382,7 @@ class FlextInfraModelsCodemod:
             description="Existing semantic phase owning this rule's execution",
         )
         pattern: Annotated[t.NonEmptyStr, m.Field(description="Native Rope pattern")]
-        goal: Annotated[t.NonEmptyStr, m.Field(description="Native Rope replacement")]
+        goal: Annotated[str, m.Field(description="Native Rope replacement")]
         arguments: Annotated[
             Mapping[str, str | Sequence[str]],
             m.Field(

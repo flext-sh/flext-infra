@@ -868,7 +868,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         candidate, observed = planned
-        destinations = frozenset(path.resolve() for path in candidate.candidate.updates)
+        destinations = frozenset(
+            plan.path.resolve()
+            for plan in FlextInfraCodemodSemanticApply.planning_file_plans(
+                root, candidate.candidate, {}
+            )
+        )
         captured = tuple(
             state for state in observed if Path(state.path).resolve() in destinations
         )
@@ -877,8 +882,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             return r[p.Infra.ModPhaseAdvance].ok(
                 voided.model_copy(update={"drifted": drifted})
             )
-        accepted = FlextInfraCodemodSemanticApply.publish_candidate(
-            root, candidate, publish=publish
+        accepted = (
+            FlextInfraCodemodSemanticApply.publish_candidate(
+                root, candidate, publish=publish
+            )
+            if destinations
+            else r[tuple[Path, ...]].ok(())
         )
         if accepted.failure:
             # The publisher's compare-and-swap rejects the whole batch; only an
@@ -1161,12 +1170,23 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate=syntax.value,
             consumer_roots=captured_seed.consumer_roots,
         )
-        if self.focused:
+        changed_paths = tuple(
+            plan.path
+            for plan in FlextInfraCodemodSemanticApply.planning_file_plans(
+                root, seed.candidate, {}
+            )
+            if plan.desired_content is not None
+        )
+        if self.focused and not changed_paths:
             return r[p.Infra.SemanticSourcePlan].ok(seed)
-        text_preparation = self._plan_text_phase(
-            root,
-            seed,
-            text_precondition_pending=text_precondition_pending,
+        text_preparation = (
+            r[p.Infra.SemanticSourcePlan].ok(seed)
+            if self.focused
+            else self._plan_text_phase(
+                root,
+                seed,
+                text_precondition_pending=text_precondition_pending,
+            )
         )
         if text_preparation.failure:
             return text_preparation
@@ -1174,7 +1194,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             root,
             text_preparation.value,
             graph,
-            callbacks=(FlextInfraCodemodLoopPhaseImportNormalization(),),
+            callbacks=(
+                FlextInfraCodemodLoopPhaseImportNormalization(
+                    paths=changed_paths if self.focused else None,
+                ),
+            ),
         )
 
     def _plan_semantic_phase(

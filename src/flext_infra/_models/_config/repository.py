@@ -356,9 +356,8 @@ class FlextInfraModelsConfigRepository:
             c.Infra.ProjectKind,
             m.Field(
                 description=(
-                    "Governance kind; only internal_flext repositories are "
-                    "rewritten by generation. Required: a generator that cannot "
-                    "read the kind fails closed and never assumes internal_flext."
+                    "Governance kind detected from native dependency and "
+                    "workspace-composition facts"
                 ),
             ),
         ]

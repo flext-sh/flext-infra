@@ -129,45 +129,33 @@ class TestsFlextInfraCodegenConformPublicSurface:
                 )
 
     @staticmethod
-    def test_bootstrap_kind_belongs_only_to_the_requested_target(
+    def test_bootstrap_uses_detected_kind_without_authoring_a_declaration(
         infra_git_repo: Path,
     ) -> None:
-        """Native bootstrap publishes its own declaration and preserves other owners."""
+        """Native bootstrap consumes project facts and preserves other owners."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        kind = c.Infra.ProjectKind.INTERNAL_FLEXT
         _library, own, _local = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
         )
-        if own.is_file():
-            payload = tm.ok(u.Cli.yaml_safe_load(own))
-            declared = u.Cli.json_walk_path(payload, ("Infra", "codegen", "repository"))
-            if isinstance(declared, dict):
-                declared.pop("kind", None)
-            tm.ok(u.Cli.yaml_dump(own, payload))
         sibling = root.parent / "unselected-config.yaml"
         sibling.write_text("OtherOwner:\n  enabled: true\n", encoding="utf-8")
         sibling_before = sibling.read_bytes()
 
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root, kind=kind).execute())
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False))
+        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
 
         declaration = tm.ok(u.Infra.load_repository_declaration_inputs(root))
-        tm.that(declaration.spec.kind, eq=kind)
-        tm.that(declaration.spec.model_fields_set, has="kind")
-        tm.that(sibling.read_bytes(), eq=sibling_before)
-        before = own.read_bytes()
-        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root, kind=kind).execute())
-        tm.that(own.read_bytes(), eq=before)
-        conflicting = next(
-            candidate for candidate in c.Infra.ProjectKind if candidate != kind
+        tm.that(declaration.kind, eq=u.Infra.detected_project_kind(root))
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False)), eq=before
         )
-        result = FlextInfraCodegenMakeBootstrap(
-            repository_root=root,
-            kind=conflicting,
-        ).execute()
-        tm.ok(result.failure)
-        tm.that(own.read_bytes(), eq=before)
+        tm.that(sibling.read_bytes(), eq=sibling_before)
+        tm.ok(FlextInfraCodegenMakeBootstrap(repository_root=root).execute())
+        tm.that(
+            tm.ok(u.Cli.atomic_read_binary_file_state(own, required=False)), eq=before
+        )
 
     @staticmethod
     def test_make_bootstrap_check_is_repeatable_and_read_only(

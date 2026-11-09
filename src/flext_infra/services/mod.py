@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
@@ -20,10 +21,73 @@ from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
 )
+from flext_infra.gates import FlextInfraGatesPyrefly
 
 
 class FlextInfraModHandlers:
     """Compose the existing mod executor using the API's injected capabilities."""
+
+    @staticmethod
+    def model_envelope_diagnostics(
+        root: Path,
+        sources: Mapping[Path, str],
+        *,
+        runtime_root: Path | None = None,
+    ) -> Sequence[p.Infra.Issue]:
+        """Compose the native checker once on the complete current source stage.
+
+        Returns:
+            Original findings mapped back to the supplied source candidate.
+
+        """
+        roots = u.Infra.import_project_roots(root)
+        if runtime_root is None:
+            runtime_root = u.Infra.runtime_owner_root(root).unwrap()
+        stage_workspace = Path(os.path.commonpath(roots))
+        projects = tuple(
+            project
+            for project in roots
+            if project.is_relative_to(root)
+            and any(path.is_relative_to(project) for path in sources)
+        )
+        reports = (
+            m.Infra.RunCommand(repository_root=runtime_root).reports_dir_path
+            / u.generate_id()
+        )
+
+        def inspect(view: Path, _paths: Mapping[Path, Path]) -> Sequence[p.Infra.Issue]:
+            findings: list[p.Infra.Issue] = []
+            for project in projects:
+                candidate = view / project.relative_to(stage_workspace)
+                report_directory = reports / project.name
+                u.Cli.ensure_dir(report_directory).unwrap()
+                result = FlextInfraGatesPyrefly(repository_root=root).check(
+                    candidate,
+                    m.Infra.GateContext(
+                        repository_root=candidate,
+                        runtime_root=runtime_root,
+                        reports_dir=report_directory,
+                    ),
+                )
+                if result.outcome == c.Infra.ToolOutcome.ERROR:
+                    message = "\n".join(issue.message for issue in result.issues)
+                    raise RuntimeError(message or result.raw_output)
+                for issue in result.issues:
+                    path = Path(issue.file)
+                    path = path if path.is_absolute() else candidate / path
+                    logical = (
+                        stage_workspace / path.relative_to(view)
+                        if path.is_relative_to(view)
+                        else path
+                    )
+                    findings.append(issue.model_copy(update={"file": str(logical)}))
+            return tuple(findings)
+
+        return (
+            FlextInfraStagedPackage()
+            .preview_sources(stage_workspace, sources, inspect)
+            .unwrap()
+        )
 
     @staticmethod
     def _mod_semantic_rule(
@@ -110,6 +174,11 @@ class FlextInfraModHandlers:
         outcome = r[bool]
         root = u.Infra.import_project_roots(root)[0].resolve()
         with context.rope_workspace(root) as workspace:
+            workspace.model_envelope_checker = partial(
+                FlextInfraModHandlers.model_envelope_diagnostics,
+                root,
+                runtime_root=u.Infra.runtime_owner_root(reports_root).unwrap(),
+            )
             captured = codemod.FlextInfraCodemodSemanticApply.build_source_plan(
                 root, snapshot=workspace.snapshot
             )

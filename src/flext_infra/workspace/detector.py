@@ -336,8 +336,7 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[p.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
-        ``kind`` is the repository's own declared governance kind, read before
-        the reference exists; the reference never carries an assumed kind.
+        ``kind`` comes from the shared native project-fact detector.
 
         Returns:
             The resulting ``p.Result[p.Infra.RepositoryRef]``.
@@ -462,7 +461,7 @@ class FlextInfraWorkspaceDetector(
         repository_root: Path,
         inputs: p.Infra.CodegenInputs,
     ) -> p.Result[p.Infra.ProjectSpec]:
-        """Require the project, integration, kind and dependency declarations.
+        """Require the project, integration and dependency declarations.
 
         Returns:
             The declared project, or the typed declaration failure.
@@ -476,9 +475,9 @@ class FlextInfraWorkspaceDetector(
                 f"project declaration: {repository_root}",
             )
             return result_type.fail(str(error), exception=error)
-        if declaration.integration is None or declaration.kind is None:
+        if declaration.integration is None:
             return result_type.fail(
-                "new project requires its own integration and kind declarations: "
+                "new project requires its own integration declaration: "
                 f"{repository_root}",
             )
         if declaration.project.flext_source is None:

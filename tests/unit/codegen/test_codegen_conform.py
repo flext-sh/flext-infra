@@ -63,7 +63,6 @@ class TestsFlextInfraCodegenConform:
         declaration = m.Infra.RepositoryDeltaSpec(
             project=project,
             integration=integration,
-            kind=repository.kind,
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -296,7 +295,6 @@ class TestsFlextInfraCodegenConform:
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
         declaration = m.Infra.RepositoryDeltaSpec(
-            kind=u.Tests.repository_ref(config.Infra.name).kind,
             extra_verbs=(m.Infra.MakeVerbSpec(name=verb, description=help_text),),
         )
         tm.ok(
@@ -452,7 +450,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 apply_changes=True,
             ).execute(),
             eq=True,
@@ -688,7 +685,6 @@ class TestsFlextInfraCodegenConform:
         """
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
-        u.Tests.declare_governed_kind(root)
         package = root / c.Infra.DEFAULT_SRC_DIR / config.Infra.name.replace("-", "_")
         for module, family in (("models.py", "Models"), ("protocols.py", "Protocols")):
             tm.ok(
@@ -907,7 +903,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok(
             FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 apply_changes=True,
             ).execute(),
         )

@@ -19,7 +19,6 @@ class TestsFlextInfraSourceLayoutOwnership:
     ) -> None:
         """A bounded write wave preserves every staged file's exact identity."""
         root = u.Tests.git_repository(tmp_path / "workspace")
-        u.Tests.declare_governed_kind(root)
         package = u.Tests.src_package(
             root,
             "ownership_sample",
@@ -59,7 +58,6 @@ class TestsFlextInfraSourceLayoutOwnership:
     def test_materialize_failure_leaves_live_source_untouched(tmp_path: Path) -> None:
         """A scratch symlink collision fails without following into live sources."""
         root = u.Tests.git_repository(tmp_path / "workspace")
-        u.Tests.declare_governed_kind(root)
         u.Tests.src_package(
             root,
             "ownership_sample",
@@ -97,7 +95,6 @@ class TestsFlextInfraSourceLayoutOwnership:
     ) -> None:
         """Materialize a joint candidate without touching its original sources."""
         root = u.Tests.git_repository(tmp_path / directory)
-        u.Tests.declare_governed_kind(root)
         package = u.Tests.src_package(
             root,
             "ownership_sample",
@@ -139,14 +136,12 @@ class TestsFlextInfraSourceLayoutOwnership:
     ) -> None:
         """A containing workspace cannot replace the member's import identity."""
         root = u.Tests.git_repository(tmp_path / "workspace")
-        u.Tests.declare_governed_kind(root)
         u.Tests.src_package(
             root,
             "outer_sample",
             pyproject="[project]\nname='outer-sample'\nversion='1.0.0'\n",
         )
         member = root / "member"
-        u.Tests.declare_governed_kind(member)
         package = u.Tests.src_package(
             member,
             "inner_sample",

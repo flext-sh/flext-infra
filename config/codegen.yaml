@@ -1,7 +1,6 @@
 Infra:
   codegen:
     repository:
-      kind: internal_flext
       project:
         package_name: flext_infra
         class_stem: FlextInfra

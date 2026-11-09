@@ -49,7 +49,6 @@ class TestsFlextInfraCodegenExistingFacadeScaffold:
                     "Infra": {
                         "codegen": {
                             "repository": {
-                                "kind": c.Infra.ProjectKind.INTERNAL_FLEXT.value,
                                 "project": project.model_dump(mode="json"),
                             },
                         },

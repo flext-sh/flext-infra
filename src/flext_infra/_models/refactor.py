@@ -118,6 +118,11 @@ class FlextInfraModelsRefactor(
     class ModTextCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):
         """Repository-scoped request for authenticated Sed rule replay."""
 
+        rule_ids: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Exact text rule IDs; empty selects the catalogue"),
+        ] = ()
+
     class ModuleMoveCommand(m.ContractModel):
         """Move a declared source module and its semantic import references."""
 
@@ -735,13 +740,11 @@ class FlextInfraModelsRefactor(
         kinds: Annotated[
             Sequence[str] | None, m.Field(description="Optional symbol-kind filters")
         ] = None
-        census_kinds: Annotated[
-            Sequence[str] | None,
-            m.Field(
-                alias="census-kinds",
-                description="Optional extermination-kind filters",
-            ),
-        ] = None
+        census_kinds: Sequence[str] | None = m.Field(
+            None,
+            alias="census-kinds",
+            description="Optional extermination-kind filters",
+        )
         rules: Annotated[
             Sequence[str] | None, m.Field(description="Optional violation-rule filters")
         ] = None

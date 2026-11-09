@@ -36,6 +36,87 @@ class TestsModelProtocolCallableContracts:
         return root, package
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("declaration", "base", "expectation"),
+        [
+            (
+                (
+                    "class Mutable(BaseModel):\n    name: str\n"
+                    "    def read(self) -> str:\n        return self.name\n"
+                ),
+                "Mutable",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                ),
+                "Mutable[str]",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                    "class Intermediate[U](Mutable[U]): pass\n"
+                ),
+                "Intermediate[str]",
+                ("str", "'sample'"),
+            ),
+            (
+                (
+                    "class Mutable[T](BaseModel):\n    name: T\n"
+                    "    def read(self) -> T:\n        return self.name\n"
+                ),
+                "Mutable[dict[str, list[int]]]",
+                ("dict[str, list[int]]", "{'sample': [1]}"),
+            ),
+        ],
+    )
+    def test_frozen_model_does_not_inherit_a_writable_protocol(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+        declaration: str,
+        base: str,
+        expectation: tuple[str, str],
+    ) -> None:
+        """A frozen descendant retains specialized inherited fields and methods."""
+        annotation, sample = expectation
+        root, package = TestsModelProtocolCallableContracts._model_workspace(
+            tmp_path,
+            "from pydantic import BaseModel, ConfigDict\n"
+            + declaration
+            + "class ModelsPayload:\n"
+            f"    class Frozen({base}):\n"
+            "        model_config = ConfigDict(frozen=True)\n"
+            "__all__ = ['Mutable', 'ModelsPayload']\n",
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            planned = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        for relative, source in planned.items():
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+        native_consumer(
+            "from inspect import getattr_static\n"
+            "from typing import get_type_hints\n"
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            f"value = m.Frozen(name={sample})\n"
+            "assert isinstance(value, p.Frozen)\n"
+            "descriptor = getattr_static(p.Frozen, 'name')\n"
+            "assert isinstance(descriptor, property)\n"
+            "assert descriptor.fset is None\n"
+            f"assert get_type_hints(descriptor.fget)['return'] == {annotation}\n"
+            f"assert get_type_hints(p.Frozen.read)['return'] == {annotation}\n"
+            f"assert value.read() == {sample}\n"
+            f"assert value.name == {sample}\n",
+            cwd=root,
+        )
+
+    @staticmethod
     def test_decorated_model_behavior_is_not_projected_as_a_protocol_member(
         tmp_path: Path,
     ) -> None:
@@ -616,6 +697,7 @@ class TestsModelProtocolCallableContracts:
             header=c.Infra.AUTOGEN_HEADER,
             copyright_notice="Copyright (c) 2026 FLEXT Team.",
             package_name="flext_test_project",
+            facades=("Models", "Protocols"),
             imports=(),
             checks=(),
             documentation_language=language,

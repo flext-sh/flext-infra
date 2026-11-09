@@ -21,12 +21,12 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesManagedConflicts,
-    FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
 )
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -1068,7 +1068,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             [
                 group
                 for group in (
-                    FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    FlextInfraUtilitiesNativeTooling.native_tool_setting(
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",

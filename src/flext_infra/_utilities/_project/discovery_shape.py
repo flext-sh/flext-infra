@@ -6,18 +6,118 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from contextlib import closing, nullcontext
+from pathlib import Path
 
-from flext_infra import c, p
-from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra import c, config, m, p
+from flext_infra._utilities import (
+    FlextInfraUtilitiesDependencies,
+    FlextInfraUtilitiesGit,
+)
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesProjectDiscoveryShape:
     """Project-shape predicates and manifest-owner lookup for project discovery."""
+
+    @classmethod
+    def detected_project_kind(
+        cls,
+        repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> c.Infra.ProjectKind:
+        """Derive governance from native dependencies and managed composition.
+
+        Returns:
+            FLEXT governance for a consuming project or composed workspace;
+            ordinary internal governance when neither fact is present.
+
+        """
+        payload = FlextInfraUtilitiesPyprojectConform.pyproject_payload(
+            repository_root / c.PYPROJECT_FILENAME, source_project=source_project
+        )
+        dependency_owner = FlextInfraUtilitiesDependencies
+        dependencies = dependency_owner.declared_dependency_names_from_payload(payload)
+        if any(name.startswith(c.Infra.PKG_PREFIX_HYPHEN) for name in dependencies):
+            return c.Infra.ProjectKind.INTERNAL_FLEXT
+        declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
+            repository_root, source_project=source_project
+        ).unwrap()
+        if any(
+            declaration.managed is True
+            or (
+                declaration.managed is not False
+                and (
+                    (repository_root / declaration.path).is_dir()
+                    if source_project is None
+                    else source_project.source_query(
+                        repository_root / declaration.path, "isdir"
+                    )
+                )
+                and cls.detected_project_kind(
+                    repository_root / declaration.path, source_project=source_project
+                )
+                is c.Infra.ProjectKind.INTERNAL_FLEXT
+            )
+            for declaration in declarations
+        ) or cls._uses_flext_imports(repository_root, source_project):
+            return c.Infra.ProjectKind.INTERNAL_FLEXT
+        if (repository_root / c.GIT_DIR_NAME).exists():
+            identity = FlextInfraUtilitiesGit.git_identity(
+                m.Infra.GitRepoRequest(repo_root=repository_root)
+            ).unwrap()
+            if identity.upstream_remote and (
+                FlextInfraUtilitiesGit.git_remote_identity(identity.upstream_remote)
+                != FlextInfraUtilitiesGit.git_remote_identity(
+                    identity.origin_remote or ""
+                )
+            ):
+                return c.Infra.ProjectKind.THIRD_PARTY_FORK
+        return c.Infra.ProjectKind.INTERNAL
+
+    @staticmethod
+    def _uses_flext_imports(
+        root: Path, source_project: p.Infra.RopeProject | None
+    ) -> bool:
+        """Read imports from the native source project's own inventory.
+
+        Returns:
+            Whether a source module imports a FLEXT package.
+
+        """
+        native = FlextInfraUtilitiesRopeRuntime
+        context = (
+            nullcontext(source_project)
+            if source_project is not None
+            else closing(
+                native.new_project(
+                    str(root),
+                    ropefolder="",
+                    save_objectdb=False,
+                    filter_lists=(config.Infra.codegen.source_scan_ignored, ("",)),
+                )
+            )
+        )
+        with context as project:
+            for resource in project.get_python_files():
+                if not Path(resource.real_path).is_relative_to(root):
+                    continue
+                parsed = native.require_parsed_module(project.get_pymodule(resource))
+                imports = native.module_imports_for_pymodule(project, parsed)
+                for statement in imports.imports:
+                    info = statement.import_info
+                    names = (
+                        (info.module_name,)
+                        if isinstance(info, p.Infra.RopeFromImport)
+                        else tuple(name for name, _alias in info.names_and_aliases)
+                    )
+                    if any(
+                        name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE) for name in names
+                    ):
+                        return True
+        return False
 
     @classmethod
     def _is_nonparticipant(
