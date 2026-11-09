@@ -275,8 +275,15 @@ class TestsFlextInfraModelEnvelopeContracts:
                 "p.Cli.AtomicFileState | m.Cli.AtomicFileState | None",
             ),
             (
-                "(value,)",
-                1,
+                "tuple(sorted((value, value), key=str))",
+                2,
+                "tuple[m.Cli.AtomicFileState, ...]",
+                "()",
+                "p.Cli.AtomicFileState | m.Cli.AtomicFileState",
+            ),
+            (
+                "tuple(sorted((value, 'wrong'), key=str))",
+                None,
                 "tuple[m.Cli.AtomicFileState, ...]",
                 "()",
                 "p.Cli.AtomicFileState | m.Cli.AtomicFileState",
@@ -314,7 +321,7 @@ class TestsFlextInfraModelEnvelopeContracts:
         declaration = (
             ""
             if case[2] is None
-            else (f"class Envelope(m.StrictModel):\n    inputs: {case[2]}\n")
+            else (f"class EnvelopeFields(m.StrictModel):\n    inputs: {case[2]}\n")
         )
         extra = ""
         if case[0] == "mixed":
@@ -324,6 +331,8 @@ class TestsFlextInfraModelEnvelopeContracts:
             declaration += "    count: int\n"
         elif case[0] == "unexpected":
             extra = "        unexpected='wrong',\n"
+        if case[2] is not None:
+            declaration += "class Envelope(EnvelopeFields):\n    pass\n"
         mapping = (
             ""
             if case[0] != "mapping"

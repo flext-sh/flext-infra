@@ -100,7 +100,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        field = runtime.expression_name(bindings[0].get_scope(), bindings[2])
+        field = bindings[0].get_attributes().get(bindings[2])
         if field is None:
             return False
         owner, line = runtime.definition_location(field)
