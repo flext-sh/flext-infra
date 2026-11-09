@@ -1343,6 +1343,13 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                             and project.source_owned(Path(candidate.real_path))
                             and (
                                 candidate.real_path == resource.real_path
+                                or (
+                                    offset is None
+                                    and resource.is_folder()
+                                    and Path(candidate.real_path).is_relative_to(
+                                        Path(resource.real_path)
+                                    )
+                                )
                                 or retired in sources[Path(candidate.real_path)]
                             )
                         ),
