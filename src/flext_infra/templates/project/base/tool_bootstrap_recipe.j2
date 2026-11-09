@@ -3,7 +3,7 @@
     declared tools; neither Make nor CI interprets lock or release formats. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
-	mkdir -p "{{ project_root }}/.bin"; \
+	if [ -d "{{ project_root }}/.bin" ]; then :; else mkdir -p "{{ project_root }}/.bin" 2>/dev/null || true; fi; \
 	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
 {% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
 	mise_acquired=false; \
