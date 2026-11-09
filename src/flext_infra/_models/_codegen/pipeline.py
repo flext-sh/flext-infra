@@ -103,12 +103,7 @@ class FlextInfraModelsCodegenPipeline:
         ]
         uv_environments: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.UvEnvironmentPlan,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfig.UvEnvironmentPlan
-                    ),
-                ],
+                FlextInfraModelsConfig.UvEnvironmentPlan,
                 ...,
             ],
             m.Field(description="uv plans paired with selected repositories"),
@@ -121,12 +116,7 @@ class FlextInfraModelsCodegenPipeline:
             m.Field(description="All render results validated before application"),
         ]
         outcomes: tuple[
-            Annotated[
-                p.Infra.CodegenRepositoryPlanOutcome,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome
-                ),
-            ],
+            FlextInfraModelsCodegenPipeline.CodegenRepositoryPlanOutcome,
             ...,
         ] = m.Field(
             default=(),
@@ -218,11 +208,9 @@ class FlextInfraModelsCodegenPipeline:
             default=Path(),
             description="Generation tool repository",
         )
-        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = (
-            m.Field(
-                default=None,
-                description="Declared scaffold specification",
-            )
+        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
+            default=None,
+            description="Declared scaffold specification",
         )
         ports: t.Port[p.Infra.CodegenConformPorts] | None = m.Field(
             default=None,

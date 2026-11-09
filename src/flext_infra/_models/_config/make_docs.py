@@ -11,7 +11,7 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -85,12 +85,7 @@ class FlextInfraModelsConfigMakeDocs:
             m.Field(description="Repository-relative docs reports directory"),
         ]
         overview_preview_limits: Annotated[
-            Annotated[
-                p.Infra.DocsOverviewPreviewLimitsSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec
-                ),
-            ],
+            FlextInfraModelsConfigMakeDocs.DocsOverviewPreviewLimitsSpec,
             m.Field(description="Maximum preview sizes for generated API overviews"),
         ]
         cross_project_relative_link_pattern: Annotated[

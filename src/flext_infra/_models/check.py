@@ -145,13 +145,7 @@ class FlextInfraModelsCheck:
             m.Field(description="Requested gates elected for this project's inputs"),
         ] = ()
         source_identity: Annotated[
-            Annotated[
-                p.Infra.GitIdentityReport,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitIdentity.GitIdentityReport
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
             m.Field(description="Original exact repository identity before gates"),
         ] = None
 
@@ -435,7 +429,7 @@ class FlextInfraModelsCheck:
             description="Native process/report verdict, independent of findings policy",
         )
         process: Annotated[
-            Annotated[m.Cli.ProcessOutcome] | None,
+            m.Cli.ProcessOutcome | None,
             m.Field(description="Original native process, when this gate invoked one"),
         ] = None
         components: Annotated[
@@ -718,12 +712,7 @@ class FlextInfraModelsCheck:
         ] = ()
         targets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CheckProjectTarget,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCheck.CheckProjectTarget
-                    ),
-                ],
+                FlextInfraModelsCheck.CheckProjectTarget,
                 ...,
             ],
             m.Field(description="Canonical project roots selected for this invocation"),
@@ -741,12 +730,7 @@ class FlextInfraModelsCheck:
         ]
         global_targets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CheckProjectTarget,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCheck.CheckProjectTarget
-                    ),
-                ],
+                FlextInfraModelsCheck.CheckProjectTarget,
                 ...,
             ]
             | None,
@@ -804,11 +788,9 @@ class FlextInfraModelsCheck:
             default_factory=tuple,
             description="SARIF runs",
         )
-        properties: FlextInfraModelsCheck.CheckReportSummary | None = (
-            m.Field(
-                None,
-                description="Typed invocation targets and executions; absent is unknown",
-            )
+        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
+            None,
+            description="Typed invocation targets and executions; absent is unknown",
         )
 
 

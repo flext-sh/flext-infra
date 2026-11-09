@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
 
 
@@ -34,14 +34,7 @@ class FlextInfraModelsCodegenScaffold:
         """Aggregated census report for a single project."""
 
         violations: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.CensusViolation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                    ),
-                ]
-            ],
+            Sequence[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(description="Detected violations"),
         ] = m.Field(default_factory=tuple)
         total: Annotated[t.NonNegativeInt, m.Field(description="Total violation count")]

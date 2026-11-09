@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 
 
 class FlextInfraModelsDuplication:
@@ -323,22 +323,12 @@ class FlextInfraModelsDuplication:
         formats: Annotated[
             Mapping[
                 str,
-                Annotated[
-                    p.Infra.JscpdStatisticsSummary,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDuplication.JscpdStatisticsSummary
-                    ),
-                ],
+                FlextInfraModelsDuplication.JscpdStatisticsSummary,
             ],
             m.Field(description="Statistics keyed by parsed source format"),
         ]
         total: Annotated[
-            Annotated[
-                p.Infra.JscpdStatisticsSummary,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDuplication.JscpdStatisticsSummary
-                ),
-            ],
+            FlextInfraModelsDuplication.JscpdStatisticsSummary,
             m.Field(description="Aggregate scan statistics"),
         ]
 
@@ -346,14 +336,7 @@ class FlextInfraModelsDuplication:
         """Validated complete jscpd JSON report."""
 
         duplicates: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.JscpdDuplicate,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDuplication.JscpdDuplicate
-                    ),
-                ]
-            ],
+            Sequence[FlextInfraModelsDuplication.JscpdDuplicate],
             m.Field(description="Complete detected clone records"),
         ]
         statistics: Annotated[
@@ -428,23 +411,13 @@ class FlextInfraModelsDuplication:
         canonical_index: t.NonNegativeInt = m.Field(
             description="First unordered span pair index"
         )
-        candidate: Annotated[
-            p.Infra.JscpdDuplicate,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDuplication.JscpdDuplicate,
-            ),
-        ] = m.Field(
+        candidate: FlextInfraModelsDuplication.JscpdDuplicate = m.Field(
             description="Unmodified typed scanner candidate",
         )
         owned: bool = m.Field(description="At least one side belongs to the project")
         self_span: bool = m.Field(description="Both sides name the identical span")
         measures: tuple[
-            Annotated[
-                p.Infra.DuplicationSpanMeasure,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDuplication.DuplicationSpanMeasure,
-                ),
-            ],
+            FlextInfraModelsDuplication.DuplicationSpanMeasure,
             ...,
         ] = m.Field(
             description="Both measured spans when analysis succeeds",
@@ -461,12 +434,7 @@ class FlextInfraModelsDuplication:
             description="Complete raw typed inventory and counters"
         )
         candidates: tuple[
-            Annotated[
-                p.Infra.DuplicationCandidateEvidence,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDuplication.DuplicationCandidateEvidence
-                ),
-            ],
+            FlextInfraModelsDuplication.DuplicationCandidateEvidence,
             ...,
         ] = m.Field(description="One explanation per raw candidate")
         min_lines: t.PositiveInt = m.Field(description="Selected existing line floor")

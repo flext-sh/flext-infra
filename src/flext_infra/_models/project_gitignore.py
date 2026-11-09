@@ -10,7 +10,7 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsDepsToolConfigProjectMise
 
 
@@ -79,14 +79,7 @@ class FlextInfraModelsProjectGitignore(
         ] = ()
         preserved_blocks: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ProjectGitignorePreservedBlock,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsProjectGitignore.ProjectGitignorePreservedBlock
-                        )
-                    ),
-                ],
+                (FlextInfraModelsProjectGitignore.ProjectGitignorePreservedBlock),
                 ...,
             ],
             m.Field(

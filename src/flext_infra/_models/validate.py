@@ -147,9 +147,7 @@ class FlextInfraModelsCore:
     class PytestMarkdownCollection(m.ArbitraryTypesModel):
         """Session-owned public collection-hook observations."""
 
-        eligible: MutableSequence[
-            FlextInfraModelsCore.PytestMarkdownOrigin
-        ] = m.Field(
+        eligible: MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableSequence[FlextInfraModelsCore.PytestMarkdownOrigin]
@@ -158,9 +156,7 @@ class FlextInfraModelsCore:
             validate_default=True,
             description="Independently parsed origins",
         )
-        collected: MutableSequence[
-            FlextInfraModelsCore.PytestMarkdownItem
-        ] = m.Field(
+        collected: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
@@ -597,16 +593,16 @@ class FlextInfraModelsCore:
             validate_default=True,
             description="Call-phase attempt observations",
         )
-        markdown_items: MutableSequence[
-            FlextInfraModelsCore.PytestMarkdownItem
-        ] = m.Field(
-            default_factory=u.empty(
-                contract_factory=lambda: TypeForm(
-                    MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
+        markdown_items: MutableSequence[FlextInfraModelsCore.PytestMarkdownItem] = (
+            m.Field(
+                default_factory=u.empty(
+                    contract_factory=lambda: TypeForm(
+                        MutableSequence[FlextInfraModelsCore.PytestMarkdownItem]
+                    ),
                 ),
-            ),
-            validate_default=True,
-            description="Call-phase origin observations",
+                validate_default=True,
+                description="Call-phase origin observations",
+            )
         )
         collection_failed_cases: MutableSequence[str] = m.Field(
             default_factory=list,

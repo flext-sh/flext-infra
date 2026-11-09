@@ -44,6 +44,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         )
         files: tuple[
             FlextInfraModelsGates.SccFile,
+            FlextInfraModelsGates.SccFile,
             ...,
         ] = m.Field(alias="Files", description="Every scanned file in this language")
 
@@ -173,13 +174,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
         runtime_dependency_inputs: Annotated[
-            Annotated[
-                p.Infra.RuntimeDependencyInputs,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDeps.RuntimeDependencyInputs
-                ),
-            ]
-            | None,
+            FlextInfraModelsDeps.RuntimeDependencyInputs | None,
             m.Field(
                 description="Target-runtime dependency proof injected at composition"
             ),
@@ -337,9 +332,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         version: Annotated[t.NonEmptyStr, m.Field(description="Pyright version")]
         time: Annotated[t.NonEmptyStr, m.Field(description="Report timestamp")]
-        general_diagnostics: Sequence[
-            FlextInfraModelsGates.PyrightDiagnostic
-        ] = m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
+        general_diagnostics: Sequence[FlextInfraModelsGates.PyrightDiagnostic] = (
+            m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
+        )
         summary: Annotated[
             FlextInfraModelsGates.PyrightSummary,
             m.Field(description="Completed analysis summary"),
@@ -469,10 +464,10 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         requested_gates: Annotated[
             t.StrTuple, m.Field(description="Requested native checker gates")
         ] = ()
-        test_selection: FlextInfraModelsGates.GateTestIntent | None = m.Field(
-            None,
-            description="Original test selection; absent for checker",
-        )
+        test_selection: Annotated[
+            FlextInfraModelsGates.GateTestIntent | None,
+            m.Field(description="Original test selection; absent for checker"),
+        ] = None
 
         @m.model_validator(mode="after")
         def _validate_producer(self) -> Self:
@@ -550,12 +545,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         reports: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateReportEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateReportEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateReportEvidence,
                 ...,
             ],
             m.Field(
@@ -704,12 +694,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         reports: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateReportEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateReportEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateReportEvidence,
                 ...,
             ],
             m.Field(description="Original producer report byte bindings"),
@@ -733,10 +718,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         issues: Annotated[
             tuple[
-                Annotated[
-                    FlextInfraProtocolsCheck.Issue,
-                    t.schema_for_model(lambda: FlextInfraModelsCheck.Issue),
-                ],
+                FlextInfraModelsCheck.Issue,
                 ...,
             ],
             m.Field(description="Actual capture or candidate eligibility failures"),
@@ -790,12 +772,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         ]
         commands: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GateCommandEvidence,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGates.GateCommandEvidence
-                    ),
-                ],
+                FlextInfraModelsGates.GateCommandEvidence,
                 ...,
             ],
             m.Field(

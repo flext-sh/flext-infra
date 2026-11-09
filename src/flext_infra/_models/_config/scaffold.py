@@ -10,7 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -93,12 +93,7 @@ class FlextInfraModelsConfigScaffold:
         ]
         config_bases: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldConfigBaseSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec
-                    ),
-                ],
+                FlextInfraModelsConfigScaffold.ScaffoldConfigBaseSpec,
                 ...,
             ],
             m.Field(
@@ -219,42 +214,20 @@ class FlextInfraModelsConfigScaffold:
         """Complete typed policy consumed only by new-project templates."""
 
         build: Annotated[
-            Annotated[
-                p.Infra.ScaffoldBuildSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigScaffold.ScaffoldBuildSpec
-                ),
-            ],
+            FlextInfraModelsConfigScaffold.ScaffoldBuildSpec,
             m.Field(description="Build-system policy"),
         ]
         project: Annotated[
-            Annotated[
-                p.Infra.ScaffoldProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigScaffold.ScaffoldProjectSpec
-                ),
-            ],
+            FlextInfraModelsConfigScaffold.ScaffoldProjectSpec,
             m.Field(description="Project metadata and dependency policy"),
         ]
         ping_example: Annotated[
-            Annotated[
-                p.Infra.ScaffoldPingExampleSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec
-                ),
-            ],
+            FlextInfraModelsConfigScaffold.ScaffoldPingExampleSpec,
             m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(min_length=1, description="Generated Git ignore sections"),

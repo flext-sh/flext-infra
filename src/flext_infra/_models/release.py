@@ -12,7 +12,7 @@ from typing import Annotated, Self
 
 from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsGit,
@@ -93,12 +93,7 @@ class FlextInfraModelsRelease:
 
         assets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GithubReleaseAsset,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRelease.GithubReleaseAsset
-                    ),
-                ],
+                FlextInfraModelsRelease.GithubReleaseAsset,
                 ...,
             ],
             m.Field(description="All release assets across API pages"),
@@ -119,12 +114,7 @@ class FlextInfraModelsRelease:
 
         releases: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GithubReleaseIdentity,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRelease.GithubReleaseIdentity
-                    ),
-                ],
+                FlextInfraModelsRelease.GithubReleaseIdentity,
                 ...,
             ],
             m.Field(description="All repository releases across API pages"),

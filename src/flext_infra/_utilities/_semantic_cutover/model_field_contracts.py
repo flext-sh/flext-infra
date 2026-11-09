@@ -205,21 +205,16 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
     """Project every model type operand of one module to its protocol route.
 
     Model fields (direct model-class annotations and computed-field returns)
-    receive the deferred schema form ``Annotated[p.X, t.schema_for_model(lambda:
-    m.X)]`` at each model operand, nested generic arguments included. Every
-    other type position (signatures, local and module annotations, type
-    aliases, ``cast`` targets and parameterized factories) receives the plain
-    protocol route. Construction, validation and schema metadata keep the
-    actual model owner.
+    keep the model owner directly (``m.X``) at each model operand, nested
+    generic arguments included. Every other type position (signatures, local
+    and module annotations, type aliases, ``cast`` targets and parameterized
+    factories) receives the plain protocol route. Construction, validation
+    and schema metadata keep the actual model owner.
     """
 
     _ANNOTATED: ClassVar[frozenset[str]] = frozenset({"Annotated", "typing.Annotated"})
     _CLASS_VAR: ClassVar[frozenset[str]] = frozenset({"ClassVar", "typing.ClassVar"})
     _LITERAL: ClassVar[frozenset[str]] = frozenset({"Literal", "typing.Literal"})
-    _SCHEMA: ClassVar[frozenset[str]] = frozenset({
-        "t.schema_for_model",
-        "schema_for_model",
-    })
     _CAST: ClassVar[frozenset[str]] = frozenset({"cast", "typing.cast"})
     _NON_MODEL_M: ClassVar[frozenset[str]] = frozenset({
         "InstanceOf",
@@ -256,21 +251,6 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         if not isinstance(visited, ast.Call):
             return visited
         func_name = ast.unparse(visited.func)
-        if func_name in self._SCHEMA:
-            if visited.args and not isinstance(visited.args[0], ast.Lambda):
-                visited.args[0] = ast.Lambda(
-                    args=ast.arguments(
-                        posonlyargs=[],
-                        args=[],
-                        kwonlyargs=[],
-                        kw_defaults=[],
-                        defaults=[],
-                    ),
-                    body=visited.args[0],
-                )
-                self.changed = True
-                self.needs_t = True
-            return visited
         if func_name in self._CAST and visited.args:
             visited.args[0] = self._project(visited.args[0], field=False)
         visited.func = self._project_factory(visited.func)
@@ -394,7 +374,13 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             return node if projected is parsed else ast.Constant(ast.unparse(projected))
         spec = self._model_spec(node)
         if spec is not None:
-            return self._reception(spec, node, field=field)
+            if field:
+                # Simplified: fields use the model directly, not protocol+schema.
+                self.changed = True
+                return node
+            self.changed = True
+            self.needs_p = True
+            return spec
         if isinstance(node, ast.Subscript):
             return self._project_subscript(node, field=field)
         return self._project_composite(node, field=field)
@@ -451,17 +437,31 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
         spec = self._model_spec(first)
         if spec is None:
             projected = self._project(first, field=field)
-            if projected is first:
+            if projected is first and not metadata:
                 return node
             elements = [projected, *metadata]
-        else:
-            self.needs_p = True
-            self.needs_annotated = True
-            elements = [spec, *metadata]
-            if field and not any(
-                "schema_for_model" in ast.unparse(item) for item in metadata
-            ):
-                elements.insert(1, self._schema(first))
+            self.changed = True
+            if metadata:
+                self.needs_annotated = True
+            return ast.Subscript(
+                value=node.value,
+                slice=ast.Tuple(elts=elements, ctx=ast.Load()),
+                ctx=ast.Load(),
+            )
+        if field:
+            # Simplified: keep the model operand, drop protocol+schema.
+            self.changed = True
+            if metadata:
+                self.needs_annotated = True
+                return ast.Subscript(
+                    value=node.value,
+                    slice=ast.Tuple(elts=[first, *metadata], ctx=ast.Load()),
+                    ctx=ast.Load(),
+                )
+            return first
+        self.needs_p = True
+        self.needs_annotated = True
+        elements = [spec, *metadata]
         self.changed = True
         return ast.Subscript(
             value=node.value,
@@ -541,30 +541,6 @@ class _ModelFieldProtocolRewriter(ast.NodeTransformer):
             if protocol is not None:
                 return ast.parse(protocol, mode="eval").body
         return None
-
-    def _schema(self, model: ast.expr) -> ast.expr:
-        self.needs_t = True
-        return ast.parse(
-            f"t.schema_for_model(lambda: {ast.unparse(model)})", mode="eval"
-        ).body
-
-    def _reception(self, spec: ast.expr, model: ast.expr, *, field: bool) -> ast.expr:
-        """Receive one model operand as its protocol, with schema for a field.
-
-        Returns:
-            The plain protocol, or its deferred-schema ``Annotated`` field form.
-
-        """
-        self.changed = True
-        self.needs_p = True
-        if not field:
-            return spec
-        self.needs_annotated = True
-        return ast.Subscript(
-            value=ast.Name(id="Annotated", ctx=ast.Load()),
-            slice=ast.Tuple(elts=[spec, self._schema(model)], ctx=ast.Load()),
-            ctx=ast.Load(),
-        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSemanticModelFieldContracts"]

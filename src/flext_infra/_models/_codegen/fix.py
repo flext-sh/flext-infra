@@ -11,7 +11,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._models._codegen import FlextInfraModelsCodegenScaffold
 
@@ -23,52 +23,24 @@ class FlextInfraModelsCodegenFix:
         """Result of auto-fixing namespace violations for a project."""
 
         violations_fixed: Annotated[
-            MutableSequence[
-                Annotated[
-                    p.Infra.CensusViolation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                    ),
-                ]
-            ],
+            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(description="Fixed violations"),
         ] = m.Field(
             default_factory=u.empty(
                 t.TypeForm(
-                    MutableSequence[
-                        Annotated[
-                            p.Infra.CensusViolation,
-                            t.schema_for_model(
-                                lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                            ),
-                        ]
-                    ]
+                    MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )
         )
         violations_skipped: Annotated[
-            MutableSequence[
-                Annotated[
-                    p.Infra.CensusViolation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                    ),
-                ]
-            ],
+            MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation],
             m.Field(
                 description="Skipped violations (not auto-fixable)",
             ),
         ] = m.Field(
             default_factory=u.empty(
                 t.TypeForm(
-                    MutableSequence[
-                        Annotated[
-                            p.Infra.CensusViolation,
-                            t.schema_for_model(
-                                lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                            ),
-                        ]
-                    ]
+                    MutableSequence[FlextInfraModelsCodegenScaffold.CensusViolation]
                 )
             )
         )
@@ -109,14 +81,7 @@ class FlextInfraModelsCodegenFix:
             m.Field(description="Total files reverted"),
         ] = 0
         files: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.ConsolidatorFileResult,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCodegenFix.ConsolidatorFileResult
-                    ),
-                ]
-            ],
+            Sequence[FlextInfraModelsCodegenFix.ConsolidatorFileResult],
             m.Field(description="Per-file processing results"),
         ] = m.Field(default_factory=tuple)
 
@@ -245,23 +210,13 @@ class FlextInfraModelsCodegenFix:
         """
 
         violations_fixed: MutableSequence[
-            Annotated[
-                p.Infra.CensusViolation,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                ),
-            ]
+            FlextInfraModelsCodegenScaffold.CensusViolation
         ] = m.Field(
             default_factory=list,
             description="List of violations that were fixed",
         )
         violations_skipped: MutableSequence[
-            Annotated[
-                p.Infra.CensusViolation,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodegenScaffold.CensusViolation
-                ),
-            ]
+            FlextInfraModelsCodegenScaffold.CensusViolation
         ] = m.Field(
             default_factory=list,
             description="List of violations that were skipped",

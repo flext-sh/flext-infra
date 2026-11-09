@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import (
     FlextInfraModelsGitLaneInputs,
     FlextInfraModelsGitLaneOwnership,
@@ -56,7 +56,7 @@ class FlextInfraModelsGit(
             None, exclude=True, description="Private native config value for projection"
         )
         process: Annotated[
-            Annotated[m.Cli.ProcessOutcome],
+            m.Cli.ProcessOutcome,
             m.Field(description="Original native query outcome"),
         ]
 
@@ -83,12 +83,7 @@ class FlextInfraModelsGit(
         ]
         observations: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitSigningConfigObservation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGit.GitSigningConfigObservation
-                    ),
-                ],
+                FlextInfraModelsGit.GitSigningConfigObservation,
                 ...,
             ],
             m.Field(
@@ -106,12 +101,7 @@ class FlextInfraModelsGit(
         ]
         pull_requests: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitLanePullRequest,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitLaneInputs.GitLanePullRequest
-                    ),
-                ],
+                FlextInfraModelsGitLaneInputs.GitLanePullRequest,
                 ...,
             ]
             | None,
@@ -119,12 +109,7 @@ class FlextInfraModelsGit(
         ] = None
         beads: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitLaneBead,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitLaneOwnership.GitLaneBead
-                    ),
-                ],
+                FlextInfraModelsGitLaneOwnership.GitLaneBead,
                 ...,
             ]
             | None,
@@ -153,12 +138,7 @@ class FlextInfraModelsGit(
         ] = ()
         violations: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitLaneViolation,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitLaneInputs.GitLaneViolation
-                    ),
-                ],
+                FlextInfraModelsGitLaneInputs.GitLaneViolation,
                 ...,
             ],
             m.Field(description="Classified violations from the single evaluator"),
@@ -174,12 +154,7 @@ class FlextInfraModelsGit(
         ] = ()
         refs: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.GitLaneRef,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsGitLaneInputs.GitLaneRef
-                    ),
-                ],
+                FlextInfraModelsGitLaneInputs.GitLaneRef,
                 ...,
             ],
             m.Field(description="All observed local and configured remote references"),
@@ -397,13 +372,7 @@ class FlextInfraModelsGit(
             t.NonEmptyStr | None, m.Field(description="Previously observed tip")
         ] = None
         ownership: Annotated[
-            Annotated[
-                p.Infra.GitLaneOwnershipReceipt,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
             m.Field(
                 description="Required integrated preservation receipt for creation"
             ),
@@ -571,13 +540,7 @@ class FlextInfraModelsGit(
         ]
         body_file: Annotated[Path, m.Field(description="Pull-request body file")]
         ownership: Annotated[
-            Annotated[
-                p.Infra.GitLaneOwnershipReceipt,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
             m.Field(
                 description="Live retained and integrated prior owned repository state"
             ),

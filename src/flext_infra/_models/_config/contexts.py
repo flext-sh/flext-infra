@@ -49,12 +49,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ] = None
         workspace_repositories: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.RepositoryRef,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigRepository.RepositoryRef
-                    ),
-                ],
+                FlextInfraModelsConfigRepository.RepositoryRef,
                 ...,
             ],
             m.Field(description="Ordered workspace subproject records"),
@@ -148,12 +143,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Configured uv installation link mode"),
         ]
         toolchain: Annotated[
-            Annotated[
-                p.Infra.ToolchainSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContract.ToolchainSpec
-                ),
-            ],
+            FlextInfraModelsConfigContract.ToolchainSpec,
             m.Field(description="Canonical toolchain consumed by native bootstrap"),
         ]
         mise_selector: Annotated[
@@ -224,23 +214,12 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-specific public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            Annotated[
-                p.Infra.ScriptDispatchSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.ScriptDispatchSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
         verb_groups: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeVerbGroupSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeVerbGroupSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeVerbGroupSpec,
                 ...,
             ],
             m.Field(description="Ordered `make help` sections; empty is flat"),
@@ -323,12 +302,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(gt=0, description="Forced-termination grace period"),
         ]
         tooling_runtime: Annotated[
-            Annotated[
-                p.Infra.ToolingRuntimeContext,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
         ]
 
@@ -373,13 +347,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Repository-specific additional public Make verbs"),
         ] = ()
         script_dispatch: Annotated[
-            Annotated[
-                p.Infra.ScriptDispatchSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.ScriptDispatchSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
         workspace_cli_group: Annotated[
@@ -399,12 +367,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             description="Selected repository Make profile"
         )
         uv_link_mode: t.NonEmptyStr = m.Field(description="Declared UV link mode")
-        tooling_runtime: Annotated[
-            p.Infra.ToolingRuntimeContext,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext
-            ),
-        ] = m.Field(
+        tooling_runtime: FlextInfraModelsDepsToolConfig.ToolingRuntimeContext = m.Field(
             description="Resolved tooling document required by project metadata"
         )
 
@@ -419,12 +382,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Derived uv editable-build cache-key files"),
         ] = ()
         docs_audit: Annotated[
-            Annotated[
-                p.Infra.DocsAuditOverridesSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContract.DocsAuditOverridesSpec
-                ),
-            ],
+            FlextInfraModelsConfigContract.DocsAuditOverridesSpec,
             m.Field(
                 description="Repository-owned documentation audit declarations",
             ),
@@ -442,13 +400,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             ),
         ] = ()
         workspace_integration: Annotated[
-            Annotated[
-                p.Infra.WorkspaceIntegrationSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigRepository.WorkspaceIntegrationSpec | None,
             m.Field(
                 description=(
                     "Declared integration provider and branch written into the "
@@ -467,14 +419,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ]
         gitignore_sections: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ScaffoldGitignoreSectionSpec,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec
-                        )
-                    ),
-                ],
+                (FlextInfraModelsConfigScaffold.ScaffoldGitignoreSectionSpec),
                 ...,
             ],
             m.Field(
@@ -493,12 +438,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Development policy composed for the target's kind"),
         ]
         tooling: Annotated[
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Canonical validated tooling policy"),
         ]
         environment_path_prepends: Annotated[
@@ -506,13 +446,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             m.Field(description="Configured read-only PATH additions for direnv"),
         ] = ()
         beads: Annotated[
-            Annotated[
-                p.Infra.BeadsProjectSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigBeads.BeadsProjectSpec
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigBeads.BeadsProjectSpec | None,
             m.Field(description="Repository-local Beads identity when enabled"),
         ] = None
         ownership_command_prefix: Annotated[
@@ -620,12 +554,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
         ]
         console_scripts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ConsoleScriptSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigRepository.ConsoleScriptSpec
-                    ),
-                ],
+                FlextInfraModelsConfigRepository.ConsoleScriptSpec,
                 ...,
             ],
             m.Field(

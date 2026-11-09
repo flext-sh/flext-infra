@@ -64,7 +64,7 @@ class FlextInfraModelsTransformers:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Descriptor-authenticated file state before migration"),
         ]
         desired_content: Annotated[

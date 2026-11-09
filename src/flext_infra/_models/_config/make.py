@@ -302,12 +302,7 @@ class FlextInfraModelsConfigMake(
         ]
         requires: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeWorkflowRequirementSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeWorkflowRequirementSpec,
                 ...,
             ],
             m.Field(
@@ -589,24 +584,14 @@ class FlextInfraModelsConfigMake(
         ] = False
         workflow: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeWorkflowStepSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeWorkflowStepSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeWorkflowStepSpec,
                 ...,
             ],
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         lifecycle_steps: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeLifecycleStepSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeLifecycleStepSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeLifecycleStepSpec,
                 ...,
             ],
             m.Field(
@@ -950,12 +935,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         testmon_cache_policy: Annotated[
-            Annotated[
-                p.Infra.TestmonCachePolicySpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMake.TestmonCachePolicySpec
-                ),
-            ],
+            FlextInfraModelsConfigMake.TestmonCachePolicySpec,
             m.Field(
                 description=(
                     "Declarative save/budget/quota policy for the shared"
@@ -1042,12 +1022,7 @@ class FlextInfraModelsConfigMake(
             ),
         ]
         clean: Annotated[
-            Annotated[
-                p.Infra.MakeCleanSpec,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMakeClean.MakeCleanSpec
-                ),
-            ],
+            FlextInfraModelsConfigMakeClean.MakeCleanSpec,
             m.Field(description="Disposable artifacts removed by the clean verb"),
         ]
         docs: Annotated[
@@ -1059,34 +1034,19 @@ class FlextInfraModelsConfigMake(
         """Complete generated Makefile public and extension contract."""
 
         custom_handler_policy: Annotated[
-            Annotated[
-                p.Infra.CustomHandlerPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
-                ),
-            ],
+            FlextInfraModelsConfigMake.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[
                 t.NonEmptyStr,
-                Annotated[
-                    p.Infra.CustomHandlerPolicyOverride,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.CustomHandlerPolicyOverride
-                    ),
-                ],
+                FlextInfraModelsConfigMake.CustomHandlerPolicyOverride,
             ],
             m.Field(description="Per-profile overrides of the custom handler policy"),
         ]
         project_check_gates: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MakeProjectCheckGateSpec,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsConfigMake.MakeProjectCheckGateSpec
-                    ),
-                ],
+                FlextInfraModelsConfigMake.MakeProjectCheckGateSpec,
                 ...,
             ],
             m.Field(
@@ -1552,12 +1512,7 @@ class FlextInfraModelsConfigMake(
             self,
         ) -> Mapping[
             str,
-            Annotated[
-                p.Infra.CustomHandlerPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigMake.CustomHandlerPolicy
-                ),
-            ],
+            FlextInfraModelsConfigMake.CustomHandlerPolicy,
         ]:
             """Effective custom-handler policy for every Make profile.
 

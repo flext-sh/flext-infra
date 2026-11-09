@@ -29,7 +29,7 @@ class TestsFlextInfraMisePinBootstrap:
         """Declared bootstrap inputs passed through the real template consumer."""
 
         toolchain: Annotated[
-            Annotated[m.Infra.ToolchainSpec],
+            m.Infra.ToolchainSpec,
             m.Field(description="Original declared toolchain"),
         ]
         make: Annotated[

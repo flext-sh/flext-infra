@@ -12,7 +12,7 @@ from typing import Annotated, Literal, Self
 
 from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 from flext_infra._models._config import (
     FlextInfraModelsConfigArtifact,
@@ -54,21 +54,11 @@ class FlextInfraModelsDocsGeneration:
 
         title: t.NonEmptyStr = m.Field(description="Owning workspace title")
         projects: tuple[
-            Annotated[
-                p.Infra.DocsCatalogEntry,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsGeneration.DocsCatalogEntry
-                ),
-            ],
+            FlextInfraModelsDocsGeneration.DocsCatalogEntry,
             ...,
         ] = m.Field(description="Generated first-party project references")
         dependencies: tuple[
-            Annotated[
-                p.Infra.DocsDependencyReference,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDocsGeneration.DocsDependencyReference
-                ),
-            ],
+            FlextInfraModelsDocsGeneration.DocsDependencyReference,
             ...,
         ] = m.Field(description="Official external documentation references")
 
@@ -91,12 +81,7 @@ class FlextInfraModelsDocsGeneration:
         """Documentation scope targeting a project or workspace root."""
 
         declared_files: tuple[
-            Annotated[
-                p.Infra.CodegenFilePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.CodegenFilePlan,
             ...,
         ] = m.Field(
             default=(),
@@ -122,13 +107,7 @@ class FlextInfraModelsDocsGeneration:
         )
 
         governance_source: (
-            Annotated[
-                p.Infra.CodegenBootstrapSource,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigWorkspace.CodegenBootstrapSource
-                ),
-            ]
-            | None
+            FlextInfraModelsConfigWorkspace.CodegenBootstrapSource | None
         ) = m.Field(
             default=None, description="Captured source and ref owning governance links"
         )
@@ -257,12 +236,7 @@ class FlextInfraModelsDocsGeneration:
         ]
         artifacts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.DocsRenderedArtifact,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDocsGeneration.DocsRenderedArtifact
-                    ),
-                ],
+                FlextInfraModelsDocsGeneration.DocsRenderedArtifact,
                 ...,
             ],
             m.Field(description="Complete ordered desired artifact inventory"),
@@ -273,23 +247,13 @@ class FlextInfraModelsDocsGeneration:
 
         scopes: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.DocsScopeArtifacts,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDocsGeneration.DocsScopeArtifacts
-                    ),
-                ],
+                FlextInfraModelsDocsGeneration.DocsScopeArtifacts,
                 ...,
             ],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
         metadata_files: tuple[
-            Annotated[
-                p.Infra.CodegenFilePlan,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigArtifact.CodegenFilePlan
-                ),
-            ],
+            FlextInfraModelsConfigArtifact.CodegenFilePlan,
             ...,
         ] = m.Field(default=(), description="Owned metadata published with this render")
         # The workspace root stays explicit: it may be excluded from `scopes`

@@ -70,17 +70,11 @@ class FlextInfraModelsWorkspace:
             min_length=1,
             description="Portable entrypoint, receiver and explicitly wired port roots",
         )
-        generator_reference: (
-            Annotated[
-                p.Infra.NativeImportReference,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.NativeImportReference
-                ),
-            ]
-            | None
-        ) = m.Field(
-            default=None,
-            description="Shared native epoch; cold authority carries none",
+        generator_reference: FlextInfraModelsWorkspace.NativeImportReference | None = (
+            m.Field(
+                default=None,
+                description="Shared native epoch; cold authority carries none",
+            )
         )
 
     class NativeCodeEvidence(m.Value):
@@ -176,41 +170,26 @@ class FlextInfraModelsWorkspace:
             ),
             description="Observed suppliers and physical declaration sources",
         )
-        evidence: MutableSequence[
-            Annotated[
-                p.Infra.NativeBindingEvidence,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
+        evidence: MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
+            m.Field(
+                default_factory=u.empty(
+                    contract_factory=lambda: TypeForm(
+                        MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
+                    ),
                 ),
-            ]
-        ] = m.Field(
-            default_factory=u.empty(
-                contract_factory=lambda: TypeForm(
-                    MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
-                ),
-            ),
-            validate_default=True,
-            description="Ordered native binding and executable observations",
+                validate_default=True,
+                description="Ordered native binding and executable observations",
+            )
         )
         evidence_index: MutableMapping[
             str,
-            Annotated[
-                p.Infra.NativeBindingEvidence,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
-                ),
-            ],
+            FlextInfraModelsWorkspace.NativeBindingEvidence,
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableMapping[
                         str,
-                        Annotated[
-                            p.Infra.NativeBindingEvidence,
-                            t.schema_for_model(
-                                lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
-                            ),
-                        ],
+                        FlextInfraModelsWorkspace.NativeBindingEvidence,
                     ]
                 )
             ),
@@ -390,12 +369,7 @@ class FlextInfraModelsWorkspace:
             description="Physical supplier and generated declaration origins",
         )
         bindings: tuple[
-            Annotated[
-                p.Infra.NativeBindingEvidence,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.NativeBindingEvidence
-                ),
-            ],
+            FlextInfraModelsWorkspace.NativeBindingEvidence,
             ...,
         ] = m.Field(description="Complete static native binding observations")
         executed_sources: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
@@ -407,12 +381,7 @@ class FlextInfraModelsWorkspace:
     class NativeImportReference(NativeImportObservation):
         """One loaded epoch authenticated against its cold physical source."""
 
-        source_authority: Annotated[
-            p.Infra.CodegenSourceAuthority,
-            t.schema_for_model(
-                lambda: FlextInfraModelsWorkspace.CodegenSourceAuthority
-            ),
-        ] = m.Field(
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority pinned by the capture call",
         )
         _native_birth: tuple[int, str] | None = m.PrivateAttr(default=None)
@@ -438,12 +407,7 @@ class FlextInfraModelsWorkspace:
         import_roots: tuple[Path, ...] = m.Field(
             description="Physical import roots carrying the elected producer sources",
         )
-        source_authority: Annotated[
-            p.Infra.CodegenSourceAuthority,
-            t.schema_for_model(
-                lambda: FlextInfraModelsWorkspace.CodegenSourceAuthority
-            ),
-        ] = m.Field(
+        source_authority: FlextInfraModelsWorkspace.CodegenSourceAuthority = m.Field(
             description="Cold authority for reference consumption, not publication",
         )
         inputs: tuple[t.Port[p.Cli.AtomicFileState], ...] = m.Field(
@@ -560,13 +524,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Shared native qualification evidence."),
         ] = ()
         runtime_context: Annotated[
-            Annotated[
-                p.Infra.WorkspaceRuntimeContext,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
-                ),
-            ]
-            | None,
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
             m.Field(description="Authenticated installed runtime association."),
         ] = None
         root: Annotated[Path, m.Field(description="Repository actually attempted.")]
@@ -639,12 +597,7 @@ class FlextInfraModelsWorkspace:
         ]
         receipts: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.WorkspaceOperationReceipt,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsWorkspace.WorkspaceOperationReceipt
-                    ),
-                ],
+                FlextInfraModelsWorkspace.WorkspaceOperationReceipt,
                 ...,
             ],
             m.Field(description="Original receipts in discovered order."),
@@ -686,13 +639,7 @@ class FlextInfraModelsWorkspace:
         ] = False
 
         declared_member: Annotated[
-            Annotated[
-                p.Infra.RepositoryRef,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfigContexts.RepositoryRef
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfigContexts.RepositoryRef | None,
             m.Field(
                 description="Catalog-declared member reference for this entry",
             ),
@@ -723,13 +670,7 @@ class FlextInfraModelsWorkspace:
 
         cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
         identity: Annotated[
-            Annotated[
-                p.Infra.GitIdentityReport,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsGitIdentity.GitIdentityReport
-                ),
-            ]
-            | None,
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
             m.Field(description="Observed Git identity, absent outside a repository"),
         ] = None
         workspace: Annotated[
@@ -737,13 +678,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Governed workspace contract when declared"),
         ] = None
         target: Annotated[
-            Annotated[
-                p.Infra.RepositoryConformTarget,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsConfig.RepositoryConformTarget
-                ),
-            ]
-            | None,
+            FlextInfraModelsConfig.RepositoryConformTarget | None,
             m.Field(description="Effective governed project properties"),
         ] = None
         governed: Annotated[
@@ -751,13 +686,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Whether repository-local FLEXT governance exists"),
         ] = False
         runtime: Annotated[
-            Annotated[
-                p.Infra.WorkspaceRuntimeContext,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.WorkspaceRuntimeContext
-                ),
-            ]
-            | None,
+            FlextInfraModelsWorkspace.WorkspaceRuntimeContext | None,
             m.Field(description="Physical environment and native resolver ownership"),
         ] = None
 
@@ -808,24 +737,16 @@ class FlextInfraModelsWorkspace:
         """
 
         dir_info: Annotated[
-            Annotated[
-                p.Infra.DirectUrlDirectoryInfo,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.DirectUrlDirectoryInfo
-                ),
-            ]
-            | None,
+            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo | None,
             m.Field(description="Directory metadata of a local install"),
         ] = None
         url: Annotated[
             t.NonEmptyStr,
             m.Field(description="Required PEP 610 origin URL"),
         ]
-        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = (
-            m.Field(
-                default=None,
-                description="Installed immutable VCS identity",
-            )
+        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = m.Field(
+            default=None,
+            description="Installed immutable VCS identity",
         )
 
     class LockedPackageSource(m.ExternalContractModel):
@@ -853,13 +774,7 @@ class FlextInfraModelsWorkspace:
             m.Field(description="Locked edge version when needed to disambiguate"),
         ] = None
         source: Annotated[
-            Annotated[
-                p.Infra.LockedPackageSource,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.LockedPackageSource
-                ),
-            ]
-            | None,
+            FlextInfraModelsWorkspace.LockedPackageSource | None,
             m.Field(description="Locked edge source when needed to disambiguate"),
         ] = None
         marker: Annotated[
@@ -878,22 +793,12 @@ class FlextInfraModelsWorkspace:
             t.NonEmptyStr, m.Field(description="Locked distribution version")
         ]
         source: Annotated[
-            Annotated[
-                p.Infra.LockedPackageSource,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.LockedPackageSource
-                ),
-            ],
+            FlextInfraModelsWorkspace.LockedPackageSource,
             m.Field(description="Locked source identity"),
         ]
         dependencies: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.LockedDependency,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsWorkspace.LockedDependency
-                    ),
-                ],
+                FlextInfraModelsWorkspace.LockedDependency,
                 ...,
             ],
             m.Field(description="Resolved package edges; absent for a leaf package"),
@@ -901,12 +806,7 @@ class FlextInfraModelsWorkspace:
         optional_dependencies: Mapping[
             str,
             tuple[
-                Annotated[
-                    p.Infra.LockedDependency,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsWorkspace.LockedDependency
-                    ),
-                ],
+                FlextInfraModelsWorkspace.LockedDependency,
                 ...,
             ],
         ] = m.Field(
@@ -922,12 +822,7 @@ class FlextInfraModelsWorkspace:
         dev_dependencies: Mapping[
             str,
             tuple[
-                Annotated[
-                    p.Infra.LockedDependency,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsWorkspace.LockedDependency
-                    ),
-                ],
+                FlextInfraModelsWorkspace.LockedDependency,
                 ...,
             ],
         ] = m.Field(
@@ -967,12 +862,7 @@ class FlextInfraModelsWorkspace:
 
         url: Annotated[t.NonEmptyStr, m.Field(description="Editable source URL")]
         dir_info: Annotated[
-            Annotated[
-                p.Infra.DirectUrlDirectoryInfo,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorkspace.DirectUrlDirectoryInfo
-                ),
-            ],
+            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo,
             m.Field(description="Editable directory metadata"),
         ]
 
@@ -1012,12 +902,7 @@ class FlextInfraModelsWorkspace:
         ]
         open_pull_requests: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.FleetPullRequest,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsWorkspace.FleetPullRequest
-                    ),
-                ],
+                FlextInfraModelsWorkspace.FleetPullRequest,
                 ...,
             ],
             m.Field(description="Open pull requests; empty when the query fails"),

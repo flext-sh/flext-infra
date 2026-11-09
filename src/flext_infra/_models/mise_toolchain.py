@@ -14,7 +14,7 @@ from typing import Annotated, Literal, Self
 
 from flext_core import c, m
 
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsMiseToolchainBase
 
 
@@ -50,12 +50,7 @@ class FlextInfraModelsMiseToolchain:
         """One native UV scoped override, never a global dependency override."""
 
         package: Annotated[
-            Annotated[
-                p.Infra.UvOverridePackage,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsMiseToolchain.UvOverridePackage
-                ),
-            ],
+            FlextInfraModelsMiseToolchain.UvOverridePackage,
             m.Field(description="Package selector owning this override's scope"),
         ]
         dependencies: Annotated[
@@ -358,13 +353,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = "scalar"
         http: Annotated[
-            Annotated[
-                p.Infra.MiseHttpToolOptions,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsMiseToolchain.MiseHttpToolOptions
-                ),
-            ]
-            | None,
+            FlextInfraModelsMiseToolchain.MiseHttpToolOptions | None,
             m.Field(
                 description="Native HTTP backend options for a declared source artifact"
             ),
@@ -380,13 +369,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType[str, str]({}))
         postinstall: Annotated[
-            Annotated[
-                p.Infra.MisePostinstallOptions,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsMiseToolchain.MisePostinstallOptions
-                ),
-            ]
-            | None,
+            FlextInfraModelsMiseToolchain.MisePostinstallOptions | None,
             m.Field(
                 description="Native source build or qualification after installation"
             ),
@@ -403,12 +386,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ] = True
         version_probe: Annotated[
-            Annotated[
-                p.Infra.MiseToolVersionProbe,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsMiseToolchain.MiseToolVersionProbe
-                ),
-            ],
+            FlextInfraModelsMiseToolchain.MiseToolVersionProbe,
             m.Field(
                 description=(
                     "Command whose output proves the provisioned version in "
@@ -439,14 +417,7 @@ class FlextInfraModelsMiseToolchain:
             ),
         ]
         declared: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.MiseToolEntry,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsMiseToolchain.MiseToolEntry
-                    ),
-                ]
-            ],
+            Sequence[FlextInfraModelsMiseToolchain.MiseToolEntry],
             m.Field(
                 description="All declared tool entries electable as probe owners.",
             ),
@@ -521,13 +492,7 @@ class FlextInfraModelsMiseToolchain:
         ]
         uv_override_dependencies: Annotated[
             tuple[
-                t.NonEmptyStr
-                | Annotated[
-                    p.Infra.UvScopedOverride,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsMiseToolchain.UvScopedOverride
-                    ),
-                ],
+                t.NonEmptyStr | FlextInfraModelsMiseToolchain.UvScopedOverride,
                 ...,
             ],
             m.Field(
@@ -640,12 +605,7 @@ class FlextInfraModelsMiseToolchain:
         ]
         tools: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MiseToolEntry,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsMiseToolchain.MiseToolEntry
-                    ),
-                ],
+                FlextInfraModelsMiseToolchain.MiseToolEntry,
                 ...,
             ],
             m.Field(

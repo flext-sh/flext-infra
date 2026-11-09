@@ -13,7 +13,7 @@ from typing import Annotated, Self
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfigProject
 
 
@@ -180,12 +180,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             strict=False,
             description="Exit statuses with which Ruff reports its findings.",
         )
-        lint: Annotated[
-            p.Infra.RuffLintConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig
-            ),
-        ] = m.Field(
+        lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
             description="Ruff lint configuration",
         )
 
@@ -256,12 +251,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         )
         overrides: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.MypyOverrideConfig,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig
-                    ),
-                ],
+                FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig,
                 ...,
             ],
             m.Field(description="Module scopes and justified native option pairs."),

@@ -10,7 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 
 
 class FlextInfraModelsEnforcementCatalog:
@@ -50,12 +50,7 @@ class FlextInfraModelsEnforcementCatalog:
 
         claims: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.EnforcementClaim,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsEnforcementCatalog.EnforcementClaim
-                    ),
-                ],
+                FlextInfraModelsEnforcementCatalog.EnforcementClaim,
                 ...,
             ],
             m.Field(min_length=1, description="Claims in owner declaration order"),

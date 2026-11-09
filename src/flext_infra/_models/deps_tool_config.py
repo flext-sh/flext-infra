@@ -88,12 +88,7 @@ class FlextInfraModelsDepsToolConfig(
         )
         stages: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.ModStageConfig,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDepsToolConfig.ModStageConfig
-                    ),
-                ],
+                FlextInfraModelsDepsToolConfig.ModStageConfig,
                 ...,
             ],
             m.Field(
@@ -304,12 +299,7 @@ class FlextInfraModelsDepsToolConfig(
         )
         parallel_worker_overrides: Mapping[
             str,
-            Annotated[
-                p.Infra.PytestWorkerCeiling,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.PytestWorkerCeiling
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.PytestWorkerCeiling,
         ] = m.Field(
             cast(Mapping[str, p.Infra.PytestWorkerCeiling], {}),
             alias="parallel-worker-overrides",
@@ -581,12 +571,7 @@ class FlextInfraModelsDepsToolConfig(
         """Markdown rules; artifact and exclusion declarations own file scope."""
 
         projected_blocks: tuple[
-            Annotated[
-                p.Infra.MarkdownProjectedBlock,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.MarkdownProjectedBlock,
             ...,
         ] = m.Field(
             alias="projected-blocks",
@@ -674,36 +659,16 @@ class FlextInfraModelsDepsToolConfig(
         markdown: FlextInfraModelsDepsToolConfig.MarkdownConfig = m.Field(
             description="Markdown lint settings",
         )
-        ruff: Annotated[
-            p.Infra.RuffConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.RuffConfig
-            ),
-        ] = m.Field(
+        ruff: FlextInfraModelsDepsToolConfigLinters.RuffConfig = m.Field(
             description="Ruff settings",
         )
-        mypy: Annotated[
-            p.Infra.MypyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigLinters.MypyConfig
-            ),
-        ] = m.Field(
+        mypy: FlextInfraModelsDepsToolConfigLinters.MypyConfig = m.Field(
             description="Mypy settings",
         )
-        pyright: Annotated[
-            p.Infra.PyrightConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig
-            ),
-        ] = m.Field(
+        pyright: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig = m.Field(
             description="Pyright settings",
         )
-        pyrefly: Annotated[
-            p.Infra.PyreflyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig
-            ),
-        ] = m.Field(
+        pyrefly: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig = m.Field(
             description="Pyrefly settings",
         )
         pytest: FlextInfraModelsDepsToolConfig.PytestConfig = m.Field(
@@ -910,24 +875,14 @@ class FlextInfraModelsDepsToolConfig(
             alias="lazy-init",
             description="Declarative lazy-init generation policy.",
         )
-        facade_members: Annotated[
-            p.Infra.FacadeMembersConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfig.FacadeMembersConfig
-            ),
-        ] = m.Field(
+        facade_members: FlextInfraModelsDepsToolConfig.FacadeMembersConfig = m.Field(
             alias="facade-members",
             description="Declarative single-owner policy for facade members.",
         )
         smells: FlextInfraModelsDepsToolConfig.SmellsConfig = m.Field(
             description="Repair guidance for qlty smell findings.",
         )
-        accessor_policy: Annotated[
-            p.Infra.AccessorPolicyConfig,
-            t.schema_for_model(
-                lambda: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig
-            ),
-        ] = m.Field(
+        accessor_policy: FlextInfraModelsDepsToolConfig.AccessorPolicyConfig = m.Field(
             alias="accessor-policy",
             description="Accessor naming policy of the accessor migration.",
         )
@@ -1215,12 +1170,7 @@ class FlextInfraModelsDepsToolConfig(
         """One elected tooling document and its publication preimages."""
 
         document: Annotated[
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ],
+            FlextInfraModelsDepsToolConfig.ToolConfigDocument,
             m.Field(description="Validated project-specific tooling configuration."),
         ]
         sources: Annotated[
@@ -1231,15 +1181,7 @@ class FlextInfraModelsDepsToolConfig(
     class ToolingRuntimeContext(m.ArbitraryTypesModel):
         """Resolved topology and native tool tables consumed by every template."""
 
-        document: (
-            Annotated[
-                p.Infra.ToolConfigDocument,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsDepsToolConfig.ToolConfigDocument
-                ),
-            ]
-            | None
-        ) = m.Field(
+        document: FlextInfraModelsDepsToolConfig.ToolConfigDocument | None = m.Field(
             None,
             exclude=True,
             description="The elected tooling policy shared by every render context.",

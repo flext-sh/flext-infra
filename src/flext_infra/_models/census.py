@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsMixins,
@@ -406,24 +406,14 @@ class FlextInfraModelsCensus:
         ]
         copies: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.DuplicateCopyCure,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsCensus.DuplicateCopyCure
-                    ),
-                ],
+                FlextInfraModelsCensus.DuplicateCopyCure,
                 ...,
             ],
             m.Field(description="Copies with proven removal contracts"),
         ]
         edits: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.SemanticMigrationEdit,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
-                    ),
-                ],
+                FlextInfraModelsTransformers.SemanticMigrationEdit,
                 ...,
             ],
             m.Field(description="Complete proposed source edits"),
@@ -447,10 +437,8 @@ class FlextInfraModelsCensus:
             m.Field(description="Shared object name across projects"),
         ]
         kind: Annotated[str, m.Field(description="Object kind")]
-        definitions: MutableSequence[FlextInfraModelsCensus.Object] = (
-            m.Field(
-                description="All definitions of this object",
-            )
+        definitions: MutableSequence[FlextInfraModelsCensus.Object] = m.Field(
+            description="All definitions of this object",
         )
         canonical: Annotated[
             str,
@@ -544,12 +532,7 @@ class FlextInfraModelsCensus:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         edits: tuple[
-            Annotated[
-                p.Infra.SemanticMigrationEdit,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsTransformers.SemanticMigrationEdit
-                ),
-            ],
+            FlextInfraModelsTransformers.SemanticMigrationEdit,
             ...,
         ] = m.Field(default_factory=tuple, description="Applied source rewrites")
         plans: tuple[

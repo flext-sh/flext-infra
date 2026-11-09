@@ -144,7 +144,7 @@ class FlextInfraModelsScan:
             m.Field(description="Writable authority for the finding source"),
         ] = "authored"
         source_state: Annotated[
-            Annotated[m.Cli.AtomicFileState] | None,
+            m.Cli.AtomicFileState | None,
             m.Field(
                 exclude=True,
                 description="Live source snapshot; evidence stores its input once",
@@ -167,11 +167,11 @@ class FlextInfraModelsScan:
             c.Infra.ModScanFindingClass,
             m.Field(description="Rule mutability and byte-change classification"),
         ]
-        replacement_offsets: (
-            FlextInfraModelsScan.ModReplacementOffsets | None
-        ) = m.Field(
-            default=None,
-            description="Native byte span for the proposed replacement",
+        replacement_offsets: FlextInfraModelsScan.ModReplacementOffsets | None = (
+            m.Field(
+                default=None,
+                description="Native byte span for the proposed replacement",
+            )
         )
 
     class ModScanFinding(ModOccurrence):
@@ -506,12 +506,7 @@ class FlextInfraModelsScan:
             ),
         ]
         inputs: Annotated[
-            Annotated[
-                p.Infra.CodemodBindingSnapshot,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsCodemod.CodemodBindingSnapshot
-                ),
-            ],
+            FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
         native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(

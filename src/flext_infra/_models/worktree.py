@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
 
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraModelsWorktree:
@@ -117,12 +117,7 @@ class FlextInfraModelsWorktree:
             m.Field(description="Repository roots whose registry is scanned"),
         ]
         policy: Annotated[
-            Annotated[
-                p.Infra.WorktreeFactsPolicy,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsWorktree.WorktreeFactsPolicy
-                ),
-            ],
+            FlextInfraModelsWorktree.WorktreeFactsPolicy,
             m.Field(description="Layout and dependency vocabulary to apply"),
         ]
         now: Annotated[float, m.Field(description="Current epoch seconds")]

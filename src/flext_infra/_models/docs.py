@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import (
     FlextInfraModelsBase,
     FlextInfraModelsDocsCollection,
@@ -238,14 +238,7 @@ class FlextInfraModelsDocs(
         """Context of the generated workspace module-page index."""
 
         entries: Annotated[
-            Sequence[
-                Annotated[
-                    p.Infra.DocsProjectIndexEntry,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsDocs.DocsProjectIndexEntry
-                    ),
-                ],
-            ],
+            Sequence[FlextInfraModelsDocs.DocsProjectIndexEntry,],
             m.Field(description="Per-project module page counts"),
         ]
 
@@ -357,14 +350,14 @@ class FlextInfraModelsDocs(
 
         file: Annotated[str, m.Field(description="File path relative to scope")]
         issue_type: Annotated[str, m.Field(description="Issue category")]
-        severity: Annom.ProjectMetadata
+        severity: Annotated[str, m.Field(description="Audit issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
     class DocsPublicContract(FlextInfraModelsBase.FrozenArbitrary):
         """Exact project/config objects plus derived public API analysis."""
 
         metadata: Annotated[
-            Annotated[m.ProjectMetadata],
+            m.ProjectMetadata,
             m.Field(description="Exact canonical project metadata model"),
         ]
         repository: Annotated[

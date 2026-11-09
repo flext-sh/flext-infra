@@ -251,7 +251,7 @@ class FlextInfraModelsBase:
             m.Field(description="Diagnostic lines reported by the lint tool"),
         ] = m.Field(default_factory=tuple)
         output: Annotated[
-            Annotated[m.Cli.CommandOutput] | None,
+            m.Cli.CommandOutput | None,
             m.Field(
                 description="Original native streams, duration and process outcome"
             ),

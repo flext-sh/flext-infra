@@ -13,7 +13,7 @@ from typing import Annotated, ClassVar, Self
 from flext_cli import m, u
 from typing_extensions import TypeForm
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
 
 
@@ -37,35 +37,14 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         ]
         authorization: Annotated[
             (
-                Annotated[
-                    p.Infra.TrackerAuthorization,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization
-                        )
-                    ),
-                ]
-                | Annotated[
-                    p.Infra.OperatorAuthorization,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization
-                        )
-                    ),
-                ]
+                (FlextInfraModelsDepsToolConfigLinters.TrackerAuthorization)
+                | (FlextInfraModelsDepsToolConfigLinters.OperatorAuthorization)
             ),
             m.Field(description="Tracker key or verbatim operator approval."),
         ]
         changes: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.DiagnosticRuleChange,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange
-                        )
-                    ),
-                ],
+                (FlextInfraModelsDepsToolConfigLinters.DiagnosticRuleChange),
                 ...,
             ],
             m.Field(
@@ -179,14 +158,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             )
             diagnostic_path_exceptions: tuple[
-                Annotated[
-                    p.Infra.DiagnosticPathException,
-                    t.schema_for_model(
-                        lambda: (
-                            FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException
-                        )
-                    ),
-                ],
+                (FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException),
                 ...,
             ] = m.Field(
                 (),

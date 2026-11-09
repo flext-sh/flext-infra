@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
 
 
@@ -177,24 +177,14 @@ class FlextInfraModelsRefactorGrep:
         ]
         rules: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CodemodRule,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactorGrep.CodemodRule
-                    ),
-                ],
+                FlextInfraModelsRefactorGrep.CodemodRule,
                 ...,
             ],
             m.Field(description="Unique semantic rules with their elected owner"),
         ]
         rulesets: Annotated[
             tuple[
-                Annotated[
-                    p.Infra.CodemodRuleset,
-                    t.schema_for_model(
-                        lambda: FlextInfraModelsRefactorGrep.CodemodRuleset
-                    ),
-                ],
+                FlextInfraModelsRefactorGrep.CodemodRuleset,
                 ...,
             ],
             m.Field(description="Executable provider configs in precedence order"),
@@ -412,24 +402,14 @@ class FlextInfraModelsRefactorGrep:
             description="Selected lint tools used for preview rendering",
         )
         automated_changes: tuple[
-            Annotated[
-                p.Infra.AccessorMigrationChange,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
-                ),
-            ],
+            FlextInfraModelsRefactorGrep.AccessorMigrationChange,
             ...,
         ] = m.Field(
             default_factory=tuple,
             description="Automated rewrites captured for this file",
         )
         warnings: tuple[
-            Annotated[
-                p.Infra.AccessorMigrationChange,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationChange
-                ),
-            ],
+            FlextInfraModelsRefactorGrep.AccessorMigrationChange,
             ...,
         ] = m.Field(
             default_factory=tuple,
@@ -496,12 +476,7 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Per-tool count of newly introduced lint lines"),
         ]
         files: tuple[
-            Annotated[
-                p.Infra.AccessorMigrationFile,
-                t.schema_for_model(
-                    lambda: FlextInfraModelsRefactorGrep.AccessorMigrationFile
-                ),
-            ],
+            FlextInfraModelsRefactorGrep.AccessorMigrationFile,
             ...,
         ] = m.Field(
             default_factory=tuple,
