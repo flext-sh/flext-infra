@@ -193,7 +193,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._prepare_ordering()
             if isinstance(qualified, m.Infra.SourceClassReference):
                 return self._source_class_binding(qualified)
-            receiver, _, member = qualified.rpartition(".")
+            text = str(qualified)
+            receiver, _, member = text.rpartition(".")
             identity = self._resolve(self._root_reference(receiver))
             for ancestor in self._linearize(identity):
                 binding = self._declared_member_binding(ancestor, member)
@@ -2276,33 +2277,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 attributes=tuple(parts[index:]),
                 qualified_base=root,
             )
-
-    @classmethod
-    def runtime_bases(
-        cls,
-        project: p.Infra.RopeProject,
-        sources: Mapping[str, tuple[Path, str]],
-        roots: Sequence[str],
-        extra_module_aliases: Mapping[str, str] | None = None,
-    ) -> t.StrTuple:
-        """Resolve owned classes in C3 order and external classes through Rope.
-
-        Only configured roots mark model evaluation boundaries. No first-party
-        module is imported or resolved from disk when its planned source exists.
-        Provider reexports follow Rope's declared import provenance. Their source
-        declarations, not Rope's possibly incomplete superclass inference, supply
-        the ordered bases. Missing references and invalid inheritance fail loudly.
-
-        Returns:
-            Sorted configured roots and derived Ruff-qualified base expressions.
-
-        """
-        return cls._RuntimeBaseResolver(
-            project,
-            sources,
-            roots,
-            extra_module_aliases,
-        ).run()
 
     @classmethod
     def source_class_order(

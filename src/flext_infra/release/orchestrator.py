@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import Annotated, cast, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._conform import FlextInfraCodegenConformExecute
@@ -162,7 +162,7 @@ class FlextInfraReleaseOrchestrator(
                 root=root,
                 scope=c.Infra.CodegenConformScope.ALL,
             ),
-            execution_context=self,
+            execution_context=cast(p.Infra.CodegenExecutionContext, self),
         )
         if settled.failure:
             return r[bool].from_failure(settled)

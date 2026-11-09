@@ -515,20 +515,6 @@ class TestsFlextInfraCodegenConform:
         tm.ok((root / "config" / "beads.yaml").is_file())
         tm.ok((root / c.PYPROJECT_FILENAME).is_file())
         tm.ok((root / ".env.example").is_file())
-        ruff_lint = config.Infra.tooling.tools.ruff.lint
-        runtime_roots = ruff_lint.flake8_type_checking.runtime_evaluated_roots
-        rendered_runtime_bases = u.Tests.toml_strings_at(
-            (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
-            "tool",
-            "ruff",
-            "lint",
-            "flake8-type-checking",
-            "runtime-evaluated-base-classes",
-        )
-        tm.that(
-            tuple(rendered_runtime_bases),
-            eq=u.Infra.runtime_evaluated_base_classes(root, {}, runtime_roots),
-        )
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part

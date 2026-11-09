@@ -11,6 +11,7 @@ import keyword
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from textwrap import dedent, indent
+from typing import cast
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -184,7 +185,7 @@ class FlextInfraUtilitiesSemanticDeclarationRelocation(
                         project,
                         working,
                         (path, candidate[1], candidate[2]),
-                        resolved,
+                        cast(tuple[Path, str, str], resolved),
                     )
                     # Subsequent candidates bind to the proposed graph and coordinates.
                     project.close()
