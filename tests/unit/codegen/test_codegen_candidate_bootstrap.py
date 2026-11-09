@@ -284,31 +284,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
 
     @staticmethod
-    def _write_runtime_probe(candidate: Path) -> Sequence[str]:
-        """Declare importable descendants of the configured runtime roots.
-
-        Returns:
-            Configured roots exercised by the probe package.
-
-        """
-        policy = config.Infra.tooling.tools.ruff.lint.flake8_type_checking
-        roots = policy.runtime_evaluated_roots
-        source = "\n".join(
-            f"import {module} as provider{index}\n\n"
-            f"class BootstrapProbe{index}(provider{index}.{base}):\n    pass\n"
-            f"class BootstrapConsumer{index}(BootstrapProbe{index}):\n    pass\n"
-            for index, (module, _, base) in enumerate(
-                root.rpartition(".") for root in roots
-            )
-        )
-        if not roots:
-            source = "class BootstrapProbe:\n    pass\n"
-        probe = candidate / "src" / "bootstrap_probe" / "models.py"
-        probe.parent.mkdir(parents=True, exist_ok=True)
-        tm.ok(u.Cli.atomic_write_text_file(probe, source))
-        return roots
-
-    @staticmethod
     def test_current_repository_is_a_valid_relative_bootstrap_target() -> None:
         """Self recovery remains relative while invalid path inputs fail."""
         target = m.Infra.CandidateBootstrapTargetSpec.model_validate({

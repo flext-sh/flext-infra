@@ -6,7 +6,7 @@ valid:
       return entry
 - |
   from flext_core import m, t
-  def build(model: type[m.Ldif.Entry]) -> t.ModelClass[m.Ldif.Entry]:
+  def build(model: type[p.Ldif.Entry]) -> t.ModelClass[p.Ldif.Entry]:
       return model
 - |
   from flext_core import m
@@ -23,12 +23,12 @@ valid:
 invalid:
 - |
   from flext_core import m
-  def load(entry: m.Ldif.Entry) -> m.Ldif.Entry:
+  def load(entry: m.Ldif.Entry) -> p.Ldif.Entry:
       return entry
 - |
   from flext_core import m
-  def collect(entries: list[m.Ldif.Entry] | None) -> None:
-      kept: tuple[m.Ldif.Entry, ...] = ()
+  def collect(entries: list[p.Ldif.Entry] | None) -> None:
+      kept: tuple[p.Ldif.Entry, ...] = ()
 - |
   from flext_ldif import FlextLdifModels
   def stats(entry: FlextLdifModels.Ldif.Entry) -> None:

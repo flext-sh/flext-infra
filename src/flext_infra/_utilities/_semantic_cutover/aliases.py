@@ -483,7 +483,7 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         if not qualified_aliases:
             return None
         FlextInfraUtilitiesCompatibilityAliasValidation.require_static_compatibility_alias_exports(
-            tree, path, frozenset(local_aliases)
+            source, path, frozenset(local_aliases)
         )
         upstream_aliases, preserved_reads = cls._upstream_alias_reads(
             tree, local_aliases, source
