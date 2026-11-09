@@ -435,7 +435,7 @@ class FlextInfraModelsCheck:
             description="Native process/report verdict, independent of findings policy",
         )
         process: Annotated[
-            Annotated[m.Cli.ProcessOutcome] | None,
+            m.Cli.ProcessOutcome | None,
             m.Field(description="Original native process, when this gate invoked one"),
         ] = None
         components: Annotated[

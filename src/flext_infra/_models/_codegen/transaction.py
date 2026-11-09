@@ -138,7 +138,7 @@ class FlextInfraModelsCodegenTransaction:
             ...,
         ] = m.Field(default=(), description="Authenticated candidate file declarations")
         inputs: tuple[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             ...,
         ] = m.Field(
             default=(),
@@ -199,7 +199,7 @@ class FlextInfraModelsCodegenTransaction:
             description="Discovered project roots covering the pinned source closure"
         )
         inputs: tuple[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             ...,
         ] = m.Field(description="Exact source and configuration observations")
         updates: Mapping[Path, str | None] = m.Field(

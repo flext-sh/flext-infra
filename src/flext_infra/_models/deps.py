@@ -87,7 +87,7 @@ class FlextInfraModelsDeps(
     class ProjectMetadataState(m.ArbitraryTypesModel):
         """One TOML ingress retaining metadata and its native packaging declaration."""
 
-        source: Annotated[m.Cli.AtomicFileState] = m.Field(
+        source: m.Cli.AtomicFileState = m.Field(
             exclude=True, description="Original TOML observation parsed here"
         )
         metadata: Annotated[
@@ -137,7 +137,7 @@ class FlextInfraModelsDeps(
         target_root: Annotated[Path, m.Field(description="Selected repository root")]
         python: Annotated[Path, m.Field(description="Elected consumer interpreter")]
         lock: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Captured native UV lock of the selected runtime"),
         ]
         providers: Annotated[
@@ -194,7 +194,7 @@ class FlextInfraModelsDeps(
             ),
         ]
         before: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(
                 description="Authenticated pyproject state consumed by native deptry"
             ),
@@ -330,7 +330,7 @@ class FlextInfraModelsDeps(
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(validate_default=False)
 
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
-        before: Annotated[m.Cli.AtomicFileState] | None = m.Field(
+        before: m.Cli.AtomicFileState | None = m.Field(
             None,
             exclude=True,
             description="Original physical read; absent for pure source rendering",

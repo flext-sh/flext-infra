@@ -66,7 +66,7 @@ class FlextInfraModelsRefactor(
         )
         originals: MutableMapping[
             Path,
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
         ] = m.Field(description="Complete original dependency closure")
         modes: MutableMapping[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
@@ -550,7 +550,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Whether Make was invoked"),
         ] = True
         outcome: Annotated[
-            Annotated[m.Cli.ProcessOutcome] | None,
+            m.Cli.ProcessOutcome | None,
             m.Field(description="Original process exit, timeout and signal state"),
         ]
         error: Annotated[

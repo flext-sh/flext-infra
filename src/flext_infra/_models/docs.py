@@ -357,14 +357,14 @@ class FlextInfraModelsDocs(
 
         file: Annotated[str, m.Field(description="File path relative to scope")]
         issue_type: Annotated[str, m.Field(description="Issue category")]
-        severity: Annom.ProjectMetadata
+        severity: Annotated[str, m.Field(description="Audit issue severity")]
         message: Annotated[str, m.Field(description="Issue description")]
 
     class DocsPublicContract(FlextInfraModelsBase.FrozenArbitrary):
         """Exact project/config objects plus derived public API analysis."""
 
         metadata: Annotated[
-            Annotated[m.ProjectMetadata],
+            m.ProjectMetadata,
             m.Field(description="Exact canonical project metadata model"),
         ]
         repository: Annotated[

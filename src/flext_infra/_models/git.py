@@ -56,7 +56,7 @@ class FlextInfraModelsGit(
             None, exclude=True, description="Private native config value for projection"
         )
         process: Annotated[
-            Annotated[m.Cli.ProcessOutcome],
+            m.Cli.ProcessOutcome,
             m.Field(description="Original native query outcome"),
         ]
 

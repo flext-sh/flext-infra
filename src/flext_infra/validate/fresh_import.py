@@ -377,6 +377,8 @@ class FlextInfraValidateFreshImport(s[bool]):
             "from sys import modules\n"
             "from types import ModuleType\n"
             "from pydantic.warnings import UnsupportedFieldAttributeWarning\n"
+            "from typing import cast\n"
+            "from typing_extensions import TypeForm\n"
             "from flext_core import c, p, r, t, u\n"
             + getsource(FlextInfraWorkspaceEnvironmentProvenanceModuleSource)
             + "\nclass FlextInfraValidateFreshImport:\n"

@@ -144,7 +144,7 @@ class FlextInfraModelsScan:
             m.Field(description="Writable authority for the finding source"),
         ] = "authored"
         source_state: Annotated[
-            Annotated[m.Cli.AtomicFileState] | None,
+            m.Cli.AtomicFileState | None,
             m.Field(
                 exclude=True,
                 description="Live source snapshot; evidence stores its input once",

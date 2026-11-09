@@ -25,7 +25,7 @@ class FlextInfraModelsWorkspaceSnapshot:
 
         path: Annotated[Path, m.Field(description="Resolved file path")]
         state: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Authenticated state the run reads and publishes"),
         ]
         digest: Annotated[

@@ -151,7 +151,7 @@ class FlextInfraModelsCodegenToolchain:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
-            Annotated[m.Cli.AtomicFileState],
+            m.Cli.AtomicFileState,
             m.Field(description="Exact preflight state of the live configuration"),
         ]
         replacement_content: Annotated[
