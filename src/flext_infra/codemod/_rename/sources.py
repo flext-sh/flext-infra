@@ -83,11 +83,11 @@ class FlextInfraCodemodRenameSources:
         return FlextInfraStagedPackage.plan_sources(
             candidate.candidate.workspace,
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.candidate.workspaces,
-                modes=modes,
-                inputs=tuple(known.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.candidate.workspaces),
+                "modes": (modes),
+                "inputs": (tuple(known.values())),
+            }),
         ).map(
             lambda stage: m.Infra.SemanticSourcePlan(
                 candidate=stage, consumer_roots=candidate.consumer_roots

@@ -198,6 +198,8 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
+    MISE_CEILING_PATHS: ClassVar[str] = "MISE_CEILING_PATHS"
+    "Native Mise configuration discovery boundary for the selected owner."
     MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[Mapping[str, str]] = MappingProxyType({
         "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })

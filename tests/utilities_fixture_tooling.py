@@ -575,7 +575,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
     @staticmethod
     def copy_tracked_mise_seeds(root: Path, *, source_root: Path | None = None) -> None:
-        """Copy declared Mise inputs from this checkout or a native upgrade seed.
+        """Copy and trust Mise inputs from this checkout or a native upgrade seed.
 
         A governed repository carries the declaration and the dependency lock
         together. Native dependency graphs referenced by the lock must travel
@@ -593,6 +593,13 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
+        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
+        tm.ok(
+            u.Cli.run_checked(
+                (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),
+                cwd=root,
+            )
+        )
 
     @staticmethod
     def write_executable(path: Path, body: str) -> None:

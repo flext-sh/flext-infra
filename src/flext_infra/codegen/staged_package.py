@@ -46,12 +46,14 @@ class FlextInfraStagedPackage:
         validator: Callable[[Path, Mapping[Path, Path]], T],
         *,
         options: p.Infra.StageSourceOptions | None = None,
+        storage_root: Path | None = None,
     ) -> p.Result[T]:
         """Validate updates and retirements inside a candidate tree.
 
         The candidate tree lives beside the workspace's mutation lock, on the
         destination filesystem and outside the working tree, and is removed
-        once the validator returns.
+        once the validator returns. Nested validators retain the producer's
+        explicit storage root while reading their candidate workspace.
 
         Returns:
             The validator outcome, or the first planning or staging failure.
@@ -63,7 +65,9 @@ class FlextInfraStagedPackage:
             return r[T].from_failure(planned)
         plan = planned.value
         u.Cli.info(f"stage=source-preview-plan state=end inputs={len(plan.inputs)}")
-        lock = u.Infra.mutation_lock_path(plan.workspace)
+        lock = u.Infra.mutation_lock_path(
+            plan.workspace if storage_root is None else storage_root
+        )
         if lock.failure:
             return r[T].from_failure(lock)
         storage = u.Cli.ensure_dir(lock.value.parent)
@@ -372,33 +376,41 @@ class FlextInfraStagedPackage:
             and states[item.project_root / c.PYPROJECT_FILENAME].content is None
         )
         return r[p.Infra.StageSourcePlan].ok(
-            m.Infra.StageSourcePlan(
-                workspace=workspace,
-                roots=tuple(
-                    dict.fromkeys((
-                        workspace,
-                        *(item.project_root for item in selected),
-                    ))
-                ),
-                inputs=tuple(states.values()),
-                updates=MappingProxyType(dict(normalized)),
-                modes=MappingProxyType(dict(modes)),
-                declared_files=cls._declared_source_effects(
-                    workspace, normalized, states, modes, options.declared_files
-                ),
-                layouts=tuple(
-                    item for item in selected if item.project_root not in introduced
-                ),
-                workspace_packages=tuple(
-                    sorted(
-                        name
-                        for name, item in layouts.items()
-                        if item.project_root not in introduced
+            m.Infra.StageSourcePlan.model_validate({
+                "workspace": (workspace),
+                "roots": (
+                    tuple(
+                        dict.fromkeys((
+                            workspace,
+                            *(item.project_root for item in selected),
+                        ))
                     )
                 ),
-                candidate_layouts=tuple(selected),
-                candidate_workspace_packages=tuple(sorted(layouts)),
-            )
+                "inputs": (tuple(states.values())),
+                "updates": (MappingProxyType(dict(normalized))),
+                "modes": (MappingProxyType(dict(modes))),
+                "declared_files": (
+                    cls._declared_source_effects(
+                        workspace, normalized, states, modes, options.declared_files
+                    )
+                ),
+                "layouts": (
+                    tuple(
+                        item for item in selected if item.project_root not in introduced
+                    )
+                ),
+                "workspace_packages": (
+                    tuple(
+                        sorted(
+                            name
+                            for name, item in layouts.items()
+                            if item.project_root not in introduced
+                        )
+                    )
+                ),
+                "candidate_layouts": (tuple(selected)),
+                "candidate_workspace_packages": (tuple(sorted(layouts))),
+            })
         )
 
     @staticmethod
@@ -475,28 +487,32 @@ class FlextInfraStagedPackage:
                     for path, source in updates.items()
                     if path.is_relative_to(root)
                 },
-                options=m.Infra.StageSourceOptions(
-                    modes={
+                options=m.Infra.StageSourceOptions.model_validate({
+                    "modes": ({
                         path: mode
                         for path, mode in modes.items()
                         if path.is_relative_to(root)
-                    },
-                    declared_files=tuple(
-                        file
-                        for file in options.declared_files
-                        if file.path.is_relative_to(root)
+                    }),
+                    "declared_files": (
+                        tuple(
+                            file
+                            for file in options.declared_files
+                            if file.path.is_relative_to(root)
+                        )
                     ),
-                    inputs=tuple(
-                        state
-                        for state in options.inputs
-                        if state.path.is_relative_to(root)
+                    "inputs": (
+                        tuple(
+                            state
+                            for state in options.inputs
+                            if state.path.is_relative_to(root)
+                        )
                     ),
-                    import_edges={
+                    "import_edges": ({
                         path: edges
                         for path, edges in options.import_edges.items()
                         if path.is_relative_to(root)
-                    },
-                ),
+                    }),
+                }),
             )
             if planned.failure:
                 return result_type.from_failure(planned)
@@ -512,43 +528,57 @@ class FlextInfraStagedPackage:
                         f"ambiguous elected candidate package: {layout.package_name}"
                     )
         return result_type.ok(
-            m.Infra.StageSourcePlan(
-                workspace=Path(commonpath(plan.workspace for plan in plans)),
-                workspaces=scopes,
-                roots=tuple(
-                    dict.fromkeys(root for plan in plans for root in plan.roots)
+            m.Infra.StageSourcePlan.model_validate({
+                "workspace": (Path(commonpath(plan.workspace for plan in plans))),
+                "workspaces": (scopes),
+                "roots": (
+                    tuple(dict.fromkeys(root for plan in plans for root in plan.roots))
                 ),
-                inputs=tuple(
-                    {
-                        state.path: state for plan in plans for state in plan.inputs
-                    }.values()
+                "inputs": (
+                    tuple(
+                        {
+                            state.path: state for plan in plans for state in plan.inputs
+                        }.values()
+                    )
                 ),
-                updates=MappingProxyType({
-                    path: source
-                    for plan in plans
-                    for path, source in plan.updates.items()
-                }),
-                modes=MappingProxyType({
-                    path: mode for plan in plans for path, mode in plan.modes.items()
-                }),
-                declared_files=tuple(
-                    file for plan in plans for file in plan.declared_files
-                ),
-                layouts=tuple(layout for plan in plans for layout in plan.layouts),
-                workspace_packages=tuple(
-                    sorted({name for plan in plans for name in plan.workspace_packages})
-                ),
-                candidate_layouts=tuple(
-                    layout for plan in plans for layout in plan.candidate_layouts
-                ),
-                candidate_workspace_packages=tuple(
-                    sorted({
-                        name
+                "updates": (
+                    MappingProxyType({
+                        path: source
                         for plan in plans
-                        for name in plan.candidate_workspace_packages
+                        for path, source in plan.updates.items()
                     })
                 ),
-            )
+                "modes": (
+                    MappingProxyType({
+                        path: mode
+                        for plan in plans
+                        for path, mode in plan.modes.items()
+                    })
+                ),
+                "declared_files": (
+                    tuple(file for plan in plans for file in plan.declared_files)
+                ),
+                "layouts": (tuple(layout for plan in plans for layout in plan.layouts)),
+                "workspace_packages": (
+                    tuple(
+                        sorted({
+                            name for plan in plans for name in plan.workspace_packages
+                        })
+                    )
+                ),
+                "candidate_layouts": (
+                    tuple(layout for plan in plans for layout in plan.candidate_layouts)
+                ),
+                "candidate_workspace_packages": (
+                    tuple(
+                        sorted({
+                            name
+                            for plan in plans
+                            for name in plan.candidate_workspace_packages
+                        })
+                    )
+                ),
+            })
         )
 
     @classmethod

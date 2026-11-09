@@ -97,9 +97,10 @@ class TestsFlextInfraReleasePublicationLane:
             base=base,
             subject=self.SUBJECT,
             body_file=body,
-            ownership=m.Infra.GitLaneOwnershipReceipt(
-                checkpoint=checkpoint, publication=publication
-            ),
+            ownership=m.Infra.GitLaneOwnershipReceipt.model_validate({
+                "checkpoint": (checkpoint),
+                "publication": (publication),
+            }),
         )
         with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
             yield repo, request, gh_log

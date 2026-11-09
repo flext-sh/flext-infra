@@ -135,14 +135,14 @@ class FlextInfraNamespaceRelocationCascade:
             ))
         )
         planned = self.plan(
-            m.Infra.NamespaceRelocationRequest(
-                project_root=project_root,
-                findings=findings,
-                py_files=py_files,
-                sources={
+            m.Infra.NamespaceRelocationRequest.model_validate({
+                "project_root": (project_root),
+                "findings": (findings),
+                "py_files": (py_files),
+                "sources": ({
                     path: path.read_text(encoding=c.DEFAULT_ENCODING) for path in paths
-                },
-            ),
+                }),
+            }),
             rope_project=rope_project,
         ).unwrap()
         self.publish_plan(project_root, planned, gates=gates).unwrap()

@@ -97,14 +97,14 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 violations.append(
                     f"Markdown first-attempt execution failed: {item.node_id}",
                 )
-        receipt = m.Infra.PytestMarkdownReconciliation(
-            eligible=manifest.markdown_eligible,
-            selected=selected,
-            deselected=deselected,
-            diagnostics=diagnostics,
-            cache_hit=cache_hit,
-            violations=tuple(violations),
-        )
+        receipt = m.Infra.PytestMarkdownReconciliation.model_validate({
+            "eligible": (manifest.markdown_eligible),
+            "selected": (selected),
+            "deselected": (deselected),
+            "diagnostics": (diagnostics),
+            "cache_hit": (cache_hit),
+            "violations": (tuple(violations)),
+        })
         u.Cli.atomic_write_text_file(
             report_dir / "markdown-reconciliation.json",
             receipt.model_dump_json(indent=2) + "\n",

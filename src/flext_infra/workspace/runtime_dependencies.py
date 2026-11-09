@@ -115,15 +115,17 @@ class FlextInfraRuntimeDependencyCollector:
         if invoked.failure:
             return result.from_failure(invoked)
         return result.ok(
-            m.Infra.RuntimeDependencyInputs(
-                target_root=project_root,
-                python=self._python,
-                lock=lock,
-                providers=providers.value,
-                development_only=self._development_only,
-                invoked_executables=invoked.value,
-                loaded_plugins=self.pytest_plugin_distributions(unused_distributions),
-                inputs=(
+            m.Infra.RuntimeDependencyInputs.model_validate({
+                "target_root": (project_root),
+                "python": (self._python),
+                "lock": (lock),
+                "providers": (providers.value),
+                "development_only": (self._development_only),
+                "invoked_executables": (invoked.value),
+                "loaded_plugins": (
+                    self.pytest_plugin_distributions(unused_distributions)
+                ),
+                "inputs": ((
                     scan.settings,
                     u.Cli.atomic_read_binary_file_state(
                         context.pyproject_path,
@@ -133,8 +135,8 @@ class FlextInfraRuntimeDependencyCollector:
                         context.runtime_root / c.Infra.GITMODULES,
                         required=False,
                     ).unwrap(),
-                ),
-            ),
+                )),
+            }),
         )
 
     @staticmethod
@@ -292,12 +294,12 @@ class FlextInfraRuntimeDependencyCollector:
             if extra_inputs.failure:
                 return selected.from_failure(extra_inputs)
             return selected.ok((
-                m.Infra.RuntimeDependencyProvider(
-                    modules=supplied,
-                    package=package.value,
-                    requirement=authored[identity],
-                    inputs=(*states, *extra_inputs.value),
-                ),
+                m.Infra.RuntimeDependencyProvider.model_validate({
+                    "modules": (supplied),
+                    "package": (package.value),
+                    "requirement": (authored[identity]),
+                    "inputs": ((*states, *extra_inputs.value)),
+                }),
             ))
 
         providers: list[p.Infra.RuntimeDependencyProvider] = []

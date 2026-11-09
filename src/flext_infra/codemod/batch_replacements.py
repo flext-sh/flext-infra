@@ -173,14 +173,14 @@ class FlextInfraModReplacements:
         )
 
         def semantic_plan(content: bytes) -> p.Infra.SemanticFilePlan:
-            return m.Infra.SemanticFilePlan(
-                project=u.Infra.project_root(path) or root,
-                path=path,
-                before=before,
-                desired_content=content,
-                desired_mode=before.mode,
-                changes=tuple(finding.rule_id for finding in findings),
-            )
+            return m.Infra.SemanticFilePlan.model_validate({
+                "project": (u.Infra.project_root(path) or root),
+                "path": (path),
+                "before": (before),
+                "desired_content": (content),
+                "desired_mode": (before.mode),
+                "changes": (tuple(finding.rule_id for finding in findings)),
+            })
 
         return candidate.map(semantic_plan)
 

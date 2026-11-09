@@ -31,6 +31,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
 from flext_infra._utilities._codemod import (
@@ -52,6 +53,7 @@ from flext_infra._utilities._rope._analysis import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverFacadeBases,
 )
 
 
@@ -675,6 +677,29 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
+        headers = (
+            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
+                Path(project.root.real_path),
+                {path: project.source_text(path)},
+                (path,),
+                source_project=project,
+            )
+        )
+        if headers.failure:
+            return r[str].from_failure(headers)
+        if headers.value:
+            declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path),
+                (),
+                {edit.file_path: edit.updated_source for edit in headers.value},
+                source_project=project,
+            )
+            with project.source_view(
+                declared_files=declared, additional_source_folders=None
+            ):
+                return cls.facade_component_source(
+                    project, path, directory, family=selected, owner_name=owner_name
+                )
         settled = cls._facade_settled_initializers(project, (path, directory))
         if settled.failure:
             return r[str].from_failure(settled)
@@ -711,6 +736,17 @@ class FlextInfraUtilitiesFacadeComponents:
                 projected.value, source, composition, step
             )
         return rendered.flat_map(
+            lambda text: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
+                Path(project.root.real_path),
+                path,
+                text,
+                before_source=(
+                    None
+                    if text.startswith(c.Infra.AUTOGEN_HEADER)
+                    else module.source_code
+                ),
+            )
+        ).flat_map(
             lambda text: cls._facade_rendered_order(
                 project, (path, directory), owner, (text, owner_name is not None)
             )
@@ -1097,7 +1133,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         module = namespace.get_module()
-        source = "" if module is None else module.source_code
+        source = module.source_code
         if (
             family is not c.Infra.FacadeFamily.P
             or directory.name != "_protocols"
@@ -1109,8 +1145,6 @@ class FlextInfraUtilitiesFacadeComponents:
         declared = {}
         for path, provider in declarations:
             module = provider.get_module()
-            if module is None:
-                continue
             declared[module.get_name(), provider.get_name()] = (path, provider)
         selected = []
         for provider in namespace.get_superclasses():
@@ -1477,6 +1511,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> tuple[p.Infra.RopeSourceClass, ...]:
         """Select nested type namespaces inherited from the owner or the family.
 
+        Generated class storage remains a namespace when an obsolete model
+        base would otherwise classify the holder as a whole data model.
+
         Returns:
             Every nested type class bound by an abstract parent attribute or a
             family-directory base, in declaration order.
@@ -1486,8 +1523,10 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         types = FlextInfraUtilitiesRopeRuntimeTypes
+        payload = FlextInfraUtilitiesDeclarationPayload
         rendered = owner.get_module().source_code.startswith(c.Infra.AUTOGEN_HEADER)
         nested: list[p.Infra.RopeSourceClass] = []
+        storage: set[p.Infra.RopeSourceClass] = set()
         for scope in owner.get_scope().get_scopes():
             child = scope.pyobject
             if not types.py_class(child):
@@ -1505,6 +1544,19 @@ class FlextInfraUtilitiesFacadeComponents:
                 if not rendered:
                     raise
                 classified = True
+            if rendered:
+                aliases, _ = (
+                    FlextInfraUtilitiesFacadeComponents._facade_namespace_aliases(
+                        child.get_module().get_source_binding_index(), child
+                    )
+                )
+                if (
+                    bool(aliases)
+                    and all(types.abstract_class(value) for value in aliases.values())
+                    and payload.utility_namespace_declaration(project, child)
+                ):
+                    storage.add(child)
+                    classified = True
             if classified:
                 nested.append(child)
         return tuple(
@@ -1524,6 +1576,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     and Path(base_resource.real_path).is_relative_to(directory)
                     for base in child.get_superclasses()
                 )
+                or child in storage
             )
         )
 
@@ -1679,9 +1732,8 @@ class FlextInfraUtilitiesFacadeComponents:
             if assignment.value_binding is not None
             for target_name, _region in assignment.targets
         }
-        # Only a bare ``Name = Owner`` binding is projected to the PEP 613
-        # alias; an authored annotation or a native ``type`` statement is the
-        # declared contract and is retained verbatim.
+        # An authored annotation or native ``type`` declaration stays verbatim;
+        # generated inherited aliases retire with their composition below.
         alias_names = frozenset(
             assignment.targets[0][0]
             for assignment in assignments
@@ -1913,6 +1965,7 @@ class FlextInfraUtilitiesFacadeComponents:
         ]
         bindings: list[str] = []
         for _provider_path, provider in maximal:
+            binding = provider.get_name()
             # A provider a retained base already composes (itself or through
             # its MRO) is not appended again: a second listing beside that base
             # can contradict the inherited order (C3) on the next pass.
@@ -1924,8 +1977,12 @@ class FlextInfraUtilitiesFacadeComponents:
                 )
                 for _expression, base in retained
             ):
+                if any(
+                    expression == binding and cls._same_facade_target(base, provider)
+                    for expression, base in retained
+                ):
+                    bindings.append(binding)
                 continue
-            binding = provider.get_name()
             occupied = module.get_scope().get_names().get(binding)
             # A generated facade's own imports are the previous projection the
             # render replaces; only a non-import binding is an occupation there.
@@ -2229,24 +2286,23 @@ class FlextInfraUtilitiesFacadeComponents:
                 project.get_pymodule(resource)
             )
             native_imports = runtime.module_imports_for_pymodule(project, current)
-            if source.startswith(c.Infra.AUTOGEN_HEADER):
-                bindings = frozenset(
-                    alias or name
-                    for imported in added_imports
-                    for name, alias in imported.names_and_aliases
-                )
-                for statement in native_imports.imports:
-                    before = statement.import_info
-                    if FlextInfraUtilitiesRopeRuntimeTypes.from_import_info(before):
-                        statement.import_info = runtime.from_import(
-                            before.module_name,
-                            before.level,
-                            tuple(
-                                (name, alias)
-                                for name, alias in before.names_and_aliases
-                                if (alias or name) not in bindings
-                            ),
-                        )
+            bindings = frozenset(
+                alias or name
+                for imported in added_imports
+                for name, alias in imported.names_and_aliases
+            )
+            for statement in native_imports.imports:
+                before = statement.import_info
+                if FlextInfraUtilitiesRopeRuntimeTypes.from_import_info(before):
+                    statement.import_info = runtime.from_import(
+                        before.module_name,
+                        before.level,
+                        tuple(
+                            (name, alias)
+                            for name, alias in before.names_and_aliases
+                            if (alias or name) not in bindings
+                        ),
+                    )
             for import_info in added_imports:
                 native_imports.add_import(import_info)
             native_imports.remove_duplicates()
@@ -2470,7 +2526,7 @@ class FlextInfraUtilitiesFacadeComponents:
         scope = actual.get_scope()
         index = current.get_source_binding_index()
         retired = (
-            cls._facade_retired_bindings(index, actual, source)
+            cls._facade_retired_bindings(index, actual, source, retained)
             | cls._facade_retired_publications((current, scope), source, retained)
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else frozenset[tuple[int, int]]()
@@ -2478,11 +2534,8 @@ class FlextInfraUtilitiesFacadeComponents:
         body_source = cls._facade_alias_body_parts(
             index, scope, source, (layout.header_end, end), (alias_names, retired)
         )
-        if (
-            retired
-            and not "".join(
-                part for part in body_source if isinstance(part, str)
-            ).strip()
+        if retired and not any(
+            not isinstance(part, str) or part.strip() for part in body_source
         ):
             class_indent = source[
                 current.lines.get_line_start(scope.get_start()) : layout.region[0]
@@ -2549,13 +2602,14 @@ class FlextInfraUtilitiesFacadeComponents:
         index: p.Infra.RopeSourceBindingIndex,
         namespace: p.Infra.RopeSourceClass,
         source: str,
+        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> frozenset[tuple[int, int]]:
-        """Find generated bindings their inherited owner no longer publishes.
+        """Retire generated class aliases inherited from their declared owner.
 
         Only a managed (generated) facade body is projection: a binding that
-        reads a member off an inherited owner (``Name = Owner.Member``) under
-        a name the owner does not publish as that same class is obsolete
-        residue of an earlier generation. An authored body stays verbatim.
+        reads a member off an inherited owner (``Name = Owner.Member``) is
+        already supplied by composition or is obsolete residue of an earlier
+        generation. An authored body stays verbatim.
 
         Returns:
             The statement regions of every obsolete generated binding.
@@ -2564,7 +2618,7 @@ class FlextInfraUtilitiesFacadeComponents:
         types = FlextInfraUtilitiesRopeRuntimeTypes
         inherited = {
             ancestor
-            for base in namespace.get_superclasses()
+            for _expression, base in retained
             if types.abstract_class(base)
             for ancestor in base.get_mro()
         }
@@ -2577,12 +2631,13 @@ class FlextInfraUtilitiesFacadeComponents:
             ):
                 continue
             owner = assignment.root_binding.get_object()
-            if owner not in inherited:
-                continue
-            published = owner.get_attributes().get(assignment.targets[0][0])
-            if (
-                published is None
-                or published.get_object() is not assignment.value_binding.get_object()
+            if any(
+                owner is ancestor
+                or (
+                    types.py_class(ancestor)
+                    and cls._same_facade_target(owner, ancestor)
+                )
+                for ancestor in inherited
             ):
                 retired.add(assignment.region)
         return frozenset(retired)

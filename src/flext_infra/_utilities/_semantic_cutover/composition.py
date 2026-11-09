@@ -56,7 +56,7 @@ class FlextInfraUtilitiesSemanticComposition(
         authored = dict(cls._editable_sources(sources))
         working = dict(sources)
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            workspace.repository_root,
+            Path(workspace.rope_project.root.real_path),
             planned_sources=working,
             source_project=workspace.rope_project,
         ) as (project, _sources):
@@ -68,7 +68,7 @@ class FlextInfraUtilitiesSemanticComposition(
                     file_path=path,
                 )[0]
         with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
-            workspace.repository_root,
+            Path(workspace.rope_project.root.real_path),
             planned_sources=working,
             source_project=workspace.rope_project,
         ) as (project, _sources):
@@ -175,8 +175,6 @@ class FlextInfraUtilitiesSemanticComposition(
                 continue
             letter, suffix = family
             resource = project.get_file(f"{c.Infra.DIR_TESTS}/{path.name}")
-            if resource is None:
-                continue
             module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project,
                 resource,

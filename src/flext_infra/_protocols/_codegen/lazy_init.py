@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
@@ -93,17 +93,10 @@ class FlextInfraProtocolsCodegenLazyInit:
 
         source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject
         module_files: Mapping[str, Path]
-
-        @property
-        def modules(
-            self,
-        ) -> Mapping[
+        modules: MutableMapping[
             FlextInfraTypesRopeNative.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]:
-            """Facts of each parsed module, keyed by the run's parse."""
-            ...
-
+        ]
         project_notices: dict[
             Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]
         ]

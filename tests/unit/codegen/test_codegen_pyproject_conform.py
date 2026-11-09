@@ -70,15 +70,15 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
         )
         u.Tests.initialize_git_repo(tmp_path)
         u.Tests.copy_tracked_mise_seeds(tmp_path)
-        target = m.Infra.RepositoryConformTarget(
-            repository=workspace.repository,
-            root=tmp_path,
-            toolchain_root=tmp_path,
-            make_profile=workspace.repository.role,
-            canonical_project_name=workspace.repository.distribution,
-            ci_enabled=False,
-            gascity_enabled=False,
-        )
+        target = m.Infra.RepositoryConformTarget.model_validate({
+            "repository": (workspace.repository),
+            "root": (tmp_path),
+            "toolchain_root": (tmp_path),
+            "make_profile": (workspace.repository.role),
+            "canonical_project_name": (workspace.repository.distribution),
+            "ci_enabled": (False),
+            "gascity_enabled": (False),
+        })
         inputs = FlextInfraCodegenConform.Generate.resolve_render_inputs(
             target=target,
             workspace=workspace,

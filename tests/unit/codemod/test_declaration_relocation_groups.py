@@ -182,14 +182,14 @@ class TestsFlextInfraDeclarationRelocationGroups:
             if not accepted and edit.file_path == target:
                 source = source.replace("Field(default=3)", "Field(default=7)")
             plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=root,
-                    path=edit.file_path,
-                    before=before,
-                    desired_content=source.encode("utf-8"),
-                    desired_mode=before.mode,
-                    changes=("declaration relocation",),
-                )
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (root),
+                    "path": (edit.file_path),
+                    "before": (before),
+                    "desired_content": (source.encode("utf-8")),
+                    "desired_mode": (before.mode),
+                    "changes": (("declaration relocation",)),
+                })
             )
 
         def consume(candidate_root: Path) -> p.Result[bool]:

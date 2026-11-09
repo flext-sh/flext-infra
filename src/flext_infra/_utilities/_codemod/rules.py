@@ -603,12 +603,12 @@ class FlextInfraUtilitiesCodemodRules(
                 else bool(elected.intersection(ruleset.rule_ids))
             )
         )
-        return m.Infra.CodemodRulePlan(
-            provider_order=tuple(ruleset.provider for ruleset in rulesets),
-            rules=rules,
-            rulesets=rulesets,
-            project_rule_ids={root: tuple(rule.id for rule in rules)},
-        )
+        return m.Infra.CodemodRulePlan.model_validate({
+            "provider_order": (tuple(ruleset.provider for ruleset in rulesets)),
+            "rules": (rules),
+            "rulesets": (rulesets),
+            "project_rule_ids": ({root: tuple(rule.id for rule in rules)}),
+        })
 
     @classmethod
     def _qualified_utility_call(
@@ -985,12 +985,12 @@ class FlextInfraUtilitiesCodemodRules(
         if not selected:
             return r[p.Infra.CodemodRulePlan].fail("no ast-grep rules discovered")
         return r[p.Infra.CodemodRulePlan].ok(
-            m.Infra.CodemodRulePlan(
-                provider_order=tuple(provider_order),
-                rules=tuple(selected.values()),
-                rulesets=tuple(rulesets),
-                project_rule_ids={root.resolve(): tuple(selected)},
-            ),
+            m.Infra.CodemodRulePlan.model_validate({
+                "provider_order": (tuple(provider_order)),
+                "rules": (tuple(selected.values())),
+                "rulesets": (tuple(rulesets)),
+                "project_rule_ids": ({root.resolve(): tuple(selected)}),
+            }),
         )
 
     @classmethod

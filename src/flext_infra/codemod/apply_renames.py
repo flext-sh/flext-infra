@@ -351,17 +351,19 @@ class FlextInfraApplyRenames:
             if path in python_paths:
                 ast.parse(changed.new_contents, filename=str(path))
             desired = changed.new_contents.encode(c.DEFAULT_ENCODING)
-        plan = m.Infra.SemanticFilePlan(
-            project=max(
-                (owner for owner in roots if path.is_relative_to(owner)),
-                key=lambda owner: len(owner.parts),
+        plan = m.Infra.SemanticFilePlan.model_validate({
+            "project": (
+                max(
+                    (owner for owner in roots if path.is_relative_to(owner)),
+                    key=lambda owner: len(owner.parts),
+                )
             ),
-            path=path,
-            before=inventory[path],
-            desired_content=desired if edits else None,
-            desired_mode=inventory[path].mode,
-            changes=("CSV campaign",) if edits else (),
-        )
+            "path": (path),
+            "before": (inventory[path]),
+            "desired_content": (desired if edits else None),
+            "desired_mode": (inventory[path].mode),
+            "changes": (("CSV campaign",) if edits else ()),
+        })
         return plan, len(edits)
 
     @staticmethod

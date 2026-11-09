@@ -15,6 +15,7 @@ from flext_cli import m, t
 from flext_infra import c
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
+from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenLazyInit
 from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
 
 
@@ -104,7 +105,7 @@ class FlextInfraModelsCodegenLazyInit:
             t.Port[
                 MutableMapping[
                     FlextInfraTypesRopeNative.RopeNativeParsedModule,
-                    FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
+                    FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],
             m.Field(

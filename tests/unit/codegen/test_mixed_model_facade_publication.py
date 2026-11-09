@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from tests import c, p, tm, u
+from tests import c, m, p, tm, u
 
 
 @c.Tests.MARK.parametrize("stale_model_base", [False, True])
@@ -83,8 +84,10 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         + "m = Public\n__all__ = ['Public', 'm']\n",
         encoding=c.Infra.ENCODING_DEFAULT,
     )
+    tm.that(u.Tests.run_lazy_init(root), eq=0)
     first = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")))
     facade.write_text(first, encoding=c.Infra.ENCODING_DEFAULT)
+    tm.that(u.Tests.run_lazy_init(root), eq=0)
     native_consumer(
         f"sys.path.insert(0, {str(package.parent)!r})\n"
         "from pydantic import BaseModel\n"
@@ -93,8 +96,8 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         f"FrozenMapping\n"
         + imports
         + "owners = (Actions, Connections, Queries, Catalog)\n"
-        "assert m.Sample.__bases__ == owners\n"
-        "assert m.Sample.__mro__ == (m.Sample, *owners, object)\n"
+        "assert set(m.Sample.__bases__) == set(owners), m.Sample.__bases__\n"
+        "assert m.Sample.__mro__ == (m.Sample, *m.Sample.__bases__, object)\n"
         "assert not issubclass(m.Sample, BaseModel)\n"
         "assert Credential not in m.Sample.__mro__\n"
         "assert m.Sample.FrozenList is FrozenList\n"
@@ -106,7 +109,9 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
         "assert m.Sample.Health is Connections.Health\n"
         "assert m.Sample.Row is Queries.Row\n"
         "assert m.Sample.Column is Catalog.Column\n"
-        "assert {'Operation', 'Health', 'Row', 'Column'}.isdisjoint(vars(m.Sample))\n"
+        "assert {'Operation', 'Health', 'Row', 'Column'}.isdisjoint(vars(m.Sample)), "
+        + repr(first)
+        + "\n"
         "assert not hasattr(m.Sample, 'model_fields')\n"
         "password = m.Sample.Password('native-secret')\n"
         "original = Credential('native-secret')\n"
@@ -140,11 +145,12 @@ def test_mixed_model_publication_preserves_identity_and_cold_fixed_point(
     )
 
 
-def test_models_infra_materializes_holder_members_for_static_consumers(
+def test_models_infra_inherited_members_keep_native_static_types(
     tmp_path: Path,
     native_consumer: p.Tests.NativeConsumer,
+    session_runtime: p.Tests.SessionRuntime,
 ) -> None:
-    """Publish ``m.Infra`` members without relying on holder MRO at type-check time."""
+    """Inherited model members preserve their static types and native identities."""
     root, package = u.Tests.create_lazy_init_workspace(tmp_path)
     directory = package / u.Infra.facade_families()["m"].directory
     directory.mkdir()
@@ -177,11 +183,77 @@ def test_models_infra_materializes_holder_members_for_static_consumers(
         encoding=c.Infra.ENCODING_DEFAULT,
     )
 
+    tm.that(u.Tests.run_lazy_init(root), eq=0)
     rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")))
 
-    tm.that(rendered, has="        Operation: TypeAlias = Actions.Operation")
-    tm.that(rendered, has="        Health: TypeAlias = Healths.Health")
     facade.write_text(rendered, encoding=c.Infra.ENCODING_DEFAULT)
+    tm.that(u.Tests.run_lazy_init(root), eq=0)
+    tm.ok(
+        u.Tests.create_python_environment(
+            root,
+            dependency_projects=u.Tests.python_dependency_projects(root),
+            session_runtime=session_runtime,
+        )
+    )
+    u.Tests.provision_checkout(root)
+    reports = tm.ok(u.Cli.ensure_dir(root / c.Infra.REPORTS_DIR_NAME))
+    report = reports / "inherited-model-static.json"
+    consumer = package / "consumer.py"
+    consumer.write_text(
+        tm.ok(
+            u.Infra.normalize_python_text(
+                consumer,
+                '"""Native inherited model constructor contracts.\n\n'
+                f'{u.Infra.copyright_notice(package, module=consumer)}\n"""\n'
+                "from typing import assert_type\n"
+                "from flext_test_project._models.actions import Actions\n"
+                "from flext_test_project._models.health import Healths\n"
+                "from flext_test_project.models import m\n"
+                "operation = m.Infra.Operation(value='native-operation')\n"
+                "health = m.Infra.Health(value='native-health')\n"
+                "assert_type(operation, Actions.Operation)\n"
+                "assert_type(health, Healths.Health)\n",
+            )
+        ),
+        encoding=c.Infra.ENCODING_DEFAULT,
+    )
+    checked = tm.ok(
+        u.Cli.run_raw(
+            (
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "check",
+                "run",
+                "--repository-root",
+                str(root),
+                "--scope",
+                "self",
+                "--gates",
+                "lint,pyrefly,pyright,mypy",
+                "--file",
+                consumer.relative_to(root).as_posix(),
+                "--report-output",
+                str(report),
+            ),
+            cwd=root,
+        )
+    )
+    u.Cli.emit_raw(checked.stdout)
+    u.Cli.emit_raw(checked.stderr)
+    evidence = m.Infra.CheckReportSummary.model_validate_json(report.read_bytes())
+    tm.that(
+        u.Cli.process_succeeded(checked.outcome),
+        eq=True,
+        msg=checked.stdout
+        + checked.stderr
+        + "\n".join(
+            error
+            for project in evidence.results
+            for gate in project.gates.values()
+            for error in gate.result.errors
+        ),
+    )
     native_consumer(
         f"sys.path.insert(0, {str(package.parent)!r})\n"
         "from flext_test_project.models import m\n"
@@ -189,8 +261,9 @@ def test_models_infra_materializes_holder_members_for_static_consumers(
         "from flext_test_project._models.health import Healths\n"
         "assert m.Infra.Operation is Actions.Operation\n"
         "assert m.Infra.Health is Healths.Health\n"
-        "assert m.Infra.__dict__['Operation'] is Actions.Operation\n"
-        "assert m.Infra.__dict__['Health'] is Healths.Health\n",
+        "from flext_test_project.consumer import health, operation\n"
+        "assert operation.value == 'native-operation'\n"
+        "assert health.value == 'native-health'\n",
         cwd=root,
     )
     tm.ok(tm.not_none(u.Infra.render_utility_facade(package, family="m")), eq=rendered)

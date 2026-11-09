@@ -388,18 +388,18 @@ class FlextInfraGates:
             or process.raw_return_code < 0
         ):
             return self._gate_execution_from(
-                m.Infra.GateExecutionParams(
-                    project_dir=project_dir,
-                    verdict=False,
-                    outcome=c.Infra.ToolOutcome.ERROR,
-                    issues=(
+                m.Infra.GateExecutionParams.model_validate({
+                    "project_dir": (project_dir),
+                    "verdict": (False),
+                    "outcome": (c.Infra.ToolOutcome.ERROR),
+                    "issues": ((
                         self._command_error_issue(
                             result, self.gate_id, str(project_dir)
                         ),
-                    ),
-                    raw_output=evidence.raw_output,
-                    started=started,
-                ),
+                    )),
+                    "raw_output": (evidence.raw_output),
+                    "started": (started),
+                }),
                 evidence,
             ).model_copy(update={"process": process})
         passed, issues = self._parse_check_output(result, project_dir, ctx)

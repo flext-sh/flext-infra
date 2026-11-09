@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Mapping, Sequence
 from typing import override
 
 from flext_cli import u
 from rope.base.project import Project
-from rope.refactor.restructure import Restructure, _ChangeComputer
+from rope.refactor.restructure import Restructure
 from rope.refactor.similarfinder import Match
 from rope.refactor.wildcards import DefaultWildcard
 from typing_extensions import TypeForm
@@ -25,24 +24,6 @@ class FlextInfraRopeRestructure(Restructure):
     """Keep native matching and writing while admitting each occurrence."""
 
     project: p.Infra.RopeProject
-
-    class _BracketedChangeComputer(_ChangeComputer):
-        """Substitute wildcards with the brackets their source relied on.
-
-        Rope's node region excludes enclosing parentheses, so a value whose
-        lines join only inside them would otherwise lose its continuation.
-        """
-
-        @override
-        def _get_node_text(self, node: ast.AST, force: bool = False) -> str:
-            text: str = super()._get_node_text(node, force)
-            if "\n" not in text or not isinstance(node, ast.expr):
-                return text
-            try:
-                ast.parse(text, mode="eval")
-            except SyntaxError:
-                return f"({text})"
-            return text
 
     class _IdentityChoices:
         """Delegate every alternative to Rope's exact native identity matcher."""
@@ -128,20 +109,6 @@ class FlextInfraRopeRestructure(Restructure):
         )
         self.admitted_count += int(admitted)
         return admitted
-
-    @override
-    def _compute_changes(
-        self,
-        matches: Sequence[Match],
-        pymodule: t.Infra.RopeNativeSourceModule,
-    ) -> _ChangeComputer:
-        return self._BracketedChangeComputer(
-            pymodule.source_code,
-            pymodule.get_ast(),
-            pymodule.lines,
-            self.template,
-            matches,
-        )
 
     @override
     def _add_imports(

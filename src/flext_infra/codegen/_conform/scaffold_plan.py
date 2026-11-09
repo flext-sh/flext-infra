@@ -529,16 +529,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         rendered = self._rendered_artifact_source(
             render_inputs,
-            m.Infra.ArtifactRenderRoute(
-                entry=entry,
-                destination=destination,
-                failure_prefix=(
+            m.Infra.ArtifactRenderRoute.model_validate({
+                "entry": (entry),
+                "destination": (destination),
+                "failure_prefix": (
                     "stage=templates "
                     f"repository={render_inputs.target.repository.name} "
                 ),
-                project_context=context,
-                planned_manifests=planned_manifests,
-            ),
+                "project_context": (context),
+                "planned_manifests": (planned_manifests),
+            }),
         )
         if rendered.failure:
             return result_type.from_failure(rendered)

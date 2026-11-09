@@ -321,7 +321,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ),
             )
             run.contexts[pkg_dir] = context
-        return cast(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, context)
+        return context
 
     @classmethod
     def _lazy_init_build_plan(
@@ -699,7 +699,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             ).items():
                 publics.setdefault(name, target)
             root_init = sibling / c.Infra.INIT_PY
-            if root_init.is_file():
+            if run.model.source_project.source_query(root_init, "isfile"):
                 python = FlextInfraUtilitiesPythonModel
                 for name in (
                     python.python_model_exports(
@@ -740,9 +740,11 @@ class FlextInfraUtilitiesLazyInitPlan:
                 directories.append(candidate)
         directories.extend(
             child
-            for child in sorted(context.pkg_dir.iterdir())
-            if child.is_dir()
-            and (child / c.Infra.INIT_PY).is_file()
+            for child in sorted(
+                run.model.source_project.source_children(context.pkg_dir)
+            )
+            if run.model.source_project.source_query(child, "isdir")
+            and run.model.source_project.source_query(child / c.Infra.INIT_PY, "isfile")
             and str(child) in run.index.packages_by_dir
         )
         return tuple(sorted(dict.fromkeys(directories)))

@@ -413,10 +413,10 @@ class FlextInfraDocsGeneratorBundle:
                     ),
                 )
             normalized_scopes.append(
-                m.Infra.DocsScopeArtifacts(
-                    scope=scope,
-                    artifacts=tuple(normalized_artifacts),
-                ),
+                m.Infra.DocsScopeArtifacts.model_validate({
+                    "scope": (scope),
+                    "artifacts": (tuple(normalized_artifacts)),
+                }),
             )
             offset += size
         return r[list[p.Infra.DocsScopeArtifacts]].ok(normalized_scopes)

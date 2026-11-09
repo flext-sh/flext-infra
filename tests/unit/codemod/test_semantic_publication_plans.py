@@ -28,14 +28,14 @@ class TestsFlextInfraSemanticPublicationPlans:
             u.Cli.atomic_write_text_file(path, 'value = "before"\n').unwrap()
             before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=root,
-                    path=path,
-                    before=before,
-                    desired_content=b'value = "after"\n',
-                    desired_mode=before.mode,
-                    changes=("publication contract",),
-                ),
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (root),
+                    "path": (path),
+                    "before": (before),
+                    "desired_content": (b'value = "after"\n'),
+                    "desired_mode": (before.mode),
+                    "changes": (("publication contract",)),
+                }),
             )
         return tuple(plans)
 
@@ -98,13 +98,13 @@ class TestsFlextInfraSemanticPublicationPlans:
         before = tm.ok(
             u.Cli.atomic_read_binary_file_state(initializer, required=True),
         )
-        plan = m.Infra.SemanticFilePlan(
-            project=mod_workspace,
-            path=initializer,
-            before=before,
-            desired_content=source.replace('"before"', '"after"').encode(),
-            desired_mode=before.mode,
-        )
+        plan = m.Infra.SemanticFilePlan.model_validate({
+            "project": (mod_workspace),
+            "path": (initializer),
+            "before": (before),
+            "desired_content": (source.replace('"before"', '"after"').encode()),
+            "desired_mode": (before.mode),
+        })
         published = tm.ok(
             transformers.FlextInfraTransformersSemantic.publish_semantic_file_plans(
                 (plan,),

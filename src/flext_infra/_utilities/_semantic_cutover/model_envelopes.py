@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import NamedTuple
 
 from flext_cli import u
 
@@ -29,6 +30,15 @@ from flext_infra._utilities.workspace_snapshot import (
 
 class FlextInfraUtilitiesSemanticModelEnvelopes:
     """Keep valid native constructors while correcting proven protocol boundaries."""
+
+    class _Diagnostic(NamedTuple):
+        """Native analyzer facts parsed once at the diagnostic boundary."""
+
+        issue: p.Infra.Issue
+        actual: str
+        parameter: str
+        expected: str
+        constructor: str
 
     @staticmethod
     def _diagnostic_pair(issue: p.Infra.Issue) -> tuple[str, str, str, str] | None:
@@ -52,12 +62,13 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             return None
         return parts[1], parts[3], parts[5], parts[7]
 
-    @staticmethod
+    @classmethod
     def _protocol_twin(
+        cls,
         project: p.Infra.RopeProject,
-        actual: str,
-        expected: str,
+        types: tuple[str, str],
         routes: Mapping[str, str],
+        bindings: tuple[p.Infra.RopeSourceClass, p.Infra.RopeScope, str],
     ) -> bool:
         """Authenticate protocol substitutions through generated source bindings.
 
@@ -66,6 +77,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
+        actual, expected = types
         replaced = expected
         for model, protocol in routes.items():
             if model.startswith("m.") or model not in replaced:
@@ -80,15 +92,153 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             projected = runtime.native_object_identity(target).replace("::", ".")
             if projected:
                 replaced = replaced.replace(identity, projected)
-        return replaced != expected and replaced == actual
+        return replaced != expected and (
+            replaced == actual
+            or cls._covariant_argument(project, (actual, replaced), bindings)
+        )
+
+    @classmethod
+    def _covariant_argument(
+        cls,
+        project: p.Infra.RopeProject,
+        types: tuple[str, str],
+        bindings: tuple[p.Infra.RopeSourceClass, p.Infra.RopeScope, str],
+    ) -> bool:
+        """Use native syntax, field bindings and builtin Sequence membership.
+
+        Returns:
+            Whether an optional member or a proved Sequence accepts the value.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        expressions = tuple(
+            runtime.build_string_module(project, value).get_ast().body[0]
+            for value in types
+        )
+        if not all(isinstance(value, ast.Expr) for value in expressions):
+            return False
+        supplied, requested = (
+            value.value for value in expressions if isinstance(value, ast.Expr)
+        )
+        if isinstance(requested, ast.BinOp) and isinstance(requested.op, ast.BitOr):
+            if (
+                isinstance(requested.right, ast.Constant)
+                and requested.right.value is None
+            ):
+                requested = requested.left
+            elif (
+                isinstance(requested.left, ast.Constant)
+                and requested.left.value is None
+            ):
+                requested = requested.right
+        if ast.dump(supplied) == ast.dump(requested) or cls._fixed_tuple_matches(
+            project, types[0], ast.unparse(requested)
+        ):
+            return True
+        if not isinstance(supplied, ast.Subscript) or not isinstance(
+            requested, ast.Subscript
+        ):
+            return False
+        field = runtime.expression_name(bindings[0].get_scope(), bindings[2])
+        if field is None:
+            return False
+        owner, line = field.get_definition_location()
+        if owner is None or line is None:
+            return False
+        scope = owner.get_scope().get_inner_scope_for_line(line)
+        return cls._sequence_argument(
+            project, (supplied, requested), (bindings[1], scope)
+        )
+
+    @staticmethod
+    def _sequence_argument(
+        project: p.Infra.RopeProject,
+        expressions: tuple[ast.Subscript, ast.Subscript],
+        scopes: tuple[p.Infra.RopeScope, p.Infra.RopeScope],
+    ) -> bool:
+        """Prove stdlib Sequence identity and each supplied element contract.
+
+        Returns:
+            Whether native list or tuple elements satisfy this Sequence field.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        supplied, requested = expressions
+        expected = runtime.resolve_symbol(scopes[1], requested.value)
+        if not runtime.same_name(
+            runtime.qualified_name(project, "collections.abc.Sequence"), expected
+        ):
+            return False
+        actual = runtime.resolve_symbol(scopes[0], supplied.value)
+        if runtime.same_name(runtime.qualified_name(project, "builtins.list"), actual):
+            return issubclass(list, Sequence) and ast.dump(supplied.slice) == ast.dump(
+                requested.slice
+            )
+        if not runtime.same_name(
+            runtime.qualified_name(project, "builtins.tuple"), actual
+        ) or not issubclass(tuple, Sequence):
+            return False
+        items = (
+            supplied.slice.elts
+            if isinstance(supplied.slice, ast.Tuple)
+            else [supplied.slice]
+        )
+        match items:
+            case [element, ast.Constant(value=variadic)] if variadic is Ellipsis:
+                items = [element]
+            case _:
+                pass
+        return all(ast.dump(item) == ast.dump(requested.slice) for item in items)
+
+    @staticmethod
+    def _fixed_tuple_matches(
+        project: p.Infra.RopeProject, actual: str, expected: str
+    ) -> bool:
+        """Admit only fixed homogeneous tuples of an authenticated protocol twin.
+
+        Returns:
+            Whether native tuple identity and every fixed element match.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        if not all(value.startswith("tuple[") for value in (actual, expected)):
+            return False
+        provided = runtime.build_string_module(project, actual)
+        required = runtime.build_string_module(project, expected)
+        expressions: list[ast.Subscript] = []
+        container = runtime.qualified_name(project, "builtins.tuple")
+        for module in (provided, required):
+            statement = module.get_ast().body[0]
+            if not isinstance(statement, ast.Expr) or not isinstance(
+                statement.value, ast.Subscript
+            ):
+                return False
+            expression = statement.value
+            if not runtime.same_name(
+                container, runtime.resolve_symbol(module.get_scope(), expression.value)
+            ):
+                return False
+            expressions.append(expression)
+        supplied, requested = expressions
+        match requested.slice:
+            case ast.Tuple(elts=[element, ast.Constant(value=variadic)]) if (
+                variadic is Ellipsis
+            ):
+                items = (
+                    supplied.slice.elts
+                    if isinstance(supplied.slice, ast.Tuple)
+                    else (supplied.slice,)
+                )
+                return all(ast.dump(item) == ast.dump(element) for item in items)
+            case _:
+                return False
 
     @classmethod
     def _model_envelope_issues(
         cls,
         project: p.Infra.RopeProject,
         issues: Sequence[p.Infra.Issue],
-        routes: Mapping[str, str],
-    ) -> Mapping[Path, Sequence[tuple[p.Infra.Issue, str, str]]]:
+    ) -> Mapping[Path, Sequence[_Diagnostic]]:
         """Retain diagnostics whose type difference has a source-owned twin.
 
         Returns:
@@ -96,27 +246,27 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
 
         """
         root = Path(project.root.real_path)
-        admitted: dict[Path, list[tuple[p.Infra.Issue, str, str]]] = {}
+        admitted: dict[
+            Path, list[FlextInfraUtilitiesSemanticModelEnvelopes._Diagnostic]
+        ] = {}
         for issue in issues:
             pair = cls._diagnostic_pair(issue)
             if pair is None:
                 continue
-            actual, parameter, expected, constructor = pair
-            if not constructor.endswith(".__init__") or not cls._protocol_twin(
-                project, actual, expected, routes
-            ):
+            if not pair[-1].endswith(".__init__"):
                 continue
             path = Path(issue.file)
             path = path if path.is_absolute() else root / path
-            admitted.setdefault(path, []).append((issue, parameter, constructor))
+            admitted.setdefault(path, []).append(cls._Diagnostic(issue, *pair))
         return admitted
 
-    @staticmethod
+    @classmethod
     def _model_envelope_call(
+        cls,
         module: p.Infra.RopePyModule,
         invocation: ast.Call,
-        findings: Sequence[tuple[p.Infra.Issue, str, str]],
-        model_base: p.Infra.RopePyObject,
+        findings: Sequence[_Diagnostic],
+        context: tuple[p.Infra.RopeProject, p.Infra.RopePyObject, Mapping[str, str]],
     ) -> bool:
         """Prove the native constructor and its diagnosed keyword.
 
@@ -126,12 +276,12 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         located = tuple(
-            owner
-            for issue, parameter, owner in findings
+            finding
+            for finding in findings
             if any(
-                keyword.arg == parameter
+                keyword.arg == finding.parameter
                 and (keyword.value.lineno, keyword.value.col_offset + 1)
-                <= (issue.line, issue.column)
+                <= (finding.issue.line, finding.issue.column)
                 <= (keyword.value.end_lineno, keyword.value.end_col_offset + 1)
                 for keyword in invocation.keywords
                 if keyword.value.end_lineno is not None
@@ -150,20 +300,30 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         binding = runtime.resolve_symbol(scope, invocation.func)
         if (
             binding is None
-            or model_base
-            not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(
-                binding.get_object()
-            )
+            or not isinstance(model := binding.get_object(), p.Infra.RopeSourceClass)
+            or context[1]
+            not in FlextInfraUtilitiesDeclarationPayload.class_ancestry(model)
         ):
             return False
         module_name, _separator, qualified = runtime.native_object_identity(
             binding.get_object()
         ).partition("::")
         constructor = f"{module_name}.{qualified.rpartition('.')[2]}.__init__"
-        accepted = constructor in located
+        accepted = any(
+            constructor == finding.constructor
+            and cls._protocol_twin(
+                context[0],
+                (finding.actual, finding.expected),
+                context[2],
+                (model, scope, finding.parameter),
+            )
+            for finding in located
+        )
         u.Cli.info(
             f"mod: model-envelope candidate={module.get_name()}:{invocation.lineno} "
-            f"native_constructor={constructor} diagnosed={located} admitted={accepted}"
+            f"native_constructor={constructor} "
+            f"diagnosed={tuple(finding.constructor for finding in located)} "
+            f"admitted={accepted}"
         )
         return accepted
 
@@ -237,7 +397,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         model_base = runtime.qualified_name(project, "pydantic.BaseModel").get_object()
-        admitted = cls._model_envelope_issues(project, issues, routes)
+        admitted = cls._model_envelope_issues(project, issues)
 
         updates: dict[Path, str] = {}
         planned: dict[Path, p.Infra.RopeChangeContents] = {}
@@ -257,7 +417,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
                     for node in ast.walk(module.get_ast())
                     if isinstance(node, ast.Call)
                     and cls._model_envelope_call(
-                        module, node, admitted[path], model_base
+                        module, node, admitted[path], (project, model_base, routes)
                     )
                 ),
                 key=lambda node: runtime.source_offset(module.source_code, node),

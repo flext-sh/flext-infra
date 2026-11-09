@@ -115,14 +115,22 @@ checks runtime protocol presence; it does not validate signatures. Retain static
 protocol checks and real consumer evidence rather than duplicate local narrowing.
 `t.Port` is a FLEXT DI annotation built on native hooks and excludes its runtime
 dependency from JSON Schema. It must not replace a serializable payload's
-validation: a payload typed through `p` delegates to its actual native model
-schema through `GetPydanticSchema`, preserving validators, serializers and JSON
-Schema. Model constructor identities supplied as schema metadata are executable
-values; they do not permit `m.*` type annotations.
+validation. Under ADR-018's simplified-field amendment, persisted model fields
+name their concrete model directly; consumers receive the corresponding `p`
+contract. The model owns validation, serializers and JSON Schema without deferred
+schema metadata.
+When removing schema metadata leaves `Annotated[T]` or `Annotated[T,]`, collapse
+the wrapper to `T`; Pydantic cannot import an `Annotated` with no metadata.
+The native `collapse-empty-annotated` rule resolves the typing import and retains
+every annotation that still has constraints or other metadata.
 An unresolved port type parameter fails instead of selecting `any_schema`.
 See ADR-019 for DI
 and ADR-018
 for payload projection.
+When assembling a new boundary model from protocol-typed values, use its native
+`model_validate` entry with those values, retaining their references. This creates
+the new envelope once; it does not dump or revalidate an existing envelope or
+claim that a structural protocol is a concrete model type to the constructor.
 Railway callbacks preserve original exceptions; only the declared error boundary
 converts a validation failure into a result.
 
@@ -256,10 +264,9 @@ a deterministic lexical protocol identity. Do not hoist it generically or call
 `model_rebuild` to hide an unresolved declaration. Repair the actual dependency
 or export, and prove a fresh public import. The enclosing family class is not
 bound while its body executes, so a self-qualified sibling reference is never
-evaluated eagerly: type the field by the sibling's protocol and defer the schema
-owner, `Annotated[Holder.X]`. The field is then
-complete at class creation, and a subclass in another module inherits it without
-re-resolving any name.
+evaluated eagerly. Reference an already-bound model owner at the field boundary;
+do not replace its schema with a protocol or a deferred schema helper. Recursive
+declarations follow Pydantic's native annotation-resolution contract.
 
 ## Library boundaries
 
@@ -300,9 +307,8 @@ For services, structural request annotations and concrete model metadata have
 different jobs: `@h.handler(command=m.Namespace.Request)` retains the actual
 parser/schema owner while the operation consumes its generated protocol. DI
 ports use `t.Port[p.X]` and are excluded from serialization and JSON Schema;
-serializable payload projection delegates the original schema through
-`GetPydanticSchema`. Presence-only runtime protocol checks cannot replace payload
-validation or static signature compatibility.
+persisted payload fields retain the concrete model schema. Presence-only runtime
+protocol checks cannot replace payload validation or static signature compatibility.
 
 At the ingress that owns domain validation, convert `ValidationError` once to the
 declared Result with its native error information and cause. A programming
@@ -357,6 +363,15 @@ is ADR-003, Decision 5.
 The canonical `pydantic-development` procedure owns the diagnosis sequence.
 Keep runtime validation and static constructor checking distinct: typed
 constructors remain enabled, and external data enters through public validation.
+
+Pydantic's metaclass supplies the native dataclass-transform contract. FLEXT's
+model wrappers inherit it; they do not redeclare `@dataclass_transform`. Mypy's
+Pydantic plugin owns model synthesis and disables the metaclass transform for
+its own analysis. A wrapper-level transform activates a second synthesis path:
+Mypy's dataclass plugin turns callable fields into synthetic properties, which
+its protocol checker can then reject as read-only despite their setters.
+Validate removal against instance-to-protocol witnesses, typed constructors and
+the real model's assignment behavior rather than weakening the protocol.
 
 Compare the real public facade with the upstream declaration before calling a
 diagnostic a false positive. Record the checker version, loaded configuration,
@@ -494,16 +509,16 @@ classifies an unmeasured diagnostic as a false positive.
 
 ## Source-derived protocol contracts
 
-The strict 2026-11-02 operator amendment in ADR-018 prohibits every `m.*` typing
-reference. Use the canonical source-derived `p.*` contract decorated with
-`@runtime_checkable`, including fields, callback parameters, forward references
-and generic type arguments. Keep actual construction and validation with the
-model owner. A Protocol is never a model constructor, and presence checks do not
-replace native payload validation or static signature checks. `t.Port` remains
+Use canonical source-derived `p.*` contracts decorated with `@runtime_checkable`
+for consumers. ADR-018's simplified-field amendment retains concrete model types
+at persisted field boundaries; callbacks and service contracts consume protocols.
+Keep actual construction and validation with the model owner. A Protocol is never
+a model constructor, and presence checks do not replace native payload validation
+or static signature checks. `t.Port` remains
 reserved for its documented DI semantics; it does not make a serializable model
 field exempt from validation. Missing protocols or unsupported schema behavior
-require producer repair and real consumer qualification, without a concrete-model
-annotation fallback or fabricated Pydantic compatibility.
+require producer repair and real consumer qualification, without fabricated
+Pydantic compatibility.
 
 ### Dependency documentation references
 

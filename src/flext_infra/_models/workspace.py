@@ -421,6 +421,11 @@ class FlextInfraModelsWorkspace:
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
 
+        file: Annotated[
+            Path | None,
+            m.Field(description="Repository-relative test file in this repository"),
+        ] = None
+
         scope: Annotated[
             Literal[
                 c.Infra.CodegenConformScope.ALL,

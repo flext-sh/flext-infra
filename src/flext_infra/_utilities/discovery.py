@@ -234,14 +234,14 @@ class FlextInfraUtilitiesDiscovery(
             ValueError: If the declared package has ambiguous physical origins.
 
         """
-        locations: Sequence[str] | None = search_paths
+        locations: Sequence[str] = search_paths
         components = package_name.split(".")
         for index in range(len(components)):
             spec = PathFinder.find_spec(".".join(components[: index + 1]), locations)
             if spec is None or not spec.submodule_search_locations:
                 return None
             locations = spec.submodule_search_locations
-        if locations is None or len(locations) != 1:
+        if len(locations) != 1:
             msg = f"declared package has ambiguous physical origins: {package_name}"
             raise ValueError(msg)
         return Path(locations[0])

@@ -55,8 +55,8 @@ class FlextInfraUtilitiesImportLawNormalization(
     2. Imports follow the tooling layer order (settings, config, c, p, t, p, m,
        u, other, base, services, api, cli). An enclosing facade that depends on
        its fragment is also a reverse edge, even at the same layer. A reverse
-       import read only in annotations moves under ``if TYPE_CHECKING:``; a reverse import read
-       at runtime keeps its place and its finding, for manual repair.
+       import read only in annotations moves under ``if TYPE_CHECKING:``; a
+       runtime read keeps its place and its finding for repair.
     3. A root alias (facade and operational letters, ``config``,
        ``settings``, names the namespace root re-exports) binds through the
        module's own namespace root; facade modules keep the letters they

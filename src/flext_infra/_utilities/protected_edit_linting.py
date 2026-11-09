@@ -419,9 +419,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             if plan.index_before is None:
                 continue
             retired = FlextInfraUtilitiesGitSemanticPaths.git_retire_index_file(
-                m.Infra.GitIndexRetirementRequest(
-                    repo_root=plan.project, entry=plan.index_before
-                ),
+                m.Infra.GitIndexRetirementRequest.model_validate({
+                    "repo_root": (plan.project),
+                    "entry": (plan.index_before),
+                }),
             )
             if retired.failure:
                 return r[bool].from_failure(retired)

@@ -848,6 +848,10 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
         ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeImportInfo]: ...
 
+        def get_used_names(
+            self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
+        ) -> set[str]: ...
+
         def add_import(
             self,
             import_info: FlextInfraProtocolsRopeRuntime.RopeImportInfo,

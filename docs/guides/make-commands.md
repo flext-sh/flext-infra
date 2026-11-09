@@ -606,6 +606,13 @@ the CLI, never the shared base or an implicitly selected latest run.
 
 Root `make check` checks the root and governed members through the existing
 `--scope all` checker selection. A standalone checkout selects its own repository.
+The checker reads managed operation targets from `.gitmodules`; ordinary gate
+execution does not require Beads ledger configuration or a Git origin.
+
+For a bounded test diagnosis, `flext-infra workspace tests-full --repository-root
+<root> --file tests/path.py` runs that complete file through the same native
+runner and receipts. The file selects the invoked repository; the final
+`make tests-full` acceptance still covers its complete configured inventory.
 The approved campaign uses selector-free public verbs from the workspace root.
 Missing governed-member coverage is corrected at the existing dispatcher
 owner, not through a member Makefile or a new selector.

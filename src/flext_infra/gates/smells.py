@@ -79,18 +79,18 @@ class FlextInfraGatesSmells(FlextInfraGates):
         scan = self._scan(project_dir, ctx)
         issues = self._scanned_issues(scan, project_dir)
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=not issues,
-                outcome=(
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (not issues),
+                "outcome": (
                     c.Infra.ToolOutcome.FINDINGS
                     if issues
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                issues=tuple(issues),
-                raw_output=self._raw_output(scan),
-                started=started,
-            ),
+                "issues": (tuple(issues)),
+                "raw_output": (self._raw_output(scan)),
+                "started": (started),
+            }),
             ctx=ctx,
         )
 

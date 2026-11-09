@@ -113,14 +113,14 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             )
         )
         return self._gate_execution_from(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=not issues,
-                outcome=outcome,
-                issues=tuple(issues),
-                raw_output=evidence.raw_output,
-                started=started,
-            ),
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (not issues),
+                "outcome": (outcome),
+                "issues": (tuple(issues)),
+                "raw_output": (evidence.raw_output),
+                "started": (started),
+            }),
             evidence,
         ).model_copy(
             update={
@@ -602,9 +602,7 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
         # it is typed NOT EXECUTED, and a locally unreachable host is typed
         # the same way. It is never silently dropped and never faked.
         semantic = passes.semantic
-        if semantic is not None and (
-            self.semantic_not_executed() or self.semantic_host_unreachable() is not None
-        ):
+        if self.semantic_not_executed() or self.semantic_host_unreachable() is not None:
             semantic = None
         jscpd_config = m.Infra.JscpdConfig(
             absolute=True,
@@ -663,8 +661,6 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
 
         """
         semantic = config.Infra.tooling.tools.jscpd.semantic
-        if semantic is None:
-            return None
         parsed = urlsplit(semantic.url)
         if not parsed.hostname:
             return f"invalid embeddings host URL: {semantic.url}"

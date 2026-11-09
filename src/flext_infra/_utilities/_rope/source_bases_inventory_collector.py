@@ -563,10 +563,12 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 members.pop(name, None)
             else:
                 members[name] = assigned
-            spec.definitions[owner.target] = m.Infra.SourceClassDefinition(
-                identity=definition.identity,
-                bases=definition.bases,
-                members=members,
+            spec.definitions[owner.target] = (
+                m.Infra.SourceClassDefinition.model_validate({
+                    "identity": (definition.identity),
+                    "bases": (definition.bases),
+                    "members": (members),
+                })
             )
         return True
 

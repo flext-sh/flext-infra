@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flext_tests import u as flext_tests_u
 
-from flext_infra import config, u as flext_infra_u
+from flext_infra import FlextInfraUtilities, config
 from tests import c, m, p, r, t, tm
 from tests._utilities import TestsFlextInfraUtilitiesSemanticCutover
 from tests.utilities_codegen import TestsFlextInfraUtilitiesCodegen
@@ -33,7 +33,7 @@ from tests.utilities_toml import TestsFlextInfraUtilitiesToml
 from tests.utilities_workspace_env import TestsFlextInfraUtilitiesWorkspaceEnv
 
 
-class TestsFlextInfraUtilities(flext_infra_u):
+class TestsFlextInfraUtilities(FlextInfraUtilities):
     """Typed test utilities for flext-infra."""
 
     class Tests(
@@ -286,7 +286,6 @@ class TestsFlextInfraUtilities(flext_infra_u):
                 project_root,
                 repository.distribution,
             )
-            u.Tests.declare_governed_kind(project_root)
             for relative, command in shape.commands:
                 u.Tests.write_promoted_command(project_root / relative, command)
             if shape.version is not None:

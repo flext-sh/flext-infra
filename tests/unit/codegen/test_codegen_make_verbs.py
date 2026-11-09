@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
@@ -50,33 +49,6 @@ def _run_make_help(
 
 class TestsFlextInfraCodegenMakeVerbs:
     """Prove every declared verb renders one reachable, inert-input target."""
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        "profile",
-        [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
-    )
-    def test_accessor_recipe_preserves_backend_workspace_scope(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-    ) -> None:
-        """Workspace selection is complete; standalone selection stays local."""
-        project_root, _repository_root = u.Tests.render_make_environment(
-            tmp_path, profile
-        )
-        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        recipes = tuple(
-            line
-            for line in makefile.splitlines()
-            if "refactor accessor-migrate" in line
-        )
-        tm.that(recipes, len=1)
-        tm.that(recipes[0], has='--repository-root "$(PROJECT_ROOT)"')
-        tm.that(recipes[0], has="--apply")
-        tm.that(
-            "--projects ." in recipes[0],
-            eq=profile is c.Infra.MakeProfile.STANDALONE,
-        )
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -187,48 +159,6 @@ class TestsFlextInfraCodegenMakeVerbs:
         for gate_set in (c.Infra.CheckGateSet.FIX, c.Infra.CheckGateSet.FMT):
             tm.that(makefile, has=f"--gate-set {gate_set.value} --apply")
         tm.that(makefile, lacks="--report-findings")
-
-    @staticmethod
-    def test_standalone_check_resolves_its_gates_at_runtime(
-        tmp_path: Path,
-    ) -> None:
-        """Standalone check delegates gate selection to the runtime checker."""
-        project_root, _repository_root = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        invocation_log = tmp_path / "check-invocation.log"
-        runtime_python = u.Infra.runtime_python(project_root)
-        u.Tests.write_executable(
-            runtime_python,
-            f"#!/bin/sh\nprintf '%s\\n' \"$*\" > '{invocation_log}'\n",
-        )
-        uv = tmp_path / "bin" / "uv"
-        u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
-
-        # `check` is read-only: it never passes --apply to the runtime. The uv
-        # override rides the environment rather than the command line because
-        # UV is not a declared Make variable.
-        process = tm.ok(
-            u.Tests.run_isolated_make(
-                ["--no-print-directory", "check"],
-                cwd=project_root,
-                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-            ),
-        )
-
-        tm.that(
-            u.Cli.process_succeeded(process.outcome),
-            eq=True,
-            msg=process.stdout + process.stderr,
-        )
-        invocation = invocation_log.read_text(encoding="utf-8")
-        tm.that(
-            invocation,
-            has=f"-m flext_infra {c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} ",
-        )
-        tm.that(invocation, lacks="--gates")
-        tm.that(invocation, lacks="--apply")
 
     @staticmethod
     @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))

@@ -767,6 +767,7 @@ class FlextInfraPytestRunnerExecution(
         context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        target_file: Path | None = None,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
@@ -793,6 +794,7 @@ class FlextInfraPytestRunnerExecution(
         runner = cls.from_project_context(
             context,
             started_at_monotonic=started_at_monotonic,
+            target_file=target_file,
             execution_mode=execution_mode,
         )
         scratch = runner.scratch_root

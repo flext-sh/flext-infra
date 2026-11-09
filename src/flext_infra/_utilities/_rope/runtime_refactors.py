@@ -254,27 +254,27 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         descriptor = cls._attribute_descriptor(member)
         source = project.source_text(Path(resource.real_path))
         span = cls._source_byte_range(source, node)
-        return m.Infra.RopeAttributeReadProof(
-            project=project,
-            source_path=Path(resource.real_path),
-            source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest(),
-            start_byte=span[0],
-            end_byte=span[1],
-            expression=ast.dump(node, include_attributes=False),
-            access=access,
-            base=base_reference,
-            accessor=cls._binding_reference(project, accessor, "__getattribute__"),
-            member=cls._binding_reference(project, member, node.attr),
-            descriptor=descriptor,
-            native_base=native_base,
-            native_accessor=accessor,
-            native_member=member,
-            native_descriptor=(
+        return m.Infra.RopeAttributeReadProof.model_validate({
+            "project": (project),
+            "source_path": (Path(resource.real_path)),
+            "source_sha256": (hashlib.sha256(source.encode("utf-8")).hexdigest()),
+            "start_byte": (span[0]),
+            "end_byte": (span[1]),
+            "expression": (ast.dump(node, include_attributes=False)),
+            "access": (access),
+            "base": (base_reference),
+            "accessor": (cls._binding_reference(project, accessor, "__getattribute__")),
+            "member": (cls._binding_reference(project, member, node.attr)),
+            "descriptor": (descriptor),
+            "native_base": (native_base),
+            "native_accessor": (accessor),
+            "native_member": (member),
+            "native_descriptor": (
                 runtime.qualified_name(project, "staticmethod", module_name="builtins")
                 if descriptor is not None
                 else None
             ),
-        )
+        })
 
     @classmethod
     def _attribute_accessor(
@@ -423,9 +423,6 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             msg = "attribute receiver has no source class identity"
             raise ValueError(msg)
         module = value.get_module()
-        if module is None:
-            msg = "attribute receiver class has no source module"
-            raise ValueError(msg)
         attributes = []
         scope = value.get_scope()
         while scope is not None and scope.get_kind() == "Class":

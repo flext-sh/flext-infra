@@ -130,13 +130,9 @@ its database, or publish a cache receipt. The existing database remains untouche
 for later `make tests` runs. This is the latest operator clarification of
 2026-10-28, recorded in
 ADR-029.
-Tests execute independently of quality checks; no green check receipt is a
-prerequisite. Both operations retain runtime/input identity, applicability,
+Both operations retain source admission, runtime/input identity, applicability,
 original failures and the complete invocation deadline. Full execution is not
 a coverage-mode substitute or a second runner.
-
-Profiling delegates to native cProfile. The publishing thread identifies capture
-ownership, not a thread filter on the measured interpreter.
 
 CI and pre-push retain their declared workflow; pre-commit runs no tests. No
 compatibility aliases or file selectors belong to either operation.

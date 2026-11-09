@@ -336,9 +336,10 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
 
-    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
-        root = self._governed_with_python_clone(tmp_path, same_file=False)
+    @c.Tests.MARK.parametrize("same_file", (False, True))
+    def test_python_clone_is_reported(self, tmp_path: Path, *, same_file: bool) -> None:
+        """Distinct clone spans block within one file and across files."""
+        root = self._governed_with_python_clone(tmp_path, same_file=same_file)
 
         execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
@@ -361,22 +362,11 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             truth=True,
         )
 
-    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A file that duplicates a block inside itself is a finding.
-
-        The identical file/span pair from the double-scan is dropped, but a
-        same-file clone with two distinct spans is genuine duplication and
-        must never be hidden.
-        """
-        root = self._governed_with_python_clone(tmp_path, same_file=True)
-
-        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
-
-        tm.fail(execution.result.passed)
-        tm.that(
-            {issue.file for issue in execution.issues},
-            eq={"src/fixture_python_clone/duplicated.py"},
-        )
+        if same_file:
+            tm.that(
+                {issue.file for issue in execution.issues},
+                eq={"src/fixture_python_clone/duplicated.py"},
+            )
 
     @staticmethod
     def _governed_with_fleet_members(

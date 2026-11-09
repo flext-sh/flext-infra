@@ -65,6 +65,9 @@ from flext_infra._utilities._semantic_cutover.model_envelopes import (
 from flext_infra._utilities._semantic_cutover.model_field_contracts import (
     FlextInfraUtilitiesSemanticModelFieldContracts,
 )
+from flext_infra._utilities._semantic_cutover.opaque_ports import (
+    FlextInfraUtilitiesSemanticOpaquePorts,
+)
 
 
 class FlextInfraUtilitiesSemanticContracts(
@@ -1133,6 +1136,10 @@ class FlextInfraUtilitiesSemanticContracts(
                             restrictions,
                         ),
                         (working, applied),
+                        preserves_bindings=(
+                            rule.operation
+                            is c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                        ),
                     )
         for addition in options.signature_additions:
             with workspace.rope_project.source_view(
@@ -1343,6 +1350,8 @@ class FlextInfraUtilitiesSemanticContracts(
         state: tuple[
             MutableMapping[Path, str], MutableMapping[Path, MutableSequence[str]]
         ],
+        *,
+        preserves_bindings: bool = False,
     ) -> None:
         """Accept only captured consumer effects; provider reads are not writes.
 
@@ -1357,8 +1366,12 @@ class FlextInfraUtilitiesSemanticContracts(
                 msg = f"{rule.id}: effect is outside captured consumers: {path}"
                 raise ValueError(msg)
             relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
-            proposed = relocation.remove_orphaned_imports(
-                project, change.resource, working[path], change.new_contents
+            proposed = (
+                change.new_contents
+                if preserves_bindings
+                else relocation.remove_orphaned_imports(
+                    project, change.resource, working[path], change.new_contents
+                )
             )
             if proposed != working[path]:
                 working[path] = proposed
@@ -1379,13 +1392,22 @@ class FlextInfraUtilitiesSemanticContracts(
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
-        if rule.operation == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES:
+        if rule.operation in {
+            c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES,
+            c.Infra.RopeContractOperation.NORMALIZE_OPAQUE_MUTABLE_PORTS,
+        }:
             workspace = context[3]
             checker = workspace.model_envelope_checker
             if checker is None:
                 message = "model-envelope admission requires its native checker"
                 raise RuntimeError(message)
-            return cls.model_envelope_changes(
+            transform = (
+                cls.model_envelope_changes
+                if rule.operation
+                == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                else FlextInfraUtilitiesSemanticOpaquePorts.opaque_port_changes
+            )
+            return transform(
                 project,
                 rule,
                 cls._contract_scope_resources(project, rule, tuple(context[1])),

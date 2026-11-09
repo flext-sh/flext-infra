@@ -10,9 +10,11 @@ from contextlib import closing, nullcontext
 from pathlib import Path
 
 from flext_infra import c, config, m, p
-from flext_infra._utilities import (
-    FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesGit,
+from flext_infra._utilities import FlextInfraUtilitiesDependencies
+from flext_infra._utilities._git import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+    FlextInfraUtilitiesGitWorktreeDiscovery,
+    FlextInfraUtilitiesGitWorktreeRoots,
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
@@ -42,7 +44,7 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
         dependencies = dependency_owner.declared_dependency_names_from_payload(payload)
         if any(name.startswith(c.Infra.PKG_PREFIX_HYPHEN) for name in dependencies):
             return c.Infra.ProjectKind.INTERNAL_FLEXT
-        declarations = FlextInfraUtilitiesGit.git_submodule_declarations(
+        declarations = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
             repository_root, source_project=source_project
         ).unwrap()
         if any(
@@ -65,12 +67,14 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
         ) or cls._uses_flext_imports(repository_root, source_project):
             return c.Infra.ProjectKind.INTERNAL_FLEXT
         if (repository_root / c.GIT_DIR_NAME).exists():
-            identity = FlextInfraUtilitiesGit.git_identity(
+            identity = FlextInfraUtilitiesGitSemanticIdentity.git_identity(
                 m.Infra.GitRepoRequest(repo_root=repository_root)
             ).unwrap()
             if identity.upstream_remote and (
-                FlextInfraUtilitiesGit.git_remote_identity(identity.upstream_remote)
-                != FlextInfraUtilitiesGit.git_remote_identity(
+                FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
+                    identity.upstream_remote
+                )
+                != FlextInfraUtilitiesGitWorktreeDiscovery.git_remote_identity(
                     identity.origin_remote or ""
                 )
             ):

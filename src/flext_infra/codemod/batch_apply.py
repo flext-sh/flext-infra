@@ -403,14 +403,14 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         return {
-            path: m.Infra.SemanticFilePlan(
-                project=u.Infra.project_root(path) or root,
-                path=path,
-                before=inputs[path],
-                desired_content=content,
-                desired_mode=inputs[path].mode,
-                changes=(c.Infra.MOD_NATIVE_CASCADE_CHANGE,),
-            )
+            path: m.Infra.SemanticFilePlan.model_validate({
+                "project": (u.Infra.project_root(path) or root),
+                "path": (path),
+                "before": (inputs[path]),
+                "desired_content": (content),
+                "desired_mode": (inputs[path].mode),
+                "changes": ((c.Infra.MOD_NATIVE_CASCADE_CHANGE,)),
+            })
             for path, content in self._native_cascade(rule_plan, inputs, seed).items()
         }
 
@@ -537,11 +537,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     if plan.desired_content is not None
                 },
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.workspaces,
-                modes=seed.modes,
-                inputs=tuple(inputs.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.workspaces),
+                "modes": (seed.modes),
+                "inputs": (tuple(inputs.values())),
+            }),
         )
 
     @staticmethod
@@ -665,11 +665,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     if plan.desired_content is not None
                 },
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.workspaces,
-                modes=seed.modes,
-                inputs=tuple(inputs.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.workspaces),
+                "modes": (seed.modes),
+                "inputs": (tuple(inputs.values())),
+            }),
         )
         if staged.failure:
             return r[p.Infra.ModScanReport].from_failure(staged)
@@ -692,11 +692,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate.workspace,
             candidate.updates,
             scan,
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.workspaces,
-                modes=candidate.modes,
-                inputs=candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.workspaces),
+                "modes": (candidate.modes),
+                "inputs": (candidate.inputs),
+            }),
         ).flat_map(lambda report: report)
 
     def _plan_text_phase(
@@ -962,11 +962,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 for path, source in candidate.updates.items()
                 if path not in excluded
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.workspaces,
-                modes=candidate.modes,
-                inputs=candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.workspaces),
+                "modes": (candidate.modes),
+                "inputs": (candidate.inputs),
+            }),
         ).map(
             lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=plan.consumer_roots
@@ -1301,11 +1301,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         return FlextInfraStagedPackage.plan_sources(
             seed.candidate.workspace,
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.candidate.workspaces,
-                modes=seed.candidate.modes,
-                inputs=seed.candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.candidate.workspaces),
+                "modes": (seed.candidate.modes),
+                "inputs": (seed.candidate.inputs),
+            }),
         ).map(
             lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=seed.consumer_roots

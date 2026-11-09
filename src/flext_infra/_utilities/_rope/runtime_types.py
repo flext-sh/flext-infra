@@ -147,7 +147,13 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeScopes):
             message = f"declared module source is not a rope resource: {module}"
             raise TypeError(message)
         if resource.is_folder():
-            resource = project.get_resource(f"{resource.path}/{c.Infra.INIT_PY}")
+            path = Path(resource.real_path) / c.Infra.INIT_PY
+            resource = cls.require_file_resource(
+                cls.runtime_callable("rope.base.libutils", "path_to_resource")(
+                    project, str(path), type="file"
+                ),
+                path,
+            )
         return cls.require_source_module(project.get_pymodule(resource))
 
     @classmethod

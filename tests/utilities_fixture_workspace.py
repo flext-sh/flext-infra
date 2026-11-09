@@ -274,12 +274,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     "packaged_data_excludes": tuple(resolved.packaged_data_excludes),
                 },
             )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=name,
-            repository=repository,
-            project=project,
-        )
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (name),
+            "repository": (repository),
+            "project": (project),
+        })
         if resolved.gascity_enabled is not None:
             manifest = manifest.model_copy(
                 update={
@@ -797,7 +797,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             )
 
         @classmethod
-        def conformed_root(cls, tmp_path: Path) -> Path:
+        def conformed_root(
+            cls, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+        ) -> Path:
             """Materialize one governed project and conform it to a fixed point.
 
             Returns:
@@ -817,6 +819,17 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             TestsFlextInfraUtilitiesGit.commit_git_changes(
                 root,
                 "Declare project identity",
+            )
+            tm.ok(
+                TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
+                    root,
+                    dependency_projects=(
+                        TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
+                            root
+                        )
+                    ),
+                    session_runtime=session_runtime,
+                )
             )
             tm.ok(
                 infra.codegen_conform(

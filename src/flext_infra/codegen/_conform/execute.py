@@ -191,6 +191,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         attempts = config.Infra.mutation_lock.reconcile_attempts
 
         def _run_once() -> p.Result[p.Infra.CodegenResult]:
+            self.state.source_inputs.clear()
+            self.state.source_imports.clear()
             try:
                 return self._execute_once(
                     request, root, after_publication, after_cohort_publication
@@ -377,19 +379,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         try:
             outcomes = tuple(
                 self._control_outcome(
-                    m.Infra.CodegenRepositoryPlanTask(
-                        root=root,
-                        workspace=workspace,
-                        current_target=current_target,
-                        repository=selected.value[name],
-                        surface=request.what,
-                        selected_inputs=(
+                    m.Infra.CodegenRepositoryPlanTask.model_validate({
+                        "root": (root),
+                        "workspace": (workspace),
+                        "current_target": (current_target),
+                        "repository": (selected.value[name]),
+                        "surface": (request.what),
+                        "selected_inputs": (
                             captured.value
                             if selected.value[name].name
                             == current_target.repository.name
                             else None
                         ),
-                    ),
+                    }),
                 )
                 for name in ordered.value
             )
@@ -603,7 +605,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 "generated projections are stale: "
                 + ", ".join(sorted(str(change.path) for change in pending))
             )
-        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(plan=plan)
+        payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
+            "plan": (plan)
+        })
         return result_type.ok(payload)
 
     def _planned(
@@ -959,10 +963,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     },
                     exception=completed.exception,
                 )
-        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
-            plan=plan,
-            written_files=published.value,
-        )
+        payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
+            "plan": (plan),
+            "written_files": (published.value),
+        })
         return result_type.ok(payload)
 
     def _admitted_plans(
@@ -1083,12 +1087,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     })
                 ),
             ),
-            options=m.Infra.StageSourceOptions(
-                declared_files=files,
-                inputs=tuple(inputs.values()),
-                snapshot=snapshot,
-                import_edges=run.source_imports,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "declared_files": (files),
+                "inputs": (tuple(inputs.values())),
+                "snapshot": (snapshot),
+                "import_edges": (run.source_imports),
+            }),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
             return result_type.from_failure(preview)

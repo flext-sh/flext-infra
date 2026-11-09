@@ -150,18 +150,20 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixture
-        return m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=fixture.beads_project(repository.name),
-            repository=repository,
-            project=project,
-            flext_source=m.Infra.CodegenBootstrapSource(
-                url=fixture.repository_ref(config.Infra.name).url,
-                ref=fixture.provider_branch(),
+        return m.Infra.WorkspaceSpec.model_validate({
+            "name": (repository.name),
+            "beads": (fixture.beads_project(repository.name)),
+            "repository": (repository),
+            "project": (project),
+            "flext_source": (
+                m.Infra.CodegenBootstrapSource(
+                    url=fixture.repository_ref(config.Infra.name).url,
+                    ref=fixture.provider_branch(),
+                )
             ),
-            subprojects=subprojects,
-            integration=fixture.integration(),
-        )
+            "subprojects": (subprojects),
+            "integration": (fixture.integration()),
+        })
 
     @staticmethod
     def repository_ref(

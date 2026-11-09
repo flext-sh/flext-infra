@@ -739,19 +739,23 @@ class FlextInfraCodemodSemanticApply(
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             {},
-            options=m.Infra.StageSourceOptions(
-                workspaces=scopes if len(scopes) > 1 else (),
-                snapshot=snapshot,
-                inputs=tuple(
-                    cls._input_state(path, snapshot)
-                    for path in dict.fromkeys(
-                        project.resolve() / target
-                        for scope in scopes
-                        for project in u.Infra.import_project_roots(scope)
-                        for target in u.Infra.ast_grep_scan_targets(project.resolve())
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (scopes if len(scopes) > 1 else ()),
+                "snapshot": (snapshot),
+                "inputs": (
+                    tuple(
+                        cls._input_state(path, snapshot)
+                        for path in dict.fromkeys(
+                            project.resolve() / target
+                            for scope in scopes
+                            for project in u.Infra.import_project_roots(scope)
+                            for target in u.Infra.ast_grep_scan_targets(
+                                project.resolve()
+                            )
+                        )
                     )
                 ),
-            ),
+            }),
         )
 
     @staticmethod
@@ -916,17 +920,17 @@ class FlextInfraCodemodSemanticApply(
         return FlextInfraStagedPackage.plan_sources(
             scopes[0],
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=scopes if len(scopes) > 1 else (),
-                modes={
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (scopes if len(scopes) > 1 else ()),
+                "modes": ({
                     target: state.mode
                     for source, target in moves
                     for state in staged_inputs.value
                     if state.path == source and state.mode is not None
-                },
-                inputs=staged_inputs.value,
-                snapshot=snapshot,
-            ),
+                }),
+                "inputs": (staged_inputs.value),
+                "snapshot": (snapshot),
+            }),
         ).map(
             lambda candidate: (
                 m.Infra.SemanticSourcePlan(

@@ -6,13 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import mkdocs.commands.build
 import mkdocs.commands.serve
-import mkdocs.config
 from flext_cli import u
 
 from flext_infra import c, m, p
@@ -124,23 +122,23 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def _run_mkapi(settings: Path, site_dir: Path) -> None:
-        """Validate and build through the typed public MkDocs SDK."""
+        """Run MkDocs' complete native build lifecycle in the current runtime."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
-        logger = logging.getLogger("mkdocs")
-        handler = logging.StreamHandler()
-        logger.addHandler(handler)
-        try:
-            config_obj = FlextInfraUtilitiesDocsBuild._config_sdk(
-                mkdocs.config,
-            ).load_config(
-                config_file=str(settings),
-                site_dir=str(site_dir),
-                strict=True,
-            )
-            mkdocs.commands.build.build(config_obj, dirty=False)
-        finally:
-            logger.removeHandler(handler)
-            handler.close()
+        u.Cli.run_checked(
+            (
+                sys.executable,
+                "-m",
+                "mkdocs",
+                "build",
+                "--strict",
+                "--clean",
+                "--config-file",
+                str(settings.resolve()),
+                "--site-dir",
+                str(site_dir),
+            ),
+            cwd=settings.resolve().parent,
+        ).unwrap()
 
     @staticmethod
     def docs_serve_mkdocs(
@@ -202,22 +200,6 @@ class FlextInfraUtilitiesDocsBuild:
                 f"Site dir: {report.site_dir}",
             ],
         ).unwrap()
-
-    @staticmethod
-    def _config_sdk(module: ModuleType) -> p.Infra.MkDocsConfigModule:
-        """Validate the native SDK configuration dependency before effects.
-
-        Returns:
-            The native module through its required configuration port.
-
-        Raises:
-            TypeError: If the dependency lacks its declared operation.
-
-        """
-        if isinstance(module, p.Infra.MkDocsConfigModule):
-            return module
-        message = "MkDocs configuration module does not satisfy its public contract"
-        raise TypeError(message)
 
     @staticmethod
     def _serve_sdk(module: ModuleType) -> p.Infra.MkDocsServeModule:

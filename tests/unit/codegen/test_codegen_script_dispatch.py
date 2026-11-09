@@ -29,22 +29,21 @@ class TestsFlextInfraScriptDispatchMakefile:
         # neutral downstream root and takes its provider from the engine's own
         # configured provider catalog instead of naming a real consumer.
         provider = u.Tests.provider()
-        root_repository = m.Infra.RepositoryRef(
-            name="demo-root",
-            distribution="demo-root",
-            url=f"{provider.base_url}/demo-root.git",
-            path=Path(),
-            # Script dispatch is a generic capability: exercise it on standalone.
-            role=c.Infra.MakeProfile.STANDALONE,
-            provider=provider.name,
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=False,
-            editable=False,
-            read_only=False,
-            extra_verbs=extra_verbs,
-            script_dispatch=script_dispatch,
-        )
+        root_repository = m.Infra.RepositoryRef.model_validate({
+            "name": ("demo-root"),
+            "distribution": ("demo-root"),
+            "url": (f"{provider.base_url}/demo-root.git"),
+            "path": (Path()),
+            "role": (c.Infra.MakeProfile.STANDALONE),
+            "provider": (provider.name),
+            "kind": (c.Infra.ProjectKind.INTERNAL_FLEXT),
+            "codegen": (c.Infra.CodegenKind.CONFORM),
+            "package": (False),
+            "editable": (False),
+            "read_only": (False),
+            "extra_verbs": (extra_verbs),
+            "script_dispatch": (script_dispatch),
+        })
         workspace = u.Tests.workspace_spec(
             root_repository,
             project=u.Tests.project_spec("demo-root"),

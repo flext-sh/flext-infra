@@ -4,14 +4,68 @@
 from __future__ import annotations
 
 import stat
+import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen import FlextInfraStagedPackage
+from flext_infra.validate import FlextInfraValidateFreshImport
 from tests import c, m, tm, u
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class TestsFlextInfraSourceLayoutOwnership:
     """Metadata and helper locations do not invent project boundaries."""
+
+    @staticmethod
+    def test_nested_preview_retains_the_original_storage_owner(tmp_path: Path) -> None:
+        """Nested candidate reads use producer storage without writing live bytes."""
+        root = u.Tests.git_repository(tmp_path / "workspace")
+        package = u.Tests.src_package(
+            root,
+            "preview_consumer",
+            pyproject="[project]\nname='preview-consumer'\nversion='1.0.0'\n",
+        )
+        source = package / "consumer.py"
+        source.write_bytes(b"VALUE = 1\n")
+        relative = source.relative_to(root)
+        previews: list[Path] = []
+        preview = FlextInfraStagedPackage()
+
+        def inspect_nested(view: Path, _paths: Mapping[Path, Path]) -> bytes:
+            previews.append(view)
+            tm.fail(u.Infra.git_mutation_scope(m.Infra.GitRepoRequest(repo_root=view)))
+            checked = tm.ok(
+                FlextInfraValidateFreshImport(
+                    repository_root=view,
+                    runtime_root=Path(sys.prefix).parent,
+                ).build_report(repository_roots=(view,))
+            )
+            tm.that(checked.passed, eq=True)
+            return (view / relative).read_bytes()
+
+        def inspect_outer(view: Path, _paths: Mapping[Path, Path]) -> bytes:
+            previews.append(view)
+            tm.that((view / relative).read_bytes(), eq=b"VALUE = 2\n")
+            return tm.ok(
+                preview.preview_sources(
+                    view,
+                    {view / relative: "VALUE = 3\n"},
+                    inspect_nested,
+                    storage_root=root,
+                )
+            )
+
+        observed = tm.ok(
+            preview.preview_sources(root, {source: "VALUE = 2\n"}, inspect_outer)
+        )
+        tm.that(observed, eq=b"VALUE = 3\n")
+        tm.that(source.read_bytes(), eq=b"VALUE = 1\n")
+        storage = tm.ok(u.Infra.mutation_lock_path(root)).parent
+        tm.that([view.parent for view in previews], eq=[storage, storage])
+        tm.that(any(view.exists() for view in previews), eq=False)
 
     @staticmethod
     def test_materializes_independent_directories_with_declared_bytes_and_modes(
@@ -164,12 +218,16 @@ class TestsFlextInfraSourceLayoutOwnership:
             FlextInfraStagedPackage.plan_sources(
                 root,
                 {helper: "VALUE = 2\n"},
-                options=m.Infra.StageSourceOptions(
-                    inputs=tuple(
-                        tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
-                        for path in (helper, sibling)
-                    ),
-                ),
+                options=m.Infra.StageSourceOptions.model_validate({
+                    "inputs": (
+                        tuple(
+                            tm.ok(
+                                u.Cli.atomic_read_binary_file_state(path, required=True)
+                            )
+                            for path in (helper, sibling)
+                        )
+                    )
+                }),
             )
         )
         candidate = tmp_path / "candidate"

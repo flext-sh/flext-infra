@@ -633,17 +633,19 @@ class TestsFlextInfraDepsModernizerToolTables:
             "\tflext-managed = false\n",
             encoding="utf-8",
         )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=workspace.repository.name,
-            repository=workspace.repository.model_copy(
-                update={"role": c.Infra.MakeProfile.WORKSPACE},
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (workspace.repository.name),
+            "repository": (
+                workspace.repository.model_copy(
+                    update={"role": c.Infra.MakeProfile.WORKSPACE},
+                )
             ),
-            exclusions=(
+            "exclusions": ((
                 m.Infra.WorkspaceExclusionSpec(path=Path(excluded), reason="retired"),
-            ),
-            external_dependency_paths=(Path(excluded),),
-        )
+            )),
+            "external_dependency_paths": ((Path(excluded),)),
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 u.Infra.workspace_manifest_path(project_dir),

@@ -208,7 +208,10 @@ class TestsFlextInfraRopeRuntimePymodule:
                     (
                         sys.executable,
                         "-c",
-                        f"from {package.name}.consumer import Owner; print(Owner.VALUE)",
+                        (
+                            f"from {package.name}.consumer import Owner; "
+                            f"print(Owner.VALUE)"
+                        ),
                     ),
                     cwd=root,
                     options=m.Cli.ProcessOptions(

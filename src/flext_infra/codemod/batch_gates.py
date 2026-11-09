@@ -909,47 +909,51 @@ class FlextInfraModGateEngine:
                 return r[p.Infra.ModScanFinding].from_failure(classified)
             actionable, classification = classified.value
         return r[p.Infra.ModScanFinding].ok(
-            m.Infra.ModScanFinding(
-                rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
-                rule_id=str(rule_id),
-                repository=context.repositories[file_path],
-                file=file_path,
-                source_owner="generator"
-                if snapshot is not None
-                and snapshot.content is not None
-                and snapshot.content.startswith(
-                    c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
-                )
-                else "authored",
-                source_state=snapshot,
-                range=u.json_mapping_adapter().validate_python(
-                    finding.get("range"),
+            m.Infra.ModScanFinding.model_validate({
+                "rule_file": (str(rule_files_by_id[str(rule_id)].resolve())),
+                "rule_id": (str(rule_id)),
+                "repository": (context.repositories[file_path]),
+                "file": (file_path),
+                "source_owner": (
+                    "generator"
+                    if snapshot is not None
+                    and snapshot.content is not None
+                    and snapshot.content.startswith(
+                        c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
+                    )
+                    else "authored"
                 ),
-                text=str(finding.get("text")),
-                message=(
+                "source_state": (snapshot),
+                "range": (
+                    u.json_mapping_adapter().validate_python(
+                        finding.get("range"),
+                    )
+                ),
+                "text": (str(finding.get("text"))),
+                "message": (
                     native_message
                     if isinstance(native_message := finding.get("message"), str)
                     else None
                 ),
-                replacement=replacement,
-                actionable=actionable,
-                classification=classification,
-                severity=severity,
-                origin=(
+                "replacement": (replacement),
+                "actionable": (actionable),
+                "classification": (classification),
+                "severity": (severity),
+                "origin": (
                     c.Infra.ModFindingOrigin.OWNED_PATH
                     if finding.get("origin") == "owned-path"
                     else c.Infra.ModFindingOrigin.AST_GREP
                 ),
-                replacement_offsets=(
+                "replacement_offsets": (
                     m.Infra.ModReplacementOffsets.model_validate(
                         finding["replacementOffsets"]
                     )
                     if "replacementOffsets" in finding
                     else None
                 ),
-                native_record=native[0],
-                native_receipt=native[1],
-            ),
+                "native_record": (native[0]),
+                "native_receipt": (native[1]),
+            }),
         )
 
     @staticmethod

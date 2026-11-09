@@ -44,13 +44,13 @@ class TestsFlextInfraWorkspaceMemberLedgerIdentity:
             path=Path("members/fixture-member"),
         ).model_copy(update={"extra_verbs": (member_verb,)})
         project = u.Tests.project_spec(repository.distribution)
-        declaration = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=repository.name,
-            repository=repository,
-            project=project,
-            members=(member,),
-        )
+        declaration = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (repository.name),
+            "repository": (repository),
+            "project": (project),
+            "members": ((member,)),
+        })
         manifest = u.Infra.workspace_manifest_path(tmp_path)
         manifest.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(

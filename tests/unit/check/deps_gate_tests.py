@@ -102,11 +102,13 @@ class TestsFlextInfraDepsGate:
             ),
             encoding="utf-8",
         )
-        return m.Infra.RuntimeDependencyInputs(
-            target_root=root,
-            python=Path(sys.executable).absolute(),
-            lock=u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap(),
-            providers=(
+        return m.Infra.RuntimeDependencyInputs.model_validate({
+            "target_root": (root),
+            "python": (Path(sys.executable).absolute()),
+            "lock": (
+                u.Cli.atomic_read_binary_file_state(lock_path, required=True).unwrap()
+            ),
+            "providers": ((
                 m.Infra.RuntimeDependencyProvider(
                     modules=tuple(
                         sorted({
@@ -123,17 +125,17 @@ class TestsFlextInfraDepsGate:
                         ).unwrap(),
                     ),
                 ),
-            ),
-            development_only=(),
-            invoked_executables=(),
-            loaded_plugins=(),
-            inputs=(
+            )),
+            "development_only": (()),
+            "invoked_executables": (()),
+            "loaded_plugins": (()),
+            "inputs": ((
                 u.Cli.atomic_read_binary_file_state(
                     root / "src" / "fixturepkg" / "__init__.py",
                     required=True,
                 ).unwrap(),
-            ),
-        )
+            )),
+        })
 
     @staticmethod
     def test_undeclared_import_blocks_at_check_time(tmp_path: Path) -> None:

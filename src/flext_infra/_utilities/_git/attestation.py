@@ -85,15 +85,17 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                     exception=error,
                 )
         return r[p.Infra.GitSigningIdentityReport].ok(
-            m.Infra.GitSigningIdentityReport(
-                repo_root=root,
-                signing_format=signing_format.value,
-                key_path=Path(key) if ssh and key is not None and not inline else None,
-                inline_public_key=inline,
-                public_fingerprint=None,
-                allowed_signers_path=Path(trust) if trust is not None else None,
-                observations=tuple(observations),
-            ),
+            m.Infra.GitSigningIdentityReport.model_validate({
+                "repo_root": (root),
+                "signing_format": (signing_format.value),
+                "key_path": (
+                    Path(key) if ssh and key is not None and not inline else None
+                ),
+                "inline_public_key": (inline),
+                "public_fingerprint": (None),
+                "allowed_signers_path": (Path(trust) if trust is not None else None),
+                "observations": (tuple(observations)),
+            }),
         )
 
     @staticmethod
@@ -299,13 +301,15 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             ),
         ).unwrap()
         return cls.git_finish_gate_capture(
-            m.Infra.GateCaptureFinishRequest(
-                started=started_capture,
-                process=process,
-                reports=reports,
-                report_root=report_root,
-                runtime_identity=read_runtime_identity(native_request.gates).unwrap(),
-            ),
+            m.Infra.GateCaptureFinishRequest.model_validate({
+                "started": (started_capture),
+                "process": (process),
+                "reports": (reports),
+                "report_root": (report_root),
+                "runtime_identity": (
+                    read_runtime_identity(native_request.gates).unwrap()
+                ),
+            }),
             inputs=load_inputs(root),
         )
 
@@ -327,29 +331,33 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             m.Infra.GitRepoRequest(repo_root=root)
         )
         policy = c.Infra.GateAcceptancePolicy(inputs.spec.make.gate_acceptance_policy)
-        return m.Infra.GateCaptureStart(
-            repository_root=root,
-            gate=request.gate,
-            command=request.command,
-            intent=request.intent,
-            repository=(identity.value.origin_remote if identity.success else None),
-            commit_sha=identity.value.head_oid if identity.success else None,
-            tree_sha=cls._repo(root).commit(identity.value.head_oid).tree.hexsha
-            if identity.success and identity.value.head_oid is not None
-            else None,
-            dirty=identity.value.dirty if identity.success else None,
-            runtime_identity=request.runtime_identity,
-            issue=identity.error if identity.failure else None,
-            context_digest=cls._gate_capture_context_digest(
-                request.gate,
-                request.intent,
-                inputs,
-                request.runtime_identity,
+        return m.Infra.GateCaptureStart.model_validate({
+            "repository_root": (root),
+            "gate": (request.gate),
+            "command": (request.command),
+            "intent": (request.intent),
+            "repository": (identity.value.origin_remote if identity.success else None),
+            "commit_sha": (identity.value.head_oid if identity.success else None),
+            "tree_sha": (
+                cls._repo(root).commit(identity.value.head_oid).tree.hexsha
+                if identity.success and identity.value.head_oid is not None
+                else None
             ),
-            policy=policy,
-            policy_digest=f"sha256:{u.Cli.sha256_content(policy)}",
-            started_at=datetime.now(tz=UTC).isoformat(),
-        )
+            "dirty": (identity.value.dirty if identity.success else None),
+            "runtime_identity": (request.runtime_identity),
+            "issue": (identity.error if identity.failure else None),
+            "context_digest": (
+                cls._gate_capture_context_digest(
+                    request.gate,
+                    request.intent,
+                    inputs,
+                    request.runtime_identity,
+                )
+            ),
+            "policy": (policy),
+            "policy_digest": (f"sha256:{u.Cli.sha256_content(policy)}"),
+            "started_at": (datetime.now(tz=UTC).isoformat()),
+        })
 
     @staticmethod
     def _gate_capture_context_digest(
@@ -434,10 +442,10 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                     receipt,
                     captured.value.model_dump_json(round_trip=True) + "\n",
                 ).unwrap()
-        result = m.Infra.GateCaptureReport(
-            process=request.process,
-            receipt=receipt,
-            issues=(
+        result = m.Infra.GateCaptureReport.model_validate({
+            "process": (request.process),
+            "receipt": (receipt),
+            "issues": (
                 (
                     m.Infra.Issue(
                         file=str(root),
@@ -453,7 +461,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 if issue is not None
                 else ()
             ),
-        )
+        })
         u.Cli.atomic_write_text_file(
             request.report_root / c.Infra.GATE_CAPTURE_RESULT_FILENAME,
             result.model_dump_json(round_trip=True) + "\n",
@@ -510,36 +518,40 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             return r[p.Infra.GateCommandEvidence].fail(
                 "original producer has no complete report inventory",
             )
-        evidence = m.Infra.GateCommandEvidence(
-            scope="workspace",
-            runtime_identity=started.runtime_identity,
-            gate=started.gate,
-            process=process,
-            native_outcome=c.Infra.ToolOutcome.ERROR,
-            intent=started.intent,
-            policy=started.policy,
-            policy_digest=started.policy_digest,
-            context_digest=started.context_digest,
-            reports=reports,
-            result_digest=f"sha256:{
-                u.Cli.sha256_content(process.model_dump_json(round_trip=True))
-            }",
-            started_at=started.started_at,
-            completed_at=datetime.now(tz=UTC).isoformat(),
-            command_digest=f"sha256:{u.Cli.sha256_content(shlex.join(started.command))}",
-            repository=started.repository,
-            commit_sha=started.commit_sha,
-            tree_sha=started.tree_sha,
-            dirty=started.dirty,
-            after_repository=after.origin_remote if after is not None else None,
-            after_commit_sha=after.head_oid if after is not None else None,
-            after_tree_sha=(
+        evidence = m.Infra.GateCommandEvidence.model_validate({
+            "scope": ("workspace"),
+            "runtime_identity": (started.runtime_identity),
+            "gate": (started.gate),
+            "process": (process),
+            "native_outcome": (c.Infra.ToolOutcome.ERROR),
+            "intent": (started.intent),
+            "policy": (started.policy),
+            "policy_digest": (started.policy_digest),
+            "context_digest": (started.context_digest),
+            "reports": (reports),
+            "result_digest": (
+                f"sha256:{
+                    u.Cli.sha256_content(process.model_dump_json(round_trip=True))
+                }"
+            ),
+            "started_at": (started.started_at),
+            "completed_at": (datetime.now(tz=UTC).isoformat()),
+            "command_digest": (
+                f"sha256:{u.Cli.sha256_content(shlex.join(started.command))}"
+            ),
+            "repository": (started.repository),
+            "commit_sha": (started.commit_sha),
+            "tree_sha": (started.tree_sha),
+            "dirty": (started.dirty),
+            "after_repository": (after.origin_remote if after is not None else None),
+            "after_commit_sha": (after.head_oid if after is not None else None),
+            "after_tree_sha": (
                 cls._repo(started.repository_root).commit(after.head_oid).tree.hexsha
                 if after is not None and after.head_oid is not None
                 else None
             ),
-            after_dirty=after.dirty if after is not None else None,
-        )
+            "after_dirty": (after.dirty if after is not None else None),
+        })
         classified = cls._original_report_outcome(started.repository_root, evidence)
         if classified.failure:
             return r[p.Infra.GateCommandEvidence].from_failure(classified)
@@ -610,15 +622,15 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             return r[p.Infra.GateAttestationPredicate].from_failure(source)
         with FlextInfraUtilitiesGitWorktreeIO.git_stdin(source.value) as stream:
             anchor = repo.git.hash_object("--stdin", istream=stream)
-        predicate = m.Infra.GateAttestationPredicate(
-            anchor_oid=anchor,
-            signer=request.signer,
-            toolchain_digest=toolchain,
-            context_digest=evidence.context_digest,
-            receipt=receipt,
-            covered_gates=request.gates,
-            commands=(evidence,),
-        )
+        predicate = m.Infra.GateAttestationPredicate.model_validate({
+            "anchor_oid": (anchor),
+            "signer": (request.signer),
+            "toolchain_digest": (toolchain),
+            "context_digest": (evidence.context_digest),
+            "receipt": (receipt),
+            "covered_gates": (request.gates),
+            "commands": ((evidence,)),
+        })
         return cls._attestation_predicate_from_value(repo_root, predicate, context).map(
             lambda _: predicate
         )
@@ -893,13 +905,13 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         eligible = len(reasons) == 0
 
         return r[p.Infra.GateCandidateAdmissionReport].ok(
-            m.Infra.GateCandidateAdmissionReport(
-                eligible=eligible,
-                reasons=tuple(reasons),
-                attestation=attestation if eligible else None,
-                candidate_head=candidate.head_oid,
-                attested_head=attested_head,
-            )
+            m.Infra.GateCandidateAdmissionReport.model_validate({
+                "eligible": (eligible),
+                "reasons": (tuple(reasons)),
+                "attestation": (attestation if eligible else None),
+                "candidate_head": (candidate.head_oid),
+                "attested_head": (attested_head),
+            })
         )
 
     @classmethod

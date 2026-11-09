@@ -199,13 +199,13 @@ class FlextInfraCodemodDuplicateApply(
         return r[
             tuple[p.Infra.DuplicateCureOutcome, tuple[p.Infra.DuplicateDeletion, ...]]
         ].ok((
-            m.Infra.DuplicateCureOutcome(
-                edits=tuple(edits),
-                plans=tuple(plans),
-                files_changed=len(edits),
-                copies_removed=len(deletions),
-                bindings_rewired=bindings,
-            ),
+            m.Infra.DuplicateCureOutcome.model_validate({
+                "edits": (tuple(edits)),
+                "plans": (tuple(plans)),
+                "files_changed": (len(edits)),
+                "copies_removed": (len(deletions)),
+                "bindings_rewired": (bindings),
+            }),
             tuple(deletions),
         ))
 
@@ -255,11 +255,11 @@ class FlextInfraCodemodDuplicateApply(
             if isinstance(copy_edits, str):
                 return cls._group_plan(group, definitions, copy_edits)
             edits.extend(copy_edits)
-        return m.Infra.DuplicateGroupCure(
-            owner=cure.owner,
-            copies=tuple(copy for copy in cure.copies if copy is not cure.owner),
-            edits=tuple(edits),
-        )
+        return m.Infra.DuplicateGroupCure.model_validate({
+            "owner": (cure.owner),
+            "copies": (tuple(copy for copy in cure.copies if copy is not cure.owner)),
+            "edits": (tuple(edits)),
+        })
 
     @classmethod
     def _trivial_blocker(
@@ -358,19 +358,19 @@ class FlextInfraCodemodDuplicateApply(
             source = workspace.source(path)
             statement = cls._definition_statement(workspace.rope_project, source, item)
             definitions.append(
-                m.Infra.DuplicateDefinition(
-                    item=item,
-                    path=path,
-                    source=source,
-                    statement=statement,
-                    body=(
+                m.Infra.DuplicateDefinition.model_validate({
+                    "item": (item),
+                    "path": (path),
+                    "source": (source),
+                    "statement": (statement),
+                    "body": (
                         cls._statement_body(statement, source)
                         if statement is not None
                         else ""
                     ),
-                    consumers=item.references_count,
-                    layer=cls._layer_of(path, layers),
-                ),
+                    "consumers": (item.references_count),
+                    "layer": (cls._layer_of(path, layers)),
+                }),
             )
         return sorted(
             definitions,
@@ -601,11 +601,11 @@ class FlextInfraCodemodDuplicateApply(
                 if path not in consumer_files:
                     consumer_files.append(path)
             cure_copies.append(
-                m.Infra.DuplicateCopyCure(
-                    definition=definition,
-                    consumer_files=tuple(sorted(consumer_files)),
-                    in_module_uses=in_module_uses,
-                ),
+                m.Infra.DuplicateCopyCure.model_validate({
+                    "definition": (definition),
+                    "consumer_files": (tuple(sorted(consumer_files))),
+                    "in_module_uses": (in_module_uses),
+                }),
             )
         owner = min(
             cure_copies,
@@ -620,11 +620,11 @@ class FlextInfraCodemodDuplicateApply(
                 copy.definition.item.line,
             ),
         )
-        return m.Infra.DuplicateGroupCure(
-            owner=owner,
-            copies=tuple(cure_copies),
-            edits=(),
-        )
+        return m.Infra.DuplicateGroupCure.model_validate({
+            "owner": (owner),
+            "copies": (tuple(cure_copies)),
+            "edits": (()),
+        })
 
     @classmethod
     def _located_occurrences(

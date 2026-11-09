@@ -73,16 +73,16 @@ class FlextInfraUtilitiesDependencyDeptry:
                 "deptry report state has no captured bytes to authenticate",
             )
         return result_type.ok(
-            m.Infra.DeptryScan(
-                scanned_files=coverage.value,
-                venv_bin=venv_bin,
-                source=sources,
-                native=output,
-                settings=settings,
-                report_state=report_state,
-                report_sha256=u.Cli.sha256_bytes(report_state.content),
-                report=parsed,
-            )
+            m.Infra.DeptryScan.model_validate({
+                "scanned_files": (coverage.value),
+                "venv_bin": (venv_bin),
+                "source": (sources),
+                "native": (output),
+                "settings": (settings),
+                "report_state": (report_state),
+                "report_sha256": (u.Cli.sha256_bytes(report_state.content)),
+                "report": (parsed),
+            })
         )
 
     @staticmethod

@@ -33,7 +33,7 @@ class TestsFlextInfraCodegenLayout:
                     "-c",
                     (
                         "from pathlib import Path\n"
-                        "from flext_infra import FlextInfraCodegenLayout\n"
+                        "from flext_infra.codegen import FlextInfraCodegenLayout\n"
                         "root = Path.cwd()\n"
                         "report = FlextInfraCodegenLayout(repository_root=root)"
                         ".check_project(root)\n"
@@ -75,6 +75,7 @@ class TestsFlextInfraCodegenLayout:
         candidates = tuple(f"consumer-note-{index}.fixture" for index in range(3))
         for filename in candidates:
             (project / filename).write_text(f"{filename}\n", encoding="utf-8")
+        u.Tests.git_run(project, "add", "--", *candidates)
         # Why in-process: no org overlay exists yet, so the baseline carries no
         # config the long-lived worker's frozen config singleton could leak
         # across parametrized cases. Only the post-override read below (which
@@ -147,7 +148,7 @@ class TestsFlextInfraCodegenLayout:
             eq=f"{TestsFlextInfraCodegenLayoutSupport.archive_root()}/{project.name}/output.log",
         )
         tm.that(by_path["loose.txt"].rule, eq="review")
-        ignore = [finding for finding in report.findings if finding.rule == "ignore"]
+        ignore = [finding for finding in report.findings if finding.rule == "gitignore"]
         tm.ok(bool(ignore))
         tm.that(
             ignore[0].target,

@@ -63,19 +63,19 @@ class TestsFlextInfraCodegenRuntimeProfiles:
         project = u.Tests.project_spec(observed.repository.name).model_copy(
             update={"upstream": upstream},
         )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=observed.repository.name,
-            docs_audit=observed.docs_audit,
-            repository=observed.repository,
-            project=project,
-            members=(
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (observed.repository.name),
+            "docs_audit": (observed.docs_audit),
+            "repository": (observed.repository),
+            "project": (project),
+            "members": ((
                 u.Tests.repository_ref(
                     "unselected-project",
                     path=Path("unselected-project"),
                 ),
-            ),
-        )
+            )),
+        })
         manifest_path = member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
         if composed:

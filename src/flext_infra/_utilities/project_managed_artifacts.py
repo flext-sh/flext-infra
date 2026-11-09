@@ -102,7 +102,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             return result_type.from_failure(loaded)
         spec, kind = loaded.value
         return result_type.ok(
-            m.Infra.CodegenInputs(spec=spec, kind=kind, sources=sources),
+            m.Infra.CodegenInputs.model_validate({
+                "spec": (spec),
+                "kind": (kind),
+                "sources": (sources),
+            }),
         )
 
     @classmethod
@@ -460,7 +464,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             validated: tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind],
         ) -> p.Infra.CodegenInputs:
             spec, kind = validated
-            return m.Infra.CodegenInputs(spec=spec, kind=kind, sources=captured.sources)
+            return m.Infra.CodegenInputs.model_validate({
+                "spec": (spec),
+                "kind": (kind),
+                "sources": (captured.sources),
+            })
 
         return loaded.map(codegen_inputs)
 
@@ -525,8 +533,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         Raises:
             ValueError: If the composed declaration violates the codegen
-                configuration schema; third-party validation detail travels
-                as the cause.
+                configuration schema, naming its repository; third-party
+                validation detail travels as the cause.
 
         """
         kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(
@@ -539,7 +547,8 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.
-            raise ValueError(str(error)) from error
+            message = f"{repository_root}: {error}"
+            raise ValueError(message) from error
 
     @classmethod
     def _repository_config_document(

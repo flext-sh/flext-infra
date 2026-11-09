@@ -36,6 +36,12 @@ class TestsLiveEditableProvenance:
         packages = u.Cli.toml_ensure_table(setuptools, "packages")
         find = u.Cli.toml_ensure_table(packages, "find")
         find["where"] = ["src"]
+        uv_workspace = u.Cli.toml_ensure_table(
+            u.Cli.toml_ensure_table(tool, "uv"), "workspace"
+        )
+        uv_workspace["members"] = [
+            member.relative_to(workspace).as_posix() for member in members
+        ]
         tm.ok(u.Cli.atomic_write_text_file(manifest, u.Cli.toml_dumps(document)))
         u.Tests.git_run(workspace, "add", c.PYPROJECT_FILENAME)
         u.Tests.git_run(
@@ -44,20 +50,14 @@ class TestsLiveEditableProvenance:
             "-qm",
             "declare real editable workspace build",
         )
-        uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, workspace))
+        uv = u.Tests.managed_uv()
         tm.ok(
             u.Cli.run_checked(
-                (
-                    str(uv),
-                    "pip",
-                    "install",
-                    "--no-deps",
-                    "--python",
-                    str(u.Infra.runtime_python(workspace)),
-                    "--editable",
-                    str(workspace),
-                ),
+                (uv, "sync", "--all-packages"),
                 cwd=workspace,
+                options=m.Cli.ProcessOptions(
+                    remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                ),
             ),
         )
         return workspace, members
@@ -262,13 +262,14 @@ class TestsLiveEditableProvenance:
         manifest = members[0] / c.PYPROJECT_FILENAME
         document = u.Tests.toml_doc(manifest.read_text(encoding=c.DEFAULT_ENCODING))
         project = u.Cli.toml_ensure_table(document, "project")
-        project[c.Infra.DEPENDENCIES] = ["packaging"]
+        missing = f"{members[0].name}-missing-dependency"
+        project[c.Infra.DEPENDENCIES] = [missing]
         tm.ok(u.Cli.atomic_write_text_file(manifest, u.Cli.toml_dumps(document)))
         tm.that(self._select(root), ne=0)
         capture = capfd.readouterr()
         tm.that(
             capture.out + capture.err,
-            has="requires `packaging`, but it's not installed",
+            has=f"requires `{missing}`, but it's not installed",
         )
         tm.that(receipt.read_bytes(), eq=admitted)
 
@@ -351,11 +352,11 @@ class TestsLiveEditableProvenance:
                     cwd=root,
                 ),
             )
-            uv = tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, root))
+            uv = u.Tests.managed_uv()
             tm.ok(
                 u.Cli.run_checked(
                     (
-                        str(uv),
+                        uv,
                         "pip",
                         "install",
                         "--no-deps",

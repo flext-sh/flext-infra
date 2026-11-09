@@ -688,14 +688,14 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         # candidate byte read below still requires a source in the active view.
         state = snapshot.engine.source_state(path, required=False)
         raw = snapshot.engine.source_bytes(path)
-        source = m.Infra.WorkspaceSnapshotSource(
-            path=path,
-            state=state,
-            digest=hashlib.sha256(raw).hexdigest(),
-            module=cls._module_name(snapshot, path, member),
-            member=member,
-            text=raw.decode(c.DEFAULT_ENCODING),
-        )
+        source = m.Infra.WorkspaceSnapshotSource.model_validate({
+            "path": (path),
+            "state": (state),
+            "digest": (hashlib.sha256(raw).hexdigest()),
+            "module": (cls._module_name(snapshot, path, member)),
+            "member": (member),
+            "text": (raw.decode(c.DEFAULT_ENCODING)),
+        })
         snapshot.sources[path] = source
         return source
 

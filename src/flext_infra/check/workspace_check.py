@@ -19,10 +19,7 @@ from flext_infra.check import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGates,
 )
-from flext_infra.workspace import (
-    FlextInfraRuntimeDependencyCollector,
-    FlextInfraWorkspaceDetector,
-)
+from flext_infra.workspace import FlextInfraRuntimeDependencyCollector
 
 
 class FlextInfraWorkspaceChecker(
@@ -455,18 +452,17 @@ class FlextInfraWorkspaceChecker(
             return result_type.fail(
                 f"check run accepts scope self or all, not {scope.value}",
             )
-        return FlextInfraWorkspaceDetector.load_workspace_spec(
+        return u.Infra.repository_operation_targets(
             params.repository_root,
+            scope,
         ).map(
-            lambda workspace: (
-                root_target,
-                *(
-                    m.Infra.CheckProjectTarget(
-                        name=member.name,
-                        path=params.repository_root / member.path,
-                    )
-                    for member in u.Infra.mutable_flext_members(workspace)
-                ),
+            lambda targets: tuple(
+                m.Infra.CheckProjectTarget(
+                    name=target.root.name,
+                    path=target.root,
+                )
+                for target in targets
+                if target.managed is not False
             ),
         )
 
@@ -626,14 +622,14 @@ class FlextInfraWorkspaceChecker(
         pending_gates = tuple(gate for gate in gates if gate not in admission_gates)
         targets = self._targets_for_gates(targets, admission_gates, effective_ctx)
         reached: dict[Path, p.Infra.ProjectResult] = {}
-        current_summary = m.Infra.CheckReportSummary(
-            phase=phase,
-            requested_gates=gates,
-            pending_gates=pending_gates,
-            targets=targets,
-            results=(),
-            selected_files=tuple(effective_ctx.selected_files),
-        )
+        current_summary = m.Infra.CheckReportSummary.model_validate({
+            "phase": (phase),
+            "requested_gates": (gates),
+            "pending_gates": (pending_gates),
+            "targets": (targets),
+            "results": (()),
+            "selected_files": (tuple(effective_ctx.selected_files)),
+        })
 
         def publish_summary(summary: p.Infra.CheckReportSummary) -> None:
             """Retain this invocation's current facts through the existing writers."""
@@ -653,18 +649,20 @@ class FlextInfraWorkspaceChecker(
         def publish_progress(project_dir: Path, project: p.Infra.ProjectResult) -> None:
             reached[project_dir.resolve()] = project
             publish_summary(
-                m.Infra.CheckReportSummary(
-                    phase=phase,
-                    requested_gates=gates,
-                    pending_gates=pending_gates,
-                    targets=targets,
-                    results=tuple(
-                        reached[target.path]
-                        for target in targets
-                        if target.path in reached
+                m.Infra.CheckReportSummary.model_validate({
+                    "phase": (phase),
+                    "requested_gates": (gates),
+                    "pending_gates": (pending_gates),
+                    "targets": (targets),
+                    "results": (
+                        tuple(
+                            reached[target.path]
+                            for target in targets
+                            if target.path in reached
+                        )
                     ),
-                    selected_files=tuple(effective_ctx.selected_files),
-                ),
+                    "selected_files": (tuple(effective_ctx.selected_files)),
+                }),
             )
 
         effective_ctx = effective_ctx.model_copy(
@@ -708,16 +706,15 @@ class FlextInfraWorkspaceChecker(
             if global_plan.failure:
                 return r[p.Infra.CheckReportSummary].from_failure(global_plan)
             global_targets = global_plan.value
-        summary = m.Infra.CheckReportSummary(
-            phase=phase,
-            requested_gates=gates,
-            pending_gates=pending_gates,
-            targets=targets,
-            results=tuple(outcome.results),
-            # A file-scoped run never claims whole-project quality.
-            selected_files=tuple(effective_ctx.selected_files),
-            global_targets=global_targets,
-        )
+        summary = m.Infra.CheckReportSummary.model_validate({
+            "phase": (phase),
+            "requested_gates": (gates),
+            "pending_gates": (pending_gates),
+            "targets": (targets),
+            "results": (tuple(outcome.results)),
+            "selected_files": (tuple(effective_ctx.selected_files)),
+            "global_targets": (global_targets),
+        })
         # Preserve a changed returned result without repeating an identical
         # last-gate or zero-applicable-gate publication.
         if summary != current_summary:

@@ -241,7 +241,9 @@ environment creator. Acquisition passes only options supported by the official
 installer; its native temporary-file defaults remain tool-owned.
 
 Native executable discovery uses `mise which <binary>` in the authenticated
-configuration root with locked mode retained. It must not turn the resolved active
+configuration root with locked mode retained. Each lookup sets its discovery
+ceiling to that physical owner's parent; an inherited caller ceiling cannot elect
+another owner's tool. It must not turn the resolved active
 version into `--tool <selector>@<version>`: that is a new command-line request,
 not the original configured request and its lock binding. In particular, a tool
 declared `latest` and already installed from its lock must remain discoverable

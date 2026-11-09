@@ -54,16 +54,16 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             else request.module.rpartition(".")[0]
         )
         globals_: MutableMapping[str, p.Infra.SourceClassReference | None] = {}
-        spec = m.Infra.SourceBindingCollectorSpec(
-            module=request.module,
-            provider=provider,
-            package=package,
-            required_line=request.required_line,
-            allow_conditional=request.allow_conditional,
-            source_owned=request.project.source_owned(request.path),
-            definitions=definitions,
-            lexical=globals_,
-        )
+        spec = m.Infra.SourceBindingCollectorSpec.model_validate({
+            "module": (request.module),
+            "provider": (provider),
+            "package": (package),
+            "required_line": (request.required_line),
+            "allow_conditional": (request.allow_conditional),
+            "source_owned": (request.project.source_owned(request.path)),
+            "definitions": (definitions),
+            "lexical": (globals_),
+        })
         FlextInfraUtilitiesRopeSourceBindingCollector.collect(
             spec,
             parsed.body,

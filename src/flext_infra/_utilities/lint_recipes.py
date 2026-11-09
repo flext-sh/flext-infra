@@ -1489,7 +1489,9 @@ class FlextInfraUtilitiesLintRecipes(
         for literal in literals:
             text = line[literal.start : literal.end]
             column = literal.start if literal.bracketed else literal.start + 1
-            cuts = cls._line_wrap_cuts(text, literal, column, limit)
+            cuts = cls._line_wrap_cuts(
+                text, literal, column, limit - len(line[literal.end :].rstrip("\r\n"))
+            )
             if not cuts:
                 continue
             pieces = cls._line_wrap_pieces(text, literal, cuts)

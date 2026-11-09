@@ -129,7 +129,7 @@ class FlextInfraConformWiring:
         repositories: tuple[Path, ...],
         runtime: Path,
     ) -> p.Result[bool]:
-        """Check the declared witness cohort once using only staged import roots.
+        """Check model-declaring packages once using only staged import roots.
 
         Returns:
             Acceptance or a missing witness or native typing failure.
@@ -144,13 +144,13 @@ class FlextInfraConformWiring:
                     f"model conformance has no Python layout: {repository}"
                 )
             layouts.append(layout)
-            models = layout.package_dir / "models.py"
+            models = layout.package_dir / "_models"
             witness = (
                 layout.package_dir
                 / "_protocols"
                 / c.Infra.MODEL_PROTOCOL_CONFORMANCE_FILENAME
             )
-            if models.is_file():
+            if models.is_dir():
                 if not witness.is_file():
                     return r[bool].fail(
                         f"model conformance witness is missing: {witness}"

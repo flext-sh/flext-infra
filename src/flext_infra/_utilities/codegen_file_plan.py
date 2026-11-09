@@ -51,11 +51,7 @@ class FlextInfraUtilitiesCodegenFilePlan:
                     (
                         "before",
                         previous.before is file.before
-                        or (
-                            previous.before is not None
-                            and file.before is not None
-                            and previous.before.content == file.before.content
-                        ),
+                        or (previous.before.content == file.before.content),
                     ),
                     ("owner", previous.owner == file.owner),
                     ("policy", previous.policy == file.policy),

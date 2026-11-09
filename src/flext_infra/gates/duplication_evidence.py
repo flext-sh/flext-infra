@@ -149,43 +149,43 @@ class FlextInfraDuplicationEvidence:
                 )
             disposition = classification.disposition
             candidates.append(
-                m.Infra.DuplicationCandidateEvidence(
-                    index=index,
-                    canonical_index=canonical,
-                    candidate=candidate,
-                    owned=owned,
-                    self_span=keys[0] == keys[1],
-                    disposition=disposition,
-                    reason=classification.reason,
-                    measures=measures,
-                )
+                m.Infra.DuplicationCandidateEvidence.model_validate({
+                    "index": (index),
+                    "canonical_index": (canonical),
+                    "candidate": (candidate),
+                    "owned": (owned),
+                    "self_span": (keys[0] == keys[1]),
+                    "disposition": (disposition),
+                    "reason": (classification.reason),
+                    "measures": (measures),
+                })
             )
         candidates = self._revalidate_sources(candidates)
         for disposition in {item.disposition for item in candidates}:
             counts[disposition] = sum(
                 item.disposition == disposition for item in candidates
             )
-        return m.Infra.DuplicationAssessment(
-            policy="structural-evidence-v1-raw-hard",
-            raw_sha256=hashlib.sha256(raw_receipt.encode()).hexdigest(),
-            report=report,
-            candidates=tuple(candidates),
-            min_lines=config.min_lines,
-            min_tokens=config.min_tokens,
-            duration_seconds=time.monotonic() - started,
-            source_count=len(self._sources),
-            counts=counts,
-            execution=execution,
-            source_provenance=(
+        return m.Infra.DuplicationAssessment.model_validate({
+            "policy": ("structural-evidence-v1-raw-hard"),
+            "raw_sha256": (hashlib.sha256(raw_receipt.encode()).hexdigest()),
+            "report": (report),
+            "candidates": (tuple(candidates)),
+            "min_lines": (config.min_lines),
+            "min_tokens": (config.min_tokens),
+            "duration_seconds": (time.monotonic() - started),
+            "source_count": (len(self._sources)),
+            "counts": (counts),
+            "execution": (execution),
+            "source_provenance": (
                 "Current source bytes, fragment-bound on the first side only; "
                 "scanner has no per-source fingerprints. Not proof of historical "
                 "source identity or semantic equivalence; raw-hard preserved."
             ),
-            budget_status=(
+            "budget_status": (
                 "NOT VERIFIED: evidence-only; no acceptance promotion; "
                 "memory/token usage not measured"
             ),
-        )
+        })
 
     def _revalidate_sources(
         self,

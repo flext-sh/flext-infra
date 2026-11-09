@@ -599,7 +599,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 ),
             )
         return r[p.Infra.CodegenPlanningReport].ok(
-            m.Infra.CodegenPlanningReport(root=root, outcomes=tuple(evidence)),
+            m.Infra.CodegenPlanningReport.model_validate({
+                "root": (root),
+                "outcomes": (tuple(evidence)),
+            }),
         )
 
     def _repository_plan_outcomes(
@@ -1004,16 +1007,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 selected_inputs = captured.value
                 initial_workspace = local.value
             tasks.append(
-                m.Infra.CodegenRepositoryPlanTask(
-                    ports=self.state.ports,
-                    root=root,
-                    workspace=planning[0],
-                    initial_workspace=initial_workspace,
-                    current_target=current_target,
-                    repository=repository,
-                    surface=surface,
-                    selected_inputs=selected_inputs,
-                ),
+                m.Infra.CodegenRepositoryPlanTask.model_validate({
+                    "ports": (self.state.ports),
+                    "root": (root),
+                    "workspace": (planning[0]),
+                    "initial_workspace": (initial_workspace),
+                    "current_target": (current_target),
+                    "repository": (repository),
+                    "surface": (surface),
+                    "selected_inputs": (selected_inputs),
+                }),
             )
         return result_type.ok(tuple(tasks))
 

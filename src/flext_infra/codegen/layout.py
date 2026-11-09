@@ -116,9 +116,9 @@ class FlextInfraCodegenLayout(
 
         """
         if self.output_format == "json":
-            return m.Infra.LayoutRunReport(
-                reports=tuple(reports),
-            ).model_dump_json()
+            return m.Infra.LayoutRunReport.model_validate({
+                "reports": (tuple(reports))
+            }).model_dump_json()
         lines: MutableSequence[str] = []
         mode = "CHECK" if self.effective_dry_run else "APPLY"
         for report in reports:

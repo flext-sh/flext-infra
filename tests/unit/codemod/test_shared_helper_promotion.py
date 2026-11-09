@@ -228,10 +228,10 @@ class TestsFlextInfraSharedHelperPromotion:
         for path, original in sources.items():
             tm.that(path.read_text(encoding="utf-8"), eq=original)
         plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=root,
-                path=edit.file_path,
-                before=(
+            m.Infra.SemanticFilePlan.model_validate({
+                "project": (root),
+                "path": (edit.file_path),
+                "before": (
                     state := tm.ok(
                         u.Cli.atomic_read_binary_file_state(
                             edit.file_path,
@@ -239,10 +239,10 @@ class TestsFlextInfraSharedHelperPromotion:
                         ),
                     )
                 ),
-                desired_content=edit.updated_source.encode(),
-                desired_mode=state.mode,
-                changes=edit.changes,
-            )
+                "desired_content": (edit.updated_source.encode()),
+                "desired_mode": (state.mode),
+                "changes": (edit.changes),
+            })
             for edit in edits
         )
         tm.ok(
@@ -338,10 +338,10 @@ class TestsFlextInfraSharedHelperPromotion:
                 ),
             )
         plans = tuple(
-            m.Infra.SemanticFilePlan(
-                project=root,
-                path=edit.file_path,
-                before=(
+            m.Infra.SemanticFilePlan.model_validate({
+                "project": (root),
+                "path": (edit.file_path),
+                "before": (
                     state := tm.ok(
                         u.Cli.atomic_read_binary_file_state(
                             edit.file_path,
@@ -349,10 +349,10 @@ class TestsFlextInfraSharedHelperPromotion:
                         ),
                     )
                 ),
-                desired_content=edit.updated_source.encode(),
-                desired_mode=state.mode,
-                changes=edit.changes,
-            )
+                "desired_content": (edit.updated_source.encode()),
+                "desired_mode": (state.mode),
+                "changes": (edit.changes),
+            })
             for edit in edits
         )
         tm.ok(

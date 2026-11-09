@@ -336,6 +336,11 @@ class FlextInfraProtocolsWorkspace:
         """Structural data contract projected from the owning model."""
 
         @property
+        def file(self) -> Path | None:
+            """Repository-relative test file in this repository."""
+            ...
+
+        @property
         def scope(
             self,
         ) -> Literal[c.Infra.CodegenConformScope.ALL, c.Infra.CodegenConformScope.SELF]:

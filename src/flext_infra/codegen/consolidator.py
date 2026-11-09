@@ -218,11 +218,11 @@ class FlextInfraCodegenConsolidator(s[str]):
         matches = self._match_assignments(assignments, source.splitlines(), value_map)
         if not matches:
             return None
-        return m.Infra.ConsolidatorScannedFile(
-            resource=resource,
-            source=source,
-            matches=matches,
-        )
+        return m.Infra.ConsolidatorScannedFile.model_validate({
+            "resource": (resource),
+            "source": (source),
+            "matches": (matches),
+        })
 
     @staticmethod
     def _match_assignments(

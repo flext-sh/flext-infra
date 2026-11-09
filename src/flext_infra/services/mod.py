@@ -12,7 +12,6 @@ from functools import partial
 from pathlib import Path
 
 from flext_infra import c, codemod, m, p, r, t, u
-from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
@@ -22,6 +21,7 @@ from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
 )
 from flext_infra.gates import FlextInfraGatesPyrefly
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraModHandlers:
@@ -33,6 +33,7 @@ class FlextInfraModHandlers:
         sources: Mapping[Path, str],
         *,
         runtime_root: Path | None = None,
+        storage_root: Path | None = None,
     ) -> Sequence[p.Infra.Issue]:
         """Compose the native checker once on the complete current source stage.
 
@@ -49,6 +50,10 @@ class FlextInfraModHandlers:
             for project in roots
             if project.is_relative_to(root)
             and any(path.is_relative_to(project) for path in sources)
+        )
+        u.Cli.info(
+            f"mod: model-envelope checker root={root} workspace={stage_workspace} "
+            f"projects={tuple(project.name for project in projects)}"
         )
         reports = (
             m.Infra.RunCommand(repository_root=runtime_root).reports_dir_path
@@ -85,7 +90,9 @@ class FlextInfraModHandlers:
 
         return (
             FlextInfraStagedPackage()
-            .preview_sources(stage_workspace, sources, inspect)
+            .preview_sources(
+                stage_workspace, sources, inspect, storage_root=storage_root
+            )
             .unwrap()
         )
 
@@ -116,23 +123,23 @@ class FlextInfraModHandlers:
                 workspace,
                 u.Infra.candidate_python_sources(candidate, candidate.inputs),
                 selected.rules,
-                options=m.Infra.ContractAdmissionOptions(
-                    signature_additions=selected.signature_additions,
-                    signature_removals=selected.signature_removals,
-                    method_transfers=selected.method_transfers,
-                ),
+                options=m.Infra.ContractAdmissionOptions.model_validate({
+                    "signature_additions": (selected.signature_additions),
+                    "signature_removals": (selected.signature_removals),
+                    "method_transfers": (selected.method_transfers),
+                }),
             )
             if planned.failure:
                 return outcome.from_failure(planned)
             staged = FlextInfraStagedPackage.plan_sources(
                 candidate.workspace,
                 {edit.file_path: edit.updated_source for edit in planned.value},
-                options=m.Infra.StageSourceOptions(
-                    snapshot=workspace.snapshot,
-                    workspaces=candidate.workspaces,
-                    inputs=(*candidate.inputs, *catalogue_inputs),
-                    modes=candidate.modes,
-                ),
+                options=m.Infra.StageSourceOptions.model_validate({
+                    "snapshot": (workspace.snapshot),
+                    "workspaces": (candidate.workspaces),
+                    "inputs": ((*candidate.inputs, *catalogue_inputs)),
+                    "modes": (candidate.modes),
+                }),
             )
             if staged.failure:
                 return outcome.from_failure(staged)
@@ -147,6 +154,7 @@ class FlextInfraModHandlers:
                     context=context,
                     selected=selected,
                     reports_root=root,
+                    repository_relative=root.relative_to(structural_root),
                 ),
             )
         if published.failure:
@@ -164,20 +172,23 @@ class FlextInfraModHandlers:
         context: p.Infra.ModExecutionContext,
         selected: p.Infra.RopeContractRules,
         reports_root: Path,
+        repository_relative: Path,
     ) -> p.Result[bool]:
-        """Verify the elected rule and real imports against the staged sources.
+        """Verify the same logical repository inside its physical staged workspace.
 
         Returns:
             The original planning/runtime failure, or staged consumer acceptance.
 
         """
         outcome = r[bool]
-        root = u.Infra.import_project_roots(root)[0].resolve()
-        with context.rope_workspace(root) as workspace:
+        root /= repository_relative
+        structural_root = u.Infra.import_project_roots(root)[0].resolve()
+        with context.rope_workspace(root, structural_root) as workspace:
             workspace.model_envelope_checker = partial(
                 FlextInfraModHandlers.model_envelope_diagnostics,
                 root,
                 runtime_root=u.Infra.runtime_owner_root(reports_root).unwrap(),
+                storage_root=reports_root,
             )
             captured = codemod.FlextInfraCodemodSemanticApply.build_source_plan(
                 root, snapshot=workspace.snapshot
@@ -189,23 +200,28 @@ class FlextInfraModHandlers:
                 workspace,
                 u.Infra.candidate_python_sources(candidate, candidate.inputs),
                 selected.rules,
-                options=m.Infra.ContractAdmissionOptions(
-                    signature_additions=selected.signature_additions,
-                    signature_removals=selected.signature_removals,
-                    method_transfers=selected.method_transfers,
-                ),
+                options=m.Infra.ContractAdmissionOptions.model_validate({
+                    "signature_additions": (selected.signature_additions),
+                    "signature_removals": (selected.signature_removals),
+                    "method_transfers": (selected.method_transfers),
+                }),
             )
         if planned.failure:
             return outcome.from_failure(planned)
         if planned.value:
             return outcome.fail("selected semantic candidate is not a fixed point")
-        return FlextInfraWorkspaceChecker(repository_root=root).execute_payload(
-            m.Infra.RunCommand(
+        return (
+            FlextInfraValidateFreshImport(
                 repository_root=root,
-                reports_dir=str(
-                    m.Infra.RunCommand(repository_root=reports_root).reports_dir_path
-                ),
-                gates=(c.Infra.FRESH_IMPORT,),
+                runtime_root=u.Infra.runtime_owner_root(reports_root).unwrap(),
+            )
+            .build_report(repository_roots=(root,))
+            .flat_map(
+                lambda report: (
+                    outcome.ok(value=True)
+                    if report.passed
+                    else outcome.fail("\n".join((report.summary, *report.violations)))
+                )
             )
         )
 
@@ -532,12 +548,12 @@ class FlextInfraModHandlers:
             boundary = FlextInfraModHandlers._campaign_scope_failure(
                 root,
                 root / c.CONFIG_DIR_NAME,
-                m.Infra.RefactorCsvCampaignsSpec(
-                    campaigns=(campaign,),
-                    owners=campaigns.owners,
-                    semantic_plan=campaigns.semantic_plan,
-                    semantic_decisions=campaigns.semantic_decisions,
-                ),
+                m.Infra.RefactorCsvCampaignsSpec.model_validate({
+                    "campaigns": ((campaign,)),
+                    "owners": (campaigns.owners),
+                    "semantic_plan": (campaigns.semantic_plan),
+                    "semantic_decisions": (campaigns.semantic_decisions),
+                }),
             )
             return (
                 boundary

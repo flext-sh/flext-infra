@@ -31,15 +31,15 @@ class TestsFlextInfraConformSupport:
             The resulting ``m.Infra.RepositoryConformTarget``.
 
         """
-        return m.Infra.RepositoryConformTarget(
-            repository=repository,
-            root=root,
-            toolchain_root=root,
-            make_profile=make_profile,
-            beads=u.Tests.beads_project(repository.name),
-            canonical_project_name=repository.distribution,
-            ci_enabled=True,
-        )
+        return m.Infra.RepositoryConformTarget.model_validate({
+            "repository": (repository),
+            "root": (root),
+            "toolchain_root": (root),
+            "make_profile": (make_profile),
+            "beads": (u.Tests.beads_project(repository.name)),
+            "canonical_project_name": (repository.distribution),
+            "ci_enabled": (True),
+        })
 
     @staticmethod
     def standalone_workspace(root: Path) -> p.Infra.WorkspaceSpec:

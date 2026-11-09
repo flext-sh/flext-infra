@@ -171,29 +171,34 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         # Native scanner failures retain their distinct failure diagnostics.
         issues = (*failures, *findings)
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=not issues,
-                issues=issues,
-                started=started,
-                outcome=(
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (not issues),
+                "issues": (issues),
+                "started": (started),
+                "outcome": (
                     c.Infra.ToolOutcome.ERROR
                     if failures
                     else c.Infra.ToolOutcome.FINDINGS
                     if findings
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                raw_output="\n".join((
-                    f"{len(findings)} policy findings; {len(failures)} native failures",
-                    *(
-                        f"  {rule_id}: {count}"
-                        for rule_id, count in sorted(
-                            counts.items(), key=lambda item: (-item[1], item[0])
-                        )
-                    ),
-                    *raw_output,
-                )),
-            ),
+                "raw_output": (
+                    "\n".join((
+                        (
+                            f"{len(findings)} policy findings; {len(failures)} native "
+                            f"failures"
+                        ),
+                        *(
+                            f"  {rule_id}: {count}"
+                            for rule_id, count in sorted(
+                                counts.items(), key=lambda item: (-item[1], item[0])
+                            )
+                        ),
+                        *raw_output,
+                    ))
+                ),
+            }),
             ctx=ctx,
         )
 

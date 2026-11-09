@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from git import (
+    Git,
     GitCommandError,
     GitCommandNotFound,
     InvalidGitRepositoryError,
@@ -219,8 +220,13 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
         try:
             return r[p.Infra.GitBoolReport].ok(
                 m.Infra.GitBoolReport(
-                    value=not repo.bare and repo.working_tree_dir is not None,
+                    value=Git(resolved).rev_parse("--is-inside-work-tree") == "true",
                 ),
+            )
+        except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to probe Git work tree: {exc}",
+                exception=exc,
             )
         finally:
             repo.close()

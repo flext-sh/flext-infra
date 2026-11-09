@@ -432,7 +432,9 @@ class FlextInfraUtilitiesModelsProtocol:
             lambda candidate, paths: cls._bootstrap_admit_candidate(
                 (root, ports), merged, candidate, paths
             ),
-            options=m.Infra.StageSourceOptions(inputs=tuple(inputs.values())),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "inputs": (tuple(inputs.values()))
+            }),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
             return r[bool].from_failure(preview)
@@ -1028,8 +1030,6 @@ class FlextInfraUtilitiesModelsProtocol:
             self.class_stem = class_stem
             self.source_package_name = package_name
             models_root = package_dir / "_models"
-            if not self.project.source_query(models_root, "isdir"):
-                return None
             grouped: dict[
                 Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
             ] = {}
@@ -3488,6 +3488,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
+            A package without model declarations owns no model layout.
             Non-canonical or competing public model and protocol facade names
             fail the discovery with ``ValueError``.
 
@@ -3509,6 +3510,8 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.project.source_query(package_dir, "isdir"):
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
+                return None
+            if not self.project.source_query(package_dir / "_models", "isdir"):
                 return None
             return (
                 package_dir,

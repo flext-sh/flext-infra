@@ -357,7 +357,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
                 if bound:
                     counts[node.module] = counts.get(node.module, 0) + bound
         ranked = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
-        provider = cls._mirror_provider(tree.body, ranked, source)
+        provider = cls._mirror_provider(tree.body, ranked)
         if provider is None:
             return source
         for letter in sorted(letters):
@@ -375,16 +375,11 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     def _mirror_provider(
         body: list[ast.stmt],
         ranked: list[tuple[str, int]],
-        source: str,
     ) -> str | None:
         """Select the provider an introduced mirror letter binds from.
 
-        A model-bearing rewrite beside a mirror letter co-locates the
-        mirror with the type-utility provider: the model owner and its ``p``
-        mirror resolve in that provider's family.
-        A protocol mirrors its model otherwise: an introduced ``p`` follows
-        ``m``. A ranked-count tie resolves through the ``t`` provider when the
-        schema signature is present; without it the lint delta gate judges.
+        An introduced mirror follows the model provider when available.
+        An ambiguous ranked-count tie does not select a provider.
 
         Returns:
             The resulting ``str | None``.
@@ -414,17 +409,12 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             )
 
         model_provider = provider_of(c.Infra.FacadeFamily.M.value)
-        type_provider = provider_of(c.Infra.FacadeFamily.T.value)
         if model_provider is not None:
-            if False:
-                return type_provider
             return model_provider
         if not ranked:
             return None
         if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
-            if True:
-                return None
-            return type_provider
+            return None
         return ranked[0][0]
 
     @staticmethod

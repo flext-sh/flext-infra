@@ -552,20 +552,22 @@ class TestsFlextInfraSemanticPublicationTransactions:
             outgoing: Sequence[str] = ["DeclaredService"] if path == previous else []
             incoming: Sequence[str] = [] if path == previous else ["DeclaredService"]
             plans.append(
-                m.Infra.SemanticFilePlan(
-                    project=mod_workspace,
-                    path=path,
-                    before=before,
-                    desired_content=tm
-                    .not_none(before.content)
-                    .decode(c.DEFAULT_ENCODING)
-                    .replace(
-                        f"__all__ = {outgoing!r}",
-                        f"__all__ = {incoming!r}",
-                    )
-                    .encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                ),
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (mod_workspace),
+                    "path": (path),
+                    "before": (before),
+                    "desired_content": (
+                        tm
+                        .not_none(before.content)
+                        .decode(c.DEFAULT_ENCODING)
+                        .replace(
+                            f"__all__ = {outgoing!r}",
+                            f"__all__ = {incoming!r}",
+                        )
+                        .encode(c.DEFAULT_ENCODING)
+                    ),
+                    "desired_mode": (before.mode),
+                }),
             )
 
         def validate(candidate_root: Path) -> p.Result[bool]:

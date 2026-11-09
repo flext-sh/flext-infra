@@ -69,22 +69,31 @@ jobs:
     env:
       CI: Y
       GITHUB_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        working-directory: flext-infra
     steps:
-      - name: Checkout
+      - name: Checkout workspace flext-sh/flext
         uses: actions/checkout@v7
         with:
+          repository: flext-sh/flext
+          ref: 0.12.0-dev
           submodules: recursive
-
           persist-credentials: false
-
           fetch-depth: 0
-          ref: ${{ inputs.ref || github.sha }}
+      - name: Pin flext-infra at the tested commit
+        working-directory: .
+        run: |
+          set -eu
+          git -C "flext-infra" fetch --no-tags origin "${{ inputs.ref || github.sha }}"
+          git -C "flext-infra" checkout --detach FETCH_HEAD
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud
       # on any drift, so checkout content is normalized to canonical modes
       # once, before any gate runs.
       - name: Normalize checkout modes
+        working-directory: .
         run: chmod -R go-w .
 
       # Why: every fresh runner paid a cold full-dependency Mypy,
@@ -118,6 +127,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims
@@ -128,46 +138,11 @@ jobs:
       # officially and installs the toolchain and dependencies from their locks,
       # publishes that environment through GITHUB_PATH, and prepares the
       # project runtime. CI never runs `make upg`: it never re-resolves.
-      # make tests executes the complete suite once while retaining the
-      # persistent testmon database (make.testmon_cache) outside the checkout.
-      # Restore its project history; the runner verifies its integrity and
-      # complete inventory before accepting or publishing the database.
-      - name: Resolve project testmon database
-        id: testmon_path
-        env:
-          CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
-          CACHE_SEED_BRANCH: ${{ github.base_ref || github.event.repository.default_branch }}
-          CACHE_WRITE_ALLOWED: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
-          CACHE_INPUTS: ${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}
-          CACHE_PLATFORM: ${{ runner.os }}-${{ runner.arch }}
-          CACHE_GENERATION: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          set -eu
-          cache_home="${XDG_CACHE_HOME:-${HOME}/.cache}"
-          database="$(realpath -m "${cache_home}/flext/infra/testmon/flext-infra/.testmondata")"
-          case "${database}" in /*) ;; *) exit 2 ;; esac
-          printf 'database=%s\n' "${database}" >> "${GITHUB_OUTPUT}"
-          branch_digest="$(printf '%s' "${CACHE_BRANCH}" | sha256sum)"
-          seed_digest="$(printf '%s' "${CACHE_SEED_BRANCH}" | sha256sum)"
-          namespace="${CACHE_PLATFORM}-3.13-flext-testmon-flext-infra-${branch_digest%% *}-"
-          seed_namespace="${CACHE_PLATFORM}-3.13-flext-testmon-flext-infra-${seed_digest%% *}-"
-          printf 'namespace=%s\nseed_namespace=%s\nsave_allowed=%s\n' "${namespace}" "${seed_namespace}" "${CACHE_WRITE_ALLOWED}" >> "${GITHUB_OUTPUT}"
-          printf 'key=%s%s-%s\n' "${namespace}" "${CACHE_INPUTS}" "${CACHE_GENERATION}" >> "${GITHUB_OUTPUT}"
-      - name: Restore testmon database
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ steps.testmon_path.outputs.database }}
-          key: ${{ steps.testmon_path.outputs.key }}
-          restore-keys: |
-            ${{ steps.testmon_path.outputs.namespace }}${{ hashFiles('uv.lock', 'mise.lock', 'pyproject.toml', 'config/**') }}-
-            ${{ steps.testmon_path.outputs.namespace }}
-            ${{ steps.testmon_path.outputs.seed_namespace }}
-
-      # CI approval, one visible step per ci workflow row (setup -> check -> tests -> check -> tests).
+      # CI approval, one visible step per ci workflow row (setup -> check).
       - name: make setup (blocking)
         id: approval-setup
         run: CI=Y make setup
-      # CI approval, one visible step per ci workflow row (setup -> check -> tests -> check -> tests).
+      # CI approval, one visible step per ci workflow row (setup -> check).
       - name: make check CHECK_PHASE=primary (blocking)
         id: approval-check-primary
         # Every approval verb reports once setup provisioned the environment,
@@ -175,25 +150,6 @@ jobs:
         # (workflow requires) admits the step only after that verb is green.
         if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
         run: CI=Y make check CHECK_PHASE=primary
-      - name: Dump reports on failure
-        if: ${{ failure() }}
-        run: |
-          set -eu
-          # Structured reports only — a subset of Upload reports (no raw
-          # pytest/tool logs: those may carry connection strings / env secrets).
-          for report_root in .reports apps; do
-            if [ -d "${report_root}" ]; then
-              find "${report_root}" \
-                \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' -o -path '*/audit-summary.json' -o -path '*/audit-report.md' -o -path '*/validate-summary.json' -o -path '*/validate-report.md' \) \
-                -type f -exec sh -eu -c '
-                  for report_file do
-                    printf "::group::%s\n" "${report_file}"
-                    cat "${report_file}"
-                    printf "::endgroup::\n"
-                  done
-                ' sh {} +
-            fi
-          done
       # Reports exist once any approval row after setup executed, whichever
       # row failed first (a failed tests row skips every later check row);
       # uploading after a setup failure would only add a second, misleading error.
@@ -205,26 +161,26 @@ jobs:
           # Structured reports only — omit raw pytest/tool logs that may carry
           # connection strings or env-derived secrets from integration fixtures.
           path: |
-            .reports/**/junit.xml
-            .reports/**/coverage.xml
-            .reports/**/coverage.json
-            .reports/**/audit-summary.json
-            .reports/**/audit-report.md
-            .reports/**/validate-summary.json
-            .reports/**/validate-report.md
-            .reports/check/**/*.sarif
-            .reports/check/**/*.md
-            .reports/gates/**/original-receipt.json
-            .reports/gates/**/check/**/*.sarif
-            .reports/gates/**/check/**/*.md
-            .reports/codegen-plan.json
-            .reports/codegen-publication.json
-            .reports/codegen-publication/**/*.json
-            .reports/setup-operations/*.json
-            .reports/tests/**/*.json
-            .reports/tests/**/summary.txt
-            .reports/tests/**/failed-tests.txt
-            .reports/tests/**/errors.txt
+            flext-infra/.reports/**/junit.xml
+            flext-infra/.reports/**/coverage.xml
+            flext-infra/.reports/**/coverage.json
+            flext-infra/.reports/**/audit-summary.json
+            flext-infra/.reports/**/audit-report.md
+            flext-infra/.reports/**/validate-summary.json
+            flext-infra/.reports/**/validate-report.md
+            flext-infra/.reports/check/**/*.sarif
+            flext-infra/.reports/check/**/*.md
+            flext-infra/.reports/gates/**/original-receipt.json
+            flext-infra/.reports/gates/**/check/**/*.sarif
+            flext-infra/.reports/gates/**/check/**/*.md
+            flext-infra/.reports/codegen-plan.json
+            flext-infra/.reports/codegen-publication.json
+            flext-infra/.reports/codegen-publication/**/*.json
+            flext-infra/.reports/setup-operations/*.json
+            flext-infra/.reports/tests/**/*.json
+            flext-infra/.reports/tests/**/summary.txt
+            flext-infra/.reports/tests/**/failed-tests.txt
+            flext-infra/.reports/tests/**/errors.txt
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -237,10 +193,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: flext-gate-receipts-${{ github.job }}-${{ github.run_id }}
-          path: .reports/gates/**
+          path: flext-infra/.reports/gates/**
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
+
       # The lock-hash key is immutable: save only when the exact key missed,
       # after a failing gate as well, so the next run starts warm.
       - name: Save tool caches
@@ -259,6 +216,7 @@ jobs:
             .pyrefly_cache
             .benchmarks
             .hypothesis
+            .bin
             ~/.cache/uv
             ~/.local/share/mise
             !~/.local/share/mise/shims

@@ -810,12 +810,14 @@ class FlextInfraModTextGateEngine:
                     )
                 )
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=sum(entry.text != entry.replacement for entry in entries),
-                files=frozenset(entry.file for entry in entries),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (
+                    sum(entry.text != entry.replacement for entry in entries)
+                ),
+                "files": (frozenset(entry.file for entry in entries)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 
@@ -860,12 +862,12 @@ class FlextInfraModTextGateEngine:
             plans.extend(project_plans)
             actionable += report.actionable
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=actionable,
-                files=frozenset(files),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (actionable),
+                "files": (frozenset(files)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 

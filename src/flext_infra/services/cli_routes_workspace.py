@@ -282,7 +282,7 @@ class FlextInfraWorkspaceRoutes:
                 ),
                 (
                     c.Infra.VERB_TEST_FULL,
-                    "Run incremental then full tests with the same persistent database",
+                    "Run the complete selected tests once without Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
                     None,
