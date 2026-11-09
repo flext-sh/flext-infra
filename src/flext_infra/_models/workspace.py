@@ -821,11 +821,9 @@ class FlextInfraModelsWorkspace:
             t.NonEmptyStr,
             m.Field(description="Required PEP 610 origin URL"),
         ]
-        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = (
-            m.Field(
-                default=None,
-                description="Installed immutable VCS identity",
-            )
+        vcs_info: FlextInfraModelsWorkspace.DirectUrlVcsInfo | None = m.Field(
+            default=None,
+            description="Installed immutable VCS identity",
         )
 
     class LockedPackageSource(m.ExternalContractModel):

@@ -218,11 +218,9 @@ class FlextInfraModelsCodegenPipeline:
             default=Path(),
             description="Generation tool repository",
         )
-        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = (
-            m.Field(
-                default=None,
-                description="Declared scaffold specification",
-            )
+        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
+            default=None,
+            description="Declared scaffold specification",
         )
         ports: t.Port[p.Infra.CodegenConformPorts] | None = m.Field(
             default=None,

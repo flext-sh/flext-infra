@@ -337,9 +337,9 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
 
         version: Annotated[t.NonEmptyStr, m.Field(description="Pyright version")]
         time: Annotated[t.NonEmptyStr, m.Field(description="Report timestamp")]
-        general_diagnostics: Sequence[
-            FlextInfraModelsGates.PyrightDiagnostic
-        ] = m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
+        general_diagnostics: Sequence[FlextInfraModelsGates.PyrightDiagnostic] = (
+            m.Field(alias="generalDiagnostics", description="Pyright diagnostics")
+        )
         summary: Annotated[
             FlextInfraModelsGates.PyrightSummary,
             m.Field(description="Completed analysis summary"),

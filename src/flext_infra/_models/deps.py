@@ -567,9 +567,7 @@ class FlextInfraModelsDeps(
     ):
         """Project-level dependency report combining deptry results."""
 
-        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(
-            description="Deptry report"
-        )
+        deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
         """Workspace-level dependency analysis report aggregating all projects.

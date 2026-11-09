@@ -101,9 +101,9 @@ class FlextInfraModelsCodemod:
                 ),
             ]
         ] = m.Field(default=(), description="Native additions in this same source pass")
-        method_transfers: Sequence[
-            FlextInfraModelsCodemod.RopeMethodTransfer
-        ] = m.Field(default=(), description="Native transfers in this same source pass")
+        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
+            m.Field(default=(), description="Native transfers in this same source pass")
+        )
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,
@@ -637,9 +637,9 @@ class FlextInfraModelsCodemod:
                 ),
             ]
         ] = m.Field(default=(), description="Ordered native required keyword additions")
-        method_transfers: Sequence[
-            FlextInfraModelsCodemod.RopeMethodTransfer
-        ] = m.Field(default=(), description="Ordered native method ownership transfers")
+        method_transfers: Sequence[FlextInfraModelsCodemod.RopeMethodTransfer] = (
+            m.Field(default=(), description="Ordered native method ownership transfers")
+        )
         signature_removals: Sequence[
             Annotated[
                 p.Infra.RopeSignatureRemoval,

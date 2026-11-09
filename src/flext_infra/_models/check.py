@@ -804,11 +804,9 @@ class FlextInfraModelsCheck:
             default_factory=tuple,
             description="SARIF runs",
         )
-        properties: FlextInfraModelsCheck.CheckReportSummary | None = (
-            m.Field(
-                None,
-                description="Typed invocation targets and executions; absent is unknown",
-            )
+        properties: FlextInfraModelsCheck.CheckReportSummary | None = m.Field(
+            None,
+            description="Typed invocation targets and executions; absent is unknown",
         )
 
 

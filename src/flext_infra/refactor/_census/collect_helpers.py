@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
 from flext_cli import cli
 

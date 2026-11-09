@@ -167,11 +167,11 @@ class FlextInfraModelsScan:
             c.Infra.ModScanFindingClass,
             m.Field(description="Rule mutability and byte-change classification"),
         ]
-        replacement_offsets: (
-            FlextInfraModelsScan.ModReplacementOffsets | None
-        ) = m.Field(
-            default=None,
-            description="Native byte span for the proposed replacement",
+        replacement_offsets: FlextInfraModelsScan.ModReplacementOffsets | None = (
+            m.Field(
+                default=None,
+                description="Native byte span for the proposed replacement",
+            )
         )
 
     class ModScanFinding(ModOccurrence):
