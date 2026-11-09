@@ -25,7 +25,7 @@ class TestsFlextInfraProtocolOrganization:
         nested: bool,
         narrowing: bool,
     ) -> None:
-        """Safe native cohorts proceed while an unrelated unresolved port stays visible."""
+        """Safe cohorts proceed while an unrelated unresolved port stays visible."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         module = package.name
         if nested:
@@ -69,7 +69,8 @@ class TestsFlextInfraProtocolOrganization:
                 "from __future__ import annotations\n"
                 "from typing import Protocol, runtime_checkable\n"
                 "class ProtocolsCombined:\n"
-                "    @runtime_checkable\n    class Packet(Protocol):\n        value: int\n"
+                "    @runtime_checkable\n    class Packet(Protocol):\n        value: "
+                "int\n"
                 "    @runtime_checkable\n    class ServicePort(Protocol):\n"
                 "        def execute(self) -> str: ...\n"
                 "    @runtime_checkable\n    class ExternalPath(Protocol):\n"
@@ -189,8 +190,10 @@ class TestsFlextInfraProtocolOrganization:
             "assert isinstance(m.Packet(value=7), p.Packet)\n"
             "assert isinstance(Path('.'), p.ExternalPath)\n"
             "assert external(Path('.'))\n"
-            "assert get_type_hints(p.ExternalPath.parent.fget)['return'] is p.ExternalDirectory\n"
-            "assert get_type_hints(p.ExternalDirectory.parent.fget)['return'] is p.ExternalPath\n"
+            "assert get_type_hints(p.ExternalPath.parent.fget)['return'] is "
+            "p.ExternalDirectory\n"
+            "assert get_type_hints(p.ExternalDirectory.parent.fget)['return'] is "
+            "p.ExternalPath\n"
             "assert not hasattr(p, 'Services') and not hasattr(p, 'External')\n",
             cwd=root,
         )

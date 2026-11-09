@@ -382,11 +382,17 @@ class FlextInfraCodemodSemanticApply(
                 intent.source_class.rsplit(".", 1)[-1]
                 != intent.destination_class.rsplit(".", 1)[-1]
             ):
-                msg = "class relocation preserves its name; naming is a preceding native phase"
+                msg = (
+                    "class relocation preserves its name; naming is a preceding "
+                    "native phase"
+                )
                 raise ValueError(msg)
             destination = project.find_module(intent.destination_module)
             if destination is None or destination.is_folder():
-                msg = f"rewire supplier destination is absent: {intent.destination_module}"
+                msg = (
+                    f"rewire supplier destination is absent: "
+                    f"{intent.destination_module}"
+                )
                 raise ValueError(msg)
             u.Infra.qualified_name(
                 project,
@@ -403,7 +409,10 @@ class FlextInfraCodemodSemanticApply(
                 Path(destination.real_path), intent.destination_module
             )
             if roots.setdefault(recorded, current) != current:
-                msg = "portable supplier source root resolves to conflicting installations"
+                msg = (
+                    "portable supplier source root resolves to conflicting "
+                    "installations"
+                )
                 raise ValueError(msg)
         sources: dict[Path, str | None] = {}
         retained = {
@@ -493,9 +502,9 @@ class FlextInfraCodemodSemanticApply(
             path for path in originals if path.suffix == c.Infra.EXT_PYTHON
         )
         sources.update({
-            path: originals[path].content.decode(c.DEFAULT_ENCODING)
+            path: content.decode(c.DEFAULT_ENCODING)
             for path in consumers
-            if originals[path].content is not None
+            if (content := originals[path].content) is not None
         })
         for path in sources:
             if path not in originals:
@@ -515,6 +524,7 @@ class FlextInfraCodemodSemanticApply(
             project_roots=u.Infra.import_project_roots(root),
             fscommands=FlextInfraRopeProject.OverlayFiles(()),
         ) as live:
+            python_folders = workspace.rope_project.get_python_path_folders()
             election = cls._planning_election(
                 live,
                 tuple(
@@ -523,10 +533,7 @@ class FlextInfraCodemodSemanticApply(
                 tuple(
                     dict.fromkeys((
                         *(str(path) for path in source_folders),
-                        *(
-                            folder.real_path
-                            for folder in workspace.rope_project.get_python_path_folders()
-                        ),
+                        *(folder.real_path for folder in python_folders),
                     ))
                 ),
             )
@@ -534,10 +541,10 @@ class FlextInfraCodemodSemanticApply(
                 live, election, artifact, roots, sources, originals, consumers
             )
         updates = {
-            path: sources[path]
+            path: source
             for path in consumers
-            if sources[path] is not None
-            and sources[path].encode(c.DEFAULT_ENCODING) != originals[path].content
+            if (source := sources[path]) is not None
+            and source.encode(c.DEFAULT_ENCODING) != originals[path].content
         }
         return FlextInfraStagedPackage.plan_sources(
             root,
@@ -600,7 +607,13 @@ class FlextInfraCodemodSemanticApply(
         originals: Mapping[Path, p.Cli.AtomicFileState],
         consumers: tuple[Path, ...],
     ) -> None:
-        """Replay native class transfers over the source/scaffold overlay only."""
+        """Replay native class transfers over the source/scaffold overlay only.
+
+        Raises:
+            TypeError: If native class rewire returned a non-content effect.
+            ValueError: If native class rewire escaped its authenticated source view.
+
+        """
         view_root = Path(live.root.real_path)
         for intent in artifact.rewires:
             recorded = cls._rewire_import_root(
@@ -1266,11 +1279,11 @@ class FlextInfraCodemodSemanticApply(
             The election the overlay project resolves imports through.
 
         """
-        return m.Infra.RopeProjectElection(
-            source_folders=source_folders,
-            ignored_resources=tuple(sorted(config.Infra.codegen.source_scan_ignored)),
-            extension_modules=u.Infra.extension_module_names(live),
-            python_path_folders=python_folders,
+        return u.Infra.native_election(live).model_copy(
+            update={
+                "source_folders": source_folders,
+                "python_path_folders": python_folders,
+            }
         )
 
     @classmethod

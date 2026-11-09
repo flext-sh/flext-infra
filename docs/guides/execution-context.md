@@ -78,6 +78,11 @@ file discovery. It delegates input loading to the managed-artifact owner. The na
 Rope method-transfer catalogue preserves its composed `u.Infra` public capability,
 repository override precedence, and configured default scan roots.
 
+Quality and refactor policy reads validate the captured strict YAML declaration
+without classifying Python source. Invalid Python remains input to the native lint
+and fix consumers, which report its original syntax finding. Consumers that need
+governance kind retain native project-fact discovery and its failures.
+
 Parameter retirement must preserve every native body binding. A used parameter
 without a declaration default cannot be removed through the SDK's default-inlining
 operation. Qualify the SDK's identity-bound replacement on the real consumer before
@@ -2620,6 +2625,9 @@ invoking command's existing profiler.
 Governed repository planning selects the existing scaffold or existing-repository
 planner once, then passes the same typed target, workspace, configuration and
 surface contract through that owner's common call boundary.
+Metadata-only scaffold planning obeys that contract's disabled custom source
+phase. Complete generation owns family stems, facade composition and analyzer
+settings derived from the resulting source cohort.
 Focal facade generation retains its original workspace snapshot through candidate
 admission and publication. Normalized plans carry those original source witnesses,
 and staging reuses the same captured states and parsed import facts. Closing that
@@ -3119,6 +3127,10 @@ Suite profiles are bound only after successful execution or a completed failing
 suite with its final JUnit report. An interrupted profiling child keeps its native
 process outcome and raw log without attempting to read an unfinished profile.
 A missing profile from a completed suite remains an artifact failure.
+FULL execution, including a selected test file, has no preliminary Testmon
+inventory or selection profile. Its report uses the recorded FULL intent and
+authenticates only the suite/process captures that operation produced. An
+interrupted FULL operation remains incomplete even when its profile is readable.
 Startup instrumentation, the pytest launcher and the profiling entrypoint share
 one process-local profiler. Nested profiling subprocesses retain their own profiles
 and still execute the original site customization.

@@ -1065,6 +1065,11 @@ class FlextInfraProtocolsRope(Protocol):
             """Ordered physical native import roots sharing the read owner."""
             ...
 
+        @property
+        def preferred_import_style(self) -> str:
+            """Exact native import preference retained across source epochs."""
+            ...
+
     @runtime_checkable
     class RopeInventoryRecordInput(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

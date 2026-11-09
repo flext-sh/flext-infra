@@ -329,7 +329,8 @@ class TestsModelProtocolNativeMro:
             "tm.ok(value.entity is entity)\n"
             "tm.ok(isinstance(value, p.Infra.Request))\n"
             "tm.ok(isinstance(value.entity, p.Infra.Entity))\n"
-            "tm.ok(m.Infra.Request.model_fields['entity'].annotation is m.Infra.Entity)\n"
+            "tm.ok(m.Infra.Request.model_fields['entity'].annotation is "
+            "m.Infra.Entity)\n"
             "tm.ok(isinstance(m.Infra.Request.model_json_schema(), dict))\n",
             cwd=root,
         )
@@ -535,7 +536,7 @@ class TestsModelProtocolNativeMro:
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
     ) -> None:
-        """The model owns nested field validation and its generated consumer contract."""
+        """The model owns nested validation and its generated consumer contract."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         destination = package / "_protocols" / "payload.py"
         owner = u.derive_class_stem(package.name.replace("_", "-"))
@@ -742,7 +743,8 @@ class TestsModelProtocolNativeMro:
         tm.that(annotation_only, empty=False)
         tm.ok(
             annotation_only <= guarded,
-            msg=f"unguarded annotation imports: {annotation_only - guarded}\n{rendered}",
+            msg=f"unguarded annotation imports: "
+            f"{annotation_only - guarded}\n{rendered}",
         )
 
     @staticmethod

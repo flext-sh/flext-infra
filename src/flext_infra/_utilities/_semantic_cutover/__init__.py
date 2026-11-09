@@ -114,6 +114,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._semantic_cutover.nesting_types import (
         FlextInfraUtilitiesTypesSemanticNesting,
     )
+    from flext_infra._utilities._semantic_cutover.opaque_ports import (
+        FlextInfraUtilitiesSemanticOpaquePorts,
+    )
     from flext_infra._utilities._semantic_cutover.own_mro import (
         FlextInfraUtilitiesSemanticCutoverOwnMro,
     )
@@ -173,6 +176,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSemanticHelperReferences",
     "FlextInfraUtilitiesSemanticModelAliases",
     "FlextInfraUtilitiesSemanticModelFieldContracts",
+    "FlextInfraUtilitiesSemanticOpaquePorts",
     "FlextInfraUtilitiesSemanticTestHelpers",
     "FlextInfraUtilitiesTypesSemanticNesting",
 )
@@ -225,6 +229,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesSemanticHelperReferences": ".helper_references",
         "FlextInfraUtilitiesSemanticModelAliases": ".model_aliases",
         "FlextInfraUtilitiesSemanticModelFieldContracts": ".model_field_contracts",
+        "FlextInfraUtilitiesSemanticOpaquePorts": ".opaque_ports",
         "FlextInfraUtilitiesSemanticTestHelpers": ".test_helpers",
         "FlextInfraUtilitiesTypesSemanticNesting": ".nesting_types",
     },

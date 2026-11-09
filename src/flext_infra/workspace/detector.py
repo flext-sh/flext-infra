@@ -1157,10 +1157,10 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
-        context = m.Infra.SubprojectLoadContext(
-            integration_branch=baseline.value,
-            workspace_beads=inherited_beads.value,
-        )
+        context = m.Infra.SubprojectLoadContext.model_validate({
+            "integration_branch": baseline.value,
+            "workspace_beads": inherited_beads.value,
+        })
         loaded_member = u.Infra.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(
                 repo_root=superproject_root,

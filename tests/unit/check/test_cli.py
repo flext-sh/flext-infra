@@ -38,11 +38,19 @@ class TestsFlextInfraWorkspaceCheckCli:
                 pyproject=(f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
                 with_src=True,
             )
+            u.Tests.initialize_git_repo(project)
             package = project / "src" / project_name.replace("-", "_")
             package.joinpath("__init__.py").write_text(
                 f'"""{project_name} fixture package."""\n',
                 encoding="utf-8",
             )
+            u.Tests.WorktreeFixture.attach_submodule(
+                workspace,
+                project,
+                distribution=project_name,
+                relative_path=project_name,
+            )
+        u.Tests.git_run(workspace, "submodule", "absorbgitdirs")
         return workspace
 
     @staticmethod
@@ -263,8 +271,8 @@ class TestsFlextInfraWorkspaceCheckCli:
                 u.Infra.check_report_findings(workspace, reports_dir=report.parent),
             )
             tm.that(findings, empty=False)
-            (receipt,) = report.parent.glob(
-                f"*/{c.Infra.LINT}{config.Infra.tooling.raw_check_receipt_suffix}",
+            (receipt,) = report.parent.rglob(
+                f"{c.Infra.LINT}{config.Infra.tooling.raw_check_receipt_suffix}",
             )
             tm.that(receipt.read_text(encoding="utf-8"), has=findings[0].message)
 
@@ -317,7 +325,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         *,
         residual: bool,
     ) -> None:
-        """A fixed-diagnostics exit is accepted only after native verification."""
+        """A forced repair exit stays red; an explicit check verifies its effects."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
             workspace,
@@ -337,8 +345,34 @@ class TestsFlextInfraWorkspaceCheckCli:
             "--projects",
             "flext-core",
         ])
-        tm.that(exit_code, eq=int(residual))
+        reports = tuple(
+            (workspace / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK).glob(
+                f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}"
+            )
+        )
+        (report,) = reports
+        diagnostics = tm.ok(
+            u.Infra.check_report_findings(workspace, reports_dir=report.parent)
+        )
+        tm.that(
+            exit_code,
+            eq=1,
+            msg="\n".join(issue.message for issue in diagnostics),
+        )
         tm.that(module_path.read_text(encoding="utf-8"), lacks="import os")
+        verified = FlextInfraCli.infra_main([
+            "check",
+            "run",
+            "--repository-root",
+            str(workspace),
+            "--gates",
+            c.Infra.LINT,
+            "--ruff-args",
+            "--select F401,F821",
+            "--projects",
+            "flext-core",
+        ])
+        tm.that(verified, eq=int(residual))
 
     def test_run_cli_fix_rejects_remaining_findings(
         self,
@@ -412,10 +446,7 @@ class TestsFlextInfraWorkspaceCheckCli:
             "flext-core",
         ])
 
-        # The unparsable neighbour leaves findings for the read-only check; a
-        # repair fails only on an ERROR outcome (tracker memory
-        # operator-ruling-2026-10-10-fix-residual-verdict).
-        tm.that(exit_code, eq=0)
+        tm.that(exit_code, eq=1)
         tm.that(
             sample.read_text(encoding="utf-8"),
             has="    @staticmethod\n    def value() -> int:\n",

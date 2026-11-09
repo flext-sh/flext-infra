@@ -28,6 +28,7 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
     name: str = "facade-components"
 
     def __init__(self) -> None:
+        """Retain the protocol organization admitted by this phase's plan."""
         self.protocol_organization: p.Infra.ProtocolOrganizationPlan | None = None
 
     def plan(

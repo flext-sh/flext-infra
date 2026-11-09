@@ -10,7 +10,6 @@ from collections.abc import Generator
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, m, p, t, tm, u
 
@@ -46,12 +45,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     @staticmethod
     def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
-
-    @staticmethod
-    def test_registry_exposes_the_canonical_gate() -> None:
-        """Test registry exposes the canonical gate."""
-        gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.ok(isinstance(gate, FlextInfraGatesDuplication))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""

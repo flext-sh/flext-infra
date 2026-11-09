@@ -1266,6 +1266,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             dependency_roots=tuple(election.python_path_folders),
         )
         selected = m.Infra.RopeProjectElection(
+            preferred_import_style=election.preferred_import_style,
             source_folders=tuple(
                 sorted({*election.source_folders, *additional_source_folders})
             ),
@@ -1281,6 +1282,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             for path in selected.python_path_folders
         ]
         preferences = self.get_prefs()
+        preferences.imports.preferred_import_style = selected.preferred_import_style
         preferences.set("ignored_resources", value=list(selected.ignored_resources))
         preferences.set("extension_modules", value=list(selected.extension_modules))
         preferences.set("source_folders", value=list(selected.source_folders))

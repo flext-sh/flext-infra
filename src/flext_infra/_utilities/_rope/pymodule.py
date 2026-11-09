@@ -88,13 +88,13 @@ class FlextInfraUtilitiesRopeCorePyModule:
             matching_offsets
         ) > 1 and FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
             index = pymodule.get_source_binding_index()
-            writes = tuple(
-                offset
-                for offset in matching_offsets
-                if index.context_at(offset).access == "write"
+            accesses = tuple(
+                index.context_at(offset).access for offset in matching_offsets
             )
-            if len(writes) == 1:
-                return writes[0]
+            if accesses.count("write") == 1 and all(
+                access in {"read", "write"} for access in accesses
+            ):
+                return matching_offsets[accesses.index("write")]
         if len(matching_offsets) > 1:
             msg = f"rope definition binding token is ambiguous: {symbol}:{line}"
             raise RuntimeError(msg)

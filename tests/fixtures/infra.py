@@ -18,8 +18,7 @@ import pytest
 from flext_infra import config, settings, workspace
 from tests import c, p, t, tm, u
 
-_FIXTURES_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
 
 
 @pytest.fixture
@@ -124,10 +123,6 @@ def source_preview_workspace(
     return root, package
 
 
-def _read_fixture(*parts: str) -> str:
-    return _FIXTURES_DIR.joinpath(*parts).read_text(encoding="utf-8")
-
-
 def _modernizer_pyproject(name: str) -> str:
     return f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
 
@@ -156,14 +151,16 @@ def _write_modernizer_codegen_config(workspace: Path) -> None:
 
 
 @pytest.fixture
-def deptry_report_payload() -> t.JsonPayload:
+def deptry_report_payload(fixture_tree: p.Tests.FixtureTree) -> t.JsonPayload:
     """Provide ``deptry_report_payload``.
 
     Returns:
         The resulting ``t.JsonPayload``.
 
     """
-    parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
+    parsed = u.Cli.json_parse(
+        (fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8")
+    )
     parsed = tm.not_none(parsed)
     tm.ok(parsed)
     return parsed.value

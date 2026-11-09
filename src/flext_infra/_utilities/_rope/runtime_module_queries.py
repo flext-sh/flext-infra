@@ -209,6 +209,9 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"
             raise TypeError(msg)
+        project.get_prefs().imports.preferred_import_style = (
+            config.Infra.rope.preferred_import_style.value
+        )
         return project
 
     @staticmethod
@@ -249,6 +252,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         """
         return m.Infra.RopeProjectElection(
+            preferred_import_style=project.get_prefs().imports.preferred_import_style,
             source_folders=tuple(
                 folder.path for folder in project.get_source_folders()
             ),

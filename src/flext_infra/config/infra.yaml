@@ -65,6 +65,8 @@ Infra:
       - scripts
       - tests
       - examples
+  rope:
+    preferred_import_style: from-global
     # NOTE (flext-jnm1.1 / flext-jnm1.4): ignored_resources was removed; the names
     # now derive from the codegen artifact SSOT (config/codegen.yaml artifacts
     # with source_scan_ignore=true) via CodegenConfigSpec.source_scan_ignored.

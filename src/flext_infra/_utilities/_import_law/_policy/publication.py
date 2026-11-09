@@ -516,6 +516,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             TypeError: If the consumer is not a native source module.
 
         """
+        if not rule.bindings:
+            return rule
         path = Path(resource.real_path).resolve()
         root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             Path(project.root.real_path), path, source_project=project
@@ -525,7 +527,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             if root is not None
             else None
         )
-        if root is None or located is None or not rule.bindings:
+        if root is None or located is None:
             return rule
         namespace, module_name = located
         letter = cls.family_letter(namespace, path)

@@ -111,7 +111,7 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
             path=first.path,
             before=first.before,
             desired_content=None,
-            desired_mode=first.desired_mode,
+            desired_mode=None,
             inputs=first.inputs,
         )
         cohort = (retired, survivor)
@@ -160,4 +160,24 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
                 ),
                 has=f"atomic source changed: {captured.path}",
             )
+            tm.that(file.path.read_bytes(), eq=file.before.content)
+
+    @staticmethod
+    def test_absent_input_appearing_rejects_all_effects(
+        infra_git_repo: Path,
+        codegen_admission_cohort: tuple[
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
+        ],
+    ) -> None:
+        """A negative source observation remains authoritative until publication."""
+        files, _captured = codegen_admission_cohort
+        source = infra_git_repo / "absent.txt"
+        absent = tm.ok(u.Cli.atomic_read_binary_file_state(source))
+        cohort = tuple(file.model_copy(update={"inputs": (absent,)}) for file in files)
+        source.write_text("appeared after admission\n", encoding=c.DEFAULT_ENCODING)
+        tm.fail(
+            u.Infra.publish_normalized_codegen_plans(infra_git_repo, cohort, cohort),
+            has=f"atomic source changed: {source}",
+        )
+        for file in files:
             tm.that(file.path.read_bytes(), eq=file.before.content)

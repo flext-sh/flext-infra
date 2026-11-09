@@ -18,6 +18,9 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
     FlextInfraUtilitiesRopeRuntimeTypes,
 )
+from flext_infra._utilities._semantic_cutover.model_envelopes import (
+    FlextInfraUtilitiesSemanticModelEnvelopes,
+)
 from flext_infra._utilities.workspace_snapshot import (
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -133,6 +136,134 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
         )
 
     @classmethod
+    def _parameter_owner(
+        cls,
+        scope: p.Infra.RopeScope,
+        function: ast.FunctionDef,
+        name: str,
+        twins: Mapping[str, tuple[p.Infra.RopeSourceClass, str]],
+    ) -> p.Infra.RopeSourceClass | None:
+        candidates = {
+            cls._identity(scope, node)
+            for parameter in (
+                *function.args.posonlyargs,
+                *function.args.args,
+                *function.args.kwonlyargs,
+            )
+            if parameter.arg == name and parameter.annotation is not None
+            for node in ast.walk(parameter.annotation)
+            if isinstance(node, ast.expr) and cls._identity(scope, node) in twins
+        }
+        return twins[next(iter(candidates))][0] if len(candidates) == 1 else None
+
+    @staticmethod
+    def _mutables(project: p.Infra.RopeProject) -> frozenset[str]:
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        return frozenset(
+            runtime.native_object_identity(
+                runtime.qualified_name(project, name).get_object()
+            )
+            for name in (
+                "builtins.dict",
+                "builtins.list",
+                "collections.abc.MutableMapping",
+                "collections.abc.MutableSequence",
+            )
+        )
+
+    @classmethod
+    def _argument_proof(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        issue: p.Infra.Issue,
+        twins: Mapping[str, tuple[p.Infra.RopeSourceClass, str]],
+    ) -> tuple[p.Infra.RopeSourceClass, str, str] | None:
+        pair = FlextInfraUtilitiesSemanticModelEnvelopes.model_argument_diagnostic(
+            issue
+        )
+        if pair is None:
+            return None
+        runtime = FlextInfraUtilitiesRopeRuntimeModules
+        scope = runtime.scope_at(
+            module, module.lines.get_line_start(issue.line) + issue.column - 1
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(scope.pyobject):
+            return None
+        function = scope.pyobject.get_ast()
+        if not isinstance(function, ast.FunctionDef):
+            return None
+        for invocation in ast.walk(function):
+            if not isinstance(invocation, ast.Call):
+                continue
+            for keyword in invocation.keywords:
+                if (
+                    keyword.arg != pair[1]
+                    or keyword.value.end_lineno is None
+                    or (
+                        not keyword.value.lineno
+                        <= issue.line
+                        <= keyword.value.end_lineno
+                    )
+                ):
+                    continue
+                value = keyword.value
+                if (
+                    isinstance(value, ast.IfExp)
+                    and isinstance(value.orelse, ast.Constant)
+                    and value.orelse.value is None
+                ):
+                    value = value.body
+                if not isinstance(value, ast.Attribute) or not isinstance(
+                    value.value, ast.Name
+                ):
+                    continue
+                owner = cls._parameter_owner(scope, function, value.value.id, twins)
+                element = cls._mutable_parameter_element(
+                    project, scope, invocation.func, pair[1], twins
+                )
+                if owner is not None and element is not None:
+                    return owner, value.attr, element
+        return None
+
+    @classmethod
+    def _mutable_parameter_element(
+        cls,
+        project: p.Infra.RopeProject,
+        scope: p.Infra.RopeScope,
+        called: ast.expr,
+        parameter: str,
+        twins: Mapping[str, tuple[p.Infra.RopeSourceClass, str]],
+    ) -> str | None:
+        binding = FlextInfraUtilitiesRopeRuntimeModules.expression_name(
+            scope, ast.unparse(called)
+        )
+        if binding is None or not FlextInfraUtilitiesRopeRuntimeTypes.py_function(
+            function := binding.get_object()
+        ):
+            return None
+        declaration = function.get_ast()
+        if not isinstance(declaration, ast.FunctionDef):
+            return None
+        elements = {
+            cls._identity(function.get_scope(), element)
+            for argument in (
+                *declaration.args.posonlyargs,
+                *declaration.args.args,
+                *declaration.args.kwonlyargs,
+            )
+            if argument.arg == parameter and argument.annotation is not None
+            for collection in ast.walk(argument.annotation)
+            if isinstance(collection, ast.Subscript)
+            and cls._identity(function.get_scope(), collection.value)
+            in cls._mutables(project)
+            for element in ast.walk(collection.slice)
+            if isinstance(element, ast.expr)
+            and cls._identity(function.get_scope(), element) in twins
+        }
+        return next(iter(elements)) if len(elements) == 1 else None
+
+    @classmethod
     def _field_matches(
         cls,
         project: p.Infra.RopeProject,
@@ -176,17 +307,7 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
         ):
             return None
         port = runtime.qualified_name(project, "flext_core.t.Port")
-        mutable = {
-            runtime.native_object_identity(
-                runtime.qualified_name(project, name).get_object()
-            )
-            for name in (
-                "builtins.dict",
-                "builtins.list",
-                "collections.abc.MutableMapping",
-                "collections.abc.MutableSequence",
-            )
-        }
+        mutable = cls._mutables(project)
         concrete = runtime.native_object_identity(twins[element][0])
         offsets = []
         for opaque in ast.walk(annotation):
@@ -244,7 +365,10 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
         for issue in issues:
             path = Path(issue.file)
             path = path if path.is_absolute() else Path(project.root.real_path) / path
-            if issue.code != "unsupported-operation" or path not in admitted:
+            if (
+                issue.code not in {"unsupported-operation", "bad-argument-type"}
+                or path not in admitted
+            ):
                 if issue.code == "unsupported-operation":
                     u.Cli.info(
                         f"mod: opaque-port diagnostic outside source scope: {path}"
@@ -253,7 +377,11 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
             module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
                 project.get_pymodule(admitted[path])
             )
-            proof = cls._proof(module, issue, twins)
+            proof = (
+                cls._proof(module, issue, twins)
+                if issue.code == "unsupported-operation"
+                else cls._argument_proof(project, module, issue, twins)
+            )
             selected = (
                 None if proof is None else cls._field_matches(project, proof, twins)
             )

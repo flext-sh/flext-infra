@@ -50,9 +50,9 @@ class FlextInfraWorkspaceChecker(
         u.Cli.info("check: registry initialization start")
         self._registry = FlextInfraGateRegistry(
             project_gates=u.Infra
-            .load_codegen_inputs(self.repository_root)
+            .load_codegen_policy(self.repository_root)
             .unwrap()
-            .spec.make.project_check_gates
+            .make.project_check_gates
         )
         self._default_reports_dir = u.Cli.resolve_report_dir(
             self._repository_root,
@@ -125,7 +125,7 @@ class FlextInfraWorkspaceChecker(
             Success flag of the integrity check execution.
 
         """
-        policy = u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make
+        policy = u.Infra.load_codegen_policy(params.repository_root).unwrap().make
         gates = (
             c.Infra.RUNTIME_INTEGRITY,
             *(gate.name for gate in policy.project_check_gates if gate.integrity),
@@ -234,7 +234,7 @@ class FlextInfraWorkspaceChecker(
 
         """
         gates = u.Infra.selected_check_gates(
-            u.Infra.load_codegen_inputs(params.repository_root).unwrap().spec.make,
+            u.Infra.load_codegen_policy(params.repository_root).unwrap().make,
             params.gate_set,
             phase=phase,
         )
@@ -613,9 +613,9 @@ class FlextInfraWorkspaceChecker(
         prerequisites = tuple(
             gate
             for gate in u.Infra
-            .load_codegen_inputs(self._repository_root)
+            .load_codegen_policy(self._repository_root)
             .unwrap()
-            .spec.make.check_prerequisite_gates
+            .make.check_prerequisite_gates
             if gate in gates and not effective_ctx.apply_fixes
         )
         admission_gates = prerequisites or gates

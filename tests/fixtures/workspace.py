@@ -42,6 +42,7 @@ def rope_sibling_scopes(
 @pytest.fixture
 def rope_contract_consumer(
     tmp_path: Path,
+    session_runtime: p.Tests.SessionRuntime,
 ) -> Iterator[tuple[p.Infra.RopeWorkspaceDsl, Path]]:
     """Compose the inherited workspace factory with a real public Rope session.
 
@@ -50,6 +51,13 @@ def rope_contract_consumer(
 
     """
     root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    tm.ok(
+        u.Tests.create_python_environment(
+            root,
+            dependency_projects=u.Tests.python_dependency_projects(root),
+            session_runtime=session_runtime,
+        )
+    )
     with infra.rope_workspace(root) as workspace:
         yield workspace, package / "consumer.py"
 

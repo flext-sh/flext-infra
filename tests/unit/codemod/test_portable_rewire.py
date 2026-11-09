@@ -54,7 +54,8 @@ class TestsFlextInfraPortableRewire:
         consumer = receiving_package / "consumer.py"
         consumer.write_text(
             f"from {package.name}._protocols.old import Holder as Legacy\n"
-            f"from {package.name}._protocols._external.current import Destination as Current\n"
+            f"from {package.name}._protocols._external.current import Destination as "
+            f"Current\n"
             f"from {package.name}.protocols import p\n"
             "def consume(value: 'Legacy.Contract') -> 'p.Contract':\n"
             "    return value\n"
@@ -123,7 +124,8 @@ class TestsFlextInfraPortableRewire:
                 path=facade,
                 before=facade_before,
                 desired_content=(
-                    f"from {package.name}._protocols._external.current import Destination\n"
+                    f"from {package.name}._protocols._external.current import "
+                    f"Destination\n"
                     "class Protocols(Destination): pass\n"
                     "p = Protocols\n__all__ = ['Protocols', 'p']\n"
                 ).encode(c.DEFAULT_ENCODING),

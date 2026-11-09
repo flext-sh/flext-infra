@@ -256,6 +256,50 @@ class FlextInfraProtocolsRefactor:
             ...
 
     @runtime_checkable
+    class SemanticRewireIntent(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def supplier_root(self) -> Path:
+            """Supplier repository relative to the artifact workspace."""
+            ...
+
+        @property
+        def source_path(self) -> Path:
+            """Supplier-relative original module."""
+            ...
+
+        @property
+        def destination_path(self) -> Path:
+            """Supplier-relative destination module."""
+            ...
+
+        @property
+        def source_module(self) -> t.NonEmptyStr:
+            """Original import identity."""
+            ...
+
+        @property
+        def source_class(self) -> t.NonEmptyStr:
+            """Original class scope."""
+            ...
+
+        @property
+        def destination_module(self) -> t.NonEmptyStr:
+            """Current supplier import identity."""
+            ...
+
+        @property
+        def destination_class(self) -> t.NonEmptyStr:
+            """Current class scope."""
+            ...
+
+        @property
+        def public_routes(self) -> tuple[str, ...]:
+            """Native public facade routes preserved by placement."""
+            ...
+
+    @runtime_checkable
     class SemanticRenamePlan(
         FlextInfraProtocolsCodegenTransaction.SemanticSourcePlan, Protocol
     ):
@@ -266,6 +310,18 @@ class FlextInfraProtocolsRefactor:
             self,
         ) -> tuple[FlextInfraProtocolsRefactor.SemanticRenameDecision, ...]:
             """Resolved declarations and their domain naming decisions."""
+            ...
+
+        @property
+        def rewires(
+            self,
+        ) -> tuple[FlextInfraProtocolsRefactor.SemanticRewireIntent, ...]:
+            """Census-derived portable identities for external consumers."""
+            ...
+
+        @property
+        def rewire_sources(self) -> Mapping[Path, str]:
+            """Workspace-relative pre-move source/scaffold overlay bytes."""
             ...
 
         @property

@@ -418,6 +418,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             fscommands=files,
         ) as live:
             election = m.Infra.RopeProjectElection(
+                preferred_import_style=live.get_prefs().imports.preferred_import_style,
                 ignored_resources=tuple(
                     sorted(config.Infra.codegen.source_scan_ignored)
                 ),

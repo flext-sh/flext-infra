@@ -131,13 +131,6 @@ When assembling a new boundary model from protocol-typed values, use its native
 `model_validate` entry with those values, retaining their references. This creates
 the new envelope once; it does not dump or revalidate an existing envelope or
 claim that a structural protocol is a concrete model type to the constructor.
-The semantic rewrite proves the model/protocol identities and declared container
-contracts through Rope, including unions and native covariant containers; unrelated
-element types, incompatible collection shapes and unhandled constructor diagnostics
-prevent a rewrite.
-`protocol_model_declarations_from_source` exposes model and protocol source identities
-and the protocol destination from that same authenticated projector. Composition derives
-the envelope's identity mapping from these records; consumers do not rebuild its index.
 Railway callbacks preserve original exceptions; only the declared error boundary
 converts a validation failure into a result.
 
@@ -515,6 +508,23 @@ operator's explicit old/new-key authorization under the lint-rule freeze. No row
 classifies an unmeasured diagnostic as a false positive.
 
 ## Source-derived protocol contracts
+
+Protocol family placement and maintenance follow
+ADR-018:
+model mirrors stay beneath `_protocols/`, internal service contracts and DI ports
+under `_protocols/_services/`, and external integration capabilities under
+`_protocols/_external/`. Public `p` names remain stable. Edit the source model or
+service for generated contracts; edit the owning capability for authored ports.
+Use `make mod` for relocation and consumer rewiring and `make gen` for projection
+and automatic retirement of generated `model_conformance.py` files. No witness
+module is a prerequisite for generation or publication.
+The census records placement and the global migration intent before modification;
+the ordered relocation, rewiring and projection phases share that intent. External
+projects reuse the stored migration through the same native refactoring owner,
+resolving and validating their own sources rather than replaying workspace edits.
+Each admitted cohort retains an immutable artifact in the configured
+`config/rewires` directory; `refactor mod --rename-plan` consumes that intent through
+the existing command boundary.
 
 Use canonical source-derived `p.*` contracts decorated with `@runtime_checkable`
 for consumers. ADR-018's simplified-field amendment retains concrete model types

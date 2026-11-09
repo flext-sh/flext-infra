@@ -397,6 +397,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         Generation normalizes once, when it admits the candidate; publishing
         the admitted bytes must not run the formatters a second time.
+        All source observations and destinations are verified under the same
+        publication lock before any effect, including unchanged carriers.
 
         Returns:
             The written or deleted paths, or the first failure.
@@ -418,6 +420,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
             FlextInfraUtilitiesGitStateCheckpoint.state_leases(owners),
             u.Cli.file_changes_lock(lock.value),
         ):
+            verified = u.Cli.atomic_verify_binary_file_states(
+                tuple(state for plan in plans for state in (plan.before, *plan.inputs))
+            )
+            if verified.failure:
+                return result_type.from_failure(verified)
             published = u.Cli.publish_file_changes(
                 changes,
                 lock_path=lock.value,

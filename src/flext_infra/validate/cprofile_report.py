@@ -199,10 +199,10 @@ class FlextInfraCProfileReport(s[bool]):
         directory: Path,
         suite_outcome: Path,
     ) -> bool:
-        """Report whether the native run executed a whole-project FULL suite.
+        """Report whether the native run selected FULL execution.
 
         Returns:
-            True when the recorded intent selects the whole project.
+            True when the recorded intent selects a full suite or test file.
 
         Raises:
             ValueError: If the suite intent does not match its run context.
@@ -222,7 +222,7 @@ class FlextInfraCProfileReport(s[bool]):
         if intent is None or intent.execution_mode != parent.execution_mode:
             msg = "profile suite intent does not match its run context"
             raise ValueError(msg)
-        return intent.target_file is None
+        return True
 
     @staticmethod
     def _suite_required(suite_outcome: Path) -> bool:

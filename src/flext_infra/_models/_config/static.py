@@ -17,6 +17,13 @@ from flext_infra._models._config import FlextInfraModelsConfigContract
 class FlextInfraModelsConfigStatic:
     """Source discovery specification models."""
 
+    class RopePreferencesSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Native source-engine policy validated by the SDK's own vocabulary."""
+
+        preferred_import_style: t.Infra.RopeNativeImportStyle = m.Field(
+            description="Native import form used by identity-preserving refactors"
+        )
+
     class SourceScanSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Canonical production roots and recursively ignored directories."""
 

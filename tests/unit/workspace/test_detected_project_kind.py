@@ -117,6 +117,7 @@ class TestsFlextInfraDetectedProjectKind:
                 )
             tm.that(u.Infra.detected_project_kind(root), eq=kind)
             ordinary = u.Infra.load_codegen_inputs(root)
+            policy = u.Infra.load_codegen_policy(root)
             with infra.rope_workspace(root) as workspace:
                 tm.that(
                     u.Infra.detected_project_kind(
@@ -130,9 +131,11 @@ class TestsFlextInfraDetectedProjectKind:
                 if obsolete:
                     tm.fail(ordinary, has=f"repository.{policy_key}")
                     tm.fail(captured, has=f"repository.{policy_key}")
+                    tm.fail(policy, has=f"repository.{policy_key}")
                 else:
                     tm.that(tm.ok(ordinary).kind, eq=kind)
                     tm.that(tm.ok(captured).kind, eq=kind)
+                    tm.that(tm.ok(policy), eq=tm.ok(ordinary).spec)
         if kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
             with u.Tests.raises(ValueError, match="third-party fork"):
                 u.Infra.contained_write_targets(root, (target,), authority=root)

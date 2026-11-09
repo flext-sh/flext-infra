@@ -97,6 +97,9 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
     class RopePreferences(Protocol):
         """Native preference updates required by project source election."""
 
+        @property
+        def imports(self) -> t.Infra.RopeNativeImportPrefs: ...
+
         def add(self, key: str, value: str) -> None: ...
 
         def set(self, key: str, *, value: bool | Sequence[str]) -> None: ...
@@ -342,7 +345,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> Mapping[
+        ) -> dict[
             t.Infra.RopeNativeParsedModule,
             FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
         ]:
@@ -423,7 +426,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def codemod_renderings(
             self,
-        ) -> Mapping[
+        ) -> dict[
             tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
         ]:
             """Native codemod rendering per member root and render-input digest."""

@@ -214,6 +214,16 @@ class FlextInfraProtocolsConfigScaffold:
         """Structural data contract projected from the owning model."""
 
         @property
+        def source_stems(self) -> tuple[t.NonEmptyStr, ...]:
+            """Required component stems in every production facade family."""
+            ...
+
+        @property
+        def auxiliary_stems(self) -> tuple[t.NonEmptyStr, ...]:
+            """Required component stems in every auxiliary facade family."""
+            ...
+
+        @property
         def build(self) -> FlextInfraProtocolsConfigScaffold.ScaffoldBuildSpec:
             """Build-system policy."""
             ...

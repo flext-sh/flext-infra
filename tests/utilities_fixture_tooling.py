@@ -13,6 +13,7 @@ import time
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from textwrap import indent
 
 from typing_extensions import TypeForm
@@ -580,7 +581,12 @@ class TestsFlextInfraUtilitiesToolingFixture:
         A governed repository carries the declaration and the dependency lock
         together. Native dependency graphs referenced by the lock must travel
         with it so frozen setup never resolves replacements. Conform renders
-        declarations; only ``make upg`` resolves new versions.
+        declarations; only ``make upg`` resolves new versions. Reader fixtures
+        also receive a physical copy of the qualified native Mise executable.
+
+        Raises:
+            ValueError: A fixture bootstrap path is a symlink.
+
         """
         source_root = (
             Path(__file__).resolve().parents[1] if source_root is None else source_root
@@ -594,6 +600,14 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
         reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
+        bootstrap = root / config.Infra.codegen.make.bootstrap_bin_dir
+        destination = bootstrap / reader.name
+        if bootstrap.is_symlink() or destination.is_symlink():
+            msg = f"fixture bootstrap must be physical: {destination}"
+            raise ValueError(msg)
+        bootstrap.mkdir(parents=True, exist_ok=True)
+        if not destination.exists():
+            _ = shutil.copy2(reader, destination)
         tm.ok(
             u.Cli.run_checked(
                 (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),
@@ -639,7 +653,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         """Run Make without undeclared state inherited from outer pytest.
 
         The network bootstrap asks gh for a token when no GITHUB_TOKEN is set.
-        gh here reads no configuration (``os.devnull`` is not a directory) and
+        gh here reads an owned empty configuration directory and
         reaches no keyring (the session bus is disabled), so the host
         operator's stored credential never enters a test implicitly. Provisioning
         may explicitly supply the credential already elected by its root Make;
@@ -649,28 +663,29 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The resulting ``p.Result[p.Cli.CommandOutput]``.
 
         """
-        return u.Cli.run_raw(
-            [c.Infra.MAKE, *args],
-            cwd=cwd,
-            options=m.Cli.ProcessOptions(
-                env={
-                    "GH_CONFIG_DIR": os.devnull,
-                    "DBUS_SESSION_BUS_ADDRESS": "disabled:",
-                    **(env or {}),
-                    **{
-                        key: value.get_secret_value()
-                        for key, value in (private_env or {}).items()
+        with TemporaryDirectory(prefix="flext-gh-") as gh_config:
+            return u.Cli.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                options=m.Cli.ProcessOptions(
+                    env={
+                        "GH_CONFIG_DIR": gh_config,
+                        "DBUS_SESSION_BUS_ADDRESS": "disabled:",
+                        **(env or {}),
+                        **{
+                            key: value.get_secret_value()
+                            for key, value in (private_env or {}).items()
+                        },
                     },
-                },
-                remove_env_keys=tuple(
-                    key
-                    for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
-                    if (env is None or key not in env)
-                    and (private_env is None or key not in private_env)
+                    remove_env_keys=tuple(
+                        key
+                        for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                        if (env is None or key not in env)
+                        and (private_env is None or key not in private_env)
+                    ),
                 ),
-            ),
-            capture=capture,
-        )
+                capture=capture,
+            )
 
     @staticmethod
     def is_docker_available() -> bool:

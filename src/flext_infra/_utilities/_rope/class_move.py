@@ -626,7 +626,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     native, cls._resource(native, root, intermediate), None
                 )
                 changes = mover.get_changes(
-                    native.get_resource(target.parent.relative_to(root).as_posix()),
+                    native.get_folder(target.parent.relative_to(root).as_posix()),
                     resources=tuple(
                         cls._resource(native, root, path) for path in candidate
                     ),
@@ -1139,8 +1139,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         before_scopes = cls._module_scopes(before_module)
         current_scopes = cls._module_scopes(module)
         cls._validate_module_quoted_scopes(before_scopes, current_scopes, paths)
-        # The rewrite reads the pre-move text: its scopes are ``before_module``'s.
-        positions = {id(scope): key for key, scope in before_scopes.items()}
+        positions = cls._module_quoted_positions(composed, before_module, text)
         required: dict[tuple[t.StrTuple, str], int] = {}
         binding: str | None = None
 
@@ -1314,6 +1313,35 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             raise ValueError(msg)
         return elected
 
+    @classmethod
+    def _module_quoted_positions(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        source: str,
+    ) -> dict[int, t.StrTuple]:
+        """Pair native annotation environments with their structural declarations.
+
+        Returns:
+            Annotation identities keyed to authenticated lexical positions.
+
+        """
+        native = FlextInfraUtilitiesRopeRuntime.require_source_module(module)
+        declarations = {
+            id(scope): key for key, scope in cls._module_scopes(native).items()
+        }
+        bindings = native.get_source_binding_index()
+        return {
+            id(environment): declarations[
+                id(bindings.context_at(begin).structural_scope)
+            ]
+            for begin, _end, _literal, environment in (
+                FlextInfraUtilitiesTypesSemanticNesting.quoted_type_regions(
+                    source, project, native
+                )
+            )
+        }
+
     @staticmethod
     def _module_quoted_exports(
         original: p.Infra.RopeParsedModule,
@@ -1372,9 +1400,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         root = Path(project.root.real_path).resolve()
         resource = cls._resource(project, root, path)
         module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(project, resource)
-        positions = {
-            id(scope): key for key, scope in cls._module_scopes(module).items()
-        }
+        positions = cls._module_quoted_positions(project, module, text)
         seen: set[tuple[t.StrTuple, str]] = set()
 
         def validate(scope: p.Infra.RopeScope, expression: str) -> None:
@@ -1394,7 +1420,7 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             seen.add(key)
 
         FlextInfraUtilitiesTypesSemanticNesting.quoted_type_edits(
-            (project, resource), text, validate
+            (project, resource), text, validate, module=module
         )
         if seen != set(required):
             msg = f"module relocation lost original quoted type positions: {path}"
@@ -1429,7 +1455,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     or Path(change.resource.real_path).resolve() != source
                     or Path(change.new_resource.real_path).resolve() != target
                 ):
-                    msg = "native module move disagrees with its exact destination"
+                    msg = (
+                        "native module move disagrees with its exact destination: "
+                        f"source={change.resource.real_path} "
+                        f"expected_source={source}; "
+                        f"target={change.new_resource.real_path} "
+                        f"expected_target={target}; "
+                        f"folder={change.resource.is_folder()} duplicate={moved}"
+                    )
                     raise ValueError(msg)
                 moved = True
             else:

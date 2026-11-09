@@ -22,7 +22,7 @@ import pytest
 from flext_infra import codegen, config, infra, workspace
 from tests import c, m, p, t, tm, u
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
 
 _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 _CONSUMER_BUILD_RECEIPT = "build-receipt.json"

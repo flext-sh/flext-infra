@@ -62,7 +62,9 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
         return runtime.native_object_identity(value).replace("::", ".")
 
     @staticmethod
-    def _diagnostic_pair(issue: p.Infra.Issue) -> tuple[str, str, str, str] | None:
+    def model_argument_diagnostic(
+        issue: p.Infra.Issue,
+    ) -> tuple[str, str, str, str] | None:
         """Read only Pyrefly's exact native argument diagnostic shape.
 
         Returns:
@@ -388,7 +390,7 @@ class FlextInfraUtilitiesSemanticModelEnvelopes:
             path = path if path.is_absolute() else root / path
             rows = admitted.setdefault(path, ([], []))
             rows[1].append(issue)
-            pair = cls._diagnostic_pair(issue)
+            pair = cls.model_argument_diagnostic(issue)
             if pair is None:
                 continue
             if not pair[-1].endswith(".__init__"):

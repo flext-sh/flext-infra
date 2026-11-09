@@ -126,11 +126,14 @@ class FlextInfraRefactorRoutes:
                 raise FileNotFoundError(source)
             if target.exists():
                 raise FileExistsError(target)
-            states = tuple(
-                u.Cli.atomic_read_binary_file_state(
-                    resource.real_path, required=True
-                ).unwrap()
+            paths = {
+                Path(resource.real_path).resolve()
                 for resource in workspace.rope_project.get_python_files()
+            }
+            paths.add(source)
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in sorted(paths)
             )
             plans = u.Infra.plan_module_move(
                 workspace.rope_project,

@@ -718,12 +718,7 @@ def _cleanup_normalized_imports(source: str, filename: str) -> str:
 def normalize_protocol_source(
     source: str, *, package_name: str, filename: str = "<protocol>"
 ) -> str:
-    """Return source with Pydantic field syntax removed from ``Protocol`` bodies.
-
-    Raises:
-        ValueError: If Protocol class has no source location.
-
-    """
+    """Return source with Pydantic field syntax removed from ``Protocol`` bodies."""
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     protocols = tuple(_protocol_classes(tree))
@@ -734,9 +729,6 @@ def normalize_protocol_source(
         protocol for protocol in protocols if not _has_runtime_checkable(protocol)
     ]
     for protocol in missing_decorators:
-        if protocol.lineno is None:
-            msg = "Protocol class has no source location"
-            raise ValueError(msg)
         line_start = offsets[protocol.lineno - 1]
         indentation = source.encode("utf-8")[
             line_start : line_start + protocol.col_offset
@@ -1571,14 +1563,6 @@ def merge_class_lineages[TIdentity: str | tuple[str, str]](
             if sequence and sequence[0] == candidate:
                 sequence.pop(0)
     return tuple(result)
-
-
-def _validate_protocol_tree(protocol_root: Path) -> None:
-    """Require every protocol source to parse before publishing its facade."""
-    for path in sorted(protocol_root.rglob("*.py")):
-        if path == protocol_root / "__init__.py":
-            continue
-        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 
 def _protocol_holders(

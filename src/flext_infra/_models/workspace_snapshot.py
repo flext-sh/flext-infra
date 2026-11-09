@@ -13,8 +13,6 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import p, t
-from flext_infra._models import FlextInfraModelsRefactorGrep
-from flext_infra._models._codegen import FlextInfraModelsCodegenLazyInit
 
 
 class FlextInfraModelsWorkspaceSnapshot:
@@ -99,7 +97,7 @@ class FlextInfraModelsWorkspaceSnapshot:
         python_module_facts: t.Port[
             dict[
                 t.Infra.RopeNativeParsedModule,
-                FlextInfraModelsCodegenLazyInit.PythonModuleFacts,
+                p.Infra.PythonModuleFacts,
             ]
         ] = m.Field(
             exclude=True,
@@ -155,7 +153,7 @@ class FlextInfraModelsWorkspaceSnapshot:
         codemod_renderings: t.Port[
             dict[
                 tuple[Path, str],
-                FlextInfraModelsRefactorGrep.CodemodNativeGenerated,
+                p.Infra.CodemodNativeGenerated,
             ]
         ] = m.Field(
             exclude=True,

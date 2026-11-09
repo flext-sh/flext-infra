@@ -6,11 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import infra
-from tests import p, t, tm, u
+from tests import p, tm, u
 
 
 class TestsFlextInfraPythonModelPorts:
@@ -27,12 +25,10 @@ class TestsFlextInfraPythonModelPorts:
             )
         )
         name = f"{package.name}.provider"
-        cache: MutableMapping[
-            t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts
-        ] = {}
-        with infra.rope_workspace(root) as workspace:
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            cache = snapshot.python_module_facts
             run: p.Infra.PythonModelRun = u.Infra.python_model_run(
-                workspace.rope_project, {name: source}, module_facts=cache
+                snapshot.engine, {name: source}, module_facts=cache
             )
             tm.that(run.modules is cache, eq=True)
             first = u.Infra.python_model_module_at(run, source, name)

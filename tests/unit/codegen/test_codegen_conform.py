@@ -83,6 +83,7 @@ class TestsFlextInfraCodegenConform:
     @staticmethod
     def conformed_template(
         tmp_path_factory: t.Tests.TempPathFactory,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> Path:
         """Conform one real seed tree once per module; each scenario clones it.
 
@@ -103,6 +104,13 @@ class TestsFlextInfraCodegenConform:
         )
         TestsFlextInfraConformSupport.seed_infra_package_tree(template)
         u.Tests.standalone_workspace(template, config.Infra.name)
+        tm.ok(
+            u.Tests.create_python_environment(
+                template,
+                dependency_projects=u.Tests.python_dependency_projects(template),
+                session_runtime=session_runtime,
+            )
+        )
         request = u.Tests.conform_request(
             template,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -126,6 +134,7 @@ class TestsFlextInfraCodegenConform:
         """
         root = tmp_path / scenario
         shutil.copytree(template, root)
+        u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         published = root / c.Infra.MAKEFILE_FILENAME
         original = published.read_bytes() + b"\n# recoverable drift\n"
         published.write_bytes(original)
@@ -223,9 +232,12 @@ class TestsFlextInfraCodegenConform:
             tm.that(published.read_bytes(), eq=original)
             tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
-        planned = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+        executor = tm.ok(
+            FlextInfraCodegenConform.Generate.from_request(
+                request, execution_context=infra
+            )
         )
+        planned = tm.ok(executor.plan(request))
         target = next(file for file in planned.files if file.path == published)
         foreign = original + b"# concurrent edit\n"
         published.write_bytes(foreign)
@@ -581,6 +593,7 @@ class TestsFlextInfraCodegenConform:
         """Test existing manifest converges to identical tree."""
         existing_root = tmp_path / "existing"
         shutil.copytree(conformed_template, existing_root)
+        u.Tests.copy_tracked_mise_seeds(existing_root, source_root=conformed_template)
         tm.that(
             tm.ok(u.Infra.exact_worktree_root(existing_root)).head_oid is not None,
             eq=True,
@@ -676,10 +689,18 @@ class TestsFlextInfraCodegenConform:
     @c.Tests.MARK.slow
     def test_empty_rendered_directory_is_not_a_python_root(
         infra_git_repo: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Test empty rendered directory is not a python root."""
         root = infra_git_repo
         TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        tm.ok(
+            u.Tests.create_python_environment(
+                root,
+                dependency_projects=u.Tests.python_dependency_projects(root),
+                session_runtime=session_runtime,
+            )
+        )
         (root / "scripts").mkdir()
 
         result = infra.codegen_conform(

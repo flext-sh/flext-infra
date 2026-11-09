@@ -13,6 +13,12 @@ name: CI
 # cross-repo dependency-credential secret contract in workflow scope.
 "on":
   workflow_dispatch:
+    inputs:
+      full_check:
+        description: Run the complete native check in addition to required CI.
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -26,6 +32,11 @@ name: CI
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_call:
     inputs:
+      full_check:
+        description: Run the complete native check in addition to required CI.
+        required: false
+        type: boolean
+        default: false
       ref:
         description: Exact candidate commit to validate instead of the caller event SHA.
         required: false
@@ -150,6 +161,10 @@ jobs:
         # (workflow requires) admits the step only after that verb is green.
         if: ${{ !cancelled() && steps.approval-setup.outcome == 'success' }}
         run: CI=Y make check CHECK_PHASE=primary
+      - name: Complete check qualification
+        id: qualification-check
+        if: ${{ !cancelled() && inputs.full_check == true && steps.approval-setup.outcome == 'success' }}
+        run: CI=N make check
       # Reports exist once any approval row after setup executed, whichever
       # row failed first (a failed tests row skips every later check row);
       # uploading after a setup failure would only add a second, misleading error.
@@ -189,7 +204,7 @@ jobs:
       # rows capture receipts, so the upload runs exactly when one of them
       # failed (tests included), never after a setup failure that left none.
       - name: Upload gate receipts on failure
-        if: ${{ failure() && (steps.approval-check-primary.outcome == 'failure') }}
+        if: ${{ failure() && (steps.approval-check-primary.outcome == 'failure' || steps.qualification-check.outcome == 'failure') }}
         uses: actions/upload-artifact@v7
         with:
           name: flext-gate-receipts-${{ github.job }}-${{ github.run_id }}

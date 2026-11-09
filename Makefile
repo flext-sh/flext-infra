@@ -1011,9 +1011,9 @@ _setup_lifecycle: _builtin_require_workspace
 	$(if $(filter Y,$(CI)),,$(DIRENV) allow "$(PROJECT_ROOT)";) \
 	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
-# Setup installs the committed locks as they are and never rewrites them.
-# Required input and native installation failures terminate immediately;
-# generation and explicit upgrade own their respective repairs. Quality gates
+# Setup installs UV's frozen resolution; Mise completes missing native tool
+# pins during provisioning. Required input and installation failures terminate
+# immediately. Generation and upgrade own their respective repairs. Quality gates
 # remain separate operations and no failure selects another producer or source.
 .PHONY: _setup_activated
 # Check owns quality verdicts after provisioning.

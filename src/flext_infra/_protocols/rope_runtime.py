@@ -869,6 +869,15 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeImportTools(Protocol):
         """Native import translation used by observational relocation plans."""
 
+        def organize_imports(
+            self,
+            module: FlextInfraProtocolsRopeRuntime.RopePyModule,
+            *,
+            unused: bool = True,
+            duplicates: bool = True,
+            sort: bool = True,
+        ) -> str: ...
+
         def relatives_to_absolutes(
             self,
             module: FlextInfraProtocolsRopeRuntime.RopePyModule,
@@ -877,6 +886,8 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeImportOrganizer(Protocol):
         """Rope import organizer shape."""
+
+        import_tools: FlextInfraProtocolsRopeRuntime.RopeImportTools
 
         def organize_imports(
             self,

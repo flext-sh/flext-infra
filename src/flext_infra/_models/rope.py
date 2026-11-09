@@ -38,6 +38,9 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
         python_path_folders: t.StrTuple = m.Field(
             description="Ordered physical native import roots sharing the read owner",
         )
+        preferred_import_style: str = m.Field(
+            description="Exact native import preference retained across source epochs",
+        )
 
     class RopeRestructureRequest(FlextInfraModelsBase.FrozenArbitrary):
         """One complete native restructuring operation and its admitted inputs."""

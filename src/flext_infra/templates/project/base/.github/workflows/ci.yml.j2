@@ -16,6 +16,12 @@ name: CI
 # cross-repo dependency-credential secret contract in workflow scope.
 "on":
   workflow_dispatch:
+    inputs:
+      full_check:
+        description: Run the complete native check in addition to required CI.
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
 {%- for branch in ci_trigger_branches %}
@@ -31,6 +37,11 @@ name: CI
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_call:
     inputs:
+      full_check:
+        description: Run the complete native check in addition to required CI.
+        required: false
+        type: boolean
+        default: false
       ref:
         description: Exact candidate commit to validate instead of the caller event SHA.
         required: false
@@ -165,6 +176,14 @@ jobs:
 {%- endif %}
         run: {{ make.ci.variable }}={{ make.ci.value }} {{ step.make_command }}
 {%- endfor %}
+{%- for step in make.workflow if step.verb == "check" and step.phase != "primary" %}
+{%- if loop.first %}
+      - name: Complete check qualification
+        id: qualification-check
+        if: {% raw %}${{ !cancelled() && inputs.full_check == true && steps.{% endraw %}{{ ci_check.setup_id }}{% raw %}.outcome == 'success' }}{% endraw %}
+        run: {{ make.ci.variable }}={{ make.ci.local_value }} {{ step.make_command }}
+{%- endif %}
+{%- endfor %}
 {%- include "_fragments/custom_post_steps.j2" %}
 {%- if ci_tests.selected %}
 
@@ -219,7 +238,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
-{%- set gate_receipts_failed = ci_check.failed %}
+{%- set gate_receipts_failed = ci_check.failed ~ " || steps.qualification-check.outcome == 'failure'" %}
 {%- include "_fragments/gate_receipts_upload.j2" %}
 {%- if ci_tests.selected %}
 {%- include "_fragments/testmon_cache_save.j2" %}

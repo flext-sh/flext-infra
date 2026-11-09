@@ -247,6 +247,9 @@ class TestsFlextInfraConformSupport:
                 repository_root=root,
                 request=request,
                 initial_workspace=workspace,
+                ports=infra.codegen_conform_collaborators(),
             ),
+            runtime_settings=infra.settings,
+            initial_context=infra.context,
         )
         return service, request

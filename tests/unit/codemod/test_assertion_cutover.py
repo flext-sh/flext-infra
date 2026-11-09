@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, tm, u
+from flext_infra import FlextInfraCli, transformers
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraTestAssertionCutover:
@@ -207,18 +208,63 @@ class TestsFlextInfraTestAssertionCutover:
 
     @staticmethod
     def test_unformattable_literal_is_split_to_fit(tmp_path: Path) -> None:
-        """A literal the matcher pushes past the width splits at whitespace."""
+        """The public publisher splits a newly long literal before consumption."""
+        source = u.Tests.semantic_cutover_assertion("unformattable")
         updated = u.Tests.semantic_cutover_source(
             c.Infra.SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER,
             tmp_path,
             c.Tests.SEMANTIC_CUTOVER_RELATIVE,
-            u.Tests.semantic_cutover_assertion("unformattable"),
+            source,
         )
-
+        path = tmp_path / c.Tests.SEMANTIC_CUTOVER_RELATIVE
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        original = tmp_path / "original_case.py"
+        original.write_text(source, encoding=c.DEFAULT_ENCODING)
+        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.provision_checkout(tmp_path)
+        before = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
+        tm.ok(
+            transformers.FlextInfraTransformersSemantic.publish_semantic_artifact_plans(
+                (
+                    m.Infra.CodegenFilePlan(
+                        project=tmp_path,
+                        path=path,
+                        before=before,
+                        desired_content=updated.encode(c.DEFAULT_ENCODING),
+                        desired_mode=before.mode,
+                    ),
+                ),
+                repository_root=tmp_path,
+            )
+        )
+        updated = path.read_text(encoding=c.DEFAULT_ENCODING)
         tm.that(updated, has="tm.that(value, eq=expected)")
-        tm.that(updated, has='has=(\n            "word ')
-        tm.that(updated, has='word "\n            "word ')
         tm.that(updated, lacks="assert ")
+        tm.that(
+            FlextInfraCli.infra_main([
+                "check",
+                "run",
+                "--repository-root",
+                str(tmp_path),
+                "--file",
+                c.Tests.SEMANTIC_CUTOVER_RELATIVE,
+                "--gates",
+                c.Infra.LINT,
+            ]),
+            eq=0,
+        )
+        u.Tests.run_lazy_init_probe(
+            "import runpy\n"
+            f"for path in ({str(original)!r}, {str(path)!r}):\n"
+            "    values = {'value': 1, 'expected': 1, 'text': 'word ' * 100}\n"
+            "    module = runpy.run_path(path, init_globals=values)\n"
+            "    module['test_probe']()\n"
+            "    module['test_probe'].__globals__['text'] = ''\n"
+            "    try:\n        module['test_probe']()\n"
+            "    except AssertionError:\n        pass\n"
+            "    else:\n        raise RuntimeError('missing text was accepted')\n",
+            python_paths=(),
+        )
 
     @staticmethod
     def test_local_names_keep_their_type_through_typed_helpers(

@@ -290,8 +290,8 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     render_inputs, context.value, scaffold_entries
                 )
             )
-            if planned.failure:
-                return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(planned)
+            if planned.failure or not contract.custom:
+                return planned
             return self._with_planned_facade_rebinds(
                 planned=tuple(planned.value),
                 scaffold_entries=scaffold_entries,

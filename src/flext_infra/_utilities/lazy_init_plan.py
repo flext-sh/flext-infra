@@ -151,7 +151,16 @@ class FlextInfraUtilitiesLazyInitPlan:
         for package_dir in package_dirs:
             if target is not None and not package_dir.is_relative_to(target):
                 continue
-            plan = cls._lazy_init_build_plan(run, package_dir)
+            candidate = r[
+                FlextInfraModelsCodegenLazyInit.LazyInitPlan
+            ].create_from_callable(
+                lambda package_dir=package_dir: cls._lazy_init_build_plan(
+                    run, package_dir
+                )
+            )
+            if candidate.failure:
+                return result_type.from_failure(candidate)
+            plan = candidate.value
             run.plans[package_dir] = plan
             if target in {None, package_dir} or (
                 target is not None and target.name == c.Infra.DIR_TESTS
