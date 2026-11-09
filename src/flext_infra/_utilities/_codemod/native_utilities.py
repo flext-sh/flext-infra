@@ -28,6 +28,7 @@ from types import MappingProxyType
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -512,7 +513,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.StrTuple]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -833,7 +834,7 @@ class FlextInfraUtilitiesCodemodNative:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -870,7 +871,7 @@ class FlextInfraUtilitiesCodemodNative:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
+            u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -1046,7 +1047,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         pending = None if required is None else set(required)
         for name in producers:
             if pending is not None and pending.issubset(documents):

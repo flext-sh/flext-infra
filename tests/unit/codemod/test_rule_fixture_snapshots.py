@@ -11,6 +11,8 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import FlextInfraCli
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
@@ -134,7 +136,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
                 for finding in report.entries:
                     tm.that(elected, has=finding.rule_id)
                     tm.that(finding.file, eq=sample.relative_to(tmp_path))
-                    mapping = u.type_adapter(t.TypeForm(t.JsonMapping))
+                    mapping = u.type_adapter(TypeForm(t.JsonMapping))
                     native = u.Infra.mod_native_payload(finding, readers)
                     captures = mapping.validate_python(native["metaVariables"])
                     single = mapping.validate_python(captures["single"])
@@ -188,7 +190,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             for finding in report.entries:
                 tm.that(elected, has=finding.rule_id)
                 tm.that(finding.file, eq=sample.relative_to(root))
-                mapping = u.type_adapter(t.TypeForm(t.JsonMapping))
+                mapping = u.type_adapter(TypeForm(t.JsonMapping))
                 native = u.Infra.mod_native_payload(finding, readers)
                 captures = mapping.validate_python(native["metaVariables"])
                 single = mapping.validate_python(captures["single"])
@@ -688,7 +690,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             pyproject.read_text(encoding=c.DEFAULT_ENCODING), "project"
         )
         version = tm.instance(project["version"], str)
-        dependencies = u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
+        dependencies = u.type_adapter(TypeForm(Sequence[str])).validate_python(
             project["dependencies"],
         )
         tm.ok(u.Cli.atomic_write_text_file(package / "__init__.py", ""))

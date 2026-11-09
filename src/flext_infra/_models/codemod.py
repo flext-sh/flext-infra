@@ -12,6 +12,7 @@ from typing import Annotated, ClassVar, Self
 
 from flext_cli import m, u
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, p, t
 from flext_infra._models import FlextInfraModelsBase
@@ -389,11 +390,11 @@ class FlextInfraModelsCodemod:
             ),
         ]
         imports: Mapping[str, str] = m.Field(
-            default_factory=u.empty(t.TypeForm(Mapping[str, str])),
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Destination bindings and their native import declarations",
         )
         bindings: Mapping[str, str] = m.Field(
-            default_factory=u.empty(t.TypeForm(Mapping[str, str])),
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Destination expressions and their required Rope identities",
         )
 

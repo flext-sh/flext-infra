@@ -15,6 +15,7 @@ from rope.base.project import Project
 from rope.refactor.restructure import Restructure, _ChangeComputer
 from rope.refactor.similarfinder import Match
 from rope.refactor.wildcards import DefaultWildcard
+from typing_extensions import TypeForm
 
 from flext_infra import p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
@@ -119,7 +120,7 @@ class FlextInfraRopeRestructure(Restructure):
             message = "Rope restructuring requires a native source module"
             raise TypeError(message)
         occurrence = u.type_adapter(
-            t.TypeForm(t.Port[p.Infra.RopeContractMatch])
+            TypeForm(t.Port[p.Infra.RopeContractMatch])
         ).validate_python(match, strict=True)
         self.matched_count += 1
         admitted = self._match_filter is None or self._match_filter(

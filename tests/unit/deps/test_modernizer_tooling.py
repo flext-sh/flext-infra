@@ -12,6 +12,8 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 
+from typing_extensions import TypeForm
+
 from flext_infra import FlextInfraConfig, check, config, deps
 from flext_infra.deps.phases import FlextInfraEnsureRuffConfigPhase
 from tests import c, m, p, t, tm, u
@@ -563,7 +565,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "pyrefly",
                     "project-excludes",
-                    t.TypeForm(Sequence[str]),
+                    TypeForm(Sequence[str]),
                 )
             ),
             eq=True,
@@ -674,7 +676,7 @@ class TestsFlextInfraDepsModernizerTooling:
                     tool_config_document,
                     "ruff.lint",
                     "ignore",
-                    t.TypeForm(Sequence[str]),
+                    TypeForm(Sequence[str]),
                 ),
             }),
         )

@@ -13,6 +13,8 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Self, override
 
+from typing_extensions import TypeForm
+
 from flext_infra import (
     c,
     config,
@@ -923,7 +925,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if published.success
             else tuple(
                 Path(path)
-                for path in u.type_adapter(t.TypeForm(list[str])).validate_python(
+                for path in u.type_adapter(TypeForm(list[str])).validate_python(
                     (published.error_data or {}).get("written_files", []), strict=True
                 )
             )
@@ -949,7 +951,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                         **(completed.error_data or {}),
                         "written_files": [
                             *(str(path) for path in published.value),
-                            *u.type_adapter(t.TypeForm(list[str])).validate_python(
+                            *u.type_adapter(TypeForm(list[str])).validate_python(
                                 (completed.error_data or {}).get("written_files", []),
                                 strict=True,
                             ),

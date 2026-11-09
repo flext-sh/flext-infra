@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from flext_cli import cli, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -3465,7 +3466,7 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         unknown = u.type_adapter(
-            t.TypeForm(t.Port[t.Infra.RopeNativeObject])
+            TypeForm(t.Port[t.Infra.RopeNativeObject])
         ).validate_python(
             FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"
