@@ -514,12 +514,18 @@ class TestsFlextInfraRopeRuntimePymodule:
                 u.Infra.require_parsed_module(project.get_module("builtins"))
 
     @staticmethod
-    @c.Tests.MARK.parametrize("ambiguous", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("source", "ambiguous"),
+        [
+            ("value = 1\n", False),
+            ("value = 1; print(value)\n", False),
+            ("value = 1; value = 2\n", True),
+        ],
+    )
     def test_native_definition_token_identity(
-        tmp_path: Path, *, ambiguous: bool
+        tmp_path: Path, source: str, *, ambiguous: bool
     ) -> None:
-        """A unique definition resolves; two same-line uses remain ambiguous."""
-        source = "value = 1; print(value)\n" if ambiguous else "value = 1\n"
+        """One write resolves despite reads; multiple writes remain ambiguous."""
         path = tmp_path / "consumer.py"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (

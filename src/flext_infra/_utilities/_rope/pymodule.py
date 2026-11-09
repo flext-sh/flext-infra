@@ -44,8 +44,8 @@ class FlextInfraUtilitiesRopeCorePyModule:
         This helper resolves the first exact identifier token equal to ``symbol``
         on the reported line for lexical callers. Inventory callers supply the
         binding: candidate tokens are resolved by Rope and compared to that exact
-        binding. Multiple matching tokens fail rather than guessing which is the
-        definition and which is a same-line use.
+        binding. When a line also reads the same binding, Rope's source index
+        identifies its unique write; multiple writes remain ambiguous.
 
         Returns:
             The absolute offset of one exact identifier token on a line.
@@ -84,6 +84,17 @@ class FlextInfraUtilitiesRopeCorePyModule:
             )
             is not None
         )
+        if len(
+            matching_offsets
+        ) > 1 and FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
+            index = pymodule.get_source_binding_index()
+            writes = tuple(
+                offset
+                for offset in matching_offsets
+                if index.context_at(offset).access == "write"
+            )
+            if len(writes) == 1:
+                return writes[0]
         if len(matching_offsets) > 1:
             msg = f"rope definition binding token is ambiguous: {symbol}:{line}"
             raise RuntimeError(msg)
