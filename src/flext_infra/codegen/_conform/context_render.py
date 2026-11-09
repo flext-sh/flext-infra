@@ -29,7 +29,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         codegen: p.Infra.CodegenConfigSpec,
         tooling_runtime: p.Infra.ToolingRuntimeContext | None,
         managed_artifacts: p.Infra.ProjectManagedArtifactsSnapshot,
-    ) -> p.Infra.CodegenRenderInputs:
+    ) -> m.Infra.CodegenRenderInputs:
         """Resolve every input shared by one repository's renders exactly once.
 
         The integration branch probes the manifest and, undeclared, the

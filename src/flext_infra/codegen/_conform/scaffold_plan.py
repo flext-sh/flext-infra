@@ -445,7 +445,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         *,
         planned: tuple[p.Infra.CodegenFilePlan, ...],
         scaffold_entries: tuple[tuple[p.Infra.TemplateEntrySpec, str], ...],
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.
 

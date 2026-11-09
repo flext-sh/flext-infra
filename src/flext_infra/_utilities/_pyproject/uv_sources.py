@@ -427,6 +427,25 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         )
         if derived.failure:
             return r[bool].from_failure(derived)
+        payload = u.Cli.toml_as_mapping(document) or {}
+        tool = payload.get("tool")
+        uv_payload = tool.get("uv") if isinstance(tool, Mapping) else None
+        sources = uv_payload.get("sources") if isinstance(uv_payload, Mapping) else None
+        declared_names = {
+            canonicalize_name(Requirement(line).name) for line in local_requirements
+        }
+        editable_overrides = (
+            tuple(
+                canonicalize_name(name)
+                for name, source in sources.items()
+                if isinstance(source, Mapping)
+                and source.get("editable") is True
+                and isinstance(source.get("path"), str)
+                and canonicalize_name(name) in declared_names
+            )
+            if isinstance(sources, Mapping)
+            else ()
+        )
         cls._sync_uv_candidates(
             uv,
             document,
@@ -438,6 +457,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
                         *resolution.override_dependencies,
                         *member_overrides,
                         *derived.value,
+                        *editable_overrides,
                     ),
                 },
             ),

@@ -26,6 +26,42 @@ class TestsFlextInfraPyprojectConformTopologySources(
 ):
     """Tests for ``FlextInfraPyprojectConformTopologySources``."""
 
+    def test_standalone_editable_sources_override_transitive_git_requests(self) -> None:
+        """Keep declared editable dependencies as the resolver's single source."""
+        workspace = self._workspace(role=self._ROLE.STANDALONE)
+        source = (
+            '[project]\nname = "consumer"\nversion = "0.1.0"\n'
+            'dependencies = ["flext-core", "flext-cli"]\n'
+            "[tool.uv.sources]\n"
+            'flext-core = { path = "../flext-core", editable = true }\n'
+            'flext-cli = { path = "../flext-cli", editable = true }\n'
+            'unused = { path = "../unused", editable = true }\n'
+        )
+        result = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=self._conform_options(workspace),
+            )
+        )
+        overrides = u.Tests.toml_strings_at(
+            result, "tool", "uv", "override-dependencies"
+        )
+        tm.ok({"flext-core", "flext-cli"} <= set(overrides))
+        tm.ok("unused" not in overrides)
+        repeated = tm.ok(
+            u.Infra.pyproject_conform(
+                result,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=self._toolchain_resolution(),
+                options=self._conform_options(workspace),
+            )
+        )
+        tm.that(repeated, eq=result)
+
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("source_matches", [False, True])
     def test_modern_candidate_declaration_reaches_the_existing_requirement_owner(

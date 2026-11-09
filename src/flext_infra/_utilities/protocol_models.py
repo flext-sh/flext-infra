@@ -278,10 +278,7 @@ class FlextInfraUtilitiesModelsProtocol:
             package_name=package_name,
         )
         layout = projection.source_layout()
-        if (
-            layout is None
-            or source_project.find_module(f"{layout[2]}.protocols") is None
-        ):
+        if layout is None:
             return ()
         inventory = projection.source_model_inventory()
         return () if inventory is None else projection.source_model_declarations()
@@ -1029,58 +1026,59 @@ class FlextInfraUtilitiesModelsProtocol:
             )
 
         def source_model_declarations(self) -> tuple[tuple[str, str, Path], ...]:
-            """Expose the admitted inventory's original native declaration pairs.
+            """Pair native models with existing contracts or planned projections.
 
             Returns:
-                Model identity, protocol identity and its declaring destination.
+                Model identity, protocol identity and its existing or planned source.
 
             Raises:
                 ValueError: An admitted declaration has no native binding or source.
 
             """
             declarations: list[tuple[str, str, Path]] = []
+            facade = self._source_class(
+                self.qualified_name(
+                    self.project,
+                    "p",
+                    module_name=f"{self.source_package_name}.protocols",
+                )
+            )
             for destination, classes in self.source_model_protocol_classes.items():
                 for _node, path, tree in classes:
                     module_name = self.source_module_names[id(tree)]
-                    model_resource = self.project.find_module(module_name)
-                    if model_resource is None:
-                        continue
-                    model_module = (
-                        FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
-                            self.project.get_pymodule(model_resource)
-                        )
-                    )
                     model = ".".join((module_name, *path))
-                    source = FlextInfraUtilitiesRopeRuntime.expression_name(
-                        model_module.get_scope(), ".".join(path)
+                    source = self.qualified_name(
+                        self.project, ".".join(path), module_name=module_name
                     )
-                    if source is None:
-                        message = f"native model binding absent: {model}"
-                        raise ValueError(message)
-                    target = self._source_class(
-                        self.qualified_name(
-                            self.project,
-                            ".".join((
-                                FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
-                                    destination,
-                                    project_root=self.repository_root,
-                                    source_project=self.project,
-                                ),
-                                self._source_destination_holder(destination),
-                                self.source_model_protocols[model],
-                            )),
-                        )
+                    target_binding = self.resolve_symbol(
+                        facade.get_scope(),
+                        self.source_model_protocol_routes[model].removeprefix("p."),
                     )
-                    resource = target.get_module().get_resource()
-                    if resource is None:
-                        message = f"protocol declaration has no source: {model}"
-                        raise ValueError(message)
+                    if target_binding is None:
+                        protocol = ".".join((
+                            FlextInfraUtilitiesProjectDiscovery.module_name_for_file(
+                                destination,
+                                project_root=self.repository_root,
+                                source_project=self.project,
+                            ),
+                            self._source_destination_holder(destination),
+                            self.source_model_protocols[model],
+                        ))
+                        protocol_source = destination
+                    else:
+                        target = self._source_class(target_binding)
+                        resource = target.get_module().get_resource()
+                        if resource is None:
+                            message = f"protocol declaration has no source: {model}"
+                            raise ValueError(message)
+                        protocol = ".".join(self._source_class_identity(target))
+                        protocol_source = Path(resource.real_path)
                     declarations.append((
                         ".".join(
                             self._source_class_identity(self._source_class(source))
                         ),
-                        ".".join(self._source_class_identity(target)),
-                        Path(resource.real_path),
+                        protocol,
+                        protocol_source,
                     ))
             return tuple(declarations)
 
@@ -1103,6 +1101,9 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 The package directory, its name and the grouped declarations, or
                 None when source declares no model layout.
+
+            Raises:
+                ValueError: A discovered model module has no native binding.
 
             """
             self.source_field_cache.clear()
@@ -1132,7 +1133,8 @@ class FlextInfraUtilitiesModelsProtocol:
                         *source_path.relative_to(models_root).with_suffix("").parts,
                     ))
                     if self.project.find_module(model_module) is None:
-                        continue
+                        message = f"native model module absent: {model_module}"
+                        raise ValueError(message)
                     tree = ast.parse(
                         self.project.source_text(source_path), filename=str(source_path)
                     )
@@ -4400,7 +4402,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     alias
                     for alias in statement.names
                     if (alias.asname or alias.name.partition(".")[0]) in roots
-                    and alias.name.partition(".")[0] != "pydantic"
                 ]
                 for target, group in (
                     (
@@ -4424,10 +4425,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 ):
                     if group:
                         target.append(ast.unparse(ast.Import(names=group)))
-            elif isinstance(statement, ast.ImportFrom) and statement.module not in {
-                "__future__",
-                "pydantic",
-            }:
+            elif (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module != "__future__"
+            ):
                 # A source model may import the holder its mirror declares;
                 # the mirror reads that name from its own module scope.
                 names = [
@@ -7012,6 +7013,17 @@ class FlextInfraUtilitiesModelsProtocol:
                 ast.get_docstring(present)
                 in c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
             )
+            conflicts = [
+                (name, annotation, expected[name])
+                for name, annotation in actual.items()
+                if name in expected and annotation != expected[name]
+            ]
+            if conflicts and not projected:
+                message = (
+                    "incompatible authored protocol contract "
+                    f"{owner}.{node.name}: {destination}; {conflicts}"
+                )
+                raise ValueError(message)
             covered = self._source_authored_contract_covered(
                 (node, present), classes, expected, actual
             )
@@ -7029,17 +7041,6 @@ class FlextInfraUtilitiesModelsProtocol:
                     offsets[present.end_lineno - 1] + present.end_col_offset,
                     replacement,
                 )
-            conflicts = [
-                (name, annotation, expected[name])
-                for name, annotation in actual.items()
-                if name in expected and annotation != expected[name]
-            ]
-            if conflicts:
-                message = (
-                    "incompatible authored protocol contract "
-                    f"{owner}.{node.name}: {destination}; {conflicts}"
-                )
-                raise ValueError(message)
             return None
 
         def _source_authored_contract_covered(
@@ -7262,6 +7263,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 Source with every required provider bound exactly once.
 
             """
+            source = FlextInfraUtilitiesTransformerHeader.ensure_future_annotations(
+                source
+            )
+            source = normalize_protocol_source(
+                source, package_name=package_name, filename=str(destination)
+            )
             source = self._source_bind_runtime_imports(source, runtime_imports)
             tree = ast.parse(source)
             # Inside the own family an own-namespace route this projection
@@ -7574,8 +7581,14 @@ class FlextInfraUtilitiesModelsProtocol:
                                 ast.unparse(alias),
                                 runtime_required=(
                                     isinstance(imported, ast.ImportFrom)
-                                    and imported.module == "typing"
-                                    and alias.name in {"Protocol", "runtime_checkable"}
+                                    and (
+                                        imported.module == "pydantic"
+                                        or (
+                                            imported.module == "typing"
+                                            and alias.name
+                                            in {"Protocol", "runtime_checkable"}
+                                        )
+                                    )
                                 ),
                             )
                         except ValueError as error:

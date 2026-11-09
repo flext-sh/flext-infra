@@ -224,14 +224,14 @@ class FlextInfraCodemodSemanticApply(
         cls,
         root: Path,
         source_plan: p.Infra.SemanticSourcePlan,
-        census: p.Infra.ProtocolPlacementCensus,
+        intents: Sequence[p.Infra.SemanticRewireIntent],
         *,
         pre_move_sources: Mapping[Path, str],
     ) -> p.Result[p.Infra.SemanticRenamePlan]:
         """Retain census identities with the existing authenticated source receipt.
 
         Supplier bytes stay in the candidate's original observations. Portable
-        intent carries only relative ownership and native module/class identities;
+        intent carries only relative ownership and native binding identities;
         external invocations derive their own edits instead of replaying this
         producer's paths or offsets.
 
@@ -239,27 +239,14 @@ class FlextInfraCodemodSemanticApply(
             The existing rename artifact with its portable relocation intent.
 
         """
-        if census.findings:
-            return r[p.Infra.SemanticRenamePlan].fail("\n".join(census.findings))
-        supplier = root.resolve().relative_to(source_plan.candidate.workspace)
-        intents = tuple(
-            m.Infra.SemanticRewireIntent(
-                supplier_root=supplier,
-                source_path=placement.source_path,
-                destination_path=placement.destination_path,
-                source_module=placement.source_module,
-                source_class=placement.source_class,
-                destination_module=placement.destination_module,
-                destination_class=placement.destination_class,
-                public_routes=placement.public_routes,
-            )
-            for placement in census.contracts
-            if (placement.source_module, placement.source_class)
-            != (placement.destination_module, placement.destination_class)
-        )
         if not intents:
             return r[p.Infra.SemanticRenamePlan].fail(
-                "protocol census has no native relocation intent"
+                "native census has no relocation intent"
+            )
+        supplier = root.resolve().relative_to(source_plan.candidate.workspace)
+        if any(intent.supplier_root != supplier for intent in intents):
+            return r[p.Infra.SemanticRenamePlan].fail(
+                "native relocation supplier differs from its captured owner"
             )
         observed = {state.path: state.content for state in source_plan.candidate.inputs}
         overlays = {
@@ -272,7 +259,7 @@ class FlextInfraCodemodSemanticApply(
                 candidate=source_plan.candidate,
                 consumer_roots=source_plan.consumer_roots,
                 decisions=(),
-                rewires=intents,
+                rewires=tuple(intents),
                 rewire_sources=overlays,
                 edits=cls._rename_edits(
                     u.Infra.candidate_python_sources(
@@ -283,13 +270,54 @@ class FlextInfraCodemodSemanticApply(
             )
         )
 
+    @staticmethod
+    def protocol_rewire_intents(
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        census: p.Infra.ProtocolPlacementCensus,
+    ) -> p.Result[tuple[p.Infra.SemanticRewireIntent, ...]]:
+        """Adapt the protocol census to the shared native relocation identities.
+
+        Returns:
+            Portable intents or the census's original unresolved findings.
+
+        """
+        outcome = r[tuple[p.Infra.SemanticRewireIntent, ...]]
+        if census.findings:
+            return outcome.fail("\n".join(census.findings))
+        supplier = root.resolve().relative_to(source_plan.candidate.workspace)
+        intents = tuple(
+            m.Infra.SemanticRewireIntent(
+                supplier_root=supplier,
+                source_path=placement.source_path,
+                destination_path=placement.destination_path,
+                kind="class",
+                source_module=placement.source_module,
+                source_scope=placement.source_class,
+                destination_module=placement.destination_module,
+                destination_scope=placement.destination_class,
+                public_routes=tuple(
+                    (
+                        f"{placement.source_module.partition('._protocols')[0]}.protocols",
+                        route,
+                    )
+                    for route in placement.public_routes
+                ),
+            )
+            for placement in census.contracts
+            if (placement.source_module, placement.source_class)
+            != (placement.destination_module, placement.destination_class)
+        )
+        return outcome.ok(intents)
+
     @classmethod
     def rewire_artifact_file_plans(
         cls,
         root: Path,
         source_plan: p.Infra.SemanticSourcePlan,
-        organization: p.Infra.ProtocolOrganizationPlan,
+        intents: Sequence[p.Infra.SemanticRewireIntent],
         *,
+        pre_move_sources: Mapping[Path, str],
         directory: Path,
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Plan one immutable native artifact in the configured versioned directory.
@@ -299,13 +327,13 @@ class FlextInfraCodemodSemanticApply(
 
         """
         outcome = r[tuple[p.Infra.CodegenFilePlan, ...]]
-        if not organization.census.contracts:
+        if not intents:
             return outcome.ok(())
         built = cls.build_rewire_plan(
             root,
             source_plan,
-            organization.census,
-            pre_move_sources=organization.pre_move_sources,
+            intents,
+            pre_move_sources=pre_move_sources,
         )
         if built.failure:
             return outcome.from_failure(built)
@@ -379,11 +407,11 @@ class FlextInfraCodemodSemanticApply(
         roots: dict[Path, Path] = {}
         for intent in artifact.rewires:
             if (
-                intent.source_class.rsplit(".", 1)[-1]
-                != intent.destination_class.rsplit(".", 1)[-1]
+                intent.source_scope.rsplit(".", 1)[-1]
+                != intent.destination_scope.rsplit(".", 1)[-1]
             ):
                 msg = (
-                    "class relocation preserves its name; naming is a preceding "
+                    "binding relocation preserves its name; naming is a preceding "
                     "native phase"
                 )
                 raise ValueError(msg)
@@ -394,11 +422,12 @@ class FlextInfraCodemodSemanticApply(
                     f"{intent.destination_module}"
                 )
                 raise ValueError(msg)
-            u.Infra.qualified_name(
-                project,
-                intent.destination_class,
-                module_name=intent.destination_module,
-            )
+            if intent.kind != "module":
+                u.Infra.qualified_name(
+                    project,
+                    intent.destination_scope,
+                    module_name=intent.destination_module,
+                )
             recorded = cls._rewire_import_root(
                 artifact.candidate.workspace
                 / intent.supplier_root
@@ -439,7 +468,7 @@ class FlextInfraCodemodSemanticApply(
         scope: str,
         sources: Mapping[Path, str | None],
     ) -> int:
-        """Read a class's identifier position from its authenticated native binding.
+        """Read a binding's identifier position from its authenticated native source.
 
         Returns:
             The native declaration identifier offset in the current source view.
@@ -452,7 +481,7 @@ class FlextInfraCodemodSemanticApply(
         source_module, line = binding.get_definition_location()
         resource = None if source_module is None else source_module.get_resource()
         if resource is None or line is None:
-            msg = f"portable rewire class has no native source: {module}.{scope}"
+            msg = f"portable rewire binding has no native source: {module}.{scope}"
             raise ValueError(msg)
         source = sources[Path(resource.real_path)]
         if source is None:
@@ -465,7 +494,7 @@ class FlextInfraCodemodSemanticApply(
             pyname=binding,
         )
         if offset is None:
-            msg = f"portable rewire class has no native identifier: {module}.{scope}"
+            msg = f"portable rewire binding has no native identifier: {module}.{scope}"
             raise ValueError(msg)
         return offset
 
@@ -578,12 +607,16 @@ class FlextInfraCodemodSemanticApply(
         ) as project:
             binding = u.Infra.qualified_name(
                 project,
-                intent.destination_class,
-                module_name=intent.destination_module,
+                intent.destination_scope or intent.destination_module,
+                module_name=None
+                if intent.kind == "module"
+                else intent.destination_module,
             )
             finder = u.Infra.create_occurrence_finder(
                 project,
-                intent.destination_class.rsplit(".", 1)[-1],
+                (intent.destination_scope or intent.destination_module).rsplit(".", 1)[
+                    -1
+                ],
                 binding,
                 imports=False,
                 in_hierarchy=False,
@@ -607,7 +640,7 @@ class FlextInfraCodemodSemanticApply(
         originals: Mapping[Path, p.Cli.AtomicFileState],
         consumers: tuple[Path, ...],
     ) -> None:
-        """Replay native class transfers over the source/scaffold overlay only.
+        """Replay native binding transfers over the source/scaffold overlay only.
 
         Raises:
             TypeError: If native class rewire returned a non-content effect.
@@ -644,9 +677,6 @@ class FlextInfraCodemodSemanticApply(
                 )
                 for path, source in sources.items()
             )
-            retained = cls._current_rewire_sites(
-                live, election, intent, plans, originals, consumers
-            )
             with closing(
                 u.Infra.planned_project(
                     live,
@@ -655,9 +685,37 @@ class FlextInfraCodemodSemanticApply(
                     observations=tuple(originals.values()),
                 )
             ) as project:
-                destination_owner = intent.destination_class.rpartition(".")[0]
-                public = u.Infra.protocol_contract_reference_filter(
-                    project, intent.source_module, intent.public_routes
+                if intent.kind == "module":
+                    moved = u.Infra.plan_module_move(
+                        project,
+                        origin,
+                        destination_file=target,
+                        inputs=u.Infra.NativeSourceView(
+                            {
+                                path: source
+                                for path, source in sources.items()
+                                if source is not None
+                            },
+                            tuple(originals.values()),
+                            declared_files=plans,
+                        ),
+                    ).unwrap()
+                    for plan in moved:
+                        if plan.path not in sources:
+                            msg = "native module rewire escaped its source view"
+                            raise ValueError(msg)
+                        sources[plan.path] = (
+                            None
+                            if plan.desired_content is None
+                            else plan.desired_content.decode(c.DEFAULT_ENCODING)
+                        )
+                    continue
+                retained = cls._current_rewire_sites(
+                    live, election, intent, plans, originals, consumers
+                )
+                destination_owner = intent.destination_scope.rpartition(".")[0]
+                public = u.Infra.preserved_receiver_reference_filter(
+                    project, intent.public_routes
                 )
 
                 def selected(
@@ -673,33 +731,53 @@ class FlextInfraCodemodSemanticApply(
                         return False
                     return public(occurrence)
 
-                changes = u.Infra.move_class_changes(
-                    project,
-                    u.Infra.file_resource_at(project, origin),
-                    cls._rewire_identifier_offset(
-                        project, intent.source_module, intent.source_class, sources
-                    ),
-                    u.Infra.file_resource_at(project, target),
-                    resources=tuple(
-                        u.Infra.file_resource_at(project, path)
-                        for path in dict.fromkeys((*consumers, origin, target))
-                    ),
-                    destination_offset=None
-                    if not destination_owner
-                    else cls._rewire_identifier_offset(
-                        project, intent.destination_module, destination_owner, sources
-                    ),
-                    match_filter=selected,
-                )
+                if intent.kind == "method":
+                    changes = u.Infra.method_transfer_changes(
+                        project,
+                        m.Infra.RopeMethodTransfer(
+                            id=f"{intent.source_module}.{intent.source_scope}",
+                            destination=(intent.destination_module, destination_owner),
+                            methods=((intent.source_module, intent.source_scope),),
+                            receiver_rewrites=intent.receiver_rewrites,
+                        ),
+                        tuple(
+                            path
+                            for path, source in sources.items()
+                            if source is not None
+                        ),
+                        u.Infra.source_member_resolver(project, sources={}),
+                    )
+                    if changes is None:
+                        continue
+                else:
+                    changes = u.Infra.move_binding_changes(
+                        project,
+                        u.Infra.file_resource_at(project, origin),
+                        cls._rewire_identifier_offset(
+                            project, intent.source_module, intent.source_scope, sources
+                        ),
+                        u.Infra.file_resource_at(project, target),
+                        resources=tuple(
+                            u.Infra.file_resource_at(project, path)
+                            for path in dict.fromkeys((*consumers, origin, target))
+                        ),
+                        destination_offset=None
+                        if not destination_owner
+                        else cls._rewire_identifier_offset(
+                            project,
+                            intent.destination_module,
+                            destination_owner,
+                            sources,
+                        ),
+                        match_filter=selected,
+                    )
                 for change in changes.changes:
                     if not isinstance(change, p.Infra.RopeChangeContents):
-                        msg = "native class rewire returned a non-content effect"
+                        msg = "native binding rewire returned a non-content effect"
                         raise TypeError(msg)
                     path = Path(change.resource.real_path)
                     if path not in sources:
-                        msg = (
-                            "native class rewire escaped its authenticated source view"
-                        )
+                        msg = "native binding rewire escaped its authenticated source view"
                         raise ValueError(msg)
                     previous = sources[path]
                     sources[path] = (

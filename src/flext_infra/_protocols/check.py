@@ -159,14 +159,6 @@ class FlextInfraProtocolsCheck(Protocol):
         ) -> None: ...
 
     @runtime_checkable
-    class WorkspaceLoopOutcome(Protocol):
-        """Public structural view of the workspace gate loop outcome."""
-
-        results: tuple[FlextInfraProtocolsCheck.ProjectResult, ...]
-        failed: int
-        total_elapsed: float
-
-    @runtime_checkable
     class RunCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 

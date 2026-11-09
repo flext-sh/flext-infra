@@ -485,6 +485,12 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             owner = parents.get(id(node))
             if not isinstance(owner, ast.ClassDef):
                 continue
+            if any(
+                (isinstance(base, ast.Name) and base.id == "Protocol")
+                or (isinstance(base, ast.Attribute) and base.attr == "Protocol")
+                for base in owner.bases
+            ):
+                continue
             if not any(
                 (isinstance(base, ast.Name) and base.id in c.Infra.RUNTIME_MODEL_BASES)
                 or (

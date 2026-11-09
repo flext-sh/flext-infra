@@ -1,12 +1,6 @@
 # Universal rules include the flext-core foundation required by flext-infra.
 # Other project identities belong to their owning repository's overlay.
 rules:
-- id: retire-workspace-loop-outcome
-  phase: contract-normalization
-  pattern: '${facade}.Infra.WorkspaceLoopOutcome'
-  goal: '${facade}.Infra.LoopOutcome'
-  arguments:
-    facade: name=flext_infra.p
 - id: opaque-mutable-model-ports
   operation: normalize-opaque-mutable-ports
   phase: contract-normalization
@@ -34,7 +28,7 @@ rules:
   arguments:
     facade:
     - name=flext_core.p
-    - name=flext_core.protocols.FlextCoreProtocols
+    - name=flext_core.protocols.FlextProtocols
 - id: core-rewire-protocol-root-holder
   phase: contract-normalization
   pattern: '${holder}.${member}'
@@ -121,7 +115,7 @@ rules:
   pattern: '${emit}(${result}, verbose=${verbose})'
   goal: '${emit}(${result})'
   arguments:
-    emit: name=u.Cli.commands_emit_result_error
+    emit: name=flext_cli._utilities.commands.FlextCliUtilitiesCommands.commands_emit_result_error
   drops: [ verbose ]
 - id: namespace-final-constant
   phase: constant-consumers

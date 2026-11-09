@@ -205,20 +205,8 @@ class TestsFlextInfraConformSupport:
                 m.Infra.CodegenConformRequest]``.
 
         """
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()},
-        )
-        workspace = u.Tests.workspace_spec(
-            repository,
-            project=u.Tests.project_spec(repository.name),
-        )
-        (root / c.PYPROJECT_FILENAME).write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = root / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
+        workspace = u.Tests.standalone_workspace(root, config.Infra.name)
+        u.Tests.copy_tracked_mise_seeds(root)
         return TestsFlextInfraConformSupport.check_conform_service(root, workspace)
 
     @staticmethod

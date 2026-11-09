@@ -251,7 +251,7 @@ class FlextInfraCheckWorkspaceCheckReports:
     def _print_summary(
         cls,
         report_base: Path,
-        outcome: p.Infra.WorkspaceLoopOutcome,
+        outcome: p.Infra.LoopOutcome,
         summary: p.Infra.CheckReportSummary,
     ) -> None:
         """Print the terminal summary once, without republishing unchanged reports."""

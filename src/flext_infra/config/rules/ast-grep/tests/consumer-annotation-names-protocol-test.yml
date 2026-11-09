@@ -1,6 +1,14 @@
 id: consumer-annotation-names-protocol
 valid:
 - |
+  class Envelope(m.Value):
+      @m.computed_field
+      @property
+      def record(self) -> m.Infra.Record: ...
+- |
+  @m.validate_call
+  def validate(value: m.Infra.Record) -> m.Infra.Record: ...
+- |
   class Bootstrap(s[p.Infra.CodegenResult]):
       state: Annotated[
           m.Infra.CodegenConformState,

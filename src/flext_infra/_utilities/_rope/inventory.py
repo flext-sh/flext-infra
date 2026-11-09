@@ -63,7 +63,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         # The text the module snapshot was parsed from: names and offsets must
         # come from one snapshot even when the file changed on disk since.
         source = pymodule.source_code
-        parameter_lines = cls._parameter_lines(rope_project, pymodule)
+        parameter_lines = cls._parameter_lines(pymodule) if include_local_scopes else {}
         constant_bindings = cls._constant_bindings(pymodule)
         items: MutableSequence[p.Infra.Object] = []
         module_scope = pymodule.get_scope()
@@ -580,7 +580,6 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
     @staticmethod
     def _parameter_lines(
-        rope_project: t.Infra.RopeProject,
         pymodule: t.Infra.RopePyModule,
     ) -> Mapping[tuple[int, str], int]:
         """Index parameter positions once for one immutable module snapshot.
@@ -590,9 +589,17 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
 
         Raises:
             ValueError: If a declared parameter has no native source occurrence.
+            TypeError: If Rope returns an invalid identifier index.
 
         """
         positions: MutableMapping[tuple[int, str], int] = {}
+        binding_index = pymodule.get_source_binding_index()
+        name_offsets = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
+            "rope.base.codeanalyze", "name_offsets"
+        )
+        definition_path = (
+            FlextInfraUtilitiesRopeRuntimeModules.name_definition_resource_path
+        )
         module_scope = pymodule.get_scope()
         scopes = list(module_scope.get_scopes())
         while scopes:
@@ -601,15 +608,21 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
             for name, pyname in scope.get_names().items():
                 if not FlextInfraUtilitiesRopeRuntime.parameter_name(pyname):
                     continue
-                finder = FlextInfraUtilitiesRopeRuntime.create_occurrence_finder(
-                    rope_project,
-                    name,
-                    pyname,
-                    imports=False,
-                    in_hierarchy=False,
-                )
+                offsets = name_offsets(pymodule.source_code, name)
+                if not isinstance(offsets, tuple) or not all(
+                    isinstance(offset, int) for offset in offsets
+                ):
+                    message = "Rope name index contains invalid offsets"
+                    raise TypeError(message)
                 declaration = next(
-                    iter(finder.find_occurrences(pymodule=pymodule)), None
+                    (
+                        offset
+                        for offset in offsets
+                        if binding_index.context_at(offset).role == "formal-token"
+                        and definition_path(pymodule, offset, expected_binding=pyname)
+                        is not None
+                    ),
+                    None,
                 )
                 if declaration is None:
                     message = f"Rope parameter declaration has no occurrence: {name}"
@@ -618,7 +631,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
                 if definition_line is None:
                     message = f"Rope parameter has no definition line: {name}"
                     raise ValueError(message)
-                positions[definition_line, name] = declaration.lineno
+                positions[definition_line, name] = pymodule.lines.get_line_number(
+                    declaration
+                )
         return positions
 
     @staticmethod

@@ -342,16 +342,14 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
         """
         checkout = Path(__file__).resolve().parents[1]
-        context = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.resolution_context(checkout)
-        )
+        source_root = tm.ok(
+            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=checkout))
+        ).repository_root
         specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
-                context.runtime_root
-            ),
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
         )
         projects = {
-            repository.distribution: context.runtime_root / repository.path
+            repository.distribution: source_root / repository.path
             for repository in (specification.repository, *specification.subprojects)
         }
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))

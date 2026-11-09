@@ -21,20 +21,44 @@ class TestsFlextInfraCodegenPyprojectConformScaffold(
 ):
     """Pyproject conformance: provenance, idempotence and scaffold policy."""
 
-    def test_standalone_requires_declared_git_source(self) -> None:
-        """A source-less internal dependency outside the workspace overlay fails.
-
-        The workspace attaches only flext-core, whose declaration supplies the
-        source; the infrastructure distribution is internal and unattached.
-        """
+    @c.Tests.MARK.parametrize(
+        "constraint", ["", ">=1", "[feature]>=1; python_version >= '3.13'"]
+    )
+    def test_standalone_preserves_authored_registry_requirement(
+        self, constraint: str
+    ) -> None:
+        """Conformance preserves authored registry requirements and is idempotent."""
         unattached = config.Infra.codegen.infra_repository.distribution
-        result = u.Infra.pyproject_conform(
-            f'[project]\nname = "external-consumer"\ndependencies = ["{unattached}"]\n',
-            workspace=self._workspace(role=c.Infra.MakeProfile.STANDALONE),
-            required_dev_dependencies=(),
-            uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+        requirement = f"{unattached}{constraint}"
+        dependencies = tm.ok(u.Cli.json_dumps([requirement]))
+        source = (
+            f'[project]\nname = "external-consumer"\ndependencies = {dependencies}\n'
         )
-        tm.fail(result, has="internal dependency declares no direct git source")
+        workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
+        resolution = self._uv_resolution(config.Infra.codegen.toolchain)
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            )
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(requirement,),
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    rendered,
+                    workspace=workspace,
+                    required_dev_dependencies=(),
+                    uv_resolution=resolution,
+                )
+            ),
+            eq=rendered,
+        )
 
     def test_standalone_canonicalizes_the_declared_git_source(self) -> None:
         """The declared requirement line is the only URL and branch authority."""
@@ -295,8 +319,16 @@ exclude-dependencies = [{exclusion}]
             )
         )
         tm.that(lint.get("per-file-ignores"), eq=authorized.get("per-file-ignores"))
+        ruff_policy = config.Infra.tooling.tools.ruff.lint
         tm.that(
-            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+            lint["ignore"],
+            eq=sorted({
+                *ruff_policy.rule_owners,
+                *ruff_policy.ruling_disabled_rules,
+                *u.Infra.native_tool_strings(
+                    config.Infra.tooling, "ruff.lint", "ignore"
+                ),
+            }),
         )
         mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
         policy = config.Infra.tooling.tools.mypy

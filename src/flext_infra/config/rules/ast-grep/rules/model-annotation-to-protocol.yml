@@ -35,6 +35,23 @@ rule:
         stopBy: end
     - not:
         inside:
+          stopBy: end
+          kind: assignment
+          inside:
+            kind: expression_statement
+            inside:
+              kind: block
+              inside:
+                kind: class_definition
+    - not:
+        inside:
+          stopBy: end
+          kind: decorated_definition
+          has:
+            kind: decorator
+            regex: "(^|\\.)(computed_field|validate_call)\\b"
+    - not:
+        inside:
           any:
             - kind: constrained_type
             - kind: generic_type

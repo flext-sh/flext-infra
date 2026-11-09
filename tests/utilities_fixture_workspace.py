@@ -26,6 +26,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
     """Typed workspace and project-layout fixture helpers."""
 
     @staticmethod
+    def contract_rule_targets(
+        rule_id: str,
+    ) -> tuple[p.Infra.RopeContractScopeTarget | None, ...]:
+        """Return every declared scope target, or the explicit unscoped case.
+
+        Returns:
+            The native catalog's complete nonempty fixture matrix.
+
+        """
+        root = tm.not_none(u.Infra.project_root(Path(__file__)))
+        (rule,) = (
+            rule for rule in u.Infra.declared_contract_rules(root) if rule.id == rule_id
+        )
+        return (None,) if rule.scope is None else tuple(rule.scope.targets)
+
+    @staticmethod
     def prove_contract_migration(
         consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,

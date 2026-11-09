@@ -620,7 +620,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
     def _render_existing_managed(
         self,
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
         contract: p.Infra.CodegenConformSurfaceContract,
         initializers: Sequence[p.Infra.CodegenFilePlan],
         custom: Sequence[p.Infra.CodegenFilePlan],

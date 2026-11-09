@@ -13,7 +13,6 @@ import tokenize
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import infra
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
@@ -782,6 +781,11 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-defaulted-field-metadata"),
+        indirect=True,
+    )
+    @c.Tests.MARK.parametrize(
         ("argument", "expression"),
         [
             ("()", "()"),
@@ -840,6 +844,11 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-defaulted-field-metadata"),
+        indirect=True,
+    )
+    @c.Tests.MARK.parametrize(
         "arguments",
         [
             "description='Required'",
@@ -885,6 +894,11 @@ class TestsFlextInfraRopeContractBindings:
                 runpy.run_path(str(path))
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-required-field-metadata"),
+        indirect=True,
+    )
     @c.Tests.MARK.parametrize(
         "annotation",
         [
@@ -1014,11 +1028,10 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     def test_shadowed_dictionary_constructor_retains_its_own_contract(
-        tmp_path: Path,
+        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
         """Inherited BaseModel.dict is not lexical, but a real local dict is."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "consumer.py"
+        rope, path = rope_contract_consumer
         source = (
             "from builtins import dict as BuiltinDictionary\n"
             "from pydantic import BaseModel, Field, ConfigDict\n"
@@ -1031,14 +1044,13 @@ class TestsFlextInfraRopeContractBindings:
         )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         tm.ok(runpy.run_path(str(path))["evidence"])
-        with infra.rope_workspace(root) as rope:
-            edits = tm.ok(
-                u.Infra.plan_semantic_cutover(
-                    c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
-                    rope_workspace=rope,
-                    sources={path: source},
-                )
+        edits = tm.ok(
+            u.Infra.plan_semantic_cutover(
+                c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION,
+                rope_workspace=rope,
+                sources={path: source},
             )
+        )
         tm.that(edits, empty=True)
         tm.ok(runpy.run_path(str(path))["evidence"])
 

@@ -421,7 +421,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
             u.Cli.file_changes_lock(lock.value),
         ):
             verified = u.Cli.atomic_verify_binary_file_states(
-                tuple(state for plan in plans for state in (plan.before, *plan.inputs))
+                tuple(plan.before for plan in plans),
+                read_only_states=tuple(
+                    state for plan in plans for state in plan.inputs
+                ),
             )
             if verified.failure:
                 return result_type.from_failure(verified)

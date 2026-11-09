@@ -89,7 +89,11 @@ class FlextInfraValidateFreshImport(s[bool]):
     def _project_layouts(
         repository_roots: Sequence[Path],
     ) -> p.Result[tuple[p.Infra.RopeProjectLayout, ...]]:
-        """Resolve one Rope layout per requested repository root.
+        """Resolve package layouts without treating explicit non-packages as packages.
+
+        A missing layout is accepted only when the native project metadata
+        explicitly declares ``tool.uv.package = false``. Invalid metadata and
+        every other missing package layout remain failures.
 
         Returns:
             The resulting project layouts.
@@ -99,6 +103,13 @@ class FlextInfraValidateFreshImport(s[bool]):
         for root in repository_roots:
             layout = u.Infra.layout(root)
             if layout is None:
+                metadata = u.Infra.read_project_metadata_state(root)
+                if metadata.failure:
+                    return r[tuple[p.Infra.RopeProjectLayout, ...]].from_failure(
+                        metadata
+                    )
+                if metadata.value.packaging.uv_package is False:
+                    continue
                 return r[tuple[p.Infra.RopeProjectLayout, ...]].fail(
                     f"fresh-import has no Python layout for {root}",
                 )

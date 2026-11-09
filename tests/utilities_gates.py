@@ -84,7 +84,7 @@ class TestsFlextInfraUtilitiesGates:
         *,
         passed: bool = True,
         issues: Sequence[p.Infra.Issue] | None = None,
-    ) -> p.Infra.GateExecution:
+    ) -> m.Infra.GateExecution:
         """Create a typed quality-gate execution fixture.
 
         The native outcome follows the findings, as a completed tool run

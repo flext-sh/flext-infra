@@ -39,6 +39,13 @@ rule:
         kind: generic_type
         has: { kind: identifier, regex: "^type$" }
   - not: { inside: { stopBy: end, pattern: "t.ModelClass[$$$]" } }
+  - not:
+      inside:
+        stopBy: end
+        kind: decorated_definition
+        has:
+          kind: decorator
+          regex: "(^|\\.)(computed_field|validate_call)\\b"
   # A class-body field is a Pydantic schema position (services are models
   # too): a bare protocol there has no core schema. Fields keep the model.
   - not:

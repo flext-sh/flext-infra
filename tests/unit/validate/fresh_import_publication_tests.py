@@ -76,6 +76,33 @@ class TestsFlextInfraFreshImportPublication:
     """Prove fresh-import verification against the real publication contract."""
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "declaration", ["nonpackage", "package", "undeclared", "invalid"]
+    )
+    def test_absent_layout_requires_explicit_valid_nonpackage_metadata(
+        tmp_path: Path,
+        suite_runtime_root: Path,
+        declaration: str,
+    ) -> None:
+        """Only a validated native opt-out removes the package import target."""
+        version = "42" if declaration == "invalid" else '"1.0"'
+        manifest = '[project]\nname = "import-scope-probe"\n' + f"version = {version}\n"
+        if declaration != "undeclared":
+            participation = "true" if declaration == "package" else "false"
+            manifest += f"[tool.uv]\npackage = {participation}\n"
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            manifest, encoding=c.DEFAULT_ENCODING
+        )
+        outcome = FlextInfraValidateFreshImport(
+            repository_root=tmp_path,
+            runtime_root=suite_runtime_root,
+        ).build_report(repository_roots=(tmp_path,))
+        if declaration == "nonpackage":
+            tm.that(tm.ok(outcome).passed, eq=True)
+        else:
+            tm.fail(outcome)
+
+    @staticmethod
     @c.Tests.MARK.parametrize("linked", [False, True])
     def test_namespace_requires_a_physical_directory_chain(
         tmp_path: Path, suite_runtime_root: Path, *, linked: bool

@@ -31,11 +31,19 @@ class TestsFlextInfraCiCompleteCheck:
                 config.Infra.codegen.branch_policy.ci_trigger_branches
             ),
         )
+        root = Path(__file__).resolve().parents[3]
         template = (
-            Path(__file__).resolve().parents[3]
-            / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
+            root / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
         )
         rendered = tm.ok(u.Cli.template_render(template, spec))
+        artifact = (
+            root
+            / c.Infra.REPORTS_DIR_NAME
+            / "ci-qualification"
+            / f"{profile.value}.yml"
+        )
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(artifact, rendered))
         payload = u.json_mapping_adapter().validate_python(
             tm.ok(u.Cli.yaml_parse(rendered))
         )
@@ -48,8 +56,7 @@ class TestsFlextInfraCiCompleteCheck:
             tm.that(full_check["type"], eq="boolean")
             tm.that(full_check["required"], eq=False)
         steps = u.CodegenTestSupport.Ci.ci_job_steps(rendered)
-        required = tuple(step for step in spec.make.workflow if "ci" in step.contexts)
-        for step in required:
+        for step in (item for item in spec.make.workflow if "ci" in item.contexts):
             actual = next(
                 item for item in steps if item.get("id") == f"approval-{step.identity}"
             )

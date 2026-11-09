@@ -1251,6 +1251,77 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         )
 
     @classmethod
+    def preserved_receiver_reference_filter(
+        cls,
+        project: p.Infra.RopeProject,
+        public_routes: Sequence[tuple[str, str]],
+    ) -> Callable[[p.Infra.RopeOccurrence], bool]:
+        """Retain explicitly observed public receivers during native relocation.
+
+        Returns:
+            The occurrence predicate for references that may be rewritten.
+
+        """
+        receivers = tuple(
+            FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
+                project, route.rpartition(".")[0], module_name=module
+            ).get_object()
+            for module, route in public_routes
+        )
+
+        def selected(occurrence: p.Infra.RopeOccurrence) -> bool:
+            names = occurrence.get_primary_and_pyname()
+            if names is None or names[0] is None:
+                return True
+            receiver = names[0].get_object()
+            return all(receiver is not public for public in receivers)
+
+        return selected
+
+    @classmethod
+    def move_binding_changes(
+        cls,
+        project: p.Infra.RopeProject,
+        origin: p.Infra.RopeResource,
+        origin_offset: int,
+        destination: p.Infra.RopeResource,
+        *,
+        resources: Sequence[p.Infra.RopeResource] | None = None,
+        destination_offset: int | None = None,
+        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
+    ) -> p.Infra.RopeChangeSet:
+        """Delegate a resolved declaration to its native class or global mover.
+
+        Returns:
+            Native unapplied changes retaining the source binding's kind.
+
+        Raises:
+            TypeError: The native source or mover does not satisfy its contract.
+
+        """
+        source_binding = cls.runtime_callable("rope.base.evaluate", "eval_location")(
+            project.get_pymodule(origin), origin_offset
+        )
+        if not isinstance(source_binding, p.Infra.RopePyName):
+            message = "native move source has no declaration binding"
+            raise TypeError(message)
+        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(source_binding.get_object()):
+            mover = cls.runtime_callable("rope.refactor.move", "MoveClass")(
+                project, origin, origin_offset
+            )
+            if not isinstance(mover, p.Infra.RopeMoveClass):
+                message = "native Rope class mover violates its planning contract"
+                raise TypeError(message)
+            return mover.get_changes(
+                destination,
+                resources=resources,
+                destination_offset=destination_offset,
+                match_filter=match_filter,
+            )
+        mover = cls.create_move(project, origin, origin_offset)
+        return mover.get_changes(destination, resources=resources)
+
+    @classmethod
     def rename_changes(
         cls,
         rope_project: t.Infra.RopeProject,

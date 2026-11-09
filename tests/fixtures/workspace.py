@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import config, infra
-from tests import c, p, t, tm, u
+from tests import c, m, p, t, tm, u
 
 
 @pytest.fixture
@@ -39,10 +39,11 @@ def rope_sibling_scopes(
     )
 
 
-@pytest.fixture
+@pytest.fixture(params=[None])
 def rope_contract_consumer(
     tmp_path: Path,
     session_runtime: p.Tests.SessionRuntime,
+    request: pytest.FixtureRequest,
 ) -> Iterator[tuple[p.Infra.RopeWorkspaceDsl, Path]]:
     """Compose the inherited workspace factory with a real public Rope session.
 
@@ -50,7 +51,18 @@ def rope_contract_consumer(
         The live workspace and its isolated consumer source path.
 
     """
-    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    if request.param is None:
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "consumer.py"
+    else:
+        target = m.Infra.RopeContractScopeTarget.model_validate(request.param)
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name=target.distribution,
+            package_name=target.module.partition(".")[0],
+        )
+        path = root / "src" / Path(*target.module.split(".")).with_suffix(".py")
+        path.parent.mkdir(parents=True, exist_ok=True)
     tm.ok(
         u.Tests.create_python_environment(
             root,
@@ -59,7 +71,7 @@ def rope_contract_consumer(
         )
     )
     with infra.rope_workspace(root) as workspace:
-        yield workspace, package / "consumer.py"
+        yield workspace, path
 
 
 @pytest.fixture
@@ -156,7 +168,9 @@ def infra_test_workspace(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def infra_git_repo(infra_test_workspace: Path) -> Path:
+def infra_git_repo(
+    infra_test_workspace: Path, session_runtime: p.Tests.SessionRuntime
+) -> Path:
     """Provide a provider-governed clone whose upstream is a local bare repo.
 
     Conformance reads this repository twice and both reads must agree. Detection
@@ -177,9 +191,8 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     # The governed tree above the clone carries the committed Mise
     # declaration and lock that activate its locked tools.
     u.Tests.copy_tracked_mise_seeds(infra_test_workspace.parent)
-    # The repository carries its own committed lock: the declaration the
-    # conform publishes into it resolves only against its sibling mise.lock.
-    u.Tests.seed_locked_taplo(repo)
+    # A real clone carries both its tool declaration and its committed lock.
+    u.Tests.copy_tracked_mise_seeds(repo)
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
     u.Tests.write_project_beads_config(repo, config.Infra.name)
@@ -212,6 +225,15 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
                 f"{u.Tests.provider_branch()}"
             ),
         ),
+    )
+    tm.ok(
+        u.Tests.create_python_environment(
+            repo,
+            dependency_projects=u.Tests.python_dependency_projects(
+                tm.not_none(u.Infra.project_root(Path(__file__)))
+            ),
+            session_runtime=session_runtime,
+        )
     )
     return repo
 

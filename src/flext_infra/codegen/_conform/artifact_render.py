@@ -145,11 +145,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def planned_source_tooling(
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
         planned: Sequence[p.Infra.CodegenFilePlan],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Infra.ToolingRuntimeContext:
+    ) -> m.Infra.ToolingRuntimeContext:
         """Derive tooling from the Python sources the transaction will publish.
 
         Returns:

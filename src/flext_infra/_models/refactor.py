@@ -239,14 +239,23 @@ class FlextInfraModelsRefactor(
         destination_path: Path = m.Field(
             description="Supplier-relative destination module"
         )
+        kind: t.NonEmptyStr = m.Field(description="Native census binding kind")
         source_module: t.NonEmptyStr = m.Field(description="Original import identity")
-        source_class: t.NonEmptyStr = m.Field(description="Original class scope")
+        source_scope: str = m.Field(
+            description="Original lexical binding path; empty for a module"
+        )
         destination_module: t.NonEmptyStr = m.Field(
             description="Current supplier import identity"
         )
-        destination_class: t.NonEmptyStr = m.Field(description="Current class scope")
-        public_routes: tuple[str, ...] = m.Field(
-            default=(), description="Native public facade routes preserved by placement"
+        destination_scope: str = m.Field(
+            description="Current lexical binding path; empty for a module"
+        )
+        public_routes: tuple[tuple[str, str], ...] = m.Field(
+            default=(), description="Native module and public binding routes retained"
+        )
+        receiver_rewrites: Mapping[str, str] = m.Field(
+            default_factory=lambda: MappingProxyType[str, str]({}),
+            description="Native receiver member paths retained by a method transfer",
         )
 
         @m.model_validator(mode="after")
@@ -269,6 +278,13 @@ class FlextInfraModelsRefactor(
                 )
             ):
                 msg = "portable supplier paths must remain relative to their owner"
+                raise ValueError(msg)
+            if self.kind == "module":
+                if self.source_scope or self.destination_scope:
+                    msg = "portable module identities have no declaration scope"
+                    raise ValueError(msg)
+            elif not self.source_scope or not self.destination_scope:
+                msg = "portable declaration identities require lexical scopes"
                 raise ValueError(msg)
             return self
 
@@ -989,11 +1005,11 @@ class FlextInfraModelsRefactor(
         ``refactor mod`` performs the transformation directly. ``--rule``
         selects one concrete owner route, ``--rule-ids`` selects exact
         ast-grep catalog identities and ``--laws`` selects one theme: every
-        planned rule whose ``enforce`` claims a selected law. Exactly one
-        selector is accepted; a run without a selection is refused (ADR-028
-        Decision 18 item 2). Selection resolution happens before any scan or
-        write. ``check`` and ``dry-run`` are the inspection modes; without
-        them the invocation writes.
+        planned rule whose ``enforce`` claims a selected law. At most one
+        selector is accepted; an unselected run executes the declared catalog
+        (ADR-028 Decision 18 item 2). Selection resolution happens before any
+        scan or write. ``check`` and ``dry-run`` are the inspection modes;
+        without them the invocation writes.
         """
 
         check: Annotated[bool, m.Field(description="Validate without writing")] = False

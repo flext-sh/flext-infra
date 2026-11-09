@@ -15,6 +15,108 @@ class TestsFlextInfraCodegenAdmissionWitnesses:
     """Exercise native verification and publication with authenticated file reads."""
 
     @staticmethod
+    @c.Tests.MARK.parametrize("destination", [False, True])
+    def test_identical_replacement_preserves_read_only_input_semantics(
+        infra_git_repo: Path,
+        codegen_admission_cohort: tuple[
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
+        ],
+        *,
+        destination: bool,
+    ) -> None:
+        """Identical inputs survive replacement; destination identity stays strict."""
+        files, captured = codegen_admission_cohort
+        original = files[0].before if destination else captured
+        content = tm.not_none(original.content)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                original.path, content.decode(c.DEFAULT_ENCODING)
+            )
+        )
+        replaced = tm.ok(u.Cli.atomic_read_binary_file_state(original.path))
+        tm.that(replaced.content, eq=content)
+        tm.that(replaced.mode, eq=original.mode)
+        tm.that(replaced.inode == original.inode, eq=False)
+        published = u.Infra.publish_normalized_codegen_plans(
+            infra_git_repo, files, files
+        )
+        if destination:
+            tm.fail(published, has=f"atomic source changed: {original.path}")
+        else:
+            tm.ok(published)
+            tm.that(files[1].path.read_bytes(), eq=files[1].desired_content)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "change", ["content", "mode", "absence", "parent", "symlink"]
+    )
+    def test_read_only_input_changes_reject_publication(
+        infra_git_repo: Path,
+        codegen_admission_cohort: tuple[
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
+        ],
+        change: str,
+    ) -> None:
+        """Read-only inputs retain bytes, mode, presence and physical parent guards."""
+        files, _captured = codegen_admission_cohort
+        directory = infra_git_repo / "inputs"
+        directory.mkdir()
+        source = directory / "source.txt"
+        source.write_bytes(b"observed\n")
+        original = tm.ok(u.Cli.atomic_read_binary_file_state(source))
+        cohort = tuple(
+            file.model_copy(update={"inputs": (original,)}) for file in files
+        )
+        if change == "content":
+            source.write_bytes(b"changed\n")
+        elif change == "mode":
+            source.chmod(tm.not_none(original.mode) ^ 0o100)
+        elif change == "absence":
+            source.unlink()
+        elif change == "parent":
+            directory.rename(infra_git_repo / "original-inputs")
+            directory.mkdir()
+            source.write_bytes(tm.not_none(original.content))
+        else:
+            source.unlink()
+            target = infra_git_repo / "symlink-target.txt"
+            target.write_bytes(tm.not_none(original.content))
+            source.symlink_to(target)
+        tm.fail(
+            u.Infra.publish_normalized_codegen_plans(infra_git_repo, cohort, cohort),
+            has=str(source),
+        )
+        for file in files:
+            tm.that(file.path.read_bytes(), eq=file.before.content)
+
+    @staticmethod
+    def test_input_alias_cannot_weaken_destination_identity(
+        infra_git_repo: Path,
+        codegen_admission_cohort: tuple[
+            tuple[p.Infra.CodegenFilePlan, ...], p.Cli.AtomicFileState
+        ],
+    ) -> None:
+        """A destination also observed as input still requires its original inode."""
+        files, _captured = codegen_admission_cohort
+        before = files[0].before
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                before.path, tm.not_none(before.content).decode(c.DEFAULT_ENCODING)
+            )
+        )
+        observed = tm.ok(u.Cli.atomic_read_binary_file_state(before.path))
+        cohort = (
+            files[0],
+            files[1].model_copy(update={"inputs": (observed,)}),
+        )
+        tm.fail(
+            u.Infra.publish_normalized_codegen_plans(infra_git_repo, cohort, cohort),
+            has="atomic source has conflicting snapshots",
+        )
+        for file in files:
+            tm.that(file.path.read_bytes(), eq=file.before.content)
+
+    @staticmethod
     @c.Tests.MARK.parametrize("reverse", [False, True])
     @c.Tests.MARK.parametrize("drift", [False, True])
     def test_noop_carrier_and_complete_reordering_keep_publication_guard(

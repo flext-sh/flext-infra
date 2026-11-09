@@ -748,8 +748,18 @@ class FlextInfraModHandlers:
         observed = organization()
         if observed is None:
             return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
-        return codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
-            root, source_plan, observed, directory=directory
+        return codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+            root, source_plan, observed.census
+        ).flat_map(
+            lambda intents: (
+                codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
+                    root,
+                    source_plan,
+                    intents,
+                    pre_move_sources=observed.pre_move_sources,
+                    directory=directory,
+                )
+            )
         )
 
     @staticmethod

@@ -21,7 +21,7 @@ class TestsFlextInfraBatchGateSourceDrift:
         state: p.Cli.AtomicFileState | None,
         *,
         actionable: bool,
-    ) -> p.Infra.ModOccurrence:
+    ) -> m.Infra.ModOccurrence:
         start = b'value = "before"'.index(b"before")
         offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
         return m.Infra.ModOccurrence.model_validate({

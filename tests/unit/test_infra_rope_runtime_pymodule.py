@@ -515,16 +515,18 @@ class TestsFlextInfraRopeRuntimePymodule:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        ("source", "ambiguous"),
+        ("source", "symbol", "ambiguous"),
         [
-            ("value = 1\n", False),
-            ("value = 1; print(value)\n", False),
-            ("value = 1; value = 2\n", True),
-            ("def example(value): value = value\n", True),
+            ("value = 1\n", "value", False),
+            ("value = 1; print(value)\n", "value", False),
+            ("value = 1; value = 2\n", "value", True),
+            ("def example(value): value = value\n", "value", True),
+            ('name = "display name"  # name\n', "name", False),
+            ("árvore = 1; print(árvore)\n", "árvore", False),
         ],
     )
     def test_native_definition_token_identity(
-        tmp_path: Path, source: str, *, ambiguous: bool
+        tmp_path: Path, source: str, symbol: str, *, ambiguous: bool
     ) -> None:
         """One write resolves despite reads; multiple writes remain ambiguous."""
         path = tmp_path / "consumer.py"
@@ -540,14 +542,14 @@ class TestsFlextInfraRopeRuntimePymodule:
                 .get_inner_scope_for_offset(source.index("value"))
                 .get_names()["value"]
                 if source.startswith("def ")
-                else module.get_attribute("value")
+                else module.get_attribute(symbol)
             )
             if ambiguous:
                 with u.Tests.raises(RuntimeError, match="definition binding token"):
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     )
             else:
@@ -555,8 +557,14 @@ class TestsFlextInfraRopeRuntimePymodule:
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     ),
-                    eq=source.index("value"),
+                    eq=source.index(symbol),
+                )
+                tm.that(
+                    u.Infra.find_identifier_offset_in_lines(
+                        source.splitlines(keepends=True), line=1, symbol=symbol
+                    ),
+                    eq=source.index(symbol),
                 )

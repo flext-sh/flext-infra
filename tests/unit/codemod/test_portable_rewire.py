@@ -155,11 +155,12 @@ class TestsFlextInfraPortableRewire:
             codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
                 producer,
                 projected,
-                m.Infra.ProtocolOrganizationPlan(
-                    census=census,
-                    files=plans,
-                    pre_move_sources={destination: scaffold},
+                tm.ok(
+                    codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+                        producer, projected, census
+                    )
                 ),
+                pre_move_sources={destination: scaffold},
                 directory=config.Infra.refactor_csv_campaigns.rewire_directory,
             )
         )

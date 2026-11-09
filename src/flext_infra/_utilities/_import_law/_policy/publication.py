@@ -480,6 +480,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             Contract routes grouped by their rewritten goal and native bindings.
 
         """
+        if not rule.bindings:
+            return ((rule, tuple(resources)),) if resources else ()
         routes: list[tuple[p.Infra.RopeContractRule, list[p.Infra.RopeResource]]] = []
         for resource in resources:
             routed = cls._import_contract_rule(project, rule, resource, sources)
@@ -516,8 +518,6 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             TypeError: If the consumer is not a native source module.
 
         """
-        if not rule.bindings:
-            return rule
         path = Path(resource.real_path).resolve()
         root = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
             Path(project.root.real_path), path, source_project=project

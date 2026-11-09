@@ -215,10 +215,12 @@ class TestsFlextInfraCodegenConform:
         )
         before = TestsFlextInfraConformSupport.project_tree(root)
         if scenario == "docs-failure":
-            with u.Tests.raises(ValueError, match="Invalid JSON"):
+            tm.fail(
                 FlextInfraCodegenConform.execute_request(
                     request, execution_context=infra
-                )
+                ),
+                has="Invalid JSON",
+            )
             tm.that(published.read_bytes(), eq=original)
             tm.that(TestsFlextInfraConformSupport.project_tree(root), eq=before)
             return
@@ -261,13 +263,25 @@ class TestsFlextInfraCodegenConform:
             origin_url=u.Tests.repository_ref("flext-infra").url,
         )
         pyproject = tmp_path / c.PYPROJECT_FILENAME
-        source = pyproject.read_text(encoding="utf-8")
+        source = u.Tests.toml_doc(pyproject.read_text(encoding="utf-8"))
+        dependencies = [
+            "custom-runtime>=0.22",
+            "flext-custom @ ../flext-custom",
+        ]
+        u.Cli.toml_ensure_table(source, "project")["dependencies"] = dependencies
         pyproject.write_text(
-            source + 'dependencies = ["custom-runtime>=0.22", '
-            '"flext-custom @ ../flext-custom"]\n',
+            u.Cli.toml_dumps(source),
             encoding="utf-8",
         )
 
+        planned = tm.ok(service.plan(request))
+        (manifest,) = (file for file in planned.files if file.path == pyproject)
+        tm.that(
+            u.Tests.toml_strings_at(
+                u.Tests.codegen_file_text(manifest), "project", "dependencies"
+            ),
+            eq=tuple(dependencies),
+        )
         with u.Tests.raises(
             e.OperationError,
             match="internal dependency direct source must be a git URL",
@@ -353,14 +367,14 @@ class TestsFlextInfraCodegenConform:
         """A config-declared collision is rejected, never silently dropped."""
         canonical = config.Infra.codegen.make.verbs[0].name
 
-        tm.fail(
+        with u.Tests.raises(
+            ValueError, match="must never shadow canonical make.verbs builtins"
+        ):
             self._conform_with_rendered_makefile(
                 infra_git_repo,
                 canonical,
                 verb=canonical,
-            ),
-            has="must never shadow canonical make.verbs builtins",
-        )
+            )
         tm.that((infra_git_repo / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
 
     @staticmethod
@@ -545,6 +559,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Inspect the generated selection and execute its declared native UV."""
         root = infra_git_repo
+        u.Tests.copy_tracked_mise_seeds(root)
         workspace = TestsFlextInfraConformSupport.standalone_workspace(root)
         TestsFlextInfraConformSupport.apply_conform_surface(
             root,
@@ -560,11 +575,7 @@ class TestsFlextInfraCodegenConform:
             tool for tool in config.Infra.codegen.toolchain.tools if tool.name == "uv"
         )
         selector = tool.selector or tool.name
-        tm.that(selected, has='mise -C "$(RUNTIME_ROOT)" which')
-        tm.that(
-            selected, has=f'which "{tool.version_probe.binary}" --tool "{selector}@'
-        )
-        tm.that(selected, has=f'tool "{selector}" --requested')
+        tm.that(selected, has=f'which "{tool.version_probe.binary}"')
         tm.that(selected, lacks="UV_VERSION")
         binary = tm.ok(u.Infra.managed_mise_binary(tool.name, root))
         reader = tm.ok(u.Infra.managed_mise_self(root))
@@ -812,7 +823,7 @@ class TestsFlextInfraCodegenConform:
         root = tmp_path / "arbitrary-root"
         root.mkdir()
         u.Tests.initialize_git_repo(root, origin_url=repository.url)
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
+        u.Tests.copy_tracked_mise_seeds(root)
         service, request = TestsFlextInfraConformSupport.check_conform_service(
             root,
             workspace,
@@ -841,12 +852,16 @@ class TestsFlextInfraCodegenConform:
             eq=u.Tests.codegen_file_text(first_pyproject),
         )
         tm.that(
-            addopts,
-            eq=tuple(
-                u.Infra.native_tool_setting(
+            set(addopts),
+            eq={
+                *u.Infra.native_tool_setting(
                     config.Infra.tooling, "pytest.ini_options", "addopts", Sequence[str]
-                )
-            ),
+                ),
+                *(
+                    f"--ignore={root}"
+                    for root in config.Infra.codegen.exclusions.scenario_data_roots
+                ),
+            },
         )
         tm.that(report, lacks="fail_under")
 

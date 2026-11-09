@@ -200,7 +200,8 @@ class _ModelReferenceRewriter(ast.NodeTransformer):
             isinstance(node.value, ast.Attribute)
             and isinstance(node.value.value, ast.Name)
             and node.value.value.id == "m"
-            and node.value.attr == "Infra"
+            and node.value.attr
+            in {"Infra", self.owner.partition("Protocols")[0].removeprefix("Flext")}
         ):
             self.changed = True
             self.requires_facade = True

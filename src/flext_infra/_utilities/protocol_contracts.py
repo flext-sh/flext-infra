@@ -627,23 +627,10 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             The native occurrence predicate, true only for references to rewrite.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntime
         module = source_module.partition("._protocols")[0] + ".protocols"
-        preserved = tuple(
-            runtime.qualified_name(
-                project, route.rpartition(".")[0], module_name=module
-            ).get_object()
-            for route in public_routes
+        return FlextInfraUtilitiesRopeRuntime.preserved_receiver_reference_filter(
+            project, tuple((module, route) for route in public_routes)
         )
-
-        def selected(occurrence: p.Infra.RopeOccurrence) -> bool:
-            names = occurrence.get_primary_and_pyname()
-            if names is None or names[0] is None:
-                return True
-            receiver = names[0].get_object()
-            return all(receiver is not facade for facade in preserved)
-
-        return selected
 
     @classmethod
     def _protocol_composition_source(

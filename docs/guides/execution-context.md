@@ -269,10 +269,16 @@ the physical project and its Git root once. The bootstrap reader receives that
 Git root; the runtime reader receives the bootstrap root already elected from
 the original submodule declaration. These are distinct inputs, not aliases for
 one assumed repository root. Each reader still removes inherited Git selectors
-in its own subshell while retaining credential configuration. Native UV still
-elects the workspace and must satisfy both Git-scope and project containment.
+in its own subshell while retaining credential configuration. Outside an
+authenticated source composition, native UV elects the workspace and must satisfy
+both Git-scope and project containment.
 Make transports the roots through its override variables; direnv assigns them
 before local overrides can run. No context persists across activations.
+Git attachment authenticates the composed runtime. ADR-030 excludes those members
+from the UV workspace to retain their own locks while binding their sources as
+editable paths in the root. That lock exclusion does not give an attached member
+a separate runtime. Independent consumers and standalone checkouts retain their
+own physical environments.
 
 Mise election before workspace discovery and activation after `.envrc.local`
 remain separate: their roots and inherited environment can differ. The Git
@@ -1734,6 +1740,13 @@ the same native checker, original capture and SARIF publisher. Test owners execu
 their native engines and report the original outcome; missing, red or old check
 receipts never block testing. Complete check and test evidence remains necessary
 for integration and completion.
+The CI workflow also exposes an optional `full_check` boolean on
+`workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
+existing complete check with `make.ci.local_value`, in addition to the unchanged
+required CI operations. This selects every active gate instead of the CI
+partition. The workflow records the candidate SHA and uploads the complete
+check's receipts through the same artifact owner; a primary-only result is
+not complete-check evidence.
 Native checks emit bounded progress at selection, identity/report preparation,
 and prerequisite-wave boundaries before per-gate completion messages. These
 messages identify the stage reached by an interrupted producer; they do not
@@ -2427,6 +2440,11 @@ PEP 621 optional extras and PEP 735 dependency groups retain their separate
 categories, including when both declare a name such as `dev` or `codegen`.
 Conformance preserves each extra's requirement strings, bounds, markers and
 origins; a matching group name does not authorize moving or deleting the extra.
+Authored name-based requirements likewise retain their registry constraints,
+extras and markers: the transformer does not infer a Git source from a name
+prefix. Generated internal floors use their declared provider provenance;
+explicit member Git references retain the existing URL validation. Preserving a
+requirement during conformance does not prove its resolution or installation.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -2634,6 +2652,11 @@ and staging reuses the same captured states and parsed import facts. Closing tha
 snapshot after planning would force a second read and parse during admission.
 Duplicate input references are coalesced only when their captured states agree;
 publication still verifies the original witnesses through the existing writer.
+The publication adapter passes destination states and read-only input states
+separately to CLI's native verifier under the same publication lock. Read-only
+inputs permit a leaf inode replacement only when bytes, mode, absence and every
+other physical witness agree; destinations retain complete identity. A source
+that also names a destination retains that stricter destination contract.
 An admitted cohort is indivisible: cohort selection precedes admission, and its
 normalized plans reach check or publication together. Shared invocation witnesses
 are therefore carried once by its first normalized plan, after that plan's own
