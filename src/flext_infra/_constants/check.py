@@ -563,9 +563,16 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "written beside each other in the shared report directory."
     )
     JSCPD_FORMAT_EXTENSIONS: ClassVar[Mapping[str, Sequence[str]]] = MappingProxyType({
-        "django": ("j2",)
+        "python": ("py", "pyi"),
+        "yaml": ("yaml", "yml"),
+        "django": ("j2",),
     })
-    "Parse Jinja projections in place; never duplicate templates into a scan tree."
+    (
+        "Declared scan languages and their extensions: the jscpd include set. "
+        "Python sources, declared YAML trees and Jinja projections parsed in "
+        "place; every other language (Dockerfiles, shell, JSON) is outside "
+        "the gate by declaration, never by an ignore list."
+    )
     # NOTE: JSCPD_IGNORE_PATTERNS was removed: the duplication gate derives
     # its ignore list from the declared sgconfig fixture topology, the
     # generated-surface and snapshot declarations, the artifact

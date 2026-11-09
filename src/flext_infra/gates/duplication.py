@@ -354,6 +354,10 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             # hardcoded would silently drop the SARIF artifact.
             "--reporters",
             ",".join(c.Infra.JSCPD_REPORTERS),
+            # The include set is the declared language formats; jscpd's
+            # default scans every language it knows (Dockerfiles included).
+            "--format",
+            ",".join(c.Infra.JSCPD_FORMAT_EXTENSIONS),
             "--output",
             str(report_dir),
             *scope.value,

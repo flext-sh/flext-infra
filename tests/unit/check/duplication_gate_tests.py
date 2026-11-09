@@ -308,6 +308,35 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             has="charts/values.yaml",
         )
 
+    def test_undeclared_language_clones_stay_outside_the_scan(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Only the declared language formats enter the scan; Dockerfiles do not."""
+        root = tmp_path / "docker-clone"
+        u.Tests.WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-docker-clone",
+            beads=u.Tests.BeadsIdentity(
+                workspace="docker-clone-workspace",
+                database="docker_clone_database",
+                issue_prefix="docker-clone",
+            ),
+        )
+        docker = root / "tests" / "fixtures" / "docker"
+        docker.mkdir(parents=True)
+        image = "FROM fixture/base:1\n" + "".join(
+            f"RUN install-fixture-package-{index} --flag value-{index}\n"
+            for index in range(max(c.Infra.JSCPD_MIN_LINES, c.Infra.JSCPD_MIN_TOKENS))
+        )
+        for name in ("first.Dockerfile", "second.Dockerfile"):
+            (docker / name).write_text(image, encoding="utf-8")
+
+        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
+
+        tm.ok(execution.result.passed)
+        tm.that(execution.issues, eq=())
+
     def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
         """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
         root = self._governed_with_python_clone(tmp_path, same_file=False)
