@@ -5,7 +5,7 @@ snapshots:
       class FlextDemoConstants:
           pass
       c = FlextDemoConstants
-      
+
       __all__: list[str] = ["FlextDemoConstants", "c"]
     labels:
     - source: "__all__: list[str] = [\"FlextDemoConstants\"]"

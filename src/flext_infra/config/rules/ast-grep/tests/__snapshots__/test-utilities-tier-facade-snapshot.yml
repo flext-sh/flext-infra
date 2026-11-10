@@ -5,7 +5,7 @@ snapshots:
       from flext_core import (
           r,
       )
-      
+
       value = r[int].ok(u.Tests.count(plan))
     labels:
     - source: |-
@@ -21,7 +21,7 @@ snapshots:
             r,
             u,
         )
-        
+
         value = r[int].ok(u.Tests.count(plan))
       style: secondary
       start: 0
@@ -38,7 +38,7 @@ snapshots:
     fixed: |
       from flext_infra import c, m
       from tests import u
-      
+
       value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
     labels:
     - source: from flext_infra import c, u, m
@@ -48,7 +48,7 @@ snapshots:
     - source: |
         from flext_infra import c, u, m
         from tests import u
-        
+
         value = u.Infra.resolve(c.Infra.NAME, m.Infra.Plan)
       style: secondary
       start: 0
@@ -63,8 +63,8 @@ snapshots:
       end: 28
   "from flext_infra import u\n\nvalue = u.Tests.codegen_file_text(plan)\n":
     fixed: |
-      
-      
+
+
       value = u.Tests.codegen_file_text(plan)
     labels:
     - source: from flext_infra import u
@@ -73,7 +73,7 @@ snapshots:
       end: 25
     - source: |
         from flext_infra import u
-        
+
         value = u.Tests.codegen_file_text(plan)
       style: secondary
       start: 0

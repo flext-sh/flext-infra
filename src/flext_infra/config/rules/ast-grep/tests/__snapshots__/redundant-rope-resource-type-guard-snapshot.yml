@@ -5,7 +5,7 @@ snapshots:
       def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:
           relative = path.lstrip("/")
           return project.get_resource(relative)
-      
+
     labels:
     - source: |-
         def _resource(project: p.Infra.RopeProject, path: str) -> p.Infra.RopeResource:

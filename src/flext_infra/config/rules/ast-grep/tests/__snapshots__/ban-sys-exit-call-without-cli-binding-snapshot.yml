@@ -22,7 +22,7 @@ snapshots:
       end: 23
     - source: |
         import sys
-        
+
         sys.exit(1)
       style: secondary
       start: 0

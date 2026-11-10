@@ -3,7 +3,7 @@ snapshots:
   "from __future__ import annotations\nfrom flext_tests import FlextTestsConstants\nclass C:\n    class Tests(FlextTestsConstants.Tests):\n        EXPECTED_DATA_COUNT: int = 3\n":
     fixed: |
       from __future__ import annotations
-      
+
       from typing import ClassVar
       from flext_tests import FlextTestsConstants
       class C:

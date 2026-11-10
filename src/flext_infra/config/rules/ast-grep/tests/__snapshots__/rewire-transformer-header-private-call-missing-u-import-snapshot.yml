@@ -8,7 +8,7 @@ snapshots:
       end: 95
     - source: |
         from flext_infra import c
-        
+
         bound = FlextInfraUtilitiesTransformerHeader.alias_used(source, "u")
       style: secondary
       start: 0

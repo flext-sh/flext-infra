@@ -1730,6 +1730,19 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             """
             module = self._project.get_module(target)
             resource = module.get_resource()
+            local = (
+                Path(self._project.root.real_path)
+                .joinpath(*target.split("."))
+                .with_suffix(c.Infra.EXT_PYTHON)
+            )
+            if local.is_file() and (
+                resource is None
+                or Path(resource.real_path).resolve() != local.resolve()
+            ):
+                local_resource = self._project.get_resource(str(local))
+                if local_resource is not None:
+                    module = self._project.get_module(target, local_resource)
+                    resource = module.get_resource()
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,

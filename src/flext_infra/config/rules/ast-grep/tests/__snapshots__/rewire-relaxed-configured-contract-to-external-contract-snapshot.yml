@@ -10,7 +10,7 @@ snapshots:
     - source: |-
         class Setting(m.ContractModel):
             """One setting in a values response."""
-        
+
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
                 extra="ignore",
                 frozen=True,

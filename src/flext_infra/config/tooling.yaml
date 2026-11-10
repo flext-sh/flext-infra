@@ -224,6 +224,12 @@ Infra:
       # stay capitalized in the read-only `p.*` contract, so the function-name
       # rule cannot apply to generated `_protocols` sources.
       - [ '**/_protocols/**', [ invalid-function-name ] ]
+      # The command contract mandates the ``# /// flext-command`` metadata
+      # block: its single-line JSON entries exceed the line budget and its
+      # commented declarations are data, not dead code.
+      - [ 'scripts/**/*.py', [ commented-out-code, line-too-long ] ]
+      # The fleet testing contract expresses expectations with ``assert``.
+      - [ 'tests/**/*.py', [ assert ] ]
       mypy:
       - [ plugins, [ pydantic.mypy ] ]
       - [ allow_redefinition, true ]

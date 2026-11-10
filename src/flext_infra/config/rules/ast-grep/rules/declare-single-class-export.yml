@@ -41,39 +41,44 @@ utils:
             - kind: comment
         stopBy: end
 rule:
-  kind: module
-  pattern: $SOURCE
-  has:
-    kind: class_definition
-    inside:
-      kind: module
-    has:
-      field: name
-      pattern: $NAME
+  kind: class_definition
+  pattern: $CLASS
+  inside:
+    kind: module
+    stopBy: end
     not:
-      any:
-        - follows:
-            stopBy: end
-            kind: class_definition
-        - precedes:
-            stopBy: end
-            kind: class_definition
+      has:
+        inside:
+          kind: module
+        not:
+          any:
+            - matches: import
+            - matches: import-guard
+            - kind: class_definition
+            - kind: comment
+            - kind: expression_statement
+              has:
+                kind: string
+        stopBy: end
+  has:
+    field: name
+    pattern: $NAME
   not:
-    has:
-      inside:
-        kind: module
-      not:
-        any:
-          - matches: import
-          - matches: import-guard
-          - kind: class_definition
-          - kind: comment
-          - kind: expression_statement
-            has:
-              kind: string
-      stopBy: end
+    any:
+      - follows:
+          stopBy: end
+          kind: class_definition
+      - precedes:
+          stopBy: end
+          kind: class_definition
+      # A declaration module publishes a data-only class. A class carrying
+      # behavior (a test suite, a service) has its own semantic ownership
+      # phase and must never be rewritten by this projection.
+      - has:
+          stopBy: end
+          kind: function_definition
 fix: |-
-  $SOURCE
+  $CLASS
 
 
   __all__: list[str] = ["$NAME"]
