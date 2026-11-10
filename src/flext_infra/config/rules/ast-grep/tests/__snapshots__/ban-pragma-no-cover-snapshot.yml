@@ -2,7 +2,7 @@ id: ban-pragma-no-cover
 snapshots:
   "def unreachable():  # pragma: no cover\n    raise RuntimeError":
     fixed: |-
-      def unreachable():
+      def unreachable():  
           raise RuntimeError
     labels:
     - source: "# pragma: no cover"
@@ -11,7 +11,7 @@ snapshots:
       end: 38
   "if TYPE_CHECKING:  # pragma:no cover\n    pass":
     fixed: |-
-      if TYPE_CHECKING:
+      if TYPE_CHECKING:  
           pass
     labels:
     - source: "# pragma:no cover"

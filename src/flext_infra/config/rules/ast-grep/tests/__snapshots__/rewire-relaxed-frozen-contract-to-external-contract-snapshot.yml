@@ -9,7 +9,7 @@ snapshots:
     - source: |-
         class Issue(m.ContractModel):
             """One issue in a search response."""
-
+        
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
             key: str
       style: primary
@@ -18,7 +18,7 @@ snapshots:
   "class LegacyIssue(m.ContractModel):\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str\n":
     fixed: |
       class LegacyIssue(m.ExternalContractModel):
-
+          
           key: str
     labels:
     - source: |-

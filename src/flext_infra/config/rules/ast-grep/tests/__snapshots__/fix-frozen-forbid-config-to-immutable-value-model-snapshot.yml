@@ -3,18 +3,18 @@ snapshots:
   "from flext_core import m\n\nclass Value(m.BaseModel):\n    \"\"\"Value.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")\n":
     fixed: |
       from flext_core import m
-
+      
       class Value(m.ImmutableValueModel):
           """Value."""
-
+          
           name: str = m.Field(description="name")
     labels:
     - source: |-
         class Value(m.BaseModel):
             """Value."""
-
+        
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
+        
             name: str = m.Field(description="name")
       style: primary
       start: 26
@@ -37,9 +37,9 @@ snapshots:
       end: 68
     - source: |-
         """Value."""
-
+        
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
+        
             name: str = m.Field(description="name")
       style: secondary
       start: 56
@@ -50,12 +50,12 @@ snapshots:
       end: 24
     - source: |
         from flext_core import m
-
+        
         class Value(m.BaseModel):
             """Value."""
-
+        
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
+        
             name: str = m.Field(description="name")
       style: secondary
       start: 0

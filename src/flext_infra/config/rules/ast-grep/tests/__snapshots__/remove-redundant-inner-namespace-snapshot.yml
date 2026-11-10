@@ -3,8 +3,8 @@ snapshots:
   "class Alpha(Base):\n    class Cli(Alpha):\n        pass\n\n    def run(self) -> int:\n        return 0\n":
     fixed: |
       class Alpha(Base):
-
-
+          
+      
           def run(self) -> int:
               return 0
     labels:
@@ -35,7 +35,7 @@ snapshots:
     - source: |-
         class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
@@ -49,7 +49,7 @@ snapshots:
         class Alpha(Base):
             class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
@@ -58,7 +58,7 @@ snapshots:
     - source: |-
         class Cli(Alpha):
                 pass
-
+        
             def run(self) -> int:
                 return 0
       style: secondary
@@ -67,8 +67,8 @@ snapshots:
   "class Beta(Base):\n    class Cli(Beta):\n        ...\n\n    class Real(Base):\n        VALUE = 1\n":
     fixed: |
       class Beta(Base):
-
-
+          
+      
           class Real(Base):
               VALUE = 1
     labels:
@@ -99,7 +99,7 @@ snapshots:
     - source: |-
         class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -113,7 +113,7 @@ snapshots:
         class Beta(Base):
             class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -122,7 +122,7 @@ snapshots:
     - source: |-
         class Cli(Beta):
                 ...
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -131,8 +131,8 @@ snapshots:
   "class Zeta(Base):\n    class Cli(Zeta):\n        \"\"\"Namespace.\"\"\"\n\n    class Real(Base):\n        VALUE = 1\n":
     fixed: |
       class Zeta(Base):
-
-
+          
+      
           class Real(Base):
               VALUE = 1
     labels:
@@ -163,7 +163,7 @@ snapshots:
     - source: |-
         class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -177,7 +177,7 @@ snapshots:
         class Zeta(Base):
             class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
@@ -186,7 +186,7 @@ snapshots:
     - source: |-
         class Cli(Zeta):
                 """Namespace."""
-
+        
             class Real(Base):
                 VALUE = 1
       style: secondary
