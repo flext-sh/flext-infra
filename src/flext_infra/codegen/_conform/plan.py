@@ -524,12 +524,20 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             current_repository = current_target.repository
         else:
             current_target = m.Infra.RepositoryConformTarget(
-                repository=current_repository,
+                repository=m.Infra.RepositoryRef.model_validate(current_repository),
                 root=root,
                 toolchain_root=self.state.repository_root,
                 make_profile=current_repository.role,
-                beads=workspace.beads,
-                project=workspace.project,
+                beads=(
+                    m.Infra.BeadsProjectSpec.model_validate(workspace.beads)
+                    if workspace.beads is not None
+                    else None
+                ),
+                project=(
+                    m.Infra.ProjectSpec.model_validate(workspace.project)
+                    if workspace.project is not None
+                    else None
+                ),
                 canonical_project_name=current_repository.distribution,
                 ci_enabled=inputs.spec.repository.ci_enabled,
                 publishes_release=current_repository.publishes_release,
@@ -725,9 +733,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         if lazy.repository != managed.repository:
             msg = "repository planning phases have different owners"
             raise ValueError(msg)
-        managed.files = u.Infra.codegen_compose_file_plans(
-            (*lazy.files, *managed.files),
-            ordered=True,
+        managed = m.Infra.CodegenRepositoryPlanOutcome.model_validate(managed)
+        managed.files = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*lazy.files, *managed.files),
+                ordered=True,
+            )
         )
         managed.elapsed += lazy.elapsed
         return managed

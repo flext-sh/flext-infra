@@ -684,11 +684,11 @@ class FlextInfra(
         return r[p.Infra.WorkspaceProjectContext].ok(
             m.Infra.WorkspaceProjectContext(
                 cwd=resolved,
-                identity=identity.value,
-                workspace=workspace,
-                target=target,
+                identity=m.Infra.GitIdentityReport.model_validate(identity.value),
+                workspace=m.Infra.WorkspaceSpec.model_validate(workspace),
+                target=m.Infra.RepositoryConformTarget.model_validate(target),
                 governed=True,
-                runtime=runtime,
+                runtime=m.Infra.WorkspaceRuntimeContext.model_validate(runtime),
             ),
         )
 
