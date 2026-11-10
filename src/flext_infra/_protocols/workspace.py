@@ -186,21 +186,10 @@ class FlextInfraProtocolsWorkspace:
         origins: MutableMapping[str, Path]
         module_anchors: MutableMapping[str, t.Infra.NativeOperand]
         sources: t.Infra.MutableSetOf[tuple[str, str, str]]
-
-        @property
-        def evidence(
-            self,
-        ) -> Sequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
-            """Ordered native binding and executable observations."""
-            ...
-
-        @property
-        def evidence_index(
-            self,
-        ) -> Mapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
-            """Invocation-local references to the first binding evidence."""
-            ...
-
+        evidence: MutableSequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]
+        evidence_index: MutableMapping[
+            str, FlextInfraProtocolsWorkspace.NativeBindingEvidence
+        ]
         generated_owners: MutableMapping[int, tuple[str, str, p.AttributeProbe | None]]
         references: MutableSequence[tuple[str, t.Infra.NativeOperand]]
         pending: MutableSequence[

@@ -80,31 +80,22 @@ jobs:
     env:
       CI: Y
       GITHUB_TOKEN: ${{ github.token }}
-    defaults:
-      run:
-        working-directory: flext-infra
     steps:
-      - name: Checkout workspace flext-sh/flext
+      - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: flext-sh/flext
-          ref: 0.12.0-dev
           submodules: recursive
+
           persist-credentials: false
+
           fetch-depth: 0
-      - name: Pin flext-infra at the tested commit
-        working-directory: .
-        run: |
-          set -eu
-          git -C "flext-infra" fetch --no-tags origin "${{ inputs.ref || github.sha }}"
-          git -C "flext-infra" checkout --detach FETCH_HEAD
+          ref: ${{ inputs.ref || github.sha }}
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud
       # on any drift, so checkout content is normalized to canonical modes
       # once, before any gate runs.
       - name: Normalize checkout modes
-        working-directory: .
         run: chmod -R go-w .
 
       # Why: every fresh runner paid a cold full-dependency Mypy,
@@ -176,26 +167,26 @@ jobs:
           # Structured reports only — omit raw pytest/tool logs that may carry
           # connection strings or env-derived secrets from integration fixtures.
           path: |
-            flext-infra/.reports/**/junit.xml
-            flext-infra/.reports/**/coverage.xml
-            flext-infra/.reports/**/coverage.json
-            flext-infra/.reports/**/audit-summary.json
-            flext-infra/.reports/**/audit-report.md
-            flext-infra/.reports/**/validate-summary.json
-            flext-infra/.reports/**/validate-report.md
-            flext-infra/.reports/check/**/*.sarif
-            flext-infra/.reports/check/**/*.md
-            flext-infra/.reports/gates/**/original-receipt.json
-            flext-infra/.reports/gates/**/check/**/*.sarif
-            flext-infra/.reports/gates/**/check/**/*.md
-            flext-infra/.reports/codegen-plan.json
-            flext-infra/.reports/codegen-publication.json
-            flext-infra/.reports/codegen-publication/**/*.json
-            flext-infra/.reports/setup-operations/*.json
-            flext-infra/.reports/tests/**/*.json
-            flext-infra/.reports/tests/**/summary.txt
-            flext-infra/.reports/tests/**/failed-tests.txt
-            flext-infra/.reports/tests/**/errors.txt
+            .reports/**/junit.xml
+            .reports/**/coverage.xml
+            .reports/**/coverage.json
+            .reports/**/audit-summary.json
+            .reports/**/audit-report.md
+            .reports/**/validate-summary.json
+            .reports/**/validate-report.md
+            .reports/check/**/*.sarif
+            .reports/check/**/*.md
+            .reports/gates/**/original-receipt.json
+            .reports/gates/**/check/**/*.sarif
+            .reports/gates/**/check/**/*.md
+            .reports/codegen-plan.json
+            .reports/codegen-publication.json
+            .reports/codegen-publication/**/*.json
+            .reports/setup-operations/*.json
+            .reports/tests/**/*.json
+            .reports/tests/**/summary.txt
+            .reports/tests/**/failed-tests.txt
+            .reports/tests/**/errors.txt
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -208,7 +199,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: flext-gate-receipts-${{ github.job }}-${{ github.run_id }}
-          path: flext-infra/.reports/gates/**
+          path: .reports/gates/**
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

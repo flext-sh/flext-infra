@@ -659,8 +659,6 @@ Infra:
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
-      codemod_scan_threads: null
-      codemod_executed_rule_budget: null
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each

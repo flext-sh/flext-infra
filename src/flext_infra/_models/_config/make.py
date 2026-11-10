@@ -1076,25 +1076,6 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
-        codemod_scan_threads: Annotated[
-            t.PositiveInt | None,
-            m.Field(
-                default=None,
-                description=(
-                    "Bounded thread budget for ast-grep scans; if None, resolves "
-                    "adaptively (CI: 2, local: min(8, max(1, (os.cpu_count() or 4) // 2)))"
-                ),
-            ),
-        ] = None
-        codemod_executed_rule_budget: Annotated[
-            t.PositiveInt | None,
-            m.Field(
-                default=None,
-                description=(
-                    "Maximum executed ast-grep rules budget per repository stage"
-                ),
-            ),
-        ] = None
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:

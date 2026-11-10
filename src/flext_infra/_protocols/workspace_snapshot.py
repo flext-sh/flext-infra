@@ -105,10 +105,17 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def set(self, key: str, *, value: bool | Sequence[str]) -> None: ...
 
     @runtime_checkable
+    class RopeChange(Protocol):
+        """One pending native resource update."""
+
+        resource: FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+        new_contents: str
+
+    @runtime_checkable
     class RopeChangeSet(Protocol):
         """Rope change set shape."""
 
-        changes: list[p.AttributeProbe]
+        changes: list[FlextInfraProtocolsWorkspaceSnapshot.RopeChange]
 
     @runtime_checkable
     class RopeModuleFinder(Protocol):

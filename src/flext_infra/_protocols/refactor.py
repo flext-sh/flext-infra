@@ -283,13 +283,18 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
+        def kind(self) -> t.NonEmptyStr:
+            """Native census binding kind."""
+            ...
+
+        @property
         def source_module(self) -> t.NonEmptyStr:
             """Original import identity."""
             ...
 
         @property
-        def source_class(self) -> t.NonEmptyStr:
-            """Original class scope."""
+        def source_scope(self) -> str:
+            """Original lexical binding path; empty for a module."""
             ...
 
         @property
@@ -298,13 +303,18 @@ class FlextInfraProtocolsRefactor:
             ...
 
         @property
-        def destination_class(self) -> t.NonEmptyStr:
-            """Current class scope."""
+        def destination_scope(self) -> str:
+            """Current lexical binding path; empty for a module."""
             ...
 
         @property
-        def public_routes(self) -> tuple[str, ...]:
-            """Native public facade routes preserved by placement."""
+        def public_routes(self) -> tuple[tuple[str, str], ...]:
+            """Native module and public binding routes retained."""
+            ...
+
+        @property
+        def receiver_rewrites(self) -> Mapping[str, str]:
+            """Native receiver member paths retained by a method transfer."""
             ...
 
     @runtime_checkable

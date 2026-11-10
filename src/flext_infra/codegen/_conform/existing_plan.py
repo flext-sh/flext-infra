@@ -1157,8 +1157,11 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             ),
         ))
         previous = self.state.provider_plans
-        self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-            (*(previous or ()), metadata), ordered=True
+        self.state.provider_plans = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*(previous or ()), metadata), ordered=True
+            )
         )
         try:
             bootstrap = self._plan_existing_bootstrap(
