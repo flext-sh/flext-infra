@@ -52,12 +52,12 @@ class FlextInfraUtilitiesGitLaneHygiene:
                 for name, oid in heads.value.heads.items()
             )
         return r[p.Infra.GitLaneFacts].ok(
-            m.Infra.GitLaneFacts(
-                repo_root=request.repo_root,
-                stash_oids=stash_oids,
-                refs=tuple(refs),
-                read_errors=tuple(errors),
-            )
+            m.Infra.GitLaneFacts.model_validate({
+                "repo_root": (request.repo_root),
+                "stash_oids": (stash_oids),
+                "refs": (tuple(refs)),
+                "read_errors": (tuple(errors)),
+            })
         )
 
 

@@ -126,11 +126,14 @@ class FlextInfraRefactorRoutes:
                 raise FileNotFoundError(source)
             if target.exists():
                 raise FileExistsError(target)
-            states = tuple(
-                u.Cli.atomic_read_binary_file_state(
-                    resource.real_path, required=True
-                ).unwrap()
+            paths = {
+                Path(resource.real_path).resolve()
                 for resource in workspace.rope_project.get_python_files()
+            }
+            paths.add(source)
+            states = tuple(
+                u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in sorted(paths)
             )
             plans = u.Infra.plan_module_move(
                 workspace.rope_project,
@@ -278,9 +281,9 @@ class FlextInfraRefactorRoutes:
         m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
-                "Check or fix one theme (--laws, --rule-ids, --rule or "
-                "--rename-plan) to a proven fixed point; an unselected run is "
-                "refused (ADR-028 Decision 18 item 2)"
+                "Converge the complete active catalog to a proven fixed point; "
+                "--laws, --rule-ids, --rule or --rename-plan narrow the focus "
+                "(ADR-028 Decision 18 item 2)"
             ),
             model_cls=m.Infra.ModCommand,
             handler=execute_mod,

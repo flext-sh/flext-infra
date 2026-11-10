@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, m, tm, u
+from tests import c, config, m, t, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -24,6 +24,75 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",
     )
+
+    @u.Tests.fixture(scope="module")
+    @staticmethod
+    def runtime_reader_template(tmp_path_factory: t.Tests.TempPathFactory) -> Path:
+        """Generate the complete source contract once for independent copies.
+
+        Returns:
+            The generated template without an installed environment.
+
+        """
+        root, _ = u.Tests.render_make_environment(
+            tmp_path_factory.mktemp("runtime-reader"), c.Infra.MakeProfile.STANDALONE
+        )
+        return root
+
+    @u.Tests.fixture
+    @staticmethod
+    def runtime_reader(tmp_path: Path, runtime_reader_template: Path) -> Path:
+        """Copy declarations into an independently owned Git checkout.
+
+        Returns:
+            The isolated checkout with its real trusted native reader.
+
+        """
+        root = u.Tests.resolved_make_checkout(
+            runtime_reader_template, tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        u.Tests.copy_tracked_mise_seeds(root)
+        tm.that(
+            Path(u.Tests.git_capture(root, "rev-parse", "--absolute-git-dir").strip()),
+            eq=root / c.GIT_DIR_NAME,
+        )
+        for name in (
+            c.PYPROJECT_FILENAME,
+            c.Infra.MISE_TOML_FILENAME,
+            c.Infra.MISE_LOCK_FILENAME,
+        ):
+            copied, original = root / name, runtime_reader_template / name
+            tm.that(copied.samefile(original), eq=False)
+            tm.that(copied.read_bytes(), eq=original.read_bytes())
+        return root
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("directory_link", [False, True])
+    def test_bootstrap_seed_preserves_foreign_symlink_targets(
+        tmp_path: Path, *, directory_link: bool
+    ) -> None:
+        """A fixture cannot populate a bootstrap owned by another checkout."""
+        root = tmp_path / "fixture"
+        root.mkdir()
+        foreign = tmp_path / "foreign"
+        foreign.mkdir()
+        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[3]))
+        marker = foreign / reader.name
+        content = b"Foreign bootstrap must survive.\n"
+        marker.write_bytes(content)
+        bootstrap = root / config.Infra.codegen.make.bootstrap_bin_dir
+        if directory_link:
+            bootstrap.symlink_to(foreign, target_is_directory=True)
+            link = bootstrap
+        else:
+            bootstrap.mkdir()
+            link = bootstrap / reader.name
+            link.symlink_to(marker)
+        with u.Tests.raises(ValueError, match="fixture bootstrap must be physical"):
+            u.Tests.copy_tracked_mise_seeds(root)
+        tm.that(link.is_symlink(), eq=True)
+        tm.that(marker.read_bytes(), eq=content)
+        tm.that(tuple(foreign.iterdir()), eq=(marker,))
 
     @classmethod
     def _runtime_values(cls, project_root: Path) -> dict[str, str]:
@@ -54,41 +123,48 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
 
     @staticmethod
     def _workspace_with_member(
-        tmp_path: Path, member_source: Path, *, included: bool = True
+        tmp_path: Path,
+        member_source: Path,
+        *,
+        included: bool = True,
+        attached: bool = True,
     ) -> Path:
-        """Declare and prove native UV membership of a real Git submodule.
+        """Declare and prove native membership separately from Git attachment.
 
         Returns:
             The resulting ``Path``.
 
         """
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=member_source))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "--quiet", "-m", "render member"],
-                cwd=member_source,
-            ),
+        operation = (
+            ["submodule", "add", "--quiet"] if attached else ["clone", "--quiet"]
         )
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         u.Tests.initialize_git_repo(workspace)
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    "--quiet",
-                    str(member_source),
-                    member_source.name,
-                ],
-                cwd=workspace,
+        u.Tests.git_bootstrap(
+            workspace,
+            (
+                "-c",
+                "protocol.file.allow=always",
+                *operation,
+                str(member_source),
+                member_source.name,
             ),
         )
+        distribution = tm.ok(
+            u.Infra.read_project_metadata_state(member_source)
+        ).metadata.project.name
+        composed = (
+            f'dependencies = ["{distribution}"]\n'
+            f'[tool.uv.sources]\n"{distribution}" = '
+            f'{{path = "{member_source.name}", editable = true}}\n'
+            if attached and not included
+            else ""
+        )
         (workspace / c.PYPROJECT_FILENAME).write_text(
-            "[tool.uv.workspace]\n"
+            '[project]\nname = "fixture-workspace"\nversion = "0.1.0"\n'
+            + composed
+            + "[tool.uv.workspace]\n"
             + (
                 f'members = ["{member_source.name}"]\n'
                 if included
@@ -98,6 +174,14 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
         u.Tests.copy_tracked_mise_seeds(workspace)
         member = workspace / member_source.name
+        if not attached:
+            u.Tests.copy_tracked_mise_seeds(member)
+        tm.that(
+            u.Tests.git_capture(
+                member, "rev-parse", "--show-superproject-working-tree"
+            ).strip(),
+            eq=str(workspace) if attached else "",
+        )
         native = tm.ok(
             u.Cli.run_raw(
                 (u.Tests.managed_uv(), "workspace", "dir", "--project", str(member)),
@@ -115,7 +199,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         tm.that(native.stdout.strip(), eq=str(workspace if included else member))
         tm.that(
             tm.ok(u.Infra.runtime_owner_root(member)),
-            eq=workspace if included else member,
+            eq=workspace if attached else member,
         )
         return workspace.resolve()
 
@@ -127,6 +211,8 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             The resulting ``str``.
 
         """
+        owner = tm.ok(u.Infra.runtime_owner_root(entry))
+        u.Tests.provision_runtime_environment(owner)
         (entry / ".envrc.local").write_text(
             'export OBSERVED_VENV_DIR="${VENV_DIR}"\n',
             encoding="utf-8",
@@ -162,34 +248,48 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         )
         return process.stdout.strip()
 
+    @c.Tests.MARK.parametrize("linked", [False, True])
     def test_checkout_without_superproject_owns_its_runtime(
         self,
         tmp_path: Path,
+        runtime_reader: Path,
+        *,
+        linked: bool,
     ) -> None:
-        """A standalone clone resolves its own physical environment."""
-        project_root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
+        """Standalone clones and actual linked checkouts own their environments."""
+        project_root = runtime_reader
+        if linked:
+            self._runtime_values(runtime_reader)
+            u.Tests.commit_git_changes(runtime_reader, "Seed generated runtime readers")
+            project_root = u.Tests.git_linked_lane(
+                tmp_path, runtime_reader, "linked-runtime"
+            )
+            u.Tests.copy_tracked_mise_seeds(project_root)
+            tm.that((project_root / c.GIT_DIR_NAME).is_file(), eq=True)
 
         values = self._runtime_values(project_root)
-
         root = str(project_root.resolve())
+        tm.that(
+            u.Tests.git_capture(project_root, "rev-parse", "--show-toplevel").strip(),
+            eq=root,
+        )
+        tm.that(tm.ok(u.Infra.runtime_owner_root(project_root)), eq=project_root)
         tm.that(values["RUNTIME_ROOT"], eq=root)
         tm.that(
             values["RUNTIME_VENV"],
             eq=str(u.Infra.runtime_environment_dir(project_root)),
         )
+        tm.that(self._direnv_venv(project_root), eq=values["RUNTIME_VENV"])
+        if linked:
+            tm.that(u.Infra.runtime_environment_dir(runtime_reader).exists(), eq=False)
 
     def test_submodule_member_resolves_the_workspace_runtime(
         self,
         tmp_path: Path,
+        runtime_reader: Path,
     ) -> None:
         """A member checked out as a submodule shares the superproject runtime."""
-        member_source, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
+        member_source = runtime_reader
         workspace = self._workspace_with_member(tmp_path, member_source)
         member = workspace / member_source.name
 
@@ -198,36 +298,51 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         tm.that(values["PROJECT_ROOT"], eq=str(member))
         for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
             tm.that(values[name], eq=str(workspace))
-        tm.that(
-            values["UV_PROJECT"],
-            eq=str(workspace),
-        )
+        tm.that(values["UV_PROJECT"], empty=True)
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(
                 values[name],
                 eq=str(u.Infra.runtime_environment_dir(member, runtime_root=workspace)),
             )
 
-    def test_excluded_submodule_keeps_its_own_runtime(self, tmp_path: Path) -> None:
-        """Git attachment cannot override UV's explicit workspace exclusion."""
-        member_source, _ = u.Tests.render_make_environment(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
+    @c.Tests.MARK.parametrize("attached", [False, True])
+    def test_uv_exclusion_retains_declared_runtime_ownership(
+        self, tmp_path: Path, runtime_reader: Path, *, attached: bool
+    ) -> None:
+        """Lock composition shares a runtime; an independent clone owns its own."""
+        member_source = runtime_reader
+        workspace = self._workspace_with_member(
+            tmp_path, member_source, included=False, attached=attached
         )
-        workspace = self._workspace_with_member(tmp_path, member_source, included=False)
         member = workspace / member_source.name
+        owner = workspace if attached else member
+        locks = tuple(
+            (path, tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False)))
+            for root in (workspace, member)
+            for name in (c.Infra.UV_LOCK_FILENAME, c.Infra.MISE_LOCK_FILENAME)
+            for path in (root / name,)
+        )
 
         values = self._runtime_values(member)
 
-        for name in ("PROJECT_ROOT", "REPOSITORY_ROOT", "RUNTIME_ROOT"):
-            tm.that(values[name], eq=str(member))
+        tm.that(values["PROJECT_ROOT"], eq=str(member))
+        for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
+            tm.that(values[name], eq=str(owner))
         tm.that(
             values["RUNTIME_VENV"],
-            eq=str(u.Infra.runtime_environment_dir(member, runtime_root=member)),
+            eq=str(u.Infra.runtime_environment_dir(member, runtime_root=owner)),
         )
+        tm.that(self._direnv_venv(member), eq=values["RUNTIME_VENV"])
+        for path, before in locks:
+            tm.that(
+                tm.ok(u.Cli.atomic_read_binary_file_state(path, required=False)),
+                eq=before,
+            )
 
     def test_attached_member_upg_delegates_to_the_runtime_root(
         self,
         tmp_path: Path,
+        runtime_reader: Path,
     ) -> None:
         """An attached member hands ``upg`` to its superproject's Makefile.
 
@@ -237,10 +352,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         The local (non-hosted) context is declared explicitly because hosted
         CI rejects attached members before delegation.
         """
-        member_source, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
+        member_source = runtime_reader
         workspace = self._workspace_with_member(tmp_path, member_source)
         marker = "runtime-root-upg"
         (workspace / c.Infra.MAKEFILE_FILENAME).write_text(
@@ -268,6 +380,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
     def test_direnv_resolves_the_make_runtime_environment(
         self,
         tmp_path: Path,
+        runtime_reader: Path,
         *,
         attached: bool,
         linked: bool,
@@ -278,10 +391,7 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         unattached checkout activates its own. Entering through a symlinked
         path never changes the resolved environment.
         """
-        project_root, _ = u.Tests.render_make_environment(
-            tmp_path,
-            c.Infra.MakeProfile.STANDALONE,
-        )
+        project_root = runtime_reader
         owner = project_root.resolve()
         member = owner
         if attached:

@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, overload
+from typing import overload
 
 from flext_infra import t
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAst,
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -25,8 +25,6 @@ class FlextInfraUtilitiesRopeCorePyModule:
     Composed into FlextInfraUtilitiesRopeCore via inheritance so the helpers
     stay reachable as ``FlextInfraUtilitiesRopeCore.<method>`` for all callers.
     """
-
-    _IDENTIFIER_PATTERN: ClassVar[t.RegexPattern] = re.compile(r"\b[A-Za-z_]\w*\b")
 
     @staticmethod
     def find_identifier_offset_in_lines(
@@ -44,8 +42,8 @@ class FlextInfraUtilitiesRopeCorePyModule:
         This helper resolves the first exact identifier token equal to ``symbol``
         on the reported line for lexical callers. Inventory callers supply the
         binding: candidate tokens are resolved by Rope and compared to that exact
-        binding. Multiple matching tokens fail rather than guessing which is the
-        definition and which is a same-line use.
+        binding. When a line also reads the same binding, Rope's source index
+        identifies its unique write; multiple writes remain ambiguous.
 
         Returns:
             The absolute offset of one exact identifier token on a line.
@@ -53,23 +51,26 @@ class FlextInfraUtilitiesRopeCorePyModule:
         Raises:
             RuntimeError: If the binding has no defining module or matching tokens
                 are ambiguous on its definition line.
+            TypeError: If Rope returns an invalid identifier index.
 
         """
         if line < 1 or line > len(lines):
             return None
         line_start = sum(len(item) for item in lines[: line - 1])
         source_line = lines[line - 1]
-        offsets = (
-            line_start + match.start()
-            for match in (
-                FlextInfraUtilitiesRopeCorePyModule._IDENTIFIER_PATTERN.finditer(
-                    source_line,
-                )
-            )
-            if match.group(0) == symbol
+        matches = FlextInfraUtilitiesRopeAst.name_offsets("".join(lines), symbol)
+        if not isinstance(matches, tuple) or not all(
+            isinstance(offset, int) for offset in matches
+        ):
+            msg = "rope name index contains invalid offsets"
+            raise TypeError(msg)
+        offsets = tuple(
+            offset
+            for offset in matches
+            if line_start <= offset < line_start + len(source_line)
         )
         if pyname is None:
-            return next(offsets, None)
+            return next(iter(offsets), None)
         pymodule = pyname.get_definition_location()[0]
         if pymodule is None:
             msg = f"rope definition binding has no module: {symbol}:{line}"
@@ -84,6 +85,17 @@ class FlextInfraUtilitiesRopeCorePyModule:
             )
             is not None
         )
+        if len(
+            matching_offsets
+        ) > 1 and FlextInfraUtilitiesRopeRuntimeTypes.source_module(pymodule):
+            index = pymodule.get_source_binding_index()
+            accesses = tuple(
+                index.context_at(offset).access for offset in matching_offsets
+            )
+            if accesses.count("write") == 1 and all(
+                access in {"read", "write"} for access in accesses
+            ):
+                return matching_offsets[accesses.index("write")]
         if len(matching_offsets) > 1:
             msg = f"rope definition binding token is ambiguous: {symbol}:{line}"
             raise RuntimeError(msg)

@@ -251,6 +251,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             options: (FlextInfraProtocolsCodegenTransaction.StageSourceOptions)
             | None = None,
+            storage_root: Path | None = None,
         ) -> p.Result[T]:
             """Validate staged updates and retirements while preserving live sources."""
             ...

@@ -477,16 +477,16 @@ class FlextInfraRefactorCensusObjects:
                 else ""
             )
             rows.append(
-                m.Infra.AliasCensus(
-                    name=alias,
-                    canonical=target,
-                    owner_module=module_name,
-                    kind=kind,
-                    users=users,
-                    fixable=target in bound and not reason,
-                    reason=reason,
-                    cure=c.Infra.CENSUS_ALIAS_CURE,
-                ),
+                m.Infra.AliasCensus.model_validate({
+                    "name": (alias),
+                    "canonical": (target),
+                    "owner_module": (module_name),
+                    "kind": (kind),
+                    "users": (users),
+                    "fixable": (target in bound and not reason),
+                    "reason": (reason),
+                    "cure": (c.Infra.CENSUS_ALIAS_CURE),
+                }),
             )
         counts = Counter(declared_all)
         rows.extend(
@@ -526,31 +526,35 @@ class FlextInfraRefactorCensusObjects:
                 )
                 if forwarded:
                     rows.append(
-                        m.Infra.ShortestFormCensus(
-                            target=node.name,
-                            current_form=f"def {node.name}",
-                            canonical_form=forwarded,
-                            kind="wrapper",
-                            users=cls._object_reference_sites(
-                                by_site.get((str(path), node.name))
+                        m.Infra.ShortestFormCensus.model_validate({
+                            "target": (node.name),
+                            "current_form": (f"def {node.name}"),
+                            "canonical_form": (forwarded),
+                            "kind": ("wrapper"),
+                            "users": (
+                                cls._object_reference_sites(
+                                    by_site.get((str(path), node.name))
+                                )
                             ),
-                            reason="requires delegation proof",
-                            cure=c.Infra.CENSUS_MANUAL_CURE,
-                        ),
+                            "reason": ("requires delegation proof"),
+                            "cure": (c.Infra.CENSUS_MANUAL_CURE),
+                        }),
                     )
             elif isinstance(node, ast.ClassDef) and cls._is_ceremony(node):
                 rows.append(
-                    m.Infra.ShortestFormCensus(
-                        target=node.name,
-                        current_form=f"class {node.name}",
-                        canonical_form="owner value or type",
-                        kind="ceremony",
-                        users=cls._object_reference_sites(
-                            by_site.get((str(path), node.name))
+                    m.Infra.ShortestFormCensus.model_validate({
+                        "target": (node.name),
+                        "current_form": (f"class {node.name}"),
+                        "canonical_form": ("owner value or type"),
+                        "kind": ("ceremony"),
+                        "users": (
+                            cls._object_reference_sites(
+                                by_site.get((str(path), node.name))
+                            )
                         ),
-                        reason="ceremony class requires owner review",
-                        cure=c.Infra.CENSUS_MANUAL_CURE,
-                    ),
+                        "reason": ("ceremony class requires owner review"),
+                        "cure": (c.Infra.CENSUS_MANUAL_CURE),
+                    }),
                 )
         return tuple(rows)
 
@@ -579,29 +583,36 @@ class FlextInfraRefactorCensusObjects:
                 else "payloads differ"
             )
             rows.append(
-                m.Infra.DuplicateCensus(
-                    name=group.name,
-                    kind=group.kind,
-                    canonical_owner=group.canonical,
-                    modules=tuple(
-                        sorted({
-                            definition.module_name for definition in group.definitions
-                        })
+                m.Infra.DuplicateCensus.model_validate({
+                    "name": (group.name),
+                    "kind": (group.kind),
+                    "canonical_owner": (group.canonical),
+                    "modules": (
+                        tuple(
+                            sorted({
+                                definition.module_name
+                                for definition in group.definitions
+                            })
+                        )
                     ),
-                    payload_fingerprint=next(
-                        (
-                            definition.payload_fingerprint
-                            for definition in group.definitions
-                        ),
-                        "",
+                    "payload_fingerprint": (
+                        next(
+                            (
+                                definition.payload_fingerprint
+                                for definition in group.definitions
+                            ),
+                            "",
+                        )
                     ),
-                    users=tuple(users.values()),
-                    fixable=fixable,
-                    reason=reason,
-                    cure=c.Infra.CENSUS_DUPLICATE_CURE
-                    if fixable
-                    else c.Infra.CENSUS_MANUAL_CURE,
-                ),
+                    "users": (tuple(users.values())),
+                    "fixable": (fixable),
+                    "reason": (reason),
+                    "cure": (
+                        c.Infra.CENSUS_DUPLICATE_CURE
+                        if fixable
+                        else c.Infra.CENSUS_MANUAL_CURE
+                    ),
+                }),
             )
         return tuple(rows)
 

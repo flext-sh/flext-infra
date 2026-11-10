@@ -1,0 +1,239 @@
+id: collapse-empty-annotated
+snapshots:
+  "from typing import Annotated\ndef consume(value: Annotated[int,]) -> Annotated[str,]: ...\n":
+    fixed: |
+      from typing import Annotated
+      def consume(value: int) -> Annotated[str,]: ...
+    labels:
+    - source: Annotated[int,]
+      style: primary
+      start: 48
+      end: 63
+    - source: Annotated
+      style: secondary
+      start: 48
+      end: 57
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        def consume(value: Annotated[int,]) -> Annotated[str,]: ...
+      style: secondary
+      start: 0
+      end: 89
+  "from typing import Annotated\nschema = Annotated[int,]\n":
+    fixed: |
+      from typing import Annotated
+      schema = int
+    labels:
+    - source: Annotated[int,]
+      style: primary
+      start: 38
+      end: 53
+    - source: Annotated
+      style: secondary
+      start: 38
+      end: 47
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        schema = Annotated[int,]
+      style: secondary
+      start: 0
+      end: 54
+  "from typing import Annotated\nvalue: Annotated[int,]\n":
+    fixed: |
+      from typing import Annotated
+      value: int
+    labels:
+    - source: Annotated[int,]
+      style: primary
+      start: 36
+      end: 51
+    - source: Annotated
+      style: secondary
+      start: 36
+      end: 45
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        value: Annotated[int,]
+      style: secondary
+      start: 0
+      end: 52
+  "from typing import Annotated\nvalue: Annotated[int]\n":
+    fixed: |
+      from typing import Annotated
+      value: int
+    labels:
+    - source: Annotated[int]
+      style: primary
+      start: 36
+      end: 50
+    - source: Annotated
+      style: secondary
+      start: 36
+      end: 45
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        value: Annotated[int]
+      style: secondary
+      start: 0
+      end: 51
+  "from typing import Annotated\nvalue: dict[str, Annotated[m.Payload,]]\n":
+    fixed: |
+      from typing import Annotated
+      value: dict[str, m.Payload]
+    labels:
+    - source: Annotated[m.Payload,]
+      style: primary
+      start: 46
+      end: 67
+    - source: Annotated
+      style: secondary
+      start: 46
+      end: 55
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated
+      style: secondary
+      start: 0
+      end: 28
+    - source: |
+        from typing import Annotated
+        value: dict[str, Annotated[m.Payload,]]
+      style: secondary
+      start: 0
+      end: 69
+  "from typing import Annotated as Metadata\nvalue: Metadata[m.Payload,]\n":
+    fixed: |
+      from typing import Annotated as Metadata
+      value: m.Payload
+    labels:
+    - source: Metadata[m.Payload,]
+      style: primary
+      start: 48
+      end: 68
+    - source: Metadata
+      style: secondary
+      start: 48
+      end: 56
+    - source: Metadata
+      style: secondary
+      start: 32
+      end: 40
+    - source: Annotated
+      style: secondary
+      start: 19
+      end: 28
+    - source: Annotated as Metadata
+      style: secondary
+      start: 19
+      end: 40
+    - source: typing
+      style: secondary
+      start: 5
+      end: 11
+    - source: from typing import Annotated as Metadata
+      style: secondary
+      start: 0
+      end: 40
+    - source: |
+        from typing import Annotated as Metadata
+        value: Metadata[m.Payload,]
+      style: secondary
+      start: 0
+      end: 69
+  "import typing as types\nvalue: types.Annotated[dict[str, tuple[int, ...]],]\n":
+    fixed: |
+      import typing as types
+      value: dict[str, tuple[int, ...]]
+    labels:
+    - source: types.Annotated[dict[str, tuple[int, ...]],]
+      style: primary
+      start: 30
+      end: 74
+    - source: types
+      style: secondary
+      start: 17
+      end: 22
+    - source: typing
+      style: secondary
+      start: 7
+      end: 13
+    - source: typing as types
+      style: secondary
+      start: 7
+      end: 22
+    - source: import typing as types
+      style: secondary
+      start: 0
+      end: 22
+    - source: |
+        import typing as types
+        value: types.Annotated[dict[str, tuple[int, ...]],]
+      style: secondary
+      start: 0
+      end: 75
+    - source: types
+      style: secondary
+      start: 30
+      end: 35
+    - source: Annotated
+      style: secondary
+      start: 36
+      end: 45
+    - source: types.Annotated
+      style: secondary
+      start: 30
+      end: 45

@@ -108,6 +108,7 @@ class FlextInfraConstantsConfig:
         DOCS_CONFIG = "docs-config"
         EDITOR = "editor"
         ENVRC = "envrc"
+        GITIGNORE = "gitignore"
         FACADES = "facades"
         LAZY_INIT = "lazy-init"
         MAKEFILE = "makefile"

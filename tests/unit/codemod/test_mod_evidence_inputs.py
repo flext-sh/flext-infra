@@ -216,14 +216,14 @@ class TestsFlextInfraModEvidenceInputs:
                     ),
                 )
             )
-        plan = m.Infra.CodemodRulePlan(
-            provider_order=tuple(ruleset.provider for ruleset in rulesets),
-            rules=tuple(rules),
-            rulesets=tuple(rulesets),
-            project_rule_ids={
+        plan = m.Infra.CodemodRulePlan.model_validate({
+            "provider_order": (tuple(ruleset.provider for ruleset in rulesets)),
+            "rules": (tuple(rules)),
+            "rulesets": (tuple(rulesets)),
+            "project_rule_ids": ({
                 mod_workspace.resolve(): tuple(rule.id for rule in rules)
-            },
-        )
+            }),
+        })
         source = mod_workspace / "consumer.py"
         source.write_text("a = 'left'\nb = 'right'\nc = 'local'\n", encoding="utf-8")
         report = tm.ok(
@@ -247,12 +247,12 @@ class TestsFlextInfraModEvidenceInputs:
             for rule in rules
         )
         for index, conflicting in enumerate((
-            m.Infra.CodemodRulePlan(
-                provider_order=plan.provider_order,
-                rules=duplicate_rules,
-                rulesets=plan.rulesets,
-                project_rule_ids=plan.project_rule_ids,
-            ),
+            m.Infra.CodemodRulePlan.model_validate({
+                "provider_order": (plan.provider_order),
+                "rules": (duplicate_rules),
+                "rulesets": (plan.rulesets),
+                "project_rule_ids": (plan.project_rule_ids),
+            }),
             plan.model_copy(update={"rules": duplicate_rules}),
         )):
             destination = tmp_path / f"conflicting-native-{index}"

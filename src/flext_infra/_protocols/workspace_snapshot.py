@@ -97,6 +97,9 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
     class RopePreferences(Protocol):
         """Native preference updates required by project source election."""
 
+        @property
+        def imports(self) -> t.Infra.RopeNativeImportPrefs: ...
+
         def add(self, key: str, value: str) -> None: ...
 
         def set(self, key: str, *, value: bool | Sequence[str]) -> None: ...

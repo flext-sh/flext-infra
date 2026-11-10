@@ -334,10 +334,10 @@ class TestsFlextInfraReleaseProtocol:
             c.Infra.GIT_ORIGIN,
             u.Tests.integration_branch(workspace),
         )
-        ownership = m.Infra.GitLaneOwnershipReceipt(
-            checkpoint=checkpoint,
-            publication=publication,
-        )
+        ownership = m.Infra.GitLaneOwnershipReceipt.model_validate({
+            "checkpoint": (checkpoint),
+            "publication": (publication),
+        })
         gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
         shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
         with u.Tests.env_vars_context(

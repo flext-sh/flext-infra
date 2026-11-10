@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -59,8 +59,13 @@ class FlextInfraProtocolsScan:
             ...
 
     @runtime_checkable
-    class ScanViolation(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+    class ScanViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def message(self) -> str:
@@ -321,6 +326,11 @@ class FlextInfraProtocolsScan:
         """Structural data contract projected from the owning model."""
 
         @property
+        def entries(self) -> tuple[FlextInfraProtocolsScan.ModScanFinding, ...]:
+            """Every validated ast-grep finding in stable order."""
+            ...
+
+        @property
         def repository_root(self) -> Path | None:
             """Repository elected by the original native scan."""
             ...
@@ -521,6 +531,13 @@ class FlextInfraProtocolsScan:
     @runtime_checkable
     class ModScanEvidence(ModScanCounts[ModScanFindingReference], Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def entries(
+            self,
+        ) -> tuple[FlextInfraProtocolsScan.ModScanFindingReference, ...]:
+            """Every validated ast-grep finding in stable order."""
+            ...
 
         @property
         def schema_version(self) -> int:

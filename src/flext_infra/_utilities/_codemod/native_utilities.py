@@ -28,6 +28,7 @@ from types import MappingProxyType
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -512,7 +513,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         scopes: dict[str, t.StrTuple] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.StrTuple]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.StrTuple]))
         for name in producers:
             producer = getattr(cls, name, None)
             if not callable(producer):
@@ -833,7 +834,7 @@ class FlextInfraUtilitiesCodemodNative:
         if not callable(renderer):
             msg = f"ast-grep rule renderer is not declared: {entry.name}"
             raise TypeError(msg)
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         if entry.facts is None:
             return adapter.validate_python(renderer(snapshot, project), strict=True)
         if entry.facts not in facts:
@@ -870,7 +871,7 @@ class FlextInfraUtilitiesCodemodNative:
             msg = f"ast-grep shape producer is not declared: {entry.shapes_from}"
             raise TypeError(msg)
         return frozenset(
-            u.type_adapter(t.TypeForm(Sequence[str])).validate_python(
+            u.type_adapter(TypeForm(Sequence[str])).validate_python(
                 producer(), strict=True
             )
         )
@@ -895,16 +896,24 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         selected = None if rule_ids is None else frozenset(rule_ids)
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        header_prefix = f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}{separator}"
         return cls._rendered_rules(
             snapshot,
             project,
             tuple(
                 entry
                 for entry in spec.renderers
-                if selected is None or cls._renderer_selects_rule_ids(entry, selected)
+                if selected is None
+                or cls._renderer_selects_rule_ids(entry, selected)
+                or c.Infra.CODEMOD_IMPORT_HEADER_SHAPE in cls._renderer_shapes(entry)
             ),
             facts,
-            lambda rule_id, _claimed: selected is None or rule_id in selected,
+            lambda rule_id, _claimed: (
+                selected is None
+                or rule_id in selected
+                or rule_id.startswith(header_prefix)
+            ),
         )
 
     @classmethod
@@ -1046,7 +1055,7 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         documents: dict[str, t.JsonMapping] = {}
-        adapter = u.type_adapter(t.TypeForm(Mapping[str, t.JsonMapping]))
+        adapter = u.type_adapter(TypeForm(Mapping[str, t.JsonMapping]))
         pending = None if required is None else set(required)
         for name in producers:
             if pending is not None and pending.issubset(documents):

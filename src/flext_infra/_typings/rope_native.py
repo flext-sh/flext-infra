@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from rope.base.builtins import BuiltinModule
+from rope.base.prefs import ImportPrefs, ImportStyle
 from rope.base.project import Project
 from rope.base.pycore import PyCore
 from rope.base.pyobjects import PyObject
@@ -21,6 +22,8 @@ class FlextInfraTypesRopeNative:
     type RopeNativeCore = PyCore
     type RopeNativeObject = PyObject
     type RopeNativeProject = Project
+    type RopeNativeImportStyle = ImportStyle
+    type RopeNativeImportPrefs = ImportPrefs
     type RopeNativeSourceModule = PyModule
     type RopeNativeParsedModule = PyModule | PyPackage
     type RopeNativeSemanticModule = BuiltinModule | RopeNativeParsedModule

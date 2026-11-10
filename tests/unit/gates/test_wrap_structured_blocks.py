@@ -71,10 +71,35 @@ class TestsFlextInfraWrapStructuredBlocks:
     def test_wrap_refuses_a_repair_that_changes_block_text(cls) -> None:
         """A reflow that would open a new block fails instead of publishing it."""
         opening = " /// script"
-        words = "x" * (cls.LIMIT - len("# ") - len(opening) + 1)
+        words = "x" * (cls.LIMIT - 2)
         source = f"# {words}{opening}\n# [tool.probe]\n# ///\nvalue = 1\n"
         with u.Tests.raises(ValueError, match="structured comment block"):
             u.Infra.wrap_long_lines(source, (1,), limit=cls.LIMIT)
 
 
-__all__: list[str] = ["TestsFlextInfraWrapStructuredBlocks"]
+class TestsFlextInfraWrapTrailingComment:
+    """A trailing comment moves to its own line when the code part fits."""
+
+    LIMIT: Final[int] = u.Infra.native_tool_setting(
+        config.Infra.tooling, "ruff", "line-length", int
+    )
+
+    @classmethod
+    def test_moves_a_trailing_comment_above_its_code(cls) -> None:
+        """The code keeps its bytes and the comment keeps its text."""
+        comment = "# " + "palavra " * cls.LIMIT
+        line = f"tm.that(len(meses), eq=2)  {comment}\n"
+        repaired = u.Infra.wrap_long_lines(line, (1,), limit=cls.LIMIT)
+        tm.that(repaired, eq=f"{comment}\ntm.that(len(meses), eq=2)\n")
+
+    @classmethod
+    def test_keeps_a_line_binding_directive_in_place(cls) -> None:
+        """``type:`` and similar directives keep their line association."""
+        line = f"tm.that(value, eq=1)  # type: ignore[{'x' * cls.LIMIT}]\n"
+        tm.that(u.Infra.wrap_long_lines(line, (1,), limit=cls.LIMIT), eq=line)
+
+
+__all__: list[str] = [
+    "TestsFlextInfraWrapStructuredBlocks",
+    "TestsFlextInfraWrapTrailingComment",
+]

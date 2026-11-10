@@ -1,5 +1,7 @@
 # Explicit failure preserves native guard narrowing and lazy message evaluation.
-# Every rewrite requires the real tm facade binding (tm-imported-from-flext).
+# Every rewrite requires an admissible tm binding at the occurrence
+# (tm-binding-admissible): absent or canonical tm is rewritten and bound by the
+# import-header; a foreign import or a shadowing parameter keeps the assert.
 # A non-None name narrows through tm.not_none and a name type guard through
 # tm.instance (rewire-test-assert-not-none.yml, rewire-test-assert-instance.yml);
 # any other non-narrowing condition is a tm.that observation.
@@ -11,12 +13,7 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
     - pattern: "assert $COND, $MSG"
     - has:
         any:
@@ -43,12 +40,7 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
     - pattern: "assert $COND"
     - not:
         matches: assert-has-message
@@ -79,12 +71,7 @@ files:
   - "**/conftest.py"
 rule:
   all:
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
     - any:
         - pattern: "assert $COND"
         - pattern: |-

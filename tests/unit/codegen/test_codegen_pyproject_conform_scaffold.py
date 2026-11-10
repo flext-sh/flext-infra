@@ -21,20 +21,44 @@ class TestsFlextInfraCodegenPyprojectConformScaffold(
 ):
     """Pyproject conformance: provenance, idempotence and scaffold policy."""
 
-    def test_standalone_requires_declared_git_source(self) -> None:
-        """A source-less internal dependency outside the workspace overlay fails.
-
-        The workspace attaches only flext-core, whose declaration supplies the
-        source; the infrastructure distribution is internal and unattached.
-        """
+    @c.Tests.MARK.parametrize(
+        "constraint", ["", ">=1", "[feature]>=1; python_version >= '3.13'"]
+    )
+    def test_standalone_preserves_authored_registry_requirement(
+        self, constraint: str
+    ) -> None:
+        """Conformance preserves authored registry requirements and is idempotent."""
         unattached = config.Infra.codegen.infra_repository.distribution
-        result = u.Infra.pyproject_conform(
-            f'[project]\nname = "external-consumer"\ndependencies = ["{unattached}"]\n',
-            workspace=self._workspace(role=c.Infra.MakeProfile.STANDALONE),
-            required_dev_dependencies=(),
-            uv_resolution=self._uv_resolution(config.Infra.codegen.toolchain),
+        requirement = f"{unattached}{constraint}"
+        dependencies = tm.ok(u.Cli.json_dumps([requirement]))
+        source = (
+            f'[project]\nname = "external-consumer"\ndependencies = {dependencies}\n'
         )
-        tm.fail(result, has="internal dependency declares no direct git source")
+        workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
+        resolution = self._uv_resolution(config.Infra.codegen.toolchain)
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                workspace=workspace,
+                required_dev_dependencies=(),
+                uv_resolution=resolution,
+            )
+        )
+        tm.that(
+            u.Tests.toml_strings_at(rendered, "project", "dependencies"),
+            eq=(requirement,),
+        )
+        tm.that(
+            tm.ok(
+                u.Infra.pyproject_conform(
+                    rendered,
+                    workspace=workspace,
+                    required_dev_dependencies=(),
+                    uv_resolution=resolution,
+                )
+            ),
+            eq=rendered,
+        )
 
     def test_standalone_canonicalizes_the_declared_git_source(self) -> None:
         """The declared requirement line is the only URL and branch authority."""
@@ -128,6 +152,7 @@ exclude-newer = "7 days"
 exclude-newer-package = {{ cryptography = false }}
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
+python = ".venv/bin/python"
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -159,6 +184,9 @@ python-interpreter-path = "../.venv/bin/python"
             "python-interpreter-path"
             not in u.Tests.toml_table_at(first, "tool", "pyrefly"),
             eq=True,
+        )
+        tm.that(
+            "python" not in u.Tests.toml_table_at(first, "tool", "pyrefly"), eq=True
         )
         dev_group = u.Tests.toml_strings_at(first, "dependency-groups", "dev")
         tm.ok("custom-tool>=1" in dev_group)
@@ -202,29 +230,34 @@ python-interpreter-path = "../.venv/bin/python"
         )
         tm.that(u.Tests.toml_table_at(conformed, "project")["version"], eq="0.0.1")
 
-    def test_ssot_required_dev_floor_replaces_stale_same_name_pin(self) -> None:
-        """Toolchain required_dev floors win over older same-package member pins."""
+    @c.Tests.MARK.parametrize("floor", [">=1", ">=3"])
+    def test_required_dev_floor_preserves_authored_constraints(
+        self, floor: str
+    ) -> None:
+        """Generated floors retain stronger and weaker authored requirements."""
         workspace = self._workspace()
         toolchain = config.Infra.codegen.toolchain
+        required = f"example-managed-tool{floor}"
         source = """[project]
 name = "external-consumer"
 dependencies = []
 
 [dependency-groups]
-dev = ["rumdl>=0.2.46", "custom-tool>=1"]
+dev = ["example-managed-tool>=2", "custom-tool>=1"]
 """
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,
                 workspace=workspace,
-                required_dev_dependencies=("rumdl>=0.2.45",),
+                required_dev_dependencies=(required,),
                 uv_resolution=self._uv_resolution(toolchain),
             ),
         )
         dev_group = u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
-        tm.ok("rumdl>=0.2.45" in dev_group)
-        tm.ok("rumdl>=0.2.46" not in dev_group)
-        tm.ok("custom-tool>=1" in dev_group)
+        tm.that(
+            frozenset(dev_group),
+            eq=frozenset({required, "example-managed-tool>=2", "custom-tool>=1"}),
+        )
 
     def test_conform_retires_dependency_edge_suppression(self) -> None:
         """Conformance preserves real declared edges and removes retired suppression."""
@@ -267,7 +300,7 @@ exclude-dependencies = [{exclusion}]
 
     @staticmethod
     def test_scaffold_omits_diagnostic_suppression_catalogs(tmp_path: Path) -> None:
-        """The shipped Jinja surface cannot restore retired exemption tables."""
+        """The scaffold publishes only the exact SSOT-authorized exceptions."""
         rendered = u.Tests.scaffold_text(
             tmp_path / "no-suppression-project",
             c.PYPROJECT_FILENAME,
@@ -276,12 +309,26 @@ exclude-dependencies = [{exclusion}]
         lint = u.Tests.toml_table_at(rendered, "tool", "ruff", "lint")
         for key in (
             "extend-ignore",
-            "per-file-ignores",
             "extend-per-file-ignores",
         ):
             tm.that(lint, lacks=key)
+        authorized = tm.not_none(
+            u.Cli.toml_mapping_child(
+                u.Infra.native_tool_configuration(config.Infra.tooling, "ruff"),
+                "lint",
+            )
+        )
+        tm.that(lint.get("per-file-ignores"), eq=authorized.get("per-file-ignores"))
+        ruff_policy = config.Infra.tooling.tools.ruff.lint
         tm.that(
-            lint["ignore"], eq=sorted(config.Infra.tooling.tools.ruff.lint.rule_owners)
+            lint["ignore"],
+            eq=sorted({
+                *ruff_policy.rule_owners,
+                *ruff_policy.ruling_disabled_rules,
+                *u.Infra.native_tool_strings(
+                    config.Infra.tooling, "ruff.lint", "ignore"
+                ),
+            }),
         )
         mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
         policy = config.Infra.tooling.tools.mypy
@@ -418,7 +465,7 @@ exclude-dependencies = [{exclusion}]
         tm.that(bandit["skips"], eq=(live_bandit or {}).get("skips"))
 
     def test_overlay_preserves_custom_scripts_and_unmanaged_tools(self) -> None:
-        """Package requirements survive without restoring stale profile pins."""
+        """Authored requirements survive alongside the generated profile floors."""
         rendered = """[project]
 name = "flext"
 dependencies = ["pydantic>=2"]
@@ -513,7 +560,7 @@ skips = ["B101"]
         dev = u.Tests.toml_strings_at(conformed, "dependency-groups", "dev")
         tm.ok("custom-audit>=1" in dev)
         tm.ok("rumdl>=0.2.45" in dev)
-        tm.ok("rumdl>=0.2.40" not in dev)
+        tm.ok("rumdl>=0.2.40" in dev)
         tm.that(
             tuple(u.Tests.toml_strings_at(first, "dependency-groups", "codegen")),
             eq=(

@@ -513,11 +513,10 @@ class FlextInfraModTextGateEngine:
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> tuple[p.Infra.Issue, ...]:
-        """Report declared formats outside this phase's existing source contract.
+        """Reject text input declarations outside the repository boundary.
 
         Returns:
-            Central issues for unsupported explicit input declarations. A scope
-            glob without a suffix still selects the canonical Python inventory.
+            Central issues for escaping explicit input declarations.
 
         """
         return tuple(
@@ -526,14 +525,12 @@ class FlextInfraModTextGateEngine:
                 line=0,
                 column=0,
                 code=c.Infra.ToolOutcome.ERROR.value,
-                message=f"text rule {rule.rule_id} declares an unsupported input: "
+                message=f"text rule {rule.rule_id} declares an escaping input: "
                 f"{pattern}",
             )
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix
-            and Path(pattern).suffix
-            not in {c.Infra.EXT_PYTHON, ".md", c.Infra.EXT_SHELL}
+            if Path(pattern).is_absolute() or ".." in Path(pattern).parts
         )
 
     @classmethod
@@ -568,10 +565,10 @@ class FlextInfraModTextGateEngine:
         if markdown.failure:
             return markdown
         paths.update(markdown.value)
-        shell = cls._shell_source_paths(root, rules)
-        if shell.failure:
-            return shell
-        paths.update(shell.value)
+        declared = cls._declared_source_paths(root, rules)
+        if declared.failure:
+            return declared
+        paths.update(declared.value)
         members = tuple(
             project
             for project in u.Infra.governed_project_roots(root)
@@ -631,12 +628,12 @@ class FlextInfraModTextGateEngine:
         return r[tuple[Path, ...]].ok(tuple(paths))
 
     @classmethod
-    def _shell_source_paths(
+    def _declared_source_paths(
         cls,
         root: Path,
         rules: tuple[p.Infra.ModTextRule, ...],
     ) -> p.Result[tuple[Path, ...]]:
-        """Authenticate the physical shell sources the rules declare.
+        """Authenticate the non-Python text sources explicitly declared by rules.
 
         Shell sources are a repository inventory, like Python, not named
         documents, like Markdown: a declared glob that selects nothing is no
@@ -651,7 +648,7 @@ class FlextInfraModTextGateEngine:
             Path(pattern)
             for rule in rules
             for pattern in rule.include
-            if Path(pattern).suffix == c.Infra.EXT_SHELL
+            if Path(pattern).suffix not in {c.Infra.EXT_PYTHON, ".md"}
         ]
         escaped = [
             pattern
@@ -660,7 +657,7 @@ class FlextInfraModTextGateEngine:
         ]
         if escaped:
             return r[tuple[Path, ...]].fail(
-                f"text shell include escapes repository: {escaped[0]}",
+                f"text source include escapes repository: {escaped[0]}",
             )
         paths = sorted({
             path for pattern in patterns for path in root.glob(str(pattern))
@@ -668,7 +665,7 @@ class FlextInfraModTextGateEngine:
         aliased = [path for path in paths if not cls._physical_source(path)]
         if aliased:
             return r[tuple[Path, ...]].fail(
-                f"text shell source must be physical: {aliased[0]}",
+                f"text source must be physical: {aliased[0]}",
             )
         return r[tuple[Path, ...]].ok(tuple(paths))
 
@@ -810,12 +807,14 @@ class FlextInfraModTextGateEngine:
                     )
                 )
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=sum(entry.text != entry.replacement for entry in entries),
-                files=frozenset(entry.file for entry in entries),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (
+                    sum(entry.text != entry.replacement for entry in entries)
+                ),
+                "files": (frozenset(entry.file for entry in entries)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 
@@ -860,12 +859,12 @@ class FlextInfraModTextGateEngine:
             plans.extend(project_plans)
             actionable += report.actionable
         return outcome.ok((
-            m.Infra.ModTextReport(
-                findings=len(entries),
-                actionable=actionable,
-                files=frozenset(files),
-                entries=tuple(entries),
-            ),
+            m.Infra.ModTextReport.model_validate({
+                "findings": (len(entries)),
+                "actionable": (actionable),
+                "files": (frozenset(files)),
+                "entries": (tuple(entries)),
+            }),
             tuple(plans),
         ))
 

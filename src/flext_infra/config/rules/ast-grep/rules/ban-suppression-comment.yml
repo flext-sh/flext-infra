@@ -9,6 +9,7 @@ files:
 rule:
   kind: comment
   regex: "#\\s*type:\\s*ignore"
+fix: ""
 message: >-
   `# type: ignore` hides a typing defect: fix the contract it suppresses.
 metadata:

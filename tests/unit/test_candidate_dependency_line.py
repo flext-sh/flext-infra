@@ -42,7 +42,6 @@ class TestsFlextInfraCandidateDependencyLine:
             * declarations,
             encoding=c.DEFAULT_ENCODING,
         )
-        u.Tests.declare_governed_kind(tmp_path)
         line = u.Infra.flext_integration_line(
             codegen=config.Infra.codegen, repository_root=tmp_path
         )

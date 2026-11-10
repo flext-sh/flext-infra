@@ -33,8 +33,6 @@ class FlextInfraConstantsGit:
     )
     "A ref naming a commit, abbreviated or full, rather than an integration line."
 
-    GIT_UNBORN_HEAD_ERROR_CODE: ClassVar[str] = "GIT_UNBORN_HEAD"
-    "Identity is unavailable because HEAD names a branch that has no ref yet."
     GIT_UNBORN_HEAD_MARKER: ClassVar[str] = "UNBORN"
     "Fingerprint input standing for HEAD when the current branch has no commit."
     GIT_REF_MISSING_EXIT_CODE: ClassVar[int] = 2

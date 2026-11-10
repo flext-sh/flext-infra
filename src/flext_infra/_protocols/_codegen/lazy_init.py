@@ -316,10 +316,31 @@ class FlextInfraProtocolsCodegenLazyInit:
 
         root: Path
         scoped: bool
-        index: FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex
-        model: FlextInfraProtocolsCodegenLazyInit.PythonModelRun
-        plans: dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]
-        contexts: dict[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]
+
+        @property
+        def index(self) -> FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex:
+            """The repository's shared source inventory."""
+            ...
+
+        @property
+        def model(self) -> FlextInfraProtocolsCodegenLazyInit.PythonModelRun:
+            """The run's parse-once static Python model."""
+            ...
+
+        @property
+        def plans(
+            self,
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPlan]:
+            """Decided plans, children first."""
+            ...
+
+        @property
+        def contexts(
+            self,
+        ) -> Mapping[Path, FlextInfraProtocolsCodegenLazyInit.LazyInitPackageContext]:
+            """Package contexts by directory."""
+            ...
+
         parents: dict[Path, Sequence[str]]
         declared: dict[str, frozenset[str]]
         declarations: dict[tuple[str, str], tuple[str, bool]]

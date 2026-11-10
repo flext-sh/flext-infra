@@ -152,13 +152,19 @@ class FlextInfraUtilitiesRopeRuntimeModules(
 
     @classmethod
     def annotation_assignment_outer_type(
-        cls, project: p.Infra.RopeProject, binding: p.Infra.RopePyName
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName,
+        *,
+        path: tuple[int, ...] | None = None,
     ) -> tuple[p.Infra.RopePyName, bool] | None:
-        """Resolve an annotation's native identity and whether it is the value.
+        """Resolve a native annotation identity and its value provenance.
+
+        ``path`` selects a payload argument through the native declaration's
+        Annotated and alias bindings; None retains its written outer identity.
 
         Returns:
-            The lexical outer identity and RHS provenance, or None when the
-            assignment has no resolved annotation expression.
+            The native identity and RHS provenance, or None without proof.
 
         """
         supplier = cls.source_import_binding(binding)
@@ -166,8 +172,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             supplier
         ):
             return None
-        # Method-body writes join the same binding without a type hint; only
-        # the declared AnnAssign carries the annotation this contract resolves.
         assignments = [
             assignment for assignment in supplier.assignments if assignment.type_hint
         ]
@@ -179,7 +183,6 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         module, _line = cls.definition_location(supplier)
         if not FlextInfraUtilitiesRopeRuntimeTypes.source_module(module):
             return None
-        # Scalar model fields carry the same declaration proof as generic fields.
         if isinstance(annotation, ast.Name | ast.Attribute | ast.Subscript):
             expression = annotation
             from_value = False
@@ -190,8 +193,8 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             return None
         scope = cls.scope_at(module, cls.source_offset(module.source_code, expression))
         origin = (
-            cls.annotation_origin(project, expression, scope)
-            if from_value
+            cls.annotation_origin(project, expression, scope, path=path or ())
+            if from_value or path is not None
             else cls.resolve_symbol(
                 scope,
                 expression.value
@@ -209,11 +212,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         *,
         visiting: frozenset[tuple[str, int]] = frozenset(),
+        path: tuple[int, ...] = (),
     ) -> p.Infra.RopePyName | None:
-        """Resolve outer native types and aliases without evaluating element types.
+        """Resolve native payload types and argument paths without alias execution.
 
         Returns:
-            The native outer type identity, or None when no safe origin is proven.
+            The native type identity, or None when no safe origin is proven.
 
         """
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -222,6 +226,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(
                 ast.parse(node.value, mode="eval").body,
                 scope,
                 visiting=visiting,
+                path=path,
             )
         primary = node.value if isinstance(node, ast.Subscript) else node
         binding = cls.resolve_symbol(scope, primary)
@@ -233,18 +238,119 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             if not isinstance(node.slice, ast.Tuple) or not node.slice.elts:
                 return None
             return cls.annotation_origin(
-                project, node.slice.elts[0], scope, visiting=visiting
+                project, node.slice.elts[0], scope, visiting=visiting, path=path
             )
+        if path:
+            return cls._annotation_argument_origin(
+                project, node, scope, (path, visiting)
+            )
+        return cls._annotation_root_origin(project, binding, visiting)
+
+    @classmethod
+    def _annotation_root_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        binding: p.Infra.RopePyName | None,
+        visiting: frozenset[tuple[str, int]],
+    ) -> p.Infra.RopePyName | None:
+        """Follow the existing native alias chain at its declaring scope.
+
+        Returns:
+            The resolved native origin, or None when the alias chain cycles.
+
+        """
         alias = None if binding is None else cls.annotation_alias_definition(binding)
         if alias is None:
             return binding
         declaration, lexical = alias
-        module = lexical.pyobject.get_module()
-        if (module.get_name(), declaration.lineno) in visiting:
+        identity = (lexical.pyobject.get_module().get_name(), declaration.lineno)
+        if identity in visiting:
             return None
-        identity = (module.get_name(), declaration.lineno)
         return cls.annotation_origin(
             project, declaration.value, lexical, visiting=visiting | {identity}
+        )
+
+    @classmethod
+    def _annotation_argument_origin(
+        cls,
+        project: p.Infra.RopeProject,
+        node: ast.expr,
+        scope: p.Infra.RopeScope,
+        traversal: tuple[tuple[int, ...], frozenset[tuple[str, int]]],
+    ) -> p.Infra.RopePyName | None:
+        """Select an argument from its authenticated source or direct alias.
+
+        Returns:
+            The selected argument's native origin, or None when it cannot be
+            authenticated.
+
+        """
+        if not isinstance(node, ast.Subscript):
+            return None
+        path, visiting = traversal
+        arguments = (
+            node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+        )
+        binding = cls.resolve_symbol(scope, node.value)
+        alias = None if binding is None else cls.annotation_alias_definition(binding)
+        selected = (
+            cls._annotation_alias_argument(alias, (arguments, scope), path[0])
+            if alias is not None
+            else (arguments[path[0]], scope)
+            if 0 <= path[0] < len(arguments)
+            else None
+        )
+        return (
+            None
+            if selected is None
+            else cls.annotation_origin(
+                project, selected[0], selected[1], visiting=visiting, path=path[1:]
+            )
+        )
+
+    @classmethod
+    def _annotation_alias_argument(
+        cls,
+        alias: tuple[ast.TypeAlias, p.Infra.RopeScope],
+        supplied: tuple[Sequence[ast.expr], p.Infra.RopeScope],
+        index: int,
+    ) -> tuple[ast.expr, p.Infra.RopeScope] | None:
+        """Project a direct generic alias's argument using declared parameter order.
+
+        Returns:
+            The argument expression and its lexical scope, or None when the
+            alias does not project one declared parameter.
+
+        """
+        declaration, lexical = alias
+        if not isinstance(declaration.value, ast.Subscript):
+            return None
+        binding = cls.resolve_symbol(lexical, declaration.value.value)
+        if binding is None or cls.annotation_alias_definition(binding) is not None:
+            return None
+        arguments = (
+            declaration.value.slice.elts
+            if isinstance(declaration.value.slice, ast.Tuple)
+            else [declaration.value.slice]
+        )
+        parameters = tuple(
+            parameter.name
+            for parameter in declaration.type_params
+            if isinstance(parameter, ast.TypeVar)
+        )
+        if (
+            not 0 <= index < len(arguments)
+            or len(parameters) != len(declaration.type_params)
+            or len(supplied[0]) != len(parameters)
+        ):
+            return None
+        selected = arguments[index]
+        if not isinstance(selected, ast.Name):
+            return None
+        return (
+            (supplied[0][parameters.index(selected.id)], supplied[1])
+            if selected.id in parameters
+            else (selected, lexical)
         )
 
     @classmethod

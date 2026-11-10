@@ -49,17 +49,17 @@ class FlextInfraUtilitiesDocsGenerateSources:
             project_class = FlextInfraUtilitiesDocsScope.classify_project_from_meta(
                 state.project_name, state.docs_meta
             )
-        return m.Infra.DocScope(
-            name=name,
-            path=scope.path,
-            report_dir=scope.report_dir,
-            package_name=package_name,
-            project_class=project_class,
-            documentation_language=language,
-            governance_source=governance_source,
-            repository_root_override=scope.repository_root_override,
-            declared_files=declared_files,
-        )
+        return m.Infra.DocScope.model_validate({
+            "name": (name),
+            "path": (scope.path),
+            "report_dir": (scope.report_dir),
+            "package_name": (package_name),
+            "project_class": (project_class),
+            "documentation_language": (language),
+            "governance_source": (governance_source),
+            "repository_root_override": (scope.repository_root_override),
+            "declared_files": (declared_files),
+        })
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerateSources"]

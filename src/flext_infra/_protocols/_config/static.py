@@ -20,6 +20,17 @@ class FlextInfraProtocolsConfigStatic:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
+    class RopePreferencesSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def preferred_import_style(self) -> t.Infra.RopeNativeImportStyle:
+            """Native import form used by identity-preserving refactors."""
+            ...
+
+    @runtime_checkable
     class SourceScanSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 

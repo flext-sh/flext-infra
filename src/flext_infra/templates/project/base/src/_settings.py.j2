@@ -12,7 +12,7 @@
 """Direct {{ class_stem }} settings singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: {{ license }}
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from collections.abc import (
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 # NOTE: measure rendered lines so every project is Ruff-native.
-from flext_core import FlextSettings, m
+from flext_core import FlextSettings, m, t
 {{ settings_constants_import }}
 {{ settings_model_import }}
 
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
         ),
     ]
 
-    model_config: ClassVar[p.SettingsConfigDict] = m.SettingsConfigDict(
+    model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
         env_file=FlextSettings.resolve_env_file(

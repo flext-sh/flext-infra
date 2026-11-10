@@ -14,9 +14,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from threading import Barrier, Event, Thread
 
+from typing_extensions import TypeForm
+
 from flext_infra import config
 from flext_infra.validate import FlextInfraPytestRunner
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraPytestRunnerZeroTest:
@@ -84,7 +86,7 @@ class TestsFlextInfraPytestRunnerZeroTest:
                                         config.Infra.tooling,
                                         "pytest.ini_options",
                                         "python_files",
-                                        t.TypeForm(Sequence[str]),
+                                        TypeForm(Sequence[str]),
                                     ),
                                 ),
                                 "markers": list(pytest_settings.standard_markers),

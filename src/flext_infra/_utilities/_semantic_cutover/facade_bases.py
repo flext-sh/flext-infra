@@ -41,10 +41,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -1349,6 +1346,8 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             Original-to-final source edits covering declarations and consumers.
 
         """
+        if not findings:
+            return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
         import_findings = tuple(
             finding
             for finding in findings
@@ -1395,19 +1394,40 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
 
         """
         selected = frozenset((root / finding.file).resolve() for finding in findings)
-        items = tuple(
-            item for item in cls._editable_sources(sources) if item[0] in selected
+        return cls.facade_import_base_edits(
+            root,
+            sources,
+            tuple(
+                path for path, _ in cls._editable_sources(sources) if path in selected
+            ),
         )
+
+    @classmethod
+    def facade_import_base_edits(
+        cls,
+        root: Path,
+        sources: Mapping[Path, str],
+        selected: Sequence[Path],
+        *,
+        source_project: p.Infra.RopeProject | None = None,
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Project selected facade headers from their declared parent classes.
+
+        Returns:
+            Source edits preserving the declared bases and exported letters.
+
+        """
         shapes = {
             path: found
-            for path, source in items
+            for path in selected
             if (
-                found := cls._facade_shapes(path, ast.parse(source, filename=str(path)))
+                found := cls._facade_shapes(
+                    path, ast.parse(sources[path], filename=str(path))
+                )
             )
         }
         if not shapes:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].ok(())
-        modules = FlextInfraUtilitiesPrivateImportFacades.source_modules(sources)
 
         def rewrite(path: Path, source: str) -> t.Infra.TransformResult:
             # A facade may compose several parents by their letters (``class
@@ -1425,9 +1445,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     and node.value.id == shape[3]
                     for node in tree.body
                 )
-                owner = cls._facade_declared_owner(
-                    modules, shape[0], shape[1], project=project
-                )
+                owner = cls._facade_declared_owner(shape[0], shape[1], project=project)
                 bound = cls._facade_bound_imports(tree, shape[0])
                 if owner in cls._facade_module_bindings(tree) - bound:
                     msg = f"{owner} is already bound locally in {path}"
@@ -1450,9 +1468,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 raise ValueError(msg)
             return rewritten, tuple(changes)
 
-        with FlextInfraUtilitiesRopeCore.open_import_project(root) as project:
+        with FlextInfraUtilitiesWorkspaceSnapshot.facade_source_project(
+            root, planned_sources=sources, source_project=source_project
+        ) as (project, _sources):
             return cls._semantic_edits(
-                tuple(item for item in items if item[0] in shapes),
+                tuple((path, sources[path]) for path in shapes),
                 rewrite,
             )
 

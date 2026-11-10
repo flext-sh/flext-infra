@@ -92,12 +92,12 @@ class FlextInfraUtilitiesSemanticHelperReferences(
             project,
             project.get_resource(request.target_file.relative_to(root).as_posix()),
         )
-        move = m.Infra.ResolvedClassMove(
-            request=request,
-            declaration=expected,
-            origin_module=origin.get_name(),
-            target_module=target.get_name(),
-        )
+        move = m.Infra.ResolvedClassMove.model_validate({
+            "request": (request),
+            "declaration": (expected),
+            "origin_module": (origin.get_name()),
+            "target_module": (target.get_name()),
+        })
         declaration = cls._helper_declaration_scope(origin, request.class_name)
         prepared = dict(sources)
         quoted_imports: MutableMapping[Path, str] = {}

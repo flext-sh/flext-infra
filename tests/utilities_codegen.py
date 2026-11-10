@@ -265,9 +265,6 @@ class TestsFlextInfraUtilitiesCodegen(
             repository_root,
             project_name,
         )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(
-            repository_root,
-        )
         # Semantic publication authenticates every changed path against its Git
         # checkout.  The shared workspace fixture therefore owns a real,
         # repository-local identity instead of letting individual tests depend

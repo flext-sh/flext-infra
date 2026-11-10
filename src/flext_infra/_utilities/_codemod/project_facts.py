@@ -85,6 +85,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         ``local-alias`` matches a name the own package publishes as a runtime
         alias. ``runtime-alias`` matches an imported name that is a runtime
         alias of the very package its import statement names.
+        Both identities remain present with empty facts for non-package roots.
 
         Returns:
             The ``local-alias`` and ``runtime-alias`` utility rules.
@@ -94,11 +95,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(
             project.absolute()
         )
-        if not own:
-            return {}
         return {
             c.Infra.CODEMOD_LOCAL_ALIAS_UTILITY: cls._fact_exact_names(
-                tuple(aliases[own])
+                tuple(aliases[own]) if own else ()
             ),
             c.Infra.CODEMOD_RUNTIME_ALIAS_UTILITY: cls._fact_imported_from(aliases),
         }
@@ -290,7 +289,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         each top-level package.
 
         Returns:
-            Project-relative POSIX paths keyed by scope selector.
+            Project-relative POSIX paths keyed by scope selector. Fixed selectors
+            remain present and empty when a non-package root has no source layout.
 
         """
         root = project.resolve()
@@ -382,14 +382,25 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             ValueError: If the project layout is unresolved.
 
         """
+        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
+        # Fixed selectors exist even when the project supplies no package layout.
+        scopes: dict[str, list[str]] = {
+            c.Infra.CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: [],
+            c.Infra.CODEMOD_FAMILY_BASE_SCOPE: [],
+            c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE: [],
+            c.Infra.CODEMOD_FAMILY_ROLE_SCOPE: [],
+            **{
+                f"{c.Infra.CODEMOD_LACKS_LAYER_SCOPE_PREFIX}{layer}": []
+                for layer in order
+            },
+        }
         root = project.resolve()
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
             if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                return {}
+                return dict.fromkeys(scopes, ())
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
-        order = tuple(config.Infra.tooling.lazy_init.import_layer_order)
         files = frozenset(
             FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(snapshot, root)
         )
@@ -408,17 +419,6 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 and bool(frozenset(order) & exported(facade))
             )
 
-        # The fixed selectors and every layer's lack are published, empty or
-        # not, so a rule may name any of them.
-        scopes: dict[str, list[str]] = {
-            c.Infra.CODEMOD_FAMILY_WITHOUT_BASE_SCOPE: [],
-            c.Infra.CODEMOD_FAMILY_BASE_SCOPE: [],
-            c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE: [],
-            **{
-                f"{c.Infra.CODEMOD_LACKS_LAYER_SCOPE_PREFIX}{layer}": []
-                for layer in order
-            },
-        }
         namespaces = FlextInfraUtilitiesCodegenNamespace.repository_namespace_packages(
             root
         )

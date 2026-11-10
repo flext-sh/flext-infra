@@ -145,11 +145,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
 
     @staticmethod
     def planned_source_tooling(
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
         planned: Sequence[p.Infra.CodegenFilePlan],
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Infra.ToolingRuntimeContext:
+    ) -> m.Infra.ToolingRuntimeContext:
         """Derive tooling from the Python sources the transaction will publish.
 
         Returns:
@@ -717,36 +717,34 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 render_inputs.managed_artifacts.resolution.artifacts.Gitignore.patterns
             )
             return r[p.BaseModel].ok(
-                m.Infra.GitignoreRenderSpec(
-                    gitignore_sections=u.Infra.gitignore_sections(
-                        codegen,
-                        profile=target.make_profile,
-                        # The declared distribution is the project identity; a
-                        # scaffold renders before its pyproject exists.
-                        project_name=repository.distribution,
-                        workspace=workspace,
-                        project_patterns=project_patterns,
-                    ),
-                ),
+                m.Infra.GitignoreRenderSpec.model_validate({
+                    "gitignore_sections": (
+                        u.Infra.gitignore_sections(
+                            codegen,
+                            profile=target.make_profile,
+                            # The declared distribution is the project identity; a
+                            # scaffold renders before its pyproject exists.
+                            project_name=repository.distribution,
+                            workspace=workspace,
+                            project_patterns=project_patterns,
+                        )
+                    )
+                }),
             )
         if destination == c.Infra.SONARCLOUD_PROPERTIES_FILENAME:
             # Why: conform itself projects managed tests/fixtures/ci/docker files
             # into every profile, so the tests directory always exists and
             # sonar.tests never names an absent directory.
             return r[p.BaseModel].ok(
-                m.Infra.SonarcloudRenderSpec(
-                    sonarcloud=codegen.sonarcloud,
-                    tests_dir=c.Infra.DIR_TESTS,
-                    # Why: a workspace root checks its members out in place, and
-                    # each member is a separate repository analysed by its own
-                    # SonarCloud project; scanning them again from the root
-                    # double-counts their code as root duplication.
-                    workspace_subprojects=(
+                m.Infra.SonarcloudRenderSpec.model_validate({
+                    "sonarcloud": (codegen.sonarcloud),
+                    "tests_dir": (c.Infra.DIR_TESTS),
+                    "workspace_subprojects": (
                         tuple(item.path.as_posix() for item in workspace.subprojects)
                         if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                         else ()
                     ),
-                ),
+                }),
             )
         if destination == (
             f"{c.Infra.QLTY_CONFIG_DIRNAME}/{c.Infra.QLTY_CONFIG_FILENAME}"
@@ -767,14 +765,14 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             # The workspace declaration owns whether a Beads route exists.
             # A repository without one must not render ledger activation.
             return r[p.BaseModel].ok(
-                m.Infra.EnvrcRenderSpec(
-                    native_environment_unset=codegen.make.native_environment_unset,
-                    toolchain=codegen.toolchain,
-                    repository_root_rel=self._repository_root_rel(workspace),
-                    environment_path_prepends=(
+                m.Infra.EnvrcRenderSpec.model_validate({
+                    "native_environment_unset": (codegen.make.native_environment_unset),
+                    "toolchain": (codegen.toolchain),
+                    "repository_root_rel": (self._repository_root_rel(workspace)),
+                    "environment_path_prepends": (
                         codegen.toolchain.environment_path_prepends
                     ),
-                ),
+                }),
             )
         return None
 
@@ -795,11 +793,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         dist = render_inputs.target.repository.distribution
         spec: p.BaseModel
         if destination == c.Infra.PRE_COMMIT_CONFIG_FILENAME:
-            spec = m.Infra.MakeWorkflowRenderSpec(
-                dist=dist,
-                make=codegen.make,
-                scenario_data_roots=codegen.exclusions.scenario_data_roots,
-            )
+            spec = m.Infra.MakeWorkflowRenderSpec.model_validate({
+                "dist": (dist),
+                "make": (codegen.make),
+                "scenario_data_roots": (codegen.exclusions.scenario_data_roots),
+            })
         elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime
             if tooling is None or tooling.document is None:
@@ -843,11 +841,11 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 or destination_path.suffix != ".Dockerfile"
             ):
                 return None
-            spec = m.Infra.DistroDockerRenderSpec(
-                package_name=dist.replace("-", "_"),
-                python_version=codegen.toolchain.python_version,
-                make=codegen.make,
-            )
+            spec = m.Infra.DistroDockerRenderSpec.model_validate({
+                "package_name": (dist.replace("-", "_")),
+                "python_version": (codegen.toolchain.python_version),
+                "make": (codegen.make),
+            })
         return r[p.BaseModel].ok(spec)
 
     @classmethod
@@ -950,61 +948,70 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         if superproject is not None and superproject.failure:
             return r[p.BaseModel].from_failure(superproject)
         return r[p.BaseModel].ok(
-            m.Infra.GithubWorkflowRenderSpec(
-                publishes_release=target.repository.publishes_release,
-                extra_verbs=self._elected_extra_verbs(
-                    target.repository,
-                    repository_root,
-                    codegen,
+            m.Infra.GithubWorkflowRenderSpec.model_validate({
+                "publishes_release": (target.repository.publishes_release),
+                "extra_verbs": (
+                    self._elected_extra_verbs(
+                        target.repository,
+                        repository_root,
+                        codegen,
+                    )
                 ),
-                publish_index=config.Infra.release.publish_index,
-                dist=dist,
-                gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
-                setup_operations_report_directory=(
+                "publish_index": (config.Infra.release.publish_index),
+                "dist": (dist),
+                "gate_original_receipt_filename": (
+                    c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
+                ),
+                "setup_operations_report_directory": (
                     c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
                 ),
-                make_profile=target.make_profile,
-                gascity_enabled=target.gascity_enabled,
-                repository_branch=branch,
-                ci_trigger_branches=tuple(
-                    dict.fromkeys((
-                        *codegen.branch_policy.ci_trigger_branches,
-                        branch,
-                    )),
+                "make_profile": (target.make_profile),
+                "gascity_enabled": (target.gascity_enabled),
+                "repository_branch": (branch),
+                "ci_trigger_branches": (
+                    tuple(
+                        dict.fromkeys((
+                            *codegen.branch_policy.ci_trigger_branches,
+                            branch,
+                        )),
+                    )
                 ),
-                python_version=codegen.toolchain.python_version,
-                github_actions=codegen.github_actions,
-                toolchain=codegen.toolchain,
-                make=codegen.make,
-                workspace_repositories=workspace_repositories,
-                # Why: dependabot.yml.j2 branches on this and the model
-                # declares it, but the .github/ spec never supplied it, so
-                # every render died with "'has_devcontainer' is undefined".
-                # Dependabot rejects its ENTIRE config when an ecosystem
-                # names a directory that is absent, so this is read from the
-                # checkout rather than declared: a stale flag would silently
-                # disable Dependabot for the repository.
-                has_devcontainer=(repository_root / ".devcontainer").is_dir(),
-                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                cooldown_excluded_dependencies=excluded.value,
-                checkout_submodules=codegen.checkout_submodules_overrides.get(
-                    dist,
-                    codegen.checkout_submodules,
+                "python_version": (codegen.toolchain.python_version),
+                "github_actions": (codegen.github_actions),
+                "toolchain": (codegen.toolchain),
+                "make": (codegen.make),
+                "workspace_repositories": (workspace_repositories),
+                "has_devcontainer": ((repository_root / ".devcontainer").is_dir()),
+                "dependency_cooldown_days": (
+                    codegen.toolchain.dependency_cooldown_days
                 ),
-                custom_steps=self._custom_ci_steps(
-                    repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME,
+                "cooldown_excluded_dependencies": (excluded.value),
+                "checkout_submodules": (
+                    codegen.checkout_submodules_overrides.get(
+                        dist,
+                        codegen.checkout_submodules,
+                    )
                 ),
-                custom_post_steps=self._custom_ci_steps(
-                    repository_root / c.Infra.CUSTOM_CI_POST_STEPS_FILENAME,
+                "custom_steps": (
+                    self._custom_ci_steps(
+                        repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME,
+                    )
                 ),
-                private_submodules=codegen.ci_private_submodules.get(dist),
-                private_dependency_auth=codegen.ci_private_dependency_auth.get(
-                    dist,
+                "custom_post_steps": (
+                    self._custom_ci_steps(
+                        repository_root / c.Infra.CUSTOM_CI_POST_STEPS_FILENAME,
+                    )
                 ),
-                system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
-                packages_read=dist in codegen.ci_package_registry_read,
-                superproject=None if superproject is None else superproject.value,
-            ),
+                "private_submodules": (codegen.ci_private_submodules.get(dist)),
+                "private_dependency_auth": (
+                    codegen.ci_private_dependency_auth.get(
+                        dist,
+                    )
+                ),
+                "system_packages": (tuple(codegen.ci_system_packages.get(dist, ()))),
+                "packages_read": (dist in codegen.ci_package_registry_read),
+                "superproject": (None if superproject is None else superproject.value),
+            }),
         )
 
     @staticmethod
@@ -1140,33 +1147,30 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             )
         except ValueError as exc:
             return r[p.Infra.MakefileRenderSpec].fail(str(exc), exception=exc)
-        # Project-owned Mise tools are composed into .mise.toml; setup and upg
-        # install the same declared set, so they join the explicit install list.
-        managed = u.Infra.load_project_managed_artifacts(target.root)
-        if managed.failure:
-            return r[p.Infra.MakefileRenderSpec].from_failure(managed)
         return r[p.Infra.MakefileRenderSpec].ok(
-            m.Infra.MakefileRenderSpec(
-                bootstrap_requirements=Path(
-                    codegen.templates.bootstrap_entry.destination
+            m.Infra.MakefileRenderSpec.model_validate({
+                "bootstrap_requirements": (
+                    Path(codegen.templates.bootstrap_entry.destination)
                 ),
-                bootstrap_report_shell_literal=(
+                "bootstrap_report_shell_literal": (
                     u.Infra.bootstrap_operation_report_shell_literal()
                 ),
-                bootstrap_report_relative_path=(
+                "bootstrap_report_relative_path": (
                     c.Infra.WORKSPACE_BOOTSTRAP_REPORT_RELATIVE_PATH
                 ),
-                pytest=pytest,
-                release_verbs=self._release_product_verbs(target.repository),
-                dist=target.repository.distribution,
-                infra_cli=config.Infra.name,
-                examples_module=target.repository.examples_module,
-                make_profile=target.make_profile,
-                package=target.repository.package,
-                analyzer_roots=tuple(
-                    config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+                "pytest": (pytest),
+                "release_verbs": (self._release_product_verbs(target.repository)),
+                "dist": (target.repository.distribution),
+                "infra_cli": (config.Infra.name),
+                "examples_module": (target.repository.examples_module),
+                "make_profile": (target.make_profile),
+                "package": (target.repository.package),
+                "analyzer_roots": (
+                    tuple(
+                        config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+                    )
                 ),
-                workspace_repositories=(
+                "workspace_repositories": (
                     tuple(
                         sorted(
                             workspace.subprojects,
@@ -1178,49 +1182,47 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                     else ()
                 ),
-                environment_imports=self._declared_environment_imports(
-                    target, workspace
+                "environment_imports": (
+                    self._declared_environment_imports(target, workspace)
                 ),
-                makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                repository_root_rel=self._repository_root_rel(workspace),
-                workspace_subprojects=tuple(
-                    item.path.as_posix() for item in workspace.subprojects
+                "makefile_custom_include": (c.Infra.MAKEFILE_CUSTOM_INCLUDE),
+                "repository_root_rel": (self._repository_root_rel(workspace)),
+                "workspace_subprojects": (
+                    tuple(item.path.as_posix() for item in workspace.subprojects)
                 ),
-                uv_link_mode=self.link_mode(target.repository, codegen.toolchain),
-                mise_selector=codegen.toolchain.mise_selector,
-                mise_version=codegen.toolchain.mise_version,
-                mise_install_tools=(
+                "uv_link_mode": (self.link_mode(target.repository, codegen.toolchain)),
+                "mise_selector": (codegen.toolchain.mise_selector),
+                "mise_version": (codegen.toolchain.mise_version),
+                "mise_install_tools": ((
                     *codegen.toolchain.mise_install_keys,
                     *project_mise_tools,
-                ),
-                # A project in the infrastructure distribution's runtime closure
-                # (read from the installed metadata, never listed) supplies part
-                # of the executor itself: the executor installs its locked
-                # non-editable build.
-                executor_installs_project=(
+                )),
+                "executor_installs_project": (
                     u.Infra.dep_name(target.repository.distribution)
                     in u.Infra.installed_runtime_closure(
                         codegen.infra_repository.distribution,
                     )
                 ),
-                toolchain=codegen.toolchain,
-                python_version=codegen.toolchain.python_version,
-                make=codegen.make,
-                extra_verbs=self._elected_extra_verbs(
-                    target.repository,
-                    target.root,
-                    codegen,
+                "toolchain": (codegen.toolchain),
+                "python_version": (codegen.toolchain.python_version),
+                "make": (codegen.make),
+                "extra_verbs": (
+                    self._elected_extra_verbs(
+                        target.repository,
+                        target.root,
+                        codegen,
+                    )
                 ),
-                script_dispatch=target.repository.script_dispatch,
-                verb_groups=target.repository.verb_groups,
-                workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-                timeout_command=c.Infra.TIMEOUT_COMMAND,
-                timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                check_timeout_seconds=(
+                "script_dispatch": (target.repository.script_dispatch),
+                "verb_groups": (target.repository.verb_groups),
+                "workspace_cli_group": (c.Infra.CLI_GROUP_WORKSPACE),
+                "mypy_timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
+                "timeout_command": (c.Infra.TIMEOUT_COMMAND),
+                "timeout_kill_after_seconds": (c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
+                "check_timeout_seconds": (
                     gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS
                 ),
-            ),
+            }),
         )
 
     @staticmethod

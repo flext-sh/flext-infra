@@ -657,19 +657,21 @@ class TestsFlextInfraGeneratedRuntime:
             u.Tests.raises(m.ValidationError, match="settings"),
         ):
             codegen.FlextInfraCodegenConform.Generate.plan_repository_task(
-                m.Infra.CodegenRepositoryPlanTask(
-                    root=root,
-                    workspace=spec,
-                    current_target=tm.ok(
-                        workspace.FlextInfraWorkspaceDetector.conform_target(
-                            root, spec, inputs=inputs
+                m.Infra.CodegenRepositoryPlanTask.model_validate({
+                    "root": (root),
+                    "workspace": (spec),
+                    "current_target": (
+                        tm.ok(
+                            workspace.FlextInfraWorkspaceDetector.conform_target(
+                                root, spec, inputs=inputs
+                            )
                         )
                     ),
-                    repository=spec.repository,
-                    surface=c.Infra.CodegenConformSurface.ALL,
-                    selected_inputs=inputs,
-                    provider_plans=incoming,
-                ),
+                    "repository": (spec.repository),
+                    "surface": (c.Infra.CodegenConformSurface.ALL),
+                    "selected_inputs": (inputs),
+                    "provider_plans": (incoming),
+                }),
                 snapshot,
             )
         tm.ok(u.Cli.atomic_verify_binary_file_states(originals))

@@ -8,14 +8,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodemodModuleMemberImportHeader:
     """A member reached through a child package object imports from the child."""
 
+    @u.Tests.fixture
     @staticmethod
-    def _project(tmp_path: Path) -> tuple[Path, Path]:
+    def project_tree(
+        tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> tuple[Path, Path]:
         """Build a project whose child package publishes one class.
 
         Returns:
@@ -32,6 +35,13 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         (gates / c.Infra.INIT_PY).write_text(
             '"""Gates."""\n\nfrom .base import DemoGate\n\n__all__ = ("DemoGate",)\n',
             encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(
+            u.Tests.create_python_environment(
+                repository,
+                dependency_projects=u.Tests.python_dependency_projects(repository),
+                session_runtime=session_runtime,
+            )
         )
         return repository, package
 
@@ -87,12 +97,10 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
 
     @staticmethod
     def test_member_and_header_rewrite_a_child_package_object(
-        tmp_path: Path,
+        project_tree: tuple[Path, Path],
     ) -> None:
         """``gates.DemoGate`` becomes ``DemoGate`` imported from the child package."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         consumer = package / "consumer.py"
         consumer.write_text(
             "from __future__ import annotations\n\n"
@@ -115,11 +123,11 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         tm.that(rewritten, lacks="gates.DemoGate")
 
     @staticmethod
-    def test_provider_root_object_read_imports_the_name(tmp_path: Path) -> None:
+    def test_provider_root_object_read_imports_the_name(
+        project_tree: tuple[Path, Path],
+    ) -> None:
         """``flext_core.FlextLazyMember`` becomes ``FlextLazyMember`` from its root."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         consumer = package / "provider.py"
         consumer.write_text(
             "from __future__ import annotations\n\n"
@@ -141,11 +149,11 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         tm.that(rewritten, lacks="flext_core.FlextLazyMember")
 
     @staticmethod
-    def test_generic_annotation_imports_its_free_member(tmp_path: Path) -> None:
+    def test_generic_annotation_imports_its_free_member(
+        project_tree: tuple[Path, Path],
+    ) -> None:
         """Generic arguments use names rather than declaring type parameters."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         consumer = package / "annotation.py"
         consumer.write_text(
             "from __future__ import annotations\n\n"
@@ -163,11 +171,11 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         )
 
     @staticmethod
-    def test_type_parameter_bound_imports_its_free_member(tmp_path: Path) -> None:
+    def test_type_parameter_bound_imports_its_free_member(
+        project_tree: tuple[Path, Path],
+    ) -> None:
         """A PEP 695 bound is a use while its declared parameter is a binding."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         consumer = package / "bound.py"
         consumer.write_text(
             "from __future__ import annotations\n\n"
@@ -185,11 +193,11 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         )
 
     @staticmethod
-    def test_header_preserves_names_bound_by_another_owner(tmp_path: Path) -> None:
+    def test_header_preserves_names_bound_by_another_owner(
+        project_tree: tuple[Path, Path],
+    ) -> None:
         """Importing a free name never also imports an existing local homonym."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         (package / "gates" / c.Infra.INIT_PY).write_text(
             "from .base import DemoGate\n\n"
             "class Existing:\n    pass\n\n"
@@ -212,11 +220,11 @@ class TestsFlextInfraCodemodModuleMemberImportHeader:
         tm.that(rewritten, lacks=f"from {package.name}.gates import Existing")
 
     @staticmethod
-    def test_local_homonym_of_the_child_is_never_rewritten(tmp_path: Path) -> None:
+    def test_local_homonym_of_the_child_is_never_rewritten(
+        project_tree: tuple[Path, Path],
+    ) -> None:
         """A module rebinding the child's name locally keeps its attribute access."""
-        repository, package = TestsFlextInfraCodemodModuleMemberImportHeader._project(
-            tmp_path
-        )
+        repository, package = project_tree
         consumer = package / "homonym.py"
         source = (
             "from __future__ import annotations\n\n"

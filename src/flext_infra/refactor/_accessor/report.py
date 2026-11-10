@@ -128,14 +128,18 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
             )
             if updated_source != source:
                 plans.append(
-                    m.Infra.SemanticFilePlan(
-                        project=u.Infra.project_root(py_file) or params.repository_root,
-                        path=state.path,
-                        before=state,
-                        desired_content=updated_source.encode(c.DEFAULT_ENCODING),
-                        desired_mode=state.mode,
-                        changes=tuple(change.original_name for change in automated),
-                    )
+                    m.Infra.SemanticFilePlan.model_validate({
+                        "project": (
+                            u.Infra.project_root(py_file) or params.repository_root
+                        ),
+                        "path": (state.path),
+                        "before": (state),
+                        "desired_content": (updated_source.encode(c.DEFAULT_ENCODING)),
+                        "desired_mode": (state.mode),
+                        "changes": (
+                            tuple(change.original_name for change in automated)
+                        ),
+                    })
                 )
         return result_type.ok((tuple(plans), tuple(reports)))
 
@@ -169,9 +173,9 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
         staged = FlextInfraStagedPackage.plan_sources(
             params.repository_root,
             updates,
-            options=m.Infra.StageSourceOptions(
-                inputs=tuple(plan.before for plan in plans)
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "inputs": (tuple(plan.before for plan in plans))
+            }),
         )
         if staged.failure:
             return result_type.from_failure(staged)
@@ -286,11 +290,11 @@ class FlextInfraRefactorAccessorReport(FlextInfraRefactorAccessorRewrite):
             plan.workspace,
             plan.updates,
             validate,
-            options=m.Infra.StageSourceOptions(
-                workspaces=plan.workspaces,
-                modes=plan.modes,
-                inputs=plan.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (plan.workspaces),
+                "modes": (plan.modes),
+                "inputs": (plan.inputs),
+            }),
         )
         if previewed.failure:
             return r[

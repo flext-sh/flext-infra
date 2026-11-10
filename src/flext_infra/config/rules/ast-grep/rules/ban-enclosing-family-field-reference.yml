@@ -72,7 +72,6 @@ note: >-
   Where: this field of a class nested in `$OUTER`. Why: `$OUTER` is not bound
   while its body executes, so an eager reference cannot resolve when the model
   is built and leaves the model incomplete (no lazy rebuild is acceptable). How:
-  type the field by its protocol (`p.X`) and defer the schema owner through a
-  lambda (`$OUTER.X`), which
-  evaluates `$OUTER` only during schema generation after the holder class is
-  bound.
+  use the concrete schema owner declared before this model. Move the shared
+  data declaration to its own owner when necessary; consumer signatures retain
+  the protocol. Never defer the schema through a callback or a protocol hook.

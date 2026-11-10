@@ -1,6 +1,11 @@
 id: rewire-test-assert-not-none
 valid:
-- assert value is not None
+- |
+  from other_library import tm
+  assert value is not None
+- |
+  def check(tm: object) -> None:
+      assert value is not None
 - |
   from tests import tm
   assert self.value is not None
@@ -8,6 +13,7 @@ valid:
   from tests import tm
   assert value is not None, "A value is required"
 invalid:
+- assert value is not None
 - |
   from tests import tm
   assert value is not None

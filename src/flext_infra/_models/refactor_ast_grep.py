@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, t
 from flext_infra._models import FlextInfraModelsBase
@@ -278,7 +279,7 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Regex template instantiated with each key"),
         ] = c.Infra.CODEMOD_PARTITION_DEFAULT_PATTERN
         keys: Mapping[str, str] = m.Field(
-            default_factory=u.empty(t.TypeForm(Mapping[str, str])),
+            default_factory=u.empty(TypeForm(Mapping[str, str])),
             description="Explicit key regexes; derived from scopes when empty",
         )
         matching: Annotated[

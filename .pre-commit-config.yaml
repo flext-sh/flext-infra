@@ -27,3 +27,5 @@ repos:
         # hook's native filter keeps them out instead of a gate refusing an
         # excluded path.
         exclude: '(^|/)(tests/fixtures)/'
+
+        stages: [pre-commit]

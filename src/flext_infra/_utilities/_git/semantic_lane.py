@@ -105,12 +105,12 @@ class FlextInfraUtilitiesGitSemanticLane:
         """
         root = request.repo_root
         admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=root,
-                operation="verify",
-                candidate=request.base,
-                ownership=request.ownership,
-            ),
+            m.Infra.GitLaneVerificationRequest.model_validate({
+                "repo_root": (root),
+                "operation": ("verify"),
+                "candidate": (request.base),
+                "ownership": (request.ownership),
+            }),
         )
         if admitted.failure:
             return r[bool].from_failure(admitted)
@@ -118,13 +118,13 @@ class FlextInfraUtilitiesGitSemanticLane:
         if base.failure:
             return r[bool].from_failure(base)
         owned = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=root,
-                operation="create",
-                candidate=request.base,
-                ownership=request.ownership,
-                expected_tip=admitted.value.oid,
-            )
+            m.Infra.GitLaneVerificationRequest.model_validate({
+                "repo_root": (root),
+                "operation": ("create"),
+                "candidate": (request.base),
+                "ownership": (request.ownership),
+                "expected_tip": (admitted.value.oid),
+            })
         )
         if owned.failure:
             return r[bool].from_failure(owned)

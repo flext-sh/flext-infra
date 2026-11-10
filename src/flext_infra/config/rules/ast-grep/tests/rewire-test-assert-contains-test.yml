@@ -1,10 +1,16 @@
 id: rewire-test-assert-contains
 valid:
-- assert left in right
+- |
+  from other_library import tm
+  assert left in right
+- |
+  def check(tm: object) -> None:
+      assert left in right
 - |
   from tests import tm
   assert left in right, "message"
 invalid:
+- assert left in right
 - |
   from tests import tm
   assert left in right

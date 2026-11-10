@@ -116,6 +116,7 @@ class FlextInfraPytestRunnerBase(s[int]):
         context: p.Infra.WorkspaceProjectContext,
         *,
         started_at_monotonic: float,
+        target_file: Path | None = None,
         execution_mode: c.Infra.PytestExecutionMode = (
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
@@ -185,6 +186,7 @@ class FlextInfraPytestRunnerBase(s[int]):
             run_timeout_seconds=run_timeout_seconds,
             termination_grace_seconds=termination_grace_seconds,
             target=cache.target_directory,
+            target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
             scratch_root=scratch_root,

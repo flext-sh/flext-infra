@@ -21,26 +21,28 @@ class TestsFlextInfraBatchGateSourceDrift:
         state: p.Cli.AtomicFileState | None,
         *,
         actionable: bool,
-    ) -> p.Infra.ModOccurrence:
+    ) -> m.Infra.ModOccurrence:
         start = b'value = "before"'.index(b"before")
         offsets: t.JsonDict = {"start": start, "end": start + len(b"before")}
-        return m.Infra.ModOccurrence(
-            rule_file=str(path.parent / "rule.yaml"),
-            rule_id="fixture-rewrite",
-            repository=path.parent.name,
-            file=path,
-            source_state=state,
-            range={"byteOffset": offsets},
-            text="before",
-            replacement="after",
-            actionable=actionable,
-            classification=(
+        return m.Infra.ModOccurrence.model_validate({
+            "rule_file": (str(path.parent / "rule.yaml")),
+            "rule_id": ("fixture-rewrite"),
+            "repository": (path.parent.name),
+            "file": (path),
+            "source_state": (state),
+            "range": ({"byteOffset": offsets}),
+            "text": ("before"),
+            "replacement": ("after"),
+            "actionable": (actionable),
+            "classification": (
                 c.Infra.ModScanFindingClass.ACTIONABLE
                 if actionable
                 else c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
             ),
-            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
-        )
+            "replacement_offsets": (
+                m.Infra.ModReplacementOffsets.model_validate(offsets)
+            ),
+        })
 
     @staticmethod
     def _repository(path: Path) -> None:

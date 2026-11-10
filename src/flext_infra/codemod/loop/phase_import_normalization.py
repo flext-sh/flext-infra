@@ -17,13 +17,16 @@ from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPub
 class FlextInfraCodemodLoopPhaseImportNormalization:
     """Import-form callback: the canonical import law in the loop.
 
-    The engine self-scans every governed source file — leaf flattening,
-    lazy placement and guard cleanup are semantic judgments no ast-grep
-    capture owns — so this phase does not wait for a rule finding before
-    normalizing a file.
+    A full run scans every governed source. A selected syntax run binds its
+    changed files against the same complete source view; unrelated modules
+    remain the responsibility of their selected rule or the full run.
     """
 
     name: str = "import-normalization"
+
+    def __init__(self, *, paths: Sequence[Path] | None = None) -> None:
+        """Bind the planned write cohort; None selects the complete inventory."""
+        self.paths = None if paths is None else frozenset(paths)
 
     @classmethod
     def apply_files(cls, project_root: Path, files: Sequence[Path]) -> bool:
@@ -90,9 +93,8 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
             ).map(bool)
         )
 
-    @classmethod
     def plan(
-        cls,
+        self,
         root: Path,
         preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -113,14 +115,19 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
             selected = tuple(
                 path
                 for path in sources
+                if self.paths is None or path in self.paths
                 if path.is_relative_to(project_root)
                 and path.suffix in {c.Infra.EXT_PYTHON, c.Infra.EXT_PYTHON_STUB}
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
+            if not selected:
+                continue
             with u.Infra.workspace_snapshot(
                 project_root, (project_root,)
             ) as project_snapshot:
-                initializers = cls._planned_initializers(project_root, project_snapshot)
+                initializers = self._planned_initializers(
+                    project_root, project_snapshot
+                )
             if initializers.failure:
                 return initializers
             planned = u.Infra.plan_import_normalization(
@@ -154,7 +161,7 @@ class FlextInfraCodemodLoopPhaseImportNormalization:
                 rope_workspace.snapshot
             ).items()
         }
-        planned = cls.plan(root, preflight, rope_workspace, sources=sources)
+        planned = cls().plan(root, preflight, rope_workspace, sources=sources)
         if planned.failure:
             return r[bool].from_failure(planned)
         return cls._publish(root, planned.value)

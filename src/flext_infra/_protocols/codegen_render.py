@@ -31,52 +31,6 @@ class FlextInfraProtocolsCodegenRender:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ModelProtocolConformanceRenderContext(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def header(self) -> str:
-            """Generated source ownership marker."""
-            ...
-
-        @property
-        def copyright_notice(self) -> str:
-            """The owning project's legal notice."""
-            ...
-
-        @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Authenticated public package."""
-            ...
-
-        @property
-        def imports(self) -> tuple[str, ...]:
-            """Native generic-bound imports."""
-            ...
-
-        @property
-        def facades(self) -> tuple[str, str]:
-            """Published model and protocol facade classes of the package."""
-            ...
-
-        @property
-        def checks(
-            self,
-        ) -> tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...]:
-            """Native constructor, structural port, parameters and arguments."""
-            ...
-
-        @property
-        def documentation_language(self) -> t.Infra.DocumentationLanguage:
-            """Project-local generated documentation language."""
-            ...
-
-        @property
-        def module_description(self) -> str:
-            """The instance-to-protocol evidence description."""
-            ...
-
-    @runtime_checkable
     class ModelProtocolRenderContext(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 

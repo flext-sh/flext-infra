@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_tests import c as flext_tests_c
 
-from flext_infra import c as flext_infra_c
+from flext_infra import FlextInfraConstants
 from tests._constants import TestsFlextInfraConstantsSemanticCutover
 from tests.constants_scan import TestsFlextInfraConstantsScan
 
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class TestsFlextInfraConstants(flext_infra_c):
+class TestsFlextInfraConstants(FlextInfraConstants):
     """Constants for FLEXT infra tests composed from the production facade."""
 
     class Tests(
@@ -141,9 +141,9 @@ class TestsFlextInfraConstants(flext_infra_c):
             "FIX",
             "FLEXT_INFRA_PYTHON",
             "FLEXT_ROOT",
-            *flext_infra_c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
-            flext_infra_c.Infra.ENV_VAR_STANDALONE,
-            flext_infra_c.Infra.ENV_VAR_REPOSITORY_ROOT,
+            *FlextInfraConstants.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+            FlextInfraConstants.Infra.ENV_VAR_STANDALONE,
+            FlextInfraConstants.Infra.ENV_VAR_REPOSITORY_ROOT,
             "MATCH",
             "PROJECT",
             "PROJECTS",
@@ -152,9 +152,9 @@ class TestsFlextInfraConstants(flext_infra_c):
             "RUFF_ARGS",
             "UV",
             "VALIDATE_GATES",
-            flext_infra_c.Infra.PromotedEnv.WHAT,
-            flext_infra_c.Infra.MAKE_REPOSITORY_ROOT,
-            *flext_infra_c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            FlextInfraConstants.Infra.PromotedEnv.WHAT,
+            FlextInfraConstants.Infra.MAKE_REPOSITORY_ROOT,
+            *FlextInfraConstants.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             *DIRENV_SESSION_ENV_KEYS,
             # The host's GitHub credential under every name Make reads never
             # enters a test; a test that needs one passes its own.
@@ -175,11 +175,17 @@ class TestsFlextInfraConstants(flext_infra_c):
         # ClassVar, not Final: these rebindings live on a Pydantic model
         # class, and Pydantic 2.11 deprecates final-annotated defaults
         # (filterwarnings=error turns that into a collection failure).
-        RELEASE_PHASE_PLAN: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.PLAN
-        RELEASE_PHASE_VERSION: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.VERSION
-        RELEASE_PHASE_TAG: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.TAG
-        RELEASE_PHASE_BUILD: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.BUILD
-        RELEASE_PHASE_PUBLISH: ClassVar[str] = flext_infra_c.Infra.ReleasePhase.PUBLISH
+        RELEASE_PHASE_PLAN: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.VERSION
+        )
+        RELEASE_PHASE_TAG: ClassVar[str] = FlextInfraConstants.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.BUILD
+        )
+        RELEASE_PHASE_PUBLISH: ClassVar[str] = (
+            FlextInfraConstants.Infra.ReleasePhase.PUBLISH
+        )
 
         WORKSPACE_PROJECT_NAME: ClassVar[str] = "workspace"
         DEMO_PROJECT_NAME: ClassVar[str] = "demo-project"

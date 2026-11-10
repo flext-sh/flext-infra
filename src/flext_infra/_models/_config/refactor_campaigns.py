@@ -187,6 +187,12 @@ class FlextInfraModelsConfigRefactorCampaigns:
     class RefactorCsvCampaignsSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Declared CSV-driven rename campaigns for the mod verb's rename phase."""
 
+        rewire_directory: Annotated[
+            Path,
+            m.Field(
+                description="Repository-relative immutable native rewire artifacts"
+            ),
+        ]
         campaigns: Annotated[
             tuple[
                 (FlextInfraModelsConfigRefactorCampaigns.RenameCampaignSpec),

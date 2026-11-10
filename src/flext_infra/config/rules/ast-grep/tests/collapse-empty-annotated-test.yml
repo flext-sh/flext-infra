@@ -1,0 +1,36 @@
+id: collapse-empty-annotated
+valid:
+  - |
+    from typing import Annotated
+    value: Annotated[int, "payload"]
+  - |
+    from typing import Annotated
+    value: Annotated[int, m.Field(gt=0)]
+  - |
+    from foreign import Annotated
+    value: Annotated[int,]
+  - |
+    import foreign as typing
+    value: typing.Annotated[int,]
+invalid:
+  - |
+    from typing import Annotated
+    value: Annotated[int,]
+  - |
+    from typing import Annotated
+    value: Annotated[int]
+  - |
+    from typing import Annotated as Metadata
+    value: Metadata[m.Payload,]
+  - |
+    import typing as types
+    value: types.Annotated[dict[str, tuple[int, ...]],]
+  - |
+    from typing import Annotated
+    value: dict[str, Annotated[m.Payload,]]
+  - |
+    from typing import Annotated
+    schema = Annotated[int,]
+  - |
+    from typing import Annotated
+    def consume(value: Annotated[int,]) -> Annotated[str,]: ...

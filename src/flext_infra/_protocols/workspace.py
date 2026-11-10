@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -186,10 +186,21 @@ class FlextInfraProtocolsWorkspace:
         origins: MutableMapping[str, Path]
         module_anchors: MutableMapping[str, t.Infra.NativeOperand]
         sources: t.Infra.MutableSetOf[tuple[str, str, str]]
-        evidence: MutableSequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]
-        evidence_index: MutableMapping[
-            str, FlextInfraProtocolsWorkspace.NativeBindingEvidence
-        ]
+
+        @property
+        def evidence(
+            self,
+        ) -> Sequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+            """Ordered native binding and executable observations."""
+            ...
+
+        @property
+        def evidence_index(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+            """Invocation-local references to the first binding evidence."""
+            ...
+
         generated_owners: MutableMapping[int, tuple[str, str, p.AttributeProbe | None]]
         references: MutableSequence[tuple[str, t.Infra.NativeOperand]]
         pending: MutableSequence[
@@ -312,12 +323,22 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class WorkspaceRequest(FlextInfraProtocolsMixins.RepositoryRootPathMixin, Protocol):
+    class WorkspaceRequest(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root path."""
+            ...
 
     @runtime_checkable
     class WorkspaceTestsRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def file(self) -> Path | None:
+            """Repository-relative test file in this repository."""
+            ...
 
         @property
         def scope(
@@ -574,10 +595,13 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class EnvironmentContractViolation(
-        FlextInfraProtocolsMixins.PositiveLineMixin, Protocol
-    ):
+    class EnvironmentContractViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def message(self) -> str:
@@ -956,8 +980,13 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class ProjectInfo(FlextInfraProtocolsMixins.ProjectEntryNameMixin, Protocol):
+    class ProjectInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def path(self) -> Path:

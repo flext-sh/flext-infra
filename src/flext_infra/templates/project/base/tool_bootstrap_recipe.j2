@@ -55,25 +55,20 @@
 	fi;
 {%- endmacro %}
 
-{#- Locked installation of the declared toolchain: mise's native locked mode
-    installs exactly what mise.lock pins, resolving no backend and fetching no
-    provenance artifact. It exports MISE_LOCKED for the rest of its shell, so a
-    caller that later writes a lock runs it in a subshell. -#}
-{% macro mise_locked_install(project_root, install_tools) -%}
+{#- Native installation preserves valid pins. Setup fills absent lock entries;
+    upgrade installs the exact pins its preceding resolution published. -#}
+{% macro mise_install(project_root, install_tools, locked=true) -%}
 	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
-	{#- Setup installs the committed mise.lock as it is: mise's native locked
-	    mode resolves no backend and fetches no provenance artifact; `make upg`
-	    stays the only lock writer. #}
-	export MISE_LOCKED=1; \
+	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
 {%- endmacro %}
 
-{#- One provisioning owner for setup and upg: acquire the pinned Mise through
-    the official installer, then install the locked toolchain. -#}
+{#- Setup acquires the declared Mise and lets its native installer complete
+    incomplete lock inputs before the runtime reader consumes them. -#}
 {% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
-	{{ mise_locked_install(project_root, install_tools) }}
+	{{ mise_install(project_root, install_tools, locked=false) }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never

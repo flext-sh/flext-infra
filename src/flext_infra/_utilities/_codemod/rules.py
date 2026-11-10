@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import tempfile
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache
 from pathlib import Path, PurePosixPath
@@ -14,6 +15,7 @@ from pathlib import Path, PurePosixPath
 from flext_cli import u
 from packaging.utils import canonicalize_name
 
+import flext_infra
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRulesDistributions,
@@ -523,12 +525,56 @@ class FlextInfraUtilitiesCodemodRules(
         native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
         config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
         cls.codemod_write_native_documents(config_path, (native_config,))
+        cls.codemod_validate_native_ruleset(destination)
         return m.Infra.CodemodRuleset(
             provider=",".join(plan.provider_order),
             config=config_path,
             rule_ids=tuple(rule.id for rule in plan.rules),
             fixable_rule_ids=tuple(rule.id for rule in plan.rules if rule.fixable),
         )
+
+    @classmethod
+    def codemod_validate_native_ruleset(cls, destination: Path) -> None:
+        """Fail at staging when ast-grep cannot parse the projected ruleset.
+
+        The projection shapes catalog documents into native rules; a shape
+        ast-grep refuses must fail here, naming the staged ruleset, instead of
+        failing a consumer's scan with no rule attribution.
+
+        Raises:
+            ValueError: If ast-grep refuses to parse the projected ruleset.
+
+        """
+        bundle = (
+            destination
+            / c.Infra.CODEMOD_RULE_DIRS_KEY
+            / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME
+        )
+        if not bundle.is_file():
+            return
+        binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
+        command = flext_infra.u.Infra.ast_grep_scan_command(bundle, targets=(".",))
+        config_path = bundle.parent.parent
+        with tempfile.TemporaryDirectory(
+            prefix="codemod-ruleset-parse-", dir=destination.parent
+        ) as directory:
+            probe = Path(directory)
+            (probe / f"probe{c.Infra.EXT_PYTHON}").write_text(
+                "", encoding=c.DEFAULT_ENCODING
+            )
+            prefix = "projected codemod ruleset cannot be parsed by ast-grep"
+            try:
+                executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=probe)
+            except ValueError as exc:
+                msg = f"{prefix}: {config_path}: {exc}"
+                raise ValueError(msg) from exc
+            if executed.failure:
+                msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
+                raise ValueError(msg)
+            output = (executed.value.stderr or executed.value.stdout).strip()
+            if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
+                msg = f"{prefix}: {config_path}: {output}"
+                raise ValueError(msg)
 
     @staticmethod
     def project_targets(
@@ -603,12 +649,12 @@ class FlextInfraUtilitiesCodemodRules(
                 else bool(elected.intersection(ruleset.rule_ids))
             )
         )
-        return m.Infra.CodemodRulePlan(
-            provider_order=tuple(ruleset.provider for ruleset in rulesets),
-            rules=rules,
-            rulesets=rulesets,
-            project_rule_ids={root: tuple(rule.id for rule in rules)},
-        )
+        return m.Infra.CodemodRulePlan.model_validate({
+            "provider_order": (tuple(ruleset.provider for ruleset in rulesets)),
+            "rules": (rules),
+            "rulesets": (rulesets),
+            "project_rule_ids": ({root: tuple(rule.id for rule in rules)}),
+        })
 
     @classmethod
     def _qualified_utility_call(
@@ -708,29 +754,38 @@ class FlextInfraUtilitiesCodemodRules(
                 "unknown codemod rule IDs: " + ", ".join(sorted(unknown)),
                 error_code=c.ErrorCode.NOT_FOUND,
             )
+        # Import-header is the mechanical binding stage of every selected fix,
+        # not an independently elected law: a focused run whose fix emits a
+        # facade name must still render the header that binds it, or the run
+        # publishes code Ruff rejects with F821.
+        header_prefix = (
+            f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}"
+            f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
+        )
+
+        def keep(rule_id: str) -> bool:
+            return rule_id in selected or rule_id.startswith(header_prefix)
+
         rulesets = tuple(
             ruleset.model_copy(
                 update={
                     field: tuple(
-                        rule_id
-                        for rule_id in getattr(ruleset, field)
-                        if rule_id in selected
+                        rule_id for rule_id in getattr(ruleset, field) if keep(rule_id)
                     )
                     for field in ("rule_ids", "fixable_rule_ids")
                 }
             )
             for ruleset in plan.rulesets
-            if selected.intersection(ruleset.rule_ids)
-            or ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
+            if any(keep(rule_id) for rule_id in ruleset.rule_ids)
         )
         return r[p.Infra.CodemodRulePlan].ok(
             plan.model_copy(
                 update={
                     "provider_order": tuple(ruleset.provider for ruleset in rulesets),
-                    "rules": tuple(rule for rule in plan.rules if rule.id in selected),
+                    "rules": tuple(rule for rule in plan.rules if keep(rule.id)),
                     "rulesets": rulesets,
                     "project_rule_ids": {
-                        project: tuple(rule for rule in rules if rule in selected)
+                        project: tuple(rule for rule in rules if keep(rule))
                         for project, rules in plan.project_rule_ids.items()
                     },
                 }
@@ -985,12 +1040,12 @@ class FlextInfraUtilitiesCodemodRules(
         if not selected:
             return r[p.Infra.CodemodRulePlan].fail("no ast-grep rules discovered")
         return r[p.Infra.CodemodRulePlan].ok(
-            m.Infra.CodemodRulePlan(
-                provider_order=tuple(provider_order),
-                rules=tuple(selected.values()),
-                rulesets=tuple(rulesets),
-                project_rule_ids={root.resolve(): tuple(selected)},
-            ),
+            m.Infra.CodemodRulePlan.model_validate({
+                "provider_order": (tuple(provider_order)),
+                "rules": (tuple(selected.values())),
+                "rulesets": (tuple(rulesets)),
+                "project_rule_ids": ({root.resolve(): tuple(selected)}),
+            }),
         )
 
     @classmethod

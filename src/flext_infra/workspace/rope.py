@@ -63,16 +63,6 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             ),
         )
 
-    @property
-    def model_protocol_routes(self) -> Mapping[str, str]:
-        """Map every model route of the session to its projected protocol.
-
-        Returns:
-            Model identity routes with their public protocol routes.
-
-        """
-        return u.Infra.model_protocol_routes(self)
-
     def domain_owner_projection(
         self,
         *,
@@ -593,11 +583,11 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             The current public Rope session state.
 
         """
-        return m.Infra.RopeWorkspaceSession(
-            repository_root=self.repository_root,
-            rope_repository_root=self._rope_repository_root,
-            workspace_index=self.workspace_index,
-        )
+        return m.Infra.RopeWorkspaceSession.model_validate({
+            "repository_root": (self.repository_root),
+            "rope_repository_root": (self._rope_repository_root),
+            "workspace_index": (self.workspace_index),
+        })
 
     def bind_candidate(
         self,
@@ -1048,18 +1038,20 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
             else u.Infra.project_root(resolved_file)
         )
         project_layout = self.layout(project_root) if project_root is not None else None
-        convention = m.Infra.RopeModuleConvention(
-            file_path=resolved_file,
-            relative_path=resolved_rel_path,
-            module_name=module_entry.module_name
-            if module_entry is not None
-            else resolved_file.stem,
-            package_name=package_context.current_pkg,
-            package_dir=package_dir,
-            package_context=package_context,
-            module_policy=policy,
-            project_layout=project_layout,
-        )
+        convention = m.Infra.RopeModuleConvention.model_validate({
+            "file_path": (resolved_file),
+            "relative_path": (resolved_rel_path),
+            "module_name": (
+                module_entry.module_name
+                if module_entry is not None
+                else resolved_file.stem
+            ),
+            "package_name": (package_context.current_pkg),
+            "package_dir": (package_dir),
+            "package_context": (package_context),
+            "module_policy": (policy),
+            "project_layout": (project_layout),
+        })
         self._module_convention_cache[cache_key] = convention
         return convention
 

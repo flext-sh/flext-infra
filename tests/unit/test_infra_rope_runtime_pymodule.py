@@ -208,7 +208,10 @@ class TestsFlextInfraRopeRuntimePymodule:
                     (
                         sys.executable,
                         "-c",
-                        f"from {package.name}.consumer import Owner; print(Owner.VALUE)",
+                        (
+                            f"from {package.name}.consumer import Owner; "
+                            f"print(Owner.VALUE)"
+                        ),
                     ),
                     cwd=root,
                     options=m.Cli.ProcessOptions(
@@ -511,12 +514,21 @@ class TestsFlextInfraRopeRuntimePymodule:
                 u.Infra.require_parsed_module(project.get_module("builtins"))
 
     @staticmethod
-    @c.Tests.MARK.parametrize("ambiguous", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("source", "symbol", "ambiguous"),
+        [
+            ("value = 1\n", "value", False),
+            ("value = 1; print(value)\n", "value", False),
+            ("value = 1; value = 2\n", "value", True),
+            ("def example(value): value = value\n", "value", True),
+            ('name = "display name"  # name\n', "name", False),
+            ("árvore = 1; print(árvore)\n", "árvore", False),
+        ],
+    )
     def test_native_definition_token_identity(
-        tmp_path: Path, *, ambiguous: bool
+        tmp_path: Path, source: str, symbol: str, *, ambiguous: bool
     ) -> None:
-        """A unique definition resolves; two same-line uses remain ambiguous."""
-        source = "value = 1; print(value)\n" if ambiguous else "value = 1\n"
+        """One write resolves despite reads; multiple writes remain ambiguous."""
         path = tmp_path / "consumer.py"
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with (
@@ -524,13 +536,20 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(u.Infra.snapshot_project(original, {path: source})) as project,
         ):
             module = u.Infra.resolve_pymodule(project, project.get_resource(path.name))
-            binding = module.get_attribute("value")
+            binding = (
+                module
+                .get_scope()
+                .get_inner_scope_for_offset(source.index("value"))
+                .get_names()["value"]
+                if source.startswith("def ")
+                else module.get_attribute(symbol)
+            )
             if ambiguous:
                 with u.Tests.raises(RuntimeError, match="definition binding token"):
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     )
             else:
@@ -538,8 +557,14 @@ class TestsFlextInfraRopeRuntimePymodule:
                     u.Infra.find_identifier_offset_in_lines(
                         source.splitlines(keepends=True),
                         line=1,
-                        symbol="value",
+                        symbol=symbol,
                         pyname=binding,
                     ),
-                    eq=source.index("value"),
+                    eq=source.index(symbol),
+                )
+                tm.that(
+                    u.Infra.find_identifier_offset_in_lines(
+                        source.splitlines(keepends=True), line=1, symbol=symbol
+                    ),
+                    eq=source.index(symbol),
                 )

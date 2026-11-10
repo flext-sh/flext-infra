@@ -18,6 +18,7 @@ from flext_core import FlextStrictYamlConfigSource
 
 from flext_infra import FlextInfraConfig, c, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesNativeTooling
+from flext_infra._utilities._project import FlextInfraUtilitiesProjectDiscoveryShape
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeTooling):
@@ -58,103 +59,56 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
 
         """
         result_type = r[p.Infra.CodegenInputs]
-        if projections or source_project is not None:
-            document = cls.load_config_document_inputs(
-                repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-                projections=projections,
+        document = cls.load_config_document_inputs(
+            repository_root,
+            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
+            projections=projections,
+            source_project=source_project,
+        )
+        if document.failure:
+            return result_type.from_failure(document)
+        loaded = r[
+            tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
+        ].create_from_callable(
+            partial(
+                cls._repository_codegen_spec,
+                document.value.values,
+                repository_root.resolve(),
                 source_project=source_project,
-            )
-            if document.failure:
-                return result_type.from_failure(document)
-            loaded = r[
-                tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
-            ].create_from_callable(
-                partial(
-                    cls._repository_codegen_spec,
-                    document.value.values,
-                    repository_root,
-                ),
-            )
-            sources = document.value.sources
-        else:
-            captured = cls._captured_config_layers(
-                repository_root,
-                filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-                projections=(),
-                source_project=None,
-            )
-            if captured.failure:
-                return result_type.from_failure(captured)
-            loaded = r[
-                tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind]
-            ].create_from_callable(
-                partial(
-                    cls._layered_codegen_spec,
-                    repository_root.resolve(),
-                    *captured.value,
-                ),
-            )
-            sources = captured.value[1]
+            ),
+        )
         if loaded.failure:
             return result_type.from_failure(loaded)
         spec, kind = loaded.value
         return result_type.ok(
-            m.Infra.CodegenInputs(spec=spec, kind=kind, sources=sources),
+            m.Infra.CodegenInputs.model_validate({
+                "spec": (spec),
+                "kind": (kind),
+                "sources": (document.value.sources),
+            }),
         )
 
     @classmethod
-    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
-    def _layered_codegen_spec(
+    def load_codegen_policy(
         cls,
         repository_root: Path,
-        selected: tuple[Path, ...],
-        snapshots: tuple[p.Cli.AtomicFileState, ...],
-    ) -> tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind]:
-        """Memoize the validated policy of exact captured layer bytes.
-
-        The key is the captured layers themselves, so a changed byte is a new
-        key and never a stale answer; exceptions are never cached. The frozen
-        spec is shared, as the parsed-content memo shares its documents.
+    ) -> p.Result[p.Infra.CodegenConfigSpec]:
+        """Read strict policy without parsing the source it will govern.
 
         Returns:
-            The validated full repository codegen policy of these layers and
-            the governance kind the repository declares.
+            The effective declaration or its original configuration failure.
 
         """
-        return cls._repository_codegen_spec(
-            cls._repository_config_document(selected, snapshots, ()),
-            repository_root,
+        document = cls.load_config_document_inputs(
+            repository_root, filename=c.Infra.CODEGEN_CONFIG_FILENAME
         )
-
-    @staticmethod
-    def require_declared_kind(
-        repository: t.JsonValue, repository_root: Path
-    ) -> c.Infra.ProjectKind:
-        """Read the governance kind a repository declares, failing closed.
-
-        The kind decides whether any generator may rewrite the repository, so
-        it is read from the repository's own declaration and never assumed.
-
-        Returns:
-            The repository's own declared governance kind.
-
-        Raises:
-            ValueError: The repository declaration carries no
-                ``Infra.codegen.repository.kind``; the message names the
-                repository and the file that must declare it.
-
-        """
-        declared = repository.get("kind") if isinstance(repository, Mapping) else None
-        if declared is not None:
-            return c.Infra.ProjectKind(str(declared))
-        root = repository_root.resolve()
-        own = root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
-        msg = (
-            f"repository governance kind is not declared: {root}"
-            f" (declare Infra.codegen.repository.kind in {own})"
+        if document.failure:
+            return r[p.Infra.CodegenConfigSpec].from_failure(document)
+        return r[p.Infra.CodegenConfigSpec].create_from_callable(
+            partial(
+                cls._validated_codegen_policy, document.value.values, repository_root
+            )
         )
-        raise ValueError(msg)
 
     @classmethod
     def contained_write_targets(
@@ -169,39 +123,35 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         Every target resolves with its symbolic links, so a path that merely
         reaches a file through a link (an editable install's link tree, a
         Python-path entry) is judged by the file it would write. The project
-        is read through its own codegen declaration: a third-party fork is
+        is classified through native project facts: a third-party fork is
         never a FLEXT write target. A project outside ``authority`` (the root
-        a verb runs on) is admitted only when it carries its own FLEXT
-        declaration; a dependency checkout discovered from a module path
-        carries none.
+        a verb runs on) is admitted only when its native facts establish FLEXT
+        governance.
 
         Returns:
             The resolved targets, in the given order.
 
         Raises:
             ValueError: A target escapes the project, the project is a
-                third-party fork, or a foreign project declares no FLEXT
-                governance of its own.
+                third-party fork, or a foreign project has no FLEXT consumption.
 
         """
         project = project_root.resolve()
-        inputs = cls.load_codegen_inputs(project).unwrap()
-        if inputs.kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
+        # Containment must not parse the obsolete policy a migration replaces.
+        kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(project)
+        if kind is c.Infra.ProjectKind.THIRD_PARTY_FORK:
             msg = f"third-party fork is never a FLEXT write target: {project}"
             raise ValueError(msg)
-        if authority is not None and not project.is_relative_to(authority.resolve()):
-            declaration = (
-                project / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_CONFIG_FILENAME
+        if (
+            authority is not None
+            and not project.is_relative_to(authority.resolve())
+            and kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
+        ):
+            msg = (
+                f"write project {project} is outside the selected root "
+                f"{authority.resolve()} and has no native FLEXT consumption"
             )
-            if not any(
-                state.path == declaration and state.content is not None
-                for state in inputs.sources
-            ):
-                msg = (
-                    f"write project {project} is outside the declared root "
-                    f"{authority.resolve()} and declares no FLEXT governance"
-                )
-                raise ValueError(msg)
+            raise ValueError(msg)
         resolved = tuple(target.resolve() for target in targets)
         for target, physical in zip(targets, resolved, strict=True):
             if not physical.is_relative_to(project):
@@ -302,18 +252,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         if section.failure:
             return result_type.from_failure(section)
         repository = section.value.get("repository", {})
-        declared = r[c.Infra.ProjectKind].create_from_callable(
-            partial(cls.require_declared_kind, repository, repository_root)
+        detected = r[c.Infra.ProjectKind].create_from_callable(
+            partial(
+                FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind,
+                repository_root,
+                source_project=source_project,
+            )
         )
-        if declared.failure:
-            return result_type.from_failure(declared)
+        if detected.failure:
+            return result_type.from_failure(detected)
         loaded = u.validate_value(m.Infra.RepositoryDeltaSpec, repository)
         if loaded.failure:
             return result_type.from_failure(loaded)
         return result_type.ok(
             m.Infra.RepositoryDeclarationInputs(
                 spec=loaded.value,
-                kind=declared.value,
+                kind=detected.value,
                 sources=document.value.sources,
             ),
         )
@@ -493,7 +447,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             validated: tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind],
         ) -> p.Infra.CodegenInputs:
             spec, kind = validated
-            return m.Infra.CodegenInputs(spec=spec, kind=kind, sources=captured.sources)
+            return m.Infra.CodegenInputs.model_validate({
+                "spec": (spec),
+                "kind": (kind),
+                "sources": (captured.sources),
+            })
 
         return loaded.map(codegen_inputs)
 
@@ -547,31 +505,49 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
     def _repository_codegen_spec(
         document: t.JsonMapping,
         repository_root: Path,
+        *,
+        source_project: p.Infra.RopeProject | None = None,
     ) -> tuple[p.Infra.CodegenConfigSpec, c.Infra.ProjectKind]:
         """Validate composed policy with its model's already-compiled schema.
 
         Returns:
             The validated full repository codegen policy and the governance
-            kind the repository declares.
-
-        Raises:
-            ValueError: If the repository declares no governance kind, or the
-                composed declaration violates the codegen
-                configuration schema; third-party validation detail travels
-                as the cause.
+            kind detected from native project facts.
 
         """
-        kind = FlextInfraUtilitiesProjectManagedArtifacts.require_declared_kind(
-            u.Cli.json_walk_path(document, ("Infra", "codegen", "repository")),
+        kind = FlextInfraUtilitiesProjectDiscoveryShape.detected_project_kind(
             repository_root,
+            source_project=source_project,
         )
+        return (
+            FlextInfraUtilitiesProjectManagedArtifacts._validated_codegen_policy(
+                document, repository_root
+            ),
+            kind,
+        )
+
+    @staticmethod
+    def _validated_codegen_policy(
+        document: t.JsonMapping,
+        repository_root: Path,
+    ) -> p.Infra.CodegenConfigSpec:
+        """Validate one captured declaration through its compiled schema.
+
+        Returns:
+            The validated codegen policy.
+
+        Raises:
+            ValueError: The declaration violates its schema.
+
+        """
         codegen = u.Cli.json_walk_path(document, ("Infra", "codegen"))
         try:
-            return m.Infra.CodegenConfigSpec.model_validate(codegen), kind
+            return m.Infra.CodegenConfigSpec.model_validate(codegen)
         except m.ValidationError as error:
             # Config-authoring failures surface as the service contract's own
             # error type, never as a raw third-party validation exception.
-            raise ValueError(str(error)) from error
+            message = f"{repository_root}: {error}"
+            raise ValueError(message) from error
 
     @classmethod
     def _repository_config_document(

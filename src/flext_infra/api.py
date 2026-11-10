@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
@@ -103,6 +104,9 @@ class FlextInfra(
             resolved_root, rope_repository_root=rope_repository_root
         )
         session.semantic_rename_planner = FlextInfraCodemodRenameSymbols
+        session.model_envelope_checker = partial(
+            FlextInfraModHandlers.model_envelope_diagnostics, session.repository_root
+        )
         return session
 
     @staticmethod
@@ -464,7 +468,9 @@ class FlextInfra(
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
-        return codemod.FlextInfraModTextGateEngine.run(root, apply=request.apply)
+        return codemod.FlextInfraModTextGateEngine.run(
+            root, apply=request.apply, rule_ids=request.rule_ids
+        )
 
     @staticmethod
     def mod_text_candidate(
@@ -572,16 +578,15 @@ class FlextInfra(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> p.Result[int]:
-        """Require original global primary source proof before native test engines.
+        """Execute native tests in the selected project contexts.
 
         Ordinary test failures retain their original first status while every
         selected repository is reached. Interruptions and infrastructure errors
         stop dispatch with their native status; configuration failures escape.
-        Discovery and member execution share this operation's clock. The native
-        runner admits the original global source proof immediately before its
-        engines; the transport must not repeat that expensive admission.
+        Discovery and member execution share this operation's clock.
         FULL executes the complete applicable suite once in each project context
         without Testmon, an incremental pre-run or database access.
+        A declared file selects only this repository through that same runner.
 
         Returns:
             The first failing native test status, or zero after every success.
@@ -593,12 +598,20 @@ class FlextInfra(
             return r[int].fail(f"tests require a project context: {context.cwd}")
         root = context.identity.repo_root
         workspace_root = context.runtime.runtime_root
-        if request.scope == c.Infra.CodegenConformScope.SELF:
+        if (
+            request.file is not None
+            or request.scope == c.Infra.CodegenConformScope.SELF
+        ):
             return r[int].ok(
                 validate.FlextInfraPytestRunner.execute_project_context(
                     context,
                     started_at_monotonic=started_at_monotonic,
-                    execution_mode=execution_mode,
+                    execution_mode=(
+                        c.Infra.PytestExecutionMode.FULL
+                        if request.file is not None
+                        else execution_mode
+                    ),
+                    target_file=request.file,
                 )
             )
         observed = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(

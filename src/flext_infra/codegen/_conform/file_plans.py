@@ -19,90 +19,6 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
     """Desired-state file, environment, and retirement plans."""
 
     @classmethod
-    def repository_kind_declaration_plans(
-        cls,
-        root: Path,
-        inputs: p.Infra.CodegenInputs,
-        kind: c.Infra.ProjectKind,
-    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
-        """Publish an explicit kind only into the requested target's own source.
-
-        Returns:
-            The declaration plan, none when already declared, or the conflict.
-
-        """
-        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
-        effective = inputs.spec.repository
-        if (
-            getattr(effective, "model_fields_set", None)
-            and "kind" in effective.model_fields_set
-            and effective.kind != kind
-        ):
-            return result_type.fail(
-                "bootstrap kind conflicts with the target's effective "
-                f"declaration: {root}",
-            )
-        layers = FlextInfraConfig.config_layer_paths_for_repository(
-            root,
-            filename=c.Infra.CODEGEN_CONFIG_FILENAME,
-        )
-        declared = cls._declared_kind_plans(layers[1], inputs, kind)
-        if declared is not None:
-            return declared
-        values: t.JsonMapping = {"repository": {"kind": kind.value}}
-        composed = u.Infra.project_codegen_inputs(
-            root,
-            inputs,
-            projections=(
-                m.Infra.CodegenLayerProjection(
-                    path=layers[1],
-                    values={"Infra": {"codegen": dict(values)}},
-                ),
-            ),
-        )
-        if composed.failure:
-            return result_type.from_failure(composed)
-        if composed.value.kind != kind:
-            return result_type.fail(
-                f"bootstrap kind is overridden by the target's elected layers: {root}",
-            )
-        return cls._codegen_declaration_plan(root, layers[1], values).map(
-            lambda declaration: (declaration,)
-        )
-
-    @classmethod
-    def _declared_kind_plans(
-        cls,
-        own_path: Path,
-        inputs: p.Infra.CodegenInputs,
-        kind: c.Infra.ProjectKind,
-    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]] | None:
-        """Guard the target's own ``kind`` declaration.
-
-        Returns:
-            The conflict failure, no plans when the same kind is already
-            declared, or ``None`` when no own declaration exists to guard.
-
-        """
-        own = next((state for state in inputs.sources if state.path == own_path), None)
-        if own is None or own.content is None:
-            return None
-        document = u.Infra.read_codegen_config_document(own.content)
-        if document.failure:
-            return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(document)
-        declared = u.Cli.json_walk_path(
-            document.value,
-            ("Infra", "codegen", "repository", "kind"),
-        )
-        if declared is None:
-            return None
-        if declared != kind.value:
-            return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
-                f"bootstrap kind conflicts with the target's declaration: {own_path}",
-            )
-        return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
-
-    @classmethod
     def _codegen_declaration_plan(
         cls,
         root: Path,
@@ -574,6 +490,7 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
             The resulting ``p.Result[Sequence[p.Infra.CodegenFilePlan]]``.
 
         """
+        root = root.resolve()
         if inputs is None:
             loaded = u.Infra.load_codegen_inputs(root)
             if loaded.failure:
@@ -613,6 +530,12 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
         planned: list[p.Infra.CodegenFilePlan] = []
+        # Python-source patterns use the repository's native inventory, which
+        # prunes nested repositories and artifact roots before traversal.
+        sources = u.Infra.discover_python_files(
+            root,
+            workspace_excluded_top_dirs=frozenset(),
+        )
         # A retired directory retires each file under it; the generated
         # marker (or declared evidence) below still guards every removal.
         candidates = (
@@ -623,7 +546,15 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                     item for item in (root / destination).rglob("*") if item.is_file()
                 )
                 if (root / destination).is_dir()
-                else ((root / destination),)
+                else (
+                    ((root / destination),)
+                    if (root / destination).is_file()
+                    else tuple(
+                        path
+                        for path in sources
+                        if path.relative_to(root).full_match(destination)
+                    )
+                )
             )
         )
         for destination, path in candidates:

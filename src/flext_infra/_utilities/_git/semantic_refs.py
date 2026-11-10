@@ -476,11 +476,11 @@ class FlextInfraUtilitiesGitSemanticRefs(
                 exception=exc,
             )
         return r[p.Infra.GitWorktreeListReport].ok(
-            m.Infra.GitWorktreeListReport(
-                root=repo_root,
-                entries=entries,
-                porcelain=porcelain,
-            ),
+            m.Infra.GitWorktreeListReport.model_validate({
+                "root": (repo_root),
+                "entries": (entries),
+                "porcelain": (porcelain),
+            }),
         )
 
     @classmethod

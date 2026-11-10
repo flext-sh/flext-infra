@@ -14,27 +14,131 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import c, t
     from flext_infra._protocols import (
         FlextInfraProtocolsRope,
         FlextInfraProtocolsTransformers,
     )
+    from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenTransaction
 
 
 class FlextInfraProtocolsCensus:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ReferenceSite(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class ProtocolContractPlacement(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def source_module(self) -> str:
+            """Authenticated source module identity."""
+            ...
+
+        @property
+        def source_class(self) -> str:
+            """Full nested declaring class identity."""
+            ...
+
+        @property
+        def source_path(self) -> Path:
+            """Repository-relative source path."""
+            ...
+
+        @property
+        def line(self) -> int:
+            """Native declaration line."""
+            ...
+
+        @property
+        def category(self) -> c.Infra.ProtocolOrigin:
+            """Origin classification proven before any source movement."""
+            ...
+
+        @property
+        def destination_module(self) -> str:
+            """Canonical destination module identity."""
+            ...
+
+        @property
+        def destination_class(self) -> str:
+            """Full nested destination class identity."""
+            ...
+
+        @property
+        def destination_path(self) -> Path:
+            """Repository-relative destination path."""
+            ...
+
+        @property
+        def public_routes(self) -> tuple[str, ...]:
+            """Public facade routes retained by composition."""
+            ...
+
+        @property
+        def evidence(self) -> tuple[str, ...]:
+            """Native origin and consumer observations."""
+            ...
+
+        @property
+        def dependencies(self) -> tuple[str, ...]:
+            """Native protocol dependencies of this contract."""
+            ...
+
+    @runtime_checkable
+    class ProtocolPlacementCensus(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def contracts(
+            self,
+        ) -> tuple[FlextInfraProtocolsCensus.ProtocolContractPlacement, ...]:
+            """Every discovered structural contract and its placement."""
+            ...
+
+        @property
+        def findings(self) -> tuple[str, ...]:
+            """Origin facts requiring resolution."""
+            ...
+
+    @runtime_checkable
+    class ProtocolOrganizationPlan(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def census(self) -> FlextInfraProtocolsCensus.ProtocolPlacementCensus:
+            """Structural member projected from the owning model.
+
+            The admitted coherent placements, excluding unrelated unresolved
+            origins.
+            """
+            ...
+
+        @property
+        def files(
+            self,
+        ) -> tuple[FlextInfraProtocolsCodegenTransaction.CodegenFilePlan, ...]:
+            """Native movement and dependent source effects."""
+            ...
+
+        pre_move_sources: Mapping[Path, str]
+        findings: tuple[str, ...]
+
+    @runtime_checkable
+    class ReferenceSite(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def surface(self) -> str:
@@ -47,15 +151,28 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class Object(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsMixins.NestedClassPathMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class Object(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def class_path(self) -> str:
+            """Nested class path."""
+            ...
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def name(self) -> t.NonEmptyStr:
@@ -167,14 +284,23 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class RemovalCandidate(
-        FlextInfraProtocolsMixins.AbsoluteFilePathTextMixin,
-        FlextInfraProtocolsMixins.RequiredNonNegativeLineMixin,
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class RemovalCandidate(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
+
+        @property
+        def file_path(self) -> t.NonEmptyStr:
+            """Absolute file path."""
+            ...
 
         @property
         def object_name(self) -> t.NonEmptyStr:
@@ -216,12 +342,13 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class Violation(
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class Violation(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def object_name(self) -> t.NonEmptyStr:
@@ -723,12 +850,13 @@ class FlextInfraProtocolsCensus:
             ...
 
     @runtime_checkable
-    class ProjectReport(
-        FlextInfraProtocolsMixins.ProjectNameMixin,
-        FlextInfraProtocolsBase.FrozenArbitrary,
-        Protocol,
-    ):
+    class ProjectReport(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def objects(self) -> tuple[FlextInfraProtocolsCensus.Object, ...]:
@@ -775,6 +903,13 @@ class FlextInfraProtocolsCensus:
     @runtime_checkable
     class WorkspaceReport(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def protocol_placement(
+            self,
+        ) -> FlextInfraProtocolsCensus.ProtocolPlacementCensus:
+            """Protocol origins and placements inventoried before migration."""
+            ...
 
         constant_consumer_files: t.NonNegativeInt
         constant_consumer_bindings: t.NonNegativeInt

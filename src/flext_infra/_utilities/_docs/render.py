@@ -320,22 +320,26 @@ class FlextInfraUtilitiesDocsRender:
         text = scope.documentation_text
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_INDEX,
-            m.Infra.DocsProjectIndexContext(
-                documentation_language=scope.documentation_language,
-                line_width=width,
-                name=scope.name,
-                project_class=scope.project_class,
-                package_name=scope.package_name,
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+            m.Infra.DocsProjectIndexContext.model_validate({
+                "documentation_language": (scope.documentation_language),
+                "line_width": (width),
+                "name": (scope.name),
+                "project_class": (scope.project_class),
+                "package_name": (scope.package_name),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract,
-                    "description",
-                    text(c.Infra.DocumentationText.NOT_DECLARED),
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract,
+                        "description",
+                        text(c.Infra.DocumentationText.NOT_DECLARED),
+                    )
                 ),
-                links=FlextInfraUtilitiesDocsRender._governance_links(scope),
-            ),
+                "links": (FlextInfraUtilitiesDocsRender._governance_links(scope)),
+            }),
         )
 
     @staticmethod
@@ -357,25 +361,31 @@ class FlextInfraUtilitiesDocsRender:
         text = scope.documentation_text
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_README,
-            m.Infra.DocsProjectReadmeContext(
-                documentation_language=scope.documentation_language,
-                line_width=width,
-                name=scope.name,
-                project_class=scope.project_class,
-                package_name=scope.package_name,
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+            m.Infra.DocsProjectReadmeContext.model_validate({
+                "documentation_language": (scope.documentation_language),
+                "line_width": (width),
+                "name": (scope.name),
+                "project_class": (scope.project_class),
+                "package_name": (scope.package_name),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", text(c.Infra.DocumentationText.UNKNOWN)
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract,
-                    "description",
-                    text(c.Infra.DocumentationText.NOT_DECLARED),
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract,
+                        "description",
+                        text(c.Infra.DocumentationText.NOT_DECLARED),
+                    )
                 ),
-                links=FlextInfraUtilitiesDocsRender._governance_links(scope),
-                facades=FlextInfraUtilitiesDocsRender.as_string_sequence(
-                    contract, "facades"
+                "links": (FlextInfraUtilitiesDocsRender._governance_links(scope)),
+                "facades": (
+                    FlextInfraUtilitiesDocsRender.as_string_sequence(
+                        contract, "facades"
+                    )
                 ),
-            ),
+            }),
         )
 
     @staticmethod
@@ -651,18 +661,22 @@ class FlextInfraUtilitiesDocsRender:
         english = c.Infra.DocumentationText
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_ROOT_OVERVIEW_PAGE,
-            m.Infra.DocsRootOverviewContext(
-                line_width=width,
-                site_title=FlextInfraUtilitiesDocsRender._site_title(contract),
-                version=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "version", english.UNKNOWN.localized("en")
+            m.Infra.DocsRootOverviewContext.model_validate({
+                "line_width": (width),
+                "site_title": (FlextInfraUtilitiesDocsRender._site_title(contract)),
+                "version": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "version", english.UNKNOWN.localized("en")
+                    )
                 ),
-                description=FlextInfraUtilitiesDocsRender._declared_or(
-                    contract, "description", english.NOT_DECLARED.localized("en")
+                "description": (
+                    FlextInfraUtilitiesDocsRender._declared_or(
+                        contract, "description", english.NOT_DECLARED.localized("en")
+                    )
                 ),
-                project_count=project_count,
-                class_counts=class_counts,
-            ),
+                "project_count": (project_count),
+                "class_counts": (class_counts),
+            }),
         )
 
     @staticmethod
@@ -677,7 +691,10 @@ class FlextInfraUtilitiesDocsRender:
         """
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_ROOT_PROJECTS_INDEX,
-            m.Infra.DocsRootProjectsIndexContext(line_width=width, entries=entries),
+            m.Infra.DocsRootProjectsIndexContext.model_validate({
+                "line_width": (width),
+                "entries": (entries),
+            }),
         )
 
     @staticmethod

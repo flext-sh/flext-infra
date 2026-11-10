@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from flext_infra._protocols import FlextInfraProtocolsMixins
+from flext_cli import FlextCliProtocols
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -20,12 +20,18 @@ class FlextInfraProtocolsRefactorNamespaceEnforcer:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class ParseFailureViolation(
-        FlextInfraProtocolsMixins.FilePathMixin,
-        FlextInfraProtocolsMixins.ErrorDetailMixin,
-        Protocol,
-    ):
+    class ParseFailureViolation(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def detail(self) -> str:
+            """Error detail."""
+            ...
+
+        @property
+        def file(self) -> t.NonEmptyStr:
+            """File path."""
+            ...
 
         @property
         def stage(self) -> t.NonEmptyStr:

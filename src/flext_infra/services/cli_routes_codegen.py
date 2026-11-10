@@ -69,9 +69,6 @@ class FlextInfraCodegenRoutes:
             The ordered codegen command routes.
 
         """
-        primary = infra.codegen_routes(provide=lambda: infra)
-        if command is not None and any(route.name == command for route in primary):
-            return primary
         bootstrap = FlextInfraUtilitiesBase.result_routes((
             (
                 "candidate-bootstrap",
@@ -173,11 +170,10 @@ class FlextInfraCodegenRoutes:
                 "version-file generation complete",
             ),
         ))
-        return (
-            *bootstrap,
-            *primary,
-            *remaining,
-        )
+        secondary = (*bootstrap, *remaining)
+        if command is not None and any(route.name == command for route in secondary):
+            return secondary
+        return (*bootstrap, *infra.codegen_routes(provide=lambda: infra), *remaining)
 
     @staticmethod
     def deps_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:

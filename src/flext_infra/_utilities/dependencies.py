@@ -74,12 +74,12 @@ class FlextInfraUtilitiesDependencies(
             used_without_import=(*inputs.invoked_executables, *inputs.loaded_plugins),
         )
         return result_type.ok(
-            m.Infra.RuntimeDependencyPlan(
-                source=scan.source,
-                before=scan.settings,
-                dependencies=tuple(selected),
-                unresolved_modules=tuple(dict.fromkeys(unresolved)),
-                inputs=(
+            m.Infra.RuntimeDependencyPlan.model_validate({
+                "source": (scan.source),
+                "before": (scan.settings),
+                "dependencies": (tuple(selected)),
+                "unresolved_modules": (tuple(dict.fromkeys(unresolved))),
+                "inputs": ((
                     inputs.lock,
                     *inputs.inputs,
                     *(
@@ -89,8 +89,8 @@ class FlextInfraUtilitiesDependencies(
                     ),
                     scan.settings,
                     scan.report_state,
-                ),
-            )
+                )),
+            })
         )
 
     @staticmethod

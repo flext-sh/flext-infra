@@ -67,11 +67,7 @@ if TYPE_CHECKING:
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScan
-    from tests.fixtures import (
-        TestsFlextInfraReleaseForgeMemory,
-        TestsImportedModelCollision,
-        TestsImportedModelReference,
-    )
+    from tests.fixtures import TestsImportedModelCollision, TestsImportedModelReference
     from tests.models import TestsFlextInfraModels, m
     from tests.protocols import TestsFlextInfraProtocols, p
     from tests.refactor import TestsFlextInfraRefactorRopeStubs
@@ -130,7 +126,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraProtocolsBase",
     "TestsFlextInfraProtocolsSemanticCutover",
     "TestsFlextInfraRefactorRopeStubs",
-    "TestsFlextInfraReleaseForgeMemory",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
@@ -216,7 +211,6 @@ install_lazy_exports(
         "TestsFlextInfraProtocolsBase": "._protocols",
         "TestsFlextInfraProtocolsSemanticCutover": "._protocols",
         "TestsFlextInfraRefactorRopeStubs": ".refactor",
-        "TestsFlextInfraReleaseForgeMemory": ".fixtures",
         "TestsFlextInfraServiceBase": ".base",
         "TestsFlextInfraTypes": ".typings",
         "TestsFlextInfraUtilities": ".utilities",

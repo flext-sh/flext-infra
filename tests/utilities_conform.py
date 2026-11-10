@@ -9,8 +9,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import check, codegen, u
-from tests import TestsFlextInfraUtilitiesToml, c, config, m, p, t
+from typing_extensions import TypeForm
+
+from flext_infra import check, codegen, infra, u
+from tests import TestsFlextInfraUtilitiesToml, c, config, m, p
 
 
 class TestsFlextInfraUtilitiesConform:
@@ -62,7 +64,7 @@ class TestsFlextInfraUtilitiesConform:
                     config.Infra.tooling,
                     "ruff.lint",
                     "ignore",
-                    t.TypeForm(Sequence[str]),
+                    TypeForm(Sequence[str]),
                 ),
             }),
         )
@@ -114,7 +116,10 @@ class TestsFlextInfraUtilitiesConform:
                     repository_root=root if executor_root is None else executor_root,
                     request=request,
                     initial_workspace=workspace,
+                    ports=infra.codegen_conform_collaborators(),
                 ),
+                runtime_settings=infra.settings,
+                initial_context=infra.context,
             )
             .plan(request)
             .unwrap()

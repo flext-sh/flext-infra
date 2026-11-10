@@ -224,17 +224,6 @@ class FlextInfraModelsConfigWorkspace:
             FlextInfraConstantsConfig.CodegenKind,
             m.Field(description="Own canonical generation policy"),
         ] = FlextInfraConstantsConfig.CodegenKind.CONFORM
-        kind: Annotated[
-            FlextInfraConstantsConfig.ProjectKind | None,
-            m.Field(
-                description=(
-                    "Own governance profile and architecture boundary. The "
-                    "package base bundle declares no project and so no kind; "
-                    "every project declares it in its own layer, and the "
-                    "project-boundary read fails closed when it is absent"
-                ),
-            ),
-        ] = None
         state: Annotated[
             FlextInfraConstantsConfig.RepositoryState,
             m.Field(description="Own lifecycle participation policy"),

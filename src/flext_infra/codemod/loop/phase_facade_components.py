@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import m, p, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen import FlextInfraCodegenLazyInit
 from flext_infra.transformers._semantic import FlextInfraTransformersSemanticPublication
 
@@ -27,8 +27,12 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
 
     name: str = "facade-components"
 
-    @staticmethod
+    def __init__(self) -> None:
+        """Retain the protocol organization admitted by this phase's plan."""
+        self.protocol_organization: p.Infra.ProtocolOrganizationPlan | None = None
+
     def plan(
+        self,
         root: Path,
         preflight: p.Infra.ModScanReport,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
@@ -45,13 +49,42 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
         result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
         project = rope_workspace.rope_project
         files: list[p.Infra.CodegenFilePlan] = []
+        objects = tuple(
+            item
+            for path in sorted(sources)
+            if "_protocols" in path.parts
+            for item in rope_workspace.objects(
+                path, include_local_scopes=True, include_references=True
+            )
+        )
+        census = u.Infra.protocol_contract_census(
+            rope_workspace, sources=sources, objects=objects
+        )
+        self.protocol_organization = u.Infra.plan_protocol_contract_organization(
+            rope_workspace, sources=sources, census=census
+        )
+        files.extend(self.protocol_organization.files)
+        declared_files = u.Infra.codegen_compose_file_plans(
+            (*project.source_plans, *files), ordered=True
+        )
+        rope_workspace.bind_candidate(declared_files=declared_files)
+        sources = {
+            **sources,
+            **{
+                plan.path: plan.desired_content.decode(c.DEFAULT_ENCODING)
+                for plan in files
+                if plan.desired_content is not None
+            },
+        }
         for project_root in u.Infra.governed_project_roots(root):
             if not u.Infra.namespace_enabled(project_root):
                 continue
             codegen = u.Infra.load_codegen_inputs(project_root).unwrap().spec
             files.extend(
                 rope_workspace.domain_owner_projection(
-                    declared_files=tuple(files),
+                    declared_files=u.Infra.codegen_compose_file_plans(
+                        (*declared_files, *files), ordered=True
+                    ),
                     initializer=FlextInfraCodegenLazyInit.plan_candidate,
                 ).files
             )
@@ -98,7 +131,7 @@ class FlextInfraCodemodLoopPhaseFacadeComponents:
                 rope_workspace.snapshot
             ).items()
         }
-        planned = cls.plan(root, preflight, rope_workspace, sources=sources)
+        planned = cls().plan(root, preflight, rope_workspace, sources=sources)
         if planned.failure:
             return r[bool].from_failure(planned)
         if not planned.value:

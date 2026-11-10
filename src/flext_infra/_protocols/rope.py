@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     )
 
 
-from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import Literal, Protocol, Self, runtime_checkable
 
@@ -24,7 +24,6 @@ from flext_cli import FlextCliProtocols
 
 from flext_infra import t
 from flext_infra._protocols.base import FlextInfraProtocolsBase
-from flext_infra._protocols.mixins import FlextInfraProtocolsMixins
 
 """Application-level protocols for Rope-backed infra utilities.
 
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from flext_infra._protocols import (
+        FlextInfraProtocolsCheck,
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsWorkspaceSnapshot,
     )
@@ -48,6 +48,16 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsRope(Protocol):
     """Application contracts layered around the concrete Rope boundary."""
+
+    @runtime_checkable
+    class ModelEnvelopeChecker(Protocol):
+        """Native diagnostics bound to the supplied complete source candidate."""
+
+        def __call__(
+            self, sources: Mapping[Path, str]
+        ) -> Sequence[FlextInfraProtocolsCheck.Issue]:
+            """Run the native checker without publishing the candidate."""
+            ...
 
     @runtime_checkable
     class RopeWorkspaceSession(FlextCliProtocols.BaseModel, Protocol):
@@ -142,8 +152,13 @@ class FlextInfraProtocolsRope(Protocol):
     # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): source discovery is a
     # Rope boundary and consumes the exact field-only runtime request model.
     @runtime_checkable
-    class ClassInfo(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+    class ClassInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def name(self) -> str:
@@ -260,6 +275,11 @@ class FlextInfraProtocolsRope(Protocol):
             """Map every model route of the session to its projected protocol."""
             ...
 
+        @property
+        def model_protocol_identities(self) -> Mapping[str, str]:
+            """Canonical native identities from the same source projection."""
+            ...
+
     @runtime_checkable
     class RopeWorkspaceDsl(RopeSessionLifecycleDsl, RopeModelProtocolRoutes, Protocol):
         """Public DSL contract for one shared Rope workspace session."""
@@ -267,6 +287,7 @@ class FlextInfraProtocolsRope(Protocol):
         semantic_rename_planner: (
             FlextInfraProtocolsBase.NativeSemanticRenamePlanner
         ) | None
+        model_envelope_checker: FlextInfraProtocolsRope.ModelEnvelopeChecker | None
 
         def facade_projection(
             self,
@@ -712,14 +733,14 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def definitions(
             self,
-        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
+        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
             """Cross-module definition inventory the walk extends."""
             ...
 
         @property
         def lexical(
             self,
-        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
+        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
             """Module-scope bindings visible to every nested base."""
             ...
 
@@ -758,8 +779,13 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class ScopeDefinition(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+    class ScopeDefinition(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def name(self) -> str:
@@ -777,8 +803,13 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class LogicalStatement(FlextInfraProtocolsMixins.PositiveLineMixin, Protocol):
+    class LogicalStatement(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.PositiveInt:
+            """Line number."""
+            ...
 
         @property
         def indent(self) -> int:
@@ -855,12 +886,18 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class ConstantInfo(
-        FlextInfraProtocolsMixins.NonNegativeLineMixin,
-        FlextInfraProtocolsMixins.NestedClassPathMixin,
-        Protocol,
-    ):
+    class ConstantInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def class_path(self) -> str:
+            """Nested class path."""
+            ...
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
 
         @property
         def name(self) -> str:
@@ -878,8 +915,13 @@ class FlextInfraProtocolsRope(Protocol):
             ...
 
     @runtime_checkable
-    class SymbolInfo(FlextInfraProtocolsMixins.NonNegativeLineMixin, Protocol):
+    class SymbolInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def line(self) -> t.NonNegativeInt:
+            """Line number."""
+            ...
 
         @property
         def name(self) -> str:
@@ -1021,6 +1063,11 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def python_path_folders(self) -> t.StrTuple:
             """Ordered physical native import roots sharing the read owner."""
+            ...
+
+        @property
+        def preferred_import_style(self) -> str:
+            """Exact native import preference retained across source epochs."""
             ...
 
     @runtime_checkable

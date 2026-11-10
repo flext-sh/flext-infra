@@ -10,8 +10,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_infra import config
 from flext_infra.check import FlextInfraGateRegistry
+from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, tm
 
 
@@ -57,7 +60,7 @@ class TestsFlextInfraGateRegistry:
 
         Runtime contract: verbs own tools by intent. `fmt` owns formatting
         (ruff format plus the fmt_gates writers such as markdown-format),
-        `fix` repairs findings (markdown, markdown-code, smells), `check` is
+        `fix` runs configured repairs, while `check` is
         read-only: it runs every gate's read-only side, including ``format
         --check``, and `format` stays out of FIXABLE (fix never formats).
         """
@@ -70,10 +73,18 @@ class TestsFlextInfraGateRegistry:
         # `make fix` owns every mutating check-gate EXCEPT the fmt-owned
         # formatters (single-pass verb law: one operation per tool per verb).
         fmt_owned = set(config.Infra.codegen.make.fmt_gates)
-        tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=mutating - fmt_owned)
+        tm.that(
+            set(config.Infra.codegen.make.check_gates_fixable), eq=mutating - fmt_owned
+        )
         tm.ok(fmt_owned & set(c.Infra.CANONICAL_GATE_IDS) <= mutating)
         tm.ok(fmt_owned <= mutating)
         # `format` applies only through `make fmt`; check runs its read-only
         # side, and fix never formats.
         tm.ok(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS)
         tm.ok(c.Infra.FORMAT in c.Infra.CANONICAL_GATE_IDS)
+
+    @staticmethod
+    def test_registry_exposes_the_canonical_gate() -> None:
+        """Test registry exposes the canonical gate."""
+        gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
+        tm.ok(isinstance(gate, FlextInfraGatesDuplication))

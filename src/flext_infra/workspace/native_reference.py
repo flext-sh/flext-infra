@@ -5565,13 +5565,15 @@ class FlextInfraWorkspaceNativeReference:
             if observed.failure:
                 return r[p.Infra.NativeImportObservation].from_failure(observed)
         return r.ok(
-            m.Infra.NativeImportObservation(
-                runtime=Path(sys.executable).resolve(),
-                runtime_prefix=Path(sys.prefix).absolute(),
-                modules=nominations,
-                sources=tuple(sorted(context.sources)),
-                bindings=tuple(sorted(context.evidence, key=lambda item: item.binding)),
-            )
+            m.Infra.NativeImportObservation.model_validate({
+                "runtime": (Path(sys.executable).resolve()),
+                "runtime_prefix": (Path(sys.prefix).absolute()),
+                "modules": (nominations),
+                "sources": (tuple(sorted(context.sources))),
+                "bindings": (
+                    tuple(sorted(context.evidence, key=lambda item: item.binding))
+                ),
+            })
         )
 
     @staticmethod

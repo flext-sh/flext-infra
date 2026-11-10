@@ -14,18 +14,19 @@ from typing import Annotated, ClassVar
 from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
-    FlextInfraUtilitiesGit,
     FlextInfraUtilitiesManagedConflicts,
-    FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities._git import FlextInfraUtilitiesGitWorktreeRoots
 from flext_infra._utilities._pyproject import (
     FlextInfraUtilitiesPyprojectOverlay,
     FlextInfraUtilitiesPyprojectUvSources,
 )
+from flext_infra._utilities.native_tooling import FlextInfraUtilitiesNativeTooling
 
 
 class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources):
@@ -531,7 +532,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         """
         if not (repository_root / c.Infra.GITMODULES).exists(follow_symlinks=False):
             return ()
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(repository_root)
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
+            repository_root
+        )
         if declared.failure:
             msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
@@ -562,13 +565,13 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             ValueError: If the topology root or the declarations are invalid.
 
         """
-        topology = FlextInfraUtilitiesGit.git_repository_root(
+        topology = FlextInfraUtilitiesGitWorktreeRoots.git_repository_root(
             m.Infra.GitRepoRequest(repo_root=project_root),
         )
         if topology.failure:
             msg = topology.error or f"invalid repository topology: {project_root}"
             raise ValueError(msg)
-        declared = FlextInfraUtilitiesGit.git_submodule_declarations(
+        declared = FlextInfraUtilitiesGitWorktreeRoots.git_submodule_declarations(
             topology.value.repository_root,
         )
         if declared.failure:
@@ -1067,11 +1070,11 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             [
                 group
                 for group in (
-                    FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+                    FlextInfraUtilitiesNativeTooling.native_tool_setting(
                         config.Infra.tooling,
                         c.Infra.DEPTRY,
                         "optional_dependencies_dev_groups",
-                        t.TypeForm(Sequence[str]),
+                        TypeForm(Sequence[str]),
                     )
                 )
                 if optional is not None and group in optional
@@ -1222,6 +1225,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
+            u.Cli.toml_remove_key_if_present(pyrefly, "python")
 
         pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
         if pyright is None:

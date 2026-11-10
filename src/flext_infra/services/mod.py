@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 
 from flext_infra import c, codemod, m, p, r, t, u
-from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codegen import FlextInfraStagedPackage
 from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseAccessorRename,
@@ -20,10 +20,81 @@ from flext_infra.codemod.loop import (
     FlextInfraCodemodLoopPhaseImportNormalization,
     FlextInfraCodemodLoopPhaseNamespaceRelocation,
 )
+from flext_infra.gates import FlextInfraGatesPyrefly
+from flext_infra.validate import FlextInfraValidateFreshImport
 
 
 class FlextInfraModHandlers:
     """Compose the existing mod executor using the API's injected capabilities."""
+
+    @staticmethod
+    def model_envelope_diagnostics(
+        root: Path,
+        sources: Mapping[Path, str],
+        *,
+        runtime_root: Path | None = None,
+        storage_root: Path | None = None,
+    ) -> Sequence[p.Infra.Issue]:
+        """Compose the native checker once on the complete current source stage.
+
+        Returns:
+            Original findings mapped back to the supplied source candidate.
+
+        """
+        roots = u.Infra.import_project_roots(root)
+        if runtime_root is None:
+            runtime_root = u.Infra.runtime_owner_root(root).unwrap()
+        stage_workspace = Path(os.path.commonpath(roots))
+        projects = tuple(
+            project
+            for project in roots
+            if project.is_relative_to(root)
+            and any(path.is_relative_to(project) for path in sources)
+        )
+        u.Cli.info(
+            f"mod: model-envelope checker root={root} workspace={stage_workspace} "
+            f"projects={tuple(project.name for project in projects)}"
+        )
+        reports = (
+            m.Infra.RunCommand(repository_root=runtime_root).reports_dir_path
+            / u.generate_id()
+        )
+
+        def inspect(view: Path, _paths: Mapping[Path, Path]) -> Sequence[p.Infra.Issue]:
+            findings: list[p.Infra.Issue] = []
+            for project in projects:
+                candidate = view / project.relative_to(stage_workspace)
+                report_directory = reports / project.name
+                u.Cli.ensure_dir(report_directory).unwrap()
+                result = FlextInfraGatesPyrefly(repository_root=root).check(
+                    candidate,
+                    m.Infra.GateContext(
+                        repository_root=candidate,
+                        runtime_root=runtime_root,
+                        reports_dir=report_directory,
+                    ),
+                )
+                if result.outcome == c.Infra.ToolOutcome.ERROR:
+                    message = "\n".join(issue.message for issue in result.issues)
+                    raise RuntimeError(message or result.raw_output)
+                for issue in result.issues:
+                    path = Path(issue.file)
+                    path = path if path.is_absolute() else candidate / path
+                    logical = (
+                        stage_workspace / path.relative_to(view)
+                        if path.is_relative_to(view)
+                        else path
+                    )
+                    findings.append(issue.model_copy(update={"file": str(logical)}))
+            return tuple(findings)
+
+        return (
+            FlextInfraStagedPackage()
+            .preview_sources(
+                stage_workspace, sources, inspect, storage_root=storage_root
+            )
+            .unwrap()
+        )
 
     @staticmethod
     def _mod_semantic_rule(
@@ -52,23 +123,23 @@ class FlextInfraModHandlers:
                 workspace,
                 u.Infra.candidate_python_sources(candidate, candidate.inputs),
                 selected.rules,
-                options=m.Infra.ContractAdmissionOptions(
-                    signature_additions=selected.signature_additions,
-                    signature_removals=selected.signature_removals,
-                    method_transfers=selected.method_transfers,
-                ),
+                options=m.Infra.ContractAdmissionOptions.model_validate({
+                    "signature_additions": (selected.signature_additions),
+                    "signature_removals": (selected.signature_removals),
+                    "method_transfers": (selected.method_transfers),
+                }),
             )
             if planned.failure:
                 return outcome.from_failure(planned)
             staged = FlextInfraStagedPackage.plan_sources(
                 candidate.workspace,
                 {edit.file_path: edit.updated_source for edit in planned.value},
-                options=m.Infra.StageSourceOptions(
-                    snapshot=workspace.snapshot,
-                    workspaces=candidate.workspaces,
-                    inputs=(*candidate.inputs, *catalogue_inputs),
-                    modes=candidate.modes,
-                ),
+                options=m.Infra.StageSourceOptions.model_validate({
+                    "snapshot": (workspace.snapshot),
+                    "workspaces": (candidate.workspaces),
+                    "inputs": ((*candidate.inputs, *catalogue_inputs)),
+                    "modes": (candidate.modes),
+                }),
             )
             if staged.failure:
                 return outcome.from_failure(staged)
@@ -83,6 +154,7 @@ class FlextInfraModHandlers:
                     context=context,
                     selected=selected,
                     reports_root=root,
+                    repository_relative=root.relative_to(structural_root),
                 ),
             )
         if published.failure:
@@ -100,16 +172,24 @@ class FlextInfraModHandlers:
         context: p.Infra.ModExecutionContext,
         selected: p.Infra.RopeContractRules,
         reports_root: Path,
+        repository_relative: Path,
     ) -> p.Result[bool]:
-        """Verify the elected rule and real imports against the staged sources.
+        """Verify the same logical repository inside its physical staged workspace.
 
         Returns:
             The original planning/runtime failure, or staged consumer acceptance.
 
         """
         outcome = r[bool]
-        root = u.Infra.import_project_roots(root)[0].resolve()
-        with context.rope_workspace(root) as workspace:
+        root /= repository_relative
+        structural_root = u.Infra.import_project_roots(root)[0].resolve()
+        with context.rope_workspace(root, structural_root) as workspace:
+            workspace.model_envelope_checker = partial(
+                FlextInfraModHandlers.model_envelope_diagnostics,
+                root,
+                runtime_root=u.Infra.runtime_owner_root(reports_root).unwrap(),
+                storage_root=reports_root,
+            )
             captured = codemod.FlextInfraCodemodSemanticApply.build_source_plan(
                 root, snapshot=workspace.snapshot
             )
@@ -120,23 +200,28 @@ class FlextInfraModHandlers:
                 workspace,
                 u.Infra.candidate_python_sources(candidate, candidate.inputs),
                 selected.rules,
-                options=m.Infra.ContractAdmissionOptions(
-                    signature_additions=selected.signature_additions,
-                    signature_removals=selected.signature_removals,
-                    method_transfers=selected.method_transfers,
-                ),
+                options=m.Infra.ContractAdmissionOptions.model_validate({
+                    "signature_additions": (selected.signature_additions),
+                    "signature_removals": (selected.signature_removals),
+                    "method_transfers": (selected.method_transfers),
+                }),
             )
         if planned.failure:
             return outcome.from_failure(planned)
         if planned.value:
             return outcome.fail("selected semantic candidate is not a fixed point")
-        return FlextInfraWorkspaceChecker(repository_root=root).execute_payload(
-            m.Infra.RunCommand(
+        return (
+            FlextInfraValidateFreshImport(
                 repository_root=root,
-                reports_dir=str(
-                    m.Infra.RunCommand(repository_root=reports_root).reports_dir_path
-                ),
-                gates=(c.Infra.FRESH_IMPORT,),
+                runtime_root=u.Infra.runtime_owner_root(reports_root).unwrap(),
+            )
+            .build_report(repository_roots=(root,))
+            .flat_map(
+                lambda report: (
+                    outcome.ok(value=True)
+                    if report.passed
+                    else outcome.fail("\n".join((report.summary, *report.violations)))
+                )
             )
         )
 
@@ -346,6 +431,11 @@ class FlextInfraModHandlers:
         *,
         apply: bool,
         rope: p.Infra.RopeWorkspaceDsl,
+        artifact_planner: Callable[
+            [Path, p.Infra.SemanticSourcePlan],
+            p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
+        ]
+        | None = None,
     ) -> p.Result[t.Cli.ResultValue]:
         """Plan and converge one callback without global mod triage.
 
@@ -361,7 +451,20 @@ class FlextInfraModHandlers:
             sources = codemod.FlextInfraCodemodSemanticApply.source_inventory(
                 root, preflight.value, source_project=rope.rope_project
             )
-            return callback.plan(root, preflight.value, rope, sources=sources)
+            effects = callback.plan(root, preflight.value, rope, sources=sources)
+            if effects.failure or not effects.value or artifact_planner is None:
+                return effects
+            seed = codemod.FlextInfraCodemodSemanticApply.build_source_plan(root)
+            if seed.failure:
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(seed)
+            composed = codemod.FlextInfraCodemodSemanticApply.compose_candidate(
+                seed.value, effects.value
+            )
+            if composed.failure:
+                return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(composed)
+            return artifact_planner(root, composed.value).map(
+                lambda artifacts: (*effects.value, *artifacts)
+            )
 
         return FlextInfraModHandlers._converge_selected(
             root, plan, apply=apply, rope=rope, owner=f"callback {callback.name}"
@@ -463,12 +566,13 @@ class FlextInfraModHandlers:
             boundary = FlextInfraModHandlers._campaign_scope_failure(
                 root,
                 root / c.CONFIG_DIR_NAME,
-                m.Infra.RefactorCsvCampaignsSpec(
-                    campaigns=(campaign,),
-                    owners=campaigns.owners,
-                    semantic_plan=campaigns.semantic_plan,
-                    semantic_decisions=campaigns.semantic_decisions,
-                ),
+                m.Infra.RefactorCsvCampaignsSpec.model_validate({
+                    "campaigns": ((campaign,)),
+                    "owners": (campaigns.owners),
+                    "semantic_plan": (campaigns.semantic_plan),
+                    "semantic_decisions": (campaigns.semantic_decisions),
+                    "rewire_directory": campaigns.rewire_directory,
+                }),
             )
             return (
                 boundary
@@ -504,11 +608,24 @@ class FlextInfraModHandlers:
                 return r[t.Cli.ResultValue].fail(
                     "declared callback owner has no callback"
                 )
+            facade = FlextInfraCodemodLoopPhaseFacadeComponents()
+            callback = (
+                facade
+                if owner.callback == facade.name
+                else FlextInfraModHandlers._callback(owner.callback, rope.rope_project)
+            )
             return FlextInfraModHandlers._focused_callback(
                 root,
-                FlextInfraModHandlers._callback(owner.callback, rope.rope_project),
+                callback,
                 apply=request.apply,
                 rope=rope,
+                artifact_planner=partial(
+                    FlextInfraModHandlers._protocol_artifact_files,
+                    organization=lambda: facade.protocol_organization,
+                    directory=campaigns.rewire_directory,
+                )
+                if callback is facade
+                else None,
             )
 
     @staticmethod
@@ -615,6 +732,37 @@ class FlextInfraModHandlers:
         )
 
     @staticmethod
+    def _protocol_artifact_files(
+        root: Path,
+        source_plan: p.Infra.SemanticSourcePlan,
+        *,
+        organization: Callable[[], p.Infra.ProtocolOrganizationPlan | None],
+        directory: Path,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Bind phase metadata to its existing native artifact planning owner.
+
+        Returns:
+            The admitted cohort's immutable artifact file plan, when one exists.
+
+        """
+        observed = organization()
+        if observed is None:
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(())
+        return codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+            root, source_plan, observed.census
+        ).flat_map(
+            lambda intents: (
+                codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
+                    root,
+                    source_plan,
+                    intents,
+                    pre_move_sources=observed.pre_move_sources,
+                    directory=directory,
+                )
+            )
+        )
+
+    @staticmethod
     def _execute_batch(
         context: p.Infra.ModExecutionContext,
         root: Path,
@@ -636,6 +784,7 @@ class FlextInfraModHandlers:
         structural_root = u.Infra.import_project_roots(root)[0].resolve()
         source_preview = context.source_preview(structural_root)
         with context.rope_workspace(root, structural_root) as rope:
+            facade = FlextInfraCodemodLoopPhaseFacadeComponents()
             return codemod.FlextInfraCodemodBatchApply(
                 workspace_factory=context.rope_workspace,
                 source_preview=source_preview,
@@ -670,7 +819,7 @@ class FlextInfraModHandlers:
                 phase_callbacks=(
                     (
                         FlextInfraCodemodLoopPhaseImportNormalization(),
-                        FlextInfraCodemodLoopPhaseFacadeComponents(),
+                        facade,
                         FlextInfraCodemodLoopPhaseNamespaceRelocation(),
                         FlextInfraCodemodLoopPhaseDuplicateApply(),
                         FlextInfraCodemodLoopPhaseAccessorRename(rope.rope_project),
@@ -678,6 +827,13 @@ class FlextInfraModHandlers:
                     if campaigns is not None
                     else ()
                 ),
+                artifact_planner=partial(
+                    FlextInfraModHandlers._protocol_artifact_files,
+                    organization=lambda: facade.protocol_organization,
+                    directory=campaigns.rewire_directory,
+                )
+                if campaigns is not None
+                else None,
             ).execute()
 
     @staticmethod

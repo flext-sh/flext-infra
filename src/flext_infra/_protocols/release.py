@@ -192,8 +192,13 @@ class FlextInfraProtocolsRelease:
             ...
 
     @runtime_checkable
-    class BuildRecord(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
+    class BuildRecord(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def project(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
 
         @property
         def path(self) -> t.Infra.ReleaseAbsolutePath:

@@ -480,6 +480,8 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             Contract routes grouped by their rewritten goal and native bindings.
 
         """
+        if not rule.bindings:
+            return ((rule, tuple(resources)),) if resources else ()
         routes: list[tuple[p.Infra.RopeContractRule, list[p.Infra.RopeResource]]] = []
         for resource in resources:
             routed = cls._import_contract_rule(project, rule, resource, sources)
@@ -525,7 +527,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
             if root is not None
             else None
         )
-        if root is None or located is None or not rule.bindings:
+        if root is None or located is None:
             return rule
         namespace, module_name = located
         letter = cls.family_letter(namespace, path)

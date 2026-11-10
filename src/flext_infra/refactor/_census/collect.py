@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, p
+from flext_infra import m, p, u
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusProject,
     FlextInfraRefactorCensusRemoval,
@@ -131,16 +131,25 @@ class FlextInfraRefactorCensusCollect(
         fixable_rows = tuple(
             row for row in (*alias_rows, *duplicate_rows, *shortest_rows) if row.fixable
         )
-        fix_plan = m.Infra.CensusFixPlan(
-            alias=tuple(row for row in alias_rows if row.fixable),
-            duplicate=tuple(row for row in duplicate_rows if row.fixable),
-            shortest_form=tuple(row for row in shortest_rows if row.fixable),
-            commands=tuple(
-                sorted({self.cure_command(row.cure) for row in fixable_rows})
+        fix_plan = m.Infra.CensusFixPlan.model_validate({
+            "alias": (tuple(row for row in alias_rows if row.fixable)),
+            "duplicate": (tuple(row for row in duplicate_rows if row.fixable)),
+            "shortest_form": (tuple(row for row in shortest_rows if row.fixable)),
+            "commands": (
+                tuple(sorted({self.cure_command(row.cure) for row in fixable_rows}))
             ),
-            expected_rescan=len(fixable_rows),
-        )
+            "expected_rescan": (len(fixable_rows)),
+        })
         return m.Infra.WorkspaceReport(
+            protocol_placement=u.Infra.protocol_contract_census(
+                rope,
+                sources=sources,
+                objects=tuple(
+                    item
+                    for entries in findings.project_objects.values()
+                    for item in entries
+                ),
+            ),
             projects=project_reports,
             total_objects=sum(report.objects_total for report in project_reports),
             total_violations=sum(report.violations_total for report in project_reports),

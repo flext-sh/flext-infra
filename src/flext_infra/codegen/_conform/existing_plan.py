@@ -193,6 +193,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         destinations = contract.destinations
         if destinations is None or destinations not in {
             frozenset({c.Infra.ENVRC_FILENAME}),
+            frozenset({c.Infra.GITIGNORE}),
             frozenset({c.Infra.MISE_TOML_FILENAME}),
             c.Infra.MAKEFILE_BOOTSTRAP_DESTINATIONS,
         }:
@@ -220,10 +221,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
-        managed_artifacts = u.Infra.snapshot_committed_project_managed_artifacts(
-            target.root,
-            read_committed_directory=u.Infra.git_committed_directory_blobs,
-        )
+        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(target.root)
         if managed_artifacts.failure:
             return result_type.from_failure(managed_artifacts)
         if not (contract.tooling or contract.custom):
@@ -622,7 +620,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
     def _render_existing_managed(
         self,
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
         contract: p.Infra.CodegenConformSurfaceContract,
         initializers: Sequence[p.Infra.CodegenFilePlan],
         custom: Sequence[p.Infra.CodegenFilePlan],
@@ -855,9 +853,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             return result_type.fail(
                 f"control requires original project metadata: {root}"
             )
-        managed = u.Infra.snapshot_committed_project_managed_artifacts(
-            root, read_committed_directory=u.Infra.git_committed_directory_blobs
-        )
+        managed = u.Infra.snapshot_project_managed_artifacts(root)
         if managed.failure:
             return result_type.from_failure(managed)
         render_inputs = self.resolve_render_inputs(
@@ -1002,9 +998,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         absent = self._scaffold_absent_metadata(root)
         if absent.failure:
             return result_type.from_failure(absent)
-        managed = u.Infra.snapshot_committed_project_managed_artifacts(
-            root, read_committed_directory=u.Infra.git_committed_directory_blobs
-        )
+        managed = u.Infra.snapshot_project_managed_artifacts(root)
         if managed.failure:
             return result_type.from_failure(managed)
         tooling = self._scaffold_control_tooling(
@@ -1058,12 +1052,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         return self._rendered_managed_plan(
             render_inputs,
             managed,
-            m.Infra.ArtifactRenderRoute(
-                entry=entry,
-                destination=entry.destination,
-                failure_prefix="",
-                project_context=None,
-            ),
+            m.Infra.ArtifactRenderRoute.model_validate({
+                "entry": (entry),
+                "destination": (entry.destination),
+                "failure_prefix": (""),
+                "project_context": (None),
+            }),
             target.root / c.PYPROJECT_FILENAME,
             inputs=observed,
         )
@@ -1220,10 +1214,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 )
             )
         )
-        managed = u.Infra.snapshot_committed_project_managed_artifacts(
-            target.root,
-            read_committed_directory=u.Infra.git_committed_directory_blobs,
-        )
+        managed = u.Infra.snapshot_project_managed_artifacts(target.root)
         if managed.failure:
             return result_type.from_failure(managed)
         render_inputs = self.resolve_render_inputs(
@@ -1278,13 +1269,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         )
         rendered = self._rendered_artifact_source(
             render_inputs,
-            m.Infra.ArtifactRenderRoute(
-                entry=entry,
-                destination=destination,
-                failure_prefix="",
-                project_context=None,
-                planned_manifests=manifests,
-            ),
+            m.Infra.ArtifactRenderRoute.model_validate({
+                "entry": (entry),
+                "destination": (destination),
+                "failure_prefix": (""),
+                "project_context": (None),
+                "planned_manifests": (manifests),
+            }),
         )
         if rendered.failure:
             return result_type.from_failure(rendered)
@@ -1296,7 +1287,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 f"{conflict_marker}",
             )
         if destination == c.Infra.MISE_TOML_FILENAME:
-            composed = self._composed_mise_overlay(target.root, content, None)
+            composed = self._composed_mise_overlay(target.root, content, render_inputs)
             if composed.failure:
                 return result_type.from_failure(composed)
             content = composed.value
@@ -1308,6 +1299,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             inputs=(
                 *rendered.value.source_states,
                 *render_inputs.workspace.inputs,
+                *render_inputs.managed_artifacts.sources,
                 *(state for plan in manifests for state in (plan.before, *plan.inputs)),
             ),
         )
@@ -1477,13 +1469,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             rendered = self._rendered_managed_plan(
                 render_inputs,
                 managed,
-                m.Infra.ArtifactRenderRoute(
-                    entry=entry,
-                    destination=entry.destination,
-                    failure_prefix="",
-                    project_context=None,
-                    planned_manifests=self._candidate_manifests(planned),
-                ),
+                m.Infra.ArtifactRenderRoute.model_validate({
+                    "entry": (entry),
+                    "destination": (entry.destination),
+                    "failure_prefix": (""),
+                    "project_context": (None),
+                    "planned_manifests": (self._candidate_manifests(planned)),
+                }),
                 path,
             )
             if rendered.failure:
@@ -1933,13 +1925,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             current = self._governed_current_text(path)
             if current.failure:
                 u.Infra.codegen_raise_failure(path, current)
-            request = m.Infra.CodegenGovernedPlanRequest(
-                root=root,
-                relative=relative,
-                governed=governed,
-                current=current.value,
-                vscode_spec=vscode_spec,
-            )
+            request = m.Infra.CodegenGovernedPlanRequest.model_validate({
+                "root": (root),
+                "relative": (relative),
+                "governed": (governed),
+                "current": (current.value),
+                "vscode_spec": (vscode_spec),
+            })
             decided = self._decide_governed_plan(request)
             if decided.failure:
                 u.Infra.codegen_raise_failure(path, decided)

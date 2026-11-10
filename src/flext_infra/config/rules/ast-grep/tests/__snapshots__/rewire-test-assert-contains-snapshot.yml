@@ -1,5 +1,12 @@
 id: rewire-test-assert-contains
 snapshots:
+  assert left in right:
+    fixed: tm.that(right, has=left)
+    labels:
+    - source: assert left in right
+      style: primary
+      start: 0
+      end: 20
   "from tests import tm\nassert (\n    \"a long expected fragment\"\n    in observed\n)\n":
     fixed: |
       from tests import tm
@@ -13,19 +20,6 @@ snapshots:
       style: primary
       start: 21
       end: 78
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert (
-            "a long expected fragment"
-            in observed
-        )
-      style: secondary
-      start: 0
-      end: 79
   "from tests import tm\nassert left in right\n":
     fixed: |
       from tests import tm
@@ -35,13 +29,3 @@ snapshots:
       style: primary
       start: 21
       end: 41
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        assert left in right
-      style: secondary
-      start: 0
-      end: 42

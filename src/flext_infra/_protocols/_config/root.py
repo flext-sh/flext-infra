@@ -56,6 +56,11 @@ class FlextInfraProtocolsConfigRoot:
             ...
 
         @property
+        def rope(self) -> FlextInfraProtocolsConfigStatic.RopePreferencesSpec:
+            """Native source-engine preference policy."""
+            ...
+
+        @property
         def mutation_lock(self) -> FlextInfraProtocolsConfigStatic.MutationLockSpec:
             """Bounded wait for a mutation scope lock."""
             ...

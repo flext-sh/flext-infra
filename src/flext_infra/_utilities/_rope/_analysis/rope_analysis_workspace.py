@@ -552,15 +552,15 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         modules, init_path, project_root, package_name = cls._package_identity(
             package_dir, modules_by_dir, modules_by_path
         )
-        candidate = m.Infra.RopePackageIndexEntry(
-            package_dir=package_dir,
-            init_path=init_path,
-            package_name=package_name,
-            project_root=project_root,
-            modules=modules,
-            direct_child_dirs=tuple(family_maps[0].get(package_dir, ())),
-            descendant_child_dirs=tuple(family_maps[1].get(package_dir, ())),
-        )
+        candidate = m.Infra.RopePackageIndexEntry.model_validate({
+            "package_dir": (package_dir),
+            "init_path": (init_path),
+            "package_name": (package_name),
+            "project_root": (project_root),
+            "modules": (modules),
+            "direct_child_dirs": (tuple(family_maps[0].get(package_dir, ()))),
+            "descendant_child_dirs": (tuple(family_maps[1].get(package_dir, ()))),
+        })
         previous = (
             previous_index.packages_by_dir.get(str(package_dir))
             if previous_index is not None

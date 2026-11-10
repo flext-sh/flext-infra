@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
+from typing_extensions import TypeForm
 
 from flext_infra import config, m, p, t
 from flext_infra._utilities._rope import (
@@ -208,6 +209,9 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         if not isinstance(project, p.Infra.RopeProject):
             msg = "rope Project does not satisfy p.Infra.RopeProject"
             raise TypeError(msg)
+        project.get_prefs().imports.preferred_import_style = (
+            config.Infra.rope.preferred_import_style.value
+        )
         return project
 
     @staticmethod
@@ -218,9 +222,9 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
             The native core retained by the project.
 
         """
-        return u.type_adapter(
-            t.TypeForm(t.Port[t.Infra.RopeNativeCore])
-        ).validate_python(project.get_pycore(), strict=True)
+        return u.type_adapter(TypeForm(t.Port[t.Infra.RopeNativeCore])).validate_python(
+            project.get_pycore(), strict=True
+        )
 
     @classmethod
     def extension_module_names(cls, project: p.Infra.RopeProject) -> t.StrTuple:
@@ -248,6 +252,7 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
 
         """
         return m.Infra.RopeProjectElection(
+            preferred_import_style=project.get_prefs().imports.preferred_import_style,
             source_folders=tuple(
                 folder.path for folder in project.get_source_folders()
             ),

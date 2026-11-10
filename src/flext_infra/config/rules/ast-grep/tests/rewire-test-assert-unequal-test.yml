@@ -1,10 +1,16 @@
 id: rewire-test-assert-unequal
 valid:
-- assert left != right
+- |
+  from other_library import tm
+  assert left != right
+- |
+  def check(tm: object) -> None:
+      assert left != right
 - |
   from tests import tm
   assert left != right, "message"
 invalid:
+- assert left != right
 - |
   from tests import tm
   assert left != right

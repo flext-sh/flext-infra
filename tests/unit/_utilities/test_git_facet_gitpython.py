@@ -17,6 +17,40 @@ class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
     @staticmethod
+    def test_inside_work_tree_uses_requested_directory(tmp_path: Path) -> None:
+        """Control storage and its previews are outside the working tree."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        nested = repository / "nested"
+        nested.mkdir()
+        control = repository / ".git"
+        preview = control / "source-preview"
+        preview.mkdir()
+        bare = tmp_path / "bare.git"
+        u.Tests.git_run(repository, "init", "--bare", str(bare))
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        for path in (repository, nested, control, preview, bare):
+            native = u.Tests.git_capture(
+                path, "rev-parse", "--is-inside-work-tree"
+            ).strip()
+            report = tm.ok(
+                u.Infra.git_is_inside_work_tree(m.Infra.GitRepoRequest(repo_root=path))
+            )
+            tm.that(report.value, eq=native == "true")
+        for path in (control, preview, bare, outside, outside / "absent"):
+            report = tm.ok(
+                u.Infra.git_is_inside_work_tree(m.Infra.GitRepoRequest(repo_root=path))
+            )
+            tm.that(report.value, eq=False)
+        undiscovered = tm.ok(
+            u.Infra.git_is_inside_work_tree(
+                m.Infra.GitRepoRequest(repo_root=nested),
+                search_parent_directories=False,
+            )
+        )
+        tm.that(undiscovered.value, eq=False)
+
+    @staticmethod
     @c.Tests.MARK.parametrize("index_mode", ["ordinary", "v4", "split"])
     def test_retire_index_artifact_preserves_live_and_staged_siblings(
         tmp_path: Path,
@@ -59,10 +93,10 @@ class TestsFlextInfraGitFacet:
         entry = tm.not_none(captured.entry)
         tm.ok(
             u.Infra.git_retire_index_file(
-                m.Infra.GitIndexRetirementRequest(
-                    repo_root=repository,
-                    entry=entry,
-                ),
+                m.Infra.GitIndexRetirementRequest.model_validate({
+                    "repo_root": (repository),
+                    "entry": (entry),
+                }),
             ),
         )
         observed_sibling = tm.ok(
@@ -118,10 +152,10 @@ class TestsFlextInfraGitFacet:
         u.Tests.git_run(repository, "add", "--", artifact.name)
         before = self._lane_bytes(repository)
         rejected = u.Infra.git_retire_index_file(
-            m.Infra.GitIndexRetirementRequest(
-                repo_root=repository,
-                entry=entry,
-            ),
+            m.Infra.GitIndexRetirementRequest.model_validate({
+                "repo_root": (repository),
+                "entry": (entry),
+            }),
         )
         tm.fail(rejected)
         tm.that(rejected.exception, is_=ValueError)
@@ -508,15 +542,13 @@ class TestsFlextInfraGitFacet:
 
         unborn = u.Infra.git_identity(request)
 
-        tm.fail(unborn)
-        tm.that(unborn.error_code, eq=c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
+        tm.ok(unborn)
         branch_ref = repository / c.GIT_DIR_NAME / "refs" / "heads" / "initial"
         branch_ref.write_text("invalid object identifier\n", encoding="utf-8")
 
         corrupted = u.Infra.git_identity(request)
 
         tm.fail(corrupted)
-        tm.fail(corrupted.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
         tm.not_none(corrupted.exception)
 
     @staticmethod
@@ -527,7 +559,6 @@ class TestsFlextInfraGitFacet:
         result = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=repository))
 
         tm.fail(result)
-        tm.fail(result.error_code == c.Infra.GIT_UNBORN_HEAD_ERROR_CODE)
         tm.not_none(result.exception)
 
     @staticmethod

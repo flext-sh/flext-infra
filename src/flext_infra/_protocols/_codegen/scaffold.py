@@ -38,7 +38,13 @@ class FlextInfraProtocolsCodegenScaffold:
     class CensusReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        violations: Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]
+        @property
+        def violations(
+            self,
+        ) -> Sequence[FlextInfraProtocolsCodegenScaffold.CensusViolation]:
+            """Detected violations."""
+            ...
+
         total: t.NonNegativeInt
         fixable: t.NonNegativeInt
 

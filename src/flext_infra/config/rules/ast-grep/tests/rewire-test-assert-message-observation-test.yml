@@ -1,6 +1,11 @@
 id: rewire-test-assert-message-observation
 valid:
-- assert result.success, result.error
+- |
+  from other_library import tm
+  assert result.success, result.error
+- |
+  def check(tm: object, result: object) -> None:
+      assert result.success, result.error
 - |
   from tests import tm
   assert isinstance(value, Entry), "An entry is required"
@@ -8,6 +13,7 @@ valid:
   from tests import tm
   assert value is None, "No value is expected"
 invalid:
+- assert result.success, result.error
 - |
   from tests import tm
   assert result.success, result.error

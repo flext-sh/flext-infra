@@ -8,13 +8,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
-from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsMixins
+from flext_infra._protocols import FlextInfraProtocolsBase
 
 if TYPE_CHECKING:
     from flext_cli import p
@@ -34,8 +34,42 @@ class FlextInfraProtocolsCodegenPipeline:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
-    class CodegenCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class CodegenCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def check_only(self) -> bool:
@@ -120,7 +154,12 @@ class FlextInfraProtocolsCodegenPipeline:
             """Workspace governing the selection."""
             ...
 
-        uv_environments: tuple[FlextInfraProtocolsConfigRelease.UvEnvironmentPlan, ...]
+        @property
+        def uv_environments(
+            self,
+        ) -> tuple[FlextInfraProtocolsConfigRelease.UvEnvironmentPlan, ...]:
+            """Uv plans paired with selected repositories."""
+            ...
 
         @property
         def files(
@@ -129,9 +168,14 @@ class FlextInfraProtocolsCodegenPipeline:
             """All render results validated before application."""
             ...
 
-        outcomes: tuple[
+        @property
+        def outcomes(
+            self,
+        ) -> tuple[
             FlextInfraProtocolsCodegenPipeline.CodegenRepositoryPlanOutcome, ...
-        ]
+        ]:
+            """Original repository outcomes retained for coherent admission."""
+            ...
 
     @runtime_checkable
     class CodegenResult(FlextInfraProtocolsBase.FrozenArbitrary, Protocol):

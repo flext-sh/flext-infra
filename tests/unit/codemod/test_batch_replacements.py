@@ -512,14 +512,14 @@ class TestsFlextInfraBatchReplacements:
         path = root / "config.py"
         absent = tm.ok(u.Cli.atomic_read_binary_file_state(path))
         desired = b'value = "after"\n'
-        plan = m.Infra.SemanticFilePlan(
-            project=root,
-            path=path,
-            before=absent,
-            desired_content=desired,
-            desired_mode=0o644,
-            changes=("fixture-rewrite",),
-        )
+        plan = m.Infra.SemanticFilePlan.model_validate({
+            "project": (root),
+            "path": (path),
+            "before": (absent),
+            "desired_content": (desired),
+            "desired_mode": (0o644),
+            "changes": (("fixture-rewrite",)),
+        })
         created = {path: 'value = "before"\n'} if seeded else {}
         admitted = codemod.FlextInfraModReplacements.admit(root, (plan,), created)
         if seeded:

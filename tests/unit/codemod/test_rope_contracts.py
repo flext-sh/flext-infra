@@ -177,12 +177,12 @@ class TestsFlextInfraRopeContractCatalog:
         rule = m.Infra.RopeContractRule(
             id="scoped-pydantic-adapter",
             pattern="${adapter}(${contract})",
-            goal="u.type_adapter(t.TypeForm(${contract}))",
+            goal="u.type_adapter(TypeForm(${contract}))",
             arguments={"adapter": "name=pydantic.TypeAdapter"},
             imports={"u": "from flext_core import u", "t": "from flext_core import t"},
             bindings={
                 "u.type_adapter": "pydantic.TypeAdapter",
-                "t.TypeForm": "typing_extensions.TypeForm",
+                "TypeForm": "typing_extensions.TypeForm",
             },
             scope=m.Infra.RopeContractScope(
                 targets=(

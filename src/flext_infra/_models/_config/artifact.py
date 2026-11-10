@@ -1314,31 +1314,6 @@ class FlextInfraModelsConfigArtifact(
             c.Infra.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
         ] = c.Infra.CodegenConformMode.CHECK
-        declaration_kind: Annotated[
-            c.Infra.ProjectKind | None,
-            m.Field(
-                description="Explicit self-owned kind supplied by native bootstrap"
-            ),
-        ] = None
-
-        @m.model_validator(mode="after")
-        def _validate_declaration_kind(self) -> Self:
-            """Keep explicit kind bootstrap on the target's own Makefile.
-
-            Returns:
-                The request with a coherent explicit bootstrap selection.
-
-            Raises:
-                ValueError: If kind bootstrap addresses another surface or scope.
-
-            """
-            if self.declaration_kind is not None and (
-                self.what != c.Infra.CodegenConformSurface.MAKEFILE
-                or self.scope != c.Infra.CodegenConformScope.SELF
-            ):
-                msg = "kind bootstrap requires the target's self Makefile surface"
-                raise ValueError(msg)
-            return self
 
     class ArtifactRenderRoute(m.StrictModel):
         """One artifact render dispatch: entry, destination and its context."""

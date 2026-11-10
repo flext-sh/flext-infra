@@ -42,7 +42,6 @@ class TestsFlextInfraCodegenCiMatrixSupport:
                     update={"upstream": "flext_cli"}
                 ),
                 integration=integration,
-                kind=repository.kind,
             )
             tm.ok(
                 u.Cli.yaml_dump(
@@ -60,7 +59,6 @@ class TestsFlextInfraCodegenCiMatrixSupport:
             )
             service = FlextInfraCodegenMakeBootstrap(
                 repository_root=root,
-                kind=repository.kind,
                 apply_changes=True,
             )
             tm.ok(service.execute(), eq=True)

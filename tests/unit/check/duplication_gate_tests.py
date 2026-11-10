@@ -10,7 +10,6 @@ from collections.abc import Generator
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraGatesDuplication
 from tests import c, m, p, t, tm, u
 
@@ -46,12 +45,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     @staticmethod
     def _ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
-
-    @staticmethod
-    def test_registry_exposes_the_canonical_gate() -> None:
-        """Test registry exposes the canonical gate."""
-        gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
-        tm.ok(isinstance(gate, FlextInfraGatesDuplication))
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         """Test empty workspace scope is a blocking failure."""
@@ -140,7 +133,6 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
                 "      duplication_trees: [charts]\n",
                 encoding="utf-8",
             )
-            u.Tests.declare_governed_kind(root)
         return root
 
     def test_declared_trees_enter_the_scan_and_fail_on_clones(
@@ -337,9 +329,10 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         tm.ok(execution.result.passed)
         tm.that(execution.issues, eq=())
 
-    def test_cross_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A cross-file clone blocks; CI runs similarity, semantic NOT EXECUTED."""
-        root = self._governed_with_python_clone(tmp_path, same_file=False)
+    @c.Tests.MARK.parametrize("same_file", (False, True))
+    def test_python_clone_is_reported(self, tmp_path: Path, *, same_file: bool) -> None:
+        """Distinct clone spans block within one file and across files."""
+        root = self._governed_with_python_clone(tmp_path, same_file=same_file)
 
         execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
 
@@ -362,22 +355,11 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             truth=True,
         )
 
-    def test_intra_file_clone_is_reported(self, tmp_path: Path) -> None:
-        """A file that duplicates a block inside itself is a finding.
-
-        The identical file/span pair from the double-scan is dropped, but a
-        same-file clone with two distinct spans is genuine duplication and
-        must never be hidden.
-        """
-        root = self._governed_with_python_clone(tmp_path, same_file=True)
-
-        execution = FlextInfraGatesDuplication(root).check(root, self._ctx(root))
-
-        tm.fail(execution.result.passed)
-        tm.that(
-            {issue.file for issue in execution.issues},
-            eq={"src/fixture_python_clone/duplicated.py"},
-        )
+        if same_file:
+            tm.that(
+                {issue.file for issue in execution.issues},
+                eq={"src/fixture_python_clone/duplicated.py"},
+            )
 
     @staticmethod
     def _governed_with_fleet_members(

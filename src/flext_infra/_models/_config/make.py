@@ -23,10 +23,10 @@ from flext_infra._models._config.make_docs import FlextInfraModelsConfigMakeDocs
 from flext_infra.make_contract import FlextInfraConfigMakeContract
 
 
-def _effective_custom_handler_policies(
-    base: p.Infra.CustomHandlerPolicy,
+def _effective_custom_handler_policies[PolicyT: p.Infra.CustomHandlerPolicy](
+    base: PolicyT,
     overrides: tuple[tuple[str, p.Infra.CustomHandlerPolicyOverride], ...],
-) -> Mapping[str, p.Infra.CustomHandlerPolicy]:
+) -> Mapping[str, PolicyT]:
     """Derive the effective per-profile policy from frozen policy inputs.
 
     Pure function of frozen models: the returned mapping is read-only.
@@ -36,7 +36,7 @@ def _effective_custom_handler_policies(
         overrides: Sorted ``(profile, relaxed policy)`` declaration pairs.
 
     Returns:
-        The resulting ``Mapping[str, p.Infra.CustomHandlerPolicy]``.
+        Effective policies retaining the supplied model type.
 
     """
     # Keys are normalised to the profile's string value: MakeProfile is a

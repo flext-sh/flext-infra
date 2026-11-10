@@ -26,6 +26,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
     """Typed workspace and project-layout fixture helpers."""
 
     @staticmethod
+    def contract_rule_targets(
+        rule_id: str,
+    ) -> tuple[p.Infra.RopeContractScopeTarget | None, ...]:
+        """Return every declared scope target, or the explicit unscoped case.
+
+        Returns:
+            The native catalog's complete nonempty fixture matrix.
+
+        """
+        root = tm.not_none(u.Infra.project_root(Path(__file__)))
+        (rule,) = (
+            rule for rule in u.Infra.declared_contract_rules(root) if rule.id == rule_id
+        )
+        return (None,) if rule.scope is None else tuple(rule.scope.targets)
+
+    @staticmethod
     def prove_contract_migration(
         consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
         source: str,
@@ -112,7 +128,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return project_dir
 
     @staticmethod
@@ -275,12 +290,12 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     "packaged_data_excludes": tuple(resolved.packaged_data_excludes),
                 },
             )
-        manifest = m.Infra.WorkspaceManifestSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=name,
-            repository=repository,
-            project=project,
-        )
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate({
+            "version": (c.Infra.WORKSPACE_MANIFEST_VERSION),
+            "name": (name),
+            "repository": (repository),
+            "project": (project),
+        })
         if resolved.gascity_enabled is not None:
             manifest = manifest.model_copy(
                 update={
@@ -297,7 +312,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         config_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
         tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project_dir)
         return manifest_path
 
     @staticmethod
@@ -483,7 +497,6 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         )
         for filename, content in files.items():
             (pkg / filename).write_text(content, encoding="utf-8")
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(project)
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
         return project
 
@@ -800,7 +813,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             )
 
         @classmethod
-        def conformed_root(cls, tmp_path: Path) -> Path:
+        def conformed_root(
+            cls, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+        ) -> Path:
             """Materialize one governed project and conform it to a fixed point.
 
             Returns:
@@ -820,6 +835,17 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             TestsFlextInfraUtilitiesGit.commit_git_changes(
                 root,
                 "Declare project identity",
+            )
+            tm.ok(
+                TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
+                    root,
+                    dependency_projects=(
+                        TestsFlextInfraUtilitiesToolingFixture.python_dependency_projects(
+                            root
+                        )
+                    ),
+                    session_runtime=session_runtime,
+                )
             )
             tm.ok(
                 infra.codegen_conform(

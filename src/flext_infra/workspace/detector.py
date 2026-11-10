@@ -336,8 +336,7 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[p.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
-        ``kind`` is the repository's own declared governance kind, read before
-        the reference exists; the reference never carries an assumed kind.
+        ``kind`` comes from the shared native project-fact detector.
 
         Returns:
             The resulting ``p.Result[p.Infra.RepositoryRef]``.
@@ -369,20 +368,17 @@ class FlextInfraWorkspaceDetector(
         if origin.failure:
             return r[p.Infra.RepositoryRef].from_failure(origin)
         origin_url, provider_name = origin.value
-        canonical_url = u.Infra.validate_git_remote_url(declared_url or origin_url)
-        if canonical_url.failure:
-            return r[p.Infra.RepositoryRef].from_failure(canonical_url)
-        effective_url = canonical_url.value
-        identity = u.Infra.git_identity(
-            m.Infra.GitRepoRequest(repo_root=repository_root)
+        checkout = u.Infra.validate_git_remote_url(declared_url or origin_url).flat_map(
+            lambda remote: u.Infra.git_identity(
+                m.Infra.GitRepoRequest(repo_root=repository_root)
+            ).map(lambda identity: (remote, identity))
         )
-        if identity.failure:
-            return r[p.Infra.RepositoryRef].from_failure(identity)
-        is_submodule = identity.value.is_submodule
-        has_gitmodules = (repository_root / c.Infra.GITMODULES).is_file()
+        if checkout.failure:
+            return r[p.Infra.RepositoryRef].from_failure(checkout)
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if is_submodule or has_gitmodules
+            if checkout.value[1].is_submodule
+            or (repository_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(
@@ -402,7 +398,7 @@ class FlextInfraWorkspaceDetector(
                 inputs=() if native_metadata is None else (native_metadata.source,),
                 name=repository_name,
                 distribution=project_name,
-                url=effective_url,
+                url=checkout.value[0],
                 path=path,
                 role=role,
                 provider=provider_name,
@@ -462,7 +458,7 @@ class FlextInfraWorkspaceDetector(
         repository_root: Path,
         inputs: p.Infra.CodegenInputs,
     ) -> p.Result[p.Infra.ProjectSpec]:
-        """Require the project, integration, kind and dependency declarations.
+        """Require the project, integration and dependency declarations.
 
         Returns:
             The declared project, or the typed declaration failure.
@@ -476,9 +472,9 @@ class FlextInfraWorkspaceDetector(
                 f"project declaration: {repository_root}",
             )
             return result_type.fail(str(error), exception=error)
-        if declaration.integration is None or declaration.kind is None:
+        if declaration.integration is None:
             return result_type.fail(
-                "new project requires its own integration and kind declarations: "
+                "new project requires its own integration declaration: "
                 f"{repository_root}",
             )
         if declaration.project.flext_source is None:
@@ -618,11 +614,11 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
-        context = m.Infra.SubprojectLoadContext(
-            integration_branch=baseline.value,
-            workspace_beads=workspace_beads,
-            allow_unprovisioned_members=allow_unprovisioned_members,
-        )
+        context = m.Infra.SubprojectLoadContext.model_validate({
+            "integration_branch": (baseline.value),
+            "workspace_beads": (workspace_beads),
+            "allow_unprovisioned_members": (allow_unprovisioned_members),
+        })
         for declaration in declared.value:
             loaded = cls._load_subproject(
                 repository_root,
@@ -941,24 +937,26 @@ class FlextInfraWorkspaceDetector(
                 return r[p.Infra.WorkspaceSpec].from_failure(bootstrap)
             bootstrap_source = bootstrap.value
         return r[p.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                inputs=observations,
-                name=name,
-                flext_source=bootstrap_source,
-                beads=workspace_beads,
-                gascity_enabled=resolved_refs[0][1],
-                repository=resolved_refs[0][0],
-                project=resolved_refs[0][2],
-                namespace_scan_dirs=declaration.namespace_scan_dirs,
-                integration=declaration.integration,
-                candidate_dependencies=declaration.candidate_dependencies,
-                candidate_bootstrap_targets=declaration.candidate_bootstrap_targets,
-                docs_audit=declaration.docs_audit,
-                subprojects=tuple(resolved_refs[1][0]),
-                pending_subprojects=tuple(resolved_refs[1][2]),
-                external_dependency_paths=tuple(resolved_refs[1][1]),
-                external_consumers=external_consumers.value,
-            ),
+            m.Infra.WorkspaceSpec.model_validate({
+                "inputs": (observations),
+                "name": (name),
+                "flext_source": (bootstrap_source),
+                "beads": (workspace_beads),
+                "gascity_enabled": (resolved_refs[0][1]),
+                "repository": (resolved_refs[0][0]),
+                "project": (resolved_refs[0][2]),
+                "namespace_scan_dirs": (declaration.namespace_scan_dirs),
+                "integration": (declaration.integration),
+                "candidate_dependencies": (declaration.candidate_dependencies),
+                "candidate_bootstrap_targets": (
+                    declaration.candidate_bootstrap_targets
+                ),
+                "docs_audit": (declaration.docs_audit),
+                "subprojects": (tuple(resolved_refs[1][0])),
+                "pending_subprojects": (tuple(resolved_refs[1][2])),
+                "external_dependency_paths": (tuple(resolved_refs[1][1])),
+                "external_consumers": (external_consumers.value),
+            }),
         )
 
     @classmethod
@@ -1159,10 +1157,10 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
-        context = m.Infra.SubprojectLoadContext(
-            integration_branch=baseline.value,
-            workspace_beads=inherited_beads.value,
-        )
+        context = m.Infra.SubprojectLoadContext.model_validate({
+            "integration_branch": baseline.value,
+            "workspace_beads": inherited_beads.value,
+        })
         loaded_member = u.Infra.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(
                 repo_root=superproject_root,
@@ -1315,19 +1313,19 @@ class FlextInfraWorkspaceDetector(
             inputs = captured.value
         declaration = inputs.spec.repository
         return r[p.Infra.RepositoryConformTarget].ok(
-            m.Infra.RepositoryConformTarget(
-                repository=workspace.repository,
-                root=resolved_root,
-                toolchain_root=resolved_root,
-                make_profile=workspace.repository.role,
-                beads=workspace.beads,
-                project=workspace.project,
-                canonical_project_name=canonical_project_name,
-                ci_enabled=declaration.ci_enabled,
-                publishes_release=workspace.repository.publishes_release,
-                gascity_enabled=workspace.gascity_enabled,
-                external_dependency_paths=workspace.external_dependency_paths,
-            ),
+            m.Infra.RepositoryConformTarget.model_validate({
+                "repository": (workspace.repository),
+                "root": (resolved_root),
+                "toolchain_root": (resolved_root),
+                "make_profile": (workspace.repository.role),
+                "beads": (workspace.beads),
+                "project": (workspace.project),
+                "canonical_project_name": (canonical_project_name),
+                "ci_enabled": (declaration.ci_enabled),
+                "publishes_release": (workspace.repository.publishes_release),
+                "gascity_enabled": (workspace.gascity_enabled),
+                "external_dependency_paths": (workspace.external_dependency_paths),
+            }),
         )
 
     @staticmethod

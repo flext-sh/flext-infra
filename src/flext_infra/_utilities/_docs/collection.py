@@ -244,16 +244,16 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
                 for path, content in self.desired.items()
             })
             self.desired[manifest_path] = (
-                m.Infra.PlanCollectionManifest(
-                    configuration_sha256=(
+                m.Infra.PlanCollectionManifest.model_validate({
+                    "configuration_sha256": (
                         FlextInfraUtilitiesDocsCollectionSources.collection_configuration_digest(
                             self.configuration
                         )
                     ),
-                    coverage=tuple(self.coverage),
-                    revisions=tuple(self.history),
-                    artifacts=tuple(owned[path] for path in sorted(owned)),
-                ).model_dump_json(indent=2)
+                    "coverage": (tuple(self.coverage)),
+                    "revisions": (tuple(self.history)),
+                    "artifacts": (tuple(owned[path] for path in sorted(owned))),
+                }).model_dump_json(indent=2)
                 + "\n"
             ).encode()
 

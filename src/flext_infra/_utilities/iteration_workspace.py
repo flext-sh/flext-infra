@@ -184,12 +184,12 @@ class FlextInfraUtilitiesIterationWorkspace:
                 first_failure = failure
         published = FlextInfraUtilitiesRefactor.publish_refactor_report_evidence(
             resolved,
-            m.Infra.WorkspaceOperationReport(
-                root=resolved,
-                operation=operation,
-                scope=roots,
-                receipts=tuple(receipts),
-            ),
+            m.Infra.WorkspaceOperationReport.model_validate({
+                "root": (resolved),
+                "operation": (operation),
+                "scope": (roots),
+                "receipts": (tuple(receipts)),
+            }),
             relative_path=(
                 c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY / f"{operation}.json"
             ),

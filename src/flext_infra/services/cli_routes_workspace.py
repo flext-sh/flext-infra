@@ -211,6 +211,68 @@ class FlextInfraWorkspaceRoutes:
         return captured.process.raw_return_code
 
     @staticmethod
+    def _attestation_context(
+        workspace_path: str,
+    ) -> p.Result[p.Infra.WorkspaceRuntimeContext]:
+        """Elect the runtime context for one attestation request.
+
+        Returns:
+            The elected runtime context or its first election failure.
+
+        """
+        return workspace.FlextInfraWorkspaceDetector.resolution_context(
+            Path(workspace_path).expanduser().resolve()
+        )
+
+    @classmethod
+    def _create_gate_attestation(
+        cls,
+        params: p.Infra.GateAttestationCreateRequest,
+    ) -> p.Result[p.Infra.GateAttestationReport]:
+        """Sign one original receipt without publishing repository state.
+
+        Returns:
+            The signed stage proof or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateAttestationReport].from_failure(context)
+        return u.Infra.git_create_gate_attestation(params, context.value)
+
+    @classmethod
+    def _verify_gate_attestation(
+        cls,
+        params: p.Infra.GateAttestationVerifyRequest,
+    ) -> p.Result[p.Infra.GateAttestationReport]:
+        """Verify one signed stage proof against the elected live runtime.
+
+        Returns:
+            The verified stage proof or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateAttestationReport].from_failure(context)
+        return u.Infra.git_verify_gate_attestation(params, context.value)
+
+    @classmethod
+    def _admit_gate_candidate(
+        cls,
+        params: p.Infra.GateCandidateAdmissionRequest,
+    ) -> p.Result[p.Infra.GateCandidateAdmissionReport]:
+        """Admit one exact candidate against a signed stage proof.
+
+        Returns:
+            The admission decision or the original verification failure.
+
+        """
+        context = cls._attestation_context(params.workspace)
+        if context.failure:
+            return r[p.Infra.GateCandidateAdmissionReport].from_failure(context)
+        return u.Infra.git_admit_gate_candidate(params, context.value)
+
+    @staticmethod
     def release_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the release group's native model and handler bindings.
 
@@ -262,6 +324,27 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
+                name="create-gate-attestation",
+                help_text="Sign one original receipt as an immutable stage proof",
+                model_cls=m.Infra.GateAttestationCreateRequest,
+                handler=cls._create_gate_attestation,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="verify-gate-attestation",
+                help_text="Verify one signed stage proof against the live runtime",
+                model_cls=m.Infra.GateAttestationVerifyRequest,
+                handler=cls._verify_gate_attestation,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="admit-gate-candidate",
+                help_text="Admit an exact candidate against a signed stage proof",
+                model_cls=m.Infra.GateCandidateAdmissionRequest,
+                handler=cls._admit_gate_candidate,
+                success_formatter=cls._payload_json_formatter,
+            ),
+            m.Cli.ResultCommandRoute(
                 name=c.Infra.FLEET_GAPS_ROUTE_NAME,
                 help_text=(
                     "Report every declared repository's hygiene gaps (dirty paths, "
@@ -275,14 +358,14 @@ class FlextInfraWorkspaceRoutes:
             *u.Infra.result_routes((
                 (
                     c.Infra.VERB_TEST,
-                    "Run persistent incremental tests after global source admission",
+                    "Run native persistent incremental tests",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests,
                     None,
                 ),
                 (
                     c.Infra.VERB_TEST_FULL,
-                    "Run incremental then full tests with the same persistent database",
+                    "Run the complete selected tests once without Testmon",
                     m.Infra.WorkspaceTestsRequest,
                     cls._tests_full,
                     None,

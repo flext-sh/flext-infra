@@ -314,7 +314,7 @@ class FlextInfraModGateEngine:
         temp_root: Path,
         owner_rules: Sequence[Path],
     ) -> None:
-        """Stage every rule document in one native multi-document file.
+        """Stage bound native documents under their owning catalog filenames.
 
         Every binding-sensitive utility a document references (catalog or
         fixture value) is embedded as its local, so a fixture binds
@@ -344,13 +344,12 @@ class FlextInfraModGateEngine:
             temp_root / c.Infra.CODEMOD_FIXTURE_UTILS_DIRNAME,
         ))
         sensitive = u.Infra.codemod_binding_sensitive(bodies)
-        rendered: list[t.JsonMapping] = []
         for rule in sorted(source_rules):
             documents = u.Cli.yaml_parse_documents(
                 u.Cli.files_read_text(rule).unwrap()
             ).unwrap()
             temp_rule = temp_root / rule.relative_to(config_root)
-            temp_rule.unlink()
+            rendered: list[t.JsonMapping] = []
             for document in documents:
                 rule_id = document.get(c.Infra.CODEMOD_RULE_TEST_ID_KEY)
                 if not isinstance(rule_id, str) or not rule_id:
@@ -359,11 +358,8 @@ class FlextInfraModGateEngine:
                 rendered.append(
                     u.Infra.codemod_bound_document(document, bodies, sensitive)
                 )
-        if rendered:
             u.Infra.codemod_write_native_documents(
-                temp_root
-                / directories.rule_dirs[0].relative_to(config_root)
-                / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME,
+                temp_rule,
                 tuple(rendered),
             )
 
@@ -447,6 +443,12 @@ class FlextInfraModGateEngine:
                         target.unlink()
                     continue
                 content = produced.read_text(encoding=c.DEFAULT_ENCODING)
+                # Native ast-grep writes indented blank lines inside block
+                # scalars; the repository whitespace gate rejects them and the
+                # trailing spaces carry no YAML meaning, so the projection is
+                # normalized before comparison and publication.
+                normalized = "\n".join(line.rstrip() for line in content.splitlines())
+                content = f"{normalized}\n" if content.endswith("\n") else normalized
                 current = committed.get(name)
                 if current is not None and (
                     current.read_text(encoding=c.DEFAULT_ENCODING) == content
@@ -913,47 +915,51 @@ class FlextInfraModGateEngine:
                 return r[p.Infra.ModScanFinding].from_failure(classified)
             actionable, classification = classified.value
         return r[p.Infra.ModScanFinding].ok(
-            m.Infra.ModScanFinding(
-                rule_file=str(rule_files_by_id[str(rule_id)].resolve()),
-                rule_id=str(rule_id),
-                repository=context.repositories[file_path],
-                file=file_path,
-                source_owner="generator"
-                if snapshot is not None
-                and snapshot.content is not None
-                and snapshot.content.startswith(
-                    c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
-                )
-                else "authored",
-                source_state=snapshot,
-                range=u.json_mapping_adapter().validate_python(
-                    finding.get("range"),
+            m.Infra.ModScanFinding.model_validate({
+                "rule_file": (str(rule_files_by_id[str(rule_id)].resolve())),
+                "rule_id": (str(rule_id)),
+                "repository": (context.repositories[file_path]),
+                "file": (file_path),
+                "source_owner": (
+                    "generator"
+                    if snapshot is not None
+                    and snapshot.content is not None
+                    and snapshot.content.startswith(
+                        c.Infra.AUTOGEN_HEADER.encode(c.DEFAULT_ENCODING)
+                    )
+                    else "authored"
                 ),
-                text=str(finding.get("text")),
-                message=(
+                "source_state": (snapshot),
+                "range": (
+                    u.json_mapping_adapter().validate_python(
+                        finding.get("range"),
+                    )
+                ),
+                "text": (str(finding.get("text"))),
+                "message": (
                     native_message
                     if isinstance(native_message := finding.get("message"), str)
                     else None
                 ),
-                replacement=replacement,
-                actionable=actionable,
-                classification=classification,
-                severity=severity,
-                origin=(
+                "replacement": (replacement),
+                "actionable": (actionable),
+                "classification": (classification),
+                "severity": (severity),
+                "origin": (
                     c.Infra.ModFindingOrigin.OWNED_PATH
                     if finding.get("origin") == "owned-path"
                     else c.Infra.ModFindingOrigin.AST_GREP
                 ),
-                replacement_offsets=(
+                "replacement_offsets": (
                     m.Infra.ModReplacementOffsets.model_validate(
                         finding["replacementOffsets"]
                     )
                     if "replacementOffsets" in finding
                     else None
                 ),
-                native_record=native[0],
-                native_receipt=native[1],
-            ),
+                "native_record": (native[0]),
+                "native_receipt": (native[1]),
+            }),
         )
 
     @staticmethod
@@ -1408,7 +1414,7 @@ class FlextInfraModGateEngine:
                 repositories=tuple(project.name for project in plan.project_rule_ids),
                 rule_ids=tuple(rules_by_id),
             ),
-            exact_replacements=isinstance(selection, Sequence),
+            exact_replacements=False,
         )
 
     @staticmethod

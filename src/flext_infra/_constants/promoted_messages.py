@@ -49,7 +49,6 @@ class FlextInfraConstantsPromotedMessages:
             "duplicate alias: {alias} points to {previous_verb}"
             " WHAT={previous_what} and {verb} WHAT={what}"
         )
-        NO_COMMANDS = "no promoted command found in scripts/<verb>/<WHAT>"
         VERB_DOMAINS = "verb '{verb}' declares more than one domain: {domains}"
         ALIAS_OUTSIDE_ALL = "{path}: aliases may be declared only in WHAT=all"
         ALIAS_COLLIDES_VERB = "alias '{alias}' collides with a promoted verb"

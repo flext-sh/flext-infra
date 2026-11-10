@@ -12,6 +12,10 @@
 untracked descendants. An empty path tuple captures nothing. Nested repositories retain
 independent capture ownership.
 
+`git_is_inside_work_tree` asks native `rev-parse --is-inside-work-tree` at the
+requested directory. Discovering its repository does not make Git control storage
+or a staged preview beneath that storage part of the working tree.
+
 `git_snapshot_worktree_state` measures the original HEAD, index entries, raw working
 bytes, symlink text and permissions without modifying the source index. Unmerged,
 intent-to-add, assume-unchanged and skip-worktree entries fail explicitly.

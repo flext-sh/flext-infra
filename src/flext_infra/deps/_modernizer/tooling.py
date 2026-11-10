@@ -90,14 +90,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         request: p.Infra.ToolingContextRequest,
         *,
         source_project: p.Infra.RopeProject | None = None,
-    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed Jinja values from the seed conformed to one topology.
 
         Returns:
-            The resulting ``p.Result[p.Infra.ToolingRuntimeContext]``.
+            The resulting ``p.Result[m.Infra.ToolingRuntimeContext]``.
 
         """
-        result_type = r[p.Infra.ToolingRuntimeContext]
+        result_type = r[m.Infra.ToolingRuntimeContext]
         selected = u.Infra.load_tooling_inputs(
             request.path.parent, source_project=source_project
         )
@@ -156,14 +156,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         project_kind: str,
         tool_config: p.Infra.ToolConfigDocument,
         sources: tuple[p.Cli.AtomicFileState, ...] = (),
-    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Project every declared table from one conformed native document.
 
         Returns:
             One synchronized configuration fragment and its native table views.
 
         """
-        result_type = r[p.Infra.ToolingRuntimeContext]
+        result_type = r[m.Infra.ToolingRuntimeContext]
         options: MutableMapping[str, t.JsonMapping] = {}
         for table_path in tool_config.settings:
             table = u.Cli.toml_mapping_path(

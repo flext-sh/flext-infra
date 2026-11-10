@@ -13,6 +13,8 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Self, override
 
+from typing_extensions import TypeForm
+
 from flext_infra import (
     c,
     config,
@@ -25,7 +27,6 @@ from flext_infra import (
     u,
     workspace as workspace_services,
 )
-from flext_infra.codegen import FlextInfraCodegenPreconditions
 from flext_infra.codegen._conform import FlextInfraCodegenConformPlan
 
 
@@ -111,10 +112,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         # Facades and their initializers precede the protocols projected
         # through them: those surfaces publish first, and the next generation
         # projects the members.
-        if request.what not in {
-            c.Infra.CodegenConformSurface.FACADES,
-            c.Infra.CodegenConformSurface.LAZY_INIT,
-        }:
+        if request.what is c.Infra.CodegenConformSurface.ALL:
             bootstrap = u.Infra.bootstrap_protocol_model_sources(
                 request.root, ports=execution_context.codegen_conform_collaborators()
             )
@@ -182,9 +180,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             f"profile_output={settings.Infra.profile_output}"
         )
         root = request.root.expanduser().resolve()
-        ready = FlextInfraCodegenPreconditions.rendering_engine(root)
-        if ready.failure:
-            return r[p.Infra.CodegenResult].from_failure(ready)
         # Concurrent writers are the normal operating state: planning reads
         # without a tree-wide lock, the atomic publisher verifies every
         # destination's observed state, and a destination changed by another
@@ -193,6 +188,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         attempts = config.Infra.mutation_lock.reconcile_attempts
 
         def _run_once() -> p.Result[p.Infra.CodegenResult]:
+            self.state.source_inputs.clear()
+            self.state.source_imports.clear()
             try:
                 return self._execute_once(
                     request, root, after_publication, after_cohort_publication
@@ -255,8 +252,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             finally:
                 self.state.snapshot = previous
 
-    @staticmethod
     def authorize_published_envrc(
+        self,
         written_files: tuple[Path, ...],
     ) -> p.Result[bool]:
         """Authorize with native direnv every ``.envrc`` this publication wrote.
@@ -282,7 +279,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if path.name == c.Infra.ENVRC_FILENAME
         }
         for root in sorted(roots):
-            direnv = u.Infra.managed_mise_binary(c.Infra.CLI_DIRENV, root)
+            direnv = u.Infra.managed_mise_binary(
+                c.Infra.CLI_DIRENV, self.state.repository_root
+            )
             if direnv.failure:
                 return r[bool].from_failure(direnv)
             result = u.Cli.run_raw(
@@ -379,19 +378,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         try:
             outcomes = tuple(
                 self._control_outcome(
-                    m.Infra.CodegenRepositoryPlanTask(
-                        root=root,
-                        workspace=workspace,
-                        current_target=current_target,
-                        repository=selected.value[name],
-                        surface=request.what,
-                        selected_inputs=(
+                    m.Infra.CodegenRepositoryPlanTask.model_validate({
+                        "root": (root),
+                        "workspace": (workspace),
+                        "current_target": (current_target),
+                        "repository": (selected.value[name]),
+                        "surface": (request.what),
+                        "selected_inputs": (
                             captured.value
                             if selected.value[name].name
                             == current_target.repository.name
                             else None
                         ),
-                    ),
+                    }),
                 )
                 for name in ordered.value
             )
@@ -568,12 +567,8 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan when every projection is current, or the stale paths.
 
         """
-        root = request.root.expanduser().resolve()
-        return (
-            FlextInfraCodegenPreconditions
-            .rendering_engine(root)
-            .flat_map(lambda _: self._planned(request))
-            .flat_map(lambda plan: self._checked(request, plan))
+        return self._planned(request).flat_map(
+            lambda plan: self._checked(request, plan)
         )
 
     def _checked(
@@ -609,7 +604,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 "generated projections are stale: "
                 + ", ".join(sorted(str(change.path) for change in pending))
             )
-        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(plan=plan)
+        payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
+            "plan": (plan)
+        })
         return result_type.ok(payload)
 
     def _planned(
@@ -931,7 +928,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if published.success
             else tuple(
                 Path(path)
-                for path in u.type_adapter(t.TypeForm(list[str])).validate_python(
+                for path in u.type_adapter(TypeForm(list[str])).validate_python(
                     (published.error_data or {}).get("written_files", []), strict=True
                 )
             )
@@ -957,7 +954,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                         **(completed.error_data or {}),
                         "written_files": [
                             *(str(path) for path in published.value),
-                            *u.type_adapter(t.TypeForm(list[str])).validate_python(
+                            *u.type_adapter(TypeForm(list[str])).validate_python(
                                 (completed.error_data or {}).get("written_files", []),
                                 strict=True,
                             ),
@@ -965,10 +962,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     },
                     exception=completed.exception,
                 )
-        payload: p.Infra.CodegenResult = m.Infra.CodegenResult(
-            plan=plan,
-            written_files=published.value,
-        )
+        plan.files = admitted
+        payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
+            "plan": (plan),
+            "written_files": (published.value),
+        })
         return result_type.ok(payload)
 
     def _admitted_plans(
@@ -1089,12 +1087,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     })
                 ),
             ),
-            options=m.Infra.StageSourceOptions(
-                declared_files=files,
-                inputs=tuple(inputs.values()),
-                snapshot=snapshot,
-                import_edges=run.source_imports,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "declared_files": (files),
+                "inputs": (tuple(inputs.values())),
+                "snapshot": (snapshot),
+                "import_edges": (run.source_imports),
+            }),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
             return result_type.from_failure(preview)

@@ -59,6 +59,17 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             " renames)"
         ),
     )
+    artifact_planner: (
+        Callable[
+            [Path, p.Infra.SemanticSourcePlan],
+            p.Result[tuple[p.Infra.CodegenFilePlan, ...]],
+        ]
+        | None
+    ) = m.Field(
+        default=None,
+        exclude=True,
+        description="Injected source-artifact planning after final phase composition",
+    )
     consumer_roots: tuple[Path, ...] = m.Field(
         default=(),
         description="Explicit read scopes; not additional syntax targets",
@@ -403,14 +414,14 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         return {
-            path: m.Infra.SemanticFilePlan(
-                project=u.Infra.project_root(path) or root,
-                path=path,
-                before=inputs[path],
-                desired_content=content,
-                desired_mode=inputs[path].mode,
-                changes=(c.Infra.MOD_NATIVE_CASCADE_CHANGE,),
-            )
+            path: m.Infra.SemanticFilePlan.model_validate({
+                "project": (u.Infra.project_root(path) or root),
+                "path": (path),
+                "before": (inputs[path]),
+                "desired_content": (content),
+                "desired_mode": (inputs[path].mode),
+                "changes": ((c.Infra.MOD_NATIVE_CASCADE_CHANGE,)),
+            })
             for path, content in self._native_cascade(rule_plan, inputs, seed).items()
         }
 
@@ -537,11 +548,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     if plan.desired_content is not None
                 },
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.workspaces,
-                modes=seed.modes,
-                inputs=tuple(inputs.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.workspaces),
+                "modes": (seed.modes),
+                "inputs": (tuple(inputs.values())),
+            }),
         )
 
     @staticmethod
@@ -665,11 +676,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     if plan.desired_content is not None
                 },
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.workspaces,
-                modes=seed.modes,
-                inputs=tuple(inputs.values()),
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.workspaces),
+                "modes": (seed.modes),
+                "inputs": (tuple(inputs.values())),
+            }),
         )
         if staged.failure:
             return r[p.Infra.ModScanReport].from_failure(staged)
@@ -692,11 +703,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate.workspace,
             candidate.updates,
             scan,
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.workspaces,
-                modes=candidate.modes,
-                inputs=candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.workspaces),
+                "modes": (candidate.modes),
+                "inputs": (candidate.inputs),
+            }),
         ).flat_map(lambda report: report)
 
     def _plan_text_phase(
@@ -868,7 +879,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         candidate, observed = planned
-        destinations = frozenset(path.resolve() for path in candidate.candidate.updates)
+        destinations = frozenset(
+            plan.path.resolve()
+            for plan in FlextInfraCodemodSemanticApply.planning_file_plans(
+                root, candidate.candidate, {}
+            )
+        )
         captured = tuple(
             state for state in observed if Path(state.path).resolve() in destinations
         )
@@ -877,8 +893,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             return r[p.Infra.ModPhaseAdvance].ok(
                 voided.model_copy(update={"drifted": drifted})
             )
-        accepted = FlextInfraCodemodSemanticApply.publish_candidate(
-            root, candidate, publish=publish
+        accepted = (
+            FlextInfraCodemodSemanticApply.publish_candidate(
+                root, candidate, publish=publish
+            )
+            if destinations
+            else r[tuple[Path, ...]].ok(())
         )
         if accepted.failure:
             # The publisher's compare-and-swap rejects the whole batch; only an
@@ -953,11 +973,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 for path, source in candidate.updates.items()
                 if path not in excluded
             },
-            options=m.Infra.StageSourceOptions(
-                workspaces=candidate.workspaces,
-                modes=candidate.modes,
-                inputs=candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (candidate.workspaces),
+                "modes": (candidate.modes),
+                "inputs": (candidate.inputs),
+            }),
         ).map(
             lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=plan.consumer_roots
@@ -981,8 +1001,16 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         callbacks = self._plan_phase_callbacks(root, seed, graph)
         if callbacks.failure:
             return callbacks
-        return self._plan_text_phase(
+        text = self._plan_text_phase(
             root, callbacks.value, text_precondition_pending=False
+        )
+        if text.failure or self.artifact_planner is None:
+            return text
+        artifacts = self.artifact_planner(root, text.value)
+        if artifacts.failure:
+            return r[p.Infra.SemanticSourcePlan].from_failure(artifacts)
+        return FlextInfraCodemodSemanticApply.compose_candidate(
+            text.value, artifacts.value
         )
 
     @staticmethod
@@ -1063,12 +1091,12 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if loaded.failure:
             return r[p.Infra.SemanticSourcePlan].from_failure(loaded)
         seed, driver = loaded.value
-        current = FlextInfraCodemodSemanticApply.authenticate_rename_candidate(
+        current = FlextInfraCodemodSemanticApply.plan_rename_artifact(
             root, seed, driver, rope_workspace
         )
         if current.failure:
             return r[p.Infra.SemanticSourcePlan].from_failure(current)
-        return self._admitted_rename_seed(seed)
+        return self._admitted_rename_seed(current.value)
 
     def _campaign_seed(self, root: Path) -> p.Result[p.Infra.SemanticSourcePlan]:
         """Capture the source campaign and its module-naming rename candidate.
@@ -1161,12 +1189,23 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             candidate=syntax.value,
             consumer_roots=captured_seed.consumer_roots,
         )
-        if self.focused:
+        changed_paths = tuple(
+            plan.path
+            for plan in FlextInfraCodemodSemanticApply.planning_file_plans(
+                root, seed.candidate, {}
+            )
+            if plan.desired_content is not None
+        )
+        if self.focused and not changed_paths:
             return r[p.Infra.SemanticSourcePlan].ok(seed)
-        text_preparation = self._plan_text_phase(
-            root,
-            seed,
-            text_precondition_pending=text_precondition_pending,
+        text_preparation = (
+            r[p.Infra.SemanticSourcePlan].ok(seed)
+            if self.focused
+            else self._plan_text_phase(
+                root,
+                seed,
+                text_precondition_pending=text_precondition_pending,
+            )
         )
         if text_preparation.failure:
             return text_preparation
@@ -1174,7 +1213,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             root,
             text_preparation.value,
             graph,
-            callbacks=(FlextInfraCodemodLoopPhaseImportNormalization(),),
+            callbacks=(
+                FlextInfraCodemodLoopPhaseImportNormalization(
+                    paths=changed_paths if self.focused else None,
+                ),
+            ),
         )
 
     def _plan_semantic_phase(
@@ -1277,11 +1320,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         return FlextInfraStagedPackage.plan_sources(
             seed.candidate.workspace,
             updates,
-            options=m.Infra.StageSourceOptions(
-                workspaces=seed.candidate.workspaces,
-                modes=seed.candidate.modes,
-                inputs=seed.candidate.inputs,
-            ),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "workspaces": (seed.candidate.workspaces),
+                "modes": (seed.candidate.modes),
+                "inputs": (seed.candidate.inputs),
+            }),
         ).map(
             lambda staged: m.Infra.SemanticSourcePlan(
                 candidate=staged, consumer_roots=seed.consumer_roots

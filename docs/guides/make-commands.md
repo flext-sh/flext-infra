@@ -231,21 +231,21 @@ Each verb enters its existing domain owner. Generation and conformance share the
 same projection planner and transaction publisher; they do not share permission
 to repair authored declarations.
 
-| Verb         | Owned operation                                                                                                                                                                                             | Inputs              |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `setup`      | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only). | FLEXT, RECREATE     |
-| `upg`        | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                               | —                   |
-| `gen`        | Materialize explicitly declared new projects and publish every applicable generated projection.                                                                                                             | —                   |
-| `gen-scope`  | Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.                                                                                         | WHAT, MODULE, SCOPE |
-| `mod`        | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).    | LAWS, RULES         |
-| `fix`        | Apply declared repairs to authored inputs through their canonical owners.                                                                                                                                   | —                   |
-| `fmt`        | Format authored content through the configured formatters.                                                                                                                                                  | —                   |
-| `check`      | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                         | CHECK_PHASE         |
-| `tests`      | Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.                                                                                     | —                   |
-| `tests-full` | Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.                                                               | —                   |
-| `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                   |
-| `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                   |
-| `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                   |
+| Verb         | Owned operation                                                                                                                                                                                             | Inputs                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `setup`      | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only). | FLEXT, RECREATE           |
+| `upg`        | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                               | —                         |
+| `gen`        | Materialize explicitly declared new projects and publish every applicable generated projection.                                                                                                             | ROOT                      |
+| `gen-scope`  | Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.                                                                                         | ROOT, WHAT, MODULE, SCOPE |
+| `mod`        | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).    | LAWS, RULES               |
+| `fix`        | Apply declared repairs to authored inputs through their canonical owners.                                                                                                                                   | —                         |
+| `fmt`        | Format authored content through the configured formatters.                                                                                                                                                  | —                         |
+| `check`      | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                         | CHECK_PHASE               |
+| `tests`      | Run native incremental tests, or every test in FILE once.                                                                                                                                                   | FILE                      |
+| `tests-full` | Run the complete selected inventory once without Testmon; FILE selects one file.                                                                                                                            | FILE                      |
+| `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
+| `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
+| `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
 
 ### Profiling and Semantic Publication Boundaries
 
@@ -535,8 +535,9 @@ The markdown standard lives once in `flext-infra/src/flext_infra/config/tooling.
 The public test operations and their selected modes are declared in the
 [Public Verb Matrix](#public-verb-matrix) and
 ADR-029.
-Each operation retains the complete applicable inventory, its declared selection
-and same-scope green-check prerequisite. A run does not switch modes, prepend an
+Tests run independently of quality-check receipts. Each operation retains the
+complete applicable inventory and its declared selection. A run does not switch
+modes, prepend an
 undeclared execution, clear a cache or accept a file selector. CI and Git hooks
 consume their declared operation.
 
@@ -605,6 +606,14 @@ the CLI, never the shared base or an implicitly selected latest run.
 
 Root `make check` checks the root and governed members through the existing
 `--scope all` checker selection. A standalone checkout selects its own repository.
+The checker reads managed operation targets from `.gitmodules`; ordinary gate
+execution does not require Beads ledger configuration or a Git origin.
+
+For a bounded test diagnosis, `make tests-full FILE=tests/path.py` runs that
+complete file through the same native runner, credential selection and receipts.
+The CLI equivalent is `flext-infra workspace tests-full --repository-root <root>
+--file tests/path.py`. The file selects the invoked repository; the final
+`make tests-full` acceptance still covers its complete configured inventory.
 The approved campaign uses selector-free public verbs from the workspace root.
 Missing governed-member coverage is corrected at the existing dispatcher
 owner, not through a member Makefile or a new selector.

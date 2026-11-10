@@ -151,15 +151,6 @@ class FlextInfraProtocolsCheck(Protocol):
         def submodule_search_locations(self) -> Sequence[str] | None: ...
 
     @runtime_checkable
-    class GlobalCheckTargetPlanner(Protocol):
-        """Plan native global coverage on demand at the admission boundary."""
-
-        def __call__(
-            self,
-            gates: Sequence[str],
-        ) -> p.Result[tuple[FlextInfraProtocolsCheck.CheckProjectTarget, ...]]: ...
-
-    @runtime_checkable
     class PytestRunContextReceiver(Protocol):
         """Receive the runner's immutable Pydantic receipt through explicit DI."""
 
@@ -168,16 +159,42 @@ class FlextInfraProtocolsCheck(Protocol):
         ) -> None: ...
 
     @runtime_checkable
-    class WorkspaceLoopOutcome(Protocol):
-        """Public structural view of the workspace gate loop outcome."""
-
-        results: tuple[FlextInfraProtocolsCheck.ProjectResult, ...]
-        failed: int
-        total_elapsed: float
-
-    @runtime_checkable
-    class RunCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class RunCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
         @property
         def fail_fast(self) -> bool:
@@ -301,8 +318,42 @@ class FlextInfraProtocolsCheck(Protocol):
             ...
 
     @runtime_checkable
-    class FixPyreflyConfigCommand(FlextInfraProtocolsMixins.WriteMixin, Protocol):
+    class FixPyreflyConfigCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository root."""
+            ...
+
+        @property
+        def projects(self) -> Sequence[str] | None:
+            """Projects to process; repeat --projects NAME as needed."""
+            ...
+
+        @property
+        def verbose(self) -> bool:
+            """Verbose output."""
+            ...
+
+        @property
+        def apply(self) -> bool:
+            """Apply changes instead of running in dry-run mode."""
+            ...
+
+        @property
+        def gates(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Gate names for post-transform validation; empty resolves the requested
+            gate set from the typed Make spec at runtime.
+            """
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether writes are disabled (inverse of apply)."""
+            ...
 
     @runtime_checkable
     class LineWrapLiteral(FlextCliProtocols.BaseModel, Protocol):

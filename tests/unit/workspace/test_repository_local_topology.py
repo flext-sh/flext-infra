@@ -107,14 +107,16 @@ class TestsFlextInfraRepositoryLocalTopology:
         u.Tests.override_repository_declaration(
             root,
             {
-                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK.value,
                 "uv_link_mode": "clone",
             },
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.repository.kind, eq=c.Infra.ProjectKind.THIRD_PARTY_FORK)
+        tm.that(
+            workspace.repository.kind,
+            eq=u.Infra.detected_project_kind(root),
+        )
         tm.that(workspace.repository.uv_link_mode, eq="clone")
 
     def test_declared_beads_free_repository_loads_without_ledger(

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Literal, Self, cast
+from typing import Annotated, Literal, Self
 
 from flext_cli import m
 
@@ -47,6 +47,19 @@ class FlextInfraModelsDepsToolConfig(
             t.StrTuple,
             m.Field(description="Ruff rule codes the ruff stage repairs"),
         ] = ()
+
+        @m.field_validator("shapes", "select", mode="before")
+        @classmethod
+        def _freeze_yaml_selection(
+            cls, value: t.Infra.SettingsContainerInput
+        ) -> t.Infra.SettingsContainerInput:
+            """Freeze YAML arrays while retaining strict element validation.
+
+            Returns:
+                The array as a tuple, or the original non-array input.
+
+            """
+            return tuple(value) if isinstance(value, list) else value
 
         @m.model_validator(mode="after")
         def _validate_kind_fields(self) -> Self:
@@ -301,7 +314,7 @@ class FlextInfraModelsDepsToolConfig(
             str,
             FlextInfraModelsDepsToolConfig.PytestWorkerCeiling,
         ] = m.Field(
-            cast(Mapping[str, p.Infra.PytestWorkerCeiling], {}),
+            default_factory=dict,
             alias="parallel-worker-overrides",
             description=(
                 "Per declared-project worker ceilings (``[project].name`` → absolute "
@@ -597,11 +610,11 @@ class FlextInfraModelsDepsToolConfig(
             m.BeforeValidator(
                 lambda value: tuple(value) if isinstance(value, list) else value
             ),
-            m.Field(
-                alias="extend-enable",
-                description="Opt-in rules activated on top of the default set.",
-            ),
-        ] = ()
+        ] = m.Field(
+            (),
+            alias="extend-enable",
+            description="Opt-in rules activated on top of the default set.",
+        )
         rules: Annotated[
             t.Infra.SettingsPairs,
             m.Field(description="Ordered rumdl rules and their options."),

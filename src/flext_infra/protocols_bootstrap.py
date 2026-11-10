@@ -200,7 +200,8 @@ class _ModelReferenceRewriter(ast.NodeTransformer):
             isinstance(node.value, ast.Attribute)
             and isinstance(node.value.value, ast.Name)
             and node.value.value.id == "m"
-            and node.value.attr == "Infra"
+            and node.value.attr
+            in {"Infra", self.owner.partition("Protocols")[0].removeprefix("Flext")}
         ):
             self.changed = True
             self.requires_facade = True
@@ -718,12 +719,7 @@ def _cleanup_normalized_imports(source: str, filename: str) -> str:
 def normalize_protocol_source(
     source: str, *, package_name: str, filename: str = "<protocol>"
 ) -> str:
-    """Return source with Pydantic field syntax removed from ``Protocol`` bodies.
-
-    Raises:
-        ValueError: If Protocol class has no source location.
-
-    """
+    """Return source with Pydantic field syntax removed from ``Protocol`` bodies."""
     tree = ast.parse(source, filename=filename)
     offsets = _line_offsets(source)
     protocols = tuple(_protocol_classes(tree))
@@ -734,9 +730,6 @@ def normalize_protocol_source(
         protocol for protocol in protocols if not _has_runtime_checkable(protocol)
     ]
     for protocol in missing_decorators:
-        if protocol.lineno is None:
-            msg = "Protocol class has no source location"
-            raise ValueError(msg)
         line_start = offsets[protocol.lineno - 1]
         indentation = source.encode("utf-8")[
             line_start : line_start + protocol.col_offset
@@ -1573,14 +1566,6 @@ def merge_class_lineages[TIdentity: str | tuple[str, str]](
     return tuple(result)
 
 
-def _validate_protocol_tree(protocol_root: Path) -> None:
-    """Require every protocol source to parse before publishing its facade."""
-    for path in sorted(protocol_root.rglob("*.py")):
-        if path == protocol_root / "__init__.py":
-            continue
-        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-
-
 def _protocol_holders(
     package_root: Path, *, sources: Mapping[Path, str]
 ) -> tuple[tuple[str, str], ...]:
@@ -2274,23 +2259,16 @@ def _lazy_export_mapping(node: ast.AST) -> ast.Dict | None:
 def _existing_protocol_exports(
     protocol_root: Path, *, sources: Mapping[Path, str]
 ) -> dict[str, str]:
-    """Read live mappings from the source-bootstrap-owned protocol barrel only.
+    """Read live mappings from the protocol barrel's native lazy exports.
 
     Returns:
         The resulting ``dict[str, str]``.
-
-    Raises:
-        ValueError: If protocol barrel is not source-bootstrap-owned.
 
     """
     initializer = protocol_root / "__init__.py"
     if initializer not in sources and not initializer.is_file():
         return {}
     source = _protocol_source(initializer, sources=sources)
-    marker = "# AUTO-GENERATED FILE - Source bootstrap protocol exports."
-    if not source.startswith(marker):
-        msg = f"protocol barrel is not source-bootstrap-owned: {initializer}"
-        raise ValueError(msg)
     tree = ast.parse(source, filename=str(initializer))
     contents = next(
         (

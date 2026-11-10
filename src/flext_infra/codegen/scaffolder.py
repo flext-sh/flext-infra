@@ -20,6 +20,92 @@ from flext_infra.codegen import FlextInfraCodegenExecution
 class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
     """Generates missing base modules in src/ and tests/ directories."""
 
+    @staticmethod
+    def plan_stems(
+        root: Path,
+        project: p.Infra.ProjectSpec,
+        policy: p.Infra.ScaffoldSpec,
+        planned: Sequence[p.Infra.CodegenFilePlan],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        """Plan missing family stems and auxiliary facades over authored sources.
+
+        Returns:
+            Only absent seeds, preserving existing modules and planned templates.
+
+        """
+        occupied = {plan.path for plan in planned}
+        namespaces = (
+            (
+                root / c.Infra.DEFAULT_SRC_DIR / project.package_name,
+                "",
+                policy.source_stems,
+            ),
+            *(
+                (root / tier, u.derive_class_stem(tier), policy.auxiliary_stems)
+                for tier in config.Infra.source_scan.roots
+                if tier != c.Infra.DEFAULT_SRC_DIR and (root / tier).is_dir()
+            ),
+        )
+        seeds: list[p.Infra.CodegenFilePlan] = []
+        for directory, prefix, stems in namespaces:
+            renderings: dict[Path, str] = {}
+            if prefix:
+                name = f"{prefix}{project.class_stem}Service"
+                renderings[directory / "base.py"] = u.Infra.generate_module_skeleton(
+                    context=m.Infra.ModuleSkeletonRenderContext(
+                        class_name=name,
+                        base_class=f"{project.class_stem}Service",
+                        base_module=project.package_name,
+                        docstring=name,
+                    )
+                ).unwrap()
+            for family in u.Infra.facade_families().values():
+                if prefix:
+                    name = f"{prefix}{project.class_stem}{family.suffix}"
+                    renderings[directory / f"{family.module}.py"] = (
+                        u.Infra.generate_test_module_skeleton(
+                            context=m.Infra.TestModuleSkeletonRenderContext(
+                                class_name=name,
+                                base_class=f"FlextTests{family.suffix}",
+                                project_module=project.package_name,
+                                alias=family.letter,
+                                namespace="Tests",
+                                project_namespace=project.namespace,
+                                docstring=name,
+                            )
+                        )
+                    )
+                for stem in stems:
+                    path = directory / f"_{family.module}" / f"{stem}.py"
+                    name = (
+                        f"{prefix}{project.class_stem}{family.suffix}"
+                        f"{u.derive_class_stem(stem)}"
+                    )
+                    renderings[path] = u.Infra.generate_module_skeleton(
+                        context=m.Infra.ModuleSkeletonRenderContext(
+                            class_name=name,
+                            base_class=None,
+                            base_module=None,
+                            docstring=name,
+                        )
+                    ).unwrap()
+            for path, source in renderings.items():
+                if path in occupied or path.is_file():
+                    continue
+                before = u.Cli.atomic_read_binary_file_state(
+                    path, required=False
+                ).unwrap()
+                seeds.append(
+                    m.Infra.CodegenFilePlan(
+                        project=root,
+                        path=path,
+                        before=before,
+                        desired_content=source.encode(c.DEFAULT_ENCODING),
+                        desired_mode=config.Infra.codegen.modes.file_default,
+                    )
+                )
+        return tuple(seeds)
+
     @override
     def execute(self) -> p.Result[str]:
         """Execute scaffolding directly from the validated CLI model.

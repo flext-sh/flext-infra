@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
+from typing import NamedTuple
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -28,6 +29,36 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverAliasCst,
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
+
+
+class _ApiAliasPlanInput(NamedTuple):
+    """Inputs one API-alias cutover plan shares across every file."""
+
+    workspace: p.Infra.RopeWorkspaceDsl
+    sources: Mapping[Path, str]
+    service_aliases: Mapping[Path, Mapping[str, str]]
+    service_graph: Mapping[str, frozenset[str]]
+    specs_by_file: Mapping[Path, Mapping[str, str]]
+    specs_by_module: Mapping[str, Mapping[str, str]]
+    service_projects: Mapping[str, Path]
+    import_normalizer: p.Infra.SourceImportNormalizer | None
+
+
+class _AliasFileContext(NamedTuple):
+    """Typed identity of one file admitted to the alias cutover."""
+
+    path: Path
+    source: str
+    local_aliases: Mapping[str, str]
+    active_modules: Mapping[str, Mapping[str, str]]
+    root_published_modules: frozenset[str]
+
+
+class _PlannedAliasSource(NamedTuple):
+    """One file's elected alias rewrite and its resulting source."""
+
+    plan: p.Infra.CompatibilityAliasRewritePlan | None
+    rewritten: str
 
 
 class FlextInfraUtilitiesSemanticCutoverAliases(
@@ -373,54 +404,117 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
             The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        root = workspace.repository_root
         service_aliases, service_graph = cls._service_aliases(workspace, sources)
         specs = cls._api_alias_specs(
-            root,
-            findings,
-            service_aliases,
+            workspace.repository_root, findings, service_aliases
         )
         if specs.failure:
             return r[tuple[p.Infra.SemanticMigrationEdit, ...]].from_failure(specs)
         specs_by_file, specs_by_module = specs.value
-        service_projects = cls._service_alias_projects(service_aliases)
+        return cls._plan_api_alias_edits(
+            _ApiAliasPlanInput(
+                workspace=workspace,
+                sources=sources,
+                service_aliases=service_aliases,
+                service_graph=service_graph,
+                specs_by_file=specs_by_file,
+                specs_by_module=specs_by_module,
+                service_projects=cls._service_alias_projects(service_aliases),
+                import_normalizer=import_normalizer,
+            )
+        )
 
-        def rewrite(path: Path, source: str) -> p.Result[t.Infra.TransformResult]:
-            local_aliases = specs_by_file.get(path, {})
-            tree = ast.parse(source, filename=str(path))
+    @classmethod
+    def _plan_api_alias_edits(
+        cls,
+        request: _ApiAliasPlanInput,
+    ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
+        """Plan the complete alias cutover over one authenticated source view.
+
+        Returns:
+            The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
+
+        """
+        root = request.workspace.repository_root
+        source_project = request.workspace.rope_project
+        root_published_modules = frozenset(
+            module
+            for module in request.service_projects
+            if "." in module
+            and any(
+                request.specs_by_module.get(module.split(".", 1)[0], {}).get(alias)
+                == target
+                for alias, target in request.specs_by_module.get(module, {}).items()
+            )
+        )
+        editable = tuple(cls._editable_sources(request.sources))
+        planned: dict[
+            Path, tuple[p.Infra.CompatibilityAliasRewritePlan | None, str]
+        ] = {}
+        consumer_projects: dict[Path, Path | None] = {}
+        for path, source in editable:
             consumer_project = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
                 root,
                 path,
                 source_project=source_project,
             )
             active_modules = cls._consumer_alias_modules(
-                specs_by_module, service_projects, consumer_project
+                request.specs_by_module, request.service_projects, consumer_project
             )
-            plan = cls._compatibility_alias_plan(
-                path, source, tree, local_aliases, active_modules
-            )
+            consumer_projects[path] = consumer_project
+            try:
+                item = cls._planned_alias_source(
+                    _AliasFileContext(
+                        path=path,
+                        source=source,
+                        local_aliases=request.specs_by_file.get(path, {}),
+                        active_modules=active_modules,
+                        root_published_modules=root_published_modules,
+                    )
+                )
+            except Exception as exc:
+                if any(module in request.service_projects for module in active_modules):
+                    raise
+                return r[tuple[p.Infra.SemanticMigrationEdit, ...]].fail(
+                    str(exc), exception=exc
+                )
+            planned[path] = (item.plan, item.rewritten)
+        # Import normalization authenticates the whole projected project, so the
+        # owner retirement that removes a self-referential service alias is
+        # visible before any consumer import is resolved.
+        rewritten_sources = {
+            **request.sources,
+            **{
+                path: rewritten
+                for path, (_plan, rewritten) in planned.items()
+                if rewritten != request.sources[path]
+            },
+        }
+
+        def rewrite(path: Path, source: str) -> p.Result[t.Infra.TransformResult]:
+            plan, rewritten = planned[path]
             if plan is None:
                 return r[t.Infra.TransformResult].ok((source, ()))
-            rewritten = cls._rewrite_compatibility_alias_source(
-                source,
-                plan,
-            )
+            local_aliases = request.specs_by_file.get(path, {})
+            consumer_project = consumer_projects[path]
             if rewritten != source and (
-                path in service_aliases
-                or any(module in service_projects for module in plan.import_aliases)
+                path in request.service_aliases
+                or any(
+                    module in request.service_projects for module in plan.import_aliases
+                )
             ):
-                if consumer_project is None or import_normalizer is None:
+                if consumer_project is None or request.import_normalizer is None:
                     message = (
                         "service alias consumer requires its project owner "
                         f"and import normalizer: {path}"
                     )
                     return r[t.Infra.TransformResult].fail(message)
-                normalized = import_normalizer(
+                normalized = request.import_normalizer(
                     file_path=path,
                     source=rewritten,
                     project_root=consumer_project,
-                    import_graph=service_graph,
-                    sources={**sources, path: rewritten},
+                    import_graph=request.service_graph,
+                    sources=rewritten_sources,
                 )
                 if normalized.failure:
                     return r[t.Infra.TransformResult].from_failure(normalized)
@@ -439,17 +533,35 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 ),
             ))
 
-        source_project = workspace.rope_project
-        return cls._semantic_checked_edits(cls._editable_sources(sources), rewrite)
+        return cls._semantic_checked_edits(editable, rewrite)
+
+    @classmethod
+    def _planned_alias_source(
+        cls,
+        context: _AliasFileContext,
+    ) -> _PlannedAliasSource:
+        """Bind one file source to its planned alias cutover.
+
+        Returns:
+            The file's planned rewrite, or its unchanged source.
+
+        """
+        tree = ast.parse(context.source, filename=str(context.path))
+        plan = cls._compatibility_alias_plan(context, tree)
+        return _PlannedAliasSource(
+            plan=plan,
+            rewritten=(
+                context.source
+                if plan is None
+                else cls._rewrite_compatibility_alias_source(context.source, plan)
+            ),
+        )
 
     @classmethod
     def _compatibility_alias_plan(
         cls,
-        path: Path,
-        source: str,
+        context: _AliasFileContext,
         tree: ast.Module,
-        local_aliases: Mapping[str, str],
-        active_modules: Mapping[str, Mapping[str, str]],
     ) -> p.Infra.CompatibilityAliasRewritePlan | None:
         """Bind one typed alias rewrite intent before executing its CST visitor.
 
@@ -459,15 +571,15 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
         """
         import_aliases: MutableMapping[str, MutableMapping[str, str]] = {}
         attribute_aliases: MutableMapping[tuple[str, str], str] = {}
-        qualified_aliases = dict(local_aliases)
+        qualified_aliases = dict(context.local_aliases)
         qualified_aliases.update(
             (f"{module}.{alias}", target)
-            for module, aliases in active_modules.items()
+            for module, aliases in context.active_modules.items()
             for alias, target in aliases.items()
         )
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                selected = cls._import_from_aliases(node, active_modules)
+                selected = cls._import_from_aliases(node, context.active_modules)
                 if selected and node.module is not None:
                     import_aliases.setdefault(node.module, {}).update(selected)
                     qualified_aliases.update(
@@ -478,24 +590,27 @@ class FlextInfraUtilitiesSemanticCutoverAliases(
                 attribute_aliases.update(
                     ((imported.asname or imported.name, alias), target)
                     for imported in node.names
-                    for alias, target in active_modules.get(imported.name, {}).items()
+                    for alias, target in context.active_modules.get(
+                        imported.name, {}
+                    ).items()
                 )
         if not qualified_aliases:
             return None
         FlextInfraUtilitiesCompatibilityAliasValidation.require_static_compatibility_alias_exports(
-            source, path, frozenset(local_aliases)
+            context.source, context.path, frozenset(context.local_aliases)
         )
         upstream_aliases, preserved_reads = cls._upstream_alias_reads(
-            tree, local_aliases, source
+            tree, context.local_aliases, context.source
         )
         return m.Infra.CompatibilityAliasRewritePlan(
-            local_aliases=local_aliases,
+            local_aliases=context.local_aliases,
             import_aliases=import_aliases,
             attribute_aliases=attribute_aliases,
             qualified_aliases=qualified_aliases,
             target_bindings=cls._bound_names(tree),
             upstream_aliases=upstream_aliases,
             preserved_reads=preserved_reads,
+            root_published_modules=context.root_published_modules,
         )
 
     @staticmethod

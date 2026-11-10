@@ -239,6 +239,9 @@ class FlextInfraUtilitiesMiseBinary:
             (str(reader), "-C", str(owner_root), "which", name),
             cwd=owner_root,
             timeout=c.Infra.TIMEOUT_SHORT,
+            options=m.Cli.ProcessOptions(
+                env={c.Infra.MISE_CEILING_PATHS: str(owner_root.parent)},
+            ),
         )
         if located.failure:
             return r[Path].from_failure(located)

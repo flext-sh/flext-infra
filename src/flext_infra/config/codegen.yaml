@@ -31,6 +31,9 @@ Infra:
     # pair and its lock publisher/converger retired with mise self-management
     # — the pinned release is the [tools] entry mise.lock provisions).
     retired_projections:
+    # Model contracts are checked through their actual consumers. The former
+    # generated assignment witnesses retire in every discovered Python tier.
+    - '**/_protocols/model_conformance.py'
     # The former full-managed JSON template had no generated banner. Its exact
     # context-width declaration identifies the retired native-import competitor.
     - path: .markdownlint.json
@@ -936,10 +939,11 @@ Infra:
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
       - name: gen
+        arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
         requires_activation: false
       - name: gen-scope
-        arguments: [ WHAT, MODULE, SCOPE ]
+        arguments: [ ROOT, WHAT, MODULE, SCOPE ]
         description: Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.
         requires_activation: false
       - name: mod
@@ -953,9 +957,11 @@ Infra:
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Discover the complete global pytest inventory and execute testmon-selected cases with the persistent external database.
+        description: Run native incremental tests, or every test in FILE once.
+        arguments: [ FILE ]
       - name: tests-full
-        description: Execute the complete applicable population once without Testmon or a preliminary incremental run, preserving the existing database untouched.
+        description: Run the complete selected inventory once without Testmon; FILE selects one file.
+        arguments: [ FILE ]
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
@@ -1453,6 +1459,8 @@ Infra:
       project_overrides: {}
 
     scaffold:
+      source_stems: [base, config, settings]
+      auxiliary_stems: [base]
       build:
         backend: hatchling.build
         requirements: [ hatchling ]
@@ -1460,7 +1468,7 @@ Infra:
         readme: README.md
         # Existing-tree ProjectSpec year. Do not derive from datetime.
         copyright_year: 2026
-        supported_licenses: [ MIT, Proprietary ]
+        supported_licenses: [ MIT, Proprietary, LicenseRef-Proprietary ]
         classifiers:
         - "Development Status :: 4 - Beta"
         - "Intended Audience :: Developers"
@@ -1541,6 +1549,9 @@ Infra:
         # whose distribution is among the project's runtime requirements or
         # its declared upstream.
         config_bases:
+        - distribution: flext-api
+          module: flext_api
+          class_name: FlextApiConfig
         - distribution: flext-meltano
           module: flext_meltano
           class_name: FlextMeltanoConfig

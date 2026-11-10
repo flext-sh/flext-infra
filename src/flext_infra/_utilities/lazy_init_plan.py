@@ -151,7 +151,16 @@ class FlextInfraUtilitiesLazyInitPlan:
         for package_dir in package_dirs:
             if target is not None and not package_dir.is_relative_to(target):
                 continue
-            plan = cls._lazy_init_build_plan(run, package_dir)
+            candidate = r[
+                FlextInfraModelsCodegenLazyInit.LazyInitPlan
+            ].create_from_callable(
+                lambda package_dir=package_dir: cls._lazy_init_build_plan(
+                    run, package_dir
+                )
+            )
+            if candidate.failure:
+                return result_type.from_failure(candidate)
+            plan = candidate.value
             run.plans[package_dir] = plan
             if target in {None, package_dir} or (
                 target is not None and target.name == c.Infra.DIR_TESTS
@@ -321,7 +330,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 ),
             )
             run.contexts[pkg_dir] = context
-        return cast(FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, context)
+        return context
 
     @classmethod
     def _lazy_init_build_plan(
@@ -699,7 +708,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             ).items():
                 publics.setdefault(name, target)
             root_init = sibling / c.Infra.INIT_PY
-            if root_init.is_file():
+            if run.model.source_project.source_query(root_init, "isfile"):
                 python = FlextInfraUtilitiesPythonModel
                 for name in (
                     python.python_model_exports(
@@ -740,9 +749,11 @@ class FlextInfraUtilitiesLazyInitPlan:
                 directories.append(candidate)
         directories.extend(
             child
-            for child in sorted(context.pkg_dir.iterdir())
-            if child.is_dir()
-            and (child / c.Infra.INIT_PY).is_file()
+            for child in sorted(
+                run.model.source_project.source_children(context.pkg_dir)
+            )
+            if run.model.source_project.source_query(child, "isdir")
+            and run.model.source_project.source_query(child / c.Infra.INIT_PY, "isfile")
             and str(child) in run.index.packages_by_dir
         )
         return tuple(sorted(dict.fromkeys(directories)))

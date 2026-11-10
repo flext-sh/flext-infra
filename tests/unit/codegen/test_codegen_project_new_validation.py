@@ -55,7 +55,6 @@ class TestsFlextInfraCodegenProjectNewValidation:
         declaration = m.Infra.RepositoryDeltaSpec(
             project=project,
             integration=integration,
-            kind=repository.kind,
         )
         _, own, _ = FlextInfraConfig.config_layer_paths_for_repository(
             root,
@@ -78,7 +77,6 @@ class TestsFlextInfraCodegenProjectNewValidation:
         )
         return FlextInfraCodegenMakeBootstrap(
             repository_root=root,
-            kind=repository.kind,
             apply_changes=True,
         )
 

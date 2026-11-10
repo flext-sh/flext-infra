@@ -184,17 +184,23 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
             issue for execution in components.values() for issue in execution.issues
         )
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=len(components) == len(commands)
-                and all(execution.result.passed for execution in components.values()),
-                issues=tuple(issues),
-                raw_output="\n".join(
-                    f"{name}: {execution.raw_receipt}"
-                    for name, execution in components.items()
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": (project_dir),
+                "verdict": (
+                    len(components) == len(commands)
+                    and all(
+                        execution.result.passed for execution in components.values()
+                    )
                 ),
-                started=started,
-            ),
+                "issues": (tuple(issues)),
+                "raw_output": (
+                    "\n".join(
+                        f"{name}: {execution.raw_receipt}"
+                        for name, execution in components.items()
+                    )
+                ),
+                "started": (started),
+            }),
             ctx,
         ).model_copy(
             update={

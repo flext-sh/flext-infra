@@ -182,7 +182,7 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         document: p.Infra.ToolConfigDocument,
         table: str,
         key: str,
-        target: t.TypeForm[TValue],
+        target: TypeForm[TValue],
     ) -> TValue:
         """Validate one native option, preserving lookup and validation failures.
 

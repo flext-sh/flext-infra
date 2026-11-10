@@ -198,6 +198,8 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     "Selector resolved only by ``make upg`` into the committed ``mise.lock``."
     MISE_VERSION_PLACEHOLDER: ClassVar[str] = "{version}"
     "Placeholder a toolchain version_probe pattern carries for the lock version."
+    MISE_CEILING_PATHS: ClassVar[str] = "MISE_CEILING_PATHS"
+    "Native Mise configuration discovery boundary for the selected owner."
     MISE_IDENTITY_PROBE_ENVIRONMENT: ClassVar[Mapping[str, str]] = MappingProxyType({
         "MISE_DISABLE_UPDATE_WARNING": c.ParserBooleanToken.ONE,
     })
@@ -243,10 +245,6 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     TEMPLATE_TEST_MODULE_SKELETON: ClassVar[str] = "test_module_skeleton.py.j2"
     "Scaffold template for canonical test c/t/p/m/u facades."
     TEMPLATE_MODEL_PROTOCOL: ClassVar[str] = "model_protocol.py.j2"
-    TEMPLATE_MODEL_PROTOCOL_CONFORMANCE: ClassVar[str] = (
-        "model_protocol_conformance.py.j2"
-    )
-    MODEL_PROTOCOL_CONFORMANCE_FILENAME: ClassVar[str] = "model_conformance.py"
     PROTOCOL_EXCLUDED_DUNDERS: ClassVar[frozenset[str]] = frozenset({
         "__init__",
         "__new__",

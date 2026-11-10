@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -961,7 +961,7 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
         candidate: Annotated[
             FlextInfraModelsGates.GateCandidateIdentity,
-            m.Field(description="Exact candidate identity"),
+            m.Field(description="Exact candidate identity as a JSON object"),
         ]
         allowed_signers: Annotated[
             t.NonEmptyStr,
@@ -1005,6 +1005,23 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             int,
             m.Field(ge=0, description="Maximum attestation age in seconds"),
         ] = 86400
+
+        @m.model_validator(mode="before")
+        @classmethod
+        def _parse_candidate_json(cls, values: object) -> object:
+            if not isinstance(values, Mapping):
+                return values
+            candidate = values.get("candidate")
+            if not isinstance(candidate, str):
+                return values
+            return {
+                **values,
+                "candidate": (
+                    FlextInfraModelsGates.GateCandidateIdentity.model_validate_json(
+                        candidate
+                    )
+                ),
+            }
 
         @m.model_validator(mode="after")
         def _validate_expected_gates(self) -> Self:

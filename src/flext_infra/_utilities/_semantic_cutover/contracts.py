@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from flext_cli import cli, u
+from typing_extensions import TypeForm
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -58,14 +59,21 @@ from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticDelegations,
     FlextInfraUtilitiesSemanticFamilyTypeReferences,
 )
+from flext_infra._utilities._semantic_cutover.model_envelopes import (
+    FlextInfraUtilitiesSemanticModelEnvelopes,
+)
 from flext_infra._utilities._semantic_cutover.model_field_contracts import (
     FlextInfraUtilitiesSemanticModelFieldContracts,
+)
+from flext_infra._utilities._semantic_cutover.opaque_ports import (
+    FlextInfraUtilitiesSemanticOpaquePorts,
 )
 
 
 class FlextInfraUtilitiesSemanticContracts(
     FlextInfraUtilitiesSemanticCutoverModelFields,
     FlextInfraUtilitiesSemanticModelFieldContracts,
+    FlextInfraUtilitiesSemanticModelEnvelopes,
 ):
     """Reuse the joint semantic loop and immutable Rope source inventory."""
 
@@ -1124,10 +1132,14 @@ class FlextInfraUtilitiesSemanticContracts(
                             project,
                             rule,
                             proposed_sources,
-                            (implementation_owners, working, owned_modules),
+                            (implementation_owners, working, owned_modules, workspace),
                             restrictions,
                         ),
                         (working, applied),
+                        preserves_bindings=(
+                            rule.operation
+                            is c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                        ),
                     )
         for addition in options.signature_additions:
             with workspace.rope_project.source_view(
@@ -1338,6 +1350,8 @@ class FlextInfraUtilitiesSemanticContracts(
         state: tuple[
             MutableMapping[Path, str], MutableMapping[Path, MutableSequence[str]]
         ],
+        *,
+        preserves_bindings: bool = False,
     ) -> None:
         """Accept only captured consumer effects; provider reads are not writes.
 
@@ -1352,8 +1366,12 @@ class FlextInfraUtilitiesSemanticContracts(
                 msg = f"{rule.id}: effect is outside captured consumers: {path}"
                 raise ValueError(msg)
             relocation = FlextInfraUtilitiesSemanticDeclarationRelocation
-            proposed = relocation.remove_orphaned_imports(
-                project, change.resource, working[path], change.new_contents
+            proposed = (
+                change.new_contents
+                if preserves_bindings
+                else relocation.remove_orphaned_imports(
+                    project, change.resource, working[path], change.new_contents
+                )
             )
             if proposed != working[path]:
                 working[path] = proposed
@@ -1370,9 +1388,37 @@ class FlextInfraUtilitiesSemanticContracts(
             MutableMapping[tuple[str, str], t.Infra.RopeImplementationPaths],
             Mapping[Path, str],
             Mapping[str, Path],
+            p.Infra.RopeWorkspaceDsl,
         ],
         restrictions: tuple[bool, bool],
     ) -> list[p.Infra.RopeChangeContents]:
+        if rule.operation in {
+            c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES,
+            c.Infra.RopeContractOperation.NORMALIZE_OPAQUE_MUTABLE_PORTS,
+        }:
+            workspace = context[3]
+            checker = workspace.model_envelope_checker
+            if checker is None:
+                message = "model-envelope admission requires its native checker"
+                raise RuntimeError(message)
+            transform = (
+                cls.model_envelope_changes
+                if rule.operation
+                == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                else FlextInfraUtilitiesSemanticOpaquePorts.opaque_port_changes
+            )
+            return transform(
+                project,
+                rule,
+                cls._contract_scope_resources(project, rule, tuple(context[1])),
+                checker(context[1]),
+                (
+                    workspace.model_protocol_identities
+                    if rule.operation
+                    == c.Infra.RopeContractOperation.NORMALIZE_MODEL_ENVELOPES
+                    else workspace.model_protocol_routes
+                ),
+            )
         if rule.annotation_member_source is not None:
             return cls._annotation_member_changes(
                 project, rule, sources, tuple(context[1])
@@ -3465,7 +3511,7 @@ class FlextInfraUtilitiesSemanticContracts(
             )
         )
         unknown = u.type_adapter(
-            t.TypeForm(t.Port[t.Infra.RopeNativeObject])
+            TypeForm(t.Port[t.Infra.RopeNativeObject])
         ).validate_python(
             FlextInfraUtilitiesRopeRuntimeTypes.runtime_callable(
                 c.Infra.ROPE_PYOBJECTS_MODULE, "get_unknown"

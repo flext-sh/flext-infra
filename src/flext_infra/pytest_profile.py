@@ -69,7 +69,7 @@ class FlextInfraPytestProfile:
     ) -> int:
         """Profile global incremental execution at the typed runner's repository.
 
-        Match the regular Make tests inventory and green-check prerequisite;
+        Match the regular Make tests inventory independently of quality checks;
         profiling never changes dependency selection or the operation deadline.
 
         Returns:
@@ -124,7 +124,7 @@ class FlextInfraPytestProfile:
         signal.signal(signal.SIGTERM, terminate)
         try:
             outcome = runner.execute_global().unwrap()
-            return c.Cli.EXIT_CODE_FAILURE if outcome is None else outcome
+            return outcome
         finally:
             failure = sys.exception()
             try:

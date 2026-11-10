@@ -78,6 +78,11 @@ file discovery. It delegates input loading to the managed-artifact owner. The na
 Rope method-transfer catalogue preserves its composed `u.Infra` public capability,
 repository override precedence, and configured default scan roots.
 
+Quality and refactor policy reads validate the captured strict YAML declaration
+without classifying Python source. Invalid Python remains input to the native lint
+and fix consumers, which report its original syntax finding. Consumers that need
+governance kind retain native project-fact discovery and its failures.
+
 Parameter retirement must preserve every native body binding. A used parameter
 without a declaration default cannot be removed through the SDK's default-inlining
 operation. Qualify the SDK's identity-bound replacement on the real consumer before
@@ -241,7 +246,9 @@ environment creator. Acquisition passes only options supported by the official
 installer; its native temporary-file defaults remain tool-owned.
 
 Native executable discovery uses `mise which <binary>` in the authenticated
-configuration root with locked mode retained. It must not turn the resolved active
+configuration root with locked mode retained. Each lookup sets its discovery
+ceiling to that physical owner's parent; an inherited caller ceiling cannot elect
+another owner's tool. It must not turn the resolved active
 version into `--tool <selector>@<version>`: that is a new command-line request,
 not the original configured request and its lock binding. In particular, a tool
 declared `latest` and already installed from its lock must remain discoverable
@@ -262,10 +269,16 @@ the physical project and its Git root once. The bootstrap reader receives that
 Git root; the runtime reader receives the bootstrap root already elected from
 the original submodule declaration. These are distinct inputs, not aliases for
 one assumed repository root. Each reader still removes inherited Git selectors
-in its own subshell while retaining credential configuration. Native UV still
-elects the workspace and must satisfy both Git-scope and project containment.
+in its own subshell while retaining credential configuration. Outside an
+authenticated source composition, native UV elects the workspace and must satisfy
+both Git-scope and project containment.
 Make transports the roots through its override variables; direnv assigns them
 before local overrides can run. No context persists across activations.
+Git attachment authenticates the composed runtime. ADR-030 excludes those members
+from the UV workspace to retain their own locks while binding their sources as
+editable paths in the root. That lock exclusion does not give an attached member
+a separate runtime. Independent consumers and standalone checkouts retain their
+own physical environments.
 
 Mise election before workspace discovery and activation after `.envrc.local`
 remain separate: their roots and inherited environment can differ. The Git
@@ -605,7 +618,8 @@ Testmon, a preliminary incremental run or any cache read, lease or publication.
 The existing database remains untouched. The operator's latest 2026-10-28
 clarification is owned by
 [ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
-Both operations retain source admission, applicability, original failure and the
+Tests execute independently of quality checks; no green check receipt is a
+prerequisite. Both operations retain applicability, original failure and the
 same complete invocation deadline. Historical commands
 are receipts for their own source epochs, not aliases or executable instructions
 for this catalog. An undeclared old target is corrected at the documentation
@@ -883,6 +897,11 @@ the distinct `callback:facade-components` domain/nesting/consumer planner. Publi
 selection follows that typed catalog. Preview and staged runtime admission must
 precede publication through the native publisher. A scoped recovery is not
 complete fleet validation.
+
+Selected syntax rules normalize imports in the files their authenticated candidate
+changes, with the complete captured workspace available for resolving providers.
+A no-op selection does not turn into an unrelated full import rewrite. Full runs
+retain their complete import inventory and runtime-cycle validation.
 
 The existing `refactor rename-plan` CLI action accepts `SemanticRenameSelections`
 JSON through `--decisions`. A selection identifies the introducing class,
@@ -1280,6 +1299,12 @@ silently omitted model or an empty successful inventory.
 Facade projection composes constants, utilities and models from the exports and
 base order declared in their configured private family. Authored dependency ports
 retain their consumer-owned capability contracts and normal `p` facade composition.
+Protocol placement follows ADR-018: model mirrors correspond to `_models/`,
+internal service contracts and DI ports use `_protocols/_services/`, and external
+integration capabilities use `_protocols/_external/`. The public `p` identities
+stay unchanged. `make mod` owns the semantic moves and consumer rewiring;
+`make gen` projects declarations and retires generated conformance witnesses.
+Candidate admission requires no separate model-to-protocol witness module.
 The accepted 2026-10-28 [model and service protocol
 projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
 contract owns the automatic first-party projection, extending the model-to-`p`
@@ -1688,7 +1713,7 @@ Refresh them with `make mod-snapshots`; a source-checkout receipt does not valid
 wheel that still contains older baselines. After adopting a new plugin declaration,
 reconcile installed metadata through `make setup` before running its consumer tests.
 
-### Incremental Testmon and Primary Check Admission (ADR-029)
+### Independent Native Checks and Testmon Execution (ADR-029)
 
 `make tests` uses the persistent Testmon owner's native incremental selection over
 the complete applicable population
@@ -1700,13 +1725,9 @@ execution pass. The common catalog has no manual
 file selector. The explicitly requested `make tests-full` executes the complete
 applicable population once without Testmon or an incremental pre-run, preserving
 the persistent database untouched. It is a distinct operation, not an alias for
-incremental execution. The 2026-10-26 operator priority
-requires global Ruff and Pyrefly admission before native incremental pytest and
-global pytest success before later phases (ADR-029). Produce original global
-source-admission evidence with
-`flext-infra workspace check --repository-root <root> --phase primary`, then use
-`flext-infra workspace tests --repository-root <root> --scope all`. Generated Make
-consumers use `make check CHECK_PHASE=primary` followed by `make tests`; bare
+incremental execution. Checks and tests are independent native operations.
+`flext-infra workspace tests --repository-root <root> --scope all` runs without
+requiring a prior check receipt. Generated Make consumers use `make tests`; bare
 `make check` retains complete acceptance. Outside CI, an attached member's primary
 check uses its containing runtime workspace, never member-only evidence. In CI,
 every phase checks only the selected project root while provisioning keeps the
@@ -1715,14 +1736,17 @@ before the checker reads repository governance; it does not substitute workspace
 policy or bypass the selected project's declaration. The primary
 phase derives its gates from `make.check_prerequisite_gates`; the complete phase
 retains the full configured check inventory and its context partitions. Both use
-the same native checker, original capture and SARIF publisher. The test owners
-consume the newest primary-phase receipt before executing native engines in
-dependency order. Every test mode requires this admission. A direct diagnostic
-`check run` report is not captured evidence. Missing, incomplete, red or stale
-same-phase evidence refuses execution without electing an older success.
-Admission diagnostics identify the required phase and direct recovery to that
-same declared check phase. A bare complete check does not repair missing primary
-evidence, and diagnostics must not suggest that it does.
+the same native checker, original capture and SARIF publisher. Test owners execute
+their native engines and report the original outcome; missing, red or old check
+receipts never block testing. Complete check and test evidence remains necessary
+for integration and completion.
+The CI workflow also exposes an optional `full_check` boolean on
+`workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
+existing complete check with `make.ci.local_value`, in addition to the unchanged
+required CI operations. This selects every active gate instead of the CI
+partition. The workflow records the candidate SHA and uploads the complete
+check's receipts through the same artifact owner; a primary-only result is
+not complete-check evidence.
 Native checks emit bounded progress at selection, identity/report preparation,
 and prerequisite-wave boundaries before per-gate completion messages. These
 messages identify the stage reached by an interrupted producer; they do not
@@ -2136,9 +2160,11 @@ the library defaults while preserving the same ordered configuration layers.
 
 VS Code's `.vscode/settings.json` is a versioned projection of those declarations,
 regenerated by `make gen`. Editor settings, `[tool.pyright]` configuration and
-Git ignores use the same guarded file publisher. The editor surface renders each declared
-destination through its own template and project overlays. Qlty remains TOML;
-consumed declarations stay inputs to the atomic file plans. The root public Make interface
+Git ignores use the same guarded file publisher. The editor surface renders
+each declared destination through its own template and project overlays;
+`.qlty/qlty.toml` therefore remains TOML and never receives VS Code JSON.
+Consumed declarations remain inputs to the atomic file plans.
+The root public Make interface
 owns generation; the retired `make gen-editor` spelling is not an execution route.
 Its `${workspaceFolder}` environment tokens remain
 portable in workspace members, independent checkouts and linked worktrees.
@@ -2351,13 +2377,10 @@ supersedes the earlier same-day "only the root lock" decision: member `uv.lock` 
 `mise.lock` are kept and formed by each member's own declarations, the workspace
 lock is their composition, only `make upg` writes locks, and exact SHAs pin the
 dependency hierarchy. Workspace `make upg` still processes every member in one pass
-(operator ruling 2026-10-25): its guard first, then members in `.gitmodules` order,
-then the root (uv documents that `--upgrade` implies `--refresh`). The guard (uv
-only, in the upgrade preflight) requires, for an editable workspace, every governed
-repository committed and each gitlink equal to its member's HEAD, and, for a
-standalone checkout with an external editable install, a clean external checkout
-whose HEAD the consumer's committed gitlink or locked SHA records. The guard and the
-composition mechanism are a design whose verification questions are settled but
+(operator ruling 2026-10-25): members in `.gitmodules` order,
+then the root (uv documents that `--upgrade` implies `--refresh`). No clean-tree,
+branch, gitlink or editable-HEAD-versus-lock preflight blocks native development,
+generation, installation or upgrade. The composition mechanism is a design whose verification questions are settled but
 whose implementation is pending (ADR-030 "Proposed design"); the running upgrade
 still relocks the root workspace in one native `uv lock --upgrade`. CI installs
 frozen locks and never relocks (tracker memory
@@ -2417,6 +2440,11 @@ PEP 621 optional extras and PEP 735 dependency groups retain their separate
 categories, including when both declare a name such as `dev` or `codegen`.
 Conformance preserves each extra's requirement strings, bounds, markers and
 origins; a matching group name does not authorize moving or deleting the extra.
+Authored name-based requirements likewise retain their registry constraints,
+extras and markers: the transformer does not infer a Git source from a name
+prefix. Generated internal floors use their declared provider provenance;
+explicit member Git references retain the existing URL validation. Preserving a
+requirement during conformance does not prove its resolution or installation.
 
 Member contributions carry per-occurrence provenance in both managed development
 groups. CUSTOM entries retain their full constraints and origins; removing a
@@ -2521,13 +2549,25 @@ request with a read-only context fails before scanning or writing; it never
 dispatches a different operation.
 The native `codegen init` adapter acts on its explicitly selected target only.
 An existing project uses the bounded Makefile recovery surface and its declared
-artifact dependencies. An explicit kind may author that target's declaration
-through the existing guarded transaction; a conflicting kind fails.
+artifact dependencies. The shared detector derives governance kind from native
+dependency declarations, native source imports and managed workspace composition;
+configuration never
+declares kind (tracker `operator-order-2026-11-02-kind-detected`).
+The native `refactor mod-text --rule-ids retire-repository-kind-declaration --apply`
+retires the obsolete YAML key through the existing authenticated text publisher.
+Write containment uses native project facts without loading the policy being
+rewritten; policy consumers retain their strict full-configuration boundary.
+Text rules can select physical YAML sources by explicit include glob, using the
+same inventory boundary as shell sources; unrelated YAML keys remain untouched.
+Projects without FLEXT consumption retain ordinary internal governance. A distinct
+native Git upstream identifies an external fork; its upstream architecture remains
+outside FLEXT rewrites. The detector reuses the injected source view or a native
+Rope project and its import inventory, without a second parser or stored kind cache.
 A target without project metadata must instead pass the workspace detector's
-positive new-tree admission using its own complete project, integration, kind
+positive new-tree admission using its own complete project and integration
 and dependency-provenance declarations and prepared Git checkout. That case uses
 the same complete generation planner and publisher as `make gen`, with bound
-collaborators from the adapter's actual tool runtime. No kind, Beads identity or
+collaborators from the adapter's actual tool runtime. No Beads identity or
 dependency provenance is synthesized. A declared new workspace member should
 normally be materialized by the workspace's `make gen`.
 For a standalone target without a Makefile, a preinstalled generation tool
@@ -2603,12 +2643,20 @@ invoking command's existing profiler.
 Governed repository planning selects the existing scaffold or existing-repository
 planner once, then passes the same typed target, workspace, configuration and
 surface contract through that owner's common call boundary.
+Metadata-only scaffold planning obeys that contract's disabled custom source
+phase. Complete generation owns family stems, facade composition and analyzer
+settings derived from the resulting source cohort.
 Focal facade generation retains its original workspace snapshot through candidate
 admission and publication. Normalized plans carry those original source witnesses,
 and staging reuses the same captured states and parsed import facts. Closing that
 snapshot after planning would force a second read and parse during admission.
 Duplicate input references are coalesced only when their captured states agree;
 publication still verifies the original witnesses through the existing writer.
+The publication adapter passes destination states and read-only input states
+separately to CLI's native verifier under the same publication lock. Read-only
+inputs permit a leaf inode replacement only when bytes, mode, absence and every
+other physical witness agree; destinations retain complete identity. A source
+that also names a destination retains that stricter destination contract.
 An admitted cohort is indivisible: cohort selection precedes admission, and its
 normalized plans reach check or publication together. Shared invocation witnesses
 are therefore carried once by its first normalized plan, after that plan's own
@@ -2809,9 +2857,13 @@ includes.
 Local source binding remains part of `make setup FLEXT=<workspace>`. The frozen
 UV installation is mandatory and continues to own the complete dependency
 graph. The subsequent source-only pip step runs in the consumer's physical
-Python environment and does not resolve a second graph. Dependency checking and
-validation of each installed PEP 610 editable origin must succeed before the
-existing selection receipt is published. No `--no-config` escape is used.
+Python environment with native `--no-config --no-deps`: supplier configuration
+cannot replace explicit editable paths, and no second dependency graph is resolved.
+Dependency checking and validation of each installed PEP 610 editable origin must
+succeed before the existing selection receipt is published. Explicit local selection
+uses the current checkout; it does not require its HEAD to equal a locked Git build.
+An empty promoted-command registry contributes no discovered verbs; it does not
+invalidate an explicitly declared dispatcher or the consumer's authored Make verbs.
 When the supplier workspace provides the consumer's own distribution, selection
 binds that distribution to the consumer's physical root, not the supplier's
 sibling checkout. Executor bootstrap may replace the initial frozen build; the
@@ -3098,6 +3150,10 @@ Suite profiles are bound only after successful execution or a completed failing
 suite with its final JUnit report. An interrupted profiling child keeps its native
 process outcome and raw log without attempting to read an unfinished profile.
 A missing profile from a completed suite remains an artifact failure.
+FULL execution, including a selected test file, has no preliminary Testmon
+inventory or selection profile. Its report uses the recorded FULL intent and
+authenticates only the suite/process captures that operation produced. An
+interrupted FULL operation remains incomplete even when its profile is readable.
 Startup instrumentation, the pytest launcher and the profiling entrypoint share
 one process-local profiler. Nested profiling subprocesses retain their own profiles
 and still execute the original site customization.
@@ -4076,14 +4132,6 @@ original process, accounting and diagnostics reports with complete positive exec
 Timeouts, signals, collection errors, operational failures, missing artifacts and
 changed digests remain failures. The complete-execution policy may admit finished
 findings while preserving their nonzero status; the clean-quality policy rejects them.
-Green-check reuse receives its global-target planner through the required typed
-`p.Infra.GlobalCheckTargetPlanner` callback. The pytest composition supplies the native
-checker's `plan_global_targets` operation; the Git evidence utility never imports the
-checker. Admission invokes the callback only after original execution and complete,
-unfiltered SARIF coverage have been admitted, retaining the first-failure order before
-topology comparison and candidate freshness. The native checker remains the sole
-topology and applicable-gate planning owner; no caller-authored target inventory or
-optional planner fallback substitutes for it.
 Workspace routes retain the documentation module as a public dependency and resolve
 its validator and auditor only when the complete check selects documentation.
 Setup, provenance and generation discovery must not import unselected documentation
@@ -4170,8 +4218,13 @@ Candidate admission (`u.Infra.git_admit_gate_candidate`) builds on the V3 attest
 primitives and decides whether an attested proof corresponds to a specific Git
 candidate (repository, head, tree, base, merge). It requires exact identity match,
 clean outcome under the clean-quality policy, TTL validity, and runtime identity
-agreement. It does not invoke Make, publish GitHub checks, or modify repository
-state. Absent or incompatible proof never approves implicitly.
+agreement. A workspace proof without attested repository, head or tree is execution
+evidence only; merge admission rejects it instead of treating absent observations as a
+match. When the caller declares a merge identity, the attested after-commit must exist
+and match it. The canonical `workspace create-gate-attestation`,
+`workspace verify-gate-attestation` and `workspace admit-gate-candidate` routes expose
+these operations; admission itself does not invoke Make, publish GitHub checks, or
+modify repository state. Absent or incompatible proof never approves implicitly.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. Each smell
@@ -4367,7 +4420,10 @@ only when its published provider belongs to that namespace's family. A root
 publication that forwards an upstream facade retains the upstream identity;
 sharing the same facade letter does not make it an own-family dependency.
 Native member identity must also prove every consumed reference's declaring
-owner and its nearest published export. The semantic cutover owner preserves
+owner and its nearest published export through the same captured member resolver.
+Its source project supplies the physical root for a derived source view; a member
+repository does not replace the enclosing workspace's physical identity.
+The semantic cutover owner preserves
 lexical bindings and the placement the import law calculates. Same-module owners
 are spelled locally and quoted annotations are rewritten by the same owner; only
 unresolved native identities and captured bindings fail, with their evidence.
@@ -4385,9 +4441,11 @@ order: `__future__`, standard library, third party, then first party (the module
 namespace and the project's `src` packages); inside each section every `import x`
 precedes every `from x import y`, each by module path without case. Generated and
 rewritten modules are therefore gate-clean by construction, and no Ruff post-pass
-decides or repairs imports (ADR-028 Decision 8.2; epic `flext-lqfqo`). Authored
-format debt and pre-existing lint findings stay for `make fmt` and `make fix`;
-generation never reformats untouched authored lines.
+decides or repairs imports (ADR-028 Decision 8.2; epic `flext-lqfqo`). When authored
+bytes carry formatting debt, normalization passes only changed line ranges to Ruff,
+which owns their logical-statement expansion. Untouched format debt and pre-existing
+lint findings stay for `make fmt` and `make fix`; generation never reformats untouched
+authored statements.
 
 Deferred class annotations stay typing-only when native source ancestry proves
 ordinary class construction through `object`: undecorated declarations, no class
@@ -4569,9 +4627,9 @@ batch and shared across targets.
 Read-only Make verbs never invoke generation, repairs, formatting, or codemod
 application; `make check` runs conform only in its read-only `--mode check`. Audit
 checks installed dependency and environment provenance, and check validates the
-documentation without rendering replacements. Installation provenance binds the
-locked source, installed origin, declared physical checkout and committed gitlink;
-unrelated worktree changes do not invalidate that identity. Operation admission
+documentation without rendering replacements. Installation provenance identifies
+the installed origin and explicitly selected physical checkout; an editable
+selection need not equal a committed lock or gitlink. Operation admission
 separately authenticates the content and epoch of its consumed sources and accepts
 changed inputs only through its actual publisher's effects. Persisted publication
 reports never authorize those changes. Staged, unstaged and untracked work is
@@ -5208,9 +5266,10 @@ normalizer. A scan stage writes its elected rules as one native document stream;
 global utilities remain single-document files. The same document writer serves
 staged providers and staged fixture rules. Source catalogs and golden
 snapshots are not rewritten by this optimization.
-Fixture staging also groups its bound rules into one native document stream,
-retaining every declared rule and test. Durability remains with the atomic
-publisher; one publication replaces per-rule file and parent-directory syncs.
+Fixture staging retains each source rule's filename for its bound native
+document stream, so native configuration failures identify the owning catalog
+file. Every declared rule and test remains present; durability stays with the
+existing atomic publisher.
 Computed fact selectors use their declared JSON form: derived selector keys may be
 longer than a YAML flow mapping permits. The staged provider's content identity
 hashes the exact serialized paths and bytes, including that format choice, so a

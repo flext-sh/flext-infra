@@ -205,13 +205,13 @@ class FlextInfraGitLanes:
             if wire.failure:
                 return r[p.Infra.GitLaneEvidence].from_failure(wire)
             pull_requests = u.type_adapter(
-                tuple[p.Infra.GitLanePullRequest, ...],
+                tuple[m.Infra.GitLanePullRequest, ...],
             ).validate_json(wire.value)
         if request.read_beads:
             wire = cls._selected_beads(request.repo_root)
             if wire.failure:
                 return r[p.Infra.GitLaneEvidence].from_failure(wire)
-            beads = u.type_adapter(tuple[p.Infra.GitLaneBead, ...]).validate_json(
+            beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
         evidence = m.Infra.GitLaneEvidence(
@@ -612,24 +612,28 @@ class FlextInfraGitLanes:
             if target.managed is not False
         )
         reports = tuple(cls._inspect_repository(item) for item in requests)
-        report = m.Infra.GitLaneReport(
-            repo_root=request.repo_root,
-            integration_branch=reports[0].integration_branch,
-            integration_oid=reports[0].integration_oid,
-            inventory=tuple(
-                f"{item.repo_root}: {entry}"
-                for item in reports
-                for entry in item.inventory
+        report = m.Infra.GitLaneReport.model_validate({
+            "repo_root": (request.repo_root),
+            "integration_branch": (reports[0].integration_branch),
+            "integration_oid": (reports[0].integration_oid),
+            "inventory": (
+                tuple(
+                    f"{item.repo_root}: {entry}"
+                    for item in reports
+                    for entry in item.inventory
+                )
             ),
-            findings=tuple(
-                f"{item.repo_root}: {finding}"
-                for item in reports
-                for finding in item.findings
+            "findings": (
+                tuple(
+                    f"{item.repo_root}: {finding}"
+                    for item in reports
+                    for finding in item.findings
+                )
             ),
-            violations=tuple(
-                violation for item in reports for violation in item.violations
+            "violations": (
+                tuple(violation for item in reports for violation in item.violations)
             ),
-        )
+        })
         if report.findings:
             return r[p.Infra.GitLaneReport].fail(report.model_dump_json(indent=2))
         return r[p.Infra.GitLaneReport].ok(report)
@@ -682,14 +686,14 @@ class FlextInfraGitLanes:
                     findings,
                 )
             )
-        return m.Infra.GitLaneReport(
-            repo_root=request.repo_root,
-            integration_branch=base.value if base.success else "",
-            integration_oid=fresh.value if fresh.success else "",
-            inventory=tuple(inventory),
-            findings=tuple(findings),
-            violations=tuple(violations),
-        )
+        return m.Infra.GitLaneReport.model_validate({
+            "repo_root": (request.repo_root),
+            "integration_branch": (base.value if base.success else ""),
+            "integration_oid": (fresh.value if fresh.success else ""),
+            "inventory": (tuple(inventory)),
+            "findings": (tuple(findings)),
+            "violations": (tuple(violations)),
+        })
 
     @classmethod
     def _collect_lane_facts(

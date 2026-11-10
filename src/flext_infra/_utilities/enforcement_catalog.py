@@ -78,7 +78,9 @@ class FlextInfraUtilitiesEnforcementCatalog:
             return result.fail(defect)
         if not claims:
             return result.fail("no owner claims any enforcement law")
-        return result.ok(m.Infra.EnforcementCatalog(claims=claims))
+        return result.ok(
+            m.Infra.EnforcementCatalog.model_validate({"claims": (claims)})
+        )
 
     @staticmethod
     def _claims(

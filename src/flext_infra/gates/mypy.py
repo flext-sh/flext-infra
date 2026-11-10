@@ -189,17 +189,17 @@ class FlextInfraGatesMypy(FlextInfraGates):
 
         """
         limit = self._project_limit(project_dir)
-        recorded = m.Cli.CommandOutput(
-            stdout=result.stdout,
-            stderr=(
+        recorded = m.Cli.CommandOutput.model_validate({
+            "stdout": (result.stdout),
+            "stderr": (
                 "LOG:  Mypy resource budget: "
                 f"timeout_seconds={limit.timeout_seconds} "
                 f"memory_limit_mb={limit.memory_limit_mb} "
                 f"runner_timeout_seconds={u.Infra.mypy_runner_timeout(limit)}\n"
                 f"{result.stderr}"
             ),
-            outcome=result.outcome,
-        )
+            "outcome": (result.outcome),
+        })
         return super()._parsed_gate_execution(project_dir, ctx, recorded, started)
 
     @override

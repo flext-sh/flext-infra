@@ -74,6 +74,19 @@ class TestsFlextInfraPromotedCommandStem:
         )
 
     @classmethod
+    def test_unrelated_scripts_contribute_no_promoted_commands(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """An empty discovery does not invalidate another declared dispatcher."""
+        source = tmp_path / c.Infra.DIR_SCRIPTS / "run" / "report.py"
+        tm.ok(u.Cli.atomic_write_text_file(source, 'print("report")\n'))
+        original = source.read_bytes()
+        registry = cls._discover(tmp_path)
+        tm.that(registry.verbs(), length=0)
+        tm.that(source.read_bytes(), eq=original)
+
+    @classmethod
     def test_each_command_file_declares_its_public_what(
         cls,
         tmp_path: Path,

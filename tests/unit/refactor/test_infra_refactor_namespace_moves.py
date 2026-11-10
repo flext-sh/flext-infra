@@ -823,14 +823,23 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
 
     @staticmethod
     @c.Tests.MARK.parametrize("class_name", ["DeclaredOwner", "AnotherDeclaredOwner"])
+    @c.Tests.MARK.parametrize("scenario_source", [False, True])
     def test_public_module_move_preserves_declarations_and_consumer_identity(
         tmp_path: Path,
         class_name: str,
+        *,
+        scenario_source: bool,
     ) -> None:
         """Relocate actual modules with Rope, then import the rewritten consumer."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        implementation = package / "_pieces"
-        implementation.mkdir()
+        implementation = (
+            root / "tests" / "fixtures" if scenario_source else package / "_pieces"
+        )
+        implementation.mkdir(parents=True)
+        if scenario_source:
+            (root / "tests" / c.Infra.INIT_PY).write_text(
+                "", encoding=c.DEFAULT_ENCODING
+            )
         implementation.joinpath("__init__.py").write_text(
             '"""Implementation package."""\n',
             encoding="utf-8",
@@ -839,9 +848,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
         source_text = f"class {class_name}:\n    pass\n\n__all__ = ({class_name!r},)\n"
         source.write_text(source_text, encoding="utf-8")
         consumer = package / "consumer.py"
+        provider = "tests.fixtures" if scenario_source else f"{package.name}._pieces"
         consumer.write_text(
-            f"from {package.name}._pieces.owned import {class_name}\n"
-            f"Published = {class_name}\n",
+            f"from {provider}.owned import {class_name}\nPublished = {class_name}\n",
             encoding="utf-8",
         )
         tm.that(u.Tests.run_lazy_init(root), eq=0)

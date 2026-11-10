@@ -20,6 +20,12 @@ from flext_infra import c, m, p, s, t, u
 class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
     """Own the native Rope project, structural index, and read-only query caches."""
 
+    model_envelope_checker: t.Port[p.Infra.ModelEnvelopeChecker] | None = m.Field(
+        default=None,
+        exclude=True,
+        description="Composition-owned native checker for model-envelope admission",
+    )
+
     semantic_rename_planner: t.Port[p.Infra.NativeSemanticRenamePlanner] | None = (
         m.Field(
             default=None,
@@ -58,6 +64,31 @@ class FlextInfraWorkspaceRopeQuery(s[p.Infra.RopeWorkspaceSession]):
         c.Infra.DIR_EXAMPLES,
         c.Infra.DIR_SCRIPTS,
     )
+
+    @property
+    def model_protocol_routes(self) -> Mapping[str, str]:
+        """Read the projection owner's public model/protocol routes.
+
+        Returns:
+            The routes of this authenticated source context.
+
+        """
+        return u.Infra.model_protocol_routes(self.repository_root, self.rope_project)
+
+    @property
+    def model_protocol_identities(self) -> Mapping[str, str]:
+        """Read the same projection's native declaration identity view.
+
+        Returns:
+            Fully qualified model and protocol identities.
+
+        """
+        return {
+            model: protocol
+            for model, protocol, _destination in u.Infra.model_protocol_declarations(
+                self.repository_root, self.rope_project
+            )
+        }
 
     @property
     def rope_repository_root(self) -> Path:

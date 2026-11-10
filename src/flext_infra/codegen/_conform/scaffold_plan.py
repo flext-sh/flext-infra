@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import override
 
 from flext_infra import c, deps as dependency_services, m, p, r, u
-from flext_infra.codegen import FlextInfraCodegenLazyInit
+from flext_infra.codegen import FlextInfraCodegenLazyInit, FlextInfraCodegenScaffolder
 from flext_infra.codegen._conform.existing_plan import (
     FlextInfraCodegenConformExistingPlan,
 )
@@ -42,8 +42,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         existing = super()._plan_existing_repository(
             target=target, workspace=workspace, codegen=codegen, contract=contract
         )
+        if existing.failure or not (contract.templates and contract.custom):
+            return existing
         absent = self._absent_family_destinations(target, workspace, codegen)
-        if existing.failure or not absent or not contract.templates:
+        if not absent:
             return existing
         # The artifact graph is keyed by template destinations; the checkout
         # paths they render to only filter the resulting plans.
@@ -66,7 +68,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 plan
                 for plan in scaffold.value
                 if plan.path not in planned
-                and plan.path.relative_to(root).as_posix() in rendered
+                and (
+                    plan.path.relative_to(root).as_posix() in rendered
+                    or not plan.path.exists()
+                )
             ),
         ))
 
@@ -90,9 +95,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         ):
             return {}
         package = Path(c.Infra.DEFAULT_SRC_DIR) / project.package_name
-        # Only the family facade modules themselves: the scaffold's example
-        # and layer-zero members under a family directory belong to a new
-        # project, never to an existing repository.
+        # Adopting an existing checkout also needs the family components and
+        # layer-zero seeds. Existing authored destinations are never replaced.
+        bootstrap_package = not (target.root / package / c.Infra.INIT_PY).is_file()
         family_roots = tuple(
             package / f"{family.module}.py"
             for family in u.Infra.facade_families().values()
@@ -119,9 +124,13 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         return {
             template: destination.as_posix()
             for template, destination in destinations
-            if any(
-                destination == family_root or destination.is_relative_to(family_root)
-                for family_root in family_roots
+            if (
+                any(
+                    destination == family_root
+                    or destination.is_relative_to(family_root)
+                    for family_root in family_roots
+                )
+                or (bootstrap_package and destination.is_relative_to(package))
             )
             and not (target.root / destination).exists()
         }
@@ -281,8 +290,8 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                     render_inputs, context.value, scaffold_entries
                 )
             )
-            if planned.failure:
-                return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(planned)
+            if planned.failure or not contract.custom:
+                return planned
             return self._with_planned_facade_rebinds(
                 planned=tuple(planned.value),
                 scaffold_entries=scaffold_entries,
@@ -436,7 +445,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         *,
         planned: tuple[p.Infra.CodegenFilePlan, ...],
         scaffold_entries: tuple[tuple[p.Infra.TemplateEntrySpec, str], ...],
-        render_inputs: p.Infra.CodegenRenderInputs,
+        render_inputs: m.Infra.CodegenRenderInputs,
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.
 
@@ -453,6 +462,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
 
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
+        project = render_inputs.workspace.project
+        missing_stems: tuple[p.Infra.CodegenFilePlan, ...] = ()
+        if project is not None:
+            missing_stems = FlextInfraCodegenScaffolder.plan_stems(
+                render_inputs.target.root,
+                project,
+                render_inputs.codegen.scaffold,
+                planned,
+            )
+            planned = (*planned, *missing_stems)
         pyproject_entry = next(
             (
                 entry
@@ -461,8 +480,6 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             ),
             None,
         )
-        if pyproject_entry is None:
-            return result_type.ok(planned)
         root = render_inputs.target.root
         projected = {plan.path: plan for plan in planned}
         with self._source_view(
@@ -475,7 +492,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         if exports.failure:
             return result_type.from_failure(exports)
         projected.update((plan.path, plan) for plan in exports.value)
+        if missing_stems:
+            components = self._stem_components_with_exports(
+                root, tuple(projected.values())
+            )
+            if components.failure:
+                return result_type.from_failure(components)
+            projected.update((plan.path, plan) for plan in components.value)
         planned = tuple(projected.values())
+        if pyproject_entry is None:
+            return result_type.ok(planned)
         with self._source_view(root, declared_files=planned) as binding:
             tooling = render_inputs.tooling_runtime
             render_inputs.tooling_runtime = self.planned_source_tooling(
@@ -504,6 +530,25 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 )
             )
 
+    def _stem_components_with_exports(
+        self, root: Path, planned: tuple[p.Infra.CodegenFilePlan, ...]
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Compose new stems and their exports in the same source cohort.
+
+        Returns:
+            The composed candidate or its original planning failure.
+
+        """
+        components = self._component_projection(root, planned, selection=None)
+        if components.failure:
+            return components
+        projected = {plan.path: plan for plan in (*planned, *components.value)}
+        return self._projected_exports(root, tuple(projected.values())).map(
+            lambda exports: tuple(
+                {**projected, **{plan.path: plan for plan in exports}}.values()
+            )
+        )
+
     def _scaffold_entry_plan(
         self,
         *,
@@ -529,16 +574,16 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
         rendered = self._rendered_artifact_source(
             render_inputs,
-            m.Infra.ArtifactRenderRoute(
-                entry=entry,
-                destination=destination,
-                failure_prefix=(
+            m.Infra.ArtifactRenderRoute.model_validate({
+                "entry": (entry),
+                "destination": (destination),
+                "failure_prefix": (
                     "stage=templates "
                     f"repository={render_inputs.target.repository.name} "
                 ),
-                project_context=context,
-                planned_manifests=planned_manifests,
-            ),
+                "project_context": (context),
+                "planned_manifests": (planned_manifests),
+            }),
         )
         if rendered.failure:
             return result_type.from_failure(rendered)

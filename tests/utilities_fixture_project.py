@@ -150,18 +150,20 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixture
-        return m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=fixture.beads_project(repository.name),
-            repository=repository,
-            project=project,
-            flext_source=m.Infra.CodegenBootstrapSource(
-                url=fixture.repository_ref(config.Infra.name).url,
-                ref=fixture.provider_branch(),
+        return m.Infra.WorkspaceSpec.model_validate({
+            "name": (repository.name),
+            "beads": (fixture.beads_project(repository.name)),
+            "repository": (repository),
+            "project": (project),
+            "flext_source": (
+                m.Infra.CodegenBootstrapSource(
+                    url=fixture.repository_ref(config.Infra.name).url,
+                    ref=fixture.provider_branch(),
+                )
             ),
-            subprojects=subprojects,
-            integration=fixture.integration(),
-        )
+            "subprojects": (subprojects),
+            "integration": (fixture.integration()),
+        })
 
     @staticmethod
     def repository_ref(
@@ -339,21 +341,7 @@ class TestsFlextInfraUtilitiesProjectFixture:
             "  read_only: false\n",
             encoding="utf-8",
         )
-        TestsFlextInfraUtilitiesProjectFixture.declare_governed_kind(repository)
         return manifest
-
-    @staticmethod
-    def declare_governed_kind(repository: Path) -> None:
-        """Declare the governance kind at the repository's own project boundary.
-
-        Generators read ``Infra.codegen.repository.kind`` from the repository's
-        own ``config/codegen.yaml`` and fail closed without it; every governed
-        fixture root declares it there, exactly as a real FLEXT checkout does.
-        """
-        TestsFlextInfraUtilitiesProjectFixture.override_repository_declaration(
-            repository,
-            {"kind": c.Infra.ProjectKind.INTERNAL_FLEXT.value},
-        )
 
     @staticmethod
     def override_repository_declaration(
@@ -385,7 +373,6 @@ class TestsFlextInfraUtilitiesProjectFixture:
 
         """
         fixture = TestsFlextInfraUtilitiesProjectFixture
-        fixture.declare_governed_kind(repository)
         provider = fixture.provider()
         path = repository / c.Infra.GITMODULES
         path.write_text(

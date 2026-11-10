@@ -1,5 +1,6 @@
-# A model field typed by a protocol from `p` carries a runtime dependency, not
-# a schema value. Pydantic 2 has no schema path for a protocol and its official
+# A capability protocol without a model twin carries a runtime dependency.
+# Data contracts with model twins belong to model-field-schema-owner.
+# Pydantic 2 has no schema path for a protocol and its official
 # mechanism for a hook-less type is a field-level `Annotated` marker: the
 # flext-core owner `t.Port[P]` validates with `isinstance` on construction and
 # assignment and skips the JSON Schema. A bare `p.*` reference in a model field
@@ -16,9 +17,8 @@
 # `Callable[...]` signatures or `type[...]`, and type arguments of a generic
 # model (`Family.Rule[p.X]`, whose own field owns the port) are left
 # untouched: a callable's parameter and return types and a class object are
-# never instance-checked, so wrapping them would be wrong. A protocol whose
-# Annotated field delegates its schema through t.schema_for_model is persisted
-# data and is left untouched too. A second pass changes nothing.
+# never instance-checked, so wrapping them would be wrong. Persisted fields
+# retain concrete model types. A second pass changes nothing.
 id: rewire-model-protocol-field-to-port
 language: python
 severity: error
@@ -31,6 +31,13 @@ ignores:
 rule:
   all:
   - pattern: $PORT
+  - not:
+      any:
+      - matches: protocol-model-path
+      - kind: subscript
+        has:
+          field: value
+          matches: protocol-model-path
   - any:
     - kind: attribute
       regex: "^p(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$"
@@ -56,6 +63,7 @@ rule:
   - not:
       inside:
         stopBy: end
+        kind: call
   - not:
       inside:
         stopBy: end

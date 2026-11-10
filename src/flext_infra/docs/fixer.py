@@ -168,13 +168,13 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             if final.encode(c.DEFAULT_ENCODING) == before.content:
                 continue
             planned.append(
-                m.Infra.SemanticFilePlan(
-                    project=scope.path,
-                    path=before.path,
-                    before=before,
-                    desired_content=final.encode(c.DEFAULT_ENCODING),
-                    desired_mode=before.mode,
-                )
+                m.Infra.SemanticFilePlan.model_validate({
+                    "project": (scope.path),
+                    "path": (before.path),
+                    "before": (before),
+                    "desired_content": (final.encode(c.DEFAULT_ENCODING)),
+                    "desired_mode": (before.mode),
+                })
             )
             collected.append(
                 item.model_copy(

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence, Set as AbstractSet
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
 from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, runtime_checkable
 
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
@@ -848,6 +848,10 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
         ) -> Sequence[FlextInfraProtocolsRopeRuntime.RopeImportInfo]: ...
 
+        def get_used_names(
+            self, defined_pyobject: FlextInfraProtocolsRopeRuntime.RopeParsedModule
+        ) -> set[str]: ...
+
         def add_import(
             self,
             import_info: FlextInfraProtocolsRopeRuntime.RopeImportInfo,
@@ -865,6 +869,15 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     class RopeImportTools(Protocol):
         """Native import translation used by observational relocation plans."""
 
+        def organize_imports(
+            self,
+            module: FlextInfraProtocolsRopeRuntime.RopePyModule,
+            *,
+            unused: bool = True,
+            duplicates: bool = True,
+            sort: bool = True,
+        ) -> str: ...
+
         def relatives_to_absolutes(
             self,
             module: FlextInfraProtocolsRopeRuntime.RopePyModule,
@@ -873,6 +886,8 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
     @runtime_checkable
     class RopeImportOrganizer(Protocol):
         """Rope import organizer shape."""
+
+        import_tools: FlextInfraProtocolsRopeRuntime.RopeImportTools
 
         def organize_imports(
             self,
@@ -891,8 +906,28 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
 
     @runtime_checkable
+    class RopeMoveClass(Protocol):
+        """Native nested-class transfer, distinct from global/module moves."""
+
+        def get_changes(
+            self,
+            target: FlextInfraProtocolsRopeRuntime.RopeResource,
+            resources: Sequence[FlextInfraProtocolsRopeRuntime.RopeResource]
+            | None = None,
+            *,
+            destination_offset: int | None = None,
+            match_filter: Callable[
+                [FlextInfraProtocolsRopeRuntime.RopeOccurrence], bool
+            ]
+            | None = None,
+        ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet: ...
+
+    @runtime_checkable
     class RopeOccurrence(Protocol):
         """Rope occurrence shape."""
+
+        @property
+        def resource(self) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         offset: int
 
@@ -905,6 +940,16 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
         def is_written(self) -> bool: ...
 
         def is_defined(self) -> bool: ...
+
+        def get_primary_and_pyname(
+            self,
+        ) -> (
+            tuple[
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+                FlextInfraProtocolsRopeRuntime.RopePyName | None,
+            ]
+            | None
+        ): ...
 
     @runtime_checkable
     class RopeOccurrenceFinder(Protocol):

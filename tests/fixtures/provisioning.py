@@ -22,7 +22,7 @@ import pytest
 from flext_infra import codegen, config, infra, workspace
 from tests import c, m, p, t, tm, u
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
 
 _CONSUMER_UPGRADE_RECEIPT = "upgrade-receipt.json"
 _CONSUMER_BUILD_RECEIPT = "build-receipt.json"
@@ -170,30 +170,14 @@ def _provision_consumer_template(
     u.Tests.initialize_git_repo(root, origin_url=repository.url)
     if member_dependencies:
         _declare_fleet_members(root, distribution, member_dependencies)
-    workspace = u.Tests.workspace_spec(
-        repository,
-        project=u.Tests.project_spec(root.name),
-        subprojects=tuple(
-            u.Tests.repository_ref(name, path=Path(name))
-            for name in (() if member_dependencies is None else member_dependencies)
-        ),
-    )
-    conform_request = u.Tests.conform_request(
-        root,
-        what=c.Infra.CodegenConformSurface.MAKEFILE,
-    )
-    conform = codegen.FlextInfraCodegenConform.Generate(
-        repository_root=root,
-        state=m.Infra.CodegenConformState(
-            repository_root=root,
-            initial_workspace=workspace,
-            request=conform_request,
-        ),
-    )
-    planned = conform.plan(conform_request)
-    tm.ok(planned)
     tm.ok(
-        u.Tests.materialize_codegen_plans(planned.map(lambda result: result.files)),
+        infra.codegen_generate(
+            m.Infra.CodegenGenerateRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
+            )
+        ),
     )
     tm.ok(
         infra.codegen_conform(
@@ -205,17 +189,34 @@ def _provision_consumer_template(
             ),
         ),
     )
+    tm.ok(
+        infra.codegen_conform(
+            u.Tests.conform_request(
+                root,
+                what=c.Infra.CodegenConformSurface.PYPROJECT,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+        ),
+    )
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
+    superproject = tm.ok(
+        u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=_PROJECT_ROOT)
+        )
+    ).text.strip()
+    providers = Path(superproject) if superproject else _PROJECT_ROOT
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
+        ("gen", "generation-receipt.json"),
         ("build", _CONSUMER_BUILD_RECEIPT),
     ):
         output = tm.ok(
             u.Tests.run_isolated_make(
-                [verb],
+                [verb, f"FLEXT={providers}"] if verb == "setup" else [verb],
                 cwd=root,
                 env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
             ),
@@ -227,8 +228,22 @@ def _provision_consumer_template(
             msg=output.stdout + output.stderr,
         )
         if verb == "upg":
-            u.Tests.git_bootstrap(root, ("add", "-A"))
+            u.Tests.git_bootstrap(
+                root,
+                (
+                    "add",
+                    "--",
+                    c.PYPROJECT_FILENAME,
+                    c.Infra.UV_LOCK_FILENAME,
+                    c.Infra.MISE_LOCK_FILENAME,
+                ),
+            )
             u.Tests.git_bootstrap(root, ("commit", "-q", "-m", "upg: resolved locks"))
+        if verb == "gen":
+            u.Tests.git_bootstrap(root, ("add", "--", c.Infra.DIR_DOCS))
+            u.Tests.git_bootstrap(
+                root, ("commit", "-q", "-m", "gen: materialize consumer documentation")
+            )
     environment = u.Infra.runtime_environment_dir(root)
     tm.fail(environment.is_symlink())
     tm.ok((environment / "pyvenv.cfg").is_file())
