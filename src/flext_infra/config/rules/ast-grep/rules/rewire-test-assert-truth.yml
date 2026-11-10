@@ -38,12 +38,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: |-
   if $COND:
       pass
@@ -74,12 +69,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: |-
   if $COND:
       tm.reject()

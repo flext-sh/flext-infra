@@ -345,7 +345,14 @@ class FlextInfraModReplacements:
                 before_source=before.decode(c.DEFAULT_ENCODING),
             )
             if normalized.failure:
-                return r[bytes].from_failure(normalized)
+                return r[bytes].fail(
+                    normalized.error or "normalization failed",
+                    error_code=normalized.error_code,
+                    error_data={
+                        **(dict(normalized.error_data or {})),
+                        c.Infra.MOD_FAILURE_MODULE_KEY: str(path),
+                    },
+                )
             final = normalized
         if final.failure:
             return r[bytes].from_failure(final)
@@ -359,6 +366,7 @@ class FlextInfraModReplacements:
             return r[bytes].fail(
                 f"mod introduced Ruff findings in {path}: "
                 + "\n".join(line for lines in introduced.values() for line in lines),
+                error_data={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)},
             )
         return r[bytes].ok(final.value.encode(c.DEFAULT_ENCODING))
 

@@ -4218,8 +4218,13 @@ Candidate admission (`u.Infra.git_admit_gate_candidate`) builds on the V3 attest
 primitives and decides whether an attested proof corresponds to a specific Git
 candidate (repository, head, tree, base, merge). It requires exact identity match,
 clean outcome under the clean-quality policy, TTL validity, and runtime identity
-agreement. It does not invoke Make, publish GitHub checks, or modify repository
-state. Absent or incompatible proof never approves implicitly.
+agreement. A workspace proof without attested repository, head or tree is execution
+evidence only; merge admission rejects it instead of treating absent observations as a
+match. When the caller declares a merge identity, the attested after-commit must exist
+and match it. The canonical `workspace create-gate-attestation`,
+`workspace verify-gate-attestation` and `workspace admit-gate-candidate` routes expose
+these operations; admission itself does not invoke Make, publish GitHub checks, or
+modify repository state. Absent or incompatible proof never approves implicitly.
 
 `smells` is not part of the `make check` partitions. The selector-free `make smells`
 verb runs only the qlty smell scan and fails when it finds defects. Each smell

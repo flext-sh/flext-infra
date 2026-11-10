@@ -15,6 +15,7 @@ from flext_cli import u
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAst,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
     FlextInfraUtilitiesRopeInventorySites,
@@ -594,9 +595,6 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         """
         positions: MutableMapping[tuple[int, str], int] = {}
         binding_index = pymodule.get_source_binding_index()
-        name_offsets = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
-            "rope.base.codeanalyze", "name_offsets"
-        )
         definition_path = (
             FlextInfraUtilitiesRopeRuntimeModules.name_definition_resource_path
         )
@@ -608,7 +606,9 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
             for name, pyname in scope.get_names().items():
                 if not FlextInfraUtilitiesRopeRuntime.parameter_name(pyname):
                     continue
-                offsets = name_offsets(pymodule.source_code, name)
+                offsets = FlextInfraUtilitiesRopeAst.name_offsets(
+                    pymodule.source_code, name
+                )
                 if not isinstance(offsets, tuple) or not all(
                     isinstance(offset, int) for offset in offsets
                 ):

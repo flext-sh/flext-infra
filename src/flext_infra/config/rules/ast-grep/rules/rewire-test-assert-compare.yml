@@ -23,12 +23,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: "tm.that($B, has=$A)"
 message: Assert the contained operand through tm.that.
 ---
@@ -50,12 +45,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: "tm.that($B, lacks=$A)"
 message: Assert the excluded operand through tm.that.
 ---
@@ -77,12 +67,7 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: "tm.that($A, eq=$B)"
 message: Assert the equal operands through tm.that.
 ---
@@ -104,11 +89,6 @@ rule:
         inside:
           kind: except_clause
           stopBy: end
-    - inside:
-        kind: module
-        stopBy: end
-        has:
-          matches: tm-imported-from-flext
-          stopBy: end
+    - matches: tm-binding-admissible
 fix: "tm.that($A, ne=$B)"
 message: Assert the unequal operands through tm.that.

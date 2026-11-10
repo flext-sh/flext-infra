@@ -1367,10 +1367,14 @@ class FlextInfraUtilitiesLintRecipes(
         Ruff format wraps expressions but never splits a string literal or a
         comment. A long single-line string literal is split after spaces into
         implicit concatenation, inside its enclosing brackets or inside new
-        parentheses; a long full-line comment is reflowed at the same indent.
-        The parser folds implicit concatenation and drops comments, so the
-        repaired module's AST must equal the original one. A line holding
-        neither keeps its text and its finding.
+        parentheses; a long full-line comment is reflowed at the same indent,
+        and a trailing comment on an otherwise fitting code line moves to its
+        own line at the same indent. Directives that bind to their line
+        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pyright:``, ``pylint:``,
+        ``isort:``, ``mypy:``) keep their position. The parser folds implicit
+        concatenation and drops comments, so the repaired module's AST must
+        equal the original one. A line holding neither keeps its text and its
+        finding.
 
         A line inside a ``# /// <type>`` structured comment block keeps its
         text and its finding: the block carries TOML that a reflow breaks
@@ -1403,12 +1407,16 @@ class FlextInfraUtilitiesLintRecipes(
             line = lines[number - 1]
             if len(line.rstrip("\r\n")) <= limit:
                 continue
-            replacement = cls._line_wrap_comment(
-                line,
-                number,
-                tokens,
-                limit,
-            ) or cls._line_wrap_literal(line, number, tokens, limit)
+            replacement = (
+                cls._line_wrap_trailing_comment(line, number, tokens, limit)
+                or cls._line_wrap_comment(
+                    line,
+                    number,
+                    tokens,
+                    limit,
+                )
+                or cls._line_wrap_literal(line, number, tokens, limit)
+            )
             if replacement is not None:
                 lines[number - 1] = replacement
         repaired = "".join(lines)
@@ -1426,6 +1434,50 @@ class FlextInfraUtilitiesLintRecipes(
             msg = "line wrap changed a structured comment block"
             raise ValueError(msg)
         return repaired
+
+    @staticmethod
+    def _line_wrap_trailing_comment(
+        line: str,
+        number: int,
+        tokens: Sequence[tokenize.TokenInfo],
+        limit: int,
+    ) -> str | None:
+        """Move a trailing comment above its code line when the code fits.
+
+        Returns:
+            The code line with the comment on its own line, or ``None`` when
+            the line has no trailing comment, when the code part alone exceeds
+            the limit, or when the comment is a line-binding directive.
+
+        """
+        comment = next(
+            (
+                token
+                for token in tokens
+                if token.start[0] == number and token.type == tokenize.COMMENT
+            ),
+            None,
+        )
+        indent = line[: len(line) - len(line.lstrip())]
+        if comment is None or comment.start[1] == len(indent):
+            return None
+        code = line[: comment.start[1]].rstrip()
+        if not code or len(code) > limit:
+            return None
+        directive = comment.string.lstrip("# ").lower()
+        if directive.startswith((
+            "type:",
+            "noqa",
+            "fmt:",
+            "ruff:",
+            "pyright:",
+            "pylint:",
+            "isort:",
+            "mypy:",
+        )):
+            return None
+        newline = line[len(line.rstrip("\r\n")) :]
+        return f"{indent}{comment.string}{newline}{code}{newline}"
 
     @staticmethod
     def _line_wrap_comment(

@@ -1,6 +1,12 @@
 id: rewire-test-assert-message
-# Every rewrite requires the `tm` binding to the flext-tests matchers.
+# Every rewrite requires an admissible `tm` binding at the occurrence.
 valid:
+- |
+  from other_library import tm
+  assert value is None, "No value is expected"
+- |
+  def check(tm: object) -> None:
+      assert value is None, "No value is expected"
 - |
   from flext_tests import tm
   assert result.success
@@ -20,8 +26,8 @@ valid:
   from flext_tests import tm
   if not result.success:
       raise AssertionError(result.error)
-- assert value is None, "No value is expected"
 invalid:
+- assert value is None, "No value is expected"
 - |
   from flext_tests import tm
   assert self.value is not None, "A value is required"

@@ -202,6 +202,12 @@ class FlextInfraModelsTransformers:
             Mapping[str, str],
             m.Field(description="Proven upstream identities preceding local aliases"),
         ] = m.Field(default_factory=u.empty(TypeForm(Mapping[str, str])))
+        root_published_modules: Annotated[
+            frozenset[str],
+            m.Field(
+                description=("Service modules whose aliases the package root publishes")
+            ),
+        ] = m.Field(default_factory=frozenset[str])
 
     class PrivateImportRewritePlan(FlextInfraModelsBase.FrozenArbitrary):
         """Binding-proven import rewrites planned for one private-import file."""

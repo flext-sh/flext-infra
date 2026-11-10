@@ -553,9 +553,7 @@ class FlextInfraUtilitiesCodemodRules(
         if not bundle.is_file():
             return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
-        command = flext_infra.u.Infra.ast_grep_scan_command(
-            bundle, targets=(".",)
-        )
+        command = flext_infra.u.Infra.ast_grep_scan_command(bundle, targets=(".",))
         config_path = bundle.parent.parent
         with tempfile.TemporaryDirectory(
             prefix="codemod-ruleset-parse-", dir=destination.parent
@@ -574,9 +572,7 @@ class FlextInfraUtilitiesCodemodRules(
                 msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
                 raise ValueError(msg)
             output = (executed.value.stderr or executed.value.stdout).strip()
-            if any(
-                marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS
-            ):
+            if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
                 msg = f"{prefix}: {config_path}: {output}"
                 raise ValueError(msg)
 

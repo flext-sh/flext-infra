@@ -81,14 +81,29 @@ def native_consumer(tmp_path: Path) -> p.Tests.NativeConsumer:
 
 
 @pytest.fixture
-def declaration_workspace(tmp_path: Path) -> tuple[Path, Path]:
+def declaration_workspace(
+    tmp_path: Path,
+    session_runtime: p.Tests.SessionRuntime,
+) -> tuple[Path, Path]:
     """Provide the standard FLEXT workspace fabric for native declarations.
+
+    The rule plan is elected against the target repository's own physical
+    runtime, so the fixture provisions that environment with the workspace's
+    real local dependencies once for every test that scans it
+    (``test_rule_plan_target_environment``).
 
     Returns:
         The resulting ``tuple[Path, Path]``.
 
     """
-    return u.Tests.create_lazy_init_workspace(tmp_path)
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    tm.ok(
+        u.Tests.provision_scan_workspace(
+            root,
+            session_runtime=session_runtime,
+        )
+    )
+    return root, package
 
 
 @pytest.fixture

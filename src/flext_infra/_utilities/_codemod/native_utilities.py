@@ -896,16 +896,24 @@ class FlextInfraUtilitiesCodemodNative:
 
         """
         selected = None if rule_ids is None else frozenset(rule_ids)
+        separator = c.Infra.CODEMOD_GENERATED_ID_SEPARATOR
+        header_prefix = f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}{separator}"
         return cls._rendered_rules(
             snapshot,
             project,
             tuple(
                 entry
                 for entry in spec.renderers
-                if selected is None or cls._renderer_selects_rule_ids(entry, selected)
+                if selected is None
+                or cls._renderer_selects_rule_ids(entry, selected)
+                or c.Infra.CODEMOD_IMPORT_HEADER_SHAPE in cls._renderer_shapes(entry)
             ),
             facts,
-            lambda rule_id, _claimed: selected is None or rule_id in selected,
+            lambda rule_id, _claimed: (
+                selected is None
+                or rule_id in selected
+                or rule_id.startswith(header_prefix)
+            ),
         )
 
     @classmethod

@@ -886,7 +886,12 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         attested_head = evidence.commit_sha
 
         # Step 2: match candidate identity against attested evidence.
-        cls._check_identity_match(evidence, candidate, reasons)
+        cls._check_identity_match(
+            evidence,
+            candidate,
+            reasons,
+            merge_check=request.merge_check,
+        )
         # For merge checks, base/merge must match.
         if request.merge_check:
             cls._check_merge_constraints(evidence, candidate, reasons)
@@ -935,7 +940,17 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         evidence: p.Infra.GateCommandEvidence,
         candidate: p.Infra.GateCandidateIdentity,
         reasons: list[str],
+        *,
+        merge_check: bool,
     ) -> None:
+        if merge_check:
+            for field, value in (
+                ("repository", evidence.repository),
+                ("head", evidence.commit_sha),
+                ("tree", evidence.tree_sha),
+            ):
+                if value is None:
+                    reasons.append(f"merge admission requires attested {field}")
         repo_mismatch = (
             evidence.repository is not None
             and evidence.repository != candidate.repository
@@ -966,12 +981,12 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
     ) -> None:
         if candidate.dirty:
             reasons.append("merge admission requires clean candidate")
-        merge_mismatch = (
-            candidate.merge_oid is not None
-            and evidence.after_commit_sha is not None
-            and evidence.after_commit_sha != candidate.merge_oid
-        )
-        if merge_mismatch:
+        if candidate.merge_oid is None:
+            return
+        if evidence.after_commit_sha is None:
+            reasons.append("merge admission requires attested after commit")
+            return
+        if evidence.after_commit_sha != candidate.merge_oid:
             reasons.append(
                 f"merge mismatch: attested_after={evidence.after_commit_sha} "
                 f"candidate_merge={candidate.merge_oid}"

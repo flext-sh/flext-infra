@@ -1,5 +1,20 @@
 id: rewire-test-assert-type-guard
 snapshots:
+  "assert isinstance(self.value, Entry)":
+    fixed: |-
+      if isinstance(self.value, Entry):
+          pass
+      else:
+          tm.reject()
+    labels:
+    - source: assert isinstance(self.value, Entry)
+      style: primary
+      start: 0
+      end: 36
+    - source: isinstance(self.value, Entry)
+      style: secondary
+      start: 7
+      end: 36
   "from flext_tests import tm\nassert isinstance(self.value, Entry)\n":
     fixed: |
       from flext_tests import tm
@@ -12,16 +27,6 @@ snapshots:
       style: primary
       start: 27
       end: 63
-    - source: from flext_tests import tm
-      style: secondary
-      start: 0
-      end: 26
-    - source: |
-        from flext_tests import tm
-        assert isinstance(self.value, Entry)
-      style: secondary
-      start: 0
-      end: 64
     - source: isinstance(self.value, Entry)
       style: secondary
       start: 34
@@ -38,16 +43,6 @@ snapshots:
       style: primary
       start: 27
       end: 68
-    - source: from flext_tests import tm
-      style: secondary
-      start: 0
-      end: 26
-    - source: |
-        from flext_tests import tm
-        assert isinstance(value, (Entry, Schema))
-      style: secondary
-      start: 0
-      end: 69
     - source: isinstance(value, (Entry, Schema))
       style: secondary
       start: 34
@@ -66,17 +61,6 @@ snapshots:
       style: primary
       start: 21
       end: 85
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        if not (isinstance(self.value, Entry)):
-            raise AssertionError
-      style: secondary
-      start: 0
-      end: 86
     - source: isinstance(self.value, Entry)
       style: secondary
       start: 29
@@ -95,17 +79,6 @@ snapshots:
       style: primary
       start: 21
       end: 90
-    - source: from tests import tm
-      style: secondary
-      start: 0
-      end: 20
-    - source: |
-        from tests import tm
-        if not (isinstance(value, (Entry, Schema))):
-            raise AssertionError
-      style: secondary
-      start: 0
-      end: 91
     - source: isinstance(value, (Entry, Schema))
       style: secondary
       start: 29

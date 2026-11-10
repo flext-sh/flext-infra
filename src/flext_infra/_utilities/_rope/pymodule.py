@@ -12,6 +12,7 @@ from typing import overload
 
 from flext_infra import t
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeAst,
     FlextInfraUtilitiesRopeRuntimeBase,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeTypes,
@@ -57,10 +58,7 @@ class FlextInfraUtilitiesRopeCorePyModule:
             return None
         line_start = sum(len(item) for item in lines[: line - 1])
         source_line = lines[line - 1]
-        index_names = FlextInfraUtilitiesRopeRuntimeModules.runtime_callable(
-            "rope.base.codeanalyze", "name_offsets"
-        )
-        matches = index_names("".join(lines), symbol)
+        matches = FlextInfraUtilitiesRopeAst.name_offsets("".join(lines), symbol)
         if not isinstance(matches, tuple) or not all(
             isinstance(offset, int) for offset in matches
         ):

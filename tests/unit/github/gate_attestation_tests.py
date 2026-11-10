@@ -21,8 +21,8 @@ from flext_infra.workspace import (
 from tests import c, m, p, tm, u
 
 
-class TestsFlextInfraGithubGateAttestation:
-    """Behavior tests for local SSH-signed gate attestations."""
+class FlextInfraGitAttestationFixtures:
+    """Shared fixtures and readers for signed-gate behavior tests."""
 
     @staticmethod
     def _context(root: Path) -> p.Infra.WorkspaceRuntimeContext:
@@ -96,7 +96,7 @@ class TestsFlextInfraGithubGateAttestation:
         source = root / c.Infra.DEFAULT_SRC_DIR
         (source / "consumer.py").write_text("import os\n", encoding="utf-8")
         # Resolver inputs remain untracked: execution proof binds their live bytes.
-        context = TestsFlextInfraGithubGateAttestation._context(root)
+        context = FlextInfraGitAttestationFixtures._context(root)
         context.resolution_root.mkdir(parents=True, exist_ok=True)
         context.pyproject_path.write_bytes((root / c.PYPROJECT_FILENAME).read_bytes())
         context.lock_path.write_text("version = 1\n", encoding="utf-8")
@@ -154,6 +154,62 @@ class TestsFlextInfraGithubGateAttestation:
 
         """
         return self._signed_repository
+
+    @classmethod
+    def _request(cls, root: Path) -> p.Infra.GateAttestationCreateRequest:
+        """Consume the receipt automatically emitted by the original Make run.
+
+        Returns:
+            The resulting ``m.Infra.GateAttestationCreateRequest``.
+
+        """
+        receipts = (
+            root
+            / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
+        )
+        previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
+        tm.ok(u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
+        published = (
+            set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
+        )
+        tm.that(len(published) == 1, truth=True)
+        receipt = published.pop()
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
+        return m.Infra.GateAttestationCreateRequest(
+            workspace=str(root),
+            signer="attester@example.test",
+            gates=(c.Infra.VERB_CHECK,),
+            receipt=receipt,
+            allowed_signers=str(root / "allowed_signers"),
+            context_digest=evidence.context_digest,
+            policy=evidence.policy,
+            policy_digest=evidence.policy_digest,
+        )
+
+    @staticmethod
+    def _verify(
+        root: Path,
+        allowed_signers: Path,
+        receipt: Path,
+        *gates: str,
+    ) -> p.Result[p.Infra.GateAttestationReport]:
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
+        return u.Infra.git_verify_gate_attestation(
+            m.Infra.GateAttestationVerifyRequest(
+                workspace=str(root),
+                allowed_signers=str(allowed_signers),
+                expected_gates=gates,
+                receipt=receipt,
+                context_digest=evidence.context_digest,
+                policy=evidence.policy,
+                policy_digest=evidence.policy_digest,
+            ),
+            FlextInfraGitAttestationFixtures._context(root),
+        )
+
+
+class TestsFlextInfraGithubGateAttestation(FlextInfraGitAttestationFixtures):
+    """Behavior tests for local SSH-signed gate attestations."""
 
     @c.Tests.MARK.parametrize("phase", tuple(c.Infra.CheckPhase))
     def test_original_capture_publishes_distinct_receipts_with_stable_context(
@@ -704,58 +760,6 @@ class TestsFlextInfraGithubGateAttestation:
         )
         tm.fail(u.Infra.git_create_gate_attestation(request, self._context(tmp_path)))
 
-    @classmethod
-    def _request(cls, root: Path) -> p.Infra.GateAttestationCreateRequest:
-        """Consume the receipt automatically emitted by the original Make run.
-
-        Returns:
-            The resulting ``m.Infra.GateAttestationCreateRequest``.
-
-        """
-        receipts = (
-            root
-            / tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.gate_receipts_directory
-        )
-        previous = set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME))
-        tm.ok(u.Cli.run_raw(["make", c.Infra.VERB_CHECK], cwd=root))
-        published = (
-            set(receipts.rglob(c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME)) - previous
-        )
-        tm.that(len(published) == 1, truth=True)
-        receipt = published.pop()
-        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
-        return m.Infra.GateAttestationCreateRequest(
-            workspace=str(root),
-            signer="attester@example.test",
-            gates=(c.Infra.VERB_CHECK,),
-            receipt=receipt,
-            allowed_signers=str(root / "allowed_signers"),
-            context_digest=evidence.context_digest,
-            policy=evidence.policy,
-            policy_digest=evidence.policy_digest,
-        )
-
-    @staticmethod
-    def _verify(
-        root: Path,
-        allowed_signers: Path,
-        receipt: Path,
-        *gates: str,
-    ) -> p.Result[p.Infra.GateAttestationReport]:
-        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
-        return u.Infra.git_verify_gate_attestation(
-            m.Infra.GateAttestationVerifyRequest(
-                workspace=str(root),
-                allowed_signers=str(allowed_signers),
-                expected_gates=gates,
-                receipt=receipt,
-                context_digest=evidence.context_digest,
-                policy=evidence.policy,
-                policy_digest=evidence.policy_digest,
-            ),
-            TestsFlextInfraGithubGateAttestation._context(root),
-        )
-
     @c.Tests.MARK.parametrize(
         "change", ["none", "republish", "remote-suffix", "commit"]
     )
@@ -1006,7 +1010,208 @@ class TestsFlextInfraGithubGateAttestation:
         """Test gate attestation rejects duplicate gate coverage."""
         _allowed_signers = signed_repository_factory(tmp_path)
         values = self._request(tmp_path).model_dump()
-        values["gates"] = (c.Infra.VERB_CHECK, c.Infra.VERB_CHECK)
+        values["gates"] = [c.Infra.VERB_CHECK, c.Infra.VERB_CHECK]
 
         with u.Tests.raises(ValueError, match="at most 1 item"):
             m.Infra.GateAttestationCreateRequest.model_validate(values)
+
+
+class TestsFlextInfraGithubGateCandidateAdmission(FlextInfraGitAttestationFixtures):
+    """Behavior tests for candidate admission over signed stage proofs."""
+
+    def _admit(
+        self,
+        root: Path,
+        request: p.Infra.GateAttestationCreateRequest,
+        candidate: m.Infra.GateCandidateIdentity,
+        *,
+        merge_check: bool = False,
+    ) -> p.Result[p.Infra.GateCandidateAdmissionReport]:
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(
+            request.receipt.read_bytes()
+        )
+        return u.Infra.git_admit_gate_candidate(
+            m.Infra.GateCandidateAdmissionRequest(
+                workspace=str(root),
+                allowed_signers=request.allowed_signers,
+                expected_gates=request.gates,
+                context_digest=evidence.context_digest,
+                policy=evidence.policy,
+                policy_digest=evidence.policy_digest,
+                receipt=request.receipt,
+                candidate=candidate,
+                require_clean=False,
+                merge_check=merge_check,
+            ),
+            self._context(root),
+        )
+
+    def _candidate(self, root: Path) -> m.Infra.GateCandidateIdentity:
+        remote = tm.ok(
+            u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=root)),
+        ).text
+        return m.Infra.GateCandidateIdentity(
+            repository=remote,
+            head_oid=self._head(root),
+            tree_oid=self._rev_parse(root, "HEAD^{tree}"),
+            dirty=False,
+        )
+
+    @staticmethod
+    def _rewrite_receipt(
+        receipt: Path,
+        **updates: object,
+    ) -> None:
+        evidence = m.Infra.GateCommandEvidence.model_validate_json(receipt.read_bytes())
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                receipt,
+                evidence.model_copy(update=updates).model_dump_json(round_trip=True),
+            )
+        )
+
+    @staticmethod
+    def test_candidate_json_ingress_matches_typed_model() -> None:
+        """The CLI JSON string enters through the same typed candidate model."""
+        identity = m.Infra.GateCandidateIdentity(
+            repository="https://github.example/flext/fixture.git",
+            head_oid="0" * 40,
+            tree_oid="0" * 40,
+            dirty=False,
+        )
+        request = m.Infra.GateCandidateAdmissionRequest.model_validate({
+            "workspace": ".",
+            "candidate": identity.model_dump_json(),
+            "allowed_signers": "allowed_signers",
+            "expected_gates": [c.Infra.VERB_CHECK],
+            "context_digest": "sha256:" + "0" * 64,
+            "policy": c.Infra.GateAcceptancePolicy.CLEAN,
+            "policy_digest": "sha256:" + "0" * 64,
+            "receipt": Path("receipt.json"),
+        })
+        tm.that(request.candidate, eq=identity)
+
+    def test_candidate_admission_matches_exact_repository_head_and_tree(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A signed workspace proof admits only its exact candidate identity."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                request,
+                self._context(tmp_path),
+            )
+        )
+        candidate = self._candidate(tmp_path)
+        admitted = tm.ok(self._admit(tmp_path, request, candidate))
+        tm.that(admitted.eligible, truth=True)
+        tm.that(admitted.attested_head, eq=candidate.head_oid)
+        tm.that(admitted.reasons, eq=())
+
+    def test_candidate_admission_rejects_tree_mismatch(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A candidate with another tree cannot reuse the signed proof."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                request,
+                self._context(tmp_path),
+            )
+        )
+        candidate = self._candidate(tmp_path).model_copy(update={"tree_oid": "0" * 40})
+        admitted = tm.ok(self._admit(tmp_path, request, candidate))
+        tm.fail(admitted.eligible)
+        tm.that(
+            any("tree mismatch" in reason for reason in admitted.reasons),
+            truth=True,
+        )
+
+    def test_merge_admission_rejects_proof_without_attested_git_identity(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """Workspace evidence without attested Git identity is not merge proof."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        self._rewrite_receipt(
+            request.receipt,
+            repository=None,
+            commit_sha=None,
+            tree_sha=None,
+            after_repository=None,
+            after_commit_sha=None,
+            after_tree_sha=None,
+        )
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                request,
+                self._context(tmp_path),
+            )
+        )
+        candidate = self._candidate(tmp_path)
+        admitted = tm.ok(
+            self._admit(
+                tmp_path,
+                request,
+                candidate,
+                merge_check=True,
+            )
+        )
+        tm.fail(admitted.eligible)
+        tm.that(
+            any(
+                "merge admission requires attested head" in reason
+                for reason in admitted.reasons
+            ),
+            truth=True,
+        )
+        tm.that(
+            any(
+                "merge admission requires attested tree" in reason
+                for reason in admitted.reasons
+            ),
+            truth=True,
+        )
+
+    def test_merge_admission_requires_attested_after_commit(
+        self,
+        tmp_path: Path,
+        signed_repository_factory: Callable[[Path], Path],
+    ) -> None:
+        """A declared merge identity needs its attested after-commit observation."""
+        signed_repository_factory(tmp_path)
+        request = self._request(tmp_path)
+        self._rewrite_receipt(request.receipt, after_commit_sha=None)
+        tm.ok(
+            u.Infra.git_create_gate_attestation(
+                request,
+                self._context(tmp_path),
+            )
+        )
+        candidate = self._candidate(tmp_path).model_copy(
+            update={"merge_oid": self._rev_parse(tmp_path, "HEAD")}
+        )
+        admitted = tm.ok(
+            self._admit(
+                tmp_path,
+                request,
+                candidate,
+                merge_check=True,
+            )
+        )
+        tm.fail(admitted.eligible)
+        tm.that(
+            any(
+                "merge admission requires attested after commit" in reason
+                for reason in admitted.reasons
+            ),
+            truth=True,
+        )
