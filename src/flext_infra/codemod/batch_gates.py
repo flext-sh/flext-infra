@@ -31,6 +31,8 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         rules: Sequence[Path],
+        *,
+        rule_ids: Sequence[str] = (),
     ) -> p.Result[bool]:
         """Verify the selected rules' fixtures against their snapshots; never rewrite.
 
@@ -50,10 +52,14 @@ class FlextInfraModGateEngine:
             root,
             rules,
         ):
-            selected = frozenset(
-                rule_id
-                for rule in owner_rules
-                for rule_id in u.Infra.ast_grep_rule_contract(rule)[0]
+            selected = (
+                frozenset(rule_ids)
+                if rule_ids
+                else frozenset(
+                    rule_id
+                    for rule in owner_rules
+                    for rule_id in u.Infra.ast_grep_rule_contract(rule)[0]
+                )
             )
             if owner_is_governed:
                 stale = FlextInfraCodemodSnapshotReconciler.stale_snapshots(
@@ -361,6 +367,7 @@ class FlextInfraModGateEngine:
             u.Infra.codemod_write_native_documents(
                 temp_rule,
                 tuple(rendered),
+                atomic=False,
             )
 
     @staticmethod
@@ -383,6 +390,7 @@ class FlextInfraModGateEngine:
                             f"{document['id']}{c.Infra.CODEMOD_RULE_SUFFIX}"
                         ),
                         (document,),
+                        atomic=False,
                     )
 
     @staticmethod

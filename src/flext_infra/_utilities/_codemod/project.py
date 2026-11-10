@@ -439,6 +439,8 @@ class FlextInfraUtilitiesCodemodProject(
         fields = set(m.Cli.PythonScriptExecution.model_fields)
         candidates: dict[Path, list[ast.Call]] = {}
         for path in sources:
+            if not path.is_file():
+                continue
             text = path.read_text(encoding=c.DEFAULT_ENCODING)
             if "__module__" not in text:
                 continue

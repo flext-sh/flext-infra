@@ -16,7 +16,7 @@ from __future__ import annotations
 import ast
 import builtins
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from rope.base import exceptions as rope_exceptions
@@ -56,8 +56,55 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
     ) -> c.Infra.FacadeMemberKind:
-        """Classify a proven native declaration, never an unknown inference.
+        """Classify a proven native declaration, memoized for one rendering.
+
+        The cache holds the binding beside its kind, so a reused object id can
+        never return another binding's verdict within the same rendering.
+
+        Returns:
+            The configured declaration kind of the native binding.
+
+        """
+        if cache is not None:
+            cached = cache.get(id(value))
+            if cached is not None and cached[0] is value:
+                return cached[1]
+        kind = cls._facade_member_kind_uncached(
+            value,
+            resolver_factory=resolver_factory,
+            source_project=source_project,
+            cache=cache,
+        )
+        if cache is not None:
+            cache[id(value)] = (value, kind)
+        return kind
+
+    @classmethod
+    def _facade_member_kind_uncached(
+        cls,
+        value: p.Infra.RopePyName,
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
+    ) -> c.Infra.FacadeMemberKind:
+        """Classify a proven native declaration without memoization.
 
         Returns:
             The configured declaration kind of the native binding.
@@ -107,6 +154,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 origin,
                 resolver_factory=resolver_factory,
                 source_project=source_project,
+                cache=cache,
             )
         if types.py_function(origin) or isinstance(
             origin, runtime.runtime_type("rope.base.builtins", "BuiltinFunction")
@@ -414,6 +462,40 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
+    ) -> c.Infra.FacadeMemberKind:
+        """Classify native class ancestry, memoized for one rendering.
+
+        Returns:
+            The class's owner kind, preserving direct protocol declarations.
+
+        """
+        if cache is not None:
+            cached = cache.get(id(origin))
+            if cached is not None and cached[0] is origin:
+                return cached[1]
+        kind = FlextInfraUtilitiesFacadeMembers._class_kind_uncached(
+            origin,
+            resolver_factory=resolver_factory,
+            source_project=source_project,
+        )
+        if cache is not None:
+            cache[id(origin)] = (origin, kind)
+        return kind
+
+    @staticmethod
+    def _class_kind_uncached(
+        origin: p.Infra.RopeClassObject,
+        *,
+        resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        source_project: p.Infra.RopeProject,
     ) -> c.Infra.FacadeMemberKind:
         """Classify native class ancestry and its declared structural contract.
 
@@ -526,7 +608,8 @@ class FlextInfraUtilitiesFacadeMembers:
         if not required:
             message = "native model-type contract has no declared members"
             raise ValueError(message)
-        return required.issubset(origin.get_attributes()) or any(
+        attributes = origin.get_attributes()
+        return required.issubset(attributes) or any(
             FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
                 source_project, identity
             ).get_object()
@@ -591,6 +674,14 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
         source_project: p.Infra.RopeProject,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
     ) -> str:
         """Return the configured owner of the member's native declaration.
 
@@ -603,6 +694,7 @@ class FlextInfraUtilitiesFacadeMembers:
                 value,
                 resolver_factory=resolver_factory,
                 source_project=source_project,
+                cache=cache,
             )
         ]
 
@@ -875,6 +967,14 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         scope: t.Infra.FacadeMemberScope,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
     ) -> c.Infra.FacadeMemberPlacement | None:
         """Classify a foreign member's actual placement through native bindings.
 
@@ -906,23 +1006,20 @@ class FlextInfraUtilitiesFacadeMembers:
             return None
         value = bindings[letter][member]
         try:
-            owner = cls.facade_member_owner(
+            kind = cls.facade_member_kind(
                 value,
                 resolver_factory=resolver_factory,
                 source_project=source_project,
+                cache=cache,
             )
         except ValueError as failure:
             failure.add_note(f"Facade census reference: {package}.{letter}.{member}")
             raise
+        owner = config.Infra.tooling.facade_members.owners[kind]
         members: Mapping[str, p.Infra.RopePyName] = bindings.get(owner, {})
         bound = member in members
         if owner != letter and bound and cls._same_binding(members[member], value):
             return c.Infra.FacadeMemberPlacement.EXPOSED
-        kind = cls.facade_member_kind(
-            value,
-            resolver_factory=resolver_factory,
-            source_project=source_project,
-        )
         # A ``type`` alias is a type declaration by construction (t), except an
         # alias of a structural contract, which p owns; only a strongly typed
         # object whose owner binds nothing yet must move.
@@ -943,6 +1040,95 @@ class FlextInfraUtilitiesFacadeMembers:
             else None
         )
 
+    @staticmethod
+    def _letter_receivers(
+        tree: ast.Module, package: str, letters: frozenset[str]
+    ) -> Mapping[str, str]:
+        """Map each module-level receiver name to the facade letter it binds.
+
+        Returns:
+            The receiver name to letter binding of the parsed module.
+
+        """
+        receivers: dict[str, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                if not (
+                    node.module.partition(".")[0] == package.partition(".")[0]
+                    or node.module.startswith("flext_")
+                ):
+                    continue
+                for alias in node.names:
+                    if alias.name in letters:
+                        receivers[alias.asname or alias.name] = alias.name
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    module, _separator, name = alias.name.rpartition(".")
+                    if name in letters and module.startswith("flext_"):
+                        receivers[alias.asname or name] = name
+        return receivers
+
+    @staticmethod
+    def _dotted_reference(
+        node: ast.Attribute, receivers: Mapping[str, str]
+    ) -> str | None:
+        """Render one letter-rooted attribute chain as its dotted path.
+
+        Returns:
+            The dotted path when the chain starts at a facade receiver.
+
+        """
+        parts: list[str] = []
+        current: ast.expr = node
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+        if not isinstance(current, ast.Name):
+            return None
+        letter = receivers.get(current.id)
+        if letter is None:
+            return None
+        parts.append(letter)
+        return ".".join(reversed(parts))
+
+    @classmethod
+    def facade_references(
+        cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
+    ) -> tuple[frozenset[tuple[str, str]], frozenset[str]]:
+        """Collect the facade references a project actually spells.
+
+        The census only classifies a lineage binding whose receiver the project
+        actually spells; a reference that never occurs needs no relocation rule.
+
+        Returns:
+            The exact ``letter.member`` pairs and the full dotted paths.
+
+        """
+        letters = frozenset(config.Infra.tooling.facade_members.owners.values())
+        package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
+        paths: set[str] = set()
+        for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+            snapshot, project.absolute()
+        ):
+            source = FlextInfraUtilitiesWorkspaceSnapshot.workspace_source(
+                snapshot, path
+            )
+            tree = ast.parse(source.text)
+            receivers = cls._letter_receivers(tree, package, letters)
+            paths.update(
+                dotted
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Attribute)
+                if (dotted := cls._dotted_reference(node, receivers)) is not None
+            )
+        references: set[tuple[str, str]] = set()
+        for path in paths:
+            letter, _separator, rest = path.partition(".")
+            member = rest.partition(".")[0]
+            if member:
+                references.add((letter, member))
+        return frozenset(references), frozenset(paths)
+
     @classmethod
     def facade_member_census(
         cls,
@@ -950,6 +1136,15 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         source_project: p.Infra.RopeProject,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        referenced: frozenset[tuple[str, str]] | None = None,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
     ) -> tuple[
         t.StrTuple,
         Mapping[str, frozenset[str]],
@@ -977,6 +1172,8 @@ class FlextInfraUtilitiesFacadeMembers:
         """
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(project)
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
+        if cache is None:
+            cache = {}
         lineage = cls.facade_member_lineage(
             package, letters, source_project=source_project
         )
@@ -997,11 +1194,18 @@ class FlextInfraUtilitiesFacadeMembers:
             for letter, members in bindings.items():
                 for member, value in members.items():
                     if (
+                        root != package
+                        and referenced is not None
+                        and (letter, member) not in referenced
+                    ):
+                        continue
+                    if (
                         cls.facade_member_placement(
                             (root, letter, member),
                             facades=facades,
                             bindings=bindings,
                             scope=(resolver_factory, source_project, declarations),
+                            cache=cache,
                         )
                         is not c.Infra.FacadeMemberPlacement.EXPOSED
                     ):
@@ -1010,15 +1214,21 @@ class FlextInfraUtilitiesFacadeMembers:
                         value,
                         resolver_factory=resolver_factory,
                         source_project=source_project,
+                        cache=cache,
                     )
-                    references.setdefault(owner, set()).add(f"{letter}.{member}")
+                    if referenced is None or (letter, member) in referenced:
+                        references.setdefault(owner, set()).add(f"{letter}.{member}")
                     if root == package:
                         names.setdefault(letter, set()).add(member)
             for owner, reference in cls._owned_references(
                 root,
                 facades,
                 bindings,
-                scope=(resolver_factory, source_project, declarations),
+                context=(
+                    (resolver_factory, source_project, declarations),
+                    referenced,
+                    cache,
+                ),
             ):
                 references.setdefault(owner, set()).add(reference)
         return (
@@ -1105,7 +1315,18 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
-        scope: t.Infra.FacadeMemberScope,
+        context: tuple[
+            t.Infra.FacadeMemberScope,
+            frozenset[tuple[str, str]] | None,
+            MutableMapping[
+                int,
+                tuple[
+                    p.Infra.RopePyName | p.Infra.RopePyObject,
+                    c.Infra.FacadeMemberKind,
+                ],
+            ]
+            | None,
+        ],
     ) -> Sequence[tuple[str, str]]:
         """Reference every owned member through each other letter of ``root``.
 
@@ -1116,16 +1337,18 @@ class FlextInfraUtilitiesFacadeMembers:
             Each owner letter with one foreign ``letter.member`` reference.
 
         """
+        _scope, referenced, _cache = context
         return tuple(
             (owner, f"{letter}.{member}")
             for owner, value, member in cls._owned_members(
                 root,
                 facades,
                 bindings,
-                scope=scope,
+                context=context,
             )
             for letter, members in bindings.items()
             if letter != owner
+            and (referenced is None or (letter, member) in referenced)
             and (member not in members or cls._same_binding(members[member], value))
         )
 
@@ -1136,7 +1359,18 @@ class FlextInfraUtilitiesFacadeMembers:
         facades: Mapping[str, p.Infra.RopeClassObject],
         bindings: Mapping[str, Mapping[str, p.Infra.RopePyName]],
         *,
-        scope: t.Infra.FacadeMemberScope,
+        context: tuple[
+            t.Infra.FacadeMemberScope,
+            frozenset[tuple[str, str]] | None,
+            MutableMapping[
+                int,
+                tuple[
+                    p.Infra.RopePyName | p.Infra.RopePyObject,
+                    c.Infra.FacadeMemberKind,
+                ],
+            ]
+            | None,
+        ],
     ) -> Sequence[tuple[str, p.Infra.RopePyName, str]]:
         """Collect each public member a letter of ``root`` declares as owner.
 
@@ -1144,10 +1378,18 @@ class FlextInfraUtilitiesFacadeMembers:
             The owner letter, the bound object and the member name.
 
         """
+        scope, referenced, cache = context
+        referenced_names = (
+            None
+            if referenced is None
+            else frozenset(name for _letter, name in referenced)
+        )
         resolver_factory, source_project, declarations = scope
         owned: list[tuple[str, p.Infra.RopePyName, str]] = []
         for owner, facade in facades.items():
             for member, value in bindings[owner].items():
+                if referenced_names is not None and member not in referenced_names:
+                    continue
                 if not cls.declared_by_package(
                     facade,
                     member,
@@ -1161,6 +1403,7 @@ class FlextInfraUtilitiesFacadeMembers:
                         value,
                         resolver_factory=resolver_factory,
                         source_project=source_project,
+                        cache=cache,
                     )
                     == owner
                 ):
@@ -1301,6 +1544,14 @@ class FlextInfraUtilitiesFacadeMembers:
         *,
         source_project: p.Infra.RopeProject,
         resolver_factory: t.Infra.RopeSourceMemberResolverFactory,
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ]
+        | None = None,
     ) -> Mapping[str, frozenset[str]]:
         """Collect each letter's members whose owner binds nothing under the name.
 
@@ -1312,6 +1563,8 @@ class FlextInfraUtilitiesFacadeMembers:
 
         """
         letters = sorted(set(config.Infra.tooling.facade_members.owners.values()))
+        if cache is None:
+            cache = {}
         facades = cls.facade_source_classes(
             package, letters, source_project=source_project
         )
@@ -1329,6 +1582,7 @@ class FlextInfraUtilitiesFacadeMembers:
                     facades=facades,
                     bindings=bindings,
                     scope=(resolver_factory, source_project, None),
+                    cache=cache,
                 )
                 is c.Infra.FacadeMemberPlacement.MISSING
             )

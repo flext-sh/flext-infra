@@ -289,6 +289,7 @@ class FlextInfraStagedPackage:
         updates: Mapping[Path, str | None],
         *,
         options: p.Infra.StageSourceOptions | None = None,
+        scoped: bool = False,
     ) -> p.Result[p.Infra.StageSourcePlan]:
         """Elect the candidate closure of the desired sources.
 
@@ -296,6 +297,7 @@ class FlextInfraStagedPackage:
             workspace: The root of the Git workspace containing the projects.
             updates: Desired content by live path; None retires an artifact.
             options: Composition roots, file modes and declared file effects.
+            scoped: Whether the caller already elected the exact scope root.
 
         Returns:
             A result wrapping the planned stage source or the first failure encountered.
@@ -310,10 +312,13 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(modes)
         if options.workspaces:
             return cls._composed_scope_plan(updates, options, modes.value)
-        containing = cls.workspace_root(workspace.resolve())
-        if containing.failure:
-            return result_type.from_failure(containing)
-        workspace = containing.value
+        if scoped:
+            workspace = workspace.resolve()
+        else:
+            containing = cls.workspace_root(workspace.resolve())
+            if containing.failure:
+                return result_type.from_failure(containing)
+            workspace = containing.value
         # No broad catch: the first exception escapes with its traceback.
         with u.Infra.facade_source_project(
             workspace,
@@ -513,6 +518,7 @@ class FlextInfraStagedPackage:
                         if path.is_relative_to(root)
                     }),
                 }),
+                scoped=True,
             )
             if planned.failure:
                 return result_type.from_failure(planned)

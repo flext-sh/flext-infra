@@ -437,13 +437,19 @@ class FlextInfraUtilitiesCodemodRules(
 
     @staticmethod
     def codemod_write_native_documents(
-        path: Path, documents: Sequence[t.JsonMapping]
+        path: Path,
+        documents: Sequence[t.JsonMapping],
+        *,
+        atomic: bool = True,
     ) -> None:
         """Publish the exact native document stream through the atomic owner."""
         owner = FlextInfraUtilitiesCodemodRules
-        u.Cli.atomic_write_text_file(
-            path, owner.codemod_native_documents_text(documents)
-        ).unwrap()
+        text = owner.codemod_native_documents_text(documents)
+        if not atomic:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding=c.DEFAULT_ENCODING)
+            return
+        u.Cli.atomic_write_text_file(path, text).unwrap()
 
     @classmethod
     def codemod_stage_scan_ruleset(
@@ -525,7 +531,9 @@ class FlextInfraUtilitiesCodemodRules(
         native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
         config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
         cls.codemod_write_native_documents(config_path, (native_config,))
-        cls.codemod_validate_native_ruleset(destination)
+        cls.codemod_validate_native_ruleset(
+            destination, rule_ids=tuple(rule.id for rule in plan.rules)
+        )
         return m.Infra.CodemodRuleset(
             provider=",".join(plan.provider_order),
             config=config_path,
@@ -534,12 +542,15 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @classmethod
-    def codemod_validate_native_ruleset(cls, destination: Path) -> None:
+    def codemod_validate_native_ruleset(
+        cls, destination: Path, *, rule_ids: Sequence[str] = ()
+    ) -> None:
         """Fail at staging when ast-grep cannot parse the projected ruleset.
 
         The projection shapes catalog documents into native rules; a shape
         ast-grep refuses must fail here, naming the staged ruleset, instead of
-        failing a consumer's scan with no rule attribution.
+        failing a consumer's scan with no rule attribution. The staged ids are
+        passed through so the validation never re-parses the bundle it wrote.
 
         Raises:
             ValueError: If ast-grep refuses to parse the projected ruleset.
@@ -553,7 +564,9 @@ class FlextInfraUtilitiesCodemodRules(
         if not bundle.is_file():
             return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
-        command = flext_infra.u.Infra.ast_grep_scan_command(bundle, targets=(".",))
+        command = flext_infra.u.Infra.ast_grep_scan_command(
+            bundle, rule_ids=rule_ids, targets=(".",)
+        )
         config_path = bundle.parent.parent
         with tempfile.TemporaryDirectory(
             prefix="codemod-ruleset-parse-", dir=destination.parent

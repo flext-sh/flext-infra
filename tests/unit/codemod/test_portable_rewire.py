@@ -92,10 +92,12 @@ class TestsFlextInfraPortableRewire:
                 u.Infra.file_resource_at(project, origin),
                 source.index("Contract"),
                 u.Infra.file_resource_at(project, destination),
-                destination_offset=scaffold.index("Destination"),
-                resources=(
-                    u.Infra.file_resource_at(project, origin),
-                    u.Infra.file_resource_at(project, destination),
+                options=m.Infra.RopeMoveOptions(
+                    destination_offset=scaffold.index("Destination"),
+                    resources=(
+                        u.Infra.file_resource_at(project, origin),
+                        u.Infra.file_resource_at(project, destination),
+                    ),
                 ),
             )
         plans = tuple(

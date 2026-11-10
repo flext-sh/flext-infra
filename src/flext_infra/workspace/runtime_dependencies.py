@@ -259,8 +259,6 @@ class FlextInfraRuntimeDependencyCollector:
             if name is None:
                 return selected.fail("installed dependency metadata lacks its Name")
             identity = u.Infra.distribution_identity(name)
-            if identity not in authored:
-                return selected.ok(())
             receipt = (
                 m.Infra.DirectUrlReceipt.model_validate_json(states[-1].content)
                 if states[-1].content is not None
@@ -293,11 +291,21 @@ class FlextInfraRuntimeDependencyCollector:
             )
             if extra_inputs.failure:
                 return selected.from_failure(extra_inputs)
+            requirement = authored.get(identity)
+            if requirement is None:
+                # An import only reachable through a sibling's edge is still a
+                # direct import of this project: elect its unique installed and
+                # locked supplier so the planner can declare it. A source that
+                # is not the package registry has no authored source to
+                # preserve, so it stays unresolved instead of being invented.
+                if package.value.source.registry is None:
+                    return selected.ok(())
+                requirement = package.value.name
             return selected.ok((
                 m.Infra.RuntimeDependencyProvider.model_validate({
                     "modules": (supplied),
                     "package": (package.value),
-                    "requirement": (authored[identity]),
+                    "requirement": (requirement),
                     "inputs": ((*states, *extra_inputs.value)),
                 }),
             ))

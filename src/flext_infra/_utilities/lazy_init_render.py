@@ -259,10 +259,10 @@ class FlextInfraUtilitiesLazyInitRender:
         statements = sorted(
             (
                 (
-                    cls._lazy_init_section(module, first_party),
+                    cls._lazy_init_section(compact, first_party),
                     cls.source_import_lines(
                         "    ",
-                        module,
+                        compact,
                         tuple(
                             attr if attr == name else f"{attr} as {name}"
                             for name, attr in sorted(items)
@@ -271,6 +271,12 @@ class FlextInfraUtilitiesLazyInitRender:
                     ),
                 )
                 for module, items in groups.items()
+                for compact in (
+                    cls._lazy_init_compact_module(
+                        plan.context.current_pkg,
+                        module,
+                    ),
+                )
             ),
             key=itemgetter(0),
         )

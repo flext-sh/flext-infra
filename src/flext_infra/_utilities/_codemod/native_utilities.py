@@ -30,9 +30,10 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 from typing_extensions import TypeForm
 
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
+    FlextInfraUtilitiesDependencyRequirements,
     FlextInfraUtilitiesImportLaw,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -288,6 +289,17 @@ class FlextInfraUtilitiesCodemodNative:
         key = (root, cls._generated_key(snapshot, root, spec, rule_ids))
         rendered = snapshot.codemod_renderings.get(key)
         if rendered is None:
+            cache_path = cls._rendering_cache_path(key[1])
+            if cache_path.is_file():
+                try:
+                    rendered = m.Infra.CodemodNativeGenerated.model_validate_json(
+                        cache_path.read_text(encoding=c.DEFAULT_ENCODING)
+                    )
+                except ValueError:
+                    rendered = None
+            if rendered is not None:
+                snapshot.codemod_renderings[key] = rendered
+                return rendered
             catalog = (
                 ()
                 if rule_ids is None
@@ -325,8 +337,27 @@ class FlextInfraUtilitiesCodemodNative:
             rendered = m.Infra.CodemodNativeGenerated(
                 utilities=utilities, rules=rules, scopes=scopes
             )
+            cls._store_rendering(cache_path, rendered)
             snapshot.codemod_renderings[key] = rendered
         return rendered
+
+    @staticmethod
+    def _rendering_cache_path(digest: str) -> Path:
+        """Return the persistent rendering cache path of one input digest.
+
+        Returns:
+            The cache file holding the rendered generated provider.
+
+        """
+        return settings.work_dir / "codemod-renderings" / f"{digest}.json"
+
+    @staticmethod
+    def _store_rendering(path: Path, rendered: m.Infra.CodemodNativeGenerated) -> None:
+        """Publish one rendering to its cache without exposing a partial file."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(rendered.model_dump_json(), encoding=c.DEFAULT_ENCODING)
+        temporary.replace(path)
 
     @staticmethod
     def _selected_catalog_documents(
@@ -453,6 +484,12 @@ class FlextInfraUtilitiesCodemodNative:
         snapshots = FlextInfraUtilitiesWorkspaceSnapshot
         digest = hashlib.sha256(spec.model_dump_json().encode(c.DEFAULT_ENCODING))
         digest.update(b"\0")
+        digest.update(config.Infra.tooling.model_dump_json().encode(c.DEFAULT_ENCODING))
+        digest.update(b"\0")
+        manifest = root / c.PYPROJECT_FILENAME
+        if manifest.is_file():
+            digest.update(manifest.read_bytes())
+            digest.update(b"\0")
         selected_ids: t.JsonValue = (
             None if rule_ids is None else list[t.JsonValue](sorted(rule_ids))
         )
@@ -462,19 +499,32 @@ class FlextInfraUtilitiesCodemodNative:
             .unwrap()
             .encode(c.DEFAULT_ENCODING)
         )
-        manifest = root / c.PYPROJECT_FILENAME
-        for path in (
-            *((manifest,) if manifest.is_file() else ()),
-            *snapshots.workspace_python_files(snapshot, root),
-        ):
-            digest.update(str(path).encode(c.DEFAULT_ENCODING))
-            digest.update(b"\0")
-            digest.update(
-                snapshots.workspace_source(snapshot, path).digest.encode(
-                    c.DEFAULT_ENCODING
-                )
+        workspace = (
+            root.parent if (root.parent / c.Infra.GITMODULES).is_file() else root
+        )
+        requirements = FlextInfraUtilitiesCodemodRules.project_requirements(
+            root
+        ).unwrap()[1]
+        for requirement in requirements:
+            identity = FlextInfraUtilitiesDependencyRequirements.requirement_identity(
+                requirement
             )
-            digest.update(b"\0")
+            if not identity.startswith("flext-"):
+                continue
+            member_root = workspace / identity
+            if not member_root.is_dir():
+                continue
+            for path in snapshots.workspace_python_files(snapshot, member_root):
+                digest.update(path.read_bytes())
+                digest.update(b"\0")
+                digest.update(path.read_bytes())
+                digest.update(b"\0")
+        for module in (
+            Path(__file__),
+            Path(__file__).with_name("project_facts.py"),
+            Path(__file__).with_name("rules.py"),
+        ):
+            digest.update(module.read_bytes())
         return digest.hexdigest()
 
     @classmethod

@@ -478,6 +478,22 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
             Validated configuration values from immutable source bytes.
 
         """
+        return FlextInfraUtilitiesProjectManagedArtifacts._copied_config_content(
+            content
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
+    def _copied_config_content(content: bytes) -> t.JsonMapping:
+        """Memoize the read-only copy exposed to configuration consumers.
+
+        The parsed document is shared, so the expensive copy is made once per
+        exact immutable source bytes instead of once per applicability check.
+
+        Returns:
+            The read-only configuration document owned by this content memo.
+
+        """
         return deepcopy(
             FlextInfraUtilitiesProjectManagedArtifacts._parsed_config_content(content),
         )
