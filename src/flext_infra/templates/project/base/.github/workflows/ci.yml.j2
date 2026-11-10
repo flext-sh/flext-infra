@@ -107,8 +107,8 @@ jobs:
           fetch-depth: 0
           ref: {% raw %}${{ inputs.ref || github.sha }}{% endraw %}
 {%- endif %}
-{%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/private_dependency_auth.j2" %}
+{%- include "_fragments/private_submodules_init.j2" %}
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud

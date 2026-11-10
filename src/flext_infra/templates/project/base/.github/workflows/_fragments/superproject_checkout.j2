@@ -15,9 +15,12 @@
         with:
           repository: {{ superproject.repository }}
           ref: {{ superproject.ref }}
-          submodules: recursive
+          submodules: {{ "false" if private_dependency_auth else "recursive" }}
           persist-credentials: false
           fetch-depth: 0
+{%- if private_dependency_auth %}
+          token: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}
+{%- endif %}
       - name: Pin {{ dist }} at the tested commit
         working-directory: .
         run: |
