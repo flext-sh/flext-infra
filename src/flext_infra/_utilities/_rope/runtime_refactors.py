@@ -16,7 +16,7 @@ from typing import cast
 
 from flext_cli import u
 
-from flext_infra import m, p, r, t
+from flext_infra import c, m, p, r, t
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntimeMatching,
@@ -1388,11 +1388,22 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             else cls._identifier_at(sources[Path(resource.real_path)], offset)
         )
         changes: list[tuple[p.Infra.RopeProject, p.Infra.RopeChangeSet]] = []
+        resource_path = Path(resource.real_path)
         for project in projects:
             # Foreign declarations must use the same authenticated resource owner
             # as imports, not MultiProjectRefactoring's global NoProject resolver.
             elected = project.find_module(module_name)
-            if elected is None or elected.real_path != resource.real_path:
+            if elected is None or Path(elected.real_path) != resource_path:
+                # A multi-root workspace names the same file from each root; the
+                # producer name is not resolvable verbatim in a consumer project.
+                project_root = Path(project.root.real_path)
+                if resource_path.is_relative_to(project_root):
+                    relative = resource_path.relative_to(project_root).with_suffix("")
+                    parts = list(relative.parts)
+                    if parts and parts[-1] == c.Infra.INIT_PY:
+                        parts.pop()
+                    elected = project.find_module(".".join(parts))
+            if elected is None or Path(elected.real_path) != resource_path:
                 msg = f"native rename lost its elected module: {module_name}"
                 raise ValueError(msg)
             changes.append((
