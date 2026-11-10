@@ -3,7 +3,7 @@ snapshots:
   "from flext_core import m, u\n\nclass Payload(m.ContractModel):\n    @u.computed_field\n    def total(self) -> int:\n        return 1\n":
     fixed: |
       from flext_core import m, u
-      
+
       class Payload(m.ContractModel):
           @m.computed_field
           def total(self) -> int:
@@ -19,7 +19,7 @@ snapshots:
       end: 27
     - source: |
         from flext_core import m, u
-        
+
         class Payload(m.ContractModel):
             @u.computed_field
             def total(self) -> int:
@@ -30,7 +30,7 @@ snapshots:
   "from flext_core import m, u\n\nfield = u.Field(default=1)\n":
     fixed: |
       from flext_core import m, u
-      
+
       field = m.Field(default=1)
     labels:
     - source: u.Field
@@ -43,7 +43,7 @@ snapshots:
       end: 27
     - source: |
         from flext_core import m, u
-        
+
         field = u.Field(default=1)
       style: secondary
       start: 0

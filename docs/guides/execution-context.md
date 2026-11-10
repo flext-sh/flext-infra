@@ -2380,7 +2380,8 @@ dependency hierarchy. Workspace `make upg` still processes every member in one p
 (operator ruling 2026-10-25): members in `.gitmodules` order,
 then the root (uv documents that `--upgrade` implies `--refresh`). No clean-tree,
 branch, gitlink or editable-HEAD-versus-lock preflight blocks native development,
-generation, installation or upgrade. The composition mechanism is a design whose verification questions are settled but
+generation, installation or upgrade. The composition mechanism is a design whose
+verification questions are settled but
 whose implementation is pending (ADR-030 "Proposed design"); the running upgrade
 still relocks the root workspace in one native `uv lock --upgrade`. CI installs
 frozen locks and never relocks (tracker memory

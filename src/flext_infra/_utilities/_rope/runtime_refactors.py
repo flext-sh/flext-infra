@@ -1224,9 +1224,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         origin_offset: int,
         destination: p.Infra.RopeResource,
         *,
-        resources: Sequence[p.Infra.RopeResource] | None = None,
-        destination_offset: int | None = None,
-        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
+        options: p.Infra.RopeMoveOptions,
     ) -> p.Infra.RopeChangeSet:
         """Delegate nested-class transfer to its native SDK owner without effects.
 
@@ -1245,9 +1243,9 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             raise TypeError(message)
         return mover.get_changes(
             destination,
-            resources=resources,
-            destination_offset=destination_offset,
-            match_filter=match_filter,
+            resources=options.resources,
+            destination_offset=options.destination_offset,
+            match_filter=options.match_filter,
         )
 
     @classmethod
@@ -1286,9 +1284,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         origin_offset: int,
         destination: p.Infra.RopeResource,
         *,
-        resources: Sequence[p.Infra.RopeResource] | None = None,
-        destination_offset: int | None = None,
-        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
+        options: p.Infra.RopeMoveOptions,
     ) -> p.Infra.RopeChangeSet:
         """Delegate a resolved declaration to its native class or global mover.
 
@@ -1314,12 +1310,12 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 raise TypeError(message)
             return mover.get_changes(
                 destination,
-                resources=resources,
-                destination_offset=destination_offset,
-                match_filter=match_filter,
+                resources=options.resources,
+                destination_offset=options.destination_offset,
+                match_filter=options.match_filter,
             )
         mover = cls.create_move(project, origin, origin_offset)
-        return mover.get_changes(destination, resources=resources)
+        return mover.get_changes(destination, resources=options.resources)
 
     @classmethod
     def rename_changes(

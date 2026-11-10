@@ -837,14 +837,19 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             first planning failure.
 
         """
-        seed, _inputs = captured
+        seed, inputs = captured
+        filtered_seed = self._without_quarantined(seed)
+        if filtered_seed.failure:
+            return filtered_seed
+        seed = filtered_seed.value
+        current = self._without_quarantined_report(root, current)
         with FlextInfraCodemodSemanticApply.planning_workspace(
             root, seed, self._candidate_sources(seed.candidate)
         ) as graph:
             prepared = self._prepare_phase_seed(
                 root,
                 current,
-                captured,
+                (seed, inputs),
                 graph,
                 text_precondition_pending=text_precondition_pending,
             )
@@ -938,7 +943,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         module = (failure.error_data or {}).get(c.Infra.MOD_FAILURE_MODULE_KEY)
         if not isinstance(module, str) or not Path(module).is_absolute():
             return outcome.from_failure(failure)
-        path = Path(module)
+        path = Path(module).resolve()
         if path in self._quarantine:
             return outcome.from_failure(failure)
         return outcome.ok(
@@ -951,6 +956,37 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     )
                 }
             )
+        )
+
+    def _without_quarantined_report(
+        self,
+        root: Path,
+        report: p.Infra.ModScanReport,
+    ) -> p.Infra.ModScanReport:
+        """Drop quarantined modules from the next iteration's planning report.
+
+        Quarantine is a planning input, not only a publication filter: keeping a
+        failed module in the scanned findings makes every later joint iteration
+        replan the same failure and never reaches the fixed point.
+
+        Returns:
+            The report without findings whose module is quarantined.
+
+        """
+        if not self._quarantine:
+            return report
+
+        def excluded(entry: p.Infra.ModScanFinding) -> bool:
+            return (root / entry.file).resolve() in self._quarantine
+
+        entries = tuple(entry for entry in report.entries if not excluded(entry))
+        if len(entries) == len(report.entries):
+            return report
+        return report.model_copy(
+            update={
+                "entries": entries,
+                "files": frozenset((root / entry.file).resolve() for entry in entries),
+            }
         )
 
     def _without_quarantined(

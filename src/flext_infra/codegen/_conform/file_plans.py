@@ -562,6 +562,11 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
                 continue
             current = u.Cli.files_read_text(path)
             if current.failure:
+                # Binary or non-text files (e.g. tool binaries under
+                # gitignored .bin/) are not managed projections; skip them
+                # instead of aborting the whole generation.
+                if isinstance(getattr(current, "exception", None), UnicodeDecodeError):
+                    continue
                 return result_type.from_failure(current)
             evidence = evidence_by_path.get(destination)
             if evidence is not None:

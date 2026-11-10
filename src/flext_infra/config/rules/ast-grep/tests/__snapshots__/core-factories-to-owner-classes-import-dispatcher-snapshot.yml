@@ -3,9 +3,9 @@ snapshots:
   "from __future__ import annotations\n\ndispatcher = FlextDispatcher()\n":
     fixed: |
       from __future__ import annotations
-      
+
       from flext_core import FlextDispatcher
-      
+
       dispatcher = FlextDispatcher()
     labels:
     - source: from __future__ import annotations
@@ -18,7 +18,7 @@ snapshots:
       end: 64
     - source: |
         from __future__ import annotations
-        
+
         dispatcher = FlextDispatcher()
       style: secondary
       start: 0
@@ -26,14 +26,14 @@ snapshots:
   "from __future__ import annotations\n\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from flext_core import FlextDispatcher\n\ndispatcher = FlextDispatcher()\n":
     fixed: |
       from __future__ import annotations
-      
+
       from flext_core import FlextDispatcher
-      
+
       from typing import TYPE_CHECKING
-      
+
       if TYPE_CHECKING:
           from flext_core import FlextDispatcher
-      
+
       dispatcher = FlextDispatcher()
     labels:
     - source: from __future__ import annotations
@@ -46,12 +46,12 @@ snapshots:
       end: 160
     - source: |
         from __future__ import annotations
-        
+
         from typing import TYPE_CHECKING
-        
+
         if TYPE_CHECKING:
             from flext_core import FlextDispatcher
-        
+
         dispatcher = FlextDispatcher()
       style: secondary
       start: 0

@@ -3,7 +3,7 @@ snapshots:
   "from flext_cli import cli\n\ndef main() -> None:\n    sys.exit()\n":
     fixed: |
       from flext_cli import cli
-      
+
       def main() -> None:
           cli.exit()
     labels:
@@ -17,7 +17,7 @@ snapshots:
       end: 25
     - source: |
         from flext_cli import cli
-        
+
         def main() -> None:
             sys.exit()
       style: secondary
@@ -26,7 +26,7 @@ snapshots:
   "from flext_cli import cli\n\nsys.exit(1)\n":
     fixed: |
       from flext_cli import cli
-      
+
       cli.exit(1)
     labels:
     - source: sys.exit(1)
@@ -39,7 +39,7 @@ snapshots:
       end: 25
     - source: |
         from flext_cli import cli
-        
+
         sys.exit(1)
       style: secondary
       start: 0

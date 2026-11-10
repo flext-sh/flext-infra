@@ -10,7 +10,7 @@ snapshots:
               c.Infra.QLTY_CONFIG_PATH,
           }:
               return r[p.BaseModel].ok(codegen.toolchain)
-          
+
           return r[p.BaseModel].ok(codegen)
     labels:
     - source: |-

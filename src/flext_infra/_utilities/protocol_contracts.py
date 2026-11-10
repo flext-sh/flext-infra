@@ -1104,15 +1104,17 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                     .class_layout(origin.get_scope())
                     .name_region[0],
                     runtime.file_resource_at(project, target),
-                    resources=tuple(
-                        runtime.file_resource_at(project, path) for path in working
-                    ),
-                    destination_offset=destination_module
-                    .get_source_binding_index()
-                    .class_layout(destination.get_scope())
-                    .name_region[0],
-                    match_filter=cls.protocol_contract_reference_filter(
-                        project, row.source_module, row.public_routes
+                    options=m.Infra.RopeMoveOptions(
+                        resources=tuple(
+                            runtime.file_resource_at(project, path) for path in working
+                        ),
+                        destination_offset=destination_module
+                        .get_source_binding_index()
+                        .class_layout(destination.get_scope())
+                        .name_region[0],
+                        match_filter=cls.protocol_contract_reference_filter(
+                            project, row.source_module, row.public_routes
+                        ),
                     ),
                 )
                 for change in changes.changes:

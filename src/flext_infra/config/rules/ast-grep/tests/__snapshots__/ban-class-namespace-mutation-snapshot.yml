@@ -27,7 +27,7 @@ snapshots:
     - source: |
         class Holder:
             value = 1
-        
+
         Holder.value = 2
       style: secondary
       start: 0
@@ -56,7 +56,7 @@ snapshots:
       end: 36
     - source: |
         from flext_core import FlextSettings
-        
+
         def patch() -> None:
             FlextSettings.instance = None
       style: secondary
@@ -90,7 +90,7 @@ snapshots:
       end: 30
     - source: |
         from pkg import Owner as Alias
-        
+
         Alias.counter += 1
       style: secondary
       start: 0
@@ -119,7 +119,7 @@ snapshots:
       end: 9
     - source: |
         import os
-        
+
         os.environ = {}
       style: secondary
       start: 0

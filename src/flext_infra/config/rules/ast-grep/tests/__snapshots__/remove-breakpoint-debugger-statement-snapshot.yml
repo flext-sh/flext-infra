@@ -14,7 +14,7 @@ snapshots:
   "def f():\n    breakpoint()\n    return 1\n":
     fixed: |
       def f():
-          
+
           return 1
     labels:
     - source: breakpoint()
@@ -28,7 +28,7 @@ snapshots:
   "if debug:\n    breakpoint()\n":
     fixed: |
       if debug:
-          
+
     labels:
     - source: breakpoint()
       style: primary

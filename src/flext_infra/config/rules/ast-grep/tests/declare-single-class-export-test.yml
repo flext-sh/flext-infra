@@ -49,6 +49,11 @@ valid:
     @decorator
     class Other:
         pass
+  - |
+    class Suite:
+        @staticmethod
+        def run():
+            return 1
 invalid:
   - |
     from __future__ import annotations

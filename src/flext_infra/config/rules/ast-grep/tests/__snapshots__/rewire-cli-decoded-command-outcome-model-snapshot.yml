@@ -23,7 +23,7 @@ snapshots:
                   duration=output.duration,
               )
           )
-      
+
     labels:
     - source: |-
         def decode_output(

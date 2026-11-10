@@ -192,6 +192,14 @@ class FlextInfraProtocolsRefactor:
         docs: bool
 
     @runtime_checkable
+    class RopeMoveOptions(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        resources: Sequence[t.Infra.RopeResource]
+        destination_offset: int | None
+        match_filter: t.Infra.RopeOccurrenceFilter | None
+
+    @runtime_checkable
     class SemanticRenameDecision(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 

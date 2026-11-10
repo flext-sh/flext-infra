@@ -16,7 +16,7 @@ snapshots:
       end: 33
     - source: |
         from ai_hub import m
-        
+
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
@@ -37,7 +37,7 @@ snapshots:
       end: 49
     - source: |
         from ai_hub import m, u as utilities
-        
+
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
@@ -58,7 +58,7 @@ snapshots:
       end: 37
     - source: |
         from flext_core import m
-        
+
         ADAPTER = m.TypeAdapter(int)
       style: secondary
       start: 0
@@ -79,14 +79,14 @@ snapshots:
       end: 32
     - source: |
         from pydantic import TypeAdapter
-        
+
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0
       end: 61
     - source: |
         from pydantic import TypeAdapter
-        
+
         ADAPTER = TypeAdapter(int)
       style: secondary
       start: 0

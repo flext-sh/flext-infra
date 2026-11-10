@@ -3,7 +3,7 @@ snapshots:
   "from flext_cli import cli\n\nprint(\"message\")\n":
     fixed: |
       from flext_cli import cli
-      
+
       cli.display_text("message")
     labels:
     - source: print("message")
@@ -28,7 +28,7 @@ snapshots:
       end: 25
     - source: |
         from flext_cli import cli
-        
+
         print("message")
       style: secondary
       start: 0
@@ -36,7 +36,7 @@ snapshots:
   "from flext_cli import cli\n\nprint(\"message\", flush=True)\n":
     fixed: |
       from flext_cli import cli
-      
+
       cli.display_text("message")
     labels:
     - source: print("message", flush=True)
@@ -61,7 +61,7 @@ snapshots:
       end: 25
     - source: |
         from flext_cli import cli
-        
+
         print("message", flush=True)
       style: secondary
       start: 0
@@ -69,7 +69,7 @@ snapshots:
   "from flext_cli import cli\n\nu.Cli.print(\"message\")\n":
     fixed: |
       from flext_cli import cli
-      
+
       cli.display_text("message")
     labels:
     - source: u.Cli.print("message")
@@ -82,7 +82,7 @@ snapshots:
       end: 25
     - source: |
         from flext_cli import cli
-        
+
         u.Cli.print("message")
       style: secondary
       start: 0
@@ -90,9 +90,9 @@ snapshots:
   "import sys\n\nfrom flext_cli import cli\n\nprint(\"message\", file=sys.stderr, flush=True)\n":
     fixed: |
       import sys
-      
+
       from flext_cli import cli
-      
+
       cli.display_text("message")
     labels:
     - source: print("message", file=sys.stderr, flush=True)
@@ -117,9 +117,9 @@ snapshots:
       end: 37
     - source: |
         import sys
-        
+
         from flext_cli import cli
-        
+
         print("message", file=sys.stderr, flush=True)
       style: secondary
       start: 0
@@ -127,9 +127,9 @@ snapshots:
   "import sys\n\nfrom flext_cli import cli\n\nprint(\"message\", file=sys.stdout)\n":
     fixed: |
       import sys
-      
+
       from flext_cli import cli
-      
+
       cli.display_text("message")
     labels:
     - source: print("message", file=sys.stdout)
@@ -154,9 +154,9 @@ snapshots:
       end: 37
     - source: |
         import sys
-        
+
         from flext_cli import cli
-        
+
         print("message", file=sys.stdout)
       style: secondary
       start: 0
@@ -164,9 +164,9 @@ snapshots:
   "import sys\n\nfrom flext_cli import cli\n\nprint(f\"catalog load failed: {error}\", file=sys.stderr)\n":
     fixed: |
       import sys
-      
+
       from flext_cli import cli
-      
+
       cli.display_text(f"catalog load failed: {error}")
     labels:
     - source: "print(f\"catalog load failed: {error}\", file=sys.stderr)"
@@ -191,9 +191,9 @@ snapshots:
       end: 37
     - source: |
         import sys
-        
+
         from flext_cli import cli
-        
+
         print(f"catalog load failed: {error}", file=sys.stderr)
       style: secondary
       start: 0

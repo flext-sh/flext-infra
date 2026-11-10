@@ -757,19 +757,21 @@ class FlextInfraCodemodSemanticApply(
                             project, intent.source_module, intent.source_scope, sources
                         ),
                         u.Infra.file_resource_at(project, target),
-                        resources=tuple(
-                            u.Infra.file_resource_at(project, path)
-                            for path in dict.fromkeys((*consumers, origin, target))
+                        options=m.Infra.RopeMoveOptions(
+                            resources=tuple(
+                                u.Infra.file_resource_at(project, path)
+                                for path in dict.fromkeys((*consumers, origin, target))
+                            ),
+                            destination_offset=None
+                            if not destination_owner
+                            else cls._rewire_identifier_offset(
+                                project,
+                                intent.destination_module,
+                                destination_owner,
+                                sources,
+                            ),
+                            match_filter=selected,
                         ),
-                        destination_offset=None
-                        if not destination_owner
-                        else cls._rewire_identifier_offset(
-                            project,
-                            intent.destination_module,
-                            destination_owner,
-                            sources,
-                        ),
-                        match_filter=selected,
                     )
                 for change in changes.changes:
                     if not isinstance(change, p.Infra.RopeChangeContents):
@@ -777,7 +779,10 @@ class FlextInfraCodemodSemanticApply(
                         raise TypeError(msg)
                     path = Path(change.resource.real_path)
                     if path not in sources:
-                        msg = "native binding rewire escaped its authenticated source view"
+                        msg = (
+                            "native binding rewire escaped its authenticated "
+                            "source view"
+                        )
                         raise ValueError(msg)
                     previous = sources[path]
                     sources[path] = (

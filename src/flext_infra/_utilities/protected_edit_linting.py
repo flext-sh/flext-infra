@@ -1202,6 +1202,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             normalize_unused_import,
             normalized_line,
         )
+        if normalized_without_unused_imports.startswith(
+            f"{c.Infra.FORMATTER_UNSATISFIED_CODE} "
+        ):
+            # The measured width changes when a rewrite shortens a line that
+            # was already too long; identity is the rule occurrence, and the
+            # multiset count still flags a genuinely additional one.
+            return c.Infra.FORMATTER_UNSATISFIED_CODE
         if c.Infra.LINT_SUMMARY_RE.match(normalized_without_unused_imports):
             return ""
         return normalized_without_unused_imports.strip()
