@@ -70,7 +70,9 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  # Below a namespace family facade: the facade lives two directories
+  # deep and owns the short alias its package initializer imports.
+  - "*/*/*/**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
@@ -102,7 +104,9 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  # Below a namespace family facade: the facade lives two directories
+  # deep and owns the short alias its package initializer imports.
+  - "*/*/*/**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
@@ -140,7 +144,9 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  - "*/*/**/*.py"
+  # Below a namespace family facade: the facade lives two directories
+  # deep and owns the short alias its package initializer imports.
+  - "*/*/*/**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"

@@ -524,6 +524,26 @@ class FlextInfraUtilitiesLintRecipes(
             The span to replace and the summary text that replaces it.
 
         """
+        width = FlextInfraUtilitiesProjectManagedArtifacts.native_tool_setting(
+            config.Infra.tooling, "ruff", "line-length", int
+        )
+
+        def literal(indent: str) -> str:
+            delimiter = chr(34) * 3
+            single = f"{delimiter}{text}{delimiter}"
+            if len(indent) + len(single) <= width:
+                return single
+            available = max(width - len(indent) - 3, 1)
+            short = textwrap.shorten(text, width=available, placeholder=".")
+            description = textwrap.wrap(
+                text,
+                width=max(width - len(indent), 1),
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            body = "\n".join(f"{indent}{line}" for line in description)
+            return f"{delimiter}{short}\n\n{body}\n{indent}{delimiter}"
+
         first = definition.body[0]
         line = lines[first.lineno - 1]
         body_at = cls._utf8_chars(line, first.col_offset)
@@ -538,7 +558,8 @@ class FlextInfraUtilitiesLintRecipes(
             )
             first_line = min((first.lineno, *(item.lineno for item in decorators)))
             offset = cls._offset(lines, first_line, 0)
-            return (offset, offset, f'{" " * first.col_offset}"""{text}"""\n')
+            indent = " " * first.col_offset
+            return (offset, offset, f"{indent}{literal(indent)}\n")
         suite = line[body_at:].removesuffix("\n").removesuffix("\r")
         header = lines[definition.lineno - 1]
         block = " " * (cls._utf8_chars(header, definition.col_offset) + 4)
@@ -546,7 +567,7 @@ class FlextInfraUtilitiesLintRecipes(
         return (
             start,
             start + len(line),
-            f'{line[:colon]}\n{block}"""{text}"""\n{block}{suite}\n',
+            f"{line[:colon]}\n{block}{literal(block)}\n{block}{suite}\n",
         )
 
     @classmethod
@@ -1583,7 +1604,7 @@ class FlextInfraUtilitiesLintRecipes(
                 braces += 1
             elif char == "}":
                 braces = max(braces - 1, 0)
-            elif char == " " and not braces:
+            elif char in {" ", ",", ";"} and not braces:
                 safe.append(index + 1)
         cuts: list[int] = []
         anchor = 0

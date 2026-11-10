@@ -180,6 +180,22 @@ class FlextInfraModelsRefactor(
             ),
         ] = False
 
+    class RopeMoveOptions(m.ArbitraryTypesModel):
+        """Declared search scope and filter policy for one semantic move."""
+
+        resources: Annotated[
+            Sequence[t.Port[t.Infra.RopeResource]],
+            m.Field(description="Resources included in the semantic move scope"),
+        ] = m.Field(default_factory=tuple)
+        destination_offset: Annotated[
+            int | None,
+            m.Field(description="Optional offset within the destination resource"),
+        ] = None
+        match_filter: Annotated[
+            t.Port[t.Infra.RopeOccurrenceFilter] | None,
+            m.Field(description="Optional predicate to filter moved occurrences"),
+        ] = None
+
     class SemanticRenameDecision(m.ImmutableValueModel):
         """Domain-selected name for an observed introducing declaration."""
 
