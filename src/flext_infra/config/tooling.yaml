@@ -223,11 +223,11 @@ Infra:
       # verbatim: a capitalized Pydantic field (``Mise``, ``Gitignore``) must
       # stay capitalized in the read-only `p.*` contract, so the function-name
       # rule cannot apply to generated `_protocols` sources.
-      - [ '**/_protocols/**', [ invalid-function-name ] ]
+      - [ '**/_protocols/**', [ invalid-function-name, too-many-public-methods ] ]
       # The command contract mandates the ``# /// flext-command`` metadata
       # block: its single-line JSON entries exceed the line budget and its
       # commented declarations are data, not dead code.
-      - [ 'scripts/**/*.py', [ commented-out-code, line-too-long ] ]
+      - [ 'scripts/**/*.py', [ commented-out-code, invalid-module-name, line-too-long ] ]
       # The fleet testing contract expresses expectations with ``assert``.
       - [ 'tests/**/*.py', [ assert ] ]
       mypy:
