@@ -391,6 +391,14 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_TARGET_SUFFIXES: ClassVar[str] = "allow_target_suffixes"
     CODEMOD_RULE_SUFFIX: ClassVar[str] = ".yml"
     CODEMOD_NATIVE_RULE_BUNDLE_FILENAME: ClassVar[str] = "rules.yml"
+    # Exact ast-grep diagnostic for a projected rule it refuses to load (for
+    # example a matcher left without a positive anchor). Staging converts it
+    # into a typed failure naming the ruleset instead of failing a consumer's
+    # scan with no rule attribution.
+    CODEMOD_RULESET_PARSE_ERRORS: ClassVar[t.StrTuple] = (
+        "not a valid ast-grep rule",
+        "missing required id",
+    )
     CODEMOD_NATIVE_DOCUMENT_SEPARATOR: ClassVar[str] = "\n---\n"
     # Native ast-grep language of every generated utility rule.
     CODEMOD_PYTHON_LANGUAGE: ClassVar[str] = "Python"
