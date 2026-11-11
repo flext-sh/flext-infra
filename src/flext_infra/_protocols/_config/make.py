@@ -801,6 +801,14 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def scan_threads(self) -> t.PositiveInt:
+            """Structural member projected from the owning model.
+
+            Bounded thread budget for ast-grep scan execution.
+            """
+            ...
+
+        @property
         def approval_verbs(self) -> tuple[str, ...]:
             """Ordered approval derived once from the validated workflow."""
             ...

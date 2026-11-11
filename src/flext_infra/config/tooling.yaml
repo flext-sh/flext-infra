@@ -821,6 +821,7 @@ Infra:
         set_: configure_/apply_/update_
         is_: a noun/adjective (success, expired, connected, ...)
     mod:
+      scan_threads: 4
       phases:
         # Component toggles for make mod (rule: toggles are data, not flags).
         import-alignment: true

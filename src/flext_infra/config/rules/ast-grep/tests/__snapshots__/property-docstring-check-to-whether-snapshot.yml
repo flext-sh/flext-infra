@@ -30,14 +30,14 @@ snapshots:
       @property
       def is_enabled(self) -> bool:
           """Whether the feature is enabled.
-          
+
           The second paragraph remains byte-for-byte unchanged.
           """
           return self._enabled
     labels:
     - source: |-
         """Check if the feature is enabled.
-        
+
             The second paragraph remains byte-for-byte unchanged.
             """
       style: primary
@@ -51,7 +51,7 @@ snapshots:
         @property
         def is_enabled(self) -> bool:
             """Check if the feature is enabled.
-        
+
             The second paragraph remains byte-for-byte unchanged.
             """
             return self._enabled

@@ -51,11 +51,25 @@ utils:
 rule:
   any:
     - kind: import_statement
-      regex: '^import\s+(?:unittest\.mock|mock|pytest_mock)\b'
+      regex: '^import\s+(?:unittest\.mock|mock|pytest_mock|responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\b'
     - kind: import_from_statement
-      regex: '^from\s+(?:unittest\.mock|mock|pytest_mock)\s+import\b'
+      regex: '^from\s+(?:unittest\.mock|mock|pytest_mock|responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\s+import\b'
     - kind: import_from_statement
       regex: '^from\s+unittest\s+import\s+(?:[^\n]*[\s,(])?mock\b'
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+httpx\s+import\b'
+        - has:
+            kind: dotted_name
+            regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: attribute
+        - regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: '^(?:responses|requests_mock|aioresponses|pytest_httpx|freezegun|time_machine|vcr)\.'
     - all:
         - kind: identifier
         - regex: "^mocker$"
@@ -90,8 +104,10 @@ constraints:
     regex: "^(?:setattr|setitem|delattr|delitem)$"
 message: >-
   Test doubles are forbidden: mock libraries, the mocker fixture, Mock/patch
-  constructors and monkeypatch attribute/item replacement hide the real owner.
-  Delete the test and re-cover the behaviour through the public facade with
-  real typed fixtures.
+  constructors, monkeypatch attribute/item replacement, HTTP recording/replay
+  libraries (responses, requests_mock, vcr, aioresponses, pytest_httpx,
+  httpx.MockTransport) and time doubles (freezegun, time_machine) hide the real
+  owner. Delete the test and re-cover the behaviour through the public facade
+  with real typed fixtures.
 metadata:
   enforce: [ENFORCE-019]

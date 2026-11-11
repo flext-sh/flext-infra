@@ -21,3 +21,8 @@ invalid:
     class C:
         class Tests(FlextTestsConstants.Tests):
             EXPECTED_DATA_COUNT: int = 3
+  - |
+    from __future__ import annotations
+
+    class Model:
+        model_config = m.ConfigDict(frozen=True)

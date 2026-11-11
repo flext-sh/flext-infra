@@ -1076,6 +1076,15 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
+        scan_threads: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=4,
+                description=(
+                    "Bounded thread budget for ast-grep scan execution"
+                ),
+            ),
+        ] = 4
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:

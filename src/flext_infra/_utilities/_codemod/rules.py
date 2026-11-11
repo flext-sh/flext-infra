@@ -484,15 +484,16 @@ class FlextInfraUtilitiesCodemodRules(
             for ruleset in plan.rulesets
             if ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
         ]
-        if len(generated) > 1:
-            msg = (
-                "one native stage stages one project's generated provider: "
-                f"{[str(ruleset.config) for ruleset in generated]}"
-            )
-            raise ValueError(msg)
-        scopes = FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(
-            generated[0].config if generated else None
-        )
+        scopes: dict[str, object] = {}
+        for gen in generated:
+            for key, val in FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(gen.config).items():
+                if key in scopes:
+                    if isinstance(scopes[key], list) and isinstance(val, list):
+                        scopes[key].extend(val)
+                    elif isinstance(scopes[key], dict) and isinstance(val, dict):
+                        scopes[key].update(val)
+                else:
+                    scopes[key] = val
         for ruleset in plan.rulesets:
             cls._project_provider_utilities(
                 ruleset.config.resolve(),
@@ -564,30 +565,36 @@ class FlextInfraUtilitiesCodemodRules(
         if not bundle.is_file():
             return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
         command = flext_infra.u.Infra.ast_grep_scan_command(
-            bundle, rule_ids=rule_ids, targets=(".",)
+            bundle, rule_ids=rule_ids, targets=(".",), threads=threads
         )
         config_path = bundle.parent.parent
-        with tempfile.TemporaryDirectory(
-            prefix="codemod-ruleset-parse-", dir=destination.parent
-        ) as directory:
-            probe = Path(directory)
-            (probe / f"probe{c.Infra.EXT_PYTHON}").write_text(
-                "", encoding=c.DEFAULT_ENCODING
-            )
-            prefix = "projected codemod ruleset cannot be parsed by ast-grep"
-            try:
-                executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=probe)
-            except ValueError as exc:
-                msg = f"{prefix}: {config_path}: {exc}"
-                raise ValueError(msg) from exc
-            if executed.failure:
-                msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
-                raise ValueError(msg)
-            output = (executed.value.stderr or executed.value.stdout).strip()
-            if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
-                msg = f"{prefix}: {config_path}: {output}"
-                raise ValueError(msg)
+        probe = settings.work_dir / "ast-grep" / f"probe{c.Infra.EXT_PYTHON}"
+        if not probe.is_file():
+            u.Cli.ensure_dir(probe.parent).unwrap()
+            probe.write_text("", encoding=c.DEFAULT_ENCODING)
+        prefix = "projected codemod ruleset cannot be parsed by ast-grep"
+        try:
+            executed = u.Cli.run_raw((str(binary), *command[1:-1], str(probe)), cwd=probe.parent)
+        except ValueError as exc:
+            msg = f"{prefix}: {config_path}: {exc}"
+            raise ValueError(msg) from exc
+        if executed.failure:
+            msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
+            raise ValueError(msg)
+        output = (executed.value.stderr or executed.value.stdout).strip()
+        if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
+            msg = f"{prefix}: {config_path}: {output}"
+            raise ValueError(msg)
 
     @staticmethod
     def project_targets(

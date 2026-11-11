@@ -4,9 +4,9 @@ snapshots:
     fixed: |
       class Convert(m.ImmutableValueModel):
           """Convert."""
-      
-          
-      
+
+
+
           name: str = m.Field(description="name")
     labels:
     - source: "model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")"
@@ -20,9 +20,9 @@ snapshots:
     - source: |-
         class Convert(m.ImmutableValueModel):
             """Convert."""
-        
+
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-        
+
             name: str = m.Field(description="name")
       style: secondary
       start: 0
@@ -30,8 +30,8 @@ snapshots:
   "class Layout(m.ArbitraryTypesModel):\n    model_config = m.ConfigDict(extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")\n":
     fixed: |
       class Layout(m.ArbitraryTypesModel):
-          
-      
+
+
           name: str = m.Field(description="name")
     labels:
     - source: model_config = m.ConfigDict(extra="forbid")
@@ -45,7 +45,7 @@ snapshots:
     - source: |-
         class Layout(m.ArbitraryTypesModel):
             model_config = m.ConfigDict(extra="forbid")
-        
+
             name: str = m.Field(description="name")
       style: secondary
       start: 0
@@ -53,8 +53,8 @@ snapshots:
   "class Stage(m.ContractModel):\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")\n":
     fixed: |
       class Stage(m.ContractModel):
-          
-      
+
+
           name: str = m.Field(description="name")
     labels:
     - source: "model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")"
@@ -68,7 +68,7 @@ snapshots:
     - source: |-
         class Stage(m.ContractModel):
             model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
-        
+
             name: str = m.Field(description="name")
       style: secondary
       start: 0

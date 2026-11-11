@@ -155,6 +155,13 @@ class FlextInfraModelsDepsToolConfig(
         phases: FlextInfraModelsDepsToolConfig.ModPhasesConfig = m.Field(
             description="Phase toggles read from config/tooling.yaml.",
         )
+        scan_threads: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=4,
+                description="Bounded thread budget for ast-grep scan execution.",
+            ),
+        ] = 4
 
     class PytestWorkerCeiling(m.ArbitraryTypesModel):
         """Tagged per-project pytest worker ceiling: absolute or CPU fraction.

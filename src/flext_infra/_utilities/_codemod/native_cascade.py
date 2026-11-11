@@ -185,11 +185,21 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                 ruleset does not settle.
 
         """
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
         command = FlextInfraUtilitiesBase.ast_grep_scan_command(
             ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=(".",),
             update_all=True,
+            threads=threads,
         )
         current = cls._preview_contents(preview)
         seen = {frozenset(current.items())}
@@ -241,11 +251,21 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         """
         if not paths:
             return frozenset()
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
         command = FlextInfraUtilitiesBase.ast_grep_scan_command(
             ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=tuple(path.as_posix() for path in paths),
             json_stream=True,
+            threads=threads,
         )
         executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=preview).unwrap()
         return frozenset(

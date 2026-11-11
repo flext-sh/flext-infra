@@ -16,7 +16,8 @@ from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import closing
 from pathlib import Path
 
-from flext_infra import c, m, p, r, settings, t, u
+from flext_infra import c, config, m, p, r, settings, t, u
+from flext_infra._codemod.scan_cache import FlextInfraCodemodScanCache
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -1084,10 +1085,45 @@ class FlextInfraModGateEngine:
         ruleset_files = {
             rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
+        inventory_sources = tuple(getattr(context, "inventory", ()))
+        cache_key = FlextInfraCodemodScanCache.compute_key(
+            prefix="ruleset",
+            config_path=ruleset.config,
+            rule_ids=ruleset.rule_ids,
+            targets=targets,
+            sources=inventory_sources,
+            threads=threads,
+        )
+        cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
+        if cached_file is not None:
+            sys.stderr.write(f"mod: ast-grep cache hit key={cache_key[:12]}\n")
+            sys.stderr.flush()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, cached_file)
+            report = cls._parse_findings(
+                artifact.path,
+                root,
+                (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
+                context,
+                artifact,
+            ).unwrap()
+            return r[p.Infra.ModScanReport].ok(
+                cls.recounted(report.entries, native_artifacts=(artifact,))
+            )
+
         scan_command = u.Infra.ast_grep_scan_command(
             ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=targets,
+            threads=threads,
             json_stream=True,
         )
         u.Cli.ensure_dir(settings.work_dir).unwrap()
@@ -1109,6 +1145,7 @@ class FlextInfraModGateEngine:
                 return r[p.Infra.ModScanReport].from_failure(run)
             sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
             sys.stderr.flush()
+            FlextInfraCodemodScanCache.store(cache_key, stdout_file)
             artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
             report = cls._parse_findings(
                 artifact.path,
