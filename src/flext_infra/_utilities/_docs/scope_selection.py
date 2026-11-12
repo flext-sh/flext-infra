@@ -191,14 +191,20 @@ class FlextInfraUtilitiesDocsScopeSelection:
         output_dir: Path | str,
         *,
         repository_root: Path,
+        projection: p.Infra.CodegenFilePlan | None = None,
     ) -> p.Infra.DocScope:
         """Build docs scope for a governed project root.
+
+        ``projection`` is the candidate pyproject a generation plans for the
+        root; it stands for the live file until that file is published.
 
         Returns:
             The resulting ``m.Infra.DocScope``.
 
         """
-        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        payload = FlextInfraUtilitiesDocsScope.project_state(
+            project_root, metadata_projection=projection
+        ).payload
         docs_meta = FlextInfraUtilitiesPyprojectConform.docs_meta_from_payload(payload)
         project_name = FlextInfraUtilitiesPyprojectConform.project_name_from_payload(
             project_root, payload
