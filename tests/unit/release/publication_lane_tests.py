@@ -42,11 +42,10 @@ class TestsFlextInfraReleasePublicationLane:
         repo = u.Tests.git_repository(tmp_path)
         base = u.Tests.checkout_integration(repo)
         u.Tests.configure_local_origin(repo, tmp_path / "remote")
-        manifest = tm.ok(
-            u.Infra.load_workspace_manifest(
-                Path(__file__).resolve().parents[3],
-            )
-        )[0]
+        # The fixture owner declares the standalone repository; the lane test
+        # only binds its integration line to the checkout's base.
+        u.Tests.write_standalone_workspace_manifest(repo, repo.name)
+        manifest = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
         declared = manifest.model_copy(
             update={
                 "integration": m.Infra.WorkspaceIntegrationSpec(

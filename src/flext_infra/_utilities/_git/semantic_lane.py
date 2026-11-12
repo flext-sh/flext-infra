@@ -115,7 +115,6 @@ class FlextInfraUtilitiesGitSemanticLane:
                 "repo_root": (root),
                 "operation": ("verify"),
                 "candidate": (request.base),
-                "ownership": (request.ownership),
             }),
         )
         if admitted.failure:

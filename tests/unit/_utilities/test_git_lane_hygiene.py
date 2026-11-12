@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-from flext_infra import FlextInfraCli, FlextInfraGitService, config, workspace
+from flext_infra import FlextInfraCli, FlextInfraGitService, config
 from tests import c, m, p, t, tm, u
 
 
@@ -144,7 +143,6 @@ class TestsFlextInfraGitLaneHygiene:
         paths: tuple[Path, ...] = (Path(),),
         publish: bool = True,
         integrate: bool = True,
-        large: bool = False,
     ) -> p.Infra.GitLaneOwnershipRequest:
         """Retain actual native layers through the existing checkpoint owners.
 
@@ -155,13 +153,6 @@ class TestsFlextInfraGitLaneHygiene:
         base = cls._declared_base(tmp_path)
         root = base.repo_root
         remote = config.Infra.codegen.branch_policy.lane_remote
-        if large:
-            names = tuple(f"retained-{index}-{'x' * 160}" for index in range(512))
-            for name in names:
-                (root / name).write_text("retained source\n", encoding="utf-8")
-            u.Tests.git_run(root, "add", "--", *names)
-            u.Tests.git_run(root, "commit", "-m", "chore: retain source inputs")
-            u.Tests.git_run(root, "push", remote, str(base.declared))
         u.Tests.git_run(
             tmp_path / "integration.git",
             "symbolic-ref",
@@ -295,66 +286,3 @@ class TestsFlextInfraGitLaneHygiene:
             )
         )
         tm.fail(result)
-
-    @classmethod
-    @c.Tests.MARK.parametrize("selection", ["native", "missing", "shell-data"])
-    def test_version_recipe_consumes_only_native_receipt(
-        cls, tmp_path: Path, selection: str
-    ) -> None:
-        """The generated recipe transports real proof and treats selectors as data."""
-        request = cls._retained_ownership(tmp_path, large=selection == "native")
-        root = request.repo_root
-        if selection == "native":
-            receipt = tm.ok(FlextInfraGitService.lane_ownership(request))
-            tm.that(len(receipt.model_dump_json().encode()) > 128 * 1024, eq=True)
-        pyproject = u.Tests.WorktreeFixture.write_python_project(root, root.name)
-        u.Tests.git_run(root, "add", "--", str(pyproject.relative_to(root)))
-        u.Tests.git_run(root, "commit", "-m", "chore: establish release baseline")
-        version = tm.ok(u.Infra.current_workspace_version(root))
-        u.Tests.git_run(root, "tag", f"v{version}")
-        u.Tests.git_run(root, "push", request.remote, "HEAD")
-        rendered_root = u.Tests.git_repository(tmp_path / "rendered")
-        u.Tests.WorktreeFixture.write_python_project(rendered_root, rendered_root.name)
-        u.Tests.write_standalone_workspace_manifest(rendered_root, rendered_root.name)
-        # The fixture owns origin; the rendered project rebinds it to its
-        # governed provider URL instead of adding a duplicate remote.
-        u.Tests.git_run(
-            rendered_root,
-            "remote",
-            "set-url",
-            request.remote,
-            u.Tests.WorktreeFixture.governed_repository_url(rendered_root.name),
-        )
-        rendered = u.Tests.conform_makefile_text(
-            rendered_root,
-            tm.ok(
-                workspace.FlextInfraWorkspaceDetector.load_workspace_spec(rendered_root)
-            ),
-        )
-        body = rendered.split("_builtin_release_version:", 1)[1].split("\n\n", 1)[0]
-        recipe = "\n".join(
-            line.removeprefix("\t").removeprefix("@") for line in body.splitlines()[1:]
-        )
-        command = (
-            recipe
-            .replace("$$", "$")
-            .replace("$(PROJECT_FLEXT_INFRA)", f'"{sys.executable}" -m flext_infra')
-            .replace("$(PROJECT_ROOT)", str(root))
-        )
-        reference = (
-            request.checkpoint_ref
-            if selection == "native"
-            else ""
-            if selection == "missing"
-            else "refs/checkpoints/owned-state; touch injected"
-        )
-        before = u.Tests.git_capture(root, "rev-parse", "HEAD").strip()
-        with u.Tests.env_vars_context({"FLEXT_LANE_CHECKPOINT_REF": reference}):
-            output = tm.ok(u.Cli.run_raw(["bash", "-eu", "-c", command], cwd=root))
-        tm.that(
-            u.Cli.process_succeeded(output.outcome),
-            eq=selection != "shell-data",
-            msg=output.stdout + output.stderr,
-        )
-        tm.that(u.Tests.git_capture(root, "rev-parse", "HEAD").strip(), eq=before)
-        tm.that((root / "injected").exists(), eq=False)

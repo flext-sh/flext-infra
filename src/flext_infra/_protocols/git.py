@@ -745,13 +745,6 @@ class FlextInfraProtocolsGit(
             """Pull-request body file."""
             ...
 
-        @property
-        def ownership(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
-            """Live retained and integrated prior owned repository state."""
-            ...
-
     @runtime_checkable
     class GitIndexScope(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

@@ -178,8 +178,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     arguments=(
                         ("PR_TITLE",)
                         if phase is c.Infra.ReleasePhase.PLAN
-                        else ("LANE_CHECKPOINT_REF",)
-                        if phase is c.Infra.ReleasePhase.VERSION
                         else ("INDEX",)
                         if phase is c.Infra.ReleasePhase.PUBLISH
                         else ()
