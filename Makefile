@@ -233,7 +233,7 @@ endif
 # When attached to a workspace (BOOTSTRAP_ROOT != PROJECT_ROOT), all verbs use
 # the workspace root so they share the workspace's .venv. Standalone checkouts
 # use the native uv workspace reader for non-setup/upg/help verbs.
-ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg _setup_locked _upg_locked,$(MAKECMDGOALS))),)
+ifneq ($(strip $(VERB_CONTRACT) $(filter setup upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
 else ifeq ($(strip $(filter-out help _builtin-help _setup_native_prepare pre-upg post-upg,$(MAKECMDGOALS))),)
 override REPOSITORY_ROOT := $(BOOTSTRAP_ROOT)
@@ -448,8 +448,8 @@ export FLEXT_INFRA_PYTHON UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUNTIME_ROOT
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_native_prepare
 .PHONY: _bootstrap_setup_tools
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 _bootstrap_setup_tools:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="$(PROJECT_ROOT)/.reports/setup-operations/tool-bootstrap.json"; \
@@ -913,34 +913,7 @@ endif
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-setup:
-	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
-lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
-if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
-mkdir -p "$$lifecycle_state" 2>/dev/null || true; \
-if [ -e "$$lifecycle_lock" ] && [ ! -f "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease is not a regular file\n' >&2; exit 2; fi; \
-: >>"$$lifecycle_lock"; \
-lifecycle_identity="$$(stat -c '%d:%i' "$$lifecycle_lock")"; \
-lifecycle_descriptor=; \
-for lifecycle_entry in /proc/$$$$/fd/*; do \
-	case "$${lifecycle_entry##*/}" in 0|1|2|9) continue ;; esac; \
-	if [ -f "$$lifecycle_entry" ] && [ "$$(stat -Lc '%d:%i' "$$lifecycle_entry")" = "$$lifecycle_identity" ]; then lifecycle_descriptor="$${lifecycle_entry##*/}"; break; fi; \
-done; \
-case " $${FLEXT_NATIVE_LIFECYCLE_LEASES:-} " in \
-	*" $$lifecycle_identity "*) \
-		if [ -z "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] recursive workflow lost its native lease descriptor\n' >&2; exit 2; fi; \
-		flock -x "$$lifecycle_descriptor"; \
-		$(SELF_MAKE) _setup_locked ;; \
-	*) \
-		if [ -n "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] inherited lease has no native workflow identity\n' >&2; exit 2; fi; \
-		if [ ! -e /proc/$$$$/fd/9 ]; then exec 9>/dev/null; fi; \
-		FLEXT_NATIVE_LIFECYCLE_LEASES="$${FLEXT_NATIVE_LIFECYCLE_LEASES:-} $$lifecycle_identity"; export FLEXT_NATIVE_LIFECYCLE_LEASES; \
-		printf 'lifecycle: acquiring setup/upg lease for %s\n' "$(RUNTIME_ROOT)"; \
-		exec flock --exclusive --no-fork "$$lifecycle_lock" $(SELF_MAKE) _setup_locked ;; \
-esac
-.PHONY: _setup_locked
-_setup_locked: _builtin_require_github_credential _bootstrap_setup_tools
+setup: _builtin_require_github_credential _bootstrap_setup_tools
 else
 setup: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" setup
@@ -952,34 +925,7 @@ endif
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
-upg:
-	+@set -eu; \
-lifecycle_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
-lifecycle_lock="$$lifecycle_state/$(notdir $(RUNTIME_VENV)).lifecycle.lock"; \
-if [ -L "$$lifecycle_state" ] || [ -L "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease paths must be physical\n' >&2; exit 2; fi; \
-mkdir -p "$$lifecycle_state" 2>/dev/null || true; \
-if [ -e "$$lifecycle_lock" ] && [ ! -f "$$lifecycle_lock" ]; then printf 'ERROR[lifecycle] lease is not a regular file\n' >&2; exit 2; fi; \
-: >>"$$lifecycle_lock"; \
-lifecycle_identity="$$(stat -c '%d:%i' "$$lifecycle_lock")"; \
-lifecycle_descriptor=; \
-for lifecycle_entry in /proc/$$$$/fd/*; do \
-	case "$${lifecycle_entry##*/}" in 0|1|2|9) continue ;; esac; \
-	if [ -f "$$lifecycle_entry" ] && [ "$$(stat -Lc '%d:%i' "$$lifecycle_entry")" = "$$lifecycle_identity" ]; then lifecycle_descriptor="$${lifecycle_entry##*/}"; break; fi; \
-done; \
-case " $${FLEXT_NATIVE_LIFECYCLE_LEASES:-} " in \
-	*" $$lifecycle_identity "*) \
-		if [ -z "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] recursive workflow lost its native lease descriptor\n' >&2; exit 2; fi; \
-		flock -x "$$lifecycle_descriptor"; \
-		$(SELF_MAKE) _upg_locked ;; \
-	*) \
-		if [ -n "$$lifecycle_descriptor" ]; then printf 'ERROR[lifecycle] inherited lease has no native workflow identity\n' >&2; exit 2; fi; \
-		if [ ! -e /proc/$$$$/fd/9 ]; then exec 9>/dev/null; fi; \
-		FLEXT_NATIVE_LIFECYCLE_LEASES="$${FLEXT_NATIVE_LIFECYCLE_LEASES:-} $$lifecycle_identity"; export FLEXT_NATIVE_LIFECYCLE_LEASES; \
-		printf 'lifecycle: acquiring setup/upg lease for %s\n' "$(RUNTIME_ROOT)"; \
-		exec flock --exclusive --no-fork "$$lifecycle_lock" $(SELF_MAKE) _upg_locked ;; \
-esac
-.PHONY: _upg_locked
-_upg_locked: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
+upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
 	+@$(SELF_MAKE) _upg_lifecycle
 else
 upg: _builtin_require_workspace
