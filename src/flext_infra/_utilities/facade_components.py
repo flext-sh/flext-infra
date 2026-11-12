@@ -3427,7 +3427,8 @@ class FlextInfraUtilitiesFacadeComponents:
         prefix). Nothing is listed: the set is the dependency declaration as
         installed. A distribution the project itself names is a domain
         capability, not a leak: a package or subpackage of the project with
-        that name, or one declared in the repository's ``domain_capabilities``,
+        that name (an importable directory under its own package roots, never the
+        tests tier), or one declared in the repository's ``domain_capabilities``,
         is removed, as is every declared stdlib backport.
 
         Returns:
@@ -3457,12 +3458,23 @@ class FlextInfraUtilitiesFacadeComponents:
                 *config.Infra.tooling.lazy_init.stdlib_backports,
             )
         }
+        resolved = root.resolve()
+        tiers = c.Infra.NON_PUBLIC_LAZY_ROOTS
+        package_roots = {
+            base / name
+            for name in FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root)
+            if name not in tiers
+            for base in (resolved, resolved / c.Infra.DEFAULT_SRC_DIR)
+        }
         exempt.update(
             normalized(part)
             for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
                 snapshot, root
             )
-            for part in path.parent.relative_to(root).parts
+            if path.name == c.Infra.INIT_PY
+            for package_root in package_roots
+            if path.parent.is_relative_to(package_root)
+            for part in path.parent.relative_to(package_root).parts
         )
         return tuple(
             sorted({

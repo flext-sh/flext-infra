@@ -18,7 +18,11 @@ class TestsFlextInfraCodemodLibraryMemberCapabilities:
 
     @staticmethod
     def prefixes(
-        tmp_path: Path, *, subpackage: str | None = None, declared: str | None = None
+        tmp_path: Path,
+        *,
+        subpackage: str | None = None,
+        declared: str | None = None,
+        tier_directory: str | None = None,
     ) -> tuple[str, ...]:
         """Return the library prefixes of a project importing three libraries.
 
@@ -34,6 +38,10 @@ class TestsFlextInfraCodemodLibraryMemberCapabilities:
             (package / subpackage / c.Infra.INIT_PY).write_text(
                 "", encoding=c.DEFAULT_ENCODING
             )
+        if tier_directory is not None:
+            tier = repository / tier_directory
+            tier.mkdir(parents=True)
+            (tier / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
         if declared is not None:
             directory = repository / "config"
             directory.mkdir(exist_ok=True)
@@ -55,6 +63,11 @@ class TestsFlextInfraCodemodLibraryMemberCapabilities:
         found = self.prefixes(tmp_path, subpackage="jinja2")
         tm.that("jinja2" in found, eq=False)
         tm.that("rope" in found, eq=True)
+
+    def test_fixture_directory_is_not_a_capability(self, tmp_path: Path) -> None:
+        """A tests-tier directory named like a distribution exempts nothing."""
+        found = self.prefixes(tmp_path, tier_directory="tests/fixtures/ci/jinja2")
+        tm.that("jinja2" in found, eq=True)
 
     def test_declared_capability_is_exempt(self, tmp_path: Path) -> None:
         """A repository ``domain_capabilities`` name exempts that prefix."""
