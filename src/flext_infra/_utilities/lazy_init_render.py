@@ -104,6 +104,9 @@ class FlextInfraUtilitiesLazyInitRender:
                 eager_binding_lines=cls._lazy_init_eager_bindings(plan, first_party),
                 exports_tuple=cls._lazy_init_exports_tuple((*public, *helpers)),
                 lazy_export_mapping=cls._lazy_init_mapping(entries),
+                deferred_members_mapping=cls._lazy_init_deferred_mapping(
+                    plan.deferred_members
+                ),
             ),
         ).unwrap()
         compile(rendered, str(plan.context.init_path), "exec")
@@ -418,6 +421,34 @@ class FlextInfraUtilitiesLazyInitRender:
                     f"{indent}),",
                 )
             )
+        lines.append("    },")
+        return "\n".join(lines)
+
+    @classmethod
+    def _lazy_init_deferred_mapping(cls, deferred: Mapping[str, Sequence[str]]) -> str:
+        """Render the installer's ``deferred_members`` argument in Ruff's fixed point.
+
+        Every bracket ends with a magic trailing comma, so Ruff keeps the
+        mapping and each multi-member tuple exploded; a one-member tuple stays
+        on its entry line when that line fits.
+
+        Returns:
+            The argument lines, each prefixed by a newline; empty for no export.
+
+        """
+        if not deferred:
+            return ""
+        lines = ["", "    deferred_members={"]
+        indent = "        "
+        for name in sorted(deferred, key=cls.lazy_init_export_key):
+            members = deferred[name]
+            single = f'{indent}"{name}": ("{members[0]}",),'
+            if len(members) == 1 and len(single) <= cls.lazy_init_width():
+                lines.append(single)
+                continue
+            lines.append(f'{indent}"{name}": (')
+            lines.extend(f'{indent}    "{member}",' for member in members)
+            lines.append(f"{indent}),")
         lines.append("    },")
         return "\n".join(lines)
 

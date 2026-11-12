@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import cast
 
 from flext_cli import p, r, t, u
+from packaging.utils import canonicalize_name
 
 from flext_infra import c, config
 from flext_infra._models._codegen import (
@@ -31,8 +32,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLazyInitLetters,
     FlextInfraUtilitiesLazyInitRender,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPythonModel,
 )
+from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRulesDistributions
 
 
 class FlextInfraUtilitiesLazyInitPlan:
@@ -78,6 +81,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             "declarations": {},
             "packages": {},
             "collisions": [],
+            "deferred_imports": {},
         })
 
     @staticmethod
@@ -420,7 +424,192 @@ class FlextInfraUtilitiesLazyInitPlan:
             lazy_map=lazy_map,
             eager_dunders=eager,
             child_packages_for_lazy=children,
+            deferred_members=cls._lazy_init_deferred(run, context, lazy_map),
         )
+
+    @classmethod
+    def _lazy_init_deferred(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+        lazy_map: t.LazyAliasMap,
+    ) -> Mapping[str, Sequence[str]]:
+        """Defer each class export whose module imports a declared distribution.
+
+        A consumer of a deferred export receives its stand-in through this
+        initializer, so the importing module never loads the distribution.
+
+        Returns:
+            The member names of every deferred class export, by export name.
+
+        """
+        roots = cls._lazy_init_deferred_imports(run, context.pkg_dir)
+        if not roots:
+            return {}
+        python = FlextInfraUtilitiesPythonModel
+        deferred: dict[str, Sequence[str]] = {}
+        for name, (module, attr) in sorted(lazy_map.items()):
+            facts = python.python_model_module(run.model, module)
+            if facts is None or attr not in facts.classes:
+                continue
+            if facts.runtime_imports & roots:
+                deferred[name] = cls._lazy_init_class_members(
+                    run, (context, lazy_map), (module, attr)
+                )
+        return deferred
+
+    @staticmethod
+    def _lazy_init_deferred_imports(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
+    ) -> frozenset[str]:
+        """Return the import packages of the owning project's deferred distributions.
+
+        The owning project declares the distributions; its own environment
+        reports the import packages each one installs, once per project.
+
+        Returns:
+            The import packages, empty when the project declares none.
+
+        Raises:
+            ValueError: If a declared distribution installs no import package.
+
+        """
+        project_root = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+            run.model, pkg_dir
+        )
+        known = run.deferred_imports.get(project_root)
+        if known is not None:
+            return known
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declared = frozenset(
+            artifacts
+            .load_repository_declaration_inputs(
+                project_root, source_project=run.model.source_project
+            )
+            .unwrap()
+            .spec.deferred_distributions
+        )
+        roots: frozenset[str] = frozenset()
+        if declared:
+            distributions = FlextInfraUtilitiesCodemodRulesDistributions
+            environment = distributions.codemod_target_environment(
+                project_root
+            ).unwrap()
+            installed = {
+                module: frozenset(map(canonicalize_name, providers)) & declared
+                for module, providers in environment.package_distributions.items()
+            }
+            missing = declared.difference(*installed.values())
+            if missing:
+                msg = (
+                    f"deferred distributions install no import package in "
+                    f"{project_root}: {sorted(missing)}"
+                )
+                raise ValueError(msg)
+            roots = frozenset(module for module, owners in installed.items() if owners)
+        run.deferred_imports[project_root] = roots
+        return roots
+
+    @classmethod
+    def _lazy_init_class_members(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        scope: tuple[
+            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
+        ],
+        owner: tuple[str, str],
+    ) -> Sequence[str]:
+        """Return every non-dunder name the class bodies of an in-package MRO bind.
+
+        Returns:
+            The member names in MRO declaration order.
+
+        Raises:
+            ValueError: If a base is not a class of the same package.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        surface = scope[0].surface
+        members: dict[str, None] = {}
+        pending: list[tuple[str, str]] = [owner]
+        visited: set[tuple[str, str]] = set()
+        while pending:
+            module, name = pending.pop(0)
+            if (module, name) in visited:
+                continue
+            visited.add((module, name))
+            facts = python.python_model_module(run.model, module)
+            if (
+                facts is None
+                or name not in facts.classes
+                or module.split(".", maxsplit=1)[0] != surface
+            ):
+                msg = (
+                    f"deferred export {owner[0]}.{owner[1]} has a base that is "
+                    f"not a class of its package: {module}.{name}"
+                )
+                raise ValueError(msg)
+            members.update(
+                dict.fromkeys(
+                    # A class-private name lives in the class namespace mangled.
+                    f"_{name.lstrip('_')}{member}"
+                    if member.startswith("__")
+                    else member
+                    for member in facts.class_members[name]
+                    if not (member.startswith("__") and member.endswith("__"))
+                )
+            )
+            for base in facts.classes[name]:
+                target = (
+                    (module, base)
+                    if base in facts.classes
+                    else cls._lazy_init_base_target(run, scope, facts.imports.get(base))
+                )
+                if target is None:
+                    msg = (
+                        f"deferred export {owner[0]}.{owner[1]} has an "
+                        f"unresolvable base: {base}"
+                    )
+                    raise ValueError(msg)
+                pending.append(target)
+        return tuple(members)
+
+    @staticmethod
+    def _lazy_init_base_target(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        scope: tuple[
+            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
+        ],
+        dotted: str | None,
+    ) -> tuple[str, str] | None:
+        """Resolve one imported base through its published package route.
+
+        A family sibling resolves through the lazy map planned for that
+        package (this one, or a child decided before it); a module path
+        resolves to the class that module defines.
+
+        Returns:
+            The declaring ``(module, class)``, or ``None`` when unresolvable.
+
+        """
+        if dotted is None:
+            return None
+        context, lazy_map = scope
+        module, _, name = dotted.rpartition(".")
+        if module == context.current_pkg:
+            return lazy_map.get(name)
+        facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, module)
+        if facts is not None and name in facts.classes:
+            return (module, name)
+        published = next(
+            (
+                plan.lazy_map
+                for plan in run.plans.values()
+                if plan.context.current_pkg == module
+            ),
+            None,
+        )
+        return None if published is None else published.get(name)
 
     @staticmethod
     def _lazy_init_empty_plan(

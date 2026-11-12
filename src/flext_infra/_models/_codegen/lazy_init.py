@@ -54,9 +54,22 @@ class FlextInfraModelsCodegenLazyInit:
             Mapping[str, Sequence[str] | None],
             m.Field(description="Class-level ``__all__`` names per defined class"),
         ]
+        class_members: Annotated[
+            Mapping[str, Sequence[str]],
+            m.Field(description="Names each defined class body binds, in order"),
+        ]
         values: Annotated[
             Mapping[str, str],
             m.Field(description="Source text of each assigned top-level value"),
+        ]
+        runtime_imports: Annotated[
+            frozenset[str],
+            m.Field(
+                description=(
+                    "Absolute top-level packages imported at module scope "
+                    "outside type-checking guards"
+                ),
+            ),
         ]
 
     class PythonModuleFactsDraft(m.ArbitraryTypesModel):
@@ -80,6 +93,10 @@ class FlextInfraModelsCodegenLazyInit:
         class_exports: Annotated[
             t.Port[dict[str, Sequence[str] | None]],
             m.Field(description="Class-level exports so far"),
+        ]
+        class_members: Annotated[
+            t.Port[dict[str, Sequence[str]]],
+            m.Field(description="Class body bindings so far"),
         ]
         values: Annotated[
             t.Port[dict[str, str]],
@@ -185,6 +202,13 @@ class FlextInfraModelsCodegenLazyInit:
             description=(
                 "Importable direct child packages recorded as metadata; "
                 "their symbols are not reexported by an ancestor."
+            ),
+        )
+        deferred_members: Mapping[str, Sequence[str]] = m.Field(
+            default_factory=dict,
+            description=(
+                "Member names of each class export whose module imports a "
+                "declared deferred distribution; it loads on first member use."
             ),
         )
 
@@ -367,6 +391,15 @@ class FlextInfraModelsCodegenLazyInit:
             t.Port[list[str]],
             m.Field(description="Ambiguous export ownership findings"),
         ]
+        deferred_imports: Annotated[
+            t.Port[dict[Path, frozenset[str]]],
+            m.Field(
+                description=(
+                    "Import packages of each project's declared deferred "
+                    "distributions, observed once per project"
+                ),
+            ),
+        ]
 
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""
@@ -432,6 +465,13 @@ class FlextInfraModelsCodegenLazyInit:
         )
         lazy_export_mapping: t.NonEmptyStr = m.Field(
             description="Literal elected export-to-target installer argument.",
+        )
+        deferred_members_mapping: str = m.Field(
+            default_factory=str,
+            description=(
+                "Line-prefixed ``deferred_members`` installer argument; empty "
+                "when the package defers no export."
+            ),
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):
