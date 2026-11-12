@@ -19,7 +19,9 @@ rule:
         all:
           - has:
               stopBy: end
-              matches: pydantic-namespace-constant
+              any:
+                - matches: pydantic-namespace-constant
+                - matches: pydantic-model-config-assignment
           - not:
               has:
                 kind: import_from_statement

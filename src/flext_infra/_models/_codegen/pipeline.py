@@ -174,7 +174,7 @@ class FlextInfraModelsCodegenPipeline:
         source_inputs: t.Port[
             dict[
                 Path,
-                m.Cli.AtomicFileState,
+                p.Cli.AtomicFileState,
             ]
         ] = m.Field(
             default_factory=dict,
@@ -208,7 +208,7 @@ class FlextInfraModelsCodegenPipeline:
             default=Path(),
             description="Generation tool repository",
         )
-        initial_workspace: FlextInfraModelsConfig.WorkspaceSpec | None = m.Field(
+        initial_workspace: t.Port[p.Infra.WorkspaceSpec] | None = m.Field(
             default=None,
             description="Declared scaffold specification",
         )

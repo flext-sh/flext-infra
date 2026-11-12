@@ -170,26 +170,24 @@ class FlextInfraModelsWorkspace:
             ),
             description="Observed suppliers and physical declaration sources",
         )
-        evidence: MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence] = (
-            m.Field(
-                default_factory=u.empty(
-                    contract_factory=lambda: TypeForm(
-                        MutableSequence[FlextInfraModelsWorkspace.NativeBindingEvidence]
-                    ),
+        evidence: MutableSequence[t.Port[p.Infra.NativeBindingEvidence]] = m.Field(
+            default_factory=u.empty(
+                contract_factory=lambda: TypeForm(
+                    MutableSequence[t.Port[p.Infra.NativeBindingEvidence]]
                 ),
-                validate_default=True,
-                description="Ordered native binding and executable observations",
-            )
+            ),
+            validate_default=True,
+            description="Ordered native binding and executable observations",
         )
         evidence_index: MutableMapping[
             str,
-            FlextInfraModelsWorkspace.NativeBindingEvidence,
+            t.Port[p.Infra.NativeBindingEvidence],
         ] = m.Field(
             default_factory=u.empty(
                 contract_factory=lambda: TypeForm(
                     MutableMapping[
                         str,
-                        FlextInfraModelsWorkspace.NativeBindingEvidence,
+                        t.Port[p.Infra.NativeBindingEvidence],
                     ]
                 )
             ),
@@ -199,7 +197,11 @@ class FlextInfraModelsWorkspace:
             int, tuple[str, str, t.Port[p.AttributeProbe] | None]
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[int, tuple[str, str, p.AttributeProbe | None]])
+                TypeForm(
+                    MutableMapping[
+                        int, tuple[str, str, t.Port[p.AttributeProbe] | None]
+                    ]
+                )
             ),
             description="Strongly retained generated function source receivers",
         )

@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDependencies(
         ]
         unresolved: list[str] = []
         for diagnostic in scan.report.root:
-            if diagnostic.error.code not in {"DEP001", "DEP003", "DEP004"}:
+            if diagnostic.error.code not in c.Infra.DEPTRY_UNDECLARED_IMPORT_CODES:
                 continue
             providers = tuple(
                 (provider, requirement)

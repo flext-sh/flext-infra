@@ -626,7 +626,6 @@ class UtilityFacadeOwnerPublication:
                     root,
                     what=c.Infra.CodegenConformSurface.FACADES,
                     scope=c.Infra.CodegenConformScope.SELF,
-                    module=f"{package.name}.protocols",
                     mode=c.Infra.CodegenConformMode.CHECK,
                 )
             )

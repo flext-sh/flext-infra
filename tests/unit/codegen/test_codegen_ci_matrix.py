@@ -183,70 +183,6 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         tm.that(workflow, lacks="- name: Approval (blocking)")
 
     @staticmethod
-    def test_ci_runs_make_test_through_the_persistent_testmon_database(
-        rendered_project: Path,
-    ) -> None:
-        """Cache restore and save reference their actual database producers."""
-        workflow = u.Cli.yaml_load_mapping(
-            rendered_project / ".github" / "workflows" / "ci.yml",
-        )
-        jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(workflow["jobs"])
-        ci_job = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["ci"])
-        steps = [
-            u.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-            for value in u.Cli.JSON_LIST_ADAPTER.validate_python(ci_job["steps"])
-        ]
-        make = config.Infra.codegen.make
-        test_run = f"{make.ci.variable}={make.ci.value} make {c.Infra.VERB_TEST}"
-        test_step = next(step for step in steps if step.get("run") == test_run)
-        resolver = next(step for step in steps if step.get("id") == "testmon_path")
-        action = config.Infra.codegen.github_actions["cache"]
-        restore = next(
-            step
-            for step in steps
-            if step.get("uses") == f"{action.repository}/restore@{action.version}"
-            and step.get("name") == "Restore testmon database"
-        )
-        restore_inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(restore["with"])
-        tm.that(
-            restore_inputs["path"],
-            eq=f"${{{{ steps.{resolver['id']}.outputs.database }}}}",
-        )
-        saves = [
-            step
-            for step in steps
-            if step.get("uses") == f"{action.repository}/save@{action.version}"
-            and step.get("name") == "Save testmon database"
-        ]
-        tm.that(bool(saves), eq=make.testmon_cache_policy.save_enabled)
-        if not saves:
-            return
-        tm.that(saves, len=1)
-        save = saves[0]
-        save_inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(save["with"])
-        tm.that(
-            save_inputs["path"],
-            eq=f"${{{{ steps.{test_step['id']}.outputs.testmon_database }}}}",
-        )
-        tm.that(save_inputs["key"], eq=restore_inputs["key"])
-        tm.that(
-            steps.index(resolver)
-            < steps.index(restore)
-            < steps.index(test_step)
-            < steps.index(save),
-            eq=True,
-        )
-        tm.that(
-            save["if"],
-            has=[
-                "always()",
-                "!cancelled()",
-                f"steps.{test_step['id']}.outputs.testmon_saveable",
-                f"steps.{test_step['id']}.outputs.testmon_digest",
-            ],
-        )
-
-    @staticmethod
     def test_blocking_ci_does_not_configure_github_cli_auth(
         rendered_project: Path,
     ) -> None:
@@ -315,11 +251,25 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         ]
         make = config.Infra.codegen.make
         commits = [hook for hook in hooks if hook.get("stages") == ["pre-commit"]]
-        tm.that(len(commits), eq=int(make.pre_commit))
-        if commits:
+        commit_steps = tuple(
+            step
+            for step in make.workflow
+            if make.pre_commit and "pre_commit" in step.contexts
+        )
+        tm.that(
+            [hook["id"] for hook in commits],
+            eq=[f"flext-pre-commit-{step.identity}" for step in commit_steps],
+        )
+        token = f"{make.ci.variable}={make.ci.pre_commit_value}"
+        for hook, step in zip(commits, commit_steps, strict=True):
+            # Setup provisions through Make; check runs on the staged files.
             tm.that(
-                commits[0]["entry"],
-                has=f"{make.ci.variable}={make.ci.pre_commit_value} make check",
+                hook["entry"],
+                has=(
+                    f'{token} "$FLEXT" check run'
+                    if step.verb == c.Infra.VERB_CHECK
+                    else f"{token} {step.make_command}"
+                ),
             )
         pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
         expected = tuple(
@@ -344,12 +294,20 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         )
 
         tm.that(workflow, has="concurrency:")
+        group = next(
+            line for line in workflow.splitlines() if line.strip().startswith("group:")
+        )
+        # The key separates workflow, event, an explicit candidate ref and the
+        # PR number, so a late PR event never cancels the post-merge push run.
         tm.that(
-            workflow,
-            has=(
-                "group: ${{ github.workflow }}-${{ github.event_name }}-"
-                "${{ github.event.pull_request.number || github.ref }}"
-            ),
+            group,
+            has=[
+                "github.workflow",
+                "github.event_name",
+                "inputs.ref",
+                "github.event.pull_request.number",
+                "github.ref",
+            ],
         )
         tm.that(workflow, has="cancel-in-progress: true")
 

@@ -7,10 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import config
-from tests import c, t, tm, u
+from tests import c, p, t, tm, u
 from tests.unit.codegen.ci_matrix_support import TestsFlextInfraCodegenCiMatrixSupport
 
 
@@ -125,27 +126,39 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         tm.that(len(selected.scopes), gt=0)
 
         scopes = {"all": ("sample.py",)}
+
+        def native_scopes(*_args: p.AttributeProbe) -> Mapping[str, tuple[str, ...]]:
+            return scopes
+
+        def no_utilities(*_args: p.AttributeProbe) -> Mapping[str, str]:
+            return {}
+
+        def no_rules(
+            *_args: p.AttributeProbe, **_kwargs: p.AttributeProbe
+        ) -> Mapping[str, str]:
+            return {}
+
         with monkeypatch.context() as unselected:
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "codemod_native_scopes"
                 ),
                 "codemod_native_scopes",
-                classmethod(lambda *_args: scopes),
+                classmethod(native_scopes),
             )
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "native_utilities"
                 ),
                 "native_utilities",
-                classmethod(lambda *_args: {}),
+                classmethod(no_utilities),
             )
             unselected.setattr(
                 TestsFlextInfraCodegenCiMatrixArtifacts._native_owner(
                     "codemod_native_rules"
                 ),
                 "codemod_native_rules",
-                classmethod(lambda *_args, **_kwargs: {}),
+                classmethod(no_rules),
             )
             with u.Infra.codemod_workspace_snapshot(root) as snapshot:
                 default = u.Infra.codemod_native_generated(

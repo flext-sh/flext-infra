@@ -106,24 +106,24 @@ class TestsFlextInfraCensusExtermination:
             kind="function",
             module_name="pkg.right",
         )
-        identity = m.Infra.DuplicateGroup(
-            name="Shared",
-            kind="function",
-            definitions=[left_object, right_object],
-            canonical="pkg",
-            value_identical=True,
-        )
-        structural = m.Infra.DuplicateGroup(
-            name="Other",
-            kind="class",
-            definitions=[
+        identity = m.Infra.DuplicateGroup.model_validate({
+            "name": "Shared",
+            "kind": "function",
+            "definitions": [left_object, right_object],
+            "canonical": "pkg",
+            "value_identical": True,
+        })
+        structural = m.Infra.DuplicateGroup.model_validate({
+            "name": "Other",
+            "kind": "class",
+            "definitions": [
                 left_object,
                 right_object,
             ],
-            canonical="pkg",
-            value_identical=False,
-            semantic_candidate=True,
-        )
+            "canonical": "pkg",
+            "value_identical": False,
+            "semantic_candidate": True,
+        })
         _aliases, duplicates, _shortest = FlextInfraRefactorCensus.extermination_rows(
             sources={left: "", right: ""},
             objects=(left_object, right_object),

@@ -421,10 +421,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             u.Cli.file_changes_lock(lock.value),
         ):
             verified = u.Cli.atomic_verify_binary_file_states(
-                tuple(plan.before for plan in plans),
-                read_only_states=tuple(
-                    state for plan in plans for state in plan.inputs
-                ),
+                tuple(state for plan in plans for state in (plan.before, *plan.inputs)),
             )
             if verified.failure:
                 return result_type.from_failure(verified)
@@ -1305,9 +1302,15 @@ class FlextInfraUtilitiesProtectedEditLinting:
         """
         resolved_workspace = workspace.resolve()
         project_root: Path | None = FlextInfraUtilitiesDiscovery.project_root(py_file)
-        if project_root is None:
-            return resolved_workspace
-        return project_root
+        if project_root is not None:
+            return project_root
+        # A planned file may sit in a directory its own plan creates; the
+        # nearest existing ancestor is where Ruff reads the configuration.
+        return next(
+            directory
+            for directory in (resolved_workspace, *resolved_workspace.parents)
+            if directory.is_dir()
+        )
 
     _COMMAND_ENV_REMOVE_KEYS: ClassVar[Sequence[str]] = (
         c.Infra.ORCHESTRATOR_ENV_PYTHONPATH,

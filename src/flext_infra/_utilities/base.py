@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra._settings import FlextInfraSettings
 
 if TYPE_CHECKING:
@@ -319,11 +319,28 @@ class FlextInfraUtilitiesBase:
         if config_path is None:
             msg = f"ast-grep rule has no owning config: {rule_path}"
             raise ValueError(msg)
+        command = [
+            c.Infra.SG,
+            c.Infra.SCAN,
+            c.Infra.SG_CONFIG_FLAG,
+            str(config_path),
+        ]
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
+        if threads is not None and threads > 0:
+            command.extend([c.Infra.SG_THREADS_FLAG, str(threads)])
         selected_rule_ids = (
             tuple(rule_ids)
             if rule_ids
             else tuple(
-                sorted(FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0]),
+                sorted(FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0])
             )
         )
         if any(not rule_id or "|" in rule_id for rule_id in selected_rule_ids):
@@ -332,14 +349,10 @@ class FlextInfraUtilitiesBase:
         rule_pattern = "|".join(
             re.escape(rule_id) for rule_id in sorted(selected_rule_ids)
         )
-        command = [
-            c.Infra.SG,
-            c.Infra.SCAN,
-            c.Infra.SG_CONFIG_FLAG,
-            str(config_path),
+        command.extend([
             c.Infra.SG_FILTER_FLAG,
             f"^(?:{rule_pattern})$",
-        ]
+        ])
         if json_stream:
             command.append("--json=stream")
         if update_all:

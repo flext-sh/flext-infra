@@ -78,9 +78,12 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         contexts = {
             target.path: self._isolate_context(ctx, target) for target in projects
         }
-        results = {
+        results: dict[Path, p.Infra.ProjectResult] = {
             target.path: m.Infra.ProjectResult(project=target.name)
             for target in projects
+        }
+        sinks: dict[Path, MutableMapping[str, p.Infra.GateExecution]] = {
+            target.path: {} for target in projects
         }
         for project_ctx in contexts.values():
             u.Cli.ensure_dir(project_ctx.reports_dir).unwrap()
@@ -111,7 +114,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                         gate,
                         target.path,
                         contexts[target.path],
-                        results[target.path].gates,
+                        sinks[target.path],
                     )
                     for target, gate in jobs
                 ),
@@ -119,7 +122,12 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             )
             u.Cli.info(f"check: prerequisite wave complete gate={gate_id}")
             for (target, gate), outcome in zip(jobs, outcomes, strict=True):
-                execution = results[target.path].gates[gate.gate_id]
+                execution = sinks[target.path][gate.gate_id]
+                results[target.path] = results[target.path].model_copy(
+                    update={
+                        "gates": {**results[target.path].gates, gate.gate_id: execution}
+                    }
+                )
                 if execution.result.passed:
                     outcome.unwrap()
                 self._report_gate_execution(gate.gate_id, execution)
@@ -317,7 +325,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.ProjectResult``.
 
         """
-        result = (
+        result: p.Infra.ProjectResult = (
             m.Infra.ProjectResult(project=project_dir.name)
             if previous is None
             else previous
@@ -342,7 +350,9 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             execution = executions[gate_id]
             if execution.result.passed:
                 pipeline_result.unwrap()
-            result.gates[gate_id] = execution
+            result = result.model_copy(
+                update={"gates": {**result.gates, gate_id: execution}}
+            )
             if ctx.check_progress is not None:
                 ctx.check_progress(project_dir, result)
             self._report_gate_execution(gate_id, execution)

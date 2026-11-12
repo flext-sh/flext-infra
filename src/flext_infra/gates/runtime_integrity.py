@@ -46,13 +46,13 @@ class FlextInfraGatesRuntimeIntegrity(FlextInfraGates):
         )
         component_ctx = ctx.model_copy(update={"reports_dir": ctx.reports_dir / name})
         return self._build_gate_execution(
-            m.Infra.GateExecutionParams(
-                project_dir=project_dir,
-                verdict=passed,
-                issues=tuple(issues),
-                raw_output=self._raw_output(native),
-                started=started,
-            ),
+            m.Infra.GateExecutionParams.model_validate({
+                "project_dir": project_dir,
+                "verdict": passed,
+                "issues": tuple(issues),
+                "raw_output": self._raw_output(native),
+                "started": started,
+            }),
             component_ctx,
         ).model_copy(
             update={

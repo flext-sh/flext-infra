@@ -1214,6 +1214,8 @@ class FlextInfraUtilitiesLintRecipes(
                 if name.startswith("Tests") and name != "Tests"
                 else f"Define ``{name}``."
             )
+        if name == "__init__":
+            return "Initialize the instance."
         if name.startswith("test_"):
             return f"Test {name.removeprefix('test_').replace('_', ' ')}."
         return f"Provide ``{name}``."

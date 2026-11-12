@@ -25,7 +25,9 @@ rule:
         kind: module
         has:
           stopBy: end
-          matches: pydantic-namespace-constant
+          any:
+            - matches: pydantic-namespace-constant
+            - matches: pydantic-model-config-assignment
 fix: "from typing import ClassVar, $$$NAMES"
 message: >-
   Modules declaring FlextTestsConstants.Tests constants bind ClassVar at

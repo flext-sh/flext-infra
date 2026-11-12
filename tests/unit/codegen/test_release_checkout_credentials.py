@@ -123,8 +123,8 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         head = u.Cli.JSON_MAPPING_ADAPTER.validate_python(steps[1])
         tm.that(str(head["run"]), has="ref=$(git rev-parse HEAD^{commit})")
 
-    def test_dispatch_checkpoint_is_version_only_environment_data(self) -> None:
-        """Both dispatch choices are explicit; only version consumes ownership."""
+    def test_dispatch_selects_release_by_tag_and_version_otherwise(self) -> None:
+        """The only dispatch input is the tag; no job carries a lane receipt."""
         document = self.render_release()
         triggers = u.Cli.JSON_MAPPING_ADAPTER.validate_python(
             document[c.ParserBooleanToken.ON]
@@ -133,58 +133,35 @@ class TestsFlextInfraReleaseCheckoutCredentials:
             triggers["workflow_dispatch"]
         )
         inputs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(dispatch["inputs"])
-        tm.that(set(inputs), eq={"tag", "checkpoint_ref"})
-        for name in ("tag", "checkpoint_ref"):
-            option = u.Cli.JSON_MAPPING_ADAPTER.validate_python(inputs[name])
-            tm.that(option["required"], eq=False)
-            tm.that(option["type"], eq="string")
+        tm.that(set(inputs), eq={"tag"})
+        option = u.Cli.JSON_MAPPING_ADAPTER.validate_python(inputs["tag"])
+        tm.that(option["required"], eq=False)
+        tm.that(option["type"], eq="string")
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(document["jobs"])
         version = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["version"])
         environment = u.Cli.JSON_MAPPING_ADAPTER.validate_python(version["env"])
-        tm.that(
-            environment["LANE_CHECKPOINT_REF"],
-            eq=(
-                "${{ github.event_name == 'workflow_dispatch' && "
-                "inputs.checkpoint_ref || vars.LANE_CHECKPOINT_REF }}"
-            ),
-        )
+        tm.that("LANE_CHECKPOINT_REF" in environment, eq=False)
         tm.that(version["if"], eq="needs.identity.outputs.release_commit == 'false'")
-        publish = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["publish"])
-        publish_env = u.Cli.JSON_MAPPING_ADAPTER.validate_python(publish["env"])
-        tm.that("LANE_CHECKPOINT_REF" in publish_env, eq=False)
 
     @c.Tests.MARK.parametrize(
-        (c.HandlerType.EVENT, "selection", "succeeds", "release"),
+        (c.HandlerType.EVENT, "tag", "succeeds", "release"),
         [
-            ("push", ("", ""), True, False),
-            ("workflow_dispatch", ("fixture-release", ""), True, True),
-            ("workflow_dispatch", ("", "refs/checkpoints/owned"), True, False),
-            (
-                "workflow_dispatch",
-                ("fixture-release", "refs/checkpoints/owned"),
-                False,
-                False,
-            ),
-            ("workflow_dispatch", ("", ""), False, False),
-            ("workflow_dispatch", ("$(touch injected)", ""), False, False),
-            (
-                "workflow_dispatch",
-                ("", "refs/checkpoints/x; touch injected"),
-                False,
-                False,
-            ),
+            ("push", "", True, False),
+            ("workflow_dispatch", "fixture-release", True, True),
+            ("workflow_dispatch", "", True, False),
+            ("workflow_dispatch", "$(touch injected)", False, False),
         ],
     )
     def test_dispatch_identity_preserves_native_candidate(
         self,
         tmp_path: Path,
         event: str,
-        selection: tuple[str, str],
+        tag: str,
         *,
         succeeds: bool,
         release: bool,
     ) -> None:
-        """Real Git classifies XOR inputs without executing data or moving HEAD."""
+        """Real Git classifies the dispatch tag without executing or moving HEAD."""
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(self.render_release()["jobs"])
         identity = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["identity"])
         steps = u.json_list_adapter().validate_python(identity["steps"])
@@ -195,11 +172,9 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         candidate = u.Tests.git_capture(root, "rev-parse", "HEAD").strip()
         index = (root / c.GIT_DIR_NAME / "index").read_bytes()
         output = tmp_path / "github-output"
-        tag, checkpoint = selection
         with u.Tests.env_vars_context({
             "EVENT_NAME": event,
             "RELEASE_TAG": tag,
-            "LANE_CHECKPOINT_REF": checkpoint,
             "GITHUB_OUTPUT": str(output),
         }):
             process = tm.ok(
@@ -338,7 +313,8 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         tm.that("id-token" in permissions, eq=publish_index)
         steps = u.json_list_adapter().validate_python(publish["steps"])
         publication = u.Cli.JSON_MAPPING_ADAPTER.validate_python(steps[-1])
+        verb = f"make release-{c.Infra.ReleasePhase.PUBLISH.value}"
         tm.that(
             publication["run"],
-            eq="make publication INDEX=Y" if publish_index else "make publication",
+            eq=f"{verb} INDEX=Y" if publish_index else verb,
         )

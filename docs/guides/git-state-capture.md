@@ -97,10 +97,31 @@ not acquire this admission gate.
 The current native requests cannot authenticate Beads lane ownership, the previous
 owned lane's integration, or retirement's published preservation and active-session
 proofs. Consequently `--operation create` and `--operation retire` fail closed even
-when the measured Git boundary is valid. No branch-name heuristic, caller boolean,
+when the measured Git boundary is valid.
+
+Automated lane publication (`u.Infra.git_publish_lane`, used by `make
+release-version` and `make propagate`) is not agent lane creation: it owns one
+deterministic protocol branch (`release/next`, the propagation lane), starts only
+from a clean checkout on the declared integration branch, and continues that branch
+when it already exists locally or on the remote. It therefore applies the `verify`
+preflight and the clean-base check, never `--operation create`, whose Beads-ownership
+proof a clean CI checkout cannot carry. No branch-name heuristic, caller boolean,
 correlation row, or foreign-lane count substitutes for those proofs. Creation checks
 run before directory creation; removal checks retain dirty, nested-submodule, and
 lock protection and do not force removal or prune other registrations.
+
+Automated lane publication (`u.Infra.git_publish_lane`, used by `make
+release-version` and `make propagate`) is not agent lane creation. It owns one
+deterministic protocol branch (`release/next`, the propagation lane), starts only
+from a clean checkout on the declared integration branch, and continues that branch
+when it already exists locally or on the remote. Its admission is the read-only
+preflight above plus that clean-base check; it never requests `--operation create`
+and takes no ownership receipt, because a clean CI checkout cannot carry the
+Beads-ownership proof. The operator authorized this contract on 2026-11-12
+(selection, verbatim: "Liberar o #2265 (Recomendado)" — "Release e propagate deixam
+de exigir o recibo que nada produz; mantenho as verificações somente-leitura e o
+checkout limpo, apago o código morto do recibo, provo com make release-version real
+e faço merge."), retiring the release `LANE_CHECKPOINT_REF` receipt transport.
 
 This boundary does not claim verified runtime stability, PR approval, authorized
 retirement, or enforcement over arbitrary external Git commands. Checkpoint capture,

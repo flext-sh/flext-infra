@@ -261,10 +261,7 @@ class FlextInfraCodegenLazyInit(
                 planned = self._plan_root(
                     FlextInfraUtilitiesLazyInitPlan.lazy_init_run(
                         view,
-                        cast(
-                            FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
-                            indexes[root],
-                        ),
+                        indexes[root],
                         root=root,
                         scoped=scoped,
                         snapshot=shared,

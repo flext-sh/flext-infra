@@ -1,6 +1,13 @@
-# Reusable guard: an unannotated `model_config` assignment whose value is a
-# ConfigDict call, declared directly in a class body. The FLEXT declaration
+# Reusable guard: an unannotated `model_config` assignment, declared directly in
+# a class body, that a ClassVar annotator rewrites. The FLEXT declaration
 # contract makes class metadata explicit with a native ClassVar annotation.
+#
+# The callee is exactly what the annotators cover: the native `ConfigDict`
+# (pydantic-model-config-configdict-classvar) and the `m` facade constructors
+# (pydantic-model-config-m-configdict-classvar). The ClassVar import rules bind
+# the name only for those rewrites; an aliased facade constructor or an
+# inherited `Parent.model_config` has no annotator, so importing ClassVar there
+# leaves an unused binding and the cascade never converges.
 id: pydantic-model-config-assignment
 language: Python
 rule:
@@ -13,7 +20,13 @@ rule:
     - has:
         field: right
         kind: call
-        regex: "ConfigDict\\("
+        has:
+          field: function
+          any:
+            - kind: identifier
+              regex: "^ConfigDict$"
+            - kind: attribute
+              regex: "^m\\.(Settings)?ConfigDict$"
     - inside:
         kind: block
         stopBy: end

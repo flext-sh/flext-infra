@@ -25,10 +25,6 @@ name: Release
         description: "Existing release tag to build and publish again (example: v0.12.0)"
         required: false
         type: string
-      checkpoint_ref:
-        description: "Existing retained, published and integrated checkpoint for versioning only"
-        required: false
-        type: string
 
 concurrency:
   group: release-{% raw %}${{ github.ref_name }}{% endraw %}
@@ -58,22 +54,17 @@ jobs:
         env:
           EVENT_NAME: {% raw %}${{ github.event_name }}{% endraw %}
           RELEASE_TAG: {% raw %}${{ inputs.tag }}{% endraw %}
-          LANE_CHECKPOINT_REF: {% raw %}${{ inputs.checkpoint_ref }}{% endraw %}
         shell: bash
         run: |
           set -euo pipefail
           subject="$(git log -1 --format=%s)"
           echo "ref=$(git rev-parse HEAD^{commit})" >> "${GITHUB_OUTPUT}"
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            if [ -n "${RELEASE_TAG}" ] && [ -z "${LANE_CHECKPOINT_REF}" ]; then
+            if [ -n "${RELEASE_TAG}" ]; then
               git check-ref-format "refs/tags/${RELEASE_TAG}"
               echo "release_commit=true" >> "${GITHUB_OUTPUT}"
-            elif [ -z "${RELEASE_TAG}" ] && [ -n "${LANE_CHECKPOINT_REF}" ]; then
-              git check-ref-format "${LANE_CHECKPOINT_REF}"
-              echo "release_commit=false" >> "${GITHUB_OUTPUT}"
             else
-              printf '%s\n' 'dispatch requires exactly one tag or checkpoint_ref' >&2
-              exit 2
+              echo "release_commit=false" >> "${GITHUB_OUTPUT}"
             fi
           else
             case "${subject}" in
@@ -113,7 +104,6 @@ jobs:
       # the release pull request. version-ci validates its resulting HEAD
       # directly: this token does not trigger pull-request or push workflows.
       GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
-      LANE_CHECKPOINT_REF: {% raw %}${{ github.event_name == 'workflow_dispatch' && inputs.checkpoint_ref || vars.LANE_CHECKPOINT_REF }}{% endraw %}
 {%- if superproject %}
     defaults:
       run:

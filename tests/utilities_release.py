@@ -151,10 +151,10 @@ class TestsFlextInfraUtilitiesRelease:
                     'git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev"]\n'
                     "\n"
                     "[tool.hatch.build.targets.sdist]\n"
-                    f'include = ["/src/{package_name}/**"]\n'
+                    f'only-include = ["src/{package_name}"]\n'
                     "\n"
                     "[tool.hatch.build.targets.wheel]\n"
-                    f'include = ["/src/{package_name}/**"]\n'
+                    f'only-include = ["src/{package_name}"]\n'
                     "\n"
                     "[tool.hatch.build.targets.wheel.sources]\n"
                     f'"src/{package_name}" = "{package_name}"\n'
@@ -212,7 +212,6 @@ class TestsFlextInfraUtilitiesRelease:
     def run_release_main(
         repository_root: Path,
         *arguments: str,
-        ownership: p.Infra.GitLaneOwnershipReceipt | None = None,
     ) -> int:
         """Run the public release CLI against one real test workspace.
 
@@ -220,18 +219,12 @@ class TestsFlextInfraUtilitiesRelease:
             The resulting ``int``.
 
         """
-        ownership_arguments = (
-            ("--ownership", ownership.model_dump_json())
-            if ownership is not None
-            else ()
-        )
         return FlextInfraCli.infra_main([
             "release",
             "run",
             "--repository-root",
             str(repository_root),
             *arguments,
-            *ownership_arguments,
         ])
 
     @staticmethod

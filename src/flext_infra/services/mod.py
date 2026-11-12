@@ -667,18 +667,18 @@ class FlextInfraModHandlers:
             method_transfers=transfers,
             catalogue_inputs=catalogue_inputs,
         )
-        native = m.Infra.RopeContractRules(
-            rules=tuple(rule for rule in rules if rule.id == request.rule_id),
-            signature_additions=tuple(
+        native = m.Infra.RopeContractRules.model_validate({
+            "rules": tuple(rule for rule in rules if rule.id == request.rule_id),
+            "signature_additions": tuple(
                 rule for rule in additions if rule.id == request.rule_id
             ),
-            signature_removals=tuple(
+            "signature_removals": tuple(
                 rule for rule in removals if rule.id == request.rule_id
             ),
-            method_transfers=tuple(
+            "method_transfers": tuple(
                 rule for rule in transfers if rule.id == request.rule_id
             ),
-        )
+        })
         native_selected = bool(
             native.rules
             or native.signature_additions

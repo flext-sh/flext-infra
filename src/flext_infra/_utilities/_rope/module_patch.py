@@ -347,7 +347,10 @@ class FlextInfraUtilitiesRopeModulePatch:
         existing = context.environment.lookup(original)
         imported = context.environment.lookup(alias)
         if existing is not None and not runtime.same_name(existing, imported):
-            return r[str].fail(f"import alias destination is occupied: {original}")
+            return r[str].fail(
+                f"import alias destination is occupied: {original} "
+                f"(alias {alias}) in {resource.real_path}"
+            )
         offset = words.get_word_range(fragment.end - 1)[0]
         changes = refactors.rename_changes(
             candidate.pycore.project,

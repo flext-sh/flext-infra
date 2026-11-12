@@ -18,6 +18,20 @@ valid:
         from typing import Final
     class Other:
         pass
+  - |
+    from typing import ClassVar
+    class Model:
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
+  # Neither form has a ClassVar annotator; importing ClassVar would stay unused.
+  - |
+    from typing import Literal
+    from flext_core import FlextModels as CoreModels
+    class Settings:
+        model_config = CoreModels.SettingsConfigDict(env_file=None)
+  - |
+    from typing import Literal
+    class Child(Parent):
+        model_config = Parent.model_config
 # `invalid` MUST match and add ClassVar to the module-level typing import.
 invalid:
   - |
@@ -32,3 +46,11 @@ invalid:
     class C:
         class Tests(FlextTestsConstants.Tests):
             HOST: Final[str] = "localhost"
+  - |
+    from typing import Literal
+    class Model:
+        model_config = m.ConfigDict(frozen=True)
+  - |
+    from typing import Literal
+    class Model:
+        model_config = m.SettingsConfigDict(env_prefix="X_")

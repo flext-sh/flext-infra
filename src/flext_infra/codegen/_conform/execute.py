@@ -326,9 +326,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         planned = self._planned(request)
         if planned.failure:
             return r[p.Infra.CodegenResult].from_failure(planned)
-        plan = planned.value
-        plan.files = u.Infra.codegen_compose_file_plans(
-            (*control_plan.value.files, *plan.files), ordered=True
+        plan = m.Infra.CodegenPlan.model_validate(planned.value)
+        plan.files = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*control_plan.value.files, *plan.files), ordered=True
+            )
         )
         return self._published(
             request,
@@ -372,8 +375,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         if ordered.failure:
             return result_type.from_failure(ordered)
         previous = self.state.provider_plans
-        self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-            (*(previous or ()), *seed.value), ordered=True
+        self.state.provider_plans = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*(previous or ()), *seed.value), ordered=True
+            )
         )
         try:
             outcomes = tuple(
@@ -513,9 +519,12 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             u.Infra.codegen_raise_failure(
                 (task.root / task.repository.path).resolve(), planned
             )
-        self.state.provider_plans = u.Infra.codegen_compose_file_plans(
-            (*(self.state.provider_plans or ()), *planned.value.files),
-            ordered=True,
+        self.state.provider_plans = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*(self.state.provider_plans or ()), *planned.value.files),
+                ordered=True,
+            )
         )
         return planned.value
 
@@ -705,6 +714,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             the documentation planning failure.
 
         """
+        plan = m.Infra.CodegenPlan.model_validate(plan)
         ready_roots = {
             (root / repository.path).resolve() for repository in ready.values()
         }
@@ -720,7 +730,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         )
         if documents.failure:
             return documents
-        plan.files = documents.value
+        plan.files = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file) for file in documents.value
+        )
         return None
 
     def _admitted_cohorts(
@@ -912,6 +924,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
 
         """
         result_type = r[p.Infra.CodegenResult]
+        plan = m.Infra.CodegenPlan.model_validate(plan)
         ports = self.state.ports
         if ports is None:
             return result_type.fail(
@@ -962,7 +975,9 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                     },
                     exception=completed.exception,
                 )
-        plan.files = admitted
+        plan.files = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file) for file in admitted
+        )
         payload: p.Infra.CodegenResult = m.Infra.CodegenResult.model_validate({
             "plan": (plan),
             "written_files": (published.value),
@@ -1120,7 +1135,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             for repository in plan.repositories
             if repository.path == Path()
         )
-        if request.what is not c.Infra.CodegenConformSurface.ALL or not owned:
+        # Documentation analyzes the published project (its pyproject and
+        # sources on disk); a new project's first generation publishes them,
+        # and the bootstrap's next generation documents what it published.
+        published = (request.root / c.PYPROJECT_FILENAME).is_file()
+        if (
+            request.what is not c.Infra.CodegenConformSurface.ALL
+            or not owned
+            or not published
+        ):
             return result_type.ok(tuple(plan.files))
         ports = self.state.ports
         if ports is None:

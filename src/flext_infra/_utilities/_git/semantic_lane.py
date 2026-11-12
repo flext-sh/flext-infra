@@ -90,6 +90,12 @@ class FlextInfraUtilitiesGitSemanticLane:
     ) -> p.Result[bool]:
         """Carry what ``produce`` writes from ``base`` to a pull request on ``branch``.
 
+        The lane is the protocol's own deterministic ``branch``: admission is
+        the read-only ``verify`` preflight (no stash, live integration tip,
+        base ancestry) plus a clean checkout on ``base``. It never requests
+        agent-lane ``create`` admission, whose Beads-ownership proof a clean
+        CI checkout cannot carry.
+
         The checkout must be clean on ``base``, so every path the status lists
         after ``produce`` was produced by it; exactly those paths are committed
         under ``subject``, the lane is pushed, and its pull request is opened or
@@ -109,7 +115,6 @@ class FlextInfraUtilitiesGitSemanticLane:
                 "repo_root": (root),
                 "operation": ("verify"),
                 "candidate": (request.base),
-                "ownership": (request.ownership),
             }),
         )
         if admitted.failure:
@@ -117,17 +122,6 @@ class FlextInfraUtilitiesGitSemanticLane:
         base = cls._verified_lane_base(request)
         if base.failure:
             return r[bool].from_failure(base)
-        owned = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest.model_validate({
-                "repo_root": (root),
-                "operation": ("create"),
-                "candidate": (request.base),
-                "ownership": (request.ownership),
-                "expected_tip": (admitted.value.oid),
-            })
-        )
-        if owned.failure:
-            return r[bool].from_failure(owned)
         produced = cls._git_produce_lane(request, produce)
         if produced.failure:
             return produced

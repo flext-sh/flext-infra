@@ -833,7 +833,7 @@ VERB_DESCRIPTION_release-plan := Execute the declared release plan phase.
 VERB_ARGUMENTS_release-plan := PR_TITLE
 
 VERB_DESCRIPTION_release-version := Execute the declared release version phase.
-VERB_ARGUMENTS_release-version := LANE_CHECKPOINT_REF
+VERB_ARGUMENTS_release-version :=
 
 VERB_DESCRIPTION_release-tag := Execute the declared release tag phase.
 VERB_ARGUMENTS_release-tag :=
@@ -1372,6 +1372,11 @@ _builtin_clean_generated: _builtin_require_interpreter
 GEN_BUDGET_SECONDS ?= 900
 GEN_KILL_RESERVE_SECONDS ?= 30
 GEN_PROFILE ?=
+# Modification is a budgeted operation too: a stuck catalog run is killed
+# inside the declared budget, and MOD_PROFILE=1 captures its cProfile.
+MOD_BUDGET_SECONDS ?= 120
+MOD_KILL_RESERVE_SECONDS ?= 10
+MOD_PROFILE ?=
 # Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
 CHECK_PROFILE ?=
 
@@ -1401,7 +1406,7 @@ _builtin_mod_apply: _builtin_require_environment
 	selection=""; \
 	for law in $(strip $(LAWS)); do selection="$$selection --laws $$law"; done; \
 	for rule in $(strip $(RULES)); do selection="$$selection --rule-ids $$rule"; done; \
-	FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
+	$(if $(MOD_PROFILE),FLEXT_INFRA_PROFILE=$(MOD_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/.reports/refactor/mod.pstats" timeout --signal=TERM --kill-after=$(MOD_KILL_RESERVE_SECONDS)s $(MOD_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts
@@ -1425,8 +1430,6 @@ export FLEXT_RELEASE_PR_TITLE := $(value PR_TITLE)
 
 
 
-export FLEXT_RELEASE_LANE_CHECKPOINT_REF := $(value LANE_CHECKPOINT_REF)
-
 
 
 
@@ -1444,7 +1447,6 @@ _builtin-release-plan: _builtin_require_environment
 
 _builtin-release-version: _builtin_require_environment
 	@set -eu; set --; \
-	if [ -n "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF" ]; then set -- --checkpoint-ref "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF"; fi; \
 	$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase version --apply "$$@"
 
 _builtin-release-tag: _builtin_require_environment

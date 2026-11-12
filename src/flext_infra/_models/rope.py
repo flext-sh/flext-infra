@@ -317,7 +317,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.InstanceOf[
                 MutableMapping[
                     str,
-                    FlextInfraModelsRope.SourceClassDefinition,
+                    p.Infra.SourceClassDefinition,
                 ]
             ],
             m.Field(
@@ -328,7 +328,7 @@ class FlextInfraModelsRope(FlextInfraModelsCodegenLazyInit):
             m.InstanceOf[
                 MutableMapping[
                     str,
-                    FlextInfraModelsRope.SourceClassReference | None,
+                    p.Infra.SourceClassReference | None,
                 ]
             ],
             m.Field(

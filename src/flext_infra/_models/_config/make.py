@@ -1076,6 +1076,13 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
+        scan_threads: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=4,
+                description=("Bounded thread budget for ast-grep scan execution"),
+            ),
+        ] = 4
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
@@ -1227,10 +1234,15 @@ class FlextInfraModelsConfigMake(
                 )
                 raise ValueError(msg)
             approval = tuple(step for step in self.workflow if "ci" in step.contexts)
-            milestones = ((c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),)
+            milestones = (
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+            )
             if (
                 not approval
-                or approval[0].verb != "setup"
+                or approval[0].verb != c.Infra.VERB_SETUP
                 or tuple(
                     (step.verb, step.phase)
                     for step in approval
@@ -1238,13 +1250,18 @@ class FlextInfraModelsConfigMake(
                 )
                 != milestones
             ):
-                msg = "CI requires setup followed by the fast primary check only"
+                msg = (
+                    "CI requires setup followed by primary check, native tests "
+                    "and complete check followed by final incremental tests"
+                )
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != (c.Infra.VERB_CHECK,):
-                msg = "the pre-commit hook requires only the check operation"
+            # A commit first provisions the checkout's own environment, so the
+            # check runs the locked toolchain even in a fresh lane worktree.
+            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
+                msg = "the pre-commit hook requires setup followed by check"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
@@ -1374,8 +1391,12 @@ class FlextInfraModelsConfigMake(
         @m.computed_field
         @property
         def approval_verbs(self) -> tuple[str, ...]:
-            """Ordered approval derived once from the validated workflow."""
-            return tuple(step.verb for step in self.workflow if "ci" in step.contexts)
+            """Ordered unique approval verbs derived from the validated workflow."""
+            return tuple(
+                dict.fromkeys(
+                    step.verb for step in self.workflow if "ci" in step.contexts
+                )
+            )
 
         @m.computed_field
         @property

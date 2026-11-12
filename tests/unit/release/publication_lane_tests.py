@@ -42,11 +42,10 @@ class TestsFlextInfraReleasePublicationLane:
         repo = u.Tests.git_repository(tmp_path)
         base = u.Tests.checkout_integration(repo)
         u.Tests.configure_local_origin(repo, tmp_path / "remote")
-        manifest = tm.ok(
-            u.Infra.load_workspace_manifest(
-                Path(__file__).resolve().parents[3],
-            )
-        )[0]
+        # The fixture owner declares the standalone repository; the lane test
+        # only binds its integration line to the checkout's base.
+        u.Tests.write_standalone_workspace_manifest(repo, repo.name)
+        manifest = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
         declared = manifest.model_copy(
             update={
                 "integration": m.Infra.WorkspaceIntegrationSpec(
@@ -64,29 +63,6 @@ class TestsFlextInfraReleasePublicationLane:
         )
         u.Tests.commit_git_changes(repo, "declare integration owner")
         u.Tests.git_run(repo, "push", c.Infra.GIT_ORIGIN, base)
-        snapshot = tm.ok(
-            u.Infra.git_snapshot_worktree_state(
-                m.Infra.GitWorktreeStateRequest(repo_root=repo, paths=(Path(),)),
-            )
-        )
-        checkpoint = tm.ok(
-            u.Infra.git_checkpoint_worktree_state(
-                snapshot,
-                "refs/checkpoints/prior-owned",
-            )
-        )
-        publication = tm.ok(
-            u.Infra.git_publish_worktree_checkpoint(checkpoint, c.Infra.GIT_ORIGIN)
-        )
-        u.Tests.git_run(
-            repo,
-            "merge",
-            "--no-ff",
-            "-m",
-            "integrate owned state",
-            checkpoint.worktree_commit,
-        )
-        u.Tests.git_run(repo, "push", c.Infra.GIT_ORIGIN, base)
         body = tmp_path / "body.md"
         body.write_text("# Propagation\n", encoding="utf-8")
         gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
@@ -97,10 +73,6 @@ class TestsFlextInfraReleasePublicationLane:
             base=base,
             subject=self.SUBJECT,
             body_file=body,
-            ownership=m.Infra.GitLaneOwnershipReceipt.model_validate({
-                "checkpoint": (checkpoint),
-                "publication": (publication),
-            }),
         )
         with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
             yield repo, request, gh_log
@@ -132,28 +104,29 @@ class TestsFlextInfraReleasePublicationLane:
             self.LANE,
         ).strip()
 
-    def test_new_lane_is_refused_without_ownership_evidence(
+    def test_lane_publishes_from_a_clean_base_without_a_receipt(
         self,
         tmp_path: Path,
     ) -> None:
-        """Lane creation fails closed until admission can prove ownership.
+        """A clean integration checkout carries its production to one lane.
 
-        The native admission contract (31959fed0; bead flext-itpd1.3.26 owns
-        the Beads-ownership and prior-lane-integration proof) refuses every
-        new lane, so publication creates nothing: no lane branch, no pushed
-        branch, no commit of the produced path, no pull request.
+        The protocol lane needs no agent-lane ownership receipt: a clean CI
+        checkout on the declared base enters the lane, commits exactly the
+        produced path, pushes the lane and opens its pull request.
         """
         with self._lane(tmp_path) as (repo, request, gh_log):
-            head = u.Tests.git_capture(repo, "rev-parse", "HEAD").strip()
-
             result = u.Infra.git_publish_lane(request, self._produce(repo))
 
-            tm.fail(result)
-            tm.that(result.error or "", has="new lane refused")
-            tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
-            tm.that(self._published(tmp_path), eq="")
-            tm.that(u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(), eq=head)
-            tm.fail(gh_log.exists())
+            tm.ok(result, eq=True)
+            tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=True)
+            tm.that(self._published(tmp_path), has=self.LANE)
+            tm.that(
+                u.Tests.git_capture(
+                    repo, "show", "--name-only", "--format=%s", self.LANE
+                ),
+                has=[self.SUBJECT, "produced.txt"],
+            )
+            tm.that(gh_log.exists(), eq=True)
 
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
@@ -189,6 +162,8 @@ class TestsFlextInfraReleasePublicationLane:
     def test_refused_lane_never_runs_the_producer(self, tmp_path: Path) -> None:
         """Admission refuses before production: no byte is written or staged."""
         with self._lane(tmp_path) as (repo, request, gh_log):
+            (repo / "stashed.txt").write_text("stashed\n", encoding="utf-8")
+            u.Tests.git_run(repo, "stash", "push", "--include-untracked")
             original_head = u.Tests.git_capture(repo, "rev-parse", "HEAD").strip()
             produced = repo / "partial.txt"
             calls: list[str] = []
@@ -200,7 +175,7 @@ class TestsFlextInfraReleasePublicationLane:
             result = u.Infra.git_publish_lane(request, produce)
 
             tm.fail(result)
-            tm.that(result.error or "", has="new lane refused")
+            tm.that(result.error or "", has="refuses existing stash state")
             tm.that(calls, eq=[])
             tm.fail(produced.exists())
             tm.that(

@@ -13,7 +13,6 @@ from time import monotonic
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import (
-    FlextInfraGitService,
     c,
     check,
     codegen,
@@ -188,17 +187,6 @@ class FlextInfra(
             The resulting ``p.Result[bool]``.
 
         """
-        ownership = request.ownership
-        if request.checkpoint_ref is not None:
-            selected = FlextInfraGitService.lane_ownership(
-                m.Infra.GitLaneOwnershipRequest(
-                    repo_root=request.root,
-                    checkpoint_ref=request.checkpoint_ref,
-                ),
-            )
-            if selected.failure:
-                return r[bool].from_failure(selected)
-            ownership = selected.value
         return release.FlextInfraReleaseOrchestrator(
             repository_root=request.repository_root,
             apply_changes=request.apply_changes,
@@ -212,7 +200,6 @@ class FlextInfra(
             phase=request.phase,
             index=request.index,
             pr_title=request.pr_title,
-            ownership=ownership,
             conform_collaborators=self.codegen_conform_collaborators(),
             release_forge=FlextInfraUtilitiesReleaseForge,
         ).execute()
@@ -684,11 +671,11 @@ class FlextInfra(
         return r[p.Infra.WorkspaceProjectContext].ok(
             m.Infra.WorkspaceProjectContext(
                 cwd=resolved,
-                identity=identity.value,
-                workspace=workspace,
-                target=target,
+                identity=m.Infra.GitIdentityReport.model_validate(identity.value),
+                workspace=m.Infra.WorkspaceSpec.model_validate(workspace),
+                target=m.Infra.RepositoryConformTarget.model_validate(target),
                 governed=True,
-                runtime=runtime,
+                runtime=m.Infra.WorkspaceRuntimeContext.model_validate(runtime),
             ),
         )
 

@@ -1886,6 +1886,20 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             )
             return resolved, []
 
+        def _native_namespace_member(self, module: str, name: str) -> str | None:
+            """Return the native declaration identity for a delayed package name.
+
+            Returns:
+                The first declaration identity under ``module`` with ``name``.
+
+            """
+            prefix = f"{module}."
+            for identity in self._definitions:
+                definition_module, definition_name, _line = identity.rsplit(":", 2)
+                if definition_name == name and definition_module.startswith(prefix):
+                    return identity
+            return None
+
         def _resolve_namespace_prefix(
             self,
             parts: Sequence[str],
@@ -1929,6 +1943,24 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 bindings.get(name) if bindings is not None else None
             ) or self._planned_lazy_binding(module, name)
             if binding is None:
+                # The package projection can lag its native modules while a move
+                # wave runs. Resolve the existing declaration in a descendant
+                # module before treating the namespace as unbound, so generation
+                # follows Rope's source inventory instead of failing on the
+                # generated projection.
+                native = self._native_namespace_member(module, name)
+                if native is not None:
+                    return self._resolve(
+                        m.Infra.SourceClassReference(
+                            target=native,
+                            attributes=tuple(remaining),
+                            qualified_base=(
+                                name if not remaining else f"{name}.{remaining[0]}"
+                            ),
+                        ),
+                        visiting | {key},
+                        depth + 1,
+                    ), []
                 # The last path segment may be a submodule rather than a
                 # lazy binding: dissolve-move waves publish classes into
                 # sibling modules elected by file stem, so the module's own

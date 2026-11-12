@@ -918,6 +918,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         """
         letters = (c.Infra.FacadeFamily.P, c.Infra.FacadeFamily.M)
         project_source = snapshot.engine
+        referenced_pairs, _paths = FlextInfraUtilitiesFacadeMembers.facade_references(
+            snapshot, project
+        )
+        referenced = frozenset(
+            name for letter, name in referenced_pairs if letter in letters
+        )
         resolver_factory = (
             FlextInfraUtilitiesRopeSourceBasesRuntime.source_member_resolver_factory(
                 project_source,
@@ -937,7 +943,9 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             protocols, models = (facades.get(letter) for letter in letters)
             if protocols is None:
                 continue
-            for path, model, orphan in cls._facade_class_pairs(protocols, models):
+            for path, model, orphan in cls._facade_class_pairs(
+                protocols, models, referenced=referenced
+            ):
                 if orphan or (
                     model is not None
                     and (
@@ -1061,6 +1069,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         cls,
         protocols: p.Infra.RopeClassObject,
         models: p.Infra.RopeClassObject | None,
+        *,
+        referenced: frozenset[str] | None = None,
     ) -> Sequence[tuple[str, p.Infra.RopeClassObject | None, bool]]:
         """Pair every nested class of the protocol facade with its model path twin.
 
@@ -1098,9 +1108,12 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                 for name, twin in twins.items()
                 if name not in published
                 and not name.startswith("_")
+                and (referenced is None or name in referenced)
                 and types.abstract_class(twin.get_object())
             )
             for name, binding in published.items():
+                if referenced is not None and name not in referenced:
+                    continue
                 nested = binding.get_object()
                 if name.startswith("_") or not types.abstract_class(nested):
                     continue

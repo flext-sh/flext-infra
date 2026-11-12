@@ -60,10 +60,10 @@ class TestsFlextInfraCodegenConform:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, name)
-        declaration = m.Infra.RepositoryDeltaSpec(
-            project=project,
-            integration=integration,
-        )
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": project,
+            "integration": integration,
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,

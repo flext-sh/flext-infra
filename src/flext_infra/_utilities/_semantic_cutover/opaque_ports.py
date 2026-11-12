@@ -184,28 +184,15 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
         )
         if pair is None:
             return None
-        runtime = FlextInfraUtilitiesRopeRuntimeModules
-        scope = runtime.scope_at(
-            module, module.lines.get_line_start(issue.line) + issue.column - 1
-        )
-        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(scope.pyobject):
+        located = cls._argument_function(module, issue)
+        if located is None:
             return None
-        function = scope.pyobject.get_ast()
-        if not isinstance(function, ast.FunctionDef):
-            return None
+        scope, function = located
         for invocation in ast.walk(function):
             if not isinstance(invocation, ast.Call):
                 continue
             for keyword in invocation.keywords:
-                if (
-                    keyword.arg != pair[1]
-                    or keyword.value.end_lineno is None
-                    or (
-                        not keyword.value.lineno
-                        <= issue.line
-                        <= keyword.value.end_lineno
-                    )
-                ):
+                if not cls._keyword_at(keyword, pair[1], issue):
                     continue
                 value = keyword.value
                 if (
@@ -225,6 +212,47 @@ class FlextInfraUtilitiesSemanticOpaquePorts:
                 if owner is not None and element is not None:
                     return owner, value.attr, element
         return None
+
+    @classmethod
+    def _argument_function(
+        cls,
+        module: p.Infra.RopeSourceModule,
+        issue: p.Infra.Issue,
+    ) -> tuple[p.Infra.RopeScope, ast.FunctionDef] | None:
+        """Resolve the enclosing function declaration of a diagnosed argument.
+
+        Returns:
+            The lexical scope and its function AST, or ``None`` when the
+            position is not inside a function declaration.
+
+        """
+        scope = FlextInfraUtilitiesRopeRuntimeModules.scope_at(
+            module, module.lines.get_line_start(issue.line) + issue.column - 1
+        )
+        if not FlextInfraUtilitiesRopeRuntimeTypes.py_function(scope.pyobject):
+            return None
+        function = scope.pyobject.get_ast()
+        if not isinstance(function, ast.FunctionDef):
+            return None
+        return scope, function
+
+    @staticmethod
+    def _keyword_at(
+        keyword: ast.keyword,
+        argument: str,
+        issue: p.Infra.Issue,
+    ) -> bool:
+        """Return whether this keyword is the diagnosed argument at its line.
+
+        Returns:
+            Whether the keyword matches the argument and spans the issue line.
+
+        """
+        return (
+            keyword.arg == argument
+            and keyword.value.end_lineno is not None
+            and keyword.value.lineno <= issue.line <= keyword.value.end_lineno
+        )
 
     @classmethod
     def _mutable_parameter_element(

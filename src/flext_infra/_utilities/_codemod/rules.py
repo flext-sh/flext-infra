@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import tempfile
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache
 from pathlib import Path, PurePosixPath
@@ -16,7 +15,7 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 
 import flext_infra
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r, settings, t
 from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRulesDistributions,
     FlextInfraUtilitiesCodemodScopes,
@@ -437,13 +436,37 @@ class FlextInfraUtilitiesCodemodRules(
 
     @staticmethod
     def codemod_write_native_documents(
-        path: Path, documents: Sequence[t.JsonMapping]
+        path: Path,
+        documents: Sequence[t.JsonMapping],
+        *,
+        atomic: bool = True,
     ) -> None:
         """Publish the exact native document stream through the atomic owner."""
         owner = FlextInfraUtilitiesCodemodRules
-        u.Cli.atomic_write_text_file(
-            path, owner.codemod_native_documents_text(documents)
-        ).unwrap()
+        text = owner.codemod_native_documents_text(documents)
+        if not atomic:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding=c.DEFAULT_ENCODING)
+            return
+        u.Cli.atomic_write_text_file(path, text).unwrap()
+
+    @classmethod
+    def _merge_generated_scopes(
+        cls, generated: Sequence[p.Infra.CodemodRuleset]
+    ) -> dict[str, list[str]]:
+        """Merge file scopes published by the generated providers.
+
+        Returns:
+            Project-relative file lists keyed by selector.
+
+        """
+        scopes: dict[str, list[str]] = {}
+        for ruleset in generated:
+            for key, values in FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(
+                ruleset.config
+            ).items():
+                scopes.setdefault(key, []).extend(values)
+        return scopes
 
     @classmethod
     def codemod_stage_scan_ruleset(
@@ -478,15 +501,7 @@ class FlextInfraUtilitiesCodemodRules(
             for ruleset in plan.rulesets
             if ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
         ]
-        if len(generated) > 1:
-            msg = (
-                "one native stage stages one project's generated provider: "
-                f"{[str(ruleset.config) for ruleset in generated]}"
-            )
-            raise ValueError(msg)
-        scopes = FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(
-            generated[0].config if generated else None
-        )
+        scopes = cls._merge_generated_scopes(generated)
         for ruleset in plan.rulesets:
             cls._project_provider_utilities(
                 ruleset.config.resolve(),
@@ -525,7 +540,9 @@ class FlextInfraUtilitiesCodemodRules(
         native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
         config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
         cls.codemod_write_native_documents(config_path, (native_config,))
-        cls.codemod_validate_native_ruleset(destination)
+        cls.codemod_validate_native_ruleset(
+            destination, rule_ids=tuple(rule.id for rule in plan.rules)
+        )
         return m.Infra.CodemodRuleset(
             provider=",".join(plan.provider_order),
             config=config_path,
@@ -534,12 +551,15 @@ class FlextInfraUtilitiesCodemodRules(
         )
 
     @classmethod
-    def codemod_validate_native_ruleset(cls, destination: Path) -> None:
+    def codemod_validate_native_ruleset(
+        cls, destination: Path, *, rule_ids: Sequence[str] = ()
+    ) -> None:
         """Fail at staging when ast-grep cannot parse the projected ruleset.
 
         The projection shapes catalog documents into native rules; a shape
         ast-grep refuses must fail here, naming the staged ruleset, instead of
-        failing a consumer's scan with no rule attribution.
+        failing a consumer's scan with no rule attribution. The staged ids are
+        passed through so the validation never re-parses the bundle it wrote.
 
         Raises:
             ValueError: If ast-grep refuses to parse the projected ruleset.
@@ -553,28 +573,29 @@ class FlextInfraUtilitiesCodemodRules(
         if not bundle.is_file():
             return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
-        command = flext_infra.u.Infra.ast_grep_scan_command(bundle, targets=(".",))
+        command = flext_infra.u.Infra.ast_grep_scan_command(
+            bundle, rule_ids=rule_ids, targets=(".",)
+        )
         config_path = bundle.parent.parent
-        with tempfile.TemporaryDirectory(
-            prefix="codemod-ruleset-parse-", dir=destination.parent
-        ) as directory:
-            probe = Path(directory)
-            (probe / f"probe{c.Infra.EXT_PYTHON}").write_text(
-                "", encoding=c.DEFAULT_ENCODING
+        probe = settings.work_dir / "ast-grep" / f"probe{c.Infra.EXT_PYTHON}"
+        if not probe.is_file():
+            u.Cli.ensure_dir(probe.parent).unwrap()
+            probe.write_text("", encoding=c.DEFAULT_ENCODING)
+        prefix = "projected codemod ruleset cannot be parsed by ast-grep"
+        try:
+            executed = u.Cli.run_raw(
+                (str(binary), *command[1:-1], str(probe)), cwd=probe.parent
             )
-            prefix = "projected codemod ruleset cannot be parsed by ast-grep"
-            try:
-                executed = u.Cli.run_raw((str(binary), *command[1:]), cwd=probe)
-            except ValueError as exc:
-                msg = f"{prefix}: {config_path}: {exc}"
-                raise ValueError(msg) from exc
-            if executed.failure:
-                msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
-                raise ValueError(msg)
-            output = (executed.value.stderr or executed.value.stdout).strip()
-            if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
-                msg = f"{prefix}: {config_path}: {output}"
-                raise ValueError(msg)
+        except ValueError as exc:
+            msg = f"{prefix}: {config_path}: {exc}"
+            raise ValueError(msg) from exc
+        if executed.failure:
+            msg = f"{prefix}: {config_path}: {(executed.error or '').strip()}"
+            raise ValueError(msg)
+        output = (executed.value.stderr or executed.value.stdout).strip()
+        if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
+            msg = f"{prefix}: {config_path}: {output}"
+            raise ValueError(msg)
 
     @staticmethod
     def project_targets(

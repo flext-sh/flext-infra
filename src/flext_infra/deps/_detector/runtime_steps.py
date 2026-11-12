@@ -104,26 +104,27 @@ class FlextInfraDepsDetectorRuntimeSteps:
         root: Path,
         venv_bin: Path,
         params: p.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceDependencyReport,
-    ) -> p.Result[bool]:
-        """Execute the workspace ``pip check`` and stamp the report; ``r.ok(pip_ok)``.
+    ) -> p.Result[p.Infra.PipCheckReport]:
+        """Execute the workspace ``pip check`` and return its typed report.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The resulting ``p.Result[p.Infra.PipCheckReport]``.
 
         """
         if params.no_pip_check:
-            return r[bool].ok(value=True)
+            return r[p.Infra.PipCheckReport].ok(
+                value=m.Infra.PipCheckReport(ok=True, lines=())
+            )
         detector = self._detector
         if not params.quiet:
             detector.log.info("deps_pip_check_running")
         pip_result = self._deps.run_pip_check(root, venv_bin)
         if pip_result.failure:
-            return r[bool].from_failure(pip_result)
+            return r[p.Infra.PipCheckReport].from_failure(pip_result)
         pip_lines, pip_exit = pip_result.value
-        pip_ok = pip_exit == 0
-        report_model.pip_check = m.Infra.PipCheckReport(ok=pip_ok, lines=pip_lines)
-        return r[bool].ok(pip_ok)
+        return r[p.Infra.PipCheckReport].ok(
+            value=m.Infra.PipCheckReport(ok=pip_exit == 0, lines=pip_lines)
+        )
 
 
 __all__: list[str] = ["FlextInfraDepsDetectorRuntimeSteps"]

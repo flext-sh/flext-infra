@@ -1,0 +1,24 @@
+# A rewrite that emits ``tm.*`` is only F821-safe when the public test
+# matchers facade is bound as the plain name ``tm`` in the same module.
+#
+# Test suites bind it from their own generated ``tests`` facade; standalone
+# test utilities bind it from ``flext_tests``. Both forms bind ``tm`` and are
+# audited here, while an aliased import does not bind the emitted name.
+id: tm-imported-from-flext
+language: python
+rule:
+  kind: import_from_statement
+  all:
+    - has:
+        pattern: tm
+        stopBy: end
+    - has:
+        field: module_name
+        regex: "^(tests|flext_tests)$"
+    - not:
+        has:
+          kind: aliased_import
+          stopBy: end
+          has:
+            pattern: tm
+            stopBy: end

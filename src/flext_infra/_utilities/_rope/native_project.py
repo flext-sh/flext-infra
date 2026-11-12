@@ -91,7 +91,7 @@ class FlextInfraRopeNativeProject(Project):
     def get_module(
         self,
         name: str,
-        folder: Folder | p.Infra.RopeRoot | None = None,
+        folder: Folder | p.Infra.RopeRoot | p.Infra.RopeResource | None = None,
     ) -> t.Infra.RopeNativeSemanticModule:
         """Resolve the native semantic module elected by the SDK.
 
@@ -137,7 +137,7 @@ class FlextInfraRopeNativeProject(Project):
     def find_module(
         self,
         modname: str,
-        folder: p.Infra.RopeRoot | Folder | None = None,
+        folder: p.Infra.RopeRoot | p.Infra.RopeResource | Folder | None = None,
     ) -> File | Folder | None:
         """Admit the resource elected by Rope's native module finder.
 
@@ -159,7 +159,7 @@ class FlextInfraRopeNativeProject(Project):
     def find_module_native(
         self,
         modname: str,
-        folder: p.Infra.RopeRoot | Folder | None = None,
+        folder: p.Infra.RopeRoot | p.Infra.RopeResource | Folder | None = None,
     ) -> File | Folder | None:
         """Elect through Rope's own finder without consulting the freeze memo.
 
@@ -301,14 +301,18 @@ class FlextInfraRopeNativeProject(Project):
 
     @staticmethod
     @overload
-    def _native_folder(folder: Folder | p.Infra.RopeRoot) -> Folder: ...
+    def _native_folder(
+        folder: Folder | p.Infra.RopeRoot | p.Infra.RopeResource,
+    ) -> Folder: ...
 
     @staticmethod
     @overload
     def _native_folder(folder: None) -> None: ...
 
     @staticmethod
-    def _native_folder(folder: Folder | p.Infra.RopeRoot | None) -> Folder | None:
+    def _native_folder(
+        folder: Folder | p.Infra.RopeRoot | p.Infra.RopeResource | None,
+    ) -> Folder | None:
         """Validate the native folder once at the SDK adapter boundary.
 
         Returns:

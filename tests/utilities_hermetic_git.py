@@ -302,7 +302,7 @@ class TestsFlextInfraUtilitiesHermeticGit:
             )
             tm.ok(
                 u.Cli.run_checked(
-                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}"],
+                    [c.Infra.GIT, "update-ref", f"refs/heads/{rev}", sha],
                     cwd=mirror,
                 ),
             )

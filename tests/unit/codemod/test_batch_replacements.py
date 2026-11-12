@@ -119,20 +119,22 @@ class TestsFlextInfraBatchReplacements:
         state = tm.ok(u.Cli.atomic_read_binary_file_state(path, required=True))
         start = content.index(matched)
         offsets: t.JsonDict = {"start": start, "end": start + len(matched)}
-        finding = m.Infra.ModOccurrence(
-            rule_file=str(path.parent / "rule.yaml"),
-            rule_id="fixture-rewrite",
-            repository=path.parent.name,
-            file=path,
-            source_owner="generator" if generated else "authored",
-            source_state=state,
-            range={"byteOffset": offsets},
-            text=matched.decode(),
-            replacement=replacement.decode(),
-            actionable=True,
-            classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
-        )
+        finding = m.Infra.ModOccurrence.model_validate({
+            "rule_file": str(path.parent / "rule.yaml"),
+            "rule_id": "fixture-rewrite",
+            "repository": path.parent.name,
+            "file": path,
+            "source_owner": "generator" if generated else "authored",
+            "source_state": state,
+            "range": {"byteOffset": offsets},
+            "text": matched.decode(),
+            "replacement": replacement.decode(),
+            "actionable": True,
+            "classification": c.Infra.ModScanFindingClass.ACTIONABLE,
+            "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
+                offsets
+            ),
+        })
         return m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),
@@ -446,20 +448,22 @@ class TestsFlextInfraBatchReplacements:
         statement = b"breakpoint()"
         start = original.index(statement)
         offsets: t.JsonDict = {"start": start, "end": start + len(statement)}
-        finding = m.Infra.ModOccurrence(
-            rule_file=str(root / "rule.yaml"),
-            rule_id="remove-breakpoint-debugger-statement",
-            repository=root.name,
-            file=path,
-            source_owner="authored",
-            source_state=state,
-            range={"byteOffset": offsets},
-            text=statement.decode(),
-            replacement="",
-            actionable=True,
-            classification=c.Infra.ModScanFindingClass.ACTIONABLE,
-            replacement_offsets=m.Infra.ModReplacementOffsets.model_validate(offsets),
-        )
+        finding = m.Infra.ModOccurrence.model_validate({
+            "rule_file": str(root / "rule.yaml"),
+            "rule_id": "remove-breakpoint-debugger-statement",
+            "repository": root.name,
+            "file": path,
+            "source_owner": "authored",
+            "source_state": state,
+            "range": {"byteOffset": offsets},
+            "text": statement.decode(),
+            "replacement": "",
+            "actionable": True,
+            "classification": c.Infra.ModScanFindingClass.ACTIONABLE,
+            "replacement_offsets": m.Infra.ModReplacementOffsets.model_validate(
+                offsets
+            ),
+        })
         report = m.Infra.ModOccurrenceReport(
             files=frozenset({path}),
             entries=(finding,),

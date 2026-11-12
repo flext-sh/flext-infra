@@ -6,10 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import codemod, config, infra, workspace as workspace_api
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
+
+_Case = tuple[
+    Path,
+    Path,
+    Path,
+    Path,
+    Path,
+    Mapping[Path, str],
+    Sequence[str],
+    p.Infra.SemanticSourcePlan,
+]
 
 
 class TestsFlextInfraPortableRewireCohorts:
@@ -145,6 +157,24 @@ class TestsFlextInfraPortableRewireCohorts:
         tmp_path: Path, depth: int, *, reverse: bool, homonymous: bool
     ) -> None:
         """One saved source epoch retains the complete C3 contract at every move."""
+        case = TestsFlextInfraPortableRewireCohorts._prepare(
+            tmp_path, depth, reverse=reverse, homonymous=homonymous
+        )
+        organization = TestsFlextInfraPortableRewireCohorts._organization(case)
+        plans, artifacts = TestsFlextInfraPortableRewireCohorts._project(
+            case, organization, homonymous=homonymous
+        )
+        TestsFlextInfraPortableRewireCohorts._publish(case, plans, artifacts)
+        TestsFlextInfraPortableRewireCohorts._final(case, homonymous=homonymous)
+
+    @staticmethod
+    def _prepare(
+        tmp_path: Path,
+        depth: int,
+        *,
+        reverse: bool,
+        homonymous: bool,
+    ) -> _Case:
         producer, package = u.Tests.create_lazy_init_workspace(tmp_path)
         receiver, receiving_package = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="diamond-receiver", package_name="diamond_receiver"
@@ -180,6 +210,20 @@ class TestsFlextInfraPortableRewireCohorts:
             python_paths=(str(package.parent),),
         )
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(producer))
+        return (
+            producer,
+            package,
+            receiver,
+            receiving_package,
+            consumer,
+            sources,
+            baseline,
+            seed,
+        )
+
+    @staticmethod
+    def _organization(case: _Case) -> p.Infra.ProtocolOrganizationPlan:
+        producer, sources = case[0], case[5]
         with infra.rope_workspace(producer) as workspace:
             inventory = tuple(
                 item
@@ -192,49 +236,28 @@ class TestsFlextInfraPortableRewireCohorts:
                 workspace, sources=sources, objects=inventory
             )
             tm.that(census.findings, eq=())
-            organization = u.Infra.plan_protocol_contract_organization(
+            return u.Infra.plan_protocol_contract_organization(
                 workspace, sources=sources, census=census
             )
-        tm.that(
-            tuple(
-                sorted(
-                    producer / row.source_path for row in organization.census.contracts
-                )
-            ),
-            eq=tuple(
-                sorted(
-                    path
-                    for path in sources
-                    if path.parent.name == "_protocols" and path.name.startswith("old_")
-                )
-            ),
-        )
-        current_diamond = next(
-            row
-            for row in organization.census.contracts
-            if row.source_path.stem == "old_diamond"
-        )
-        holder, _, nested = current_diamond.destination_class.partition(".")
-        consumer.write_text(
-            f"from {current_diamond.destination_module} import {holder} as Current\n"
-            + consumer.read_text()
-            + f"def already_current(value: 'Current.{nested}') -> "
-            + f"'contracts.Diamond{'.Contract' if homonymous else ''}':\n"
-            + "    return value\n",
-            encoding=c.DEFAULT_ENCODING,
-        )
+
+    @staticmethod
+    def _retired_paths(package: Path, sources: Mapping[Path, str]) -> tuple[Path, ...]:
         retired = tuple(
             path
             for path in sources
             if path.parent.name == "_protocols" and path.name.startswith("old_")
         )
-        retired += tuple(
+        return retired + tuple(
             path for path in sources if path.is_relative_to(package / "legacy")
         )
-        # The supplier's completed cutover has no empty legacy holders or import
-        # surface.
-        originals = {state.path: state for state in seed.candidate.inputs}
-        cleanup = tuple(
+
+    @staticmethod
+    def _cleanup_plans(
+        producer: Path,
+        retired: tuple[Path, ...],
+        originals: Mapping[Path, p.Cli.AtomicFileState],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        return tuple(
             m.Infra.CodegenFilePlan(
                 project=producer,
                 path=path,
@@ -244,6 +267,16 @@ class TestsFlextInfraPortableRewireCohorts:
             )
             for path in retired
         )
+
+    @staticmethod
+    def _facade_plan(
+        producer: Path,
+        package: Path,
+        organization: p.Infra.ProtocolOrganizationPlan,
+        *,
+        homonymous: bool,
+        originals: Mapping[Path, p.Cli.AtomicFileState],
+    ) -> m.Infra.CodegenFilePlan:
         facade = package / "protocols.py"
         destinations = {
             row.source_path.stem.removeprefix("old_").capitalize(): row
@@ -268,7 +301,7 @@ class TestsFlextInfraPortableRewireCohorts:
             + ", ".join((*scopes.values(), "core_p"))
             + "): pass\n"
         )
-        facade_plan = m.Infra.CodegenFilePlan(
+        return m.Infra.CodegenFilePlan(
             project=producer,
             path=facade,
             before=originals[facade],
@@ -276,6 +309,27 @@ class TestsFlextInfraPortableRewireCohorts:
                 imports + declaration + "p = Protocols\n__all__ = ['Protocols', 'p']\n"
             ).encode(c.DEFAULT_ENCODING),
             desired_mode=originals[facade].mode,
+        )
+
+    @staticmethod
+    def _project(
+        case: _Case,
+        organization: p.Infra.ProtocolOrganizationPlan,
+        *,
+        homonymous: bool,
+    ) -> tuple[
+        tuple[p.Infra.CodegenFilePlan, ...],
+        tuple[p.Infra.CodegenFilePlan, ...],
+    ]:
+        producer, package = case[0], case[1]
+        sources, seed = case[5], case[7]
+        originals = {state.path: state for state in seed.candidate.inputs}
+        retired = TestsFlextInfraPortableRewireCohorts._retired_paths(package, sources)
+        cleanup = TestsFlextInfraPortableRewireCohorts._cleanup_plans(
+            producer, retired, originals
+        )
+        facade_plan = TestsFlextInfraPortableRewireCohorts._facade_plan(
+            producer, package, organization, homonymous=homonymous, originals=originals
         )
         plans = u.Infra.codegen_compose_file_plans(
             (*organization.files, *cleanup, facade_plan), ordered=True
@@ -285,20 +339,32 @@ class TestsFlextInfraPortableRewireCohorts:
         )
         artifacts = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
-                producer,
-                projected,
-                tm.ok(
-                    codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
-                        producer, projected, organization.census
-                    )
-                ),
-                pre_move_sources=organization.pre_move_sources,
+                    producer,
+                    projected,
+                    tm.ok(
+                        codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+                            producer, projected, organization.census
+                        )
+                    ),
+                    pre_move_sources=organization.pre_move_sources,
                 directory=config.Infra.refactor_csv_campaigns.rewire_directory,
             )
         )
         tm.that(len(artifacts), eq=1)
+        return plans, artifacts
+
+    @staticmethod
+    def _publish(
+        case: _Case,
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
+        artifacts: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> None:
+        producer, package, receiver = case[0], case[1], case[2]
+        consumer, sources = case[4], case[5]
         tm.ok(u.Infra.publish_codegen_plans(producer, (*plans, *artifacts)))
-        for path in retired:
+        for path in TestsFlextInfraPortableRewireCohorts._retired_paths(
+            package, sources
+        ):
             tm.fail(path.exists())
         artifact, driver = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.load_rename_artifact(
@@ -311,7 +377,9 @@ class TestsFlextInfraPortableRewireCohorts:
         for repeat in (False, True):
             with (
                 u.Infra.open_project(
-                    tmp_path, project_roots=(receiver, producer), consumer_root=receiver
+                    tmp_path := package.parent,
+                    project_roots=(receiver, producer),
+                    consumer_root=receiver,
                 ) as project,
                 workspace_api.FlextInfraRopeWorkspace.open_workspace(
                     receiver, rope_repository_root=tmp_path, source_project=project
@@ -337,8 +405,14 @@ class TestsFlextInfraPortableRewireCohorts:
                     )
                 )
         tm.ok("contracts.Diamond" in consumer.read_text())
-        for path in retired:
+        for path in TestsFlextInfraPortableRewireCohorts._retired_paths(
+            package, sources
+        ):
             tm.fail(path.exists())
+
+    @staticmethod
+    def _final(case: _Case, *, homonymous: bool) -> None:
+        package, receiving_package, baseline = case[1], case[3], case[6]
         after = u.Tests.run_lazy_init_probe(
             f"from {package.name}.protocols import p\n"
             "from diamond_receiver.consumer import consume, already_current\n"

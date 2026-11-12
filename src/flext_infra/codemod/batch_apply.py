@@ -102,6 +102,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
     _plan: p.Infra.CodemodRulePlan | None = m.PrivateAttr(default=None)
     _plan_selection: t.StrTuple | None = m.PrivateAttr(default=None)
     _plan_states: tuple[p.Cli.AtomicFileState, ...] = m.PrivateAttr(default=())
+    _snapshot: p.Infra.WorkspaceSnapshot | None = m.PrivateAttr(default=None)
 
     @property
     def focused(self) -> bool:
@@ -166,6 +167,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The selection's rule plan, or the planning failure.
 
         """
+        self._snapshot = snapshot
         planned = u.Infra.codemod_rule_plan(snapshot, rule_ids=selection)
         if planned.success:
             self._plan = planned.value
@@ -239,6 +241,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(
             self.repository_root,
             rules,
+            rule_ids=tuple(rule.id for rule in planned.value.rules),
         ).unwrap()
         states = tuple(source.state for source in snapshot.sources.values())
         pending = FlextInfraModGateEngine.scan(
@@ -390,9 +393,24 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         native_ids = frozenset(
             rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
         )
+        after_ast = FlextInfraModGateEngine.authored(start.value)
+        if self.focused:
+            # A focused transaction must not compose unrelated catalog
+            # findings: the wave loop would never settle on rules the
+            # selection could not apply.
+            selected = frozenset(self.selected_rule_ids or ())
+            after_ast = after_ast.model_copy(
+                update={
+                    "entries": tuple(
+                        entry
+                        for entry in after_ast.entries
+                        if entry.rule_id in selected
+                    )
+                }
+            )
         converged = self._syntax_waves(
             root,
-            FlextInfraModGateEngine.authored(start.value),
+            after_ast,
             native_ids,
             (plans, inputs, seed),
         )
@@ -1146,7 +1164,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
 
         """
         built = FlextInfraCodemodSemanticApply.build_source_plan(
-            root, self.consumer_roots
+            root, self.consumer_roots, snapshot=self._snapshot
         )
         if built.failure or self.focused:
             return built

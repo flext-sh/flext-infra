@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
@@ -42,26 +43,22 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
         )
         if env_result.failure:
             return r[bool].from_failure(env_result)
-        report_model = m.Infra.WorkspaceDependencyReport(
-            workspace=str(params.repository_root),
-            projects={},
-            pip_check=None,
-        )
+        projects_report: dict[str, p.Infra.ProjectDependencyReport] = {}
         for project_path in env_result.value:
             project_result = self._run_project_detection(
                 project_path,
                 venv_bin=venv_bin,
                 params=params,
-                projects_report=report_model.projects,
+                projects_report=projects_report,
             )
             if project_result.failure:
                 return r[bool].from_failure(project_result)
-        return self._finalize_run(params, report_model, venv_bin)
+        return self._finalize_run(params, projects_report, venv_bin)
 
     def _finalize_run(
         self,
         params: p.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceDependencyReport,
+        projects_report: Mapping[str, p.Infra.ProjectDependencyReport],
         venv_bin: Path,
     ) -> p.Result[bool]:
         """Publish the typed report and return its actual dependency verdict.
@@ -74,10 +71,15 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
             params.repository_root,
             venv_bin,
             params,
-            report_model,
         )
         if pip_check_result.failure:
             return r[bool].from_failure(pip_check_result)
+        pip_check = pip_check_result.value
+        report_model = m.Infra.WorkspaceDependencyReport.model_validate({
+            "workspace": str(params.repository_root),
+            "projects": projects_report,
+            "pip_check": pip_check,
+        })
         if params.output_format != c.Cli.OutputFormats.JSON:
             out_path = params.output_path or u.Cli.resolve_report_path(
                 params.repository_root,
@@ -101,9 +103,9 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
                 "deps_summary",
                 projects=len(report_model.projects),
                 deptry_issues=total_issues,
-                pip_check=c.Infra.RK_OK if pip_check_result.value else "FAIL",
+                pip_check=c.Infra.RK_OK if pip_check.ok else "FAIL",
             )
-        if params.no_fail or (total_issues == 0 and pip_check_result.value):
+        if params.no_fail or (total_issues == 0 and pip_check.ok):
             return r[bool].ok(value=True)
         return r[bool].fail("dependency issues detected")
 

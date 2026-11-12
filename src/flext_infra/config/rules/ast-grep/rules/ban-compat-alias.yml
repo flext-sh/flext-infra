@@ -70,12 +70,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  # Below a namespace family facade: the facade lives two directories
-  # deep and owns the short alias its package initializer imports.
-  - "*/*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: expression_statement
   inside:
@@ -104,12 +110,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  # Below a namespace family facade: the facade lives two directories
-  # deep and owns the short alias its package initializer imports.
-  - "*/*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: string
   regex: "^[\"'][a-z][\"']$"
@@ -144,12 +156,18 @@ severity: error
 metadata:
   enforce: [ENFORCE-010, ENFORCE-066]
 files:
-  # Below a namespace family facade: the facade lives two directories
-  # deep and owns the short alias its package initializer imports.
-  - "*/*/*/**/*.py"
+  - "**/*.py"
 ignores:
   - "src/*/*.py"
   - "**/__init__.py"
+  # Family facade modules own the short alias their namespace root imports,
+  # matching the add-facade-module-* declarations regardless of depth.
+  - "**/constants.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"
+  - "**/utils.py"
 rule:
   kind: string
   regex: "^[\"'][a-z][\"']$"

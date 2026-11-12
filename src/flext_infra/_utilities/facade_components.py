@@ -16,7 +16,7 @@ import io
 import re
 import sys
 import tokenize
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from functools import partial
 from importlib.metadata import packages_distributions
 from pathlib import Path
@@ -2847,6 +2847,7 @@ class FlextInfraUtilitiesFacadeComponents:
         letters: Sequence[str],
         holder: p.Infra.RopeClassObject,
         *,
+        selection: tuple[str, frozenset[str] | None],
         source_project: p.Infra.RopeProject,
     ) -> Sequence[tuple[p.Infra.RopeClassObject, str]]:
         """Keep component receivers only when their effective method is identical.
@@ -2856,6 +2857,7 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         members = FlextInfraUtilitiesFacadeMembers
+        target, referenced_paths = selection
         facades = tuple(
             members.facade_source_classes(
                 root, letters, source_project=source_project
@@ -2892,12 +2894,19 @@ class FlextInfraUtilitiesFacadeComponents:
                 )
                 and member in holder_members
                 and holder_members[member].get_object() is binding.get_object()
+                and (
+                    referenced_paths is None or f"{target}.{member}" in referenced_paths
+                )
             )
         return tuple(composed)
 
     @classmethod
     def _component_claims(
-        cls, project: Path, *, source_project: p.Infra.RopeProject
+        cls,
+        project: Path,
+        *,
+        source_project: p.Infra.RopeProject,
+        referenced_paths: frozenset[str] | None = None,
     ) -> t.Infra.FacadeComponentClaims:
         """Retain native receiver identities while discovering public composition.
 
@@ -2917,8 +2926,17 @@ class FlextInfraUtilitiesFacadeComponents:
             for holder, target in cls._facade_namespace_holders(
                 root, letters, source_project=source_project
             ):
+                if referenced_paths is not None and not any(
+                    path == target or path.startswith(f"{target}.")
+                    for path in referenced_paths
+                ):
+                    continue
                 for identity in cls._composed_methods(
-                    root, letters, holder, source_project=source_project
+                    root,
+                    letters,
+                    holder,
+                    selection=(target, referenced_paths),
+                    source_project=source_project,
                 ):
                     claims.setdefault(identity, []).append((root, target, holder))
         return claims
@@ -3309,8 +3327,20 @@ class FlextInfraUtilitiesFacadeComponents:
                 ),
             )
         )
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ] = {}
+        referenced, reference_paths = members.facade_references(snapshot, root)
         lineage, references, exposed = members.facade_member_census(
-            root, source_project=engine, resolver_factory=resolver_factory
+            root,
+            source_project=engine,
+            resolver_factory=resolver_factory,
+            referenced=referenced,
+            cache=cache,
         )
         return m.Infra.FacadeCensus(
             snapshot=snapshot,
@@ -3322,8 +3352,13 @@ class FlextInfraUtilitiesFacadeComponents:
                 FlextInfraUtilitiesPyprojectConform.project_package_name(root),
                 source_project=engine,
                 resolver_factory=resolver_factory,
+                cache=cache,
             ),
-            claims=cls._component_claims(root, source_project=engine),
+            claims=cls._component_claims(
+                root,
+                source_project=engine,
+                referenced_paths=reference_paths,
+            ),
         )
 
     @classmethod

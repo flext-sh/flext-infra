@@ -10,7 +10,19 @@ from contextlib import closing
 from pathlib import Path
 
 from flext_infra import codemod, config, workspace as workspace_api
-from tests import c, m, tm, u
+from tests import c, m, p, tm, u
+
+_Case = tuple[
+    Path,
+    Path,
+    Path,
+    Path,
+    Path,
+    Path,
+    str,
+    Path,
+    Path,
+]
 
 
 class TestsFlextInfraPortableRewire:
@@ -22,6 +34,15 @@ class TestsFlextInfraPortableRewire:
         tmp_path: Path, *, existing_scaffold: bool
     ) -> None:
         """Direct holder aliases move while public facade receivers stay public."""
+        case = TestsFlextInfraPortableRewire._prepare(
+            tmp_path, existing_scaffold=existing_scaffold
+        )
+        seed, plans = TestsFlextInfraPortableRewire._supplier_plans(case)
+        artifacts = TestsFlextInfraPortableRewire._artifacts(case, seed, plans)
+        TestsFlextInfraPortableRewire._publish_and_replay(case, plans, artifacts)
+
+    @staticmethod
+    def _prepare(tmp_path: Path, *, existing_scaffold: bool) -> _Case:
         producer, package = u.Tests.create_lazy_init_workspace(tmp_path)
         receiver, receiving_package = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="external-receiver", package_name="external_receiver"
@@ -63,6 +84,31 @@ class TestsFlextInfraPortableRewire:
             "    return value\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        return (
+            producer,
+            package,
+            receiver,
+            receiving_package,
+            origin,
+            destination,
+            scaffold,
+            facade,
+            consumer,
+        )
+
+    @staticmethod
+    def _supplier_plans(
+        case: _Case,
+    ) -> tuple[p.Infra.SemanticSourcePlan, tuple[p.Infra.CodegenFilePlan, ...]]:
+        producer, origin, destination = case[0], case[4], case[5]
+        scaffold, facade = case[6], case[7]
+        source = (
+            "from typing import Protocol, runtime_checkable\n"
+            "class Holder:\n"
+            "    @runtime_checkable\n"
+            "    class Contract(Protocol):\n"
+            "        def execute(self) -> str: ...\n"
+        )
         seed = tm.ok(codemod.FlextInfraCodemodSemanticApply.build_source_plan(producer))
         states = {state.path: state for state in seed.candidate.inputs}
         if destination not in states:
@@ -92,10 +138,12 @@ class TestsFlextInfraPortableRewire:
                 u.Infra.file_resource_at(project, origin),
                 source.index("Contract"),
                 u.Infra.file_resource_at(project, destination),
-                destination_offset=scaffold.index("Destination"),
-                resources=(
-                    u.Infra.file_resource_at(project, origin),
-                    u.Infra.file_resource_at(project, destination),
+                options=m.Infra.RopeMoveOptions(
+                    destination_offset=scaffold.index("Destination"),
+                    resources=(
+                        u.Infra.file_resource_at(project, origin),
+                        u.Infra.file_resource_at(project, destination),
+                    ),
                 ),
             )
         plans = tuple(
@@ -124,14 +172,25 @@ class TestsFlextInfraPortableRewire:
                 path=facade,
                 before=facade_before,
                 desired_content=(
-                    f"from {package.name}._protocols._external.current import "
-                    f"Destination\n"
+                    "from "
+                    f"{origin.parent.parent.name}._protocols._external.current "
+                    "import Destination\n"
                     "class Protocols(Destination): pass\n"
                     "p = Protocols\n__all__ = ['Protocols', 'p']\n"
                 ).encode(c.DEFAULT_ENCODING),
                 desired_mode=facade_before.mode,
             ),
         )
+        return seed, plans
+
+    @staticmethod
+    def _artifacts(
+        case: _Case,
+        seed: p.Infra.SemanticSourcePlan,
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        producer, package = case[0], case[1]
+        origin, destination = case[4], case[5]
         projected = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.compose_candidate(seed, plans)
         )
@@ -151,19 +210,30 @@ class TestsFlextInfraPortableRewire:
                 ),
             )
         )
-        artifacts = tm.ok(
-            codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
-                producer,
-                projected,
-                tm.ok(
-                    codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
-                        producer, projected, census
-                    )
-                ),
-                pre_move_sources={destination: scaffold},
-                directory=config.Infra.refactor_csv_campaigns.rewire_directory,
+        return tuple(
+            tm.ok(
+                codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
+                    producer,
+                    projected,
+                    tm.ok(
+                        codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+                            producer, projected, census
+                        )
+                    ),
+                    pre_move_sources={destination: "class Destination:\n    pass\n"},
+                    directory=config.Infra.refactor_csv_campaigns.rewire_directory,
+                )
             )
         )
+
+    @staticmethod
+    def _publish_and_replay(
+        case: _Case,
+        plans: tuple[p.Infra.CodegenFilePlan, ...],
+        artifacts: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> None:
+        producer, package, receiver, receiving_package, origin, _destination = case[:6]
+        _scaffold, _facade, consumer = case[6:9]
         tm.that(len(artifacts), eq=1)
         tm.ok(u.Infra.publish_codegen_plans(producer, (*plans, *artifacts)))
         artifact, driver = tm.ok(
@@ -177,10 +247,12 @@ class TestsFlextInfraPortableRewire:
         tm.fail(origin.exists())
         with (
             u.Infra.open_project(
-                tmp_path, project_roots=(receiver, producer), consumer_root=receiver
+                package.parent,
+                project_roots=(receiver, producer),
+                consumer_root=receiver,
             ) as project,
             workspace_api.FlextInfraRopeWorkspace.open_workspace(
-                receiver, rope_repository_root=tmp_path, source_project=project
+                receiver, rope_repository_root=package.parent, source_project=project
             ) as workspace,
         ):
             replayed = tm.ok(
@@ -189,7 +261,9 @@ class TestsFlextInfraPortableRewire:
                 )
             )
         tm.ok(consumer in replayed.candidate.updates)
-        tm.ok(all(path.is_relative_to(receiver) for path in replayed.candidate.updates))
+        tm.ok(
+            all(path.is_relative_to(receiver) for path in replayed.candidate.updates)
+        )
         tm.ok(
             codemod.FlextInfraCodemodSemanticApply.publish_candidate(receiver, replayed)
         )
@@ -210,10 +284,12 @@ class TestsFlextInfraPortableRewire:
         before_repeat = consumer.read_bytes()
         with (
             u.Infra.open_project(
-                tmp_path, project_roots=(receiver, producer), consumer_root=receiver
+                package.parent,
+                project_roots=(receiver, producer),
+                consumer_root=receiver,
             ) as project,
             workspace_api.FlextInfraRopeWorkspace.open_workspace(
-                receiver, rope_repository_root=tmp_path, source_project=project
+                receiver, rope_repository_root=package.parent, source_project=project
             ) as workspace,
         ):
             repeated = tm.ok(

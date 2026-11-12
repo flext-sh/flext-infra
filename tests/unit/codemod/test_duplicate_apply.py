@@ -37,15 +37,15 @@ class TestsFlextInfraCodemodDuplicateApply:
             name="SHARED_LIMIT",
             kind="constant",
         )
-        definition = m.Infra.DuplicateDefinition(
-            item=item,
-            path=path,
-            source=_CORE_CONSTANT,
-            statement=statement,
-            body=_CORE_CONSTANT,
-            consumers=0,
-            layer=0,
-        )
+        definition = m.Infra.DuplicateDefinition.model_validate({
+            "item": item,
+            "path": path,
+            "source": _CORE_CONSTANT,
+            "statement": statement,
+            "body": _CORE_CONSTANT,
+            "consumers": 0,
+            "layer": 0,
+        })
         copy = m.Infra.DuplicateCopyCure(
             definition=definition,
             consumer_files=(),
@@ -140,12 +140,12 @@ class TestsFlextInfraCodemodDuplicateApply:
             The resulting ``m.Infra.DuplicateGroup``.
 
         """
-        return m.Infra.DuplicateGroup(
-            name=objects[0].name,
-            kind=objects[0].kind,
-            definitions=list(objects),
-            value_identical=value_identical,
-        )
+        return m.Infra.DuplicateGroup.model_validate({
+            "name": objects[0].name,
+            "kind": objects[0].kind,
+            "definitions": list(objects),
+            "value_identical": value_identical,
+        })
 
     def test_trivial_group_keeps_owner_and_rewires_consumers(
         self,

@@ -107,8 +107,8 @@ jobs:
           fetch-depth: 0
           ref: {% raw %}${{ inputs.ref || github.sha }}{% endraw %}
 {%- endif %}
-{%- include "_fragments/private_submodules_init.j2" %}
 {%- include "_fragments/private_dependency_auth.j2" %}
+{%- include "_fragments/private_submodules_init.j2" %}
       # Why: GitHub runners expose umask 002, so git checkout materializes
       # group-writable modes (0664) for tracked files. Canonical Mise
       # artifacts demand exact modes (0o644) and the conform gate fails loud
@@ -143,13 +143,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends {{ system_packages | join(" ") }}
 {%- endif %}
-{%- set ci_tests = namespace(selected=false) %}
-{%- for step in make.workflow if step.verb == "tests" and "ci" in step.contexts %}
-{%- set ci_tests.selected = true %}
-{%- endfor %}
-{%- if ci_tests.selected %}
-{%- include "_fragments/testmon_cache_restore.j2" %}
-{%- endif %}
 {%- include "_fragments/custom_steps.j2" %}
 
 {%- set ci_check = namespace(setup_id="", ran="", failed="") %}
@@ -161,9 +154,6 @@ jobs:
 {%- else %}
 {%- set ci_check.ran = ci_check.ran ~ (" || " if ci_check.ran else "") ~ "steps." ~ approval_id ~ ".outcome == 'success' || steps." ~ approval_id ~ ".outcome == 'failure'" %}
 {%- set ci_check.failed = ci_check.failed ~ (" || " if ci_check.failed else "") ~ "steps." ~ approval_id ~ ".outcome == 'failure'" %}
-{%- endif %}
-{%- if verb == "tests" %}
-{%- set ci_tests.test_step_id = approval_id %}
 {%- endif %}
       # CI approval, one visible step per ci workflow row ({{ make.approval_verbs | join(" -> ") }}).
       - name: {{ step.make_command }} (blocking)
@@ -185,28 +175,6 @@ jobs:
 {%- endif %}
 {%- endfor %}
 {%- include "_fragments/custom_post_steps.j2" %}
-{%- if ci_tests.selected %}
-
-      - name: Dump reports on failure
-        if: {% raw %}${{ failure() }}{% endraw %}
-        run: |
-          set -eu
-          # Structured reports only — a subset of Upload reports (no raw
-          # pytest/tool logs: those may carry connection strings / env secrets).
-          for report_root in .reports apps; do
-            if [ -d "${report_root}" ]; then
-              find "${report_root}" \
-                \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json'{% for name in docs_report_filenames %} -o -path '*/{{ name }}'{% endfor %} \) \
-                -type f -exec sh -eu -c '
-                  for report_file do
-                    printf "::group::%s\n" "${report_file}"
-                    cat "${report_file}"
-                    printf "::endgroup::\n"
-                  done
-                ' sh {} +
-            fi
-          done
-{%- endif %}
       # Reports exist once any approval row after setup executed, whichever
       # row failed first (a failed tests row skips every later check row);
       # uploading after a setup failure would only add a second, misleading error.
@@ -218,12 +186,13 @@ jobs:
           # Structured reports only — omit raw pytest/tool logs that may carry
           # connection strings or env-derived secrets from integration fixtures.
           path: |
-            {{ report_root }}.reports/**/junit.xml
-            {{ report_root }}.reports/**/coverage.xml
-            {{ report_root }}.reports/**/coverage.json
 {% for name in docs_report_filenames %}            {{ report_root }}.reports/**/{{ name }}
 {% endfor %}            {{ report_root }}.reports/check/**/*.sarif
             {{ report_root }}.reports/check/**/*.md
+            {{ report_root }}.reports/tests/**/*.json
+            {{ report_root }}.reports/tests/**/summary.txt
+            {{ report_root }}.reports/tests/**/failed-tests.txt
+            {{ report_root }}.reports/tests/**/errors.txt
             {{ report_root }}{{ make.gate_receipts_directory }}/**/{{ gate_original_receipt_filename }}
             {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.sarif
             {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.md
@@ -231,18 +200,11 @@ jobs:
             {{ report_root }}.reports/codegen-publication.json
             {{ report_root }}.reports/codegen-publication/**/*.json
             {{ report_root }}{{ setup_operations_report_directory }}/*.json
-            {{ report_root }}.reports/tests/**/*.json
-            {{ report_root }}.reports/tests/**/summary.txt
-            {{ report_root }}.reports/tests/**/failed-tests.txt
-            {{ report_root }}.reports/tests/**/errors.txt
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 {%- set gate_receipts_failed = ci_check.failed ~ " || steps.qualification-check.outcome == 'failure'" %}
 {%- include "_fragments/gate_receipts_upload.j2" %}
-{%- if ci_tests.selected %}
-{%- include "_fragments/testmon_cache_save.j2" %}
-{%- endif %}
 
       # The lock-hash key is immutable: save only when the exact key missed,
       # after a failing gate as well, so the next run starts warm.

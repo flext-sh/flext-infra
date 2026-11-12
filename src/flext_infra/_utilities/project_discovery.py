@@ -246,6 +246,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             and not cls._scenario_data_tree(path.relative_to(resolved_root))
         }
         if source_files is not None:
+            source_files = tuple(path for path in source_files if path.is_file())
             selected = {
                 (path.absolute() if path.suffix == ".pyi" else path.resolve())
                 .relative_to(resolved_root)

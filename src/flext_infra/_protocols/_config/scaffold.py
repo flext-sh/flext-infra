@@ -54,6 +54,11 @@ class FlextInfraProtocolsConfigScaffold:
             """Config base class name."""
             ...
 
+        @property
+        def settings_class_name(self) -> t.NonEmptyStr:
+            """Settings base class name in the same module."""
+            ...
+
     @runtime_checkable
     class ScaffoldProjectSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol

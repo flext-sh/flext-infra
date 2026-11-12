@@ -659,6 +659,7 @@ Infra:
       # A partial inventory or any diagnostic prevents subsequent phases.
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
+      scan_threads: 4
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -829,14 +830,17 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # A commit provisions the checkout before its check, so a fresh lane
+      # worktree commits against its own locked toolchain, never PATH.
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        phase: complete
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -853,23 +857,25 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        phase: complete
+        contexts: [ local, ci, pre_push, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, pre_push ] }
+        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, pre_push ]
+        phase: complete
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check, contexts: [ local, pre_push ] }
-        - { step: check-primary, contexts: [ pre_push ] }
+        - { step: check, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ ci, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local ] }
+      - { verb: tests, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local ] }
       - { verb: gen, contexts: [ local ] }
       - { verb: fmt, contexts: [ local ] }
@@ -878,10 +884,10 @@ Infra:
       # Consecutive generation proves convergence on unchanged declarations.
       - { verb: gen, contexts: [ local ] }
       - { verb: gen, contexts: [ local ] }
-      - { verb: check, phase: primary, contexts: [ local, ci ] }
+      - { verb: check, contexts: [ local, ci ] }
       - { verb: check, contexts: [ local ] }
-      - { verb: tests, contexts: [ local ] }
-      - { verb: build, contexts: [ local ] }
+      - { verb: tests, contexts: [ local, ci ] }
+      - { verb: build, contexts: [ local, ci ] }
       # Repository-local directory holding the bootstrap Mise binary. The
       # generated Makefile places the binary there and the CI workflows cache
       # it, so a pinned binary is fetched only when its version changes.
@@ -1545,22 +1551,26 @@ Infra:
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]
-        # Precedence order: a generated _config.py composes the first base
-        # whose distribution is among the project's runtime requirements or
-        # its declared upstream.
+        # Precedence order: generated _config.py and _settings.py compose the
+        # first base whose distribution is among the project's runtime
+        # requirements or its declared upstream.
         config_bases:
         - distribution: flext-api
           module: flext_api
           class_name: FlextApiConfig
+          settings_class_name: FlextApiSettings
         - distribution: flext-meltano
           module: flext_meltano
           class_name: FlextMeltanoConfig
+          settings_class_name: FlextMeltanoSettings
         - distribution: flext-cli
           module: flext_cli
           class_name: FlextCliConfig
+          settings_class_name: FlextCliSettings
         - distribution: flext-core
           module: flext_core
           class_name: FlextConfig
+          settings_class_name: FlextSettings
       ping_example:
         command_name: ping
         help_text: Return the configured health response.
@@ -1792,6 +1802,7 @@ Infra:
         - ".claude/*.agents-governance.json"
         - ".gemini/*.agents-governance.json"
         - ".claude/settings.local.json"
+        - ".claude/scheduled_tasks.lock"
       # The repository loader merges config/<file>.local.yaml after the
       # tracked config/<file>.yaml; that layer carries operator-private data.
       - name: "Private local config layers"

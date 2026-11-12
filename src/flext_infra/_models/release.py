@@ -13,11 +13,7 @@ from typing import Annotated, Self
 from flext_core import m
 
 from flext_infra import c, t
-from flext_infra._models import (
-    FlextInfraModelsBase,
-    FlextInfraModelsGit,
-    FlextInfraModelsMixins,
-)
+from flext_infra._models import FlextInfraModelsBase, FlextInfraModelsMixins
 
 
 class FlextInfraModelsRelease:
@@ -40,15 +36,9 @@ class FlextInfraModelsRelease:
             str,
             m.Field(description="Pull-request title to validate against the protocol"),
         ] = ""
-        ownership: Annotated[
-            FlextInfraModelsGit.GitLaneOwnershipReceipt | None,
-            m.Field(
-                description="Authenticated integrated prior-state ownership receipt"
-            ),
-        ] = None
 
     class ReleaseRunCommand(FlextInfraModelsBase.CommandContext, ReleaseOptions):
-        """Typed release input before native ownership and service composition."""
+        """Typed release input before service composition."""
 
         projects: Annotated[
             Sequence[str] | None,
@@ -60,26 +50,6 @@ class FlextInfraModelsRelease:
                 json_schema_extra={"typer_param_decls": ["--project", "--projects"]},
             ),
         ] = None
-        checkpoint_ref: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Existing published checkpoint resolved by native Git"),
-        ] = None
-
-        @m.model_validator(mode="after")
-        def _exclusive_ownership_transport(self) -> Self:
-            """Accept one explicit ownership transport without inferring proof.
-
-            Returns:
-                The validated request.
-
-            Raises:
-                ValueError: If both ownership transports are selected.
-
-            """
-            if self.checkpoint_ref is not None and self.ownership is not None:
-                msg = "checkpoint_ref and ownership are mutually exclusive"
-                raise ValueError(msg)
-            return self
 
     class GithubReleaseAsset(m.StrictBoundaryModel):
         """Selected native GitHub asset metadata, before publication effects."""

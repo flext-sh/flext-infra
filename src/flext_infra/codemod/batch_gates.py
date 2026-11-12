@@ -16,7 +16,8 @@ from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import closing
 from pathlib import Path
 
-from flext_infra import c, m, p, r, settings, t, u
+from flext_infra import c, config, m, p, r, settings, t, u
+from flext_infra._codemod.scan_cache import FlextInfraCodemodScanCache
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -31,6 +32,8 @@ class FlextInfraModGateEngine:
         cls,
         root: Path,
         rules: Sequence[Path],
+        *,
+        rule_ids: Sequence[str] = (),
     ) -> p.Result[bool]:
         """Verify the selected rules' fixtures against their snapshots; never rewrite.
 
@@ -50,10 +53,14 @@ class FlextInfraModGateEngine:
             root,
             rules,
         ):
-            selected = frozenset(
-                rule_id
-                for rule in owner_rules
-                for rule_id in u.Infra.ast_grep_rule_contract(rule)[0]
+            selected = (
+                frozenset(rule_ids)
+                if rule_ids
+                else frozenset(
+                    rule_id
+                    for rule in owner_rules
+                    for rule_id in u.Infra.ast_grep_rule_contract(rule)[0]
+                )
             )
             if owner_is_governed:
                 stale = FlextInfraCodemodSnapshotReconciler.stale_snapshots(
@@ -361,6 +368,7 @@ class FlextInfraModGateEngine:
             u.Infra.codemod_write_native_documents(
                 temp_rule,
                 tuple(rendered),
+                atomic=False,
             )
 
     @staticmethod
@@ -383,6 +391,7 @@ class FlextInfraModGateEngine:
                             f"{document['id']}{c.Infra.CODEMOD_RULE_SUFFIX}"
                         ),
                         (document,),
+                        atomic=False,
                     )
 
     @staticmethod
@@ -442,13 +451,21 @@ class FlextInfraModGateEngine:
                     if apply:
                         target.unlink()
                     continue
-                content = produced.read_text(encoding=c.DEFAULT_ENCODING)
+                native = produced.read_text(encoding=c.DEFAULT_ENCODING)
                 # Native ast-grep writes indented blank lines inside block
-                # scalars; the repository whitespace gate rejects them and the
-                # trailing spaces carry no YAML meaning, so the projection is
-                # normalized before comparison and publication.
-                normalized = "\n".join(line.rstrip() for line in content.splitlines())
-                content = f"{normalized}\n" if content.endswith("\n") else normalized
+                # scalars, which the repository whitespace gate rejects. Strip
+                # them only when the document keeps its meaning: a fix that
+                # leaves spaces after content (a removed trailing comment)
+                # carries them inside the block scalar, so that document is
+                # re-serialized losslessly, quoting the scalar instead.
+                normalized = "\n".join(line.rstrip() for line in native.splitlines())
+                normalized = f"{normalized}\n" if native.endswith("\n") else normalized
+                recorded = u.Cli.yaml_parse(native).unwrap()
+                content = (
+                    normalized
+                    if u.Cli.yaml_parse(normalized).unwrap() == recorded
+                    else u.Cli.yaml_dump_str(recorded)
+                )
                 current = committed.get(name)
                 if current is not None and (
                     current.read_text(encoding=c.DEFAULT_ENCODING) == content
@@ -882,11 +899,9 @@ class FlextInfraModGateEngine:
         raw_replacement = finding.get("replacement")
         replacement = raw_replacement if isinstance(raw_replacement, str) else None
         native_file = str(finding.get("file"))
-        if native_file not in context.authenticated:
-            context.authenticated[native_file] = cls._authenticated_snapshot(
-                root, native_file
-            )
-        authenticated = context.authenticated[native_file]
+        authenticated = context.authenticated.get(native_file)
+        if authenticated is None:
+            authenticated = cls._authenticated_snapshot(root, native_file)
         file_path = Path(native_file)
         if file_path not in context.repositories:
             context.repositories[file_path] = cls._finding_repository(
@@ -1076,6 +1091,39 @@ class FlextInfraModGateEngine:
         ruleset_files = {
             rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
+        inventory_sources = tuple(getattr(context, "inventory", ()))
+        cache_key = FlextInfraCodemodScanCache.compute_key(
+            config_path=ruleset.config,
+            rule_ids=ruleset.rule_ids,
+            targets=targets,
+            sources=inventory_sources,
+            options=("ruleset", threads),
+        )
+        cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
+        if cached_file is not None:
+            sys.stderr.write(f"mod: ast-grep cache hit key={cache_key[:12]}\n")
+            sys.stderr.flush()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, cached_file)
+            report = cls._parse_findings(
+                artifact.path,
+                root,
+                (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
+                context,
+                artifact,
+            ).unwrap()
+            return r[p.Infra.ModScanReport].ok(
+                cls.recounted(report.entries, native_artifacts=(artifact,))
+            )
+
         scan_command = u.Infra.ast_grep_scan_command(
             ruleset.config,
             rule_ids=ruleset.rule_ids,
@@ -1101,6 +1149,7 @@ class FlextInfraModGateEngine:
                 return r[p.Infra.ModScanReport].from_failure(run)
             sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
             sys.stderr.flush()
+            FlextInfraCodemodScanCache.store(cache_key, stdout_file)
             artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
             report = cls._parse_findings(
                 artifact.path,

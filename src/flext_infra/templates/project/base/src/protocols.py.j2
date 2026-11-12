@@ -27,12 +27,12 @@ from collections.abc import (
 )
 
 {# NOTE:extend the class the upstream declares for `p` in its own __all__; the letter is rebound below as a plain alias. -#}
-from {{ upstream }} import p as parent_p
+from {{ upstream }} import p
 
 {{ protocol_imports }}
 
 
-class {{ class_stem }}Protocols(parent_p):
+class {{ class_stem }}Protocols(p):
     """{{ class_stem }} protocols extending the upstream facade."""
 
 {{ protocols_namespace_declaration }}

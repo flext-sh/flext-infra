@@ -19,10 +19,10 @@ class TestsFlextInfraReleaseDag:
     """Behavior contract for fail-closed release build policy."""
 
     @staticmethod
-    def test_rendered_plan_selects_member_version_from_workspace_cwd(
+    def test_plan_selects_member_version_from_workspace_cwd(
         tmp_path: Path,
     ) -> None:
-        """The generated recipe selects each repository, not the caller's version."""
+        """The public CLI selects each repository, not the caller's version."""
         root_version = tm.ok(
             u.Infra.bump_version(
                 c.Tests.RELEASE_VERSION_BASE, c.Infra.VersionBump.PATCH
@@ -35,24 +35,17 @@ class TestsFlextInfraReleaseDag:
             version=root_version,
             initialize_project_git=True,
         )
-        rendered_root, _ = u.Tests.render_make_environment(
-            tmp_path / "render",
-            c.Infra.MakeProfile.STANDALONE,
-        )
-        rendered = (rendered_root / c.Infra.MAKEFILE_FILENAME).read_text(
-            encoding=c.DEFAULT_ENCODING,
-        )
-        recipe = rendered.split("_builtin_release_plan:", 1)[1].splitlines()[1]
-        command = recipe.strip().removeprefix("@").partition(" $(if ")[0]
-        command = command.replace("$(PROJECT_FLEXT_INFRA)", "flext-infra")
         for selected in (workspace, workspace / member_name):
             tm.ok(
                 u.Cli.run_checked(
                     [
-                        "bash",
-                        "-eu",
-                        "-c",
-                        command.replace("$(PROJECT_ROOT)", str(selected)),
+                        "flext-infra",
+                        "release",
+                        "run",
+                        "--repository-root",
+                        str(selected),
+                        "--phase",
+                        "plan",
                     ],
                     cwd=workspace,
                 ),

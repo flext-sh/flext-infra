@@ -523,14 +523,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 project_package_by_root,
             )
             packages_by_dir[str(package_dir)] = package
-        return m.Infra.RopeWorkspaceIndex(
-            repository_root=resolved_root,
-            package_dirs=sorted_package_dirs,
-            packages_by_dir=packages_by_dir,
-            modules_by_path=modules_by_path,
-            package_dir_by_name=package_dir_by_name,
-            project_package_by_root=project_package_by_root,
-        )
+        return m.Infra.RopeWorkspaceIndex.model_validate({
+            "repository_root": resolved_root,
+            "package_dirs": sorted_package_dirs,
+            "packages_by_dir": packages_by_dir,
+            "modules_by_path": modules_by_path,
+            "package_dir_by_name": package_dir_by_name,
+            "project_package_by_root": project_package_by_root,
+        })
 
     @classmethod
     def _indexed_package(

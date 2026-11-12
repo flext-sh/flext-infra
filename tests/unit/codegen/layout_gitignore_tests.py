@@ -185,12 +185,12 @@ class TestsFlextInfraCodegenLayoutGitignore:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, owner)
-        declaration = m.Infra.RepositoryDeltaSpec(
-            project=u.Tests.project_spec(owner).model_copy(
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": u.Tests.project_spec(owner).model_copy(
                 update={"upstream": "flext_cli"}
             ),
-            integration=integration,
-        )
+            "integration": integration,
+        })
         tm.ok(
             u.Cli.yaml_dump(
                 root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,

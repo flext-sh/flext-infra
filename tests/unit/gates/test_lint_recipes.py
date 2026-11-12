@@ -342,6 +342,15 @@ class TestsFlextInfraLintRecipes:
         )
         tm.that(long_repaired, has='"""Test fonte incompleta')
 
+        init_source = (
+            "class Sample:\n    def __init__(self) -> None:\n        self.value = 1\n"
+        )
+        init_repaired = self._apply(
+            init_source,
+            ("undocumented-public-init", 2, "Missing docstring in public method"),
+        )
+        tm.that(init_repaired, has='"""Initialize the instance."""')
+
     @c.Tests.MARK.parametrize(
         ("source", "findings", "expected"),
         [
