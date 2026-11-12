@@ -512,6 +512,42 @@ class TestsFlextInfraUtilitiesToolingFixture:
             cwd=root,
         )
 
+    @classmethod
+    def provision_scan_workspace(
+        cls,
+        root: Path,
+        *,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> p.Result[bool]:
+        """Provision a fixture workspace with the provider its rule plan elects.
+
+        The rule plan reads the target repository's own physical runtime and
+        discovers providers only among the distributions installed there
+        (``test_rule_plan_target_environment``). A scannable fixture therefore
+        carries the tool's own distribution together with the workspace's
+        declared local dependency closure, never the invoking interpreter's
+        environment.
+
+        Returns:
+            The installation result or the original environment failure.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        dependency_projects = tuple(
+            dict.fromkeys(
+                (
+                    checkout,
+                    *cls.python_dependency_projects(checkout),
+                    *cls.python_dependency_projects(root),
+                )
+            )
+        )
+        return cls.create_python_environment(
+            root,
+            dependency_projects=dependency_projects,
+            session_runtime=session_runtime,
+        )
+
     @staticmethod
     def provision_checkout(root: Path) -> None:
         """Make a fixture root a checkout whose environment owns the edit tools.
