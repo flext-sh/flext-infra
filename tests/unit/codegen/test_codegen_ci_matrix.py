@@ -251,11 +251,25 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         ]
         make = config.Infra.codegen.make
         commits = [hook for hook in hooks if hook.get("stages") == ["pre-commit"]]
-        tm.that(len(commits), eq=int(make.pre_commit))
-        if commits:
+        commit_steps = tuple(
+            step
+            for step in make.workflow
+            if make.pre_commit and "pre_commit" in step.contexts
+        )
+        tm.that(
+            [hook["id"] for hook in commits],
+            eq=[f"flext-pre-commit-{step.identity}" for step in commit_steps],
+        )
+        token = f"{make.ci.variable}={make.ci.pre_commit_value}"
+        for hook, step in zip(commits, commit_steps, strict=True):
+            # Setup provisions through Make; check runs on the staged files.
             tm.that(
-                commits[0]["entry"],
-                has=f"{make.ci.variable}={make.ci.pre_commit_value} make check",
+                hook["entry"],
+                has=(
+                    f'{token} "$FLEXT" check run'
+                    if step.verb == c.Infra.VERB_CHECK
+                    else f"{token} {step.make_command}"
+                ),
             )
         pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
         expected = tuple(
@@ -280,12 +294,20 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         )
 
         tm.that(workflow, has="concurrency:")
+        group = next(
+            line for line in workflow.splitlines() if line.strip().startswith("group:")
+        )
+        # The key separates workflow, event, an explicit candidate ref and the
+        # PR number, so a late PR event never cancels the post-merge push run.
         tm.that(
-            workflow,
-            has=(
-                "group: ${{ github.workflow }}-${{ github.event_name }}-"
-                "${{ github.event.pull_request.number || github.ref }}"
-            ),
+            group,
+            has=[
+                "github.workflow",
+                "github.event_name",
+                "inputs.ref",
+                "github.event.pull_request.number",
+                "github.ref",
+            ],
         )
         tm.that(workflow, has="cancel-in-progress: true")
 

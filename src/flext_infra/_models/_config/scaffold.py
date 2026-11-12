@@ -41,6 +41,10 @@ class FlextInfraModelsConfigScaffold:
             t.NonEmptyStr,
             m.Field(description="Config base class name"),
         ]
+        settings_class_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Settings base class name in the same module"),
+        ]
 
     class ScaffoldProjectSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""

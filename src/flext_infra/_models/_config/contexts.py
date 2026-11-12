@@ -644,6 +644,20 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             """
             return self._config_base.module
 
+        @m.computed_field
+        @property
+        def settings_base_class(self) -> str:
+            """Settings base class composed by the generated ``_settings.py``.
+
+            It lives in ``config_base_module``, so both projections follow the
+            same declared dependency profile.
+
+            Returns:
+                The resulting ``str``.
+
+            """
+            return self._config_base.settings_class_name
+
         description: Annotated[
             t.NonEmptyStr,
             m.Field(description="Project description"),

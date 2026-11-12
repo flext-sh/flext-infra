@@ -1135,7 +1135,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             for repository in plan.repositories
             if repository.path == Path()
         )
-        if request.what is not c.Infra.CodegenConformSurface.ALL or not owned:
+        # Documentation analyzes the published project (its pyproject and
+        # sources on disk); a new project's first generation publishes them,
+        # and the bootstrap's next generation documents what it published.
+        published = (request.root / c.PYPROJECT_FILENAME).is_file()
+        if (
+            request.what is not c.Infra.CodegenConformSurface.ALL
+            or not owned
+            or not published
+        ):
             return result_type.ok(tuple(plan.files))
         ports = self.state.ports
         if ports is None:
