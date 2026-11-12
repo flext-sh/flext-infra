@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Self
 
 from flext_cli import m
 
@@ -56,6 +56,39 @@ class FlextInfraModelsCodegenPipeline:
             bool,
             m.Field(description="Apply the complete candidate campaign"),
         ] = True
+
+    class CodegenRootSelection(m.ContractModel):
+        """A resolved generation root admitted by its declared workspace topology."""
+
+        workspace_root: Annotated[Path, m.Field(description="Resolved workspace root")]
+        requested_root: Annotated[
+            Path, m.Field(description="Resolved requested generation root")
+        ]
+        members: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Resolved declared member checkouts"),
+        ] = ()
+
+        @m.model_validator(mode="after")
+        def _require_declared_root(self) -> Self:
+            """Reject a root outside the workspace and its declared members.
+
+            Returns:
+                The admitted generation root selection.
+
+            Raises:
+                ValueError: If the requested root is neither the workspace root
+                    nor a declared member checkout.
+
+            """
+            if self.requested_root not in {self.workspace_root, *self.members}:
+                msg = (
+                    "generation root must be the workspace root or a "
+                    f"declared member: {self.requested_root} "
+                    f"(workspace {self.workspace_root})"
+                )
+                raise ValueError(msg)
+            return self
 
     class CodegenRepositoryPlanOutcome(m.ArbitraryTypesModel):
         """One repository's planned files and environment."""

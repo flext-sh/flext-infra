@@ -74,7 +74,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             ci.local_value: make.check_gates_local,
         }
         for token, gates in expected.items():
-            with u.Tests.env_vars_context(env_vars={ci.variable: token}):
+            with u.Tests.env_vars_context(
+                env_vars={ci.variable: token},
+                vars_to_clear=(ci.remote_variable,),
+            ):
                 tm.that(
                     u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
                     eq=gates,
@@ -87,7 +90,9 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                     ),
                     eq=make.check_prerequisite_gates,
                 )
-        with u.Tests.env_vars_context(vars_to_clear=(ci.variable,)):
+        with u.Tests.env_vars_context(
+            vars_to_clear=(ci.variable, ci.remote_variable),
+        ):
             tm.that(
                 u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
                 eq=make.check_gates_default,
@@ -100,6 +105,37 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.FMT),
             eq=make.fmt_gates,
         )
+
+    @staticmethod
+    def test_remote_runner_never_executes_mypy_in_any_context() -> None:
+        """Mypy is local-only: no CI token on a remote runner selects it."""
+        make = config.Infra.codegen.make
+        ci = make.ci
+        tm.that(c.Infra.GATE_STAGES[c.Infra.MYPY], eq=c.Infra.GateStage.LOCAL)
+        tm.that(make.check_gates_ci, lacks=c.Infra.MYPY)
+        tm.that(make.pre_commit_check_gates, lacks=c.Infra.MYPY)
+        tm.that(make.check_gates_local, has=c.Infra.MYPY)
+        for token in (ci.value, ci.local_value, ci.pre_commit_value):
+            with u.Tests.env_vars_context(
+                env_vars={ci.variable: token, ci.remote_variable: ci.remote_value},
+            ):
+                tm.that(
+                    u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                    lacks=c.Infra.MYPY,
+                )
+                tm.that(
+                    u.Infra.not_executed_local_gates(make),
+                    eq=(c.Infra.MYPY,),
+                )
+        with u.Tests.env_vars_context(
+            env_vars={ci.variable: ci.local_value},
+            vars_to_clear=(ci.remote_variable,),
+        ):
+            tm.that(
+                u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
+                has=c.Infra.MYPY,
+            )
+            tm.that(u.Infra.not_executed_local_gates(make), eq=())
 
     @staticmethod
     def test_partitions_derive_from_each_gate_declared_stage() -> None:
@@ -118,7 +154,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             eq=tuple(
                 gate
                 for gate in make.check_gates_default
-                if stages[gate] is not c.Infra.GateStage.PUSH
+                if stages[gate] in {c.Infra.GateStage.COMMIT, c.Infra.GateStage.CI}
             ),
         )
         tm.that(
@@ -144,7 +180,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             stage = c.Infra.GATE_STAGES[gate]
             tm.that(
                 gate in make.check_gates_ci,
-                eq=stage is not c.Infra.GateStage.PUSH,
+                eq=stage in {c.Infra.GateStage.COMMIT, c.Infra.GateStage.CI},
             )
             tm.fail(gate in make.pre_commit_check_gates)
 
@@ -171,7 +207,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.that(active.check_gates_local, has="fixture-project-gate")
         tm.that(
             "fixture-project-gate" in active.check_gates_ci,
-            eq=stage is not c.Infra.GateStage.PUSH,
+            eq=stage in {c.Infra.GateStage.COMMIT, c.Infra.GateStage.CI},
         )
         tm.that(
             "fixture-project-gate" in active.pre_commit_check_gates,

@@ -119,6 +119,20 @@ class FlextInfraProtocolsConfigMake:
             """
             ...
 
+        @property
+        def remote_variable(self) -> t.NonEmptyStr:
+            """Structural member projected from the owning model.
+
+            Variable every remote runner exports, whatever CI token the step passes;
+            a remote check never runs a local-stage gate.
+            """
+            ...
+
+        @property
+        def remote_value(self) -> t.NonEmptyStr:
+            """Value of remote_variable on a remote runner."""
+            ...
+
     @runtime_checkable
     class MakeVerbSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""

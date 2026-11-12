@@ -13,6 +13,7 @@ import signal
 import sys
 import time
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import ClassVar
 
@@ -20,6 +21,9 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities._git.semantic_identity import (
+    FlextInfraUtilitiesGitSemanticIdentity,
+)
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -147,7 +151,8 @@ class FlextInfraUtilitiesResourceLimits:
         if invocation.profile_output is not None:
             return (
                 interpreter,
-                str(Path(__file__).with_name("_mypy_profile.py")),
+                "-m",
+                f"{__package__}._mypy.profile",
                 str(invocation.profile_output.resolve()),
                 "--timing-stats",
                 str(invocation.profile_output.with_suffix(".timing.txt").resolve()),
@@ -164,51 +169,69 @@ class FlextInfraUtilitiesResourceLimits:
 
     @staticmethod
     def mypy_cache_directory(project_dir: Path) -> Path:
-        """Resolve the per-environment shared Mypy cache of a project.
+        """Resolve the one Mypy cache shared by every checkout of a project.
 
-        Mypy keys its cache by module and revalidates each entry by source
-        hash, so every relock of one environment reuses one analysis: a
-        dependency bump recomputes only the modules it changed. Keying by
-        lock content forced a cold full-fleet analysis after every relock
-        and broke the bounded Mypy run. Projects keep distinct directories
-        because their ``tests`` packages share one module name, and the
-        cache key carries the per-repository environment identity (the
-        project's own elected runtime): distinct checkouts whose
-        environments resolve different installed views never share a cache,
-        while relocks inside one runtime stay warm. The identity reads the
-        repository's declared runtime owner only — never member metadata
-        through the running interpreter, where divergent member libraries
-        would leak into the key.
+        A cold analysis cache is the worst outcome this toolchain can give a
+        developer: a fresh worktree re-analysed the project and every
+        dependency (300s and a timeout against 5-19s warm). No cache key may
+        ever include a checkout path or a virtualenv path. The directory is
+        keyed by the repository identity (origin remote, else Git common
+        directory), the project's path relative to the repository root and the
+        Python implementation and version, so every clone, linked worktree and
+        ``.venv`` of one repository shares one warm cache. Sharing is safe
+        because Mypy revalidates each entry by source hash: another worktree
+        with a different lock or different sources recomputes only the modules
+        that differ and can never mask a finding. Distinct projects keep
+        distinct directories because their ``tests`` packages share one module
+        name.
 
         Returns:
             The resulting ``Path``.
 
         """
-        identity = FlextInfraUtilitiesResourceLimits.environment_cache_identity(
+        namespace = FlextInfraUtilitiesGitSemanticIdentity.repository_cache_namespace(
             project_dir,
-        )
+        ).unwrap()
+        digest = hashlib.sha256(namespace.encode(c.DEFAULT_ENCODING)).hexdigest()
         return (
-            FlextInfraUtilitiesResourceLimits.project_cache_directory(
-                project_dir,
-                FlextInfraUtilitiesResourceLimits.external_cache_directory(
-                    config.Infra.codegen.make.mypy_cache,
-                ),
+            FlextInfraUtilitiesResourceLimits.external_cache_directory(
+                config.Infra.codegen.make.mypy_cache,
             )
-            / identity
+            / digest
+            / FlextInfraUtilitiesResourceLimits.environment_cache_identity()
         )
 
     @staticmethod
-    def environment_cache_identity(project_dir: Path) -> str:
-        """Derive the stable identity of a repository's own analysis runtime.
+    def mypy_cache_lock(project_dir: Path) -> AbstractContextManager[object]:
+        """Serialize every Mypy run that shares one cache directory.
+
+        Mypy's default sqlite cache holds one write transaction per run and
+        raises "database is locked" when two runs (two worktrees sharing this
+        cache) commit together, so the shared cache is written by one run at a
+        time. The lock file sits beside the cache directory, never inside it.
 
         Returns:
-            The resulting ``str`` digest component.
+            The exclusive inter-process lock of this project's cache directory.
 
         """
-        runtime = FlextInfraUtilitiesProjectDiscovery.runtime_python(project_dir)
-        return hashlib.sha256(
-            f"{sys.executable}\0{runtime.resolve()}".encode(),
-        ).hexdigest()[:12]
+        cache = FlextInfraUtilitiesResourceLimits.mypy_cache_directory(project_dir)
+        return u.Cli.file_changes_lock(cache.with_name(f"{cache.name}.lock"))
+
+    @staticmethod
+    def environment_cache_identity() -> str:
+        """Name the Python implementation and version that wrote a cache.
+
+        Mypy cache data depends on the interpreter implementation and minor
+        version, never on where the interpreter or its virtualenv lives.
+
+        Returns:
+            The cache tag and version of the running interpreter.
+
+        """
+        return (
+            f"{sys.implementation.cache_tag}-"
+            f"{sys.version_info.major}.{sys.version_info.minor}"
+        )
 
     @staticmethod
     def ruff_cache_directory(project_dir: Path) -> Path:
@@ -288,7 +311,7 @@ class FlextInfraUtilitiesResourceLimits:
             return (
                 sys.executable,
                 "-m",
-                f"{__package__}._mypy_supervisor",
+                f"{__package__}._mypy.supervisor",
                 str(validated_limit.memory_limit_bytes),
                 str(validated_limit.timeout_seconds),
                 str(c.Infra.TIMEOUT_KILL_AFTER_SECONDS),

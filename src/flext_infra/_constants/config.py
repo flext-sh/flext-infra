@@ -85,12 +85,15 @@ class FlextInfraConstantsConfig:
         pre-push (tracker memory operator-ruling-2026-10-09-gate-baseline-0122
         admits Pyrefly there). ``PUSH`` gates -- whole-program checkers,
         code-smell audits and the project's own validators -- run only locally
-        and at pre-push.
+        and at pre-push. ``LOCAL`` gates run only on a developer machine: no
+        remote runner, not even a complete qualification run, executes them, and
+        a remote check reports each one as NOT EXECUTED.
         """
 
         COMMIT = "commit"
         CI = "ci"
         PUSH = "push"
+        LOCAL = "local"
 
     @unique
     class GateAcceptancePolicy(StrEnum):

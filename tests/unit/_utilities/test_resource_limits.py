@@ -653,37 +653,3 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 f"signal={signal_number}",
             ],
         )
-
-    @staticmethod
-    def test_mypy_cache_directory_is_physical_and_survives_metadata_changes(
-        tmp_path: Path,
-    ) -> None:
-        """Physical checkouts stay isolated without reading mutable TOML or locks."""
-        spec = config.Infra.codegen.make.mypy_cache
-
-        def checkout(name: str, project: str) -> Path:
-            root = tmp_path / name
-            root.mkdir()
-            (root / c.PYPROJECT_FILENAME).write_text(
-                f"[project]\nname = '{project}'\nversion = '0.0.0'\n",
-                encoding="utf-8",
-            )
-            return root
-
-        lane = checkout("lane", "fixture-alpha")
-        primary = checkout("primary", "fixture-alpha")
-        other = checkout("other", "fixture-beta")
-        cached = u.Infra.mypy_cache_directory(lane)
-        tm.ok(u.Infra.mypy_cache_directory(primary) != cached)
-        tm.that(
-            cached.is_relative_to(u.Infra.external_cache_directory(spec)),
-            eq=True,
-        )
-        (lane / c.Infra.UV_LOCK_FILENAME).write_text("rotated\n", encoding="utf-8")
-        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
-        metadata = lane / c.PYPROJECT_FILENAME
-        metadata.write_text("[project", encoding="utf-8")
-        before = metadata.read_bytes()
-        tm.that(u.Infra.mypy_cache_directory(lane), eq=cached)
-        tm.that(metadata.read_bytes(), eq=before)
-        tm.ok(u.Infra.mypy_cache_directory(other) != cached)

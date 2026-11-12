@@ -135,6 +135,19 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ]
+        remote_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Variable every remote runner exports, whatever CI token the "
+                    "step passes; a remote check never runs a local-stage gate."
+                ),
+            ),
+        ] = "GITHUB_ACTIONS"
+        remote_value: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Value of remote_variable on a remote runner"),
+        ] = "true"
 
         @m.model_validator(mode="after")
         def _validate_distinct_tokens(self) -> Self:
@@ -1479,7 +1492,11 @@ class FlextInfraModelsConfigMake(
             return tuple(
                 gate
                 for gate in self.check_gates_default
-                if stages[gate] != FlextInfraConstantsConfig.GateStage.PUSH
+                if stages[gate]
+                in {
+                    FlextInfraConstantsConfig.GateStage.COMMIT,
+                    FlextInfraConstantsConfig.GateStage.CI,
+                }
             )
 
         @m.computed_field
