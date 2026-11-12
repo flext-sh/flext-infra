@@ -17,7 +17,7 @@ import hashlib
 from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, closing, contextmanager
 from pathlib import Path
-from typing import ClassVar, cast, override
+from typing import ClassVar, override
 
 from flext_cli import u
 
@@ -665,7 +665,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         cls,
         snapshot: p.Infra.WorkspaceSnapshot,
         path: Path,
-    ) -> m.Infra.WorkspaceSnapshotSource:
+    ) -> p.Infra.WorkspaceSnapshotSource:
         """Return one workspace file, read once through the authenticated owner.
 
         Returns:
@@ -675,9 +675,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             ValueError: If the file lies outside every member.
 
         """
-        observed = snapshot.sources.get(path)
-        if observed is not None:
-            return cast("m.Infra.WorkspaceSnapshotSource", observed)
+        source = snapshot.sources.get(path)
+        if source is not None:
+            return source
         member = next(
             (root for root in (path, *path.parents) if root in snapshot.members),
             None,

@@ -12,7 +12,6 @@ import tokenize
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import cast
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.check import FlextInfraWorkspaceChecker
@@ -83,7 +82,7 @@ class FlextInfraNamespaceRelocationCascade:
         entries: Sequence[p.Infra.ModScanFinding],
         *,
         scan_root: Path,
-    ) -> tuple[tuple[c.Infra.CodemodRelocation, m.Infra.ModScanFinding], ...]:
+    ) -> tuple[tuple[c.Infra.CodemodRelocation, p.Infra.ModScanFinding], ...]:
         """Filter one scan report's entries down to in-scope relocation findings.
 
         The scope is the project's namespace file set (its declared scan
@@ -101,7 +100,7 @@ class FlextInfraNamespaceRelocationCascade:
         return tuple(
             (
                 relocation_by_rule[entry.rule_id],
-                cast("m.Infra.ModScanFinding", entry).model_copy(
+                entry.model_copy(
                     update={
                         "file": (scan_root / entry.file)
                         .resolve()
@@ -241,7 +240,7 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def _capture_relocation_state(
         request: p.Infra.NamespaceRelocationRequest,
-    ) -> p.Result[m.Infra.NamespaceRelocationState]:
+    ) -> p.Result[p.Infra.NamespaceRelocationState]:
         """Bind the working bytes after checking every target selection.
 
         Returns:
@@ -252,14 +251,14 @@ class FlextInfraNamespaceRelocationCascade:
         for _relocation, finding in request.findings:
             path = request.project_root / finding.file
             if not path.is_relative_to(request.project_root) or path not in selected:
-                return r[m.Infra.NamespaceRelocationState].fail(
+                return r[p.Infra.NamespaceRelocationState].fail(
                     f"relocation declaration is outside its selected targets: {path}"
                 )
             if path not in request.sources:
-                return r[m.Infra.NamespaceRelocationState].fail(
+                return r[p.Infra.NamespaceRelocationState].fail(
                     f"relocation source lacks its working view: {path}"
                 )
-        return r[m.Infra.NamespaceRelocationState].ok(
+        return r[p.Infra.NamespaceRelocationState].ok(
             m.Infra.NamespaceRelocationState(
                 working=dict(request.sources), originals={}, modes={}
             )
@@ -267,7 +266,7 @@ class FlextInfraNamespaceRelocationCascade:
 
     @staticmethod
     def _relocate_imports(
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         imports: Mapping[Path, Mapping[tuple[str, str], set[str]]],
     ) -> p.Result[bool]:
@@ -307,7 +306,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _family_targets(
         cls,
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         findings: Sequence[tuple[Path, str, str, int]],
     ) -> p.Result[tuple[list[tuple[Path, str, Path]], list[tuple[Path, str, Path]]]]:
@@ -394,7 +393,7 @@ class FlextInfraNamespaceRelocationCascade:
     @classmethod
     def _prepare_destinations(
         cls,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         declarations: Sequence[tuple[Path, str, Path]],
         members: Sequence[tuple[Path, str, Path]],
         *,
@@ -433,9 +432,7 @@ class FlextInfraNamespaceRelocationCascade:
                     f'{seed}\n\nclass {owner.value}:\n    """Relocated behavior."""\n'
                     f'\n\n__all__: list[str] = ["{owner.value}"]\n'
                 )
-            state.originals[target] = cast(
-                "m.Cli.AtomicFileState", destination.value
-            )
+            state.originals[target] = destination.value
             state.modes[target] = source.value.mode
             working[target] = seed
         return r[bool].ok(value=True)
@@ -470,7 +467,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _move_declarations(
         cls,
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         declarations: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
@@ -631,7 +628,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _publish_private_name(
         cls,
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         declaration: tuple[Path, str, Path],
     ) -> p.Result[str]:
@@ -687,7 +684,7 @@ class FlextInfraNamespaceRelocationCascade:
     def _transfer_members(
         cls,
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
         members: Sequence[tuple[Path, str, Path]],
     ) -> p.Result[bool]:
@@ -786,7 +783,7 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def _relocation_snapshot(
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
         rope_project: p.Infra.RopeProject,
     ) -> p.Infra.RopeProject:
         """Build one native snapshot of the current candidate, new files included.
@@ -848,7 +845,7 @@ class FlextInfraNamespaceRelocationCascade:
     @staticmethod
     def _relocation_plans(
         request: p.Infra.NamespaceRelocationRequest,
-        state: m.Infra.NamespaceRelocationState,
+        state: p.Infra.NamespaceRelocationState,
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Bind every changed candidate source to its destination state once.
 

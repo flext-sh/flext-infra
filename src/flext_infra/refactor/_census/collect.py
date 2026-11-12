@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
-from typing import cast
 
 from flext_infra import m, p, u
 from flext_infra.refactor._census import (
@@ -46,7 +46,8 @@ class FlextInfraRefactorCensusCollect(
         module: p.Infra.RopeModuleIndexEntry,
         scan_config: p.Infra.ScanConfig,
         *,
-        findings: m.Infra.ScanFindings,
+        project_objects: MutableMapping[str, MutableSequence[p.Infra.Object]],
+        report_projects: MutableSet[str],
     ) -> None:
         """Inventory one module, accumulating its selected objects per project.
 
@@ -57,32 +58,29 @@ class FlextInfraRefactorCensusCollect(
         project = self.project_name_for_module(module, convention)
         if not project:
             return
-        findings.report_projects.add(project)
-        objects = cast(
-            "tuple[m.Infra.Object, ...]",
-            tuple(
-                item
-                for item in rope.objects(
-                    module.file_path,
-                    include_local_scopes=scan_config.include_local_scopes,
-                    include_references=scan_config.include_object_references,
-                )
-                if self._include_object(
-                    item,
-                    selected_families=scan_config.selected_families,
-                    selected_kinds=scan_config.selected_kinds,
-                )
-            ),
+        report_projects.add(project)
+        objects = tuple(
+            item
+            for item in rope.objects(
+                module.file_path,
+                include_local_scopes=scan_config.include_local_scopes,
+                include_references=scan_config.include_object_references,
+            )
+            if self._include_object(
+                item,
+                selected_families=scan_config.selected_families,
+                selected_kinds=scan_config.selected_kinds,
+            )
         )
         if objects:
-            findings.project_objects.setdefault(project, []).extend(objects)
+            project_objects.setdefault(project, []).extend(objects)
 
     def _assemble_report(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
-        findings: m.Infra.ScanFindings,
+        findings: p.Infra.ScanFindings,
         scan_config: p.Infra.ScanConfig,
         census_kinds: frozenset[str] | None = None,
     ) -> p.Infra.WorkspaceReport:

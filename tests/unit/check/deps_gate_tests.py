@@ -368,12 +368,12 @@ class TestsFlextInfraDepsGate:
         before = pyproject.read_bytes()
         before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
-        )
+        context = m.Infra.GateContext.model_validate({
+            "repository_root": root,
+            "reports_dir": tmp_path / "reports",
+            "apply_fixes": True,
+            "runtime_dependency_inputs": inputs,
+        })
 
         with u.Tests.raises(
             RuntimeError,
@@ -414,12 +414,12 @@ class TestsFlextInfraDepsGate:
         )
         before_lock = inputs.lock.path.read_bytes()
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
-        context = m.Infra.GateContext(
-            repository_root=root,
-            reports_dir=tmp_path / "reports",
-            apply_fixes=True,
-            runtime_dependency_inputs=inputs,
-        )
+        context = m.Infra.GateContext.model_validate({
+            "repository_root": root,
+            "reports_dir": tmp_path / "reports",
+            "apply_fixes": True,
+            "runtime_dependency_inputs": inputs,
+        })
 
         repaired = gate.fix(root, context)
         after = pyproject.read_bytes()

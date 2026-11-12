@@ -64,10 +64,9 @@ class FlextInfraModelsRefactor(
         working: MutableMapping[Path, str] = m.Field(
             description="Candidate sources changed only by native planning effects"
         )
-        originals: MutableMapping[
-            Path,
-            m.Cli.AtomicFileState,
-        ] = m.Field(description="Complete original dependency closure")
+        originals: t.Port[MutableMapping[Path, p.Cli.AtomicFileState]] = m.Field(
+            description="Complete original dependency closure"
+        )
         modes: MutableMapping[Path, int | None] = m.Field(
             description="Authenticated file modes preserved by publication"
         )

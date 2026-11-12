@@ -24,8 +24,8 @@ class FlextInfraRefactorCensusFilters:
 
     @staticmethod
     def duplicate_groups(
-        project_objects: tuple[Sequence[m.Infra.Object], ...],
-    ) -> tuple[m.Infra.DuplicateGroup, ...]:
+        project_objects: tuple[Sequence[p.Infra.Object], ...],
+    ) -> tuple[p.Infra.DuplicateGroup, ...]:
         """Duplicate groups.
 
         Returns:
@@ -33,19 +33,19 @@ class FlextInfraRefactorCensusFilters:
 
         """
 
-        def object_location(item: m.Infra.Object) -> tuple[str, str, int]:
+        def object_location(item: p.Infra.Object) -> tuple[str, str, int]:
             return item.project, item.file_path, item.line
 
-        groups: MutableMapping[tuple[str, str, str], list[m.Infra.Object]] = (
+        groups: MutableMapping[tuple[str, str, str], list[p.Infra.Object]] = (
             defaultdict(list)
         )
-        payloads: MutableMapping[str, list[m.Infra.Object]] = defaultdict(list)
+        payloads: MutableMapping[str, list[p.Infra.Object]] = defaultdict(list)
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
             if item.payload_fingerprint:
                 payloads[item.payload_fingerprint].append(item)
-        duplicates: list[m.Infra.DuplicateGroup] = []
+        duplicates: list[p.Infra.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
             if (
@@ -55,14 +55,14 @@ class FlextInfraRefactorCensusFilters:
                 continue
             canonical = min(definitions, key=object_location)
             duplicates.append(
-                m.Infra.DuplicateGroup(
-                    name=definitions[0].name,
-                    kind=definitions[0].kind,
-                    definitions=definitions,
-                    canonical=canonical.project,
-                    value_identical=len({item.fingerprint for item in definitions})
+                m.Infra.DuplicateGroup.model_validate({
+                    "name": definitions[0].name,
+                    "kind": definitions[0].kind,
+                    "definitions": definitions,
+                    "canonical": canonical.project,
+                    "value_identical": len({item.fingerprint for item in definitions})
                     == 1,
-                ),
+                }),
             )
         for fingerprint in sorted(payloads):
             definitions = sorted(payloads[fingerprint], key=object_location)
@@ -77,14 +77,14 @@ class FlextInfraRefactorCensusFilters:
             if len(owners) == 1:
                 continue
             duplicates.append(
-                m.Infra.DuplicateGroup(
-                    name=definitions[0].name,
-                    kind=definitions[0].kind,
-                    definitions=definitions,
-                    canonical=definitions[0].project,
-                    value_identical=False,
-                    semantic_candidate=True,
-                ),
+                m.Infra.DuplicateGroup.model_validate({
+                    "name": definitions[0].name,
+                    "kind": definitions[0].kind,
+                    "definitions": definitions,
+                    "canonical": definitions[0].project,
+                    "value_identical": False,
+                    "semantic_candidate": True,
+                }),
             )
         return tuple(duplicates)
 

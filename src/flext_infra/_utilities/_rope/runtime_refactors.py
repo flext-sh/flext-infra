@@ -1235,12 +1235,15 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
             TypeError: The installed native mover lacks the class-transfer contract.
 
         """
-        mover = cls.create_move(project, origin, origin_offset)
-        if not isinstance(mover, cls.runtime_type("rope.refactor.move", "MoveClass")):
+        mover = cls.runtime_callable("rope.refactor.move", "create_move")(
+            project, origin, origin_offset
+        )
+        if not isinstance(
+            mover, cls.runtime_type("rope.refactor.move", "MoveClass")
+        ) or not isinstance(mover, p.Infra.RopeMoveClass):
             message = "native Rope class transfer requires MoveClass"
             raise TypeError(message)
-        class_mover = cast("p.Infra.RopeMoveClass", mover)
-        return class_mover.get_changes(
+        return mover.get_changes(
             destination,
             resources=options.resources,
             destination_offset=options.destination_offset,

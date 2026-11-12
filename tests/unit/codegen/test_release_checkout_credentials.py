@@ -161,7 +161,7 @@ class TestsFlextInfraReleaseCheckoutCredentials:
         succeeds: bool,
         release: bool,
     ) -> None:
-        """Real Git classifies the dispatch tag without executing data or moving HEAD."""
+        """Real Git classifies the dispatch tag without executing or moving HEAD."""
         jobs = u.Cli.JSON_MAPPING_ADAPTER.validate_python(self.render_release()["jobs"])
         identity = u.Cli.JSON_MAPPING_ADAPTER.validate_python(jobs["identity"])
         steps = u.json_list_adapter().validate_python(identity["steps"])

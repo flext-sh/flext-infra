@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_infra import c, m, p, r, u
@@ -42,26 +43,22 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
         )
         if env_result.failure:
             return r[bool].from_failure(env_result)
-        report_model = m.Infra.WorkspaceDependencyReport(
-            workspace=str(params.repository_root),
-            projects={},
-            pip_check=None,
-        )
+        projects_report: dict[str, p.Infra.ProjectDependencyReport] = {}
         for project_path in env_result.value:
             project_result = self._run_project_detection(
                 project_path,
                 venv_bin=venv_bin,
                 params=params,
-                projects_report=report_model.projects,
+                projects_report=projects_report,
             )
             if project_result.failure:
                 return r[bool].from_failure(project_result)
-        return self._finalize_run(params, report_model, venv_bin)
+        return self._finalize_run(params, projects_report, venv_bin)
 
     def _finalize_run(
         self,
         params: p.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceDependencyReport,
+        projects_report: Mapping[str, p.Infra.ProjectDependencyReport],
         venv_bin: Path,
     ) -> p.Result[bool]:
         """Publish the typed report and return its actual dependency verdict.
@@ -78,11 +75,11 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
         if pip_check_result.failure:
             return r[bool].from_failure(pip_check_result)
         pip_check = pip_check_result.value
-        report_model = m.Infra.WorkspaceDependencyReport(
-            workspace=report_model.workspace,
-            projects=report_model.projects,
-            pip_check=pip_check,
-        )
+        report_model = m.Infra.WorkspaceDependencyReport.model_validate({
+            "workspace": str(params.repository_root),
+            "projects": projects_report,
+            "pip_check": pip_check,
+        })
         if params.output_format != c.Cli.OutputFormats.JSON:
             out_path = params.output_path or u.Cli.resolve_report_path(
                 params.repository_root,

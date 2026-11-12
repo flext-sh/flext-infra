@@ -174,7 +174,7 @@ class FlextInfraModelsCodegenPipeline:
         source_inputs: t.Port[
             dict[
                 Path,
-                m.Cli.AtomicFileState,
+                p.Cli.AtomicFileState,
             ]
         ] = m.Field(
             default_factory=dict,

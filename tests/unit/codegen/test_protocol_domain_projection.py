@@ -117,7 +117,9 @@ class TestsProtocolDomainProjection:
                 declaration = u.Infra.qualified_name(
                     binding[0], owner, module_name=f"{package.name}.{module}"
                 ).get_object()
-                resource = tm.not_none(declaration.get_module().get_resource())
+                resource = tm.not_none(
+                    tm.not_none(declaration.get_module()).get_resource()
+                )
                 tm.that(Path(resource.real_path), eq=package / source)
             with u.Tests.raises(ValueError, match="non-equivalent public Protocol"):
                 u.Infra.protocol_model_sources_from_source(root, binding[0])

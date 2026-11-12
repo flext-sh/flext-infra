@@ -43,12 +43,7 @@ class TestsFlextInfraModCliRoute:
         )
         tm.that(exit_code, ne=0, msg=console.out + console.err)
         tm.that(evidence.totals_by_rule[rule_id], eq=1)
-        entry = tm.not_none(
-            next(
-                (item for item in evidence.entries if item.rule_id == rule_id),
-                None,
-            )
-        )
+        entry = next(item for item in evidence.entries if item.rule_id == rule_id)
         tm.that(entry.text, eq=source)
         with u.Infra.mod_native_readers(evidence.native_artifacts) as readers:
             tm.that(

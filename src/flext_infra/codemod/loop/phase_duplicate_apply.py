@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
 
-from flext_infra import c, m, p, r
+from flext_infra import c, p, r
 from flext_infra.codemod.duplicate_apply import FlextInfraCodemodDuplicateApply
 from flext_infra.refactor._census import (
     FlextInfraRefactorCensusCollectHelpers,
@@ -98,14 +97,14 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
     @staticmethod
     def _duplicate_groups(
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> tuple[m.Infra.DuplicateGroup, ...]:
+    ) -> tuple[p.Infra.DuplicateGroup, ...]:
         """Rebuild the workspace duplicate groups from the Rope inventory.
 
         Returns:
             The resulting ``tuple[p.Infra.DuplicateGroup, ...]``.
 
         """
-        project_objects: dict[str, list[m.Infra.Object]] = {}
+        project_objects: dict[str, list[p.Infra.Object]] = {}
         for module in rope_workspace.modules():
             if not FlextInfraRefactorCensusCollectHelpers.production_module(
                 module,
@@ -119,15 +118,10 @@ class FlextInfraCodemodLoopPhaseDuplicateApply:
             if not project:
                 continue
             project_objects.setdefault(project, []).extend(
-                cast(
-                    "tuple[m.Infra.Object, ...]",
-                    tuple(
-                        rope_workspace.objects(
-                            module.file_path,
-                            include_local_scopes=False,
-                            include_references=False,
-                        )
-                    ),
+                rope_workspace.objects(
+                    module.file_path,
+                    include_local_scopes=False,
+                    include_references=False,
                 ),
             )
         return FlextInfraRefactorCensusFilters.duplicate_groups(

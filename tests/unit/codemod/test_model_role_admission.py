@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, t, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraModelRoleAdmission:
@@ -54,7 +54,7 @@ class TestsFlextInfraModelRoleAdmission:
         tmp_path: Path,
         project_name: str,
         surface: str,
-        session_runtime: t.Tests.SessionRuntime,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Seven fixture profiles preserve payload diagnostics and writer behavior."""
         declaration = u.Tests.project_spec(f"role-{project_name}")

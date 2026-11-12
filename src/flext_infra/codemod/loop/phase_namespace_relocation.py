@@ -46,14 +46,14 @@ class FlextInfraCodemodLoopPhaseNamespaceRelocation:
                 and (u.Infra.project_root(path) or project_root) == project_root
             )
             planned = cascade.plan(
-                m.Infra.NamespaceRelocationRequest(
-                    project_root=project_root,
-                    findings=cascade.findings_from_report(
+                m.Infra.NamespaceRelocationRequest.model_validate({
+                    "project_root": project_root,
+                    "findings": cascade.findings_from_report(
                         project_root, py_files, preflight.entries, scan_root=root
                     ),
-                    py_files=py_files,
-                    sources=working,
-                ),
+                    "py_files": py_files,
+                    "sources": working,
+                }),
                 rope_project=rope_workspace.rope_project,
             )
             if planned.failure:

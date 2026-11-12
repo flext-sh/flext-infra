@@ -24,6 +24,7 @@ from flext_infra._models._codegen import (
     FlextInfraModelsCodegenTransaction,
 )
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
+from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenLazyInit
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesCodegenFilePlan,
@@ -40,7 +41,7 @@ class FlextInfraUtilitiesLazyInitPlan:
     @staticmethod
     def lazy_init_run(
         source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject,
-        index: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
+        index: FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex,
         *,
         root: Path,
         scoped: bool,
@@ -52,11 +53,11 @@ class FlextInfraUtilitiesLazyInitPlan:
             The run every planning step reads and caches through.
 
         """
-        return FlextInfraModelsCodegenLazyInit.LazyInitRun(
-            root=root,
-            scoped=scoped,
-            index=index,
-            model=FlextInfraUtilitiesPythonModel.python_model_run(
+        return FlextInfraModelsCodegenLazyInit.LazyInitRun.model_validate({
+            "root": root,
+            "scoped": scoped,
+            "index": index,
+            "model": FlextInfraUtilitiesPythonModel.python_model_run(
                 source_project,
                 {
                     entry.module_name: entry.file_path
@@ -70,18 +71,18 @@ class FlextInfraUtilitiesLazyInitPlan:
                     else None
                 ),
             ),
-            plans={},
-            contexts={},
-            parents={},
-            declared={},
-            declarations={},
-            packages={},
-            collisions=[],
-        )
+            "plans": {},
+            "contexts": {},
+            "parents": {},
+            "declared": {},
+            "declarations": {},
+            "packages": {},
+            "collisions": [],
+        })
 
     @staticmethod
     def lazy_init_target_dirs(
-        index: FlextInfraModelsCodegenLazyInit.RopeWorkspaceIndex,
+        index: FlextInfraProtocolsCodegenLazyInit.RopeWorkspaceIndex,
         root: Path,
         *,
         module: str,

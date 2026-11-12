@@ -47,6 +47,34 @@ class FlextInfraWorkspaceRoutes:
         return r[int].ok(len(selected.value))
 
     @staticmethod
+    def _verify_lane(
+        request: p.Infra.GitLaneVerificationRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Publish the live integration identity as its owning model.
+
+        Returns:
+            The live integration identity or the original admission failure.
+
+        """
+        return FlextInfraGitService.verify_lane(request).map(
+            m.Infra.GitOidReport.model_validate
+        )
+
+    @staticmethod
+    def _git_identity(
+        request: p.Infra.GitRepoRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Publish the canonical Git checkout identity as its owning model.
+
+        Returns:
+            The checkout identity or the original resolution failure.
+
+        """
+        return u.Infra.git_identity(request).map(
+            m.Infra.GitIdentityReport.model_validate
+        )
+
+    @staticmethod
     def _tests(
         params: p.Infra.WorkspaceTestsRequest,
         *,
@@ -391,14 +419,14 @@ class FlextInfraWorkspaceRoutes:
                         "without effects"
                     ),
                     m.Infra.GitLaneVerificationRequest,
-                    FlextInfraGitService.verify_lane,
+                    cls._verify_lane,
                     "lane stash and live integration ancestry verified",
                 ),
                 (
                     "identity",
                     "Report canonical Git checkout identity",
                     m.Infra.GitRepoRequest,
-                    u.Infra.git_identity,
+                    cls._git_identity,
                     "workspace Git identity resolved",
                 ),
                 (

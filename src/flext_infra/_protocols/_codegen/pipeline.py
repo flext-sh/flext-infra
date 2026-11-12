@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -231,11 +231,7 @@ class FlextInfraProtocolsCodegenPipeline:
     class CodegenConformState(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        @property
-        def source_inputs(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Original source witnesses retained after native planning."""
-            ...
-
+        source_inputs: dict[Path, p.Cli.AtomicFileState]
         source_imports: dict[Path, tuple[frozenset[str], frozenset[str]]]
         request: FlextInfraProtocolsConfigArtifact.CodegenGenerateRequest | None
 

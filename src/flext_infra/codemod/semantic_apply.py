@@ -551,9 +551,7 @@ class FlextInfraCodemodSemanticApply(
                 tuple[p.Infra.CodegenFilePlan, ...],
                 AbstractContextManager[p.Infra.RopeProject],
             ]:
-                scope = (
-                    set(current_sources) if selected is None else set(selected)
-                )
+                scope = set(current_sources) if selected is None else set(selected)
                 plans = tuple(
                     m.Infra.CodegenFilePlan(
                         project=view_root,
@@ -581,9 +579,7 @@ class FlextInfraCodemodSemanticApply(
                     )
                 )
 
-            cls._replay_native_rewires(
-                planned, artifact, roots, sources, originals
-            )
+            cls._replay_native_rewires(planned, artifact, roots, sources, originals)
         updates = {
             path: source
             for path in consumers
@@ -593,7 +589,9 @@ class FlextInfraCodemodSemanticApply(
         return FlextInfraStagedPackage.plan_sources(
             root,
             updates,
-            options=m.Infra.StageSourceOptions(inputs=tuple(originals.values())),
+            options=m.Infra.StageSourceOptions.model_validate({
+                "inputs": tuple(originals.values())
+            }),
         ).map(lambda candidate: m.Infra.SemanticSourcePlan(candidate=candidate))
 
     @classmethod
@@ -797,9 +795,7 @@ class FlextInfraCodemodSemanticApply(
         originals: Mapping[Path, p.Cli.AtomicFileState],
     ) -> None:
         """Replay native binding transfers over the source/scaffold overlay only."""
-        consumers = tuple(
-            path for path in sources if path.suffix == c.Infra.EXT_PYTHON
-        )
+        consumers = tuple(path for path in sources if path.suffix == c.Infra.EXT_PYTHON)
         for intent in artifact.rewires:
             recorded = cls._rewire_import_root(
                 artifact.candidate.workspace
