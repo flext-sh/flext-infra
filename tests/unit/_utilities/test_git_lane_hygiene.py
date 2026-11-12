@@ -316,10 +316,12 @@ class TestsFlextInfraGitLaneHygiene:
         rendered_root = u.Tests.git_repository(tmp_path / "rendered")
         u.Tests.WorktreeFixture.write_python_project(rendered_root, rendered_root.name)
         u.Tests.write_standalone_workspace_manifest(rendered_root, rendered_root.name)
+        # The fixture owns origin; the rendered project rebinds it to its
+        # governed provider URL instead of adding a duplicate remote.
         u.Tests.git_run(
             rendered_root,
             "remote",
-            "add",
+            "set-url",
             request.remote,
             u.Tests.WorktreeFixture.governed_repository_url(rendered_root.name),
         )

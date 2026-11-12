@@ -13,6 +13,17 @@ valid:
     from __future__ import annotations
     class FlextThingConstants:
         RETRIES = 30
+  # No annotator covers an aliased facade constructor or an inherited
+  # model_config, so ClassVar would stay unused and the cascade would not converge.
+  - |
+    from __future__ import annotations
+    from flext_core import FlextModels as CoreModels, FlextSettings
+    class Settings(FlextSettings):
+        model_config = CoreModels.SettingsConfigDict(env_file=None)
+  - |
+    from __future__ import annotations
+    class Child(Parent):
+        model_config = Parent.model_config
 # `invalid` MUST match and add `from typing import ClassVar`.
 invalid:
   - |
@@ -26,3 +37,8 @@ invalid:
 
     class Model:
         model_config = m.ConfigDict(frozen=True)
+  - |
+    from __future__ import annotations
+
+    class Model:
+        model_config = ConfigDict(frozen=True)
