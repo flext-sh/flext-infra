@@ -160,9 +160,12 @@ class FlextInfraModelsCodemod:
 
         ast-grep may include additional replacement and metavariable metadata;
         the complete payload remains in the gate's raw scanner output.
+        Python-mode dumps carry field names and re-validate by name.
         """
 
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(strict=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            strict=True, validate_by_name=True
+        )
 
         file: Annotated[str, m.Field(min_length=1, description="Reported source path")]
         rule_id: str = m.Field(
