@@ -1345,16 +1345,12 @@ cannot invalidate the captured declaration offsets.
 The same rule covers imports from the package root and from its `protocols`
 module. Authored protocol extension inserts declarations against the captured
 holder extent before changing the import header, preserving class indentation.
-Persisted protocol payload fields use the existing Pydantic metadata mechanism:
-`t.schema_for_model(actual_model)` delegates validation, serialization and JSON
-Schema to that authenticated model. The annotation remains the runtime-checkable
-protocol; the model reference is an executable schema target. This is distinct
-from `t.Port`, which represents an injected dependency rather than persisted data.
-Runtime collection adapters follow the same boundary. The accessor migration
-catalog validates its sequence of protocol-typed items with
-`t.schema_for_model(m.Infra.AccessorMigrationRule)` metadata. The concrete model
-remains an executable schema target, preserving its strict validation, defaults
-and model validators; a Protocol alone cannot validate the YAML payload.
+Persisted model fields name their concrete model directly (ADR-018 amendment
+2026-11-09), and consumers receive the `p` contract; the deferred
+`t.schema_for_model` form is no longer used at the field boundary. This is
+distinct from `t.Port[p.X]` with `m.Field(exclude=True)`, which represents an
+injected dependency rather than persisted data. Protocol-typed values build
+boundary models through `Model.model_validate({...})`.
 The field migration classifies model declarations through the existing native
 Rope scope graph and the authenticated Pydantic base identity. It does not build
 a second import/ancestry inventory or infer a model role from a class basename.
