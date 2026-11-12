@@ -187,10 +187,6 @@ jobs:
 {% for name in docs_report_filenames %}            {{ report_root }}.reports/**/{{ name }}
 {% endfor %}            {{ report_root }}.reports/check/**/*.sarif
             {{ report_root }}.reports/check/**/*.md
-            {{ report_root }}.reports/tests/**/*.json
-            {{ report_root }}.reports/tests/**/summary.txt
-            {{ report_root }}.reports/tests/**/failed-tests.txt
-            {{ report_root }}.reports/tests/**/errors.txt
             {{ report_root }}{{ make.gate_receipts_directory }}/**/{{ gate_original_receipt_filename }}
             {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.sarif
             {{ report_root }}{{ make.gate_receipts_directory }}/**/check/**/*.md

@@ -294,13 +294,6 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(inputs["if-no-files-found"], eq="error")
         tm.that(inputs["include-hidden-files"], eq=True)
         paths = str(inputs["path"]).splitlines()
-        for receipt_glob in (
-            ".reports/tests/**/*.json",
-            ".reports/tests/**/summary.txt",
-            ".reports/tests/**/failed-tests.txt",
-            ".reports/tests/**/errors.txt",
-        ):
-            tm.that(paths, has=receipt_glob)
         tm.that(
             paths,
             has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
