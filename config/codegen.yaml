@@ -23,6 +23,12 @@ Infra:
         year: 2026
       namespace_scan_dirs:
       - src
+      deferred_distributions:
+      - gitpython
+      - libcst
+      - rope
+      - pytest
+      - mkdocs
       publishes_release: true
       extra_verbs:
       - name: mod-snapshots
