@@ -1101,9 +1101,9 @@ class FlextInfraModelsConfigArtifact(
             # A generated source tree is tracked: ignoring it would hide the
             # modules a regeneration adds from ``git add``. The upgrade
             # executor environment (make.executor_environment) is a
-            # runtime-root-relative path; setup keeps its publication and
-            # lifecycle locks beside it, in the same state directory, so that
-            # directory is ignored anchored at the root.
+            # runtime-root-relative path; setup keeps its installation stages
+            # beside it, in the same state directory, so that directory is
+            # ignored anchored at the root.
             return (
                 *(
                     f"{artifact.name}/" if artifact.is_dir else artifact.name

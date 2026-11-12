@@ -34,17 +34,25 @@ class TestsVerifyLanes:
 
         """
         repo = u.Tests.git_repository(root)
-        manifest = u.Tests.write_workspace_manifest(repo, repo.name)
-        workspace = tm.ok(u.Infra.load_workspace_manifest(repo))[0]
-        declared = workspace.model_copy(
-            update={
-                "integration": m.Infra.WorkspaceIntegrationSpec(
-                    provider=workspace.repository.provider,
-                    branch=integration,
-                ),
-            },
+        u.Tests.write_workspace_manifest(repo, repo.name)
+        provider = tm.ok(u.Infra.load_workspace_manifest(repo))[0].repository.provider
+        tm.ok(
+            u.Cli.yaml_dump(
+                repo / "config" / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "integration": {
+                                    "provider": provider,
+                                    "branch": integration,
+                                },
+                            },
+                        },
+                    },
+                },
+            ),
         )
-        tm.ok(u.Cli.yaml_dump(manifest, declared.model_dump(mode="json")))
         u.Tests.git_run(repo, "add", "config")
         u.Tests.git_run(repo, "commit", "-m", "declare integration fixture")
         u.Tests.git_run(repo, "branch", "-m", integration)
@@ -174,6 +182,38 @@ class TestsVerifyLanes:
         dormant = capsys.readouterr()
         tm.that(dormant.out + dormant.err, has="NOT EXECUTED (not selected/unknown)")
         tm.that(u.Tests.git_capture(request.repo_root, "show-ref"), eq=refs)
+
+    @classmethod
+    @c.Tests.MARK.parametrize("integration", ["release/alpha", "delivery/beta"])
+    def test_cli_new_branch_at_integration_tip_is_active(
+        cls,
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+        integration: str,
+    ) -> None:
+        """The branch being committed is never merged-but-alive, whatever its name."""
+        request = cls._repository(tmp_path, integration, 5.0)
+        u.Tests.git_run(request.repo_root, "switch", "-c", "first-commit-slice")
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=0)
+        output = capsys.readouterr()
+        tm.that(output.out + output.err, lacks="merged but alive")
+
+    @classmethod
+    def test_cli_worktree_with_wip_is_active_and_clean_branch_is_reported(
+        cls,
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """WIP in a worktree keeps its merged-tip branch active; idle refs stay."""
+        request = cls._repository(tmp_path, "release/alpha", 5.0)
+        lane = u.Tests.git_linked_lane(tmp_path, request.repo_root, "wip-slice")
+        u.Tests.git_run(request.repo_root, "branch", "idle-slice")
+        (lane / "wip.txt").write_text("uncommitted\n", encoding="utf-8")
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=1)
+        output = capsys.readouterr()
+        text = output.out + output.err
+        tm.that(text, has="merged but alive ref: refs/heads/idle-slice")
+        tm.that(text, lacks="merged but alive ref: refs/heads/wip-slice")
 
     @classmethod
     def test_cli_stash_preserves_index_refs_and_wip(
