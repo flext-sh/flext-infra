@@ -1733,7 +1733,8 @@ The CI workflow also exposes an optional `full_check` boolean on
 `workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
 existing complete check with `make.ci.local_value`, in addition to the unchanged
 required CI operations. This selects every active gate instead of the CI
-partition. The workflow records the candidate SHA and uploads the complete
+partition, except local-stage gates such as Mypy, which a remote runner never
+executes. The workflow records the candidate SHA and uploads the complete
 check's receipts through the same artifact owner; a primary-only result is
 not complete-check evidence.
 Native checks emit bounded progress at selection, identity/report preparation,
@@ -3953,7 +3954,13 @@ Local runs, CI, and hooks derive their gates from the same active set and from
 each gate's declared stage (`c.Infra.GateStage` in the registry row, or `stage` on a
 `make.project_check_gates` entry); no hand-kept gate list exists. `CI=N make check`
 and `make check` without `CI` run the complete active set. `CI=Y make check` runs
-the commit and CI stages (`make.check_gates_ci`, Pyrefly included). The commit hook
+the commit and CI stages (`make.check_gates_ci`, Pyrefly included). Mypy is a
+local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
+`full_check` run, and a remote check logs it as NOT EXECUTED; locally it shares
+one warm cache across every checkout, linked worktree and `.venv` of a repository
+(`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
+inside it and Python implementation and version, never by a checkout or
+virtualenv path). The commit hook
 passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
 (`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
 other validator. Staged Python files run the lint and format gates on those files; a

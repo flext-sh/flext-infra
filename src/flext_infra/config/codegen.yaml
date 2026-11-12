@@ -744,14 +744,15 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # The Mypy gate shares one analysis per project name inside one
-      # environment (u.Infra.mypy_cache_directory keys the directory with the
-      # interpreter plus the installed core distribution version). Relocks
-      # retain the directory; Mypy revalidates changed modules by source hash,
-      # so a warm cache never masks a finding, while distinct checkouts whose
-      # environments resolve different installed views never share a cache.
-      # Distinct project names keep their module namespaces in separate
-      # directories.
+      # One warm Mypy cache serves every checkout, clone, linked worktree and
+      # .venv of a repository (u.Infra.mypy_cache_directory keys the directory
+      # by the repository identity, the project's path inside it and the Python
+      # implementation and version). Mypy revalidates every entry by source
+      # hash, so a different lock or different sources in another worktree only
+      # recompute the modules that differ and can never mask a finding. A cold
+      # analysis cache is the worst outcome this toolchain can give a
+      # developer: no cache key may ever include a checkout path or a
+      # virtualenv path.
       mypy_cache:
         cache_environment_variable: MYPY_CACHE_DIR
         data_home_environment_variable: XDG_CACHE_HOME
@@ -796,6 +797,11 @@ Infra:
         # pre_commit_value: the generated commit hook passes this token to its
         # check row, which then runs only the commit-stage (fast) gates.
         pre_commit_value: C
+        # Every remote runner exports this pair whatever CI token a step
+        # passes: a local-stage gate (Mypy) is never executed there and a
+        # remote check reports it as NOT EXECUTED.
+        remote_variable: GITHUB_ACTIONS
+        remote_value: "true"
         # Gate baseline of the 0.12 line (tracker memory
         # operator-ruling-2026-10-09-gate-baseline-0122). Every gate blocks in
         # every context that runs it; there is no informative gate. No gate
@@ -811,7 +817,10 @@ Infra:
         #   hook) run every active gate: the whole-program checkers mypy and
         #   pyright, the codemod rule set, smells and the project's own
         #   validators block there. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
-        #   and the project-owned tools.mypy.timeout_seconds budget.
+        #   and the project-owned tools.mypy.timeout_seconds budget;
+        # - Mypy is a local-stage gate (GateStage.LOCAL): it never runs on a
+        #   remote runner, not even in the CI=N complete qualification run, and
+        #   a remote check reports it as NOT EXECUTED.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
