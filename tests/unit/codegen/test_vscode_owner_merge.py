@@ -867,7 +867,7 @@ class TestsFlextInfraMarkdownEditorRetirement:
         tm.ok(
             u.Cli.yaml_dump(
                 directory / c.Infra.CODEGEN_CONFIG_FILENAME,
-                {"Infra": {"codegen": {"repository": {"kind": "internal"}}}},
+                {"Infra": {"codegen": {"repository": {}}}},
             ),
         )
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
