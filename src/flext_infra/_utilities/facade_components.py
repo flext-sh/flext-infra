@@ -31,6 +31,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesFacadeMembers,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesProtectedEditLinting,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
@@ -3424,7 +3425,10 @@ class FlextInfraUtilitiesFacadeComponents:
         installed distributions that provide it (``git`` resolves to
         ``gitpython``, so the capability prefix ``git_`` is not a library
         prefix). Nothing is listed: the set is the dependency declaration as
-        installed.
+        installed. A distribution the project itself names is a domain
+        capability, not a leak: a package or subpackage of the project with
+        that name, or one declared in the repository's ``domain_capabilities``,
+        is removed, as is every declared stdlib backport.
 
         Returns:
             The normalized distribution names, sorted.
@@ -3438,12 +3442,35 @@ class FlextInfraUtilitiesFacadeComponents:
             *FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root),
         }
         providers = packages_distributions()
+        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
+        declared = artifacts.load_repository_declaration_inputs(
+            root, source_project=snapshot.engine
+        ).unwrap()
+
+        def normalized(name: str) -> str:
+            return name.lower().replace("-", "_").replace(".", "_")
+
+        exempt = {
+            normalized(name)
+            for name in (
+                *declared.spec.domain_capabilities,
+                *config.Infra.tooling.lazy_init.stdlib_backports,
+            )
+        }
+        exempt.update(
+            normalized(part)
+            for path in FlextInfraUtilitiesWorkspaceSnapshot.workspace_python_files(
+                snapshot, root
+            )
+            for part in path.parent.relative_to(root).parts
+        )
         return tuple(
             sorted({
-                distribution.lower().replace("-", "_").replace(".", "_")
+                distribution
                 for module in native.codemod_imported_top_modules(snapshot, root)
                 if module not in known and not module.startswith("_")
-                for distribution in providers.get(module, ())
+                for distribution in map(normalized, providers.get(module, ()))
+                if distribution not in exempt
             })
         )
 
