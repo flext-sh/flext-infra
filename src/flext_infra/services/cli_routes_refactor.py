@@ -12,6 +12,7 @@ from typing import ClassVar
 from flext_cli import cli
 
 from flext_infra import c, infra, m, p, r, t, u
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeMissingImports
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
     FlextInfraCodemodSemanticApply,
@@ -256,6 +257,15 @@ class FlextInfraRefactorRoutes:
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
             handler=FlextInfraNamespaceEnforcer.execute_command,
+        ),
+        m.Cli.ResultCommandRoute(
+            name="missing-imports",
+            help_text=(
+                "Repair undefined names with Rope-resolved imports "
+                "(conservative, no AST/CST/re)"
+            ),
+            model_cls=m.Infra.RefactorNamespaceEnforceInput,
+            handler=FlextInfraUtilitiesRopeMissingImports.execute,
         ),
         m.Cli.ResultCommandRoute(
             name="census",

@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import tempfile
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache
 from pathlib import Path, PurePosixPath
@@ -16,7 +15,7 @@ from flext_cli import u
 from packaging.utils import canonicalize_name
 
 import flext_infra
-from flext_infra import c, config, m, p, r, t
+from flext_infra import c, config, m, p, r, settings, t
 from flext_infra._utilities._codemod import (
     FlextInfraUtilitiesCodemodRulesDistributions,
     FlextInfraUtilitiesCodemodScopes,
@@ -452,6 +451,24 @@ class FlextInfraUtilitiesCodemodRules(
         u.Cli.atomic_write_text_file(path, text).unwrap()
 
     @classmethod
+    def _merge_generated_scopes(
+        cls, generated: Sequence[p.Infra.CodemodRuleset]
+    ) -> dict[str, list[str]]:
+        """Merge file scopes published by the generated providers.
+
+        Returns:
+            Project-relative file lists keyed by selector.
+
+        """
+        scopes: dict[str, list[str]] = {}
+        for ruleset in generated:
+            for key, values in FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(
+                ruleset.config
+            ).items():
+                scopes.setdefault(key, []).extend(values)
+        return scopes
+
+    @classmethod
     def codemod_stage_scan_ruleset(
         cls, plan: p.Infra.CodemodRulePlan, destination: Path
     ) -> p.Infra.CodemodRuleset:
@@ -484,16 +501,7 @@ class FlextInfraUtilitiesCodemodRules(
             for ruleset in plan.rulesets
             if ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
         ]
-        scopes: dict[str, object] = {}
-        for gen in generated:
-            for key, val in FlextInfraUtilitiesCodemodScopes.codemod_stage_scopes(gen.config).items():
-                if key in scopes:
-                    if isinstance(scopes[key], list) and isinstance(val, list):
-                        scopes[key].extend(val)
-                    elif isinstance(scopes[key], dict) and isinstance(val, dict):
-                        scopes[key].update(val)
-                else:
-                    scopes[key] = val
+        scopes = cls._merge_generated_scopes(generated)
         for ruleset in plan.rulesets:
             cls._project_provider_utilities(
                 ruleset.config.resolve(),
@@ -584,7 +592,9 @@ class FlextInfraUtilitiesCodemodRules(
             probe.write_text("", encoding=c.DEFAULT_ENCODING)
         prefix = "projected codemod ruleset cannot be parsed by ast-grep"
         try:
-            executed = u.Cli.run_raw((str(binary), *command[1:-1], str(probe)), cwd=probe.parent)
+            executed = u.Cli.run_raw(
+                (str(binary), *command[1:-1], str(probe)), cwd=probe.parent
+            )
         except ValueError as exc:
             msg = f"{prefix}: {config_path}: {exc}"
             raise ValueError(msg) from exc

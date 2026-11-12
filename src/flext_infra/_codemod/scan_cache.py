@@ -12,6 +12,8 @@ from pathlib import Path
 
 from flext_infra import c, p, settings, u
 
+_AST_GREP_VERSION = "0.51.0"
+
 
 class FlextInfraCodemodScanCache:
     """Persistent content-addressed cache for ast-grep scan results."""
@@ -32,24 +34,26 @@ class FlextInfraCodemodScanCache:
     def compute_key(
         cls,
         *,
-        prefix: str = "scan",
         config_path: Path,
         rule_ids: Sequence[str] = (),
         targets: Sequence[str] = (),
         sources: Sequence[Path | p.Cli.AtomicFileState] = (),
-        threads: int | None = None,
-        ast_grep_version: str = "0.51.0",
+        options: tuple[str, int | None] = ("scan", None),
     ) -> str:
         """Compute a deterministic SHA256 cache key from scan inputs.
 
         Returns:
             The hex digest representing this exact scan state.
 
+        Raises:
+            ValueError: If an atomic file state carries no content.
+
         """
+        prefix, threads = options
         hasher = hashlib.sha256()
         hasher.update(prefix.encode())
         hasher.update(b"\x00")
-        hasher.update(ast_grep_version.encode())
+        hasher.update(_AST_GREP_VERSION.encode())
         hasher.update(b"\x00")
         hasher.update(str(threads or 0).encode())
         hasher.update(b"\x00")
@@ -72,14 +76,17 @@ class FlextInfraCodemodScanCache:
 
         for source in sorted(
             sources,
-            key=lambda s: str(s.path) if hasattr(s, "path") else str(s),
+            key=lambda item: str(item) if isinstance(item, Path) else str(item.path),
         ):
-            if hasattr(source, "sha256"):
+            if isinstance(source, Path):
+                if source.is_file():
+                    hasher.update(str(source).encode())
+            else:
                 hasher.update(str(source.path).encode())
-                hasher.update(source.sha256.encode())
-            elif isinstance(source, Path) and source.is_file():
-                hasher.update(str(source).encode())
-                hasher.update(hashlib.sha256(source.read_bytes()).hexdigest().encode())
+                if source.content is None:
+                    msg = "atomic file state has no content"
+                    raise ValueError(msg)
+                hasher.update(hashlib.sha256(source.content).hexdigest().encode())
             hasher.update(b";")
 
         return hasher.hexdigest()

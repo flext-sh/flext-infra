@@ -117,6 +117,14 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
 
         changes: list[FlextInfraProtocolsWorkspaceSnapshot.RopeChange]
 
+        def do(self) -> None:
+            """Apply the native change set."""
+            ...
+
+        def undo(self) -> None:
+            """Undo the native change set."""
+            ...
+
     @runtime_checkable
     class RopeModuleFinder(Protocol):
         """Native relative module lookup shared by every Rope project flavour."""
@@ -217,13 +225,17 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         def find_module(
             self,
             modname: str,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> FlextInfraProtocolsWorkspaceSnapshot.RopeResource | None: ...
 
         def get_module(
             self,
             name: str,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> t.Infra.RopeNativeSemanticModule: ...
 
         def get_relative_module(
@@ -243,7 +255,9 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
 
         def validate(
             self,
-            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot | None = None,
+            folder: FlextInfraProtocolsWorkspaceSnapshot.RopeRoot
+            | FlextInfraProtocolsWorkspaceSnapshot.RopeResource
+            | None = None,
         ) -> None: ...
 
         def close(self) -> None: ...

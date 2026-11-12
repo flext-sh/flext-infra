@@ -5,8 +5,8 @@
 {%- set settings_model_import = settings_model_line if settings_model_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "from " ~ package_name ~ "._models.settings import (\n    " ~ class_stem ~ "SettingsModels,\n)" -%}
 {%- set settings_protocol_line = "    from " ~ package_name ~ "._protocols.settings import " ~ class_stem ~ "ProtocolsSettings" -%}
 {%- set settings_protocol_import = settings_protocol_line if settings_protocol_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "    from " ~ package_name ~ "._protocols.settings import (\n        " ~ class_stem ~ "ProtocolsSettings,\n    )" -%}
-{%- set settings_class_line = "class _" ~ class_stem ~ "Settings(FlextSettings):" -%}
-{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "class _" ~ class_stem ~ "Settings(\n    FlextSettings\n):" -%}
+{%- set settings_class_line = "class _" ~ class_stem ~ "Settings(FlextApiSettings):" -%}
+{%- set settings_class_declaration = settings_class_line if settings_class_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "class _" ~ class_stem ~ "Settings(\n    FlextApiSettings\n):" -%}
 {%- set settings_singleton_line = "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = _" ~ class_stem ~ "Settings.fetch_global()" -%}
 {%- set settings_singleton_declaration = settings_singleton_line if settings_singleton_line | length <= tooling_runtime.tool_options["ruff"]["line-length"] else "settings: " ~ class_stem ~ "ProtocolsSettings.Settings = (\n    _" ~ class_stem ~ "Settings.fetch_global()\n)" -%}
 """Direct {{ class_stem }} settings singleton export.
@@ -29,7 +29,7 @@ from collections.abc import (
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 # NOTE: measure rendered lines so every project is Ruff-native.
-from flext_core import FlextSettings, m, t
+from {{ upstream }} import FlextApiSettings, m, t
 {{ settings_constants_import }}
 {{ settings_model_import }}
 
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,
         env_nested_delimiter="__",
-        env_file=FlextSettings.resolve_env_file(
+        env_file=FlextApiSettings.resolve_env_file(
             {{ dist.removeprefix("flext-") | tojson }},
         ),
         env_file_encoding="utf-8",

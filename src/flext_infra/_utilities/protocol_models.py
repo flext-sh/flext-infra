@@ -3223,17 +3223,15 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 True when the protocol facade publishes the route's port.
 
-            Raises:
-                ValueError: If the port is not a runtime-checkable Protocol.
-
             """
             port_binding = self.resolve_symbol(protocol_facade.get_scope(), public_path)
             if port_binding is None:
                 return False
             port = port_binding.get_object()
             if not self.py_class(port) or protocol_base not in port.get_mro():
-                msg = f"upstream port is not a Protocol: {public_path}"
-                raise ValueError(msg)
+                # An authored model in the protocol family is not an upstream
+                # port; the model projection replaces it during publication.
+                return False
             if not any(
                 self._denotes(
                     decorator,
@@ -3243,8 +3241,9 @@ class FlextInfraUtilitiesModelsProtocol:
                 )
                 for decorator in port.get_ast().decorator_list
             ):
-                msg = f"upstream port is not runtime_checkable: {public_path}"
-                raise ValueError(msg)
+                # A Protocol port is valid; the projection adds the
+                # runtime_checkable decorator during publication.
+                return True
             return True
 
         def _source_unique_protocol_routes(
@@ -6879,9 +6878,6 @@ class FlextInfraUtilitiesModelsProtocol:
             Returns:
                 The authored source with only absent contracts inserted.
 
-            Raises:
-                ValueError: The canonical holder is absent or a contract conflicts.
-
             """
             source, generated_source = sources
             destination, package_name = target
@@ -6894,7 +6890,7 @@ class FlextInfraUtilitiesModelsProtocol:
             }
             additions: list[str] = []
             annotation_updates: list[tuple[int, int, str]] = []
-            offsets = self._source_line_offsets(source)
+            authored_runtime = False
             for node, _path, _module in classes:
                 present = authored.get(node.name)
                 expected = {
@@ -6905,30 +6901,36 @@ class FlextInfraUtilitiesModelsProtocol:
                     if isinstance(projection.declaration.target, ast.Name)
                 }
                 if present is not None:
-                    update = self._source_authored_contract_update(
+                    update, runtime = self._source_present_contract_update(
                         (node, present),
-                        classes,
+                        generated_source,
                         expected,
-                        ((tree, holder, destination), owner),
-                        (generated_source, offsets),
+                        (
+                            classes,
+                            tree,
+                            holder,
+                            destination,
+                            owner,
+                            self._source_line_offsets(source),
+                        ),
                     )
                     if update is not None:
                         annotation_updates.append(update)
+                    authored_runtime = authored_runtime or runtime
                     continue
-                replacement = self._source_emitted_contract(generated_source, node.name)
-                if replacement is None:
-                    msg = "projected contract has no source extent"
-                    raise ValueError(msg)
-                additions.extend((
-                    "    @runtime_checkable",
-                    "    " + replacement,
-                    "",
-                ))
+                self._source_append_missing_contract(
+                    generated_source, node.name, additions
+                )
             for start, end, replacement in sorted(annotation_updates, reverse=True):
                 source = source[:start] + replacement + source[end:]
             runtime_imports = self._source_generated_runtime_imports(
                 generated_source, package_name
             )
+            if authored_runtime:
+                runtime_imports = (
+                    *runtime_imports,
+                    "from typing import runtime_checkable",
+                )
             if additions:
                 source = self._source_append_authored_additions(
                     source, owner, additions, destination
@@ -6939,6 +6941,90 @@ class FlextInfraUtilitiesModelsProtocol:
                 package_name,
                 destination,
                 runtime_imports=runtime_imports,
+            )
+
+        def _source_append_missing_contract(
+            self, generated_source: str, name: str, additions: list[str]
+        ) -> None:
+            """Append one generated contract absent from the authored module.
+
+            Raises:
+                ValueError: If the generated contract has no source extent.
+
+            """
+            replacement = self._source_emitted_contract(generated_source, name)
+            if replacement is None:
+                msg = "projected contract has no source extent"
+                raise ValueError(msg)
+            additions.extend(("    @runtime_checkable", "    " + replacement, ""))
+
+        def _source_present_contract_update(
+            self,
+            pair: tuple[ast.ClassDef, ast.ClassDef],
+            generated_source: str,
+            expected: dict[str, str],
+            context: tuple[
+                list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+                ast.Module,
+                ast.ClassDef,
+                Path,
+                str,
+                list[int],
+            ],
+        ) -> tuple[tuple[int, int, str] | None, bool]:
+            """Project the update for one contract that already exists.
+
+            Returns:
+                The source replacement and whether runtime imports are required.
+
+            Raises:
+                ValueError: If the generated contract has no source extent.
+
+            """
+            node, present = pair
+            classes, tree, holder, destination, owner, offsets = context
+            if not any("Protocol" in ast.unparse(base) for base in present.bases):
+                replacement = self._source_emitted_contract(generated_source, node.name)
+                if replacement is None:
+                    msg = "projected contract has no source extent"
+                    raise ValueError(msg)
+                first_line = (
+                    present.decorator_list[0].lineno
+                    if present.decorator_list
+                    else present.lineno
+                )
+                if present.end_lineno is None:
+                    msg = "projected contract has no end line"
+                    raise ValueError(msg)
+                return (
+                    (
+                        offsets[first_line - 1],
+                        offsets[present.end_lineno],
+                        "    @runtime_checkable\n" + replacement,
+                    ),
+                    False,
+                )
+            if not any(
+                "runtime_checkable" in ast.unparse(decorator)
+                for decorator in present.decorator_list
+            ):
+                return (
+                    (
+                        offsets[present.lineno - 1],
+                        offsets[present.lineno - 1],
+                        "    @runtime_checkable\n",
+                    ),
+                    True,
+                )
+            return (
+                self._source_authored_contract_update(
+                    (node, present),
+                    classes,
+                    expected,
+                    ((tree, holder, destination), owner),
+                    (generated_source, offsets),
+                ),
+                False,
             )
 
         @staticmethod

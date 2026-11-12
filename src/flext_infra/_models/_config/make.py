@@ -1080,9 +1080,7 @@ class FlextInfraModelsConfigMake(
             t.PositiveInt,
             m.Field(
                 default=4,
-                description=(
-                    "Bounded thread budget for ast-grep scan execution"
-                ),
+                description=("Bounded thread budget for ast-grep scan execution"),
             ),
         ] = 4
 

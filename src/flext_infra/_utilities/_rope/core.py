@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import c, config, p, t
+from rope.base.exceptions import RopeError
+
+from flext_infra import c, config, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -284,6 +286,75 @@ class FlextInfraUtilitiesRopeCore(
             yield rope_project
         finally:
             rope_project.close()
+
+    @classmethod
+    def apply_reducing_loop(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        steps: Sequence[Callable[[t.Infra.RopeProject], t.Infra.RopeChangeSet]],
+        diagnostics: Callable[[], int],
+    ) -> p.Result[int]:
+        """Aplicar mudanças Rope em laço, mantendo apenas as que reduzem diagnóstico.
+
+        Cada passo recebe o projeto já atualizado pelo passo anterior. O
+        diagnóstico é recalculado após a aplicação; quando não reduz, a mudança
+        é desfeita pelo próprio Rope antes do próximo passo.
+
+        Args:
+            rope_project: O projeto Rope nativo já inicializado.
+            steps: Fábricas de ChangeSet avaliadas em ordem.
+            diagnostics: Contador de diagnósticos corrente, chamado após cada passo.
+
+        Returns:
+            O menor total de diagnósticos alcançado.
+
+        """
+        try:
+            baseline = cls._apply_reducing_steps(
+                rope_project, steps=steps, diagnostics=diagnostics
+            )
+        except (RopeError, TypeError, RuntimeError, ValueError) as exc:
+            return r[int].fail(str(exc), exception=exc)
+        return r[int].ok(value=baseline)
+
+    @classmethod
+    def _apply_reducing_steps(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        *,
+        steps: Sequence[Callable[[t.Infra.RopeProject], t.Infra.RopeChangeSet]],
+        diagnostics: Callable[[], int],
+    ) -> int:
+        """Apply the reducing loop and roll back the active step on failure.
+
+        Returns:
+            The smallest diagnostics total reached.
+
+        Raises:
+            TypeError: If a step returns something that is not a ChangeSet.
+
+        """
+        baseline = diagnostics()
+        active: t.Infra.RopeChangeSet | None = None
+        try:
+            for build in steps:
+                changes = build(rope_project)
+                if not isinstance(changes, p.Infra.RopeChangeSet):
+                    msg = "Rope loop step returned invalid ChangeSet"
+                    raise TypeError(msg)
+                active = changes
+                changes.do()
+                current = diagnostics()
+                if current >= baseline:
+                    changes.undo()
+                    active = None
+                    continue
+                baseline = current
+                active = None
+        finally:
+            if active is not None:
+                active.undo()
+        return baseline
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCore"]

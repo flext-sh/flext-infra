@@ -891,11 +891,9 @@ class FlextInfraModGateEngine:
         raw_replacement = finding.get("replacement")
         replacement = raw_replacement if isinstance(raw_replacement, str) else None
         native_file = str(finding.get("file"))
-        if native_file not in context.authenticated:
-            context.authenticated[native_file] = cls._authenticated_snapshot(
-                root, native_file
-            )
-        authenticated = context.authenticated[native_file]
+        authenticated = context.authenticated.get(native_file)
+        if authenticated is None:
+            authenticated = cls._authenticated_snapshot(root, native_file)
         file_path = Path(native_file)
         if file_path not in context.repositories:
             context.repositories[file_path] = cls._finding_repository(
@@ -1096,12 +1094,11 @@ class FlextInfraModGateEngine:
         )
         inventory_sources = tuple(getattr(context, "inventory", ()))
         cache_key = FlextInfraCodemodScanCache.compute_key(
-            prefix="ruleset",
             config_path=ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=targets,
             sources=inventory_sources,
-            threads=threads,
+            options=("ruleset", threads),
         )
         cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
         if cached_file is not None:

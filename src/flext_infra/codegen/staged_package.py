@@ -80,7 +80,7 @@ class FlextInfraStagedPackage:
             u.Cli.info("stage=source-preview-materialize state=start")
             materialized = self.materialize_sources(plan, root)
             if materialized.failure:
-                return r[T].from_failure(materialized)
+                return r[bool].from_failure(materialized)
             u.Cli.info("stage=source-preview-materialize state=end")
             return r[T].ok(
                 validator(

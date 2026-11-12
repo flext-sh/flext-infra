@@ -29,6 +29,9 @@ if TYPE_CHECKING:
     from flext_infra._utilities._rope.method_order import (
         FlextInfraUtilitiesRopeMethodOrder,
     )
+    from flext_infra._utilities._rope.missing_imports import (
+        FlextInfraUtilitiesRopeMissingImports,
+    )
     from flext_infra._utilities._rope.module_patch import (
         FlextInfraUtilitiesRopeModulePatch,
     )
@@ -92,6 +95,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeInventorySites",
     "FlextInfraUtilitiesRopeMethodOrder",
+    "FlextInfraUtilitiesRopeMissingImports",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopeMovePublication",
     "FlextInfraUtilitiesRopeRuntime",
@@ -128,6 +132,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesRopeInventory": ".inventory",
         "FlextInfraUtilitiesRopeInventorySites": ".inventory_sites",
         "FlextInfraUtilitiesRopeMethodOrder": ".method_order",
+        "FlextInfraUtilitiesRopeMissingImports": ".missing_imports",
         "FlextInfraUtilitiesRopeModulePatch": ".module_patch",
         "FlextInfraUtilitiesRopeMovePublication": ".move_publication",
         "FlextInfraUtilitiesRopeRuntime": ".runtime",

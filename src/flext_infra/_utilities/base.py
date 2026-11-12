@@ -335,7 +335,9 @@ class FlextInfraUtilitiesBase:
                 tuple(rule_ids)
                 if rule_ids
                 else tuple(
-                    sorted(FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0]),
+                    sorted(
+                        FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0]
+                    ),
                 )
             )
             if any(not rule_id or "|" in rule_id for rule_id in selected_rule_ids):
