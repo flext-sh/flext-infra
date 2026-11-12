@@ -837,9 +837,10 @@ Infra:
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        phase: complete
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local, ci, pre_push ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -856,23 +857,25 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        phase: complete
+        contexts: [ local, ci, pre_push, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, pre_push ] }
+        - { step: tests-primary, contexts: [ local, ci, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, pre_push ]
+        phase: complete
+        contexts: [ local, ci, pre_push ]
         requires:
-        - { step: check, contexts: [ local, pre_push ] }
-        - { step: check-primary, contexts: [ pre_push ] }
+        - { step: check, contexts: [ local, ci, pre_push ] }
+        - { step: check-primary, contexts: [ ci, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
       - { verb: help, contexts: [ local ] }
       - { verb: setup, contexts: [ local, ci ] }
       - { verb: check, phase: primary, contexts: [ local, ci ] }
-      - { verb: tests, contexts: [ local ] }
+      - { verb: tests, contexts: [ local, ci ] }
       - { verb: gen, contexts: [ local ] }
       - { verb: gen, contexts: [ local ] }
       - { verb: fmt, contexts: [ local ] }
@@ -881,10 +884,10 @@ Infra:
       # Consecutive generation proves convergence on unchanged declarations.
       - { verb: gen, contexts: [ local ] }
       - { verb: gen, contexts: [ local ] }
-      - { verb: check, phase: primary, contexts: [ local, ci ] }
+      - { verb: check, contexts: [ local, ci ] }
       - { verb: check, contexts: [ local ] }
-      - { verb: tests, contexts: [ local ] }
-      - { verb: build, contexts: [ local ] }
+      - { verb: tests, contexts: [ local, ci ] }
+      - { verb: build, contexts: [ local, ci ] }
       # Repository-local directory holding the bootstrap Mise binary. The
       # generated Makefile places the binary there and the CI workflows cache
       # it, so a pinned binary is fetched only when its version changes.
@@ -1799,6 +1802,7 @@ Infra:
         - ".claude/*.agents-governance.json"
         - ".gemini/*.agents-governance.json"
         - ".claude/settings.local.json"
+        - ".claude/scheduled_tasks.lock"
       # The repository loader merges config/<file>.local.yaml after the
       # tracked config/<file>.yaml; that layer carries operator-private data.
       - name: "Private local config layers"

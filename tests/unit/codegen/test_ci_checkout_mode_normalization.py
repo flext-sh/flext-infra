@@ -35,7 +35,8 @@ class TestsFlextInfraCiCheckoutModeNormalization:
         # checkout modes are normalized; CI never generates.
         ci_verbs = [step.verb for step in make.workflow if "ci" in step.contexts]
         tm.that(ci_verbs, empty=False)
-        tm.that(tuple(ci_verbs), eq=make.approval_verbs)
+        tm.that(tuple(dict.fromkeys(ci_verbs)), eq=make.approval_verbs)
+        tm.that(len(set(make.approval_verbs)), eq=len(make.approval_verbs))
         approval_at = [
             commands.index(f"{make.ci.variable}={make.ci.value} {step.make_command}")
             for step in make.workflow
