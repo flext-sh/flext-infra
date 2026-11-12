@@ -65,9 +65,7 @@ export TMPDIR TMP TEMP; \
 {%- endmacro -%}
 {#- Select impacted cases from the global inventory using the persistent database. -#}
 {%- macro pytest_test_runner(operation="tests") -%}
-set --; \
-if [ -n "$${FILE:-}" ]; then set -- --file "$$FILE"; fi; \
-$(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)" "$$@"
+$(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"
 {%- endmacro -%}
 # @flext-generated: continuous
 # @flext-owner: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -986,8 +984,7 @@ _builtin_gen_all: _builtin_require_interpreter
 	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope=all; \
 	if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"; \
-	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,$(DIRENV) allow "$$root")
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.
