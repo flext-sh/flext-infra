@@ -299,6 +299,15 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
+        def domain_capabilities(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Technology names this repository's domain owns as capabilities, exempt
+            from the library-named facade member ban.
+            """
+            ...
+
+        @property
         def script_dispatch(
             self,
         ) -> FlextInfraProtocolsConfigRepository.ScriptDispatchSpec | None:

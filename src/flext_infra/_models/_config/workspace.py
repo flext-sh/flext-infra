@@ -262,6 +262,15 @@ class FlextInfraModelsConfigWorkspace:
             ],
             m.Field(description="Own additional public Make commands"),
         ] = ()
+        domain_capabilities: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Technology names this repository's domain owns as capabilities, "
+                    "exempt from the library-named facade member ban"
+                )
+            ),
+        ] = ()
         script_dispatch: Annotated[
             FlextInfraModelsConfigContexts.ScriptDispatchSpec | None,
             m.Field(description="Own script command routing contract"),

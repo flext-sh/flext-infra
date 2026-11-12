@@ -115,7 +115,7 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 "https://mypy.readthedocs.io/",
                 False,
                 True,
-                FlextInfraConstantsConfig.GateStage.PUSH,
+                FlextInfraConstantsConfig.GateStage.LOCAL,
             ),
             "pyright": (
                 "Pyright",

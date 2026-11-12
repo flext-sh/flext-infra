@@ -106,10 +106,35 @@ class FlextInfraUtilitiesBase:
                     make.ci.pre_commit_value: make.pre_commit_check_gates,
                     make.ci.local_value: make.check_gates_local,
                 }
-                return partitions.get(
+                selected = partitions.get(
                     FlextInfraUtilitiesBase.env_value(make.ci.variable),
                     make.check_gates_default,
                 )
+                not_executed = FlextInfraUtilitiesBase.not_executed_local_gates(make)
+                return tuple(gate for gate in selected if gate not in not_executed)
+
+    @staticmethod
+    def not_executed_local_gates(make: p.Infra.MakeSpec) -> tuple[str, ...]:
+        """Name the local-stage gates a remote runner reports as NOT EXECUTED.
+
+        A remote runner exports ``make.ci.remote_variable`` whatever CI token a
+        step passes, so even a complete qualification run never executes a
+        gate declared ``GateStage.LOCAL`` (Mypy).
+
+        Returns:
+            The local-stage gates of this context, empty outside a remote runner.
+
+        """
+        if (
+            FlextInfraUtilitiesBase.env_value(make.ci.remote_variable)
+            != make.ci.remote_value
+        ):
+            return ()
+        return tuple(
+            gate
+            for gate in make.check_gates_default
+            if make.check_gate_stages[gate] == c.Infra.GateStage.LOCAL
+        )
 
     @staticmethod
     def resolve_repository_root_or_cwd(
