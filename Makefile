@@ -556,13 +556,13 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 # Every installation is prepared under the existing ignored runtime state.
 # Its frozen packages, editable receipt and real consumers precede one atomic
 # publication; the displaced physical environment remains recoverable.
-PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_origin=; \
-	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; install_lock="$$install_state/$(notdir $(1)).setup.lock"; \
-	if [ -L "$$install_target" ] || [ -L "$$install_state" ] || [ -L "$$install_lock" ]; then \
-		printf 'ERROR[setup] environment and publication lock must be physical paths\n' >&2; exit 2; \
+TARGET_ENVIRONMENT = install_target="$(1)"; \
+	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+	if [ -L "$$install_target" ] || [ -L "$$install_state" ]; then \
+		printf 'ERROR[setup] environment and its state directory must be physical paths\n' >&2; exit 2; \
 	fi; \
-	mkdir -p "$$install_state"; \
-	exec 9>"$$install_lock"; flock -x 9; \
+	mkdir -p "$$install_state"
+PREPARE_ENVIRONMENT = install_stage=; install_candidate_origin=; \
 	mv --exchange --no-copy --help >/dev/null; \
 	install_origin=; \
 	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
@@ -574,9 +574,10 @@ PREPARE_ENVIRONMENT = install_target="$(1)"; install_stage=; install_candidate_o
 	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
 	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
 	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
-PUBLISH_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
+VERIFY_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
 	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"; \
-	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null; \
+	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null
+PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
 	if [ -n "$$install_origin" ]; then \
 		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
 			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
@@ -589,21 +590,34 @@ PUBLISH_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
 		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
 		rmdir "$$install_stage"; \
 	fi; \
-	install_stage=; trap - EXIT HUP INT TERM; \
-	flock -u 9; exec 9>&-
+	install_stage=; trap - EXIT HUP INT TERM
+# An environment that already satisfies the frozen lock is kept: uv's own
+# --check is the proof, and the same receipt and interpreter verification as a
+# publication applies. Only a differing environment (or a local FLEXT editable
+# selection) is rebuilt and atomically exchanged, so a repeated setup costs a
+# check, not a full reinstall and deletion.
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
-	$(call PREPARE_ENVIRONMENT,$(RUNTIME_VENV)); \
+	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
-	if [ -n "$(strip $(FLEXT))" ]; then \
-		if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-		(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
-		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
-	fi; \
-	env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$$install_python" -m flext_infra workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
-	$(PUBLISH_ENVIRONMENT)
+	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_target" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; then \
+		install_environment="$$install_target"; \
+		install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"; \
+		env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$$install_python" -m flext_infra workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \
+		$(VERIFY_ENVIRONMENT); \
+		printf 'setup: %s already satisfies uv.lock; kept\n' "$$install_target"; \
+	else \
+		$(PREPARE_ENVIRONMENT); \
+		env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
+		if [ -n "$(strip $(FLEXT))" ]; then \
+			if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
+			(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
+			$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
+		fi; \
+		env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$$install_python" -m flext_infra workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+		$(PUBLISH_ENVIRONMENT); \
+	fi
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -751,7 +765,7 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u U
 # source; every lock is already written before it runs.
 # Native `--compile-bytecode` writes the .pyc at install time, so the first import
 # never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); $(PREPARE_ENVIRONMENT); \
 	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --compile-bytecode --link-mode clone; \
 	$(PUBLISH_ENVIRONMENT)
 
@@ -759,10 +773,10 @@ SYNC_UPGRADE_EXECUTOR_RECIPE = $(call PREPARE_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
+override SETUP_SYNC_ARGS := --all-extras --all-groups --compile-bytecode --link-mode clone
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --compile-bytecode --link-mode clone --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
