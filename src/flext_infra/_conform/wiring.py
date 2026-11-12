@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -103,13 +104,19 @@ class FlextInfraConformWiring:
         runtime = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(root)
         if runtime.failure:
             return r[bool].from_failure(runtime)
+        runtime_root = runtime.value
+        if not (runtime_root / c.Infra.ENVIRONMENT_DIRECTORY).is_dir():
+            # A new project owns no environment until its first `make setup`;
+            # the generator's runtime carries the FLEXT libraries its
+            # generated modules import, so it admits the first candidate.
+            runtime_root = Path(sys.prefix).parent
         repository = candidate / root.relative_to(workspace.value)
         repositories = tuple(
             candidate / project.relative_to(workspace.value) for project in projects
         )
         imported = validate.FlextInfraValidateFreshImport(
             repository_root=repository,
-            runtime_root=runtime.value,
+            runtime_root=runtime_root,
         ).build_report(repository_roots=repositories)
         if imported.failure:
             return r[bool].from_failure(imported)

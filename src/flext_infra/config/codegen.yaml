@@ -1548,22 +1548,26 @@ Infra:
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]
-        # Precedence order: a generated _config.py composes the first base
-        # whose distribution is among the project's runtime requirements or
-        # its declared upstream.
+        # Precedence order: generated _config.py and _settings.py compose the
+        # first base whose distribution is among the project's runtime
+        # requirements or its declared upstream.
         config_bases:
         - distribution: flext-api
           module: flext_api
           class_name: FlextApiConfig
+          settings_class_name: FlextApiSettings
         - distribution: flext-meltano
           module: flext_meltano
           class_name: FlextMeltanoConfig
+          settings_class_name: FlextMeltanoSettings
         - distribution: flext-cli
           module: flext_cli
           class_name: FlextCliConfig
+          settings_class_name: FlextCliSettings
         - distribution: flext-core
           module: flext_core
           class_name: FlextConfig
+          settings_class_name: FlextSettings
       ping_example:
         command_name: ping
         help_text: Return the configured health response.
