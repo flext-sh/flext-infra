@@ -3764,7 +3764,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 if not self.py_class(ancestor):
                     continue
                 suffix = self._source_base_type_arguments(
-                    subscripts.get(ancestor.get_name()), tree, node, classes
+                    subscripts.get(ancestor.get_name()),
+                    tree,
+                    node,
+                    (classes, destination),
                 )
                 module_name, qualified = self._source_class_identity(ancestor)
                 route = f"{module_name}.{qualified}"
@@ -3793,9 +3796,13 @@ class FlextInfraUtilitiesModelsProtocol:
             arguments: ast.expr | None,
             tree: ast.Module,
             node: ast.ClassDef,
-            classes: list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]],
+            scope: tuple[list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]], Path],
         ) -> str:
             """Project a subscripted model base's type arguments onto its protocol.
+
+            A base evaluates in the holder's class body, before the holder name
+            is bound: a sibling contract of the same holder is spelled bare,
+            like a local mirror base.
 
             Returns:
                 The bracketed projected arguments, or an empty suffix.
@@ -3803,11 +3810,23 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             if arguments is None:
                 return ""
+            classes, destination = scope
+            holder = self._source_destination_holder(destination)
+
+            class Sibling(ast.NodeTransformer):
+                @override
+                def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+                    if isinstance(node.value, ast.Name) and node.value.id == holder:
+                        return ast.copy_location(ast.Name(id=node.attr), node)
+                    return self.generic_visit(node)
+
             return "[{}]".format(
                 ", ".join(
                     ast.unparse(
-                        self._source_structural_annotation(
-                            argument, tree, node, classes
+                        Sibling().visit(
+                            self._source_structural_annotation(
+                                argument, tree, node, classes
+                            )
                         )
                     )
                     for argument in (
