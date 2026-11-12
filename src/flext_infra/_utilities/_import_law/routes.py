@@ -20,6 +20,7 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesSemanticCutoverBindings,
 )
+from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -149,6 +150,7 @@ class FlextInfraUtilitiesImportLawRoutes(
                 sources,
             )
 
+        own_family = cls._import_law_own_family_provider(state)
         # A runtime provider wins over an identical typing-only declaration.
         imports = sorted(
             cls._import_law_iter_imports(state.tree),
@@ -159,12 +161,19 @@ class FlextInfraUtilitiesImportLawRoutes(
                 continue
             routed: MutableMapping[str, list[str]] = {}
             for alias in node.names:
-                if state.scope.direct_imports and (
-                    node.module == state.scope.namespace
-                    or node.module.startswith(f"{state.scope.namespace}.")
+                if node.module in own_family or (
+                    state.scope.direct_imports
+                    and (
+                        node.module == state.scope.namespace
+                        or node.module.startswith(f"{state.scope.namespace}.")
+                    )
                 ):
-                    # The declaration relocation owner must move the dependency;
-                    # lazy routing cannot make an own-namespace edge legal.
+                    # Inside a family package the family facade is already the
+                    # canonical provider; hoisting it to the namespace root
+                    # would be reverted by the own-family repair (fixed point).
+                    # The declaration relocation owner likewise must move the
+                    # dependency; lazy routing cannot make an own-namespace
+                    # edge legal.
                     routed.setdefault(node.module, []).append(
                         cls._import_law_clause(alias)
                     )
@@ -217,6 +226,35 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
+
+    @staticmethod
+    def _import_law_own_family_provider(
+        state: p.Infra.ImportLawPass,
+    ) -> frozenset[str]:
+        """Return the family-facade modules the importer itself owns.
+
+        Returns:
+            The family facade and letter modules, or the empty set outside a
+            family package.
+
+        """
+        scope = state.scope
+        if scope.family_letter is None:
+            return frozenset()
+        family = FlextInfraUtilitiesCodegenNamespace.facade_families()[
+            scope.family_letter
+        ]
+        own = {
+            f"{scope.namespace}.{family.module}",
+            f"{scope.namespace}.{scope.family_letter}",
+        }
+        parts = scope.module.split(".")
+        namespace_parts = scope.namespace.split(".")
+        if len(parts) > len(namespace_parts):
+            local = parts[len(namespace_parts)]
+            if local.startswith("_"):
+                own.add(".".join((*namespace_parts, local)))
+        return frozenset(own)
 
     @classmethod
     def _import_law_unpublished_owner(

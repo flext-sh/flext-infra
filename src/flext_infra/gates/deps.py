@@ -95,7 +95,10 @@ class FlextInfraGatesDeps(FlextInfraGates):
                     if execution.outcome is c.Infra.ToolOutcome.ERROR
                     else c.Infra.ToolOutcome.FINDINGS
                 ),
-                issues=tuple[p.Infra.Issue, ...]((*execution.issues, *issues)),
+                issues=tuple(
+                    m.Infra.Issue.model_validate(issue, from_attributes=True)
+                    for issue in (*execution.issues, *issues)
+                ),
                 raw_output=execution.raw_output + "\n" + "\n".join(changes),
                 started=time.monotonic(),
             ),
@@ -222,7 +225,10 @@ class FlextInfraGatesDeps(FlextInfraGates):
                     project_dir=project_dir,
                     verdict=False,
                     outcome=c.Infra.ToolOutcome.ERROR,
-                    issues=tuple[p.Infra.Issue, ...]((*execution.issues, issue)),
+                    issues=tuple(
+                        m.Infra.Issue.model_validate(issue, from_attributes=True)
+                        for issue in (*execution.issues, issue)
+                    ),
                     raw_output=execution.raw_output + "\n" + issue.message,
                     started=started,
                 ),
@@ -318,6 +324,125 @@ class FlextInfraGatesDeps(FlextInfraGates):
         msg = f"deptry capture lost the concurrent-write race {attempts}x: {last_error}"
         raise RuntimeError(msg)
 
+    def _graded_receipt(
+        self,
+        scan: p.Infra.DeptryScan,
+        project_dir: Path,
+        ctx: p.Infra.GateContext,
+    ) -> tuple[str, tuple[m.Infra.Issue, ...], c.Infra.ToolOutcome]:
+        """Build the native receipt with only the findings current usage leaves.
+
+        Returns:
+            The evidence text, the graded findings and their outcome.
+
+        """
+        retained, graded = self._grade_scan_items(scan, project_dir, ctx)
+        raw_output = (
+            f"cwd={project_dir} report={scan.report_state.path}\n"
+            f"return-code={scan.native.outcome.raw_return_code}\n"
+            f"stdout:\n{scan.native.stdout}\nstderr:\n{scan.native.stderr}\n"
+            f"retained-by-declared-usage={retained}\n"
+            f"report-sha256={scan.report_sha256}"
+        )
+        issues = tuple(
+            m.Infra.Issue(
+                file=item.location.file,
+                line=item.location.line or 0,
+                column=item.location.column or 0,
+                code=f"{self.gate_id}-{item.error.code}",
+                message=item.error.message,
+                severity=c.Infra.GateSeverity.ERROR.value,
+            )
+            for item in graded
+        )
+        if scan.report.root and not issues:
+            return (raw_output, issues, c.Infra.ToolOutcome.CLEAN)
+        return (
+            raw_output,
+            issues,
+            u.Infra.tool_outcome(
+                scan.native.outcome,
+                findings=len(issues),
+                findings_exit_codes=(1,),
+            ),
+        )
+
+    def _grade_scan_items(
+        self,
+        scan: p.Infra.DeptryScan,
+        project_dir: Path,
+        ctx: p.Infra.GateContext,
+    ) -> tuple[int, tuple[p.Infra.DeptryDiagnostic, ...]]:
+        """Separate native findings the declared usage already justifies.
+
+        The repair planner retains a requirement used through a console script
+        or a pytest plugin entry point and resolves an import whose supplier is
+        unique and locked. A read-only verdict must apply the same facts, or
+        ``make check`` reports what ``make fix`` deliberately keeps and the two
+        owners disagree on the same declaration.
+
+        Returns:
+            The retained finding count and the findings still unexplained.
+
+        """
+        facts = self._declared_usage_facts(project_dir, scan, ctx)
+        if facts is None:
+            return (0, scan.report.root)
+        graded = tuple(
+            item
+            for item in scan.report.root
+            if not self._explained(item, retained_requirements=facts)
+        )
+        return (len(scan.report.root) - len(graded), graded)
+
+    @staticmethod
+    def _explained(
+        item: p.Infra.DeptryDiagnostic,
+        *,
+        retained_requirements: frozenset[str],
+    ) -> bool:
+        """State whether current declared usage already covers one finding.
+
+        Only an unused-requirement finding is explained by retention: an
+        undeclared import still requires a declaration even when its supplier
+        is uniquely resolvable, so it is never graded away here.
+
+        Returns:
+            Whether the finding is a requirement the declared usage retains.
+
+        """
+        if item.error.code != c.Infra.DEPTRY_UNUSED_DEPENDENCY_CODE:
+            return False
+        return u.Infra.distribution_identity(item.module) in retained_requirements
+
+    @staticmethod
+    def _declared_usage_facts(
+        project_dir: Path,
+        scan: p.Infra.DeptryScan,
+        ctx: p.Infra.GateContext,
+    ) -> frozenset[str] | None:
+        """Read the retained requirements from the existing repair planner.
+
+        Returns:
+            The retained requirement identities, or ``None`` when provenance is
+            unavailable and no finding is graded.
+
+        """
+        inputs = ctx.runtime_dependency_inputs
+        if inputs is None and ctx.runtime_dependency_collector is not None:
+            collected = ctx.runtime_dependency_collector(project_dir, scan)
+            if collected.failure:
+                return None
+            inputs = collected.value
+        if inputs is None:
+            return None
+        plan = u.Infra.runtime_dependency_plan(scan, inputs)
+        if plan.failure:
+            return None
+        return frozenset(
+            u.Infra.requirement_identity(raw) for raw in plan.value.dependencies
+        )
+
     def _scan(
         self,
         project_dir: Path,
@@ -336,33 +461,16 @@ class FlextInfraGatesDeps(FlextInfraGates):
         """
         started = time.monotonic()
         raw_output = ""
-        issues: tuple[p.Infra.Issue, ...] = ()
+        issues: tuple[m.Infra.Issue, ...] = ()
         outcome = c.Infra.ToolOutcome.ERROR
         scan: p.Infra.DeptryScan | None = None
         try:
             report_dir = self._prepare_report_dir(project_dir, ctx)
             scan = self._capture_with_retry(project_dir, report_dir)
-            raw_output = (
-                f"cwd={project_dir} report={scan.report_state.path}\n"
-                f"return-code={scan.native.outcome.raw_return_code}\n"
-                f"stdout:\n{scan.native.stdout}\nstderr:\n{scan.native.stderr}\n"
-                f"report-sha256={scan.report_sha256}"
-            )
-            issues = tuple(
-                m.Infra.Issue(
-                    file=item.location.file,
-                    line=item.location.line or 0,
-                    column=item.location.column or 0,
-                    code=f"{self.gate_id}-{item.error.code}",
-                    message=item.error.message,
-                    severity=c.Infra.GateSeverity.ERROR.value,
-                )
-                for item in scan.report.root
-            )
-            outcome = u.Infra.tool_outcome(
-                scan.native.outcome,
-                findings=len(issues),
-                findings_exit_codes=(1,),
+            raw_output, issues, outcome = self._graded_receipt(
+                scan,
+                project_dir,
+                ctx,
             )
         except (OSError, ValueError, RuntimeError):
             outcome = c.Infra.ToolOutcome.ERROR

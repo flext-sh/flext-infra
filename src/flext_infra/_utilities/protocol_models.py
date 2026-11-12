@@ -1993,9 +1993,13 @@ class FlextInfraUtilitiesModelsProtocol:
             holder = holders[0]
             occupied = [ast.unparse(base) for base in holder.bases]
             composed = (
-                list(bases)
+                list(dict.fromkeys(bases))
                 if bases is not None
-                else [*imports, *(name for name in occupied if name not in imports)]
+                else list(
+                    dict.fromkeys(
+                        [*imports, *(name for name in occupied if name not in imports)]
+                    )
+                )
             )
             if occupied != composed:
                 source = cls._source_splice_holder_bases(
@@ -2250,6 +2254,7 @@ class FlextInfraUtilitiesModelsProtocol:
 
             """
             facade, namespace = classes
+            candidates = tuple(dict.fromkeys(candidates))
             holders: dict[str, p.Infra.RopeSourceClass] = {}
             declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                 self.repository_root,
@@ -3572,11 +3577,27 @@ class FlextInfraUtilitiesModelsProtocol:
                 for node in body:
                     if not isinstance(node, ast.ClassDef):
                         continue
+                    if any(
+                        isinstance(base, ast.Name)
+                        and base.id in {"NamedTuple", "namedtuple"}
+                        for base in node.bases
+                    ) or any(
+                        isinstance(decorator, ast.Name)
+                        and decorator.id in {"dataclass", "sdataclass"}
+                        for decorator in node.decorator_list
+                    ):
+                        # Structural value tuples and dataclasses are not
+                        # Pydantic model sources; they belong to t/p/u.
+                        continue
                     path = (*parents, node.name)
                     owner = module
                     for part in path[:-1]:
                         owner = owner.get_attribute(part).get_object()
-                    source = self._source_class(owner.get_attribute(path[-1]))
+                    try:
+                        source = self._source_class(owner.get_attribute(path[-1]))
+                    except TypeError as exc:
+                        message = f"{exc} at {module_name}.{'.'.join(path)}"
+                        raise TypeError(message) from exc
                     if source.get_ast().lineno != node.lineno:
                         message = (
                             f"model declaration identity changed: "
@@ -9152,7 +9173,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """
             value = binding.get_object()
             if not self.py_class(value):
-                message = "model has no authenticated native source class"
+                message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)
             return value
 

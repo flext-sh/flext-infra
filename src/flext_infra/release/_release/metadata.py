@@ -303,22 +303,22 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
         """
         wheel_includes: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(u.Cli.toml_value(wheel, "include")),
+            u.Cli.json_as_sequence(u.Cli.toml_value(wheel, "only-include")),
             strict=True,
         )
         if wheel_includes.failure:
             return r[Sequence[str]].fail_op(
-                "validate Hatch wheel include",
+                "validate Hatch wheel only-include",
                 wheel_includes.error,
             )
         sdist_includes: p.Result[Sequence[str]] = u.validate_value(
             t.Infra.STR_SEQ_ADAPTER,
-            u.Cli.json_as_sequence(u.Cli.toml_value(sdist, "include")),
+            u.Cli.json_as_sequence(u.Cli.toml_value(sdist, "only-include")),
             strict=True,
         )
         if sdist_includes.failure:
             return r[Sequence[str]].fail_op(
-                "validate Hatch sdist include",
+                "validate Hatch sdist only-include",
                 sdist_includes.error,
             )
         if not wheel_includes.value or set(wheel_includes.value) != set(
@@ -381,14 +381,14 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
 
         """
         for target in (wheel, sdist):
-            if any(key in target for key in ("only-include", "packages")):
+            if any(key in target for key in ("include", "packages")):
                 return r[bool].fail(
                     "Hatch targets must use bounded source patterns",
                 )
         for pattern in wheel_includes:
-            if not pattern.startswith("/") or not pattern.endswith("/**"):
+            if not pattern or pattern.startswith("/") or "*" in pattern:
                 return r[bool].fail(
-                    f"Hatch source pattern is not a directory: {pattern}",
+                    f"Hatch source selection must be a relative path: {pattern}",
                 )
         for source in sources:
             if PurePosixPath(source).is_absolute():
@@ -426,8 +426,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
             or len(path.parts) <= 1
             or path.parts[0] == c.Infra.DEFAULT_SRC_DIR
             or not any(
-                excluded.startswith(pattern.removesuffix("**"))
-                for pattern in wheel_includes
+                excluded.startswith(f"/{pattern}/") for pattern in wheel_includes
             )
         ):
             return f"Hatch exclusion is outside declared data: {excluded}"
@@ -446,16 +445,10 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
 
         """
         roots = tuple(
-            sorted({
-                PurePosixPath(
-                    pattern.removeprefix("/").removesuffix("/**"),
-                ).parts[0]
-                for pattern in wheel_includes
-                if pattern.startswith("/") and pattern.endswith("/**")
-            }),
+            sorted({PurePosixPath(pattern).parts[0] for pattern in wheel_includes}),
         )
         for source in (*wheel_includes, *sources):
-            error = cls._bounded_source_error(source, wheel_includes, roots)
+            error = cls._bounded_source_error(source, roots)
             if error:
                 return r[Sequence[str]].fail(error)
         return r[Sequence[str]].ok(roots)
@@ -464,7 +457,6 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
     def _bounded_source_error(
         cls,
         source: str,
-        wheel_includes: Sequence[str],
         roots: Sequence[str],
     ) -> str:
         """Return why one source leaves the release boundary, or an empty string.
@@ -473,11 +465,7 @@ class FlextInfraReleaseReleaseMetadata(FlextInfraReleaseReleaseSource):
             Why one source leaves the release boundary, or an empty string.
 
         """
-        relative = (
-            source.removeprefix("/").removesuffix("/**")
-            if source in wheel_includes
-            else source
-        )
+        relative = source
         path = PurePosixPath(relative)
         safe_path = (
             bool(relative)

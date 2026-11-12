@@ -151,10 +151,10 @@ class TestsFlextInfraUtilitiesRelease:
                     'git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev"]\n'
                     "\n"
                     "[tool.hatch.build.targets.sdist]\n"
-                    f'include = ["/src/{package_name}/**"]\n'
+                    f'only-include = ["src/{package_name}"]\n'
                     "\n"
                     "[tool.hatch.build.targets.wheel]\n"
-                    f'include = ["/src/{package_name}/**"]\n'
+                    f'only-include = ["src/{package_name}"]\n'
                     "\n"
                     "[tool.hatch.build.targets.wheel.sources]\n"
                     f'"src/{package_name}" = "{package_name}"\n'

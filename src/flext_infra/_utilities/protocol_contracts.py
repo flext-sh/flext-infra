@@ -646,7 +646,6 @@ class FlextInfraUtilitiesModelsProtocolContracts:
 
         Raises:
             ValueError: If protocol facade has no source resource.
-            TypeError: If protocol namespace lost its native class identity.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntime
@@ -659,45 +658,107 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         path = Path(resource.real_path).resolve()
         source = module.source_code
         layout = module.get_source_binding_index().class_layout(namespace.get_scope())
-        expected = runtime.qualified_name(project, name, module_name=provider)
         if any(
-            binding is not None and runtime.same_name(binding, expected)
+            binding is not None
+            and runtime.same_name(
+                binding,
+                runtime.qualified_name(project, name, module_name=provider),
+            )
             for _region, binding in layout.base_bindings
         ):
             return path, source
-        imported_root, _separator, tail = name.partition(".")
-        source, imported = u.type_adapter(tuple[str, str]).validate_python(
-            runtime.runtime_callable("rope.refactor.importutils", "add_import")(
-                project, module, provider, imported_root
+        source, expression = cls._composition_import_expression(
+            project, module, provider, name
+        )
+        start, stop, text = cls._composition_insertion(
+            cls._composition_declaration_layout(
+                project,
+                namespace,
+                module,
+                source,
+                resource,
             ),
-            strict=True,
+            expression,
         )
-        expression = imported + ("." + tail if tail else "")
-        identity = cls._contract_identity(namespace, project=project)
-        declaring_module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-            module, source_project=project
-        )
-        refreshed = runtime.build_string_module(project, source, resource=resource)
-        current = refreshed
-        for part in identity.removeprefix(declaring_module + ".").split("."):
-            current = current.get_attribute(part).get_object()
-        if not runtime.py_class(current):
-            msg_0 = f"protocol namespace lost its native class identity: {identity}"
-            raise TypeError(msg_0)
-        layout = refreshed.get_source_binding_index().class_layout(current.get_scope())
-        if layout.arguments_region is None:
-            start = stop = layout.bases_insertion_offset
-            text = f"({expression})"
-        else:
-            start, _end = layout.arguments_region
-            stop = start
-            text = f"{expression}, "
         changed = runtime.content_change(
             resource,
             source,
             (m.Infra.SourceRewrite(start=start, end=stop, text=text),),
         ).new_contents
         return path, changed
+
+    @classmethod
+    def _composition_import_expression(
+        cls,
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeParsedModule,
+        provider: str,
+        name: str,
+    ) -> tuple[str, str]:
+        """Add the inherited provider import and build its base expression.
+
+        Returns:
+            The updated source and the composed base expression.
+
+        """
+        root, _separator, tail = name.partition(".")
+        source, imported = u.type_adapter(tuple[str, str]).validate_python(
+            FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.refactor.importutils", "add_import"
+            )(project, module, provider, root),
+            strict=True,
+        )
+        return source, imported + ("." + tail if tail else "")
+
+    @classmethod
+    def _composition_declaration_layout(
+        cls,
+        project: p.Infra.RopeProject,
+        namespace: p.Infra.RopeSourceClass,
+        module: p.Infra.RopeParsedModule,
+        source: str,
+        resource: p.Infra.RopeResource,
+    ) -> p.Infra.RopeSourceClassLayout:
+        """Refresh the source and read the native class-header insertion layout.
+
+        Returns:
+            The refreshed class layout of the protocol namespace.
+
+        Raises:
+            TypeError: If the protocol namespace lost its native class identity.
+
+        """
+        identity = cls._contract_identity(namespace, project=project)
+        declaring_module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            module, source_project=project
+        )
+        refreshed = FlextInfraUtilitiesRopeRuntime.build_string_module(
+            project, source, resource=resource
+        )
+        current = refreshed
+        for part in identity.removeprefix(declaring_module + ".").split("."):
+            current = current.get_attribute(part).get_object()
+        if not FlextInfraUtilitiesRopeRuntime.py_class(current):
+            msg = f"protocol namespace lost its native class identity: {identity}"
+            raise TypeError(msg)
+        return refreshed.get_source_binding_index().class_layout(current.get_scope())
+
+    @staticmethod
+    def _composition_insertion(
+        layout: p.Infra.RopeSourceClassLayout,
+        expression: str,
+    ) -> tuple[int, int, str]:
+        """Place the composed base at the native insertion offset.
+
+        Returns:
+            The rewrite start, stop and inserted text.
+
+        """
+        if layout.arguments_region is None:
+            offset = layout.bases_insertion_offset
+            return offset, offset, f"({expression})"
+        start, _end = layout.arguments_region
+        return start, start, f"{expression}, "
 
     @classmethod
     def _protocol_namespace_source(
@@ -723,30 +784,16 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         if resource is None:
             msg = "protocol namespace owner has no source"
             raise ValueError(msg)
-        source = module.source_code
-        inherited = owner.get_attributes().get(name)
-        bases: tuple[str, ...] = ()
-        if inherited is not None:
-            value = inherited.get_object()
-            if not runtime.py_class(value):
-                msg = f"protocol namespace destination is occupied: {name}"
-                raise ValueError(msg)
-            if value.get_module().get_resource() == resource:
-                return source
-            provider = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                value.get_module(), source_project=project
-            )
-            identity = cls._contract_identity(value, project=project).removeprefix(
-                provider + "."
-            )
-            root, _separator, tail = identity.partition(".")
-            source, imported = u.type_adapter(tuple[str, str]).validate_python(
-                runtime.runtime_callable("rope.refactor.importutils", "add_import")(
-                    project, module, provider, root
-                ),
-                strict=True,
-            )
-            bases = (imported + ("." + tail if tail else ""),)
+        resolved = cls._namespace_inherited_bases(
+            project,
+            owner,
+            module,
+            resource,
+            name,
+        )
+        if resolved is None:
+            return module.source_code
+        source, bases = resolved
         snippet = FlextInfraUtilitiesFacadeComponents.generate_module_skeleton(
             context=m.Infra.ModuleSkeletonRenderContext(
                 class_name=name,
@@ -774,6 +821,50 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             ),
             strict=True,
         )
+
+    @classmethod
+    def _namespace_inherited_bases(
+        cls,
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopeSourceClass,
+        module: p.Infra.RopeParsedModule,
+        resource: p.Infra.RopeResource,
+        name: str,
+    ) -> tuple[str, tuple[str, ...]] | None:
+        """Read the inherited base that must precede a namespace declaration.
+
+        Returns:
+            The updated source and its inherited bases, or ``None`` when the
+            namespace is already declared in this resource.
+
+        Raises:
+            ValueError: If the occupied destination is not a source class.
+
+        """
+        source = module.source_code
+        inherited = owner.get_attributes().get(name)
+        if inherited is None:
+            return source, ()
+        value = inherited.get_object()
+        if not FlextInfraUtilitiesRopeRuntime.py_class(value):
+            msg = f"protocol namespace destination is occupied: {name}"
+            raise ValueError(msg)
+        if value.get_module().get_resource() == resource:
+            return None
+        provider = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            value.get_module(), source_project=project
+        )
+        identity = cls._contract_identity(value, project=project).removeprefix(
+            provider + "."
+        )
+        root, _separator, tail = identity.partition(".")
+        source, imported = u.type_adapter(tuple[str, str]).validate_python(
+            FlextInfraUtilitiesRopeRuntime.runtime_callable(
+                "rope.refactor.importutils", "add_import"
+            )(project, module, provider, root),
+            strict=True,
+        )
+        return source, (imported + ("." + tail if tail else ""),)
 
     @classmethod
     def _protocol_parent_scaffolds(
@@ -918,16 +1009,10 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         Returns:
             The resulting ``Mapping[Path, str]``.
 
-        Raises:
-            TypeError: If category namespace has no native class; or if public namespace
-                has no native class.
-
         """
-        runtime = FlextInfraUtilitiesRopeRuntime
-        root = workspace.repository_root
         working = dict(sources)
         for row in placements:
-            target = root / row.destination_path
+            target = workspace.repository_root / row.destination_path
             family = next(
                 parent for parent in target.parents if parent.name == "_protocols"
             )
@@ -936,74 +1021,158 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 row.source_module.partition("._protocols")[0]
                 + f"._protocols.{category}"
             )
-            aggregate_path = family / f"{category}.py"
-            project = runtime.snapshot_project(workspace.rope_project, working)
-            try:
-                module = runtime.require_source_module(project.get_module(provider))
-                aggregate_owner = next(
-                    scope.pyobject.get_name()
-                    for scope in module.get_scope().get_scopes()
-                    if scope.get_kind() == "Class"
+            aggregate_owner = cls._category_aggregate_owner(
+                workspace, working, provider
+            )
+            working = dict(
+                cls._category_protocol_sources(
+                    workspace,
+                    working,
+                    row,
+                    (family / f"{category}.py", provider, aggregate_owner),
                 )
-            finally:
-                project.close()
-            for route in row.public_routes or (None,):
-                public_parents = () if route is None else tuple(route.split(".")[1:-1])
-                aggregate_parent = ".".join((aggregate_owner, *public_parents))
-                working = dict(
-                    cls._protocol_parent_scaffolds(
-                        workspace,
-                        working,
-                        ((aggregate_path, provider, aggregate_parent),),
-                    )
-                )
-                project = runtime.snapshot_project(workspace.rope_project, working)
-                try:
-                    aggregate = runtime.qualified_name(
-                        project, aggregate_parent, module_name=provider
-                    ).get_object()
-                    if not runtime.py_class(aggregate):
-                        msg = (
-                            f"category namespace has no native class: "
-                            f"{aggregate_parent}"
-                        )
-                        raise TypeError(msg)
-                    path, content = cls._protocol_composition_source(
-                        project,
-                        aggregate,
-                        (
-                            row.destination_module,
-                            row.destination_class.rpartition(".")[0],
-                        ),
-                    )
-                    working[path] = content
-                finally:
-                    project.close()
-                if route is None:
-                    continue
-                project = runtime.snapshot_project(workspace.rope_project, working)
-                try:
-                    facade = (
-                        row.source_module.partition("._protocols")[0] + ".protocols"
-                    )
-                    receiver = runtime.qualified_name(
-                        project, route.rpartition(".")[0], module_name=facade
-                    ).get_object()
-                    if not runtime.py_class(receiver):
-                        msg = f"public namespace has no native class: {route}"
-                        raise TypeError(msg)
-                    path, content = cls._protocol_composition_source(
-                        project,
-                        receiver,
-                        (
-                            row.destination_module,
-                            row.destination_class.rpartition(".")[0],
-                        ),
-                    )
-                    working[path] = content
-                finally:
-                    project.close()
+            )
         return working
+
+    @staticmethod
+    def _category_aggregate_owner(
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: Mapping[Path, str],
+        provider: str,
+    ) -> str:
+        """Read the aggregate owner class name of one category namespace.
+
+        Returns:
+            The declared aggregate class name.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        project = runtime.snapshot_project(workspace.rope_project, working)
+        try:
+            module = runtime.require_source_module(project.get_module(provider))
+            return next(
+                scope.pyobject.get_name()
+                for scope in module.get_scope().get_scopes()
+                if scope.get_kind() == "Class"
+            )
+        finally:
+            project.close()
+
+    @classmethod
+    def _category_protocol_sources(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: Mapping[Path, str],
+        row: p.Infra.ProtocolContractPlacement,
+        aggregate: tuple[Path, str, str],
+    ) -> Mapping[Path, str]:
+        """Compose one category aggregate and every public route it declares.
+
+        Returns:
+            The resulting ``Mapping[Path, str]``.
+
+        """
+        aggregate_path, provider, aggregate_owner = aggregate
+        destination = (
+            row.destination_module,
+            row.destination_class.rpartition(".")[0],
+        )
+        planned = dict(working)
+        for route in row.public_routes or (None,):
+            public_parents = () if route is None else tuple(route.split(".")[1:-1])
+            aggregate_parent = ".".join((aggregate_owner, *public_parents))
+            planned = dict(
+                cls._protocol_parent_scaffolds(
+                    workspace,
+                    planned,
+                    ((aggregate_path, provider, aggregate_parent),),
+                )
+            )
+            planned = cls._compose_protocol_namespace(
+                workspace,
+                planned,
+                destination,
+                (provider, aggregate_parent, route),
+            )
+        return planned
+
+    @classmethod
+    def _compose_protocol_namespace(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: Mapping[Path, str],
+        destination: tuple[str, str],
+        target: tuple[str, str, str | None],
+    ) -> Mapping[Path, str]:
+        """Compose the aggregate and its public receiver when one is declared.
+
+        Returns:
+            The resulting ``Mapping[Path, str]``.
+
+        Raises:
+            TypeError: If category namespace has no native class; or if public
+                namespace has no native class.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        provider, aggregate_parent, route = target
+        planned = dict(working)
+        project = runtime.snapshot_project(workspace.rope_project, planned)
+        try:
+            aggregate = runtime.qualified_name(
+                project, aggregate_parent, module_name=provider
+            ).get_object()
+            if not runtime.py_class(aggregate):
+                msg = f"category namespace has no native class: {aggregate_parent}"
+                raise TypeError(msg)
+            path, content = cls._protocol_composition_source(
+                project, aggregate, destination
+            )
+            planned[path] = content
+        finally:
+            project.close()
+        if route is None:
+            return planned
+        return cls._compose_public_route(
+            workspace, planned, destination, (route, provider)
+        )
+
+    @classmethod
+    def _compose_public_route(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: Mapping[Path, str],
+        destination: tuple[str, str],
+        target: tuple[str, str],
+    ) -> Mapping[Path, str]:
+        """Compose the declared public facade receiver of one route.
+
+        Returns:
+            The resulting ``Mapping[Path, str]``.
+
+        Raises:
+            TypeError: If public namespace has no native class.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        route, provider = target
+        planned = dict(working)
+        project = runtime.snapshot_project(workspace.rope_project, planned)
+        try:
+            facade = provider.partition("._protocols")[0] + ".protocols"
+            receiver = runtime.qualified_name(
+                project, route.rpartition(".")[0], module_name=facade
+            ).get_object()
+            if not runtime.py_class(receiver):
+                msg = f"public namespace has no native class: {route}"
+                raise TypeError(msg)
+            path, content = cls._protocol_composition_source(
+                project, receiver, destination
+            )
+            planned[path] = content
+        finally:
+            project.close()
+        return planned
 
     @classmethod
     def plan_protocol_contract_organization(
@@ -1018,15 +1187,53 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         Returns:
             The resulting ``p.Infra.ProtocolOrganizationPlan``.
 
-        Raises:
-            TypeError: If protocol placement has no native class identity; or if public
-                protocol receiver is not a source class; or if native protocol class
-                transfer returned a non-content effect.
-            ValueError: If native protocol rewire escaped its source inventory.
+        """
+        root, base = workspace.repository_root, workspace.rope_project
+        placements = cls._ordered_protocol_placements(census)
+        working = dict(
+            cls._protocol_destination_sources(workspace, sources, placements)
+        )
+        working = dict(cls._protocol_binding_sources(workspace, working, placements))
+        before_move = dict(working)
+        working = cls._moved_protocol_sources(workspace, working, placements)
+        working = {
+            **working,
+            **cls._protocol_self_imports(
+                base,
+                working,
+                tuple({root / row.destination_path for row in placements}),
+            ),
+        }
+        plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+            root,
+            (),
+            {
+                path: source
+                for path, source in working.items()
+                if sources.get(path) != source
+            },
+            source_project=base,
+        )
+        cls._validate_protocol_public_bindings(
+            base, working, census.contracts, placements
+        )
+        return m.Infra.ProtocolOrganizationPlan(
+            census=m.Infra.ProtocolPlacementCensus(contracts=placements),
+            files=plans,
+            pre_move_sources=before_move,
+            findings=census.findings,
+        )
+
+    @staticmethod
+    def _ordered_protocol_placements(
+        census: p.Infra.ProtocolPlacementCensus,
+    ) -> tuple[p.Infra.ProtocolContractPlacement, ...]:
+        """Order moved contracts by their native dependency cohorts.
+
+        Returns:
+            The dependency-ordered protocol placements.
 
         """
-        runtime = FlextInfraUtilitiesRopeRuntime
-        root, base = workspace.repository_root, workspace.rope_project
         placements = tuple(
             row
             for row in census.contracts
@@ -1064,18 +1271,35 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             }
             for owner, members in cohorts.items()
         }
-        placements = tuple(
+        return tuple(
             indexed[identity]
             for owner in u.Cli.dag_order(condensed).unwrap()
             for identity in sorted(cohorts[owner])
         )
-        working = dict(
-            cls._protocol_destination_sources(workspace, sources, placements)
-        )
-        working = dict(cls._protocol_binding_sources(workspace, working, placements))
-        before_move = dict(working)
+
+    @classmethod
+    def _moved_protocol_sources(
+        cls,
+        workspace: p.Infra.RopeWorkspaceDsl,
+        working: Mapping[Path, str],
+        placements: Sequence[p.Infra.ProtocolContractPlacement],
+    ) -> Mapping[Path, str]:
+        """Move every placed native class through the shared rope owner.
+
+        Returns:
+            The moved sources.
+
+        Raises:
+            TypeError: If protocol placement has no native class identity; or if
+                native protocol class transfer returned a non-content effect.
+            ValueError: If native protocol rewire escaped its source inventory.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        root, base = workspace.repository_root, workspace.rope_project
+        moved = dict(working)
         for row in placements:
-            project = runtime.snapshot_project(base, working)
+            project = runtime.snapshot_project(base, moved)
             try:
                 source, target = root / row.source_path, root / row.destination_path
                 origin = runtime.qualified_name(
@@ -1106,7 +1330,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                     runtime.file_resource_at(project, target),
                     options=m.Infra.RopeMoveOptions(
                         resources=tuple(
-                            runtime.file_resource_at(project, path) for path in working
+                            runtime.file_resource_at(project, path) for path in moved
                         ),
                         destination_offset=destination_module
                         .get_source_binding_index()
@@ -1125,45 +1349,20 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                         )
                         raise TypeError(msg)
                     path = Path(change.resource.real_path).resolve()
-                    if path not in working:
+                    if path not in moved:
                         msg = (
                             f"native protocol rewire escaped its source inventory: "
                             f"{path}"
                         )
                         raise ValueError(msg)
-                    working[path] = (
+                    moved[path] = (
                         FlextInfraUtilitiesSemanticDeclarationRelocation.remove_orphaned_imports(
-                            project, change.resource, working[path], change.new_contents
+                            project, change.resource, moved[path], change.new_contents
                         )
                     )
             finally:
                 project.close()
-        working.update(
-            cls._protocol_self_imports(
-                base,
-                working,
-                tuple({root / row.destination_path for row in placements}),
-            )
-        )
-        plans = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-            root,
-            (),
-            {
-                path: source
-                for path, source in working.items()
-                if sources.get(path) != source
-            },
-            source_project=base,
-        )
-        cls._validate_protocol_public_bindings(
-            base, working, census.contracts, placements
-        )
-        return m.Infra.ProtocolOrganizationPlan(
-            census=m.Infra.ProtocolPlacementCensus(contracts=placements),
-            files=plans,
-            pre_move_sources=before_move,
-            findings=census.findings,
-        )
+        return moved
 
     @staticmethod
     def _protocol_self_imports(

@@ -194,6 +194,7 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
                 "--no-banner",
                 "--no-color",
                 "--redact=100",
+                "--verbose",
                 "--exit-code",
                 str(c.Infra.GITLEAKS_LEAK_EXIT_CODE),
                 "--ignore-gitleaks-allow",
@@ -209,7 +210,11 @@ class FlextInfraReleaseReleaseSource(FlextInfraReleaseReleaseArtifact):
             return r[bool].from_failure(scan)
         code = scan.value.outcome.raw_return_code
         if code == c.Infra.GITLEAKS_LEAK_EXIT_CODE:
-            return r[bool].fail("gitleaks detected a secret in staged release source")
+            return r[bool].fail(
+                "gitleaks detected a secret in staged release source\n"
+                + scan.value.stdout
+                + scan.value.stderr
+            )
         if not u.Cli.process_succeeded(scan.value.outcome):
             return r[bool].fail(f"gitleaks failed with exit code {code}")
         return r[bool].ok(value=True)

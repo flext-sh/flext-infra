@@ -190,14 +190,14 @@ class FlextInfraProtocolsWorkspace:
         @property
         def evidence(
             self,
-        ) -> Sequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+        ) -> MutableSequence[FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
             """Ordered native binding and executable observations."""
             ...
 
         @property
         def evidence_index(
             self,
-        ) -> Mapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
+        ) -> MutableMapping[str, FlextInfraProtocolsWorkspace.NativeBindingEvidence]:
             """Invocation-local references to the first binding evidence."""
             ...
 

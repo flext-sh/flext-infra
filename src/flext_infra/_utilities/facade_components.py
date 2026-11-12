@@ -16,7 +16,7 @@ import io
 import re
 import sys
 import tokenize
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from functools import partial
 from importlib.metadata import packages_distributions
 from pathlib import Path
@@ -3309,8 +3309,18 @@ class FlextInfraUtilitiesFacadeComponents:
                 ),
             )
         )
+        cache: MutableMapping[
+            int,
+            tuple[
+                p.Infra.RopePyName | p.Infra.RopePyObject,
+                c.Infra.FacadeMemberKind,
+            ],
+        ] = {}
         lineage, references, exposed = members.facade_member_census(
-            root, source_project=engine, resolver_factory=resolver_factory
+            root,
+            source_project=engine,
+            resolver_factory=resolver_factory,
+            cache=cache,
         )
         return m.Infra.FacadeCensus(
             snapshot=snapshot,
@@ -3322,6 +3332,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 FlextInfraUtilitiesPyprojectConform.project_package_name(root),
                 source_project=engine,
                 resolver_factory=resolver_factory,
+                cache=cache,
             ),
             claims=cls._component_claims(root, source_project=engine),
         )

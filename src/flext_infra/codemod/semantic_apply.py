@@ -337,9 +337,26 @@ class FlextInfraCodemodSemanticApply(
         )
         if built.failure:
             return outcome.from_failure(built)
+        return cls._plan_rewire_artifact(root, built.value, directory=directory)
+
+    @classmethod
+    def _plan_rewire_artifact(
+        cls,
+        root: Path,
+        plan: p.Infra.SemanticRenamePlan,
+        *,
+        directory: Path,
+    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
+        """Plan the immutable artifact for one authenticated rewire.
+
+        Returns:
+            The file plan, the unchanged outcome, or the first refusal.
+
+        """
+        outcome = r[tuple[p.Infra.CodegenFilePlan, ...]]
         root = root.resolve()
         fingerprint = u.Cli.sha256_content(
-            built.value.model_dump_json(indent=2, round_trip=True)
+            plan.model_dump_json(indent=2, round_trip=True)
         )
         target = u.Infra.contained_write_targets(
             root, (root / directory / f"{fingerprint}.json",)
@@ -348,7 +365,7 @@ class FlextInfraCodemodSemanticApply(
         if before.failure:
             return outcome.from_failure(before)
         serialized = cls._validated_source_plan_content(
-            before.value, built.value, target, root
+            before.value, plan, target, root
         )
         if serialized.failure:
             return outcome.from_failure(serialized)
@@ -890,6 +907,28 @@ class FlextInfraCodemodSemanticApply(
             reason=reason,
         )
 
+    @staticmethod
+    def _skips_module_naming(
+        path: Path,
+        root: Path,
+        workspace: p.Infra.RopeWorkspaceDsl,
+    ) -> bool:
+        """Return whether a path owns no naming decision.
+
+        Dunder modules and paths outside the checkout never rename; legacy
+        federation trees outside the inventoried modules are left untouched.
+
+        Returns:
+            ``True`` when the path is not a candidatesource.
+
+        """
+        name = path.stem
+        if not path.is_relative_to(root.resolve()) or (
+            name.startswith("__") and name.endswith("__")
+        ):
+            return True
+        return workspace.module(path) is None
+
     @classmethod
     def _module_naming_candidates(
         cls,
@@ -912,11 +951,9 @@ class FlextInfraCodemodSemanticApply(
         """
         selected: list[tuple[Path, str]] = []
         for path in sorted(sources):
-            name = path.stem
-            if not path.is_relative_to(root.resolve()) or (
-                name.startswith("__") and name.endswith("__")
-            ):
+            if cls._skips_module_naming(path, root, workspace):
                 continue
+            name = path.stem
             replacement = name.lstrip("_")
             part = re.search(r"_parts?(?:_?\d+)?$", name)
             if part is not None:

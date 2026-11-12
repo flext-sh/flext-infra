@@ -898,7 +898,7 @@ class FlextInfraUtilitiesImportLawNormalization(
                 bound_from_provider = cls._import_law_binds_from(
                     state, bound, next(iter(providers.value))
                 ) or cls._import_law_bound_from_ancestor_publisher(
-                    state, bound, providers.value
+                    state, bound, tuple(providers.value)
                 )
                 if not bound_from_provider:
                     upstream[bound] = next(iter(providers.value))
@@ -1317,6 +1317,20 @@ class FlextInfraUtilitiesImportLawNormalization(
             node, state.parents
         )
 
+    @staticmethod
+    def _import_law_layer_zero_direct_leaf(
+        state: p.Infra.ImportLawPass,
+        target: str,
+    ) -> bool:
+        """Allow a layer-zero settings module to import a leaf directly.
+
+        Returns:
+            Whether the target is a non-root descendant of the module's own
+            namespace and the module keeps direct leaf imports.
+
+        """
+        return state.scope.direct_imports and target != state.scope.namespace
+
     @classmethod
     def _import_law_validate_import_boundary(
         cls, state: p.Infra.ImportLawPass
@@ -1351,7 +1365,9 @@ class FlextInfraUtilitiesImportLawNormalization(
                 ):
                     continue
                 if role == "layer0":
-                    if cls.import_law_layer_zero_helper(state, target):
+                    if cls.import_law_layer_zero_helper(
+                        state, target
+                    ) or cls._import_law_layer_zero_direct_leaf(state, target):
                         continue
                     return r[bool].fail(
                         f"{scope.file_path}: layer-zero module imports its own "
@@ -1370,8 +1386,11 @@ class FlextInfraUtilitiesImportLawNormalization(
                 if provider not in {
                     f"{scope.namespace}.{family.module}",
                     f"{scope.namespace}.{scope.family_letter}",
-                } or cls.import_law_family_type_checking_exempt(
-                    node, state, family.module
+                } or (
+                    isinstance(node, ast.ImportFrom)
+                    and cls.import_law_family_type_checking_exempt(
+                        node, state, family.module
+                    )
                 ):
                     continue
                 if (
