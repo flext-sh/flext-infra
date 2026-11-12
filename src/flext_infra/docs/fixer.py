@@ -139,7 +139,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         sources: Sequence[p.Cli.AtomicFileState],
     ) -> tuple[
         tuple[p.Infra.SemanticFilePlan, ...],
-        tuple[p.Infra.DocsPhaseItemModel, ...],
+        tuple[m.Infra.DocsPhaseItemModel, ...],
     ]:
         """Compose authored repairs against read bytes without publication.
 
@@ -151,7 +151,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         planned: list[p.Infra.SemanticFilePlan] = []
-        collected: list[p.Infra.DocsPhaseItemModel] = []
+        collected: list[m.Infra.DocsPhaseItemModel] = []
         for before in sources:
             if before.content is None:
                 raise FileNotFoundError(before.path)
@@ -190,7 +190,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
     def _scope_report(
         self,
         scope: p.Infra.DocScope,
-        items: Sequence[p.Infra.DocsPhaseItemModel],
+        items: Sequence[m.Infra.DocsPhaseItemModel],
         *,
         apply: bool,
     ) -> p.Infra.DocsPhaseReport:

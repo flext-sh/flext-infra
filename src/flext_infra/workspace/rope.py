@@ -502,7 +502,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
     )
     _module_object_cache: MutableMapping[
         tuple[str, bool, bool],
-        tuple[p.Infra.Object, ...],
+        tuple[m.Infra.Object, ...],
     ] = m.PrivateAttr(default_factory=dict)
 
     @override
@@ -1138,7 +1138,7 @@ class FlextInfraRopeWorkspace(FlextInfraWorkspaceRopeQuery):
         *,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> Sequence[p.Infra.Object]:
+    ) -> Sequence[m.Infra.Object]:
         """Return Rope-only discovered objects for one module path.
 
         Returns:

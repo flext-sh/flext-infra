@@ -133,7 +133,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
     def _git_lane_checkpoint_receipt(
         cls,
         request: p.Infra.GitLaneOwnershipRequest,
-    ) -> p.Infra.GitLaneOwnershipReceipt:
+    ) -> m.Infra.GitLaneOwnershipReceipt:
         reference = request.checkpoint_ref
         repo = cls._repo(request.repo_root)
         repo.git.check_ref_format(reference)

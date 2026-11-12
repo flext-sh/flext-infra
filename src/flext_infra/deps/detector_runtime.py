@@ -74,10 +74,15 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
             params.repository_root,
             venv_bin,
             params,
-            report_model,
         )
         if pip_check_result.failure:
             return r[bool].from_failure(pip_check_result)
+        pip_check = pip_check_result.value
+        report_model = m.Infra.WorkspaceDependencyReport(
+            workspace=report_model.workspace,
+            projects=report_model.projects,
+            pip_check=pip_check,
+        )
         if params.output_format != c.Cli.OutputFormats.JSON:
             out_path = params.output_path or u.Cli.resolve_report_path(
                 params.repository_root,
@@ -101,9 +106,9 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
                 "deps_summary",
                 projects=len(report_model.projects),
                 deptry_issues=total_issues,
-                pip_check=c.Infra.RK_OK if pip_check_result.value else "FAIL",
+                pip_check=c.Infra.RK_OK if pip_check.ok else "FAIL",
             )
-        if params.no_fail or (total_issues == 0 and pip_check_result.value):
+        if params.no_fail or (total_issues == 0 and pip_check.ok):
             return r[bool].ok(value=True)
         return r[bool].fail("dependency issues detected")
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import operator
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from flext_infra import c, config, m, p, t
 from flext_infra._utilities import (
@@ -129,7 +130,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         resolved_root: Path,
         rope_project: t.Infra.RopeProject,
         directory_facts: MutableMapping[Path, tuple[Path | None, str]],
-    ) -> p.Infra.RopeModuleIndexEntry | None:
+    ) -> m.Infra.RopeModuleIndexEntry | None:
         """Index one source, or ``None`` for a generated stub or an ignored path.
 
         The owning project and the declared package depend on the directory
@@ -199,8 +200,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         files: tuple[Path, ...],
         directory_facts: MutableMapping[Path, tuple[Path | None, str]],
     ) -> tuple[
-        MutableMapping[str, p.Infra.RopeModuleIndexEntry],
-        MutableMapping[Path, list[p.Infra.RopeModuleIndexEntry]],
+        MutableMapping[str, m.Infra.RopeModuleIndexEntry],
+        MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
         MutableMapping[str, Path],
         MutableMapping[str, str],
         set[Path],
@@ -209,11 +210,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         Returns:
             The resulting ``tuple[MutableMapping[str, m.Infra.RopeModuleIndexEntry],
-                MutableMapping[Path, list[p.Infra.RopeModuleIndexEntry]],
+                MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
                 MutableMapping[str, Path], MutableMapping[str, str], set[Path]]``.
 
         """
-        entries: list[p.Infra.RopeModuleIndexEntry] = []
+        entries: list[m.Infra.RopeModuleIndexEntry] = []
         for file_path in sorted(files, key=str):
             entry = cls._module_entry(
                 file_path, resolved_root, rope_project, directory_facts
@@ -224,10 +225,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @staticmethod
     def _module_maps(
-        entries: Sequence[p.Infra.RopeModuleIndexEntry],
+        entries: Sequence[m.Infra.RopeModuleIndexEntry],
     ) -> tuple[
-        MutableMapping[str, p.Infra.RopeModuleIndexEntry],
-        MutableMapping[Path, list[p.Infra.RopeModuleIndexEntry]],
+        MutableMapping[str, m.Infra.RopeModuleIndexEntry],
+        MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
         MutableMapping[str, Path],
         MutableMapping[str, str],
         set[Path],
@@ -238,8 +239,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             The module and package maps of the existing structural index.
 
         """
-        modules_by_path: MutableMapping[str, p.Infra.RopeModuleIndexEntry] = {}
-        modules_by_dir: MutableMapping[Path, list[p.Infra.RopeModuleIndexEntry]] = {}
+        modules_by_path: MutableMapping[str, m.Infra.RopeModuleIndexEntry] = {}
+        modules_by_dir: MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: MutableMapping[str, Path] = {}
         project_package_by_root: MutableMapping[str, str] = {}
         package_dirs: set[Path] = set()
@@ -305,10 +306,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _package_identity(
         cls,
         package_dir: Path,
-        modules_by_dir: Mapping[Path, list[p.Infra.RopeModuleIndexEntry]],
-        modules_by_path: Mapping[str, p.Infra.RopeModuleIndexEntry],
+        modules_by_dir: Mapping[Path, list[m.Infra.RopeModuleIndexEntry]],
+        modules_by_path: Mapping[str, m.Infra.RopeModuleIndexEntry],
     ) -> tuple[
-        tuple[p.Infra.RopeModuleIndexEntry, ...],
+        tuple[m.Infra.RopeModuleIndexEntry, ...],
         Path,
         Path | None,
         str,
@@ -371,7 +372,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         source_project: p.Infra.RopeProject,
         resolved_root: Path,
         refresh: tuple[p.Infra.RopeWorkspaceIndex, Sequence[Path]],
-    ) -> tuple[p.Infra.RopeModuleIndexEntry, ...]:
+    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
         """Evolve only affected native module entries from the prior index.
 
         Returns:
@@ -379,7 +380,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
         """
         previous_index, changed_paths = refresh
-        entries = dict(previous_index.modules_by_path)
+        entries = cast(
+            "dict[str, m.Infra.RopeModuleIndexEntry]",
+            dict(previous_index.modules_by_path),
+        )
         directory_facts: MutableMapping[Path, tuple[Path | None, str]] = {}
         changed = {
             Path(source_project.fscommands.realpath(str(path)))
@@ -417,7 +421,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         project: p.Infra.RopeProject | None = None,
         project_roots: Sequence[Path] | None = None,
         refresh: tuple[p.Infra.RopeWorkspaceIndex, Sequence[Path]] | None = None,
-    ) -> p.Infra.RopeWorkspaceIndex:
+    ) -> m.Infra.RopeWorkspaceIndex:
         """Build a Rope workspace index as a view over the run snapshot's listing.
 
         The root and every member the snapshot holds below it are elected
@@ -446,7 +450,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if {str(entry.file_path): entry for entry in entries} == (
                 refresh[0].modules_by_path
             ):
-                return refresh[0]
+                return cast("m.Infra.RopeWorkspaceIndex", refresh[0])
             collected = cls._module_maps(entries)
         else:
             listing = tuple(
@@ -481,14 +485,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         cls,
         resolved_root: Path,
         collected: tuple[
-            MutableMapping[str, p.Infra.RopeModuleIndexEntry],
-            MutableMapping[Path, list[p.Infra.RopeModuleIndexEntry]],
+            MutableMapping[str, m.Infra.RopeModuleIndexEntry],
+            MutableMapping[Path, list[m.Infra.RopeModuleIndexEntry]],
             MutableMapping[str, Path],
             MutableMapping[str, str],
             set[Path],
         ],
         previous_index: p.Infra.RopeWorkspaceIndex | None,
-    ) -> p.Infra.RopeWorkspaceIndex:
+    ) -> m.Infra.RopeWorkspaceIndex:
         """Assemble package records while retaining equal prior records.
 
         Returns:
@@ -506,7 +510,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         direct_children_by_dir, descendants_by_dir = cls._package_family_maps(
             sorted_package_dirs,
         )
-        packages_by_dir: MutableMapping[str, p.Infra.RopePackageIndexEntry] = {}
+        packages_by_dir: MutableMapping[str, m.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
             package = cls._indexed_package(
                 package_dir,
@@ -536,13 +540,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _indexed_package(
         cls,
         package_dir: Path,
-        modules_by_dir: Mapping[Path, list[p.Infra.RopeModuleIndexEntry]],
-        modules_by_path: Mapping[str, p.Infra.RopeModuleIndexEntry],
+        modules_by_dir: Mapping[Path, list[m.Infra.RopeModuleIndexEntry]],
+        modules_by_path: Mapping[str, m.Infra.RopeModuleIndexEntry],
         family_maps: tuple[
             Mapping[Path, Sequence[Path]], Mapping[Path, Sequence[Path]]
         ],
         previous_index: p.Infra.RopeWorkspaceIndex | None,
-    ) -> p.Infra.RopePackageIndexEntry:
+    ) -> m.Infra.RopePackageIndexEntry:
         """Elect the package record and preserve its prior identity when equal.
 
         Returns:
@@ -566,7 +570,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if previous_index is not None
             else None
         )
-        return previous if previous == candidate and previous is not None else candidate
+        return (
+            cast("m.Infra.RopePackageIndexEntry", previous)
+            if previous == candidate and previous is not None
+            else candidate
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisWorkspace"]

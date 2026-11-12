@@ -1236,12 +1236,11 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
 
         """
         mover = cls.create_move(project, origin, origin_offset)
-        if not isinstance(
-            mover, cls.runtime_type("rope.refactor.move", "MoveClass")
-        ) or not isinstance(mover, p.Infra.RopeMoveClass):
+        if not isinstance(mover, cls.runtime_type("rope.refactor.move", "MoveClass")):
             message = "native Rope class transfer requires MoveClass"
             raise TypeError(message)
-        return mover.get_changes(
+        class_mover = cast("p.Infra.RopeMoveClass", mover)
+        return class_mover.get_changes(
             destination,
             resources=options.resources,
             destination_offset=options.destination_offset,

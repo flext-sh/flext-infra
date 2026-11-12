@@ -24,8 +24,8 @@ class FlextInfraRefactorCensusFilters:
 
     @staticmethod
     def duplicate_groups(
-        project_objects: tuple[Sequence[p.Infra.Object], ...],
-    ) -> tuple[p.Infra.DuplicateGroup, ...]:
+        project_objects: tuple[Sequence[m.Infra.Object], ...],
+    ) -> tuple[m.Infra.DuplicateGroup, ...]:
         """Duplicate groups.
 
         Returns:
@@ -33,19 +33,19 @@ class FlextInfraRefactorCensusFilters:
 
         """
 
-        def object_location(item: p.Infra.Object) -> tuple[str, str, int]:
+        def object_location(item: m.Infra.Object) -> tuple[str, str, int]:
             return item.project, item.file_path, item.line
 
-        groups: MutableMapping[tuple[str, str, str], list[p.Infra.Object]] = (
+        groups: MutableMapping[tuple[str, str, str], list[m.Infra.Object]] = (
             defaultdict(list)
         )
-        payloads: MutableMapping[str, list[p.Infra.Object]] = defaultdict(list)
+        payloads: MutableMapping[str, list[m.Infra.Object]] = defaultdict(list)
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
             if item.payload_fingerprint:
                 payloads[item.payload_fingerprint].append(item)
-        duplicates: list[p.Infra.DuplicateGroup] = []
+        duplicates: list[m.Infra.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
             if (

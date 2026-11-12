@@ -185,8 +185,8 @@ class FlextInfraGitLanes:
         """
         if request.evidence_file is not None:
             return cls._receipt_evidence(request)
-        pull_requests: tuple[p.Infra.GitLanePullRequest, ...] | None = None
-        beads: tuple[p.Infra.GitLaneBead, ...] | None = None
+        pull_requests: tuple[m.Infra.GitLanePullRequest, ...] | None = None
+        beads: tuple[m.Infra.GitLaneBead, ...] | None = None
         if request.read_pull_requests:
             wire = cls._read_ownership(
                 (

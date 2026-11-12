@@ -237,7 +237,7 @@ class FlextInfraGates:
         result: p.Cli.CommandOutput,
         tool: str,
         file: str,
-    ) -> p.Infra.Issue:
+    ) -> m.Infra.Issue:
         """Report an unsuccessful command that supplied no structured issues.
 
         The failure belongs to the whole ``file``, located at its first position.

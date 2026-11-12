@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         *,
         include_local_scopes: bool,
         include_references: bool = True,
-    ) -> tuple[p.Infra.Object, ...]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Return all same-file defined objects for one workspace module.
 
         Returns:
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         source = pymodule.source_code
         parameter_lines = cls._parameter_lines(pymodule) if include_local_scopes else {}
         constant_bindings = cls._constant_bindings(pymodule)
-        items: MutableSequence[p.Infra.Object] = []
+        items: MutableSequence[m.Infra.Object] = []
         module_scope = pymodule.get_scope()
         child_scopes = tuple(module_scope.get_scopes())
         for name, pyname in cls._sorted_module_names(pymodule, resource):
@@ -108,14 +108,14 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         parent_options: p.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[p.Infra.Object, ...]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Scope objects.
 
         Returns:
-            The resulting ``tuple[p.Infra.Object, ...],``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
-        items: MutableSequence[p.Infra.Object] = []
+        items: MutableSequence[m.Infra.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
@@ -140,7 +140,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         child_scope: p.Infra.RopeScopeDsl | None,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[p.Infra.Object, ...]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Return one recorded object followed by the objects of its child scope.
 
         An input that produces no record contributes nothing.
@@ -167,16 +167,16 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     def _child_scope_objects(
         cls,
         *,
-        record: p.Infra.Object,
+        record: m.Infra.Object,
         child_scope: p.Infra.RopeScopeDsl | None,
         record_options: p.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[p.Infra.Object, ...]:
+    ) -> tuple[m.Infra.Object, ...]:
         """Include nested class declarations while respecting function-local scope.
 
         Returns:
-            The resulting ``tuple[p.Infra.Object, ...],``.
+            The resulting ``tuple[m.Infra.Object, ...],``.
 
         """
         if (
@@ -198,7 +198,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
     @staticmethod
     def _descend_options(
         parent_options: p.Infra.RopeInventoryRecordInput,
-        record: p.Infra.Object,
+        record: m.Infra.Object,
     ) -> p.Infra.RopeInventoryRecordInput:
         """Descend options.
 
@@ -279,7 +279,7 @@ class FlextInfraUtilitiesRopeInventory(FlextInfraUtilitiesRopeInventorySites):
         options: p.Infra.RopeInventoryRecordInput,
         *,
         include_references: bool,
-    ) -> p.Infra.Object | None:
+    ) -> m.Infra.Object | None:
         """Record.
 
         Returns:

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from flext_infra import m, p, u
 from flext_infra.refactor._census import (
@@ -45,7 +46,7 @@ class FlextInfraRefactorCensusCollect(
         module: p.Infra.RopeModuleIndexEntry,
         scan_config: p.Infra.ScanConfig,
         *,
-        findings: p.Infra.ScanFindings,
+        findings: m.Infra.ScanFindings,
     ) -> None:
         """Inventory one module, accumulating its selected objects per project.
 
@@ -57,18 +58,21 @@ class FlextInfraRefactorCensusCollect(
         if not project:
             return
         findings.report_projects.add(project)
-        objects = tuple(
-            item
-            for item in rope.objects(
-                module.file_path,
-                include_local_scopes=scan_config.include_local_scopes,
-                include_references=scan_config.include_object_references,
-            )
-            if self._include_object(
-                item,
-                selected_families=scan_config.selected_families,
-                selected_kinds=scan_config.selected_kinds,
-            )
+        objects = cast(
+            "tuple[m.Infra.Object, ...]",
+            tuple(
+                item
+                for item in rope.objects(
+                    module.file_path,
+                    include_local_scopes=scan_config.include_local_scopes,
+                    include_references=scan_config.include_object_references,
+                )
+                if self._include_object(
+                    item,
+                    selected_families=scan_config.selected_families,
+                    selected_kinds=scan_config.selected_kinds,
+                )
+            ),
         )
         if objects:
             findings.project_objects.setdefault(project, []).extend(objects)
@@ -78,7 +82,7 @@ class FlextInfraRefactorCensusCollect(
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         source_preview: p.Infra.SourcePreview,
-        findings: p.Infra.ScanFindings,
+        findings: m.Infra.ScanFindings,
         scan_config: p.Infra.ScanConfig,
         census_kinds: frozenset[str] | None = None,
     ) -> p.Infra.WorkspaceReport:

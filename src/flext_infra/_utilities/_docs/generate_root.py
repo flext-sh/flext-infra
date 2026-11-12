@@ -30,7 +30,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         repository_root: Path,
         inputs: p.Infra.DocsRootInputs,
         src_paths: Sequence[str],
-        catalog_entries: Sequence[p.Infra.DocsCatalogEntry],
+        catalog_entries: Sequence[m.Infra.DocsCatalogEntry],
     ) -> list[tuple[Path, str]]:
         """Render the static aggregate mkdocs and catalog root pages.
 
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
         """
         width = inputs.markdown_width
         project_scopes = [scope for scope in scopes if scope.path != repository_root]
-        catalog_entries: MutableSequence[p.Infra.DocsCatalogEntry] = []
+        catalog_entries: MutableSequence[m.Infra.DocsCatalogEntry] = []
         scope_modules: MutableMapping[str, list[str]] = {}
         src_paths: MutableSequence[str] = []
         root_api: list[tuple[Path, str]] = []

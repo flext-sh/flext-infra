@@ -699,7 +699,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_catalog_page(
-        entries: Sequence[p.Infra.DocsCatalogEntry],
+        entries: Sequence[m.Infra.DocsCatalogEntry],
         *,
         exclude_docs: Sequence[str] | None = None,
         width: int,

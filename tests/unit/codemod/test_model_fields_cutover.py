@@ -277,7 +277,9 @@ class TestsFlextInfraModelFieldsCutover:
                     sources=sources,
                 ),
             )
-            updated = next(edit.updated_source for edit in edits if edit.path == path)
+            updated = next(
+                edit.updated_source for edit in edits if edit.file_path == path
+            )
             repeated = tm.ok(
                 u.Infra.plan_semantic_cutover(
                     c.Infra.SemanticCutoverPhase.MODEL_FIELDS,

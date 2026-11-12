@@ -53,7 +53,7 @@ class FlextInfraUtilitiesRopeSourceBasesInventory:
             if request.path.name == "__init__.py"
             else request.module.rpartition(".")[0]
         )
-        globals_: MutableMapping[str, p.Infra.SourceClassReference | None] = {}
+        globals_: MutableMapping[str, m.Infra.SourceClassReference | None] = {}
         spec = m.Infra.SourceBindingCollectorSpec.model_validate({
             "module": (request.module),
             "provider": (provider),

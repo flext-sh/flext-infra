@@ -255,7 +255,9 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
         # Each commit row renders its own hook, in workflow order: setup
         # provisions through Make, check runs the engine on the staged files.
-        positions = [hook.index(f"flext-pre-commit-{step.identity}") for step in commit_steps]
+        positions = [
+            hook.index(f"flext-pre-commit-{step.identity}") for step in commit_steps
+        ]
         tm.that(positions, eq=sorted(positions))
         tm.that(hook, has=f"{commit_token} {commit_steps[0].make_command}")
         tm.that(hook, has=f'{commit_token} "$FLEXT" check run')

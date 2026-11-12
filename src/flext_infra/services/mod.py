@@ -656,9 +656,9 @@ class FlextInfraModHandlers:
             ast_rules = u.Infra.codemod_rule_plan(snapshot, rule_ids=(selector,))
         if ast_rules.failure and ast_rules.error_code != c.ErrorCode.NOT_FOUND:
             return r[t.Cli.ResultValue].from_failure(ast_rules)
-        additions: list[p.Infra.RopeSignatureAddition] = []
-        removals: list[p.Infra.RopeSignatureRemoval] = []
-        transfers: list[p.Infra.RopeMethodTransfer] = []
+        additions: list[m.Infra.RopeSignatureAddition] = []
+        removals: list[m.Infra.RopeSignatureRemoval] = []
+        transfers: list[m.Infra.RopeMethodTransfer] = []
         catalogue_inputs: list[p.Cli.AtomicFileState] = []
         rules = u.Infra.declared_contract_rules(
             root,

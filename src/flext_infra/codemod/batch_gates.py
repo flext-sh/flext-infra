@@ -1128,7 +1128,6 @@ class FlextInfraModGateEngine:
             ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=targets,
-            threads=threads,
             json_stream=True,
         )
         u.Cli.ensure_dir(settings.work_dir).unwrap()

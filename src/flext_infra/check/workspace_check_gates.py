@@ -11,7 +11,7 @@ import time
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from flext_cli import cli
 
@@ -35,8 +35,8 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         target: p.Infra.CheckProjectTarget,
         resolved_gates: Sequence[str],
         ctx: p.Infra.GateContext,
-        previous: p.Infra.ProjectResult | None = None,
-    ) -> p.Infra.ProjectResult:
+        previous: m.Infra.ProjectResult | None = None,
+    ) -> m.Infra.ProjectResult:
         """Check one project after the loop has validated its target.
 
         Returns:
@@ -67,7 +67,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         projects: Sequence[p.Infra.CheckProjectTarget],
         gates: Sequence[str],
         ctx: p.Infra.GateContext,
-    ) -> p.Infra.LoopOutcome:
+    ) -> m.Infra.LoopOutcome:
         """Use the native bounded signal wave for independent read-only checks.
 
         Returns:
@@ -141,8 +141,8 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         ctx: p.Infra.GateContext,
         *,
         fail_fast: bool,
-        previous: p.Infra.LoopOutcome | None = None,
-    ) -> p.Infra.LoopOutcome:
+        previous: m.Infra.LoopOutcome | None = None,
+    ) -> m.Infra.LoopOutcome:
         """Execute gate checks across projects, collecting results and timing.
 
         Retain the interrupted project's result before stopping the invocation.
@@ -152,7 +152,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: MutableMapping[str, p.Infra.ProjectResult] = {
+        results: MutableMapping[str, m.Infra.ProjectResult] = {
             result.project: result
             for result in (() if previous is None else previous.results)
         }
@@ -187,11 +187,14 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                             if gate_id not in project_result.gates
                         ),
                     ),
-                    {
-                        gate_id: executions[target.path]
-                        for gate_id, executions in union_executions.items()
-                        if target.path in executions
-                    },
+                    cast(
+                        "Mapping[str, m.Infra.GateExecution]",
+                        {
+                            gate_id: executions[target.path]
+                            for gate_id, executions in union_executions.items()
+                            if target.path in executions
+                        },
+                    ),
                 )
             results[target.name] = project_result
             if not project_result.gates and ctx.check_progress is not None:
@@ -301,8 +304,8 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         project_dir: Path,
         gates: Sequence[str],
         ctx: p.Infra.GateContext,
-        previous: p.Infra.ProjectResult | None = None,
-    ) -> p.Infra.ProjectResult:
+        previous: m.Infra.ProjectResult | None = None,
+    ) -> m.Infra.ProjectResult:
         """Run gates for one project and retain every executed gate in order.
 
         Read-only gates share no mutable state, so they run concurrently
@@ -323,7 +326,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             else previous
         )
         mutating = ctx.apply_fixes and not ctx.check_only
-        executions: MutableMapping[str, p.Infra.GateExecution] = {}
+        executions: MutableMapping[str, m.Infra.GateExecution] = {}
         instances = self._gate_instances(gates, mutating=mutating)
         concurrent = (
             self._run_concurrent_stages(instances, project_dir, ctx, executions)
@@ -385,7 +388,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         instances: Sequence[FlextInfraGates],
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, p.Infra.GateExecution],
+        executions: MutableMapping[str, m.Infra.GateExecution],
     ) -> Mapping[str, p.Result[p.Cli.PipelineResult]]:
         """Run read-only gate stages concurrently in one signal wave.
 
@@ -439,7 +442,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        executions: MutableMapping[str, p.Infra.GateExecution],
+        executions: MutableMapping[str, m.Infra.GateExecution],
         signal_wave: p.Cli.SignalWave | None,
     ) -> p.Result[p.Cli.PipelineResult]:
         """Run one gate stage through the public CLI pipeline.
@@ -470,7 +473,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
         gate_instance: FlextInfraGates,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        gates_sink: MutableMapping[str, p.Infra.GateExecution],
+        gates_sink: MutableMapping[str, m.Infra.GateExecution],
     ) -> p.Cli.PipelineStage:
         """Build a pipeline stage handler that executes a single gate.
 
@@ -496,7 +499,10 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             """
             del _pipeline_ctx
             gate_ctx = ctx.model_copy()
-            execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
+            execution = cast(
+                "m.Infra.GateExecution",
+                self._execute_gate(gate_instance, project_dir, gate_ctx),
+            )
             gates_sink[gate_id] = execution
             u.Cli.info(
                 f"gate_executed project={project_name} gate={gate_id} "

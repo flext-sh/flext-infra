@@ -160,9 +160,12 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         runtime = FlextInfraUtilitiesRopeRuntime
         if not isinstance(node.returns, ast.Subscript):
             return None
+        binding_line = module.get_source_binding_index().lines[node][0]
+        if binding_line is None:
+            return None
         scope = runtime.scope_at(
             module,
-            module.get_source_binding_index().lines[node][0],
+            binding_line,
             declaration_line=node.lineno,
         )
         guard = runtime.annotation_origin(project, node.returns.value, scope)
@@ -298,7 +301,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         *,
         sources: Mapping[Path, str],
         objects: Sequence[p.Infra.Object] = (),
-    ) -> p.Infra.ProtocolPlacementCensus:
+    ) -> m.Infra.ProtocolPlacementCensus:
         """Inventory native origins, complete public routes and dependencies.
 
         Returns:
@@ -476,11 +479,12 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             .get("p")
         )
         holder = name.partition(".")[0]
+        facade_object = None if facade is None else facade.get_object()
         stem = (
-            facade.get_object().get_name()
+            facade_object.get_name()
             if (
-                facade is not None
-                and FlextInfraUtilitiesRopeRuntime.py_class(facade.get_object())
+                isinstance(facade_object, p.Infra.RopeNamedObject)
+                and FlextInfraUtilitiesRopeRuntime.py_class(facade_object)
             )
             else holder
         )
@@ -501,7 +505,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         workspace: p.Infra.RopeWorkspaceDsl,
         contract: p.Infra.RopeSourceClass,
         origin: tuple[c.Infra.ProtocolOrigin, tuple[str, ...]],
-    ) -> tuple[p.Infra.ProtocolContractPlacement, int]:
+    ) -> tuple[m.Infra.ProtocolContractPlacement, int]:
         project = workspace.rope_project
         resource = contract.get_module().get_resource()
         if resource is None:
@@ -538,9 +542,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
     @staticmethod
     def _protocol_dependencies(
         root: Path,
-        observed: Sequence[tuple[p.Infra.ProtocolContractPlacement, int]],
+        observed: Sequence[tuple[m.Infra.ProtocolContractPlacement, int]],
         references: Mapping[str, Sequence[p.Infra.ReferenceSite]],
-    ) -> p.Infra.ProtocolPlacementCensus:
+    ) -> m.Infra.ProtocolPlacementCensus:
         bounds = {
             row.source_module + "." + row.source_class: (
                 root / row.source_path,
@@ -827,7 +831,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         cls,
         project: p.Infra.RopeProject,
         owner: p.Infra.RopeSourceClass,
-        module: p.Infra.RopeParsedModule,
+        module: p.Infra.RopePyModule,
         resource: p.Infra.RopeResource,
         name: str,
     ) -> tuple[str, tuple[str, ...]] | None:
@@ -915,6 +919,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         Returns:
             The resulting ``Mapping[Path, str]``.
 
+        Raises:
+            TypeError: If a protocol facade is not a named native object.
+
         """
         root = workspace.repository_root
         project = workspace.rope_project
@@ -967,6 +974,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 .get_attribute("p")
                 .get_object()
             )
+            if not isinstance(facade, p.Infra.RopeNamedObject):
+                msg = "protocol facade is not a named native object"
+                raise TypeError(msg)
             owner = facade.get_name() + u.derive_class_stem(aggregate.stem)
             working[aggregate] = (
                 FlextInfraUtilitiesFacadeComponents.generate_module_skeleton(
@@ -1180,7 +1190,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-        census: p.Infra.ProtocolPlacementCensus,
+        census: m.Infra.ProtocolPlacementCensus,
     ) -> p.Infra.ProtocolOrganizationPlan:
         """Place and rewire censused protocols before the caller projects them.
 
@@ -1226,8 +1236,8 @@ class FlextInfraUtilitiesModelsProtocolContracts:
 
     @staticmethod
     def _ordered_protocol_placements(
-        census: p.Infra.ProtocolPlacementCensus,
-    ) -> tuple[p.Infra.ProtocolContractPlacement, ...]:
+        census: m.Infra.ProtocolPlacementCensus,
+    ) -> tuple[m.Infra.ProtocolContractPlacement, ...]:
         """Order moved contracts by their native dependency cohorts.
 
         Returns:

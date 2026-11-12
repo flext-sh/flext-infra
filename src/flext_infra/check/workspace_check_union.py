@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, u
+from flext_infra import c, m, p, u
 
 if TYPE_CHECKING:
     from flext_infra.check import FlextInfraGateRegistry
@@ -198,10 +198,10 @@ class FlextInfraWorkspaceCheckUnion:
 
     @staticmethod
     def _merged_union_result(
-        project_result: p.Infra.ProjectResult,
+        project_result: m.Infra.ProjectResult,
         resolved_gates: Sequence[str],
-        union_executions: Mapping[str, p.Infra.GateExecution],
-    ) -> p.Infra.ProjectResult:
+        union_executions: Mapping[str, m.Infra.GateExecution],
+    ) -> m.Infra.ProjectResult:
         """Report the union and per-project executions in declared gate order.
 
         Returns:

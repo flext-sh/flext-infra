@@ -258,7 +258,7 @@ class FlextInfraUtilitiesRefactor:
         ],
         indexes: Sequence[MutableMapping[tuple[str, str], list[int]]],
         inventory: tuple[tuple[str, str], ...],
-    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
+    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Build the per-repository and per-rule occurrence deltas.
 
         Args:
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesRefactor:
 
         """
         before_entries, after_entries = counters
-        deltas: list[p.Infra.ViolationsRuleDelta] = []
+        deltas: list[m.Infra.ViolationsRuleDelta] = []
         for key in sorted(
             set(inventory) | before_entries.keys() | after_entries.keys()
         ):
@@ -310,7 +310,7 @@ class FlextInfraUtilitiesRefactor:
         | p.Infra.ModTextReport,
         *,
         options: p.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
-    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
+    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
         """Compare the lexical occurrences of two reports of one native engine.
 
         Args:
