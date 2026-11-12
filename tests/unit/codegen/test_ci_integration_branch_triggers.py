@@ -177,6 +177,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             if Path(entry.destination).is_relative_to(
                 c.Infra.GITHUB_WORKFLOWS_RELATIVE_PATH,
             )
+            or Path(entry.destination) == Path(c.Infra.PRE_COMMIT_CONFIG_FILENAME)
         )
 
         tm.that(expected, empty=False)
@@ -243,10 +244,22 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         )
         tm.that(
             hook,
-            has=f"{codegen.make.ci.variable}={codegen.make.ci.pre_commit_value} make "
-            f"check",
+            has=[
+                f"{codegen.make.ci.variable}={codegen.make.ci.pre_commit_value}",
+                "check run --repository-root .",
+                "--gates lint --gates format",
+                "--gates markdown --gates markdown-format",
+            ],
         )
-        tm.that(hook, lacks=["make pre-commit", "make fmt", "make fix"])
+        hook_document = u.Cli.json_as_mapping(tm.ok(u.Cli.yaml_parse(hook)))
+        hook_entries = [
+            str(u.Cli.json_as_mapping(hook_row)["entry"])
+            for repo in u.Cli.json_as_sequence(hook_document["repos"])
+            for hook_row in u.Cli.json_as_sequence(u.Cli.json_as_mapping(repo)["hooks"])
+        ]
+        tm.that(hook_entries, empty=False)
+        for hook_entry in hook_entries:
+            tm.that(hook_entry, lacks=["make pre-commit", "make fmt", "make fix"])
         tm.that(
             tuple(
                 step.verb
@@ -284,22 +297,13 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(inputs["if-no-files-found"], eq="error")
         tm.that(inputs["include-hidden-files"], eq=True)
         paths = str(inputs["path"]).splitlines()
-        for filename in (
-            "suite-outcome.json",
-            "selection-outcome.json",
-            "inventory-outcome.json",
-            "run-context.json",
-            "selection-plan.json",
-            "testmon-selection.json",
-            "testmon-inventory.json",
-            "run-accounting.json",
-            "diagnostics.json",
-            "cache-before.json",
-            "cache-after.json",
-            "cache-policy.json",
-            "markdown-reconciliation.json",
+        for receipt_glob in (
+            ".reports/tests/**/*.json",
+            ".reports/tests/**/summary.txt",
+            ".reports/tests/**/failed-tests.txt",
+            ".reports/tests/**/errors.txt",
         ):
-            tm.that(paths, has=f".reports/tests/**/{filename}")
+            tm.that(paths, has=receipt_glob)
         tm.that(
             paths,
             has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
@@ -310,7 +314,6 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 f"{spec.make.gate_receipts_directory}/**/{spec.gate_original_receipt_filename}",
                 f"{spec.make.gate_receipts_directory}/**/check/**/*.sarif",
                 f"{spec.make.gate_receipts_directory}/**/check/**/*.md",
-                f".reports/tests/**/{spec.gate_original_receipt_filename}",
             ],
         )
         for private_name in (
@@ -432,7 +435,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             )
             test_step = next(
                 step
-                for step in steps
+                for step in reversed(steps)
                 if step.get("run")
                 == (
                     f"{spec.make.ci.variable}={spec.make.ci.value} "
@@ -529,7 +532,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(len(set(receipts)), eq=len(receipts))
 
     @staticmethod
-    @c.Tests.MARK.parametrize("missing", ["setup", "audit", "check", "test"])
+    @c.Tests.MARK.parametrize("missing", ["setup", "check", "tests"])
     def test_typed_approval_rejects_missing_stages(missing: str) -> None:
         """A truncated workflow cannot become an approval contract."""
         owner = config.Infra.codegen.make
@@ -537,7 +540,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         payload["workflow"] = [
             step.model_dump() for step in owner.workflow if step.verb != missing
         ]
-        with u.Tests.raises(ValueError, match="workflow"):
+        with u.Tests.raises(ValueError, match="CI requires"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod

@@ -1234,7 +1234,12 @@ class FlextInfraModelsConfigMake(
                 )
                 raise ValueError(msg)
             approval = tuple(step for step in self.workflow if "ci" in step.contexts)
-            milestones = ((c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),)
+            milestones = (
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_CHECK, c.Infra.CheckPhase.COMPLETE),
+                (c.Infra.VERB_TEST, c.Infra.CheckPhase.COMPLETE),
+            )
             if (
                 not approval
                 or approval[0].verb != "setup"
@@ -1245,7 +1250,10 @@ class FlextInfraModelsConfigMake(
                 )
                 != milestones
             ):
-                msg = "CI requires setup followed by the fast primary check only"
+                msg = (
+                    "CI requires setup followed by primary check, native tests "
+                    "and complete check followed by final incremental tests"
+                )
                 raise ValueError(msg)
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
@@ -1381,8 +1389,12 @@ class FlextInfraModelsConfigMake(
         @m.computed_field
         @property
         def approval_verbs(self) -> tuple[str, ...]:
-            """Ordered approval derived once from the validated workflow."""
-            return tuple(step.verb for step in self.workflow if "ci" in step.contexts)
+            """Ordered unique approval verbs derived from the validated workflow."""
+            return tuple(
+                dict.fromkeys(
+                    step.verb for step in self.workflow if "ci" in step.contexts
+                )
+            )
 
         @m.computed_field
         @property
