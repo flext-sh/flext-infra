@@ -2089,7 +2089,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 namespace, rendered, package_dir
             )
             bases = self._source_aggregate_bases(
-                candidates, modules, rendered, (facade, namespace)
+                candidates, modules, rendered, (facade, namespace), destination
             )
             source = self._source_compose_protocol_holder(
                 source,
@@ -2244,6 +2244,7 @@ class FlextInfraUtilitiesModelsProtocol:
             modules: Mapping[str, str],
             rendered: Mapping[Path, str],
             classes: tuple[ast.ClassDef, ast.ClassDef],
+            destination: Path,
         ) -> list[str]:
             """Drop candidates already inherited through another candidate.
 
@@ -2251,7 +2252,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 The candidate bases no other candidate's native ancestry carries.
 
             Raises:
-                ValueError: If a protocol aggregate base has no native binding.
+                ValueError: If a protocol aggregate base resolves to no source
+                    class, such as an import whose declaring module is gone.
 
             """
             facade, namespace = classes
@@ -2282,10 +2284,17 @@ class FlextInfraUtilitiesModelsProtocol:
                         if name in modules
                         else self.resolve_symbol(native_namespace.get_scope(), name)
                     )
-                    if binding is None:
-                        msg = f"protocol aggregate base has no native binding: {name}"
+                    if binding is None or not self.py_class(
+                        holder := binding.get_object()
+                    ):
+                        msg = (
+                            f"{destination.relative_to(self.repository_root)}:"
+                            f"{namespace.name} base {name} resolves to no source "
+                            "class; its declaring module is missing or does not "
+                            "publish it"
+                        )
                         raise ValueError(msg)
-                    holders[name] = self._source_class(binding)
+                    holders[name] = holder
                 identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
                 inherited = {
                     identity(ancestor)
