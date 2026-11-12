@@ -17,7 +17,6 @@ from flext_infra._protocols import FlextInfraProtocolsBase, FlextInfraProtocolsM
 
 if TYPE_CHECKING:
     from flext_infra import c, t
-    from flext_infra._protocols._git import FlextInfraProtocolsGitWorktreeState
 
 
 class FlextInfraProtocolsRelease:
@@ -31,13 +30,6 @@ class FlextInfraProtocolsRelease:
         index: bool
         pr_title: str
 
-        @property
-        def ownership(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitLaneOwnershipReceipt | None:
-            """Authenticated integrated prior-state ownership receipt."""
-            ...
-
     @runtime_checkable
     class ReleaseRunCommand(
         FlextInfraProtocolsBase.CommandContext, ReleaseOptions, Protocol
@@ -45,7 +37,6 @@ class FlextInfraProtocolsRelease:
         """Structural data contract projected from the owning model."""
 
         projects: Sequence[str] | None
-        checkpoint_ref: t.NonEmptyStr | None
 
     @runtime_checkable
     class GithubReleaseAsset(FlextCliProtocols.BaseModel, Protocol):

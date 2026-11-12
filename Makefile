@@ -833,7 +833,7 @@ VERB_DESCRIPTION_release-plan := Execute the declared release plan phase.
 VERB_ARGUMENTS_release-plan := PR_TITLE
 
 VERB_DESCRIPTION_release-version := Execute the declared release version phase.
-VERB_ARGUMENTS_release-version := LANE_CHECKPOINT_REF
+VERB_ARGUMENTS_release-version :=
 
 VERB_DESCRIPTION_release-tag := Execute the declared release tag phase.
 VERB_ARGUMENTS_release-tag :=
@@ -1430,8 +1430,6 @@ export FLEXT_RELEASE_PR_TITLE := $(value PR_TITLE)
 
 
 
-export FLEXT_RELEASE_LANE_CHECKPOINT_REF := $(value LANE_CHECKPOINT_REF)
-
 
 
 
@@ -1449,7 +1447,6 @@ _builtin-release-plan: _builtin_require_environment
 
 _builtin-release-version: _builtin_require_environment
 	@set -eu; set --; \
-	if [ -n "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF" ]; then set -- --checkpoint-ref "$$FLEXT_RELEASE_LANE_CHECKPOINT_REF"; fi; \
 	$(PROJECT_FLEXT_INFRA) release run --repository-root "$(PROJECT_ROOT)" --phase version --apply "$$@"
 
 _builtin-release-tag: _builtin_require_environment

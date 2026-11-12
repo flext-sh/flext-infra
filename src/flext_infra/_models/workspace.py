@@ -197,7 +197,9 @@ class FlextInfraModelsWorkspace:
             int, tuple[str, str, t.Port[p.AttributeProbe] | None]
         ] = m.Field(
             default_factory=u.empty(
-                TypeForm(MutableMapping[int, tuple[str, str, p.AttributeProbe | None]])
+                TypeForm(
+                    MutableMapping[int, tuple[str, str, t.Port[p.AttributeProbe] | None]]
+                )
             ),
             description="Strongly retained generated function source receivers",
         )

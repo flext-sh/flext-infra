@@ -543,19 +543,14 @@ copied into the audited stage. Required build assets must belong to the committe
 source or be produced by its build backend inside the isolated build, not injected
 from unauthenticated checkout outputs. Release metadata and snapshotted build
 policy retain their existing explicit rendering and attestation boundaries.
-Release-version ownership is selected by `LANE_CHECKPOINT_REF`, an existing
-dedicated Git checkpoint reference, not caller-authored receipt JSON. The public
-`workspace lane-ownership` command reconstructs its original metadata and index
-parent, verifies the full repository scope, live remote retention, and inclusion
-in the current integration tip, then emits the typed receipt. The generated Make
-recipe passes only the checkpoint selector to the release API composition root,
-which resolves that same producer and passes its validated receipt by reference;
-complete checkpoint metadata never travels in a command-line argument.
-It never captures, publishes, integrates, switches branches, or modifies current
-staged, unstaged, or untracked work. A checkpoint from a different repository
-identity, an unpublished capture, or an unintegrated capture is refused. Receipt
-production does not waive the separate lane-creation or produced-path admission
-contracts; shared-WIP publication still requires authenticated producer outputs.
+Release-version takes no ownership receipt: the release lane admits through the
+read-only lane verification and a clean checkout on the integration branch (see
+[Durable Git state capture, Lane admission](git-state-capture.md#lane-admission)).
+The public `workspace lane-ownership` command still reconstructs a checkpoint's
+original metadata and index parent, verifies the full repository scope, live
+remote retention, and inclusion in the current integration tip, and emits the
+typed receipt for agent-lane ownership. It never captures, publishes, integrates,
+switches branches, or modifies current staged, unstaged, or untracked work.
 The scoped Git API separates `prepare_publication`, `publication_scope`, and
 `commit_publications`. Its live admission binds the prior ownership, integration
 tip, caller ref and exact original index. Native producers retain their original
@@ -569,11 +564,9 @@ not ignore a path by name or modify the shared index. The owned ref is published
 through a native ref transaction after hook, original-index and fresh-tip checks,
 without switching the caller's checkout. New or copied admission/receipt models
 cannot replace the original live authority.
-The release workflow dispatch selects exactly one `tag` or `checkpoint_ref`.
-Tag dispatch retains the existing publication path. Checkpoint dispatch validates
-the event's exact SHA through canonical CI, then runs versioning only, with the
-selector transported as environment data. Push versioning selects an explicit
-repository `LANE_CHECKPOINT_REF` variable; a no-op needs no ownership mutation.
+The release workflow dispatch takes one optional `tag`. Tag dispatch retains the
+existing publication path; dispatch without a tag, like a push, validates the
+event's exact SHA through canonical CI and then runs versioning only.
 The lifecycle separates three explicit operations: generation projects native
 declarations from their owners, explicit upgrade resolves and writes locks, and
 setup installs them without rewriting manifests, locks, source pins or versions.

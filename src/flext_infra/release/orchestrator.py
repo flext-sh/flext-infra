@@ -127,7 +127,6 @@ class FlextInfraReleaseOrchestrator(
                 subject=c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.value.next),
                 body_file=self._release_dir(root, plan.value.tag)
                 / c.Infra.RELEASE_NOTES_FILENAME,
-                ownership=self.ownership,
             ),
             lambda: self._stamp_release(ctx, plan.value),
         )
