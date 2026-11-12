@@ -253,7 +253,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         binding: p.Infra.RopePyName | None,
         visiting: frozenset[tuple[str, int]],
     ) -> p.Infra.RopePyName | None:
-        """Follow the existing native alias chain at its declaring scope."""
+        """Follow the existing native alias chain at its declaring scope.
+
+        Returns:
+            The resulting ``p.Infra.RopePyName | None``.
+
+        """
         alias = None if binding is None else cls.annotation_alias_definition(binding)
         if alias is None:
             return binding
@@ -273,7 +278,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         scope: p.Infra.RopeScope,
         traversal: tuple[tuple[int, ...], frozenset[tuple[str, int]]],
     ) -> p.Infra.RopePyName | None:
-        """Select an argument from its authenticated source or direct alias."""
+        """Select an argument from its authenticated source or direct alias.
+
+        Returns:
+            The resulting ``p.Infra.RopePyName | None``.
+
+        """
         if not isinstance(node, ast.Subscript):
             return None
         path, visiting = traversal
@@ -304,7 +314,12 @@ class FlextInfraUtilitiesRopeRuntimeModules(
         supplied: tuple[Sequence[ast.expr], p.Infra.RopeScope],
         index: int,
     ) -> tuple[ast.expr, p.Infra.RopeScope] | None:
-        """Project a direct generic alias's argument using declared parameter order."""
+        """Project a direct generic alias's argument using declared parameter order.
+
+        Returns:
+            The resulting ``tuple[ast.expr, p.Infra.RopeScope] | None``.
+
+        """
         declaration, lexical = alias
         if not isinstance(declaration.value, ast.Subscript):
             return None

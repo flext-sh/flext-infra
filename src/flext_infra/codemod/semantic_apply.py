@@ -777,7 +777,10 @@ class FlextInfraCodemodSemanticApply(
                         raise TypeError(msg)
                     path = Path(change.resource.real_path)
                     if path not in sources:
-                        msg = "native binding rewire escaped its authenticated source view"
+                        msg = (
+                            "native binding rewire escaped its authenticated source "
+                            "view"
+                        )
                         raise ValueError(msg)
                     previous = sources[path]
                     sources[path] = (
