@@ -196,6 +196,16 @@ class FlextInfraModelsRefactorGrep:
                 description="Absolute governed roots and their applicable rule IDs"
             ),
         ]
+        selected_rule_ids: Annotated[
+            tuple[str, ...] | None,
+            m.Field(
+                description=(
+                    "Exact focused selection; every other planned rule is a "
+                    "binding stage scanned only on the files the selection "
+                    "matches. None plans the complete catalog"
+                ),
+            ),
+        ] = None
 
     class CodemodPackageExportsFacts(FlextInfraModelsBase.FrozenArbitrary):
         """What each package of one project publishes, where it lives, what it holds."""

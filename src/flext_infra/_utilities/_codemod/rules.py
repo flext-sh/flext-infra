@@ -755,8 +755,9 @@ class FlextInfraUtilitiesCodemodRules(
             ]
         return value
 
-    @staticmethod
+    @classmethod
     def _select_rule_ids(
+        cls,
         plan: p.Infra.CodemodRulePlan,
         rule_ids: Sequence[str],
     ) -> p.Result[p.Infra.CodemodRulePlan]:
@@ -778,39 +779,61 @@ class FlextInfraUtilitiesCodemodRules(
         # Import-header is the mechanical binding stage of every selected fix,
         # not an independently elected law: a focused run whose fix emits a
         # facade name must still render the header that binds it, or the run
-        # publishes code Ruff rejects with F821.
+        # publishes code Ruff rejects with F821. The scan binds it only on the
+        # files the selection matches (``selected_rule_ids``).
         header_prefix = (
             f"{c.Infra.CODEMOD_IMPORT_HEADER_SHAPE}"
             f"{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}"
         )
+        kept = selected.union(
+            rule.id for rule in plan.rules if rule.id.startswith(header_prefix)
+        )
+        return r[p.Infra.CodemodRulePlan].ok(
+            cls.codemod_plan_restricted(plan, kept).model_copy(
+                update={"selected_rule_ids": tuple(rule_ids)}
+            ),
+        )
 
-        def keep(rule_id: str) -> bool:
-            return rule_id in selected or rule_id.startswith(header_prefix)
+    @staticmethod
+    def codemod_plan_restricted(
+        plan: p.Infra.CodemodRulePlan,
+        rule_ids: frozenset[str],
+    ) -> p.Infra.CodemodRulePlan:
+        """Keep only ``rule_ids`` in every view of ``plan``.
 
+        Args:
+            plan: The composed rule plan.
+            rule_ids: Exact rule IDs that stay planned.
+
+        Returns:
+            The plan with its rules, rulesets, provider order and project
+            elections restricted to ``rule_ids``.
+
+        """
         rulesets = tuple(
             ruleset.model_copy(
                 update={
                     field: tuple(
-                        rule_id for rule_id in getattr(ruleset, field) if keep(rule_id)
+                        rule_id
+                        for rule_id in getattr(ruleset, field)
+                        if rule_id in rule_ids
                     )
                     for field in ("rule_ids", "fixable_rule_ids")
                 }
             )
             for ruleset in plan.rulesets
-            if any(keep(rule_id) for rule_id in ruleset.rule_ids)
+            if any(rule_id in rule_ids for rule_id in ruleset.rule_ids)
         )
-        return r[p.Infra.CodemodRulePlan].ok(
-            plan.model_copy(
-                update={
-                    "provider_order": tuple(ruleset.provider for ruleset in rulesets),
-                    "rules": tuple(rule for rule in plan.rules if keep(rule.id)),
-                    "rulesets": rulesets,
-                    "project_rule_ids": {
-                        project: tuple(rule for rule in rules if keep(rule))
-                        for project, rules in plan.project_rule_ids.items()
-                    },
-                }
-            ),
+        return plan.model_copy(
+            update={
+                "provider_order": tuple(ruleset.provider for ruleset in rulesets),
+                "rules": tuple(rule for rule in plan.rules if rule.id in rule_ids),
+                "rulesets": rulesets,
+                "project_rule_ids": {
+                    project: tuple(rule for rule in rules if rule in rule_ids)
+                    for project, rules in plan.project_rule_ids.items()
+                },
+            }
         )
 
     @classmethod
