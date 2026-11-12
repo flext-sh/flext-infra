@@ -304,7 +304,7 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(APPROVAL_CONTEXT),Y)
-ifneq ($(filter setup check,$(CUSTOM_DECLARED_TARGETS)),)
+ifneq ($(filter setup check tests,$(CUSTOM_DECLARED_TARGETS)),)
 $(error Approval stages cannot be replaced by custom targets)
 endif
 
@@ -325,6 +325,16 @@ $(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
 endif
 ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
 $(error Approval stage _custom-check must chain _builtin-check (wrapper parity; replacements are forbidden))
+endif
+endif
+
+ifneq ($(filter _custom-tests,$(CUSTOM_DECLARED_TARGETS)),)
+override CUSTOM_WRAPPER_REFERENCE_COUNT := $(shell awk -v reference="_builtin-tests" 'index($$0, reference) { count++ } END { print count + 0 }' "$(CUSTOM_MAKEFILE)")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom approval reference in $(CUSTOM_MAKEFILE))
+endif
+ifeq ($(CUSTOM_WRAPPER_REFERENCE_COUNT),0)
+$(error Approval stage _custom-tests must chain _builtin-tests (wrapper parity; replacements are forbidden))
 endif
 endif
 
@@ -867,7 +877,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
 $(addprefix _activated-,$(PROFILE_VERBS_DIRECT)): _activated-%: _builtin-%
@@ -973,7 +983,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
-	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,direnv exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
 $(addprefix _activated-,$(SCRIPT_VERBS_DIRECT)): _activated-%: _builtin-%

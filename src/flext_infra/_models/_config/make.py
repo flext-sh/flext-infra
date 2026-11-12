@@ -1187,14 +1187,15 @@ class FlextInfraModelsConfigMake(
             """Validate the workflow verbs against the declared public verbs.
 
             CI provisions first and runs the read-only check and complete test
-            owners in order. The pre-commit rows select only the read-only check.
+            owners in order. The pre-commit rows run setup, then the read-only
+            check.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
                     workflow verbs must be available in every profile; or if CI
                     approval boundaries or milestone order are invalid; or if
-                    pre-commit selects an operation other than check.
+                    the pre-commit rows are not setup followed by check.
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)

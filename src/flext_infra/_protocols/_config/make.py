@@ -807,7 +807,7 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def approval_verbs(self) -> tuple[str, ...]:
-            """Ordered approval derived once from the validated workflow."""
+            """Ordered unique approval verbs derived from the validated workflow."""
             ...
 
         @property
