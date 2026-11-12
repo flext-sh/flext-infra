@@ -133,7 +133,7 @@ class FlextInfraUtilitiesGitSemanticRefs(
     def _git_lane_checkpoint_receipt(
         cls,
         request: p.Infra.GitLaneOwnershipRequest,
-    ) -> m.Infra.GitLaneOwnershipReceipt:
+    ) -> p.Infra.GitLaneOwnershipReceipt:
         reference = request.checkpoint_ref
         repo = cls._repo(request.repo_root)
         repo.git.check_ref_format(reference)
@@ -189,12 +189,12 @@ class FlextInfraUtilitiesGitSemanticRefs(
             receipt = cls._git_lane_checkpoint_receipt(request)
         except (BadName, GitCommandError, OSError, ValueError) as exc:
             return result.fail(str(exc), exception=exc)
-        verification = m.Infra.GitLaneVerificationRequest(
-            repo_root=request.repo_root,
-            remote=request.remote,
-            expected_tip=request.expected_tip,
-            ownership=receipt,
-        )
+        verification = m.Infra.GitLaneVerificationRequest.model_validate({
+            "repo_root": request.repo_root,
+            "remote": request.remote,
+            "expected_tip": request.expected_tip,
+            "ownership": receipt,
+        })
         tip = cls.git_verify_lane(verification)
         if tip.failure:
             return result.from_failure(tip)
@@ -202,11 +202,11 @@ class FlextInfraUtilitiesGitSemanticRefs(
         if retained.failure:
             return result.from_failure(retained)
         return cls.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                remote=request.remote,
-                expected_tip=tip.value.oid,
-            ),
+            m.Infra.GitLaneVerificationRequest.model_validate({
+                "repo_root": request.repo_root,
+                "remote": request.remote,
+                "expected_tip": tip.value.oid,
+            }),
         ).map(lambda _tip: receipt)
 
     @classmethod

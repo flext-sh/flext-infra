@@ -243,14 +243,7 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
         repository_root: Path
-
-        @property
-        def initial_workspace(
-            self,
-        ) -> FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None:
-            """Declared scaffold specification."""
-            ...
-
+        initial_workspace: FlextInfraProtocolsConfigWorkspace.WorkspaceSpec | None
         ports: FlextInfraProtocolsCodegenPipeline.CodegenConformPorts | None
         docs_planner: FlextInfraProtocolsBase.DocsArtifactPlanner | None
         snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None

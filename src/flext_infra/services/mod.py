@@ -656,9 +656,9 @@ class FlextInfraModHandlers:
             ast_rules = u.Infra.codemod_rule_plan(snapshot, rule_ids=(selector,))
         if ast_rules.failure and ast_rules.error_code != c.ErrorCode.NOT_FOUND:
             return r[t.Cli.ResultValue].from_failure(ast_rules)
-        additions: list[m.Infra.RopeSignatureAddition] = []
-        removals: list[m.Infra.RopeSignatureRemoval] = []
-        transfers: list[m.Infra.RopeMethodTransfer] = []
+        additions: list[p.Infra.RopeSignatureAddition] = []
+        removals: list[p.Infra.RopeSignatureRemoval] = []
+        transfers: list[p.Infra.RopeMethodTransfer] = []
         catalogue_inputs: list[p.Cli.AtomicFileState] = []
         rules = u.Infra.declared_contract_rules(
             root,
@@ -667,18 +667,18 @@ class FlextInfraModHandlers:
             method_transfers=transfers,
             catalogue_inputs=catalogue_inputs,
         )
-        native = m.Infra.RopeContractRules(
-            rules=tuple(rule for rule in rules if rule.id == request.rule_id),
-            signature_additions=tuple(
+        native = m.Infra.RopeContractRules.model_validate({
+            "rules": tuple(rule for rule in rules if rule.id == request.rule_id),
+            "signature_additions": tuple(
                 rule for rule in additions if rule.id == request.rule_id
             ),
-            signature_removals=tuple(
+            "signature_removals": tuple(
                 rule for rule in removals if rule.id == request.rule_id
             ),
-            method_transfers=tuple(
+            "method_transfers": tuple(
                 rule for rule in transfers if rule.id == request.rule_id
             ),
-        )
+        })
         native_selected = bool(
             native.rules
             or native.signature_additions

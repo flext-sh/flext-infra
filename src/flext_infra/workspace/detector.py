@@ -859,24 +859,24 @@ class FlextInfraWorkspaceDetector(
         project_metadata: p.ProjectMetadata | None = None,
         allow_unprovisioned_members: bool = False,
         inputs: p.Infra.CodegenInputs | None = None,
-    ) -> p.Result[m.Infra.WorkspaceSpec]:
+    ) -> p.Result[p.Infra.WorkspaceSpec]:
         """Load local identity and validate local, read-only Git topology.
 
         Existing manifests need no bootstrap source. Success carries the complete
         workspace, never an optional value transported as a Result payload.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
+            The resulting ``p.Result[p.Infra.WorkspaceSpec]``.
 
         """
         del project_metadata
         resolved_root = repository_root.expanduser().resolve()
         authenticated = cls._authenticated_identity(resolved_root)
         if authenticated.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(authenticated)
+            return r[p.Infra.WorkspaceSpec].from_failure(authenticated)
         resolved_inputs = cls._resolved_codegen_inputs(resolved_root, inputs)
         if resolved_inputs.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(resolved_inputs)
+            return r[p.Infra.WorkspaceSpec].from_failure(resolved_inputs)
         return cls._assembled_workspace_spec(
             resolved_root,
             authenticated.value,
@@ -892,11 +892,11 @@ class FlextInfraWorkspaceDetector(
         inputs_value: p.Infra.CodegenInputs,
         *,
         allow_unprovisioned_members: bool,
-    ) -> p.Result[m.Infra.WorkspaceSpec]:
+    ) -> p.Result[p.Infra.WorkspaceSpec]:
         """Validate read-only topology and assemble one workspace spec.
 
         Returns:
-            The resulting ``p.Result[m.Infra.WorkspaceSpec]``.
+            The resulting ``p.Result[p.Infra.WorkspaceSpec]``.
 
         """
         declaration = inputs_value.spec.repository
@@ -904,7 +904,7 @@ class FlextInfraWorkspaceDetector(
             resolved_root / c.Infra.GITMODULES, required=False
         )
         if topology.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(topology)
+            return r[p.Infra.WorkspaceSpec].from_failure(topology)
         workspace = cls._resolved_workspace_topology(
             resolved_root,
             identity,
@@ -913,13 +913,13 @@ class FlextInfraWorkspaceDetector(
             allow_unprovisioned_members=allow_unprovisioned_members,
         )
         if workspace.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(workspace)
+            return r[p.Infra.WorkspaceSpec].from_failure(workspace)
         external_consumers = u.Infra.discover_external_consumers(
             resolved_root,
             inputs_value,
         )
         if external_consumers.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(external_consumers)
+            return r[p.Infra.WorkspaceSpec].from_failure(external_consumers)
         (workspace_beads, resolved_refs, name) = workspace.value
         observations = (
             topology.value,
@@ -929,14 +929,14 @@ class FlextInfraWorkspaceDetector(
         )
         verified = u.Cli.atomic_verify_binary_file_states(observations)
         if verified.failure:
-            return r[m.Infra.WorkspaceSpec].from_failure(verified)
+            return r[p.Infra.WorkspaceSpec].from_failure(verified)
         bootstrap_source: p.Infra.CodegenBootstrapSource | None = None
         if not (resolved_root / c.PYPROJECT_FILENAME).exists():
             bootstrap = cls._bootstrap_source(resolved_root, declaration)
             if bootstrap.failure:
-                return r[m.Infra.WorkspaceSpec].from_failure(bootstrap)
+                return r[p.Infra.WorkspaceSpec].from_failure(bootstrap)
             bootstrap_source = bootstrap.value
-        return r[m.Infra.WorkspaceSpec].ok(
+        return r[p.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec.model_validate({
                 "inputs": (observations),
                 "name": (name),

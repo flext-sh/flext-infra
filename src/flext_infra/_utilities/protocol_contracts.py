@@ -301,7 +301,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         *,
         sources: Mapping[Path, str],
         objects: Sequence[p.Infra.Object] = (),
-    ) -> m.Infra.ProtocolPlacementCensus:
+    ) -> p.Infra.ProtocolPlacementCensus:
         """Inventory native origins, complete public routes and dependencies.
 
         Returns:
@@ -505,7 +505,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         workspace: p.Infra.RopeWorkspaceDsl,
         contract: p.Infra.RopeSourceClass,
         origin: tuple[c.Infra.ProtocolOrigin, tuple[str, ...]],
-    ) -> tuple[m.Infra.ProtocolContractPlacement, int]:
+    ) -> tuple[p.Infra.ProtocolContractPlacement, int]:
         project = workspace.rope_project
         resource = contract.get_module().get_resource()
         if resource is None:
@@ -542,9 +542,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
     @staticmethod
     def _protocol_dependencies(
         root: Path,
-        observed: Sequence[tuple[m.Infra.ProtocolContractPlacement, int]],
+        observed: Sequence[tuple[p.Infra.ProtocolContractPlacement, int]],
         references: Mapping[str, Sequence[p.Infra.ReferenceSite]],
-    ) -> m.Infra.ProtocolPlacementCensus:
+    ) -> p.Infra.ProtocolPlacementCensus:
         bounds = {
             row.source_module + "." + row.source_class: (
                 root / row.source_path,
@@ -1190,7 +1190,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         workspace: p.Infra.RopeWorkspaceDsl,
         *,
         sources: Mapping[Path, str],
-        census: m.Infra.ProtocolPlacementCensus,
+        census: p.Infra.ProtocolPlacementCensus,
     ) -> p.Infra.ProtocolOrganizationPlan:
         """Place and rewire censused protocols before the caller projects them.
 
@@ -1228,7 +1228,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             base, working, census.contracts, placements
         )
         return m.Infra.ProtocolOrganizationPlan(
-            census=m.Infra.ProtocolPlacementCensus(contracts=placements),
+            census=m.Infra.ProtocolPlacementCensus.model_validate({
+                "contracts": placements
+            }),
             files=plans,
             pre_move_sources=before_move,
             findings=census.findings,
@@ -1236,8 +1238,8 @@ class FlextInfraUtilitiesModelsProtocolContracts:
 
     @staticmethod
     def _ordered_protocol_placements(
-        census: m.Infra.ProtocolPlacementCensus,
-    ) -> tuple[m.Infra.ProtocolContractPlacement, ...]:
+        census: p.Infra.ProtocolPlacementCensus,
+    ) -> tuple[p.Infra.ProtocolContractPlacement, ...]:
         """Order moved contracts by their native dependency cohorts.
 
         Returns:

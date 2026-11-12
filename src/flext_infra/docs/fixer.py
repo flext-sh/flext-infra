@@ -139,7 +139,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         sources: Sequence[p.Cli.AtomicFileState],
     ) -> tuple[
         tuple[p.Infra.SemanticFilePlan, ...],
-        tuple[m.Infra.DocsPhaseItemModel, ...],
+        tuple[p.Infra.DocsPhaseItemModel, ...],
     ]:
         """Compose authored repairs against read bytes without publication.
 
@@ -151,7 +151,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         planned: list[p.Infra.SemanticFilePlan] = []
-        collected: list[m.Infra.DocsPhaseItemModel] = []
+        collected: list[p.Infra.DocsPhaseItemModel] = []
         for before in sources:
             if before.content is None:
                 raise FileNotFoundError(before.path)
@@ -190,7 +190,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
     def _scope_report(
         self,
         scope: p.Infra.DocScope,
-        items: Sequence[m.Infra.DocsPhaseItemModel],
+        items: Sequence[p.Infra.DocsPhaseItemModel],
         *,
         apply: bool,
     ) -> p.Infra.DocsPhaseReport:
@@ -201,20 +201,20 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
         """
         u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
-        report = m.Infra.DocsPhaseReport(
-            phase="fix",
-            scope=scope.name,
-            changed_files=len(items),
-            applied=apply,
-            items=tuple(items),
-            result=(
+        report = m.Infra.DocsPhaseReport.model_validate({
+            "phase": "fix",
+            "scope": scope.name,
+            "changed_files": len(items),
+            "applied": apply,
+            "items": tuple(items),
+            "result": (
                 c.Infra.ResultStatus.OK
                 if apply or not items
                 else c.Infra.ResultStatus.FAIL
             ),
-            reason=f"changes:{len(items)}",
-            passed=apply or not items,
-        )
+            "reason": f"changes:{len(items)}",
+            "passed": apply or not items,
+        })
         self.logger.info(
             "fix_scope_completed",
             project=scope.name,

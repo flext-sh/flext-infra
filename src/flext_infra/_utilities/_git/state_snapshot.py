@@ -117,7 +117,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         paths: Sequence[Path],
         *,
         index_file: Path | None = None,
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         """Read the exact stage-zero index entries for the requested paths.
 
         Returns:
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
                     "or skip-worktree flags"
                 )
                 raise ValueError(msg)
-        entries: list[m.Infra.GitWorktreeIndexEntry] = []
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
         for row in repo.git.ls_files("--stage", "-z", "--", *pathspecs).split("\0"):
             if not row:
                 continue
@@ -165,13 +165,13 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: Sequence[Path],
-    ) -> tuple[m.Infra.GitWorktreeIndexEntry, ...]:
+    ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         rows = (
             cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
             if paths
             else ""
         )
-        entries: list[m.Infra.GitWorktreeIndexEntry] = []
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
         for row in rows.split("\0"):
             if not row:
                 continue
@@ -188,7 +188,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         cls,
         root: Path,
         paths: Sequence[Path],
-        entries: Sequence[m.Infra.GitWorktreeIndexEntry],
+        entries: Sequence[p.Infra.GitWorktreeIndexEntry],
     ) -> tuple[p.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)

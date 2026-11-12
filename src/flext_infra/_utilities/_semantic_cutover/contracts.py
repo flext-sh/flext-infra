@@ -152,9 +152,9 @@ class FlextInfraUtilitiesSemanticContracts(
         working: dict[t.Infra.RopeSourcePath, str] = dict(sources)
         for edit in computed.value:
             working[edit.file_path] = edit.updated_source
-        additions: list[m.Infra.RopeSignatureAddition] = []
-        removals: list[m.Infra.RopeSignatureRemoval] = []
-        transfers: list[m.Infra.RopeMethodTransfer] = []
+        additions: list[p.Infra.RopeSignatureAddition] = []
+        removals: list[p.Infra.RopeSignatureRemoval] = []
+        transfers: list[p.Infra.RopeMethodTransfer] = []
         rules = cls.declared_contract_rules(
             workspace.repository_root,
             signature_additions=additions,
@@ -169,11 +169,11 @@ class FlextInfraUtilitiesSemanticContracts(
                 for rule in rules
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
-            options=m.Infra.ContractAdmissionOptions(
-                signature_additions=additions,
-                signature_removals=removals,
-                method_transfers=transfers,
-            ),
+            options=m.Infra.ContractAdmissionOptions.model_validate({
+                "signature_additions": additions,
+                "signature_removals": removals,
+                "method_transfers": transfers,
+            }),
         )
         if standard.failure:
             return standard
@@ -202,12 +202,12 @@ class FlextInfraUtilitiesSemanticContracts(
     def declared_contract_rules(
         repository_root: t.Infra.RopeSourcePath,
         *,
-        signature_additions: MutableSequence[m.Infra.RopeSignatureAddition]
+        signature_additions: MutableSequence[p.Infra.RopeSignatureAddition]
         | None = None,
-        method_transfers: MutableSequence[m.Infra.RopeMethodTransfer] | None = None,
-        signature_removals: MutableSequence[m.Infra.RopeSignatureRemoval] | None = None,
+        method_transfers: MutableSequence[p.Infra.RopeMethodTransfer] | None = None,
+        signature_removals: MutableSequence[p.Infra.RopeSignatureRemoval] | None = None,
         catalogue_inputs: MutableSequence[p.Cli.AtomicFileState] | None = None,
-    ) -> Sequence[m.Infra.RopeContractRule]:
+    ) -> Sequence[p.Infra.RopeContractRule]:
         """Load universal and elected repo rules with unique IDs and known families.
 
         Returns:
@@ -237,7 +237,7 @@ class FlextInfraUtilitiesSemanticContracts(
                 and (root / c.Infra.CODEMOD_ROPE_CONTRACTS_RELPATH).is_file()
             ),
         )
-        rules: MutableSequence[m.Infra.RopeContractRule] = []
+        rules: MutableSequence[p.Infra.RopeContractRule] = []
         for catalogue, owner_root in catalogues:
             declared, state = (
                 FlextInfraUtilitiesSemanticContracts._extend_declared_contract_rules(
@@ -273,8 +273,8 @@ class FlextInfraUtilitiesSemanticContracts(
     def _extend_declared_contract_rules(
         catalogue: Path,
         owner_root: Path | None,
-        rules: MutableSequence[m.Infra.RopeContractRule],
-    ) -> tuple[m.Infra.RopeContractRules, p.Cli.AtomicFileState]:
+        rules: MutableSequence[p.Infra.RopeContractRule],
+    ) -> tuple[p.Infra.RopeContractRules, p.Cli.AtomicFileState]:
         """Decode one catalogue and admit only rules owned by its project.
 
         Returns:
@@ -447,7 +447,9 @@ class FlextInfraUtilitiesSemanticContracts(
             sources,
             rules,
             tuple((path, analysis_sources.get(path, source)) for path, source in items),
-            options if options is not None else m.Infra.ContractAdmissionOptions(),
+            options
+            if options is not None
+            else m.Infra.ContractAdmissionOptions.model_validate({}),
         )
         for path, names in inserted.items():
             if path not in working or not names:

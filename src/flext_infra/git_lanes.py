@@ -185,8 +185,8 @@ class FlextInfraGitLanes:
         """
         if request.evidence_file is not None:
             return cls._receipt_evidence(request)
-        pull_requests: tuple[m.Infra.GitLanePullRequest, ...] | None = None
-        beads: tuple[m.Infra.GitLaneBead, ...] | None = None
+        pull_requests: tuple[p.Infra.GitLanePullRequest, ...] | None = None
+        beads: tuple[p.Infra.GitLaneBead, ...] | None = None
         if request.read_pull_requests:
             wire = cls._read_ownership(
                 (
@@ -214,12 +214,12 @@ class FlextInfraGitLanes:
             beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
-        evidence = m.Infra.GitLaneEvidence(
-            repo_root=request.repo_root,
-            captured_at=datetime.now(UTC),
-            pull_requests=pull_requests,
-            beads=beads,
-        )
+        evidence = m.Infra.GitLaneEvidence.model_validate({
+            "repo_root": request.repo_root,
+            "captured_at": datetime.now(UTC),
+            "pull_requests": pull_requests,
+            "beads": beads,
+        })
         if pull_requests is not None and len(pull_requests) >= (
             config.Infra.codegen.branch_policy.lane_pr_limit
         ):

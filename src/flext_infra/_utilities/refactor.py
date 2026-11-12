@@ -258,7 +258,7 @@ class FlextInfraUtilitiesRefactor:
         ],
         indexes: Sequence[MutableMapping[tuple[str, str], list[int]]],
         inventory: tuple[tuple[str, str], ...],
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
         """Build the per-repository and per-rule occurrence deltas.
 
         Args:
@@ -272,7 +272,7 @@ class FlextInfraUtilitiesRefactor:
 
         """
         before_entries, after_entries = counters
-        deltas: list[m.Infra.ViolationsRuleDelta] = []
+        deltas: list[p.Infra.ViolationsRuleDelta] = []
         for key in sorted(
             set(inventory) | before_entries.keys() | after_entries.keys()
         ):
@@ -310,7 +310,7 @@ class FlextInfraUtilitiesRefactor:
         | p.Infra.ModTextReport,
         *,
         options: p.Infra.RuleDeltaOptions = _EMPTY_RULE_DELTA_OPTIONS,
-    ) -> tuple[m.Infra.ViolationsRuleDelta, ...]:
+    ) -> tuple[p.Infra.ViolationsRuleDelta, ...]:
         """Compare the lexical occurrences of two reports of one native engine.
 
         Args:
@@ -463,17 +463,17 @@ class FlextInfraUtilitiesRefactor:
                 update={
                     "error": stage.error or "native audit snapshot unavailable",
                     "rule_evaluations": tuple(
-                        m.Infra.ViolationsRuleEvaluation(
-                            repository=project.name,
-                            rule_id=rule.id,
-                            catalog_digest=rule.digest,
-                            provider=rule.provider,
-                            resource=rule.resource,
-                            detection_only=not rule.fixable,
-                            status="NOT_EXECUTED",
-                            delta=None,
-                            error=stage.error or "native audit snapshot unavailable",
-                        )
+                        m.Infra.ViolationsRuleEvaluation.model_validate({
+                            "repository": project.name,
+                            "rule_id": rule.id,
+                            "catalog_digest": rule.digest,
+                            "provider": rule.provider,
+                            "resource": rule.resource,
+                            "detection_only": not rule.fixable,
+                            "status": "NOT_EXECUTED",
+                            "delta": None,
+                            "error": stage.error or "native audit snapshot unavailable",
+                        })
                         for rule in inventory.rules
                     )
                     if inventory is not None
@@ -585,14 +585,14 @@ class FlextInfraUtilitiesRefactor:
             else ()
         )
         evaluations += tuple(
-            m.Infra.ViolationsRuleEvaluation(
-                repository=row.repository,
-                rule_id=row.rule_id,
-                engine=row.engine,
-                status="observed",
-                delta=row,
-                error=None,
-            )
+            m.Infra.ViolationsRuleEvaluation.model_validate({
+                "repository": row.repository,
+                "rule_id": row.rule_id,
+                "engine": row.engine,
+                "status": "observed",
+                "delta": row,
+                "error": None,
+            })
             for row in deltas
             if row.engine == "text" and row.repository == project.name
         )

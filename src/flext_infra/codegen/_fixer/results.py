@@ -58,11 +58,11 @@ class FlextInfraCodegenFixerResults:
         self,
         ctx: p.Infra.FixContext,
         project_path: Path,
-    ) -> Sequence[m.Infra.CensusViolation]:
+    ) -> Sequence[p.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure.
 
         Returns:
-            The resulting ``Sequence[m.Infra.CensusViolation]``.
+            The resulting ``Sequence[p.Infra.CensusViolation]``.
 
         """
         initial_violations_result = u.Infra.parse_namespace_validation(
@@ -89,7 +89,7 @@ class FlextInfraCodegenFixerResults:
     def _classify_remaining_violations(
         ctx: p.Infra.FixContext,
         project_path: Path,
-        initial_violations: Sequence[m.Infra.CensusViolation],
+        initial_violations: Sequence[p.Infra.CensusViolation],
     ) -> p.Infra.FixContext:
         """Re-run validation and split outstanding violations into fixed vs skipped.
 
