@@ -46,6 +46,27 @@ snapshots:
       style: secondary
       start: 0
       end: 85
+  "from typing import Literal\nclass Model:\n    model_config = m.SettingsConfigDict(env_prefix=\"X_\")\n":
+    fixed: |
+      from typing import ClassVar, Literal
+      class Model:
+          model_config = m.SettingsConfigDict(env_prefix="X_")
+    labels:
+    - source: from typing import Literal
+      style: primary
+      start: 0
+      end: 26
+    - source: model_config = m.SettingsConfigDict(env_prefix="X_")
+      style: secondary
+      start: 44
+      end: 96
+    - source: |
+        from typing import Literal
+        class Model:
+            model_config = m.SettingsConfigDict(env_prefix="X_")
+      style: secondary
+      start: 0
+      end: 97
   "from typing import TYPE_CHECKING, Final\nfrom flext_tests import FlextTestsConstants\nclass C:\n    class Tests(FlextTestsConstants.Tests):\n        HOST: Final[str] = \"localhost\"\n":
     fixed: |
       from typing import ClassVar, TYPE_CHECKING, Final

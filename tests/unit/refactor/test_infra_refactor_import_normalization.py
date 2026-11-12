@@ -168,7 +168,10 @@ class TestsFlextInfraRefactorImportNormalization(
 
     @classmethod
     def test_own_import_alias_rejects_destination_capture(cls, tmp_path: Path) -> None:
-        """A local canonical-name parameter cannot capture an imported reference."""
+        """A local canonical-name parameter cannot capture an imported reference.
+
+        The refusal names the module, so a consumer can locate the collision.
+        """
         project, package = cls._project(tmp_path)
         target = package / "consumer.py"
         source = (
@@ -182,7 +185,7 @@ class TestsFlextInfraRefactorImportNormalization(
                 file_path=target,
                 source=source,
             ),
-            has="destination is occupied",
+            has=["destination is occupied", str(target.resolve())],
         )
         tm.that(target.read_text(encoding="utf-8"), eq=source)
 
