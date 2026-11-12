@@ -351,15 +351,7 @@ class FlextInfraWorkspaceDetector(
             native_metadata = metadata.value
         if native_metadata is not None:
             project_name = native_metadata.metadata.project.name
-            # Conform owns [build-system]: the projection always declares the
-            # scaffold backend, so only an explicit tool.uv.package opts out.
-            package = u.Infra.project_package_participation(
-                native_metadata.packaging.model_copy(
-                    update={
-                        "build_backend": config.Infra.codegen.scaffold.build.backend
-                    },
-                ),
-            )
+            package = u.Infra.project_package_participation(native_metadata.packaging)
         else:
             scaffold = cls._declared_scaffold_project(repository_root)
             if scaffold.failure:
@@ -1320,9 +1312,12 @@ class FlextInfraWorkspaceDetector(
                 return r[p.Infra.RepositoryConformTarget].from_failure(captured)
             inputs = captured.value
         declaration = inputs.spec.repository
+        repository = cls.conform_repository(resolved_root, workspace.repository)
+        if repository.failure:
+            return r[p.Infra.RepositoryConformTarget].from_failure(repository)
         return r[p.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget.model_validate({
-                "repository": (workspace.repository),
+                "repository": (repository.value),
                 "root": (resolved_root),
                 "toolchain_root": (resolved_root),
                 "make_profile": (workspace.repository.role),
@@ -1335,6 +1330,35 @@ class FlextInfraWorkspaceDetector(
                 "external_dependency_paths": (workspace.external_dependency_paths),
             }),
         )
+
+    @staticmethod
+    def conform_repository(
+        repository_root: Path,
+        repository: p.Infra.RepositoryRef,
+    ) -> p.Result[p.Infra.RepositoryRef]:
+        """Bind package participation to the projection conform renders.
+
+        Conform owns ``[build-system]`` and always declares the scaffold
+        backend, so only an explicit ``tool.uv.package`` opts out. Reading the
+        pre-render tree would flip participation between two generations.
+
+        Returns:
+            The repository with its rendered package participation.
+
+        """
+        result_type = r[p.Infra.RepositoryRef]
+        reference = m.Infra.RepositoryRef.model_validate(repository)
+        if not (repository_root / c.PYPROJECT_FILENAME).is_file():
+            return result_type.ok(reference)
+        metadata = u.Infra.read_project_metadata_state(repository_root)
+        if metadata.failure:
+            return result_type.from_failure(metadata)
+        package = u.Infra.project_package_participation(
+            metadata.value.packaging.model_copy(
+                update={"build_backend": config.Infra.codegen.scaffold.build.backend},
+            ),
+        )
+        return result_type.ok(reference.model_copy(update={"package": package}))
 
     @staticmethod
     def _conform_topology(
