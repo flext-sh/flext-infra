@@ -170,14 +170,14 @@ class FlextInfraProtocolsDepsToolConfig:
             """Embedding pass host (--semantic)."""
             ...
 
-        ignore_patterns: t.StrTuple
+        ignore_patterns: Sequence[str]
         ignore: Sequence[str]
 
     @runtime_checkable
     class BanditToolConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
-        skips: t.StrTuple
+        skips: Sequence[str]
 
     @runtime_checkable
     class MarkdownProjectedBlock(FlextCliProtocols.BaseModel, Protocol):
