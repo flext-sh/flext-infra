@@ -262,6 +262,24 @@ class FlextInfraGatesMypy(FlextInfraGates):
         return u.Infra.mypy_runner_timeout(self._project_limit(project_dir))
 
     @override
+    def _run(
+        self,
+        cmd: Sequence[str],
+        cwd: Path,
+        ctx: p.Infra.GateContext,
+        *,
+        input_data: str | None = None,
+    ) -> p.Cli.CommandOutput:
+        """Run Mypy as the only writer of its shared cache directory.
+
+        Returns:
+            The resulting ``p.Cli.CommandOutput``.
+
+        """
+        with u.Infra.mypy_cache_lock(cwd):
+            return super()._run(cmd, cwd, ctx, input_data=input_data)
+
+    @override
     def _check_env(
         self,
         project_dir: Path,
