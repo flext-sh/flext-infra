@@ -50,14 +50,15 @@ class TestsFlextInfraTypeGates:
 
     @staticmethod
     @c.Tests.MARK.slow
-    def test_mypy_cache_is_project_keyed_across_checkouts_and_relocks(
+    def test_mypy_gate_uses_the_shared_cache_across_relocks(
         tmp_path: Path,
     ) -> None:
-        """One environment shares one external cache per declared project name."""
+        """The gate writes the shared external cache and keeps it across relocks."""
         spec = config.Infra.codegen.make.mypy_cache
         cache_home = tmp_path / "cache"
         shared_root = cache_home / spec.external_storage_directory
         with tm.scope(env={str(spec.data_home_environment_variable): str(cache_home)}):
+            caches: set[str] = set()
             for checkout, project in (
                 ("lane", "fixture-alpha"),
                 ("primary", "fixture-alpha"),
@@ -76,7 +77,8 @@ class TestsFlextInfraTypeGates:
                     reports_dir=root / ".reports",
                 )
                 gate = gates.FlextInfraGatesMypy(root)
-                cache = shared_root / project / u.Infra.environment_cache_identity(root)
+                cache = u.Infra.mypy_cache_directory(root)
+                caches.add(cache.parent.name)
                 for revision in (1, 2):
                     lock.write_text(
                         f"version = 1\nrevision = {revision}\n",
@@ -97,7 +99,7 @@ class TestsFlextInfraTypeGates:
                 tm.fail((root / ".mypy_cache").exists())
             tm.that(
                 {path.name for path in shared_root.iterdir()},
-                eq={"fixture-alpha", "fixture-beta"},
+                eq=caches,
             )
 
     @u.Tests.fixture
