@@ -83,9 +83,15 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             return r[str].ok(str(resolved))
         try:
             with cls._repo(resolved) as repo:
-                toplevel = Path(repo.working_tree_dir or str(repo.working_dir)).resolve()
+                toplevel = Path(
+                    repo.working_tree_dir or str(repo.working_dir)
+                ).resolve()
                 origin = next(
-                    (remote.url for remote in repo.remotes if remote.name == c.Infra.GIT_DEFAULT_REMOTE),
+                    (
+                        remote.url
+                        for remote in repo.remotes
+                        if remote.name == c.Infra.GIT_DEFAULT_REMOTE
+                    ),
                     None,
                 )
                 identity = (

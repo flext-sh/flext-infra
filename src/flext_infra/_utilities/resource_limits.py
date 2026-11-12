@@ -188,11 +188,9 @@ class FlextInfraUtilitiesResourceLimits:
             The resulting ``Path``.
 
         """
-        namespace = (
-            FlextInfraUtilitiesGitSemanticIdentity.repository_cache_namespace(
-                project_dir,
-            ).unwrap()
-        )
+        namespace = FlextInfraUtilitiesGitSemanticIdentity.repository_cache_namespace(
+            project_dir,
+        ).unwrap()
         digest = hashlib.sha256(namespace.encode(c.DEFAULT_ENCODING)).hexdigest()
         return (
             FlextInfraUtilitiesResourceLimits.external_cache_directory(

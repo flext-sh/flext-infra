@@ -121,7 +121,11 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def remote_variable(self) -> t.NonEmptyStr:
-            """Variable every remote runner exports, whatever CI token is passed."""
+            """Structural member projected from the owning model.
+
+            Variable every remote runner exports, whatever CI token the step passes;
+            a remote check never runs a local-stage gate.
+            """
             ...
 
         @property
@@ -817,7 +821,7 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def approval_verbs(self) -> tuple[str, ...]:
-            """Ordered approval derived once from the validated workflow."""
+            """Ordered unique approval verbs derived from the validated workflow."""
             ...
 
         @property
