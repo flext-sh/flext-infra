@@ -2714,7 +2714,7 @@ class FlextInfraUtilitiesModelsProtocol:
             owner, namespaced = resolved
             if namespaced:
                 accumulators[3].append(owner)
-            expected = self._source_expected_members(model, classes)
+            expected: set[str] | None = None
             for (
                 source_path,
                 holder_name,
@@ -2723,9 +2723,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ) in self._source_displaced_candidates(
                 owner, member_name, destination, (protocols_root, protocol_base)
             ):
+                # A stale generated holder retires with no member check; every
+                # other candidate needs the model's projected members. Deriving
+                # them only on that branch keeps the retirement pass off the
+                # field/method projection for the common already-generated tree.
+                if not stale and expected is None:
+                    expected = self._source_expected_members(model, classes)
                 self._source_require_retirable(
                     protocol,
-                    expected,
+                    expected if expected is not None else set[str](),
                     protocols_root,
                     (source_path, holder_name, member_name, public_model),
                     stale=stale,
