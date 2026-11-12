@@ -202,12 +202,19 @@ def _provision_consumer_template(
     # A newly scaffolded consumer has no committed locks yet. The public upgrade
     # lifecycle is their sole writer; frozen setup starts only after that first
     # resolved environment has been reviewed and committed by the consumer.
+    # FLEXT names the workspace that provides the editable sources. A linked
+    # lane worktree has no superproject of its own; the workspace is the one
+    # whose gitlink holds the repository's primary checkout.
+    primary = tm.ok(
+        u.Infra.git_list_worktrees(m.Infra.GitRepoRequest(repo_root=_PROJECT_ROOT))
+    ).entries[0].path
     superproject = tm.ok(
         u.Infra.git_superproject_working_tree(
-            m.Infra.GitRepoRequest(repo_root=_PROJECT_ROOT)
+            m.Infra.GitRepoRequest(repo_root=primary)
         )
     ).text.strip()
-    providers = Path(superproject) if superproject else _PROJECT_ROOT
+    tm.that(superproject, ne="", msg=f"{primary} is not a FLEXT workspace member")
+    providers = Path(superproject)
     for verb, receipt in (
         ("upg", _CONSUMER_UPGRADE_RECEIPT),
         ("setup", _INFRA_SETUP_RECEIPT),
