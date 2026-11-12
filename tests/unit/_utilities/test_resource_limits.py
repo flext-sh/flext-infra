@@ -285,9 +285,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
         """A hostile request cannot turn the supervisor into an arbitrary executor."""
         project = u.Tests.mypy_workload(tmp_path)
         command = u.Infra.mypy_limited_command(project, host_system="Darwin")
-        injected = (
-            project.model_dump_json()[:-1] + ',c.HandlerMode.COMMAND:["/bin/sh"]}'
-        )
+        injected = project.model_dump_json()[:-1] + ',"command":["/bin/sh"]}'
         result = u.Cli.run_raw(
             (*command[:-1], injected),
             timeout=u.Infra.mypy_runner_timeout(),
@@ -401,7 +399,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             f"    p = subprocess.Popen([sys.executable, '-c', {descendant!r}], "
             "stdout=subprocess.PIPE, stderr=stderr, text=True)\n"
             f"    Path({str(pid_file)!r}).write_text(str(p.pid), encoding='utf-8')\n"
-            "    if p.stdout is None or m.stdout.readline() != 'ready\\n':\n"
+            "    if p.stdout is None or p.stdout.readline() != 'ready\\n':\n"
             "        stderr.flush()\n"
             "        sys.stderr.write(errors.read_text(encoding='utf-8'))\n"
             "        raise RuntimeError('descendant readiness failed')\n"
@@ -458,8 +456,15 @@ class TestsFlextInfraUtilitiesResourceLimits:
             tm.ok(child.terminate())
             exited = child.wait(timeout=10)
             tm.ok(exited)
-            expected_exit = 143 if sys.platform == "darwin" else -15
-            tm.that(exited.value, eq=expected_exit)
+            # Darwin's supervisor exits 128+signal. GNU timeout re-raises the
+            # signal, except coreutils before 9.5, which marks any signal it
+            # receives while --kill-after is armed as a timeout (exit 124).
+            expected_exits = (
+                {128 + signal.SIGTERM}
+                if sys.platform == "darwin"
+                else {-signal.SIGTERM, c.Infra.PROCESS_TIMEOUT_EXIT_CODE}
+            )
+            tm.ok(exited.value in expected_exits)
         finally:
             if child.poll() is None:
                 tm.ok(child.kill())
