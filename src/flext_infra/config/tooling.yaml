@@ -680,6 +680,14 @@ Infra:
         # the aggregate wall and the slow marker owns its narrow item policy.
       tomlsort:
         process-timeout-seconds: 60
+      # Bandit test ids the security gate skips; every other test stays
+      # blocking. B101: assert is the tests idiom. B404 and B603: axiom
+      # (operator decision 2026-11-12, "Axiom: skip B404+B603") - list-form
+      # subprocess without a shell is the safe pattern, and the single
+      # process-execution owner must import subprocess. B602 (shell=True)
+      # stays active.
+      bandit:
+        skips: [ B101, B404, B603 ]
       # jscpd's own near-miss and meaning passes own clone semantics: the
       # structural pass (--similarity) compares normalized syntax trees and
       # runs everywhere; the embedding pass (--semantic) needs the declared

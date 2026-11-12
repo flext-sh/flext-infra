@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.gates import FlextInfraGates
 
 
@@ -27,7 +27,7 @@ class FlextInfraGatesBandit(FlextInfraGates):
         c.Infra.OUTPUT_JSON,
         "--quiet",
         "--skip",
-        "B101",
+        ",".join(config.Infra.tooling.tools.bandit.skips),
     )
 
     @override
