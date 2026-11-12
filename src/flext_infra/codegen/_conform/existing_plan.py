@@ -429,7 +429,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         staged = u.Infra.codegen_compose_file_plans(
             (*staged, *facades.value), ordered=True
         )
-        initializers = self._projected_exports(root, staged, selection=selection)
+        # A facade pass that changed no byte leaves the seed's candidate
+        # exactly as planned: replaying the initializer election there would
+        # compute the same projection a second time on unchanged source.
+        unchanged = selection is None and not any(
+            u.Infra.codegen_file_requires_effect(plan) for plan in facades.value
+        )
+        initializers = (
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(exported.value))
+            if unchanged
+            else self._projected_exports(root, staged, selection=selection)
+        )
         if initializers.failure:
             return result_type.from_failure(initializers)
         return result_type.ok((
