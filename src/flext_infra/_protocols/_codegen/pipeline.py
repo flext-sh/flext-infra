@@ -115,6 +115,25 @@ class FlextInfraProtocolsCodegenPipeline:
             ...
 
     @runtime_checkable
+    class CodegenRootSelection(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Resolved workspace root."""
+            ...
+
+        @property
+        def requested_root(self) -> Path:
+            """Resolved requested generation root."""
+            ...
+
+        @property
+        def members(self) -> tuple[Path, ...]:
+            """Resolved declared member checkouts."""
+            ...
+
+    @runtime_checkable
     class CodegenRepositoryPlanOutcome(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
