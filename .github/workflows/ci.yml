@@ -167,9 +167,6 @@ jobs:
           # Structured reports only — omit raw pytest/tool logs that may carry
           # connection strings or env-derived secrets from integration fixtures.
           path: |
-            .reports/**/junit.xml
-            .reports/**/coverage.xml
-            .reports/**/coverage.json
             .reports/**/audit-summary.json
             .reports/**/audit-report.md
             .reports/**/validate-summary.json
@@ -183,10 +180,6 @@ jobs:
             .reports/codegen-publication.json
             .reports/codegen-publication/**/*.json
             .reports/setup-operations/*.json
-            .reports/tests/**/*.json
-            .reports/tests/**/summary.txt
-            .reports/tests/**/failed-tests.txt
-            .reports/tests/**/errors.txt
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7

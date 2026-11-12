@@ -1237,7 +1237,7 @@ class FlextInfraModelsConfigMake(
             milestones = ((c.Infra.VERB_CHECK, c.Infra.CheckPhase.PRIMARY),)
             if (
                 not approval
-                or approval[0].verb != "setup"
+                or approval[0].verb != c.Infra.VERB_SETUP
                 or tuple(
                     (step.verb, step.phase)
                     for step in approval
@@ -1250,8 +1250,10 @@ class FlextInfraModelsConfigMake(
             hook = tuple(
                 step.verb for step in self.workflow if "pre_commit" in step.contexts
             )
-            if hook != (c.Infra.VERB_CHECK,):
-                msg = "the pre-commit hook requires only the check operation"
+            # A commit first provisions the checkout's own environment, so the
+            # check runs the locked toolchain even in a fresh lane worktree.
+            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
+                msg = "the pre-commit hook requires setup followed by check"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:

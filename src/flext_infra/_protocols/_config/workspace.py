@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import t
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
         FlextInfraProtocolsConfigMake,
@@ -230,6 +230,11 @@ class FlextInfraProtocolsConfigWorkspace:
     @runtime_checkable
     class RepositoryDeltaSpec(RepositoryDeltaAnalysisSpec, Protocol):
         """Structural data contract projected from the owning model."""
+
+        @property
+        def kind(self) -> c.Infra.ProjectKind:
+            """Declared project profile kind."""
+            ...
 
         @property
         def beads_enabled(self) -> bool:

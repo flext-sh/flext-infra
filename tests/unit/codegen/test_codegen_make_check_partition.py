@@ -154,7 +154,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         stage: c.Infra.GateStage,
     ) -> None:
         """A repository-owned gate lands in every partition its stage admits."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         payload["project_check_gates"] = [
             {
                 "name": "fixture-project-gate",
@@ -179,7 +179,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     @staticmethod
     def test_project_declared_gate_defaults_to_the_push_stage() -> None:
         """An undeclared stage keeps a repository validator out of CI and commits."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         payload["project_check_gates"] = [
             {"name": "fixture-project-gate", "module": "fixture_project.gate"},
         ]
@@ -195,7 +195,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     @staticmethod
     def test_context_tokens_must_be_distinct() -> None:
         """Two contexts sharing one token would silently merge their partitions."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         ci = u.json_dict_adapter().validate_python(payload["ci"])
         payload["ci"] = {**ci, "pre_commit_value": ci["value"]}
         with u.Tests.raises(e.PydanticValidationError, match="tokens must be distinct"):
@@ -205,7 +205,8 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_ci_workflow_runs_only_the_ci_partition() -> None:
         """The CI job runs each approval verb once, in order, under the CI token.
 
-        CI never runs the pre-commit hook verb and never the local partition.
+        CI never runs the pre-commit hook verb. The local partition runs only
+        in the operator-dispatched full qualification, never on push or PR.
         """
         make = config.Infra.codegen.make
         steps = u.CodegenTestSupport.Ci.ci_job_steps(
@@ -222,24 +223,58 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         positions = [commands.index(approval) for approval in approvals]
         tm.that(positions, eq=sorted(positions))
         local = f"{make.ci.variable}={make.ci.local_value} make"
-        tm.fail(any(local in command for command in commands))
+        for step in steps:
+            if local in str(step.get("run", "")):
+                tm.that(str(step.get("if", "")), has="inputs.full_check == true")
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
-    def test_pre_commit_runs_only_the_check_operation() -> None:
-        """The commit hook declares exactly the read-only check row."""
+    def test_pre_commit_runs_setup_then_check() -> None:
+        """The commit hook provisions the checkout, then runs the check row."""
         make = config.Infra.codegen.make
         tm.that(
             tuple(step.verb for step in make.workflow if "pre_commit" in step.contexts),
-            eq=(c.Infra.VERB_CHECK,),
+            eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
         )
+
+    @staticmethod
+    def test_pre_commit_workflow_refuses_a_missing_setup() -> None:
+        """A commit hook that checks without provisioning first is refused."""
+        base = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
+        rows = u.Tests.json_rows(base, "workflow")
+        payload = {
+            **base,
+            "workflow": [
+                {
+                    **row,
+                    "contexts": (
+                        [
+                            context
+                            for context in u.Tests.json_strings(row["contexts"])
+                            if context != "pre_commit"
+                        ]
+                        if row["verb"] == c.Infra.VERB_SETUP
+                        else row["contexts"]
+                    ),
+                }
+                for row in rows
+            ],
+        }
+        with u.Tests.raises(
+            e.PydanticValidationError, match="pre-commit hook requires"
+        ):
+            m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     def test_pre_commit_workflow_refuses_every_other_operation() -> None:
         """Any other declared workflow verb in the commit hook is refused."""
-        base = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        base = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         rows = u.Tests.json_rows(base, "workflow")
-        others = [row["verb"] for row in rows if row["verb"] != c.Infra.VERB_CHECK]
+        others = [
+            row["verb"]
+            for row in rows
+            if row["verb"] not in {c.Infra.VERB_SETUP, c.Infra.VERB_CHECK}
+        ]
         tm.that(others, empty=False)
         for verb in others:
             payload = {
@@ -262,12 +297,19 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    @c.Tests.MARK.parametrize("verb", ["setup", "tests"])
+    @c.Tests.MARK.parametrize(
+        "verb",
+        sorted({
+            step.verb
+            for step in config.Infra.codegen.make.workflow
+            if "ci" in step.contexts
+        }),
+    )
     def test_ci_workflow_requires_its_provisioning_and_test_boundaries(
         verb: str,
     ) -> None:
-        """Removing CI provisioning or the closing tests owner is refused."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        """Removing any declared CI approval verb from CI is refused."""
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         payload["workflow"] = [
             {
                 **row,
@@ -290,7 +332,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     @c.Tests.MARK.parametrize(("first", "second"), [("setup", "check")])
     def test_ci_workflow_rejects_reordered_milestones(first: str, second: str) -> None:
         """Provisioning precedes the approval milestones."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         rows = u.Tests.json_rows(payload, "workflow")
         positions = [
             next(i for i, row in enumerate(rows) if row["verb"] == verb)
@@ -310,12 +352,12 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     ) -> None:
         """The public renderer consumes arbitrary valid phases from the typed owner."""
         make = config.Infra.codegen.make
-        payload = make.model_dump(exclude_computed_fields=True)
+        payload = make.model_dump(mode="json", exclude_computed_fields=True)
         phase = m.Infra.MakeVerbSpec(
             name="fixture-ci-phase",
             description="Additional configured CI phase",
         )
-        payload["verbs"] = [*u.Tests.json_rows(payload, "verbs"), phase.model_dump()]
+        payload["verbs"] = [*u.Tests.json_rows(payload, "verbs"), phase.model_dump(mode="json")]
         rows = u.Tests.json_rows(payload, "workflow")
         rows.insert(
             next(i for i, row in enumerate(rows) if row["verb"] == before),
@@ -323,7 +365,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
                 identity=phase.name,
                 verb=phase.name,
                 contexts=("local", "ci"),
-            ).model_dump(exclude_computed_fields=True),
+            ).model_dump(mode="json", exclude_computed_fields=True),
         )
         payload["workflow"] = [*rows]
         active = m.Infra.MakeSpec.model_validate(payload)
@@ -357,7 +399,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     @staticmethod
     def test_ci_workflow_requires_all_profile_verbs() -> None:
         """A declared workflow operation must be callable by every consumer."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         every_profile = [*(profile.value for profile in tuple(c.Infra.MakeProfile))]
         payload["verbs"] = [
             {**row, "profiles": [*every_profile][:-1]}
@@ -373,7 +415,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     @staticmethod
     def test_tests_workflow_step_must_require_check() -> None:
         """Initial tests require the primary phase, not complete check acceptance."""
-        payload = config.Infra.codegen.make.model_dump(exclude_computed_fields=True)
+        payload = config.Infra.codegen.make.model_dump(mode="json", exclude_computed_fields=True)
         payload["workflow"] = [
             {**row, "requires": list[t.JsonValue]()}
             if row["verb"] == c.Infra.VERB_TEST
@@ -390,8 +432,41 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_ci_step_runs_only_after_its_required_steps(
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """Each CI approval step is admitted only by its required steps' success."""
-        make = config.Infra.codegen.make
+        """Each CI approval step is admitted only by its required steps' success.
+
+        The fleet CI runs setup and the primary check, neither of which
+        requires another step, so a configured CI phase that depends on the
+        primary check supplies the dependency the renderer must honour.
+        """
+        payload = config.Infra.codegen.make.model_dump(
+            mode="json", exclude_computed_fields=True
+        )
+        phase = m.Infra.MakeVerbSpec(
+            name="fixture-ci-phase",
+            description="Additional configured CI phase",
+        )
+        payload["verbs"] = [
+            *u.Tests.json_rows(payload, "verbs"),
+            phase.model_dump(mode="json"),
+        ]
+        rows = u.Tests.json_rows(payload, "workflow")
+        primary = next(
+            row
+            for row in rows
+            if row["verb"] == c.Infra.VERB_CHECK
+            and "ci" in u.Tests.json_strings(row["contexts"])
+        )
+        rows.insert(
+            rows.index(primary) + 1,
+            m.Infra.MakeWorkflowStepSpec.model_validate({
+                "identity": phase.name,
+                "verb": phase.name,
+                "contexts": ["local", "ci"],
+                "requires": [{"step": primary["identity"], "contexts": ["ci"]}],
+            }).model_dump(mode="json", exclude_computed_fields=True),
+        )
+        payload["workflow"] = rows
+        make = m.Infra.MakeSpec.model_validate(payload)
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="workflow-consumer",
             make_profile=profile,
@@ -455,14 +530,19 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
-        tm.that(process.stdout, eq="")
+        # Only the verb banner precedes activation; no gate reports a result.
+        tm.that(
+            process.stdout,
+            eq=(
+                f"==> check | project={root} | "
+                f"profile={c.Infra.MakeProfile.STANDALONE}\n"
+            ),
+        )
+        # The interpreter guard admits the physical interpreter; the engine's
+        # own import is the first effect and fails before any gate runs.
         tm.that(
             process.stderr,
             has="No module named flext_infra",
-        )
-        tm.that(
-            process.stderr,
-            has="_builtin_require_environment",
         )
         tm.that(
             process.stderr,

@@ -802,10 +802,7 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def scan_threads(self) -> t.PositiveInt:
-            """Structural member projected from the owning model.
-
-            Bounded thread budget for ast-grep scan execution.
-            """
+            """Bounded thread budget for ast-grep scan execution."""
             ...
 
         @property

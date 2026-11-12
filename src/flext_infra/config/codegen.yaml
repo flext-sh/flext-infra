@@ -830,7 +830,9 @@ Infra:
       - pydantic-field-positional-default
       - pydantic-unset-private-attribute
       workflow:
-      - { identity: setup, verb: setup, contexts: [ local, ci ] }
+      # A commit provisions the checkout before its check, so a fresh lane
+      # worktree commits against its own locked toolchain, never PATH.
+      - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
