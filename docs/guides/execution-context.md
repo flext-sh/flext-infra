@@ -360,14 +360,24 @@ Declared prerequisites of stage 6, open until they close:
   that carries it is published and the consumer's `make upg` locks it.
 
 A project source that no longer imports still has every lock written and
-installed. Every setup and executor installation prepares an invocation-owned
-native relocatable environment under the runtime's existing ignored state
-directory. Matching creator identities do not permit synchronizing the serving
-environment: a sync can remove dependencies before their replacements are ready.
-Frozen installation, editable binding, its environment-owned receipt and real
-Python/console validation precede one guarded atomic publication under the native
-environment lock. The previous environment remains recoverable; cleanup never
-removes a displaced environment after publication, including an interrupted swap.
+installed. Setup first asks native uv whether the published environment already
+satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
+when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
+rewrites the editable receipt and applies the same Python/console verification
+as a publication, so a repeated setup costs a check, not a reinstall. Any other
+state, and every executor installation, prepares an invocation-owned native
+relocatable environment under the runtime's existing ignored state directory,
+installed with uv's clone link mode and native `--compile-bytecode`, so imports
+never recompile site-packages even when the host exports
+`PYTHONDONTWRITEBYTECODE`; a kept environment keeps the bytecode its last
+installation compiled. Matching creator identities do not permit
+synchronizing the serving environment: a sync can remove dependencies before
+their replacements are ready. Frozen installation, editable binding, its
+environment-owned receipt and real Python/console validation precede one atomic
+exchange with the published environment, guarded by its recorded identity: a
+concurrent publication fails the later setup loudly instead of being serialized
+by a private lock. The exchanged previous environment is then removed with its
+stage; an interrupted preparation removes only its own stage.
 Unsupported publication capabilities fail before installation effects. No sync
 targets a directory without its native environment marker or a Mise base
 interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
