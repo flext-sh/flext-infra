@@ -1,21 +1,14 @@
 id: fix-frozen-forbid-config-to-immutable-value-model
 snapshots:
-  "from flext_core import m\n\nclass Value(m.BaseModel):\n    \"\"\"Value.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")\n":
-    fixed: |
-      from flext_core import m
-
-      class Value(m.ImmutableValueModel):
-          """Value."""
-
-          name: str = m.Field(description="name")
+  ? "from flext_core import m\n\nclass Value(m.BaseModel):\n    \"\"\"Value.\"\"\"\n\n
+    \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")\n\n
+    \   name: str = m.Field(description=\"name\")\n"
+  : fixed: "from flext_core import m\n\nclass Value(m.ImmutableValueModel):\n    \"\"\"Value.\"\"\"\n
+      \   \n    name: str = m.Field(description=\"name\")\n"
     labels:
-    - source: |-
-        class Value(m.BaseModel):
-            """Value."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "class Value(m.BaseModel):\n    \"\"\"Value.\"\"\"\n\n    model_config:
+        ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")\n\n    name:
+        str = m.Field(description=\"name\")"
       style: primary
       start: 26
       end: 199
@@ -27,20 +20,16 @@ snapshots:
       style: secondary
       start: 37
       end: 50
-    - source: "model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")"
+    - source: 'model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")'
       style: secondary
       start: 74
       end: 154
-    - source: "\"\"\"Value.\"\"\""
+    - source: '"""Value."""'
       style: secondary
       start: 56
       end: 68
-    - source: |-
-        """Value."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "\"\"\"Value.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True,
+        extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")"
       style: secondary
       start: 56
       end: 199
@@ -48,15 +37,9 @@ snapshots:
       style: secondary
       start: 0
       end: 24
-    - source: |
-        from flext_core import m
-
-        class Value(m.BaseModel):
-            """Value."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "from flext_core import m\n\nclass Value(m.BaseModel):\n    \"\"\"Value.\"\"\"\n\n
+        \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra=\"forbid\")\n\n
+        \   name: str = m.Field(description=\"name\")\n"
       style: secondary
       start: 0
       end: 200

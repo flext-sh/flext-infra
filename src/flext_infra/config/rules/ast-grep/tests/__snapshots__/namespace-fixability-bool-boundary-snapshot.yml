@@ -1,11 +1,8 @@
 id: namespace-fixability-bool-boundary
 snapshots:
-  "def fixable(module: str) -> bool:\n    return Path(module).name not in (c.Infra.TYPINGS_PY,)\n":
-    fixed: |
-      def fixable(module: str) -> bool:
-          typings_filename: str = c.Infra.TYPINGS_PY
-          return Path(module).name != typings_filename
-
+  ? "def fixable(module: str) -> bool:\n    return Path(module).name not in (c.Infra.TYPINGS_PY,)\n"
+  : fixed: "def fixable(module: str) -> bool:\n    typings_filename: str = c.Infra.TYPINGS_PY\n
+      \   return Path(module).name != typings_filename\n    \n"
     labels:
     - source: return Path(module).name not in (c.Infra.TYPINGS_PY,)
       style: primary

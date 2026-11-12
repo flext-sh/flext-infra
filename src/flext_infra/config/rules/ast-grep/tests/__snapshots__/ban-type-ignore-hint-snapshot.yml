@@ -1,35 +1,44 @@
 id: ban-type-ignore-hint
 snapshots:
-  "# ruff: ignore[complex-structure]\nvalue: str = \"value\"\n":
-    fixed: |
+  ? '# ruff: ignore[complex-structure]
+
+    value: str = "value"
+
+    '
+  : fixed: '
 
       value: str = "value"
+
+      '
     labels:
-    - source: "# ruff: ignore[complex-structure]"
+    - source: '# ruff: ignore[complex-structure]'
       style: primary
       start: 0
       end: 33
-  "value: str = \"value\"  # noqa\n":
-    fixed: |
-      value: str = "value"
+  ? 'value: str = "value"  # noqa
+
+    '
+  : fixed: "value: str = \"value\"  \n"
     labels:
-    - source: "# noqa"
+    - source: '# noqa'
       style: primary
       start: 22
       end: 28
-  "value: str = \"value\"  # pyright: ignore\n":
-    fixed: |
-      value: str = "value"
+  ? 'value: str = "value"  # pyright: ignore
+
+    '
+  : fixed: "value: str = \"value\"  \n"
     labels:
-    - source: "# pyright: ignore"
+    - source: '# pyright: ignore'
       style: primary
       start: 22
       end: 39
-  "value: str = \"value\"  # type: ignore\n":
-    fixed: |
-      value: str = "value"
+  ? 'value: str = "value"  # type: ignore
+
+    '
+  : fixed: "value: str = \"value\"  \n"
     labels:
-    - source: "# type: ignore"
+    - source: '# type: ignore'
       style: primary
       start: 22
       end: 36
