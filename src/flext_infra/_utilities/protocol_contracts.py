@@ -160,9 +160,12 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         runtime = FlextInfraUtilitiesRopeRuntime
         if not isinstance(node.returns, ast.Subscript):
             return None
+        binding_line = module.get_source_binding_index().lines[node][0]
+        if binding_line is None:
+            return None
         scope = runtime.scope_at(
             module,
-            module.get_source_binding_index().lines[node][0],
+            binding_line,
             declaration_line=node.lineno,
         )
         guard = runtime.annotation_origin(project, node.returns.value, scope)
@@ -476,11 +479,12 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             .get("p")
         )
         holder = name.partition(".")[0]
+        facade_object = None if facade is None else facade.get_object()
         stem = (
-            facade.get_object().get_name()
+            facade_object.get_name()
             if (
-                facade is not None
-                and FlextInfraUtilitiesRopeRuntime.py_class(facade.get_object())
+                isinstance(facade_object, p.Infra.RopeNamedObject)
+                and FlextInfraUtilitiesRopeRuntime.py_class(facade_object)
             )
             else holder
         )
@@ -827,7 +831,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         cls,
         project: p.Infra.RopeProject,
         owner: p.Infra.RopeSourceClass,
-        module: p.Infra.RopeParsedModule,
+        module: p.Infra.RopePyModule,
         resource: p.Infra.RopeResource,
         name: str,
     ) -> tuple[str, tuple[str, ...]] | None:
@@ -915,6 +919,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         Returns:
             The resulting ``Mapping[Path, str]``.
 
+        Raises:
+            TypeError: If a protocol facade is not a named native object.
+
         """
         root = workspace.repository_root
         project = workspace.rope_project
@@ -967,6 +974,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 .get_attribute("p")
                 .get_object()
             )
+            if not isinstance(facade, p.Infra.RopeNamedObject):
+                msg = "protocol facade is not a named native object"
+                raise TypeError(msg)
             owner = facade.get_name() + u.derive_class_stem(aggregate.stem)
             working[aggregate] = (
                 FlextInfraUtilitiesFacadeComponents.generate_module_skeleton(
@@ -1218,7 +1228,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             base, working, census.contracts, placements
         )
         return m.Infra.ProtocolOrganizationPlan(
-            census=m.Infra.ProtocolPlacementCensus(contracts=placements),
+            census=m.Infra.ProtocolPlacementCensus.model_validate({
+                "contracts": placements
+            }),
             files=plans,
             pre_move_sources=before_move,
             findings=census.findings,

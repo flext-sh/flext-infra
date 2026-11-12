@@ -573,17 +573,8 @@ class FlextInfraUtilitiesCodemodRules(
         if not bundle.is_file():
             return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
-        threads = getattr(
-            getattr(getattr(config.Infra, "tooling", None), "mod", None),
-            "scan_threads",
-            getattr(
-                getattr(getattr(config.Infra, "codegen", None), "make", None),
-                "scan_threads",
-                4,
-            ),
-        )
         command = flext_infra.u.Infra.ast_grep_scan_command(
-            bundle, rule_ids=rule_ids, targets=(".",), threads=threads
+            bundle, rule_ids=rule_ids, targets=(".",)
         )
         config_path = bundle.parent.parent
         probe = settings.work_dir / "ast-grep" / f"probe{c.Infra.EXT_PYTHON}"

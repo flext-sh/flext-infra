@@ -132,31 +132,35 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
                     else overrides
                 )
                 codegen = config.Infra.codegen
-                return m.Infra.GithubWorkflowRenderSpec(
-                    dist=dist,
-                    gate_original_receipt_filename=c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME,
-                    setup_operations_report_directory=(
+                return m.Infra.GithubWorkflowRenderSpec.model_validate({
+                    "dist": dist,
+                    "gate_original_receipt_filename": (
+                        c.Infra.GATE_ORIGINAL_RECEIPT_FILENAME
+                    ),
+                    "setup_operations_report_directory": (
                         c.Infra.WORKSPACE_OPERATION_REPORT_DIRECTORY
                     ),
-                    make_profile=make_profile,
-                    repository_branch=repository_branch,
-                    ci_trigger_branches=ci_trigger_branches,
-                    system_packages=overrides.system_packages,
-                    packages_read=overrides.packages_read,
-                    python_version=codegen.toolchain.python_version,
-                    github_actions=codegen.github_actions,
-                    toolchain=codegen.toolchain,
-                    make=codegen.make,
-                    workspace_repositories=overrides.workspace_repositories,
-                    checkout_submodules=codegen.checkout_submodules,
-                    custom_steps=overrides.custom_steps,
-                    custom_post_steps=overrides.custom_post_steps,
-                    has_devcontainer=overrides.has_devcontainer,
-                    dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-                    cooldown_excluded_dependencies=(
+                    "make_profile": make_profile,
+                    "repository_branch": repository_branch,
+                    "ci_trigger_branches": ci_trigger_branches,
+                    "system_packages": overrides.system_packages,
+                    "packages_read": overrides.packages_read,
+                    "python_version": codegen.toolchain.python_version,
+                    "github_actions": codegen.github_actions,
+                    "toolchain": codegen.toolchain,
+                    "make": codegen.make,
+                    "workspace_repositories": overrides.workspace_repositories,
+                    "checkout_submodules": codegen.checkout_submodules,
+                    "custom_steps": overrides.custom_steps,
+                    "custom_post_steps": overrides.custom_post_steps,
+                    "has_devcontainer": overrides.has_devcontainer,
+                    "dependency_cooldown_days": (
+                        codegen.toolchain.dependency_cooldown_days
+                    ),
+                    "cooldown_excluded_dependencies": (
                         overrides.cooldown_excluded_dependencies
                     ),
-                )
+                })
 
             @staticmethod
             def ci_job_steps(rendered: str) -> tuple[t.JsonMapping, ...]:

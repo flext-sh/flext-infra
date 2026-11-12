@@ -214,12 +214,12 @@ class FlextInfraGitLanes:
             beads = u.type_adapter(tuple[m.Infra.GitLaneBead, ...]).validate_json(
                 wire.value,
             )
-        evidence = m.Infra.GitLaneEvidence(
-            repo_root=request.repo_root,
-            captured_at=datetime.now(UTC),
-            pull_requests=pull_requests,
-            beads=beads,
-        )
+        evidence = m.Infra.GitLaneEvidence.model_validate({
+            "repo_root": request.repo_root,
+            "captured_at": datetime.now(UTC),
+            "pull_requests": pull_requests,
+            "beads": beads,
+        })
         if pull_requests is not None and len(pull_requests) >= (
             config.Infra.codegen.branch_policy.lane_pr_limit
         ):

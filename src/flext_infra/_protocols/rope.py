@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from flext_infra import c
     from flext_infra._protocols import (
         FlextInfraProtocolsCensus,
@@ -733,14 +735,14 @@ class FlextInfraProtocolsRope(Protocol):
         @property
         def definitions(
             self,
-        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
+        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassDefinition]:
             """Cross-module definition inventory the walk extends."""
             ...
 
         @property
         def lexical(
             self,
-        ) -> Mapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
+        ) -> MutableMapping[str, FlextInfraProtocolsRope.SourceClassReference | None]:
             """Module-scope bindings visible to every nested base."""
             ...
 

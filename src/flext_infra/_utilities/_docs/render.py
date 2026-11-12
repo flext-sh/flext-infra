@@ -713,9 +713,9 @@ class FlextInfraUtilitiesDocsRender:
         exclude_patterns: Sequence[str] = tuple(exclude_docs or ())
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_PROJECT_CATALOG_PAGE,
-            m.Infra.DocsProjectCatalogContext(
-                line_width=width,
-                entries=tuple(
+            m.Infra.DocsProjectCatalogContext.model_validate({
+                "line_width": width,
+                "entries": tuple(
                     entry
                     for entry in entries
                     if not any(
@@ -725,7 +725,7 @@ class FlextInfraUtilitiesDocsRender:
                         for pattern in exclude_patterns
                     )
                 ),
-            ),
+            }),
         )
 
 

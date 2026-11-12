@@ -130,11 +130,11 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         members: MutableMapping[str, p.Infra.SourceClassReference | None] = {}
         # Nested bases see class locals; bodies keep module lexical scope.
         cls.collect(spec, node.body, members, f"{scope}{node.name}.")
-        spec.definitions[identity] = m.Infra.SourceClassDefinition(
-            identity=identity,
-            bases=bases,
-            members=members,
-        )
+        spec.definitions[identity] = m.Infra.SourceClassDefinition.model_validate({
+            "identity": identity,
+            "bases": bases,
+            "members": members,
+        })
         bindings[node.name] = m.Infra.SourceClassReference(
             target=identity,
             qualified_base=f"{spec.module}.{node.name}",
@@ -747,16 +747,16 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """Merge exception branches without mistaking functions for classes."""
         alternatives = [(*node.body, *node.orelse)]
         alternatives.extend(tuple(handler.body) for handler in node.handlers)
-        branch_spec = m.Infra.SourceBindingCollectorSpec(
-            module=spec.module,
-            provider=spec.provider,
-            package=spec.package,
-            required_line=spec.required_line,
-            allow_conditional=spec.allow_conditional,
-            source_owned=spec.source_owned,
-            definitions=spec.definitions,
-            lexical={**spec.lexical, **bindings},
-        )
+        branch_spec = m.Infra.SourceBindingCollectorSpec.model_validate({
+            "module": spec.module,
+            "provider": spec.provider,
+            "package": spec.package,
+            "required_line": spec.required_line,
+            "allow_conditional": spec.allow_conditional,
+            "source_owned": spec.source_owned,
+            "definitions": spec.definitions,
+            "lexical": {**spec.lexical, **bindings},
+        })
         branches: list[
             tuple[
                 MutableMapping[str, p.Infra.SourceClassReference | None],

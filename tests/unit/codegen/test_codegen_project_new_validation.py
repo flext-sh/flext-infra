@@ -52,10 +52,10 @@ class TestsFlextInfraCodegenProjectNewValidation:
         project = u.Tests.project_spec(repository.name)
         if source is not None:
             project = project.model_copy(update={"flext_source": source})
-        declaration = m.Infra.RepositoryDeltaSpec(
-            project=project,
-            integration=integration,
-        )
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": project,
+            "integration": integration,
+        })
         _, own, _ = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,

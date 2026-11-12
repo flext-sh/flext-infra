@@ -280,7 +280,9 @@ class TestsFlextInfraDepsExtraPathsSync:
         doc["tool"] = tool
 
         tm.that(manager.sync_doc(doc, project_dir=project), empty=False)
-        mypy = u.Cli.toml_table_child(u.Cli.toml_table_child(doc, "tool"), "mypy")
+        mypy = u.Cli.toml_table_child(
+            tm.not_none(u.Cli.toml_table_child(doc, "tool")), "mypy"
+        )
         tm.that(mypy, none=False)
         if mypy is not None:
             tm.that(list(u.Cli.toml_as_string_list(mypy["mypy_path"]))[-1], eq=".")

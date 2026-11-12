@@ -445,10 +445,12 @@ class FlextInfraDocsGeneratorBundle:
             return r[p.Infra.DocsGenerationBundle].from_failure(normalized)
         validated_bundle = r[p.Infra.DocsGenerationBundle].create_from_callable(
             partial(
-                m.Infra.DocsGenerationBundle,
-                scopes=tuple(normalized.value),
-                metadata_files=metadata_files,
-                repository_root=repository_root,
+                m.Infra.DocsGenerationBundle.model_validate,
+                {
+                    "scopes": tuple(normalized.value),
+                    "metadata_files": metadata_files,
+                    "repository_root": repository_root,
+                },
             )
         )
         if validated_bundle.failure:

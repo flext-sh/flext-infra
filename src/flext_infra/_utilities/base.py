@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra._settings import FlextInfraSettings
 
 if TYPE_CHECKING:
@@ -293,9 +293,6 @@ class FlextInfraUtilitiesBase:
         targets: Sequence[str] = (".",),
         json_stream: bool = False,
         update_all: bool = False,
-        threads: int | None = None,
-        inspect_summary: bool = False,
-        filter_rules: bool = True,
     ) -> Sequence[str]:
         """Build one ast-grep scan command with explicit cwd-relative targets.
 
@@ -328,32 +325,36 @@ class FlextInfraUtilitiesBase:
             c.Infra.SG_CONFIG_FLAG,
             str(config_path),
         ]
+        threads = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            getattr(
+                getattr(getattr(config.Infra, "codegen", None), "make", None),
+                "scan_threads",
+                4,
+            ),
+        )
         if threads is not None and threads > 0:
             command.extend([c.Infra.SG_THREADS_FLAG, str(threads)])
-        if filter_rules:
-            selected_rule_ids = (
-                tuple(rule_ids)
-                if rule_ids
-                else tuple(
-                    sorted(
-                        FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0]
-                    ),
-                )
+        selected_rule_ids = (
+            tuple(rule_ids)
+            if rule_ids
+            else tuple(
+                sorted(FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0])
             )
-            if any(not rule_id or "|" in rule_id for rule_id in selected_rule_ids):
-                msg = "ast-grep rule IDs must be nonempty literal IDs"
-                raise ValueError(msg)
-            rule_pattern = "|".join(
-                re.escape(rule_id) for rule_id in sorted(selected_rule_ids)
-            )
-            command.extend([
-                c.Infra.SG_FILTER_FLAG,
-                f"^(?:{rule_pattern})$",
-            ])
+        )
+        if any(not rule_id or "|" in rule_id for rule_id in selected_rule_ids):
+            msg = "ast-grep rule IDs must be nonempty literal IDs"
+            raise ValueError(msg)
+        rule_pattern = "|".join(
+            re.escape(rule_id) for rule_id in sorted(selected_rule_ids)
+        )
+        command.extend([
+            c.Infra.SG_FILTER_FLAG,
+            f"^(?:{rule_pattern})$",
+        ])
         if json_stream:
             command.append("--json=stream")
-        if inspect_summary:
-            command.extend([c.Infra.SG_INSPECT_FLAG, "summary"])
         if update_all:
             command.append(c.Infra.SG_UPDATE_ALL)
         command.extend(targets)

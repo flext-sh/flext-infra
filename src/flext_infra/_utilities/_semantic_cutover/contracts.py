@@ -169,11 +169,11 @@ class FlextInfraUtilitiesSemanticContracts(
                 for rule in rules
                 if rule.phase == c.Infra.SemanticCutoverPhase.CONTRACT_NORMALIZATION
             ),
-            options=m.Infra.ContractAdmissionOptions(
-                signature_additions=additions,
-                signature_removals=removals,
-                method_transfers=transfers,
-            ),
+            options=m.Infra.ContractAdmissionOptions.model_validate({
+                "signature_additions": additions,
+                "signature_removals": removals,
+                "method_transfers": transfers,
+            }),
         )
         if standard.failure:
             return standard
@@ -447,7 +447,9 @@ class FlextInfraUtilitiesSemanticContracts(
             sources,
             rules,
             tuple((path, analysis_sources.get(path, source)) for path, source in items),
-            options if options is not None else m.Infra.ContractAdmissionOptions(),
+            options
+            if options is not None
+            else m.Infra.ContractAdmissionOptions.model_validate({}),
         )
         for path, names in inserted.items():
             if path not in working or not names:

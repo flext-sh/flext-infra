@@ -55,8 +55,12 @@ class FlextInfraCodegenFixerWorkspace(FlextInfraCodegenFixerPasses):
         ctx = m.Infra.FixContext()
         initial_violations = self._load_initial_violations(ctx, project_path)
         if self.dry_run or self.rules_only:
-            ctx.violations_skipped.extend(initial_violations)
-            return self._build_result(project_path.name, ctx)
+            skipped_ctx = ctx.model_copy(
+                update={
+                    "violations_skipped": [*ctx.violations_skipped, *initial_violations]
+                }
+            )
+            return self._build_result(project_path.name, skipped_ctx)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         self._run_namespace_enforcement(ctx, project_path, enforce_namespace)
         self._run_lazy_init_preflight(ctx, project_path)

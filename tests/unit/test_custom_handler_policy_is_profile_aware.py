@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm
+from tests import c, m, p, t, tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
@@ -20,7 +20,8 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     def test_unmodified_policies_preserve_the_owned_model_identity() -> None:
         """Unmodified profiles reuse the stored model without copying it."""
         payload = config.Infra.codegen.make.model_dump(round_trip=True)
-        payload["custom_handler_profile_overrides"] = {}
+        no_overrides: t.JsonDict = {}
+        payload["custom_handler_profile_overrides"] = no_overrides
         make = m.Infra.MakeSpec.model_validate(payload)
         policies: Mapping[str, m.Infra.CustomHandlerPolicy] = (
             make.custom_handler_policies

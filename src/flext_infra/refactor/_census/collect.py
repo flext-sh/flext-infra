@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 
 from flext_infra import m, p, u
@@ -45,7 +46,8 @@ class FlextInfraRefactorCensusCollect(
         module: p.Infra.RopeModuleIndexEntry,
         scan_config: p.Infra.ScanConfig,
         *,
-        findings: p.Infra.ScanFindings,
+        project_objects: MutableMapping[str, MutableSequence[p.Infra.Object]],
+        report_projects: MutableSet[str],
     ) -> None:
         """Inventory one module, accumulating its selected objects per project.
 
@@ -56,7 +58,7 @@ class FlextInfraRefactorCensusCollect(
         project = self.project_name_for_module(module, convention)
         if not project:
             return
-        findings.report_projects.add(project)
+        report_projects.add(project)
         objects = tuple(
             item
             for item in rope.objects(
@@ -71,7 +73,7 @@ class FlextInfraRefactorCensusCollect(
             )
         )
         if objects:
-            findings.project_objects.setdefault(project, []).extend(objects)
+            project_objects.setdefault(project, []).extend(objects)
 
     def _assemble_report(
         self,
