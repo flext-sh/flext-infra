@@ -281,7 +281,8 @@ class TestsProtocolSourceBootstrap:
             tm.that(first.stdout, has="normalized protocol modules: 1")
             tm.that(second.stdout, has="normalized protocol modules: 0")
             tm.that(normalized, has="title: Annotated[str, 'public-λ']")
-            tm.that(normalized, has="count: int = ...")
+            tm.that(normalized, has="        count: int\n")
+            tm.that(normalized, lacks="= ...")
             tm.that(normalized, has="enabled: bool")
             tm.that(normalized.count("@runtime_checkable"), eq=2)
             tm.that(normalized, has="from typing import runtime_checkable")
@@ -390,6 +391,31 @@ class TestsProtocolSourceBootstrap:
 
     class TestsProtocolImportCanonicalization:
         """Protocol facade imports converge canonically."""
+
+        @staticmethod
+        def test_protocol_members_declare_types_without_values() -> None:
+            """A Protocol member keeps its type; no Ellipsis value is assigned."""
+            source = (
+                "from __future__ import annotations\n"
+                "from typing import Protocol, TypeAlias\n\n"
+                "class FlextProtocolsReport:\n"
+                "    class Package(Protocol):\n"
+                "        cut: str\n"
+                "        observed_until: str | None = None\n"
+                "        total: int = 0\n"
+                "        Alias: TypeAlias = int\n"
+            )
+            rendered = normalize_protocol_source(source, package_name="flext_core")
+
+            tm.that(rendered, has="        observed_until: str | None\n")
+            tm.that(rendered, has="        total: int\n")
+            tm.that(rendered, has="        Alias: TypeAlias = int\n")
+            tm.that(rendered, lacks="= ...")
+            tm.that(rendered, lacks="= None")
+            tm.that(
+                normalize_protocol_source(rendered, package_name="flext_core"),
+                eq=rendered,
+            )
 
         @staticmethod
         def test_normalized_protocol_source_has_no_pydantic_import() -> None:
