@@ -523,8 +523,13 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             current_repository = current_target.repository
         else:
+            rendered = workspace_services.FlextInfraWorkspaceDetector.conform_repository(
+                root, current_repository
+            )
+            if rendered.failure:
+                return result_type.from_failure(rendered)
             current_target = m.Infra.RepositoryConformTarget(
-                repository=m.Infra.RepositoryRef.model_validate(current_repository),
+                repository=rendered.value,
                 root=root,
                 toolchain_root=self.state.repository_root,
                 make_profile=current_repository.role,

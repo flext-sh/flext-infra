@@ -341,9 +341,15 @@ class TestsFlextInfraUtilitiesToolingFixture:
             ValueError: When a ``flext-`` dependency has no workspace source owner.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
+        # A linked worktree is never a registered submodule: its primary
+        # checkout names the superproject that owns the member sources.
+        primary = tm.ok(
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=Path(__file__).resolve().parents[1])
+            )
+        ).primary_root
         source_root = tm.ok(
-            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=checkout))
+            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
         specification = tm.ok(
             workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
