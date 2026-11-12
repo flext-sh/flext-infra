@@ -1,21 +1,14 @@
 id: fix-forbid-config-to-enforced-model
 snapshots:
-  "from flext_core import m\n\nclass Input(m.BaseModel):\n    \"\"\"Input.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n    name: str = m.Field(description=\"name\")\n":
-    fixed: |
-      from flext_core import m
-
-      class Input(m.EnforcedModel):
-          """Input."""
-
-          name: str = m.Field(description="name")
+  ? "from flext_core import m\n\nclass Input(m.BaseModel):\n    \"\"\"Input.\"\"\"\n\n
+    \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n
+    \   name: str = m.Field(description=\"name\")\n"
+  : fixed: "from flext_core import m\n\nclass Input(m.EnforcedModel):\n    \"\"\"Input.\"\"\"\n
+      \   \n    name: str = m.Field(description=\"name\")\n"
     labels:
-    - source: |-
-        class Input(m.BaseModel):
-            """Input."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "class Input(m.BaseModel):\n    \"\"\"Input.\"\"\"\n\n    model_config:
+        ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n    name: str =
+        m.Field(description=\"name\")"
       style: primary
       start: 26
       end: 186
@@ -27,20 +20,16 @@ snapshots:
       style: secondary
       start: 37
       end: 50
-    - source: "model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")"
+    - source: 'model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")'
       style: secondary
       start: 74
       end: 141
-    - source: "\"\"\"Input.\"\"\""
+    - source: '"""Input."""'
       style: secondary
       start: 56
       end: 68
-    - source: |-
-        """Input."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "\"\"\"Input.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n
+        \   name: str = m.Field(description=\"name\")"
       style: secondary
       start: 56
       end: 186
@@ -48,15 +37,9 @@ snapshots:
       style: secondary
       start: 0
       end: 24
-    - source: |
-        from flext_core import m
-
-        class Input(m.BaseModel):
-            """Input."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
-
-            name: str = m.Field(description="name")
+    - source: "from flext_core import m\n\nclass Input(m.BaseModel):\n    \"\"\"Input.\"\"\"\n\n
+        \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"forbid\")\n\n
+        \   name: str = m.Field(description=\"name\")\n"
       style: secondary
       start: 0
       end: 187

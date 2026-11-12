@@ -1,21 +1,15 @@
 id: qlty-render-context-from-toolchain
 snapshots:
-  "def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:\n    if destination in {\".envrc\", \".mise.toml\", \".python-version\"}:\n        return r[p.BaseModel].ok(codegen.toolchain)\n    return r[p.BaseModel].ok(codegen)\n":
-    fixed: |
-      def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:
-          if destination in {
-              ".envrc",
-              ".mise.toml",
-              ".python-version",
-              c.Infra.QLTY_CONFIG_PATH,
-          }:
-              return r[p.BaseModel].ok(codegen.toolchain)
-
-          return r[p.BaseModel].ok(codegen)
+  ? "def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:\n    if
+    destination in {\".envrc\", \".mise.toml\", \".python-version\"}:\n        return
+    r[p.BaseModel].ok(codegen.toolchain)\n    return r[p.BaseModel].ok(codegen)\n"
+  : fixed: "def context(destination: str, codegen: Codegen) -> p.Result[p.BaseModel]:\n
+      \   if destination in {\n        \".envrc\",\n        \".mise.toml\",\n        \".python-version\",\n
+      \       c.Infra.QLTY_CONFIG_PATH,\n    }:\n        return r[p.BaseModel].ok(codegen.toolchain)\n
+      \   \n    return r[p.BaseModel].ok(codegen)\n"
     labels:
-    - source: |-
-        if destination in {".envrc", ".mise.toml", ".python-version"}:
-                return r[p.BaseModel].ok(codegen.toolchain)
+    - source: "if destination in {\".envrc\", \".mise.toml\", \".python-version\"}:\n
+        \       return r[p.BaseModel].ok(codegen.toolchain)"
       style: primary
       start: 78
       end: 192

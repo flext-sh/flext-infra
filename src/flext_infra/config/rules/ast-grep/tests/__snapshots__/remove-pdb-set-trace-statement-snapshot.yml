@@ -1,10 +1,7 @@
 id: remove-pdb-set-trace-statement
 snapshots:
-  "def f():\n    pdb.set_trace()\n    return 1\n":
-    fixed: |
-      def f():
-
-          return 1
+  ? "def f():\n    pdb.set_trace()\n    return 1\n"
+  : fixed: "def f():\n    \n    return 1\n"
     labels:
     - source: pdb.set_trace()
       style: primary
@@ -15,7 +12,7 @@ snapshots:
       start: 13
       end: 28
   pdb.set_trace():
-    fixed: ""
+    fixed: ''
     labels:
     - source: pdb.set_trace()
       style: primary

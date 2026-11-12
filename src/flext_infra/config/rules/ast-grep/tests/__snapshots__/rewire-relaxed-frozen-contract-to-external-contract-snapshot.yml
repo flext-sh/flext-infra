@@ -1,30 +1,23 @@
 id: rewire-relaxed-frozen-contract-to-external-contract
 snapshots:
-  "class Issue(m.ContractModel):\n    \"\"\"One issue in a search response.\"\"\"\n\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str\n":
-    fixed: |
-      class Issue(m.ExternalContractModel):
-          """One issue in a search response."""
-          key: str
+  ? "class Issue(m.ContractModel):\n    \"\"\"One issue in a search response.\"\"\"\n\n
+    \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\", frozen=True)\n
+    \   key: str\n"
+  : fixed: "class Issue(m.ExternalContractModel):\n    \"\"\"One issue in a search
+      response.\"\"\"\n    key: str\n"
     labels:
-    - source: |-
-        class Issue(m.ContractModel):
-            """One issue in a search response."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
-            key: str
+    - source: "class Issue(m.ContractModel):\n    \"\"\"One issue in a search response.\"\"\"\n\n
+        \   model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\",
+        frozen=True)\n    key: str"
       style: primary
       start: 0
       end: 170
-  "class LegacyIssue(m.ContractModel):\n    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str\n":
-    fixed: |
-      class LegacyIssue(m.ExternalContractModel):
-
-          key: str
+  ? "class LegacyIssue(m.ContractModel):\n    model_config: ClassVar[t.ConfigDict]
+    = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str\n"
+  : fixed: "class LegacyIssue(m.ExternalContractModel):\n    \n    key: str\n"
     labels:
-    - source: |-
-        class LegacyIssue(m.ContractModel):
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="ignore", frozen=True)
-            key: str
+    - source: "class LegacyIssue(m.ContractModel):\n    model_config: ClassVar[t.ConfigDict]
+        = m.ConfigDict(extra=\"ignore\", frozen=True)\n    key: str"
       style: primary
       start: 0
       end: 133
