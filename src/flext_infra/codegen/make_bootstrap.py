@@ -84,8 +84,14 @@ class FlextInfraCodegenMakeBootstrap(
                     .flat_map(lambda executor: executor.check_managed(request))
                     .map(lambda _: True)
                 )
+            # The first generation publishes the project; the second documents
+            # the published project, so one bootstrap reaches the fixed point.
             conformed = FlextInfraCodegenConform.Generate.execute_request(
                 request, execution_context=self
+            ).flat_map(
+                lambda _: FlextInfraCodegenConform.Generate.execute_request(
+                    request, execution_context=self
+                )
             )
         else:
             conformed = self._conform_existing_target(requested)

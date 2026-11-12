@@ -629,6 +629,11 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
+        def settings_base_class(self) -> str:
+            """Settings base class composed by the generated ``_settings.py``."""
+            ...
+
+        @property
         def description(self) -> t.NonEmptyStr:
             """Project description."""
             ...

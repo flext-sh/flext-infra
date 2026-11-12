@@ -1,7 +1,7 @@
 id: remove-breakpoint-debugger-statement
 snapshots:
   breakpoint():
-    fixed: ""
+    fixed: ''
     labels:
     - source: breakpoint()
       style: primary
@@ -11,11 +11,8 @@ snapshots:
       style: secondary
       start: 0
       end: 12
-  "def f():\n    breakpoint()\n    return 1\n":
-    fixed: |
-      def f():
-
-          return 1
+  ? "def f():\n    breakpoint()\n    return 1\n"
+  : fixed: "def f():\n    \n    return 1\n"
     labels:
     - source: breakpoint()
       style: primary
@@ -25,10 +22,8 @@ snapshots:
       style: secondary
       start: 13
       end: 25
-  "if debug:\n    breakpoint()\n":
-    fixed: |
-      if debug:
-
+  ? "if debug:\n    breakpoint()\n"
+  : fixed: "if debug:\n    \n"
     labels:
     - source: breakpoint()
       style: primary

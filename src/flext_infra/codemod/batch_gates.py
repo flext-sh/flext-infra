@@ -451,13 +451,21 @@ class FlextInfraModGateEngine:
                     if apply:
                         target.unlink()
                     continue
-                content = produced.read_text(encoding=c.DEFAULT_ENCODING)
+                native = produced.read_text(encoding=c.DEFAULT_ENCODING)
                 # Native ast-grep writes indented blank lines inside block
-                # scalars; the repository whitespace gate rejects them and the
-                # trailing spaces carry no YAML meaning, so the projection is
-                # normalized before comparison and publication.
-                normalized = "\n".join(line.rstrip() for line in content.splitlines())
-                content = f"{normalized}\n" if content.endswith("\n") else normalized
+                # scalars, which the repository whitespace gate rejects. Strip
+                # them only when the document keeps its meaning: a fix that
+                # leaves spaces after content (a removed trailing comment)
+                # carries them inside the block scalar, so that document is
+                # re-serialized losslessly, quoting the scalar instead.
+                normalized = "\n".join(line.rstrip() for line in native.splitlines())
+                normalized = f"{normalized}\n" if native.endswith("\n") else normalized
+                recorded = u.Cli.yaml_parse(native).unwrap()
+                content = (
+                    normalized
+                    if u.Cli.yaml_parse(normalized).unwrap() == recorded
+                    else u.Cli.yaml_dump_str(recorded)
+                )
                 current = committed.get(name)
                 if current is not None and (
                     current.read_text(encoding=c.DEFAULT_ENCODING) == content

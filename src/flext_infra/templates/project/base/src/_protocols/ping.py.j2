@@ -16,7 +16,9 @@ from collections.abc import (
     Sequence,
 )
 
-from typing import Final, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
+
+from {{ upstream }} import t
 
 
 class {{ class_stem }}ProtocolsPing:
@@ -30,7 +32,7 @@ class {{ class_stem }}ProtocolsPing:
     class PingResult(Protocol):
         """Structural surface of a successful ping response."""
 
-        message: Final[str]
+        message: t.StrictStr
 
 
 __all__: list[str] = ["{{ class_stem }}ProtocolsPing"]
