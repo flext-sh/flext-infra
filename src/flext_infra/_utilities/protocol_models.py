@@ -7084,6 +7084,144 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.get_source_segment(generated_source, emitted)
 
+        class _ReadOnlyContractCanonical(ast.NodeTransformer):
+            """Name concrete containers by the read-only contract they implement."""
+
+            read_only: ClassVar[dict[str, str]] = {
+                "builtins::list": "collections.abc::Sequence",
+                "collections.abc::MutableSequence": "collections.abc::Sequence",
+                "typing::List": "collections.abc::Sequence",
+                "builtins::tuple": "collections.abc::Sequence",
+                "typing::Tuple": "collections.abc::Sequence",
+                "builtins::dict": "collections.abc::Mapping",
+                "collections.abc::MutableMapping": "collections.abc::Mapping",
+                "typing::Dict": "collections.abc::Mapping",
+                "builtins::set": "collections.abc::Set",
+                "collections.abc::MutableSet": "collections.abc::Set",
+                "collections.abc::Set": "collections.abc::Set",
+                "typing::Set": "collections.abc::Set",
+                "typing::AbstractSet": "collections.abc::Set",
+                "builtins::frozenset": "collections.abc::Set",
+            }
+            names: ClassVar[dict[str, str]] = {
+                "list": "collections.abc::Sequence",
+                "List": "collections.abc::Sequence",
+                "tuple": "collections.abc::Sequence",
+                "Tuple": "collections.abc::Sequence",
+                "Sequence": "collections.abc::Sequence",
+                "dict": "collections.abc::Mapping",
+                "Dict": "collections.abc::Mapping",
+                "Mapping": "collections.abc::Mapping",
+                "set": "collections.abc::Set",
+                "Set": "collections.abc::Set",
+                "frozenset": "collections.abc::Set",
+                "FrozenSet": "collections.abc::Set",
+                "AbstractSet": "collections.abc::Set",
+            }
+            variadic: ClassVar[frozenset[str]] = frozenset({
+                "builtins::tuple",
+                "typing::Tuple",
+                "tuple",
+                "Tuple",
+            })
+
+            @override
+            def visit_Constant(self, node: ast.Constant) -> ast.expr:
+                target = (
+                    self.read_only.get(node.value)
+                    if isinstance(node.value, str)
+                    else None
+                )
+                return self._named(node, target)
+
+            @override
+            def visit_Name(self, node: ast.Name) -> ast.expr:
+                return self._named(node, self.names.get(node.id))
+
+            @override
+            def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
+                spelling = ast.unparse(node)
+                target = (
+                    self.names.get(spelling.rpartition(".")[2])
+                    if spelling.startswith(("builtins.", "typing.", "collections.abc."))
+                    else None
+                )
+                return self._named(node, target)
+
+            @override
+            def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
+                spelling = self._spelling(node.value)
+                visited = self.generic_visit(node)
+                if spelling in self.variadic and isinstance(visited, ast.Subscript):
+                    element = self._variadic_element(visited.slice)
+                    if element is not None:
+                        return ast.copy_location(
+                            ast.Subscript(
+                                value=visited.value,
+                                slice=element,
+                                ctx=visited.ctx,
+                            ),
+                            visited,
+                        )
+                return visited
+
+            @staticmethod
+            def _named(node: ast.expr, target: str | None) -> ast.expr:
+                if target is None:
+                    return node
+                return ast.copy_location(ast.Constant(value=target), node)
+
+            @staticmethod
+            def _spelling(value: ast.expr) -> str | None:
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    return value.value
+                if isinstance(value, ast.Name):
+                    return value.id
+                if isinstance(value, ast.Attribute):
+                    return ast.unparse(value)
+                return None
+
+            @staticmethod
+            def _variadic_element(element: ast.expr) -> ast.expr | None:
+                if not isinstance(element, ast.Tuple) or not element.elts:
+                    return None
+                last = element.elts[-1]
+                if not isinstance(last, ast.Constant) or last.value is not Ellipsis:
+                    return None
+                elements = element.elts[:-1]
+                return (
+                    elements[0]
+                    if len(elements) == 1
+                    else ast.Tuple(elts=list(elements), ctx=ast.Load())
+                )
+
+        def _source_contract_canonical(self, annotation: str) -> str:
+            """Name every concrete container by the read-only contract it implements.
+
+            An authored protocol may declare the concrete container its model
+            uses while the projection widens the same member to the read-only
+            ABC a covariant protocol needs. ``list`` and ``tuple`` implement
+            ``Sequence``, ``dict`` implements ``Mapping`` and ``set`` implements
+            ``Set``, so both spellings name one compatible contract.
+
+            Returns:
+                The annotation with each container named by its read-only ABC.
+
+            """
+            canonical = self._ReadOnlyContractCanonical()
+            return ast.unparse(canonical.visit(ast.parse(annotation, mode="eval").body))
+
+        def _source_contract_compatible(self, authored: str, projected: str) -> bool:
+            """Whether an authored contract implements the projected read-only one.
+
+            Returns:
+                True when both annotations name one compatible contract.
+
+            """
+            return self._source_contract_canonical(
+                authored
+            ) == self._source_contract_canonical(projected)
+
         def _source_authored_contract_update(
             self,
             contract: tuple[ast.ClassDef, ast.ClassDef],
@@ -7124,7 +7262,9 @@ class FlextInfraUtilitiesModelsProtocol:
             conflicts = [
                 (name, annotation, expected[name])
                 for name, annotation in actual.items()
-                if name in expected and annotation != expected[name]
+                if name in expected
+                and annotation != expected[name]
+                and not self._source_contract_compatible(annotation, expected[name])
             ]
             if conflicts and not projected:
                 message = (
