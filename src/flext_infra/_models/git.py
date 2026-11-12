@@ -539,12 +539,6 @@ class FlextInfraModelsGit(
             m.Field(description="Commit subject and pull-request title"),
         ]
         body_file: Annotated[Path, m.Field(description="Pull-request body file")]
-        ownership: Annotated[
-            FlextInfraModelsGitWorktreeState.GitLaneOwnershipReceipt | None,
-            m.Field(
-                description="Live retained and integrated prior owned repository state"
-            ),
-        ] = None
 
     class GitIndexScope(m.ContractModel):
         """One explicitly selected native index in the current request only."""

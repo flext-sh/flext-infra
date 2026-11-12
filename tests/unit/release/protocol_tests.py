@@ -294,7 +294,7 @@ class TestsFlextInfraReleaseProtocol:
         cls,
         tmp_path: Path,
         runtime_environment: Mapping[str, str] | None = None,
-    ) -> Generator[tuple[Path, Path, p.Infra.GitLaneOwnershipReceipt]]:
+    ) -> Generator[tuple[Path, Path]]:
         """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
 
         Why: PATH is restored by the public ``env_vars_context`` facade rather
@@ -302,42 +302,10 @@ class TestsFlextInfraReleaseProtocol:
         contract.
 
         Yields:
-            The checkout, GitHub command log, and authenticated ownership receipt.
+            The clean integration checkout and the GitHub command log.
 
         """
         workspace = cls._release_lane_workspace(tmp_path, runtime_environment)
-        snapshot = tm.ok(
-            u.Infra.git_snapshot_worktree_state(
-                m.Infra.GitWorktreeStateRequest(repo_root=workspace, paths=(Path(),)),
-            ),
-        )
-        checkpoint = tm.ok(
-            u.Infra.git_checkpoint_worktree_state(
-                snapshot,
-                "refs/checkpoints/release-owned",
-            ),
-        )
-        publication = tm.ok(
-            u.Infra.git_publish_worktree_checkpoint(checkpoint, c.Infra.GIT_ORIGIN),
-        )
-        u.Tests.git_run(
-            workspace,
-            "merge",
-            "--no-ff",
-            "-m",
-            "chore: integrate prior owned state",
-            checkpoint.worktree_commit,
-        )
-        u.Tests.git_run(
-            workspace,
-            "push",
-            c.Infra.GIT_ORIGIN,
-            u.Tests.integration_branch(workspace),
-        )
-        ownership = m.Infra.GitLaneOwnershipReceipt.model_validate({
-            "checkpoint": (checkpoint),
-            "publication": (publication),
-        })
         gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
         shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
         with u.Tests.env_vars_context(
@@ -346,13 +314,12 @@ class TestsFlextInfraReleaseProtocol:
                 "PATH": shim_path,
             }
         ):
-            yield workspace, gh_log, ownership
+            yield workspace, gh_log
 
     @staticmethod
     def _apply_release_version(
         workspace: Path,
         integration: str,
-        ownership: p.Infra.GitLaneOwnershipReceipt,
     ) -> None:
         """Stamp the release version once and return to the integration branch."""
         tm.that(
@@ -361,7 +328,6 @@ class TestsFlextInfraReleaseProtocol:
                 "--phase",
                 "version",
                 "--apply",
-                ownership=ownership,
             ),
             eq=0,
         )
@@ -816,7 +782,6 @@ class TestsFlextInfraReleaseProtocol:
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
             workspace,
             gh_log,
-            ownership,
         ):
             integration = u.Tests.integration_branch(workspace)
             # flext-core caches the parsed pyproject per process; a warm cache
@@ -838,7 +803,6 @@ class TestsFlextInfraReleaseProtocol:
                 "--phase",
                 "version",
                 "--apply",
-                ownership=ownership,
             )
 
             tm.that(result, eq=0)
@@ -907,17 +871,15 @@ class TestsFlextInfraReleaseProtocol:
         with self._lane_with_shim(tmp_path, hermetic_git_environment) as (
             workspace,
             _,
-            ownership,
         ):
             integration = u.Tests.integration_branch(workspace)
-            self._apply_release_version(workspace, integration, ownership)
+            self._apply_release_version(workspace, integration)
 
             result = u.Tests.run_release_main(
                 workspace,
                 "--phase",
                 "version",
                 "--apply",
-                ownership=ownership,
             )
 
             tm.that(result, eq=0)
@@ -941,40 +903,26 @@ class TestsFlextInfraReleaseProtocol:
     class TestsAdmission:
         """Version and tag admission against real Git state."""
 
-        @c.Tests.MARK.parametrize("foreign_owner", [False, True])
         @staticmethod
-        def test_release_version_refuses_missing_or_foreign_ownership(
+        def test_release_version_refuses_a_dirty_checkout(
             tmp_path: Path,
             capsys: t.Tests.CaptureFixture[str],
-            *,
-            foreign_owner: bool,
         ) -> None:
-            """The public request cannot admit an absent or another checkout's proof."""
+            """The lane admits only a clean integration checkout; no receipt exists."""
             with TestsFlextInfraReleaseProtocol._lane_with_shim(tmp_path) as (
                 workspace,
-                _,
-                _,
+                gh_log,
             ):
-                with TestsFlextInfraReleaseProtocol._lane_with_shim(
-                    tmp_path / "foreign",
-                ) as (_, _, foreign):
-                    result = u.Tests.run_release_main(
-                        workspace,
-                        "--phase",
-                        "version",
-                        "--apply",
-                        ownership=foreign if foreign_owner else None,
-                    )
+                (workspace / "stray.txt").write_text("wip\n", encoding="utf-8")
+                result = u.Tests.run_release_main(
+                    workspace,
+                    "--phase",
+                    "version",
+                    "--apply",
+                )
                 tm.that(result, ne=0)
                 output = capsys.readouterr()
-                tm.that(
-                    output.out + output.err,
-                    has=(
-                        "lane ownership receipt does not cover this entire repository"
-                        if foreign_owner
-                        else "authoritative Beads ownership"
-                    ),
-                )
+                tm.that(output.out + output.err, has="requires a clean checkout")
                 tm.that(
                     u.Tests.git_capture(workspace, "branch", "--show-current"),
                     eq=u.Tests.integration_branch(workspace),
@@ -983,6 +931,7 @@ class TestsFlextInfraReleaseProtocol:
                     u.Infra.current_workspace_version(workspace),
                     eq=c.Tests.RELEASE_VERSION_PRERELEASE,
                 )
+                tm.that(gh_log.exists(), eq=False)
 
         @staticmethod
         def test_pull_request_title_is_validated_when_given(tmp_path: Path) -> None:
@@ -1069,13 +1018,11 @@ class TestsFlextInfraReleaseProtocol:
             ) as (
                 workspace,
                 _,
-                ownership,
             ):
                 integration = u.Tests.integration_branch(workspace)
                 TestsFlextInfraReleaseProtocol._apply_release_version(
                     workspace,
                     integration,
-                    ownership,
                 )
                 subject = (
                     f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"

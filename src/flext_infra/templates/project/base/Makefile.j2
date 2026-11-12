@@ -1037,8 +1037,6 @@ _builtin-{{ verb.name }}: _builtin_require_environment
 	@set -eu; set --; \
 {%- if phase == "plan" %}
 	if [ -n "$$FLEXT_RELEASE_{{ verb.arguments[0] }}" ]; then set -- --pr-title "$$FLEXT_RELEASE_{{ verb.arguments[0] }}"; fi; \
-{%- elif phase == "version" %}
-	if [ -n "$$FLEXT_RELEASE_{{ verb.arguments[0] }}" ]; then set -- --checkpoint-ref "$$FLEXT_RELEASE_{{ verb.arguments[0] }}"; fi; \
 {%- elif phase == "publish" %}
 	if [ "$$FLEXT_RELEASE_{{ verb.arguments[0] }}" = Y ]; then set -- --index; fi; \
 {%- endif %}

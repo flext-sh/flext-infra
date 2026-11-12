@@ -181,8 +181,8 @@ Release operations belong to an explicitly declared product protocol.
 engine's phase enumeration. The same declaration produces their project Make
 handlers and workflow references; no duplicate `repository.extra_verbs` rows are
 required. Each handler invokes the existing release CLI directly.
-`PR_TITLE` supplies the optional plan title, `LANE_CHECKPOINT_REF` the optional
-versioning checkpoint and `INDEX=Y` the explicit package-index publication request.
+`PR_TITLE` supplies the optional plan title and `INDEX=Y` the explicit
+package-index publication request; `release-version` takes no argument.
 Generation, checks and local builds never perform tagging or publication.
 The same full-owned catalog declaration authorizes a workflow update or its
 retirement when its profile or capability no longer applies. Both operations
