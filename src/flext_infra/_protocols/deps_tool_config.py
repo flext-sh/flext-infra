@@ -174,6 +174,12 @@ class FlextInfraProtocolsDepsToolConfig:
         ignore: Sequence[str]
 
     @runtime_checkable
+    class BanditToolConfig(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        skips: t.StrTuple
+
+    @runtime_checkable
     class MarkdownProjectedBlock(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -248,6 +254,11 @@ class FlextInfraProtocolsDepsToolConfig:
         @property
         def jscpd(self) -> FlextInfraProtocolsDepsToolConfig.JscpdToolConfig:
             """Jscpd clone-semantics passes."""
+            ...
+
+        @property
+        def bandit(self) -> FlextInfraProtocolsDepsToolConfig.BanditToolConfig:
+            """Bandit security gate skipped test ids."""
             ...
 
     @runtime_checkable

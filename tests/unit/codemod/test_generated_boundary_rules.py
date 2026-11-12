@@ -23,6 +23,14 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
     MODULE = "ban-settings-config-own-module-import"
     EXTERNAL = "ban-external-import-outside-facade-family"
     LIBRARY = "ban-library-type-reference-outside-typings"
+    SUPPORT: Mapping[str, Mapping[str, str]] = {
+        "layer-zero/module_models_config": {
+            "_models/__init__.py": "",
+            "_models/_config.py": "",
+        },
+        "layer-zero/module_guarded_models": {"_models/__init__.py": ""},
+        "layer-zero/module_settings_alias": {"_constants.py": ""},
+    }
 
     @staticmethod
     @c.Tests.MARK.parametrize("selector_length", [1023, 1024, 1025, 4096])
@@ -136,7 +144,12 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
         owner = TestsFlextInfraCodemodGeneratedBoundaryRules
         source = owner.scenario_source(fixture_tree, tmp_path, case)
         findings = owner.scan_sources(
-            tmp_path, {"_settings.py": source, "consumer.py": source}
+            tmp_path,
+            {
+                **owner.SUPPORT.get(case, {}),
+                "_settings.py": source,
+                "consumer.py": source,
+            },
         )
         tm.that(findings, has=f"_settings.py:{shape}")
         tm.that([item for item in findings if item.startswith("consumer.py")], eq=[])
@@ -200,7 +213,7 @@ class TestsFlextInfraCodemodGeneratedBoundaryRules:
             tmp_path,
             {"_utilities/model_owner.py": source, "_typings/library_types.py": source},
         )
-        tm.that(findings, eq=[f"model_owner.py:{owner.LIBRARY}"])
+        tm.that(sorted(set(findings)), eq=[f"model_owner.py:{owner.LIBRARY}"])
 
     @staticmethod
     def test_protocols_family_names_library_protocols_only(

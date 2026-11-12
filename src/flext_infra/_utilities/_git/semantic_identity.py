@@ -67,6 +67,52 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             )
         return r[p.Infra.GitIdentityReport].ok(report)
 
+    @classmethod
+    def repository_cache_namespace(cls, path: Path) -> p.Result[str]:
+        """Return the checkout-independent identity of ``path`` inside its repository.
+
+        The identity is the canonical origin remote (shared by every clone and
+        every linked worktree), or the Git common directory when the repository
+        has no origin (shared by every linked worktree), joined with the path
+        relative to the repository root. A directory outside every Git
+        repository is its own identity: its physical path. Unlike
+        ``git_identity`` this probes names only and never runs ``git status``.
+
+        Returns:
+            The identity text, or the failure of a genuine Git probe error.
+
+        """
+        resolved = path.expanduser().resolve(strict=True)
+        inside = cls.git_is_inside_work_tree(m.Infra.GitRepoRequest(repo_root=resolved))
+        if inside.failure:
+            return r[str].from_failure(inside)
+        if not inside.value.value:
+            return r[str].ok(str(resolved))
+        try:
+            with cls._repo(resolved) as repo:
+                toplevel = Path(
+                    repo.working_tree_dir or str(repo.working_dir)
+                ).resolve()
+                origin = next(
+                    (
+                        remote.url
+                        for remote in repo.remotes
+                        if remote.name == c.Infra.GIT_DEFAULT_REMOTE
+                    ),
+                    None,
+                )
+                identity = (
+                    FlextInfraUtilitiesGitRemote.canonical_origin_remote(origin)
+                    if origin
+                    else str(Path(repo.common_dir).resolve())
+                )
+        except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
+            return r[str].fail(
+                f"failed to resolve repository cache namespace: {exc}",
+                exception=exc,
+            )
+        return r[str].ok(f"{identity}\0{resolved.relative_to(toplevel).as_posix()}")
+
     @staticmethod
     def _git_head_is_unborn(repo: Repo) -> bool:
         """Distinguish an absent symbolic branch from broken refs or objects.
