@@ -1258,7 +1258,12 @@ gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
 Security gates reuse the gate-base source discovery (`source_scan.roots`) and
 native runner. Explicit file targets and generated Python remain auditable;
-owner authorization does not grant a Bandit exemption. Gate diagnostics cross
+owner authorization does not grant a Bandit exemption. The only skipped Bandit
+tests are declared once in `Infra.tooling.tools.bandit.skips` of the tooling
+SSOT: B101 (assert is the tests idiom) and the B404/B603 axiom (operator
+decision 2026-11-12: list-form `subprocess` without a shell is the safe pattern,
+and the single process-execution owner must import it); B602 (`shell=True`)
+stays active. Gate diagnostics cross
 parser and aggregation boundaries through `p.Infra.Issue`; their JSON and SARIF
 schemas remain owned by the canonical Pydantic models. Schema metadata delegates
 to those models rather than duplicating them or reconstructing validated issues.

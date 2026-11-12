@@ -563,6 +563,13 @@ class FlextInfraModelsDepsToolConfig(
             ),
         ] = ()
 
+    class BanditToolConfig(m.ArbitraryTypesModel):
+        """Bandit test ids the security gate skips (``--skip``)."""
+
+        skips: t.StrTuple = m.Field(
+            description="Bandit test ids the security gate does not report.",
+        )
+
     class MarkdownProjectedBlock(m.ArbitraryTypesModel):
         """One foreign writer's projected block that Markdown gates do not lint.
 
@@ -699,6 +706,9 @@ class FlextInfraModelsDepsToolConfig(
         )
         jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
             description="jscpd clone-semantics passes",
+        )
+        bandit: FlextInfraModelsDepsToolConfig.BanditToolConfig = m.Field(
+            description="Bandit security gate skipped test ids",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):
