@@ -360,6 +360,14 @@ as small as possible. Renames and moves that Rope's refactorings express run
 through them, not through a custom planner (ADR-028 Decision 17), and a rename of
 library-named exports to capability names follows ADR-028 Decision 15.
 
+The `ban-library-named-facade-member` rule bans a facade member prefixed by an
+installed distribution the project imports. A project whose domain is a
+technology owns that name as a capability, not a leak. A distribution prefix is
+removed from the rule when the project owns a package or subpackage of that
+normalized name (automatic), or when the repository declares it in
+`Infra.codegen.repository.domain_capabilities` (override). Declared stdlib
+backports (`Infra.tooling.lazy_init.stdlib_backports`) are never prefixes.
+
 #### One pipeline, one owner per law
 
 ADR-028 Decision 18 item 2

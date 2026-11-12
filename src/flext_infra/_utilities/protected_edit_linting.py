@@ -15,6 +15,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, MutableSequence, Sequence
+from contextlib import nullcontext
 from itertools import islice
 from pathlib import Path
 from typing import ClassVar
@@ -1533,16 +1534,21 @@ class FlextInfraUtilitiesProtectedEditLinting:
             environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
                 FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
             )
-        run_result = u.Cli.run_raw(
-            cmd,
-            cwd=command_cwd,
-            options=m.Cli.ProcessOptions(
-                env=environment,
-                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                input_data=source,
-            ),
-            timeout=cls._gate_deadline(tool_name),
-        )
+        with (
+            FlextInfraUtilitiesResourceLimits.mypy_cache_lock(command_cwd)
+            if tool_name == c.Infra.MYPY
+            else nullcontext()
+        ):
+            run_result = u.Cli.run_raw(
+                cmd,
+                cwd=command_cwd,
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                    input_data=source,
+                ),
+                timeout=cls._gate_deadline(tool_name),
+            )
         return cls.lint_gate_result(tool_name, run_result)
 
     @staticmethod

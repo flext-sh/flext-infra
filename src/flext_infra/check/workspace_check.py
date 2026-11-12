@@ -233,11 +233,14 @@ class FlextInfraWorkspaceChecker(
             The declared inventory or the first invalid phase selection.
 
         """
-        gates = u.Infra.selected_check_gates(
-            u.Infra.load_codegen_policy(params.repository_root).unwrap().make,
-            params.gate_set,
-            phase=phase,
-        )
+        make = u.Infra.load_codegen_policy(params.repository_root).unwrap().make
+        gates = u.Infra.selected_check_gates(make, params.gate_set, phase=phase)
+        if not params.gates:
+            for gate in u.Infra.not_executed_local_gates(make):
+                u.Cli.info(
+                    f"check: {gate} NOT EXECUTED: a local-only gate never runs "
+                    "on a remote runner"
+                )
         if phase == c.Infra.CheckPhase.PRIMARY:
             if any((
                 params.file is not None,
