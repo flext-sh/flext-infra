@@ -737,7 +737,12 @@ never automatically retired. Checked-out refs are not exempted from that proof.
 
 Failures include the full exact refs, stash OIDs, and registered worktrees. A branch
 already contained in integration is residue; integration refs and symbolic remote
-HEAD are protected. Unknown ownership is inconclusive, never inferred from commit
+HEAD are protected. Active lanes are never residue: the branch checked out in the
+checking checkout (so a new branch cut from the integration tip can take its first
+commit) and any branch checked out in a worktree with staged, modified or untracked
+content, together with its configured-remote tracking ref, are derived from Git's
+own HEAD, worktree registry and per-worktree status. Only a merged ref with no WIP
+anywhere remains reported. Unknown ownership is inconclusive, never inferred from commit
 age or directory mtime. Open PRs and fresh, explicitly owned Bead lanes are allowed.
 Inactive owned work requires correlated tracker, ref activity, and worktree evidence;
 the activity window comes from the global governance SSOT configured by

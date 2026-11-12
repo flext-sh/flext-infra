@@ -931,6 +931,44 @@ class FlextInfraGitLanes:
             return r[bool].from_failure(status)
         return r[bool].ok(value=not status.value.dirty)
 
+    @staticmethod
+    def _active_branches(
+        request: p.Infra.GitLaneVerificationRequest,
+        findings: list[str],
+    ) -> frozenset[str]:
+        """Name the lanes with a live owner: the checking HEAD and dirty worktrees.
+
+        A branch being committed, or checked out where staged, modified or
+        untracked content exists, is active work and never merged-but-alive.
+
+        Returns:
+            Short branch names derived only from Git's HEAD, worktree registry
+            and per-worktree status.
+
+        """
+        repo = m.Infra.GitRepoRequest(repo_root=request.repo_root)
+        active: set[str] = set()
+        identity = u.Infra.git_identity(repo)
+        if identity.failure:
+            findings.append(f"current lane identity read error: {identity.error}")
+        elif identity.value.branch:
+            active.add(identity.value.branch)
+        worktrees = u.Infra.git_list_worktrees(repo)
+        if worktrees.failure:
+            findings.append(f"worktree read error: {worktrees.error}")
+            return frozenset(active)
+        for entry in worktrees.value.entries:
+            if entry.branch is None or entry.bare or not entry.path.is_dir():
+                continue
+            status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=entry.path))
+            if status.failure:
+                findings.append(
+                    f"worktree status read error: {entry.path}: {status.error}",
+                )
+            elif status.value.dirty:
+                active.add(entry.branch)
+        return frozenset(active)
+
     @classmethod
     def _verify_refs(
         cls,
@@ -949,11 +987,21 @@ class FlextInfraGitLanes:
         base, fresh = integration
         violations: list[p.Infra.GitLaneViolation] = []
         remote = config.Infra.codegen.branch_policy.lane_remote
+        active = cls._active_branches(request, findings)
+        protected = {
+            f"{c.Infra.GIT_REFS_HEADS}{base}",
+            f"{c.Infra.GIT_REFS_REMOTES}{remote}/{base}",
+        }
+        owned = {
+            prefix + branch
+            for branch in active
+            for prefix in (
+                c.Infra.GIT_REFS_HEADS,
+                f"{c.Infra.GIT_REFS_REMOTES}{remote}/",
+            )
+        }
         for reference, oid in refs:
-            if reference in {
-                f"{c.Infra.GIT_REFS_HEADS}{base}",
-                f"{c.Infra.GIT_REFS_REMOTES}{remote}/{base}",
-            }:
+            if reference in protected:
                 continue
             remote_failure = cls._remote_ref_failure(request.repo_root, reference, oid)
             if remote_failure is not None:
@@ -968,6 +1016,8 @@ class FlextInfraGitLanes:
             )
             if contained.failure:
                 findings.append(f"ancestry read error: {reference}: {contained.error}")
+            elif contained.value.value and reference in owned:
+                continue
             elif contained.value.value:
                 findings.append(f"merged but alive ref: {reference} oid={oid}")
                 violations.append(
