@@ -844,7 +844,10 @@ class FlextInfraUtilitiesModelsProtocol:
             # Invocation-local identity memos: one annotation compare resolves
             # the same declared route and native expression repeatedly.
             self.source_qualified_names: dict[tuple[str, str], p.Infra.RopePyName] = {}
-            self.source_denotations: dict[tuple[int, int, str, str], bool] = {}
+            self.source_denotations: dict[tuple[int, str, str, str], bool] = {}
+            # Keep each compared scope alive so its id cannot be reused by a
+            # different scope while a memo entry is still addressable.
+            self.source_denotation_scopes: list[p.Infra.RopeScope] = []
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
@@ -9389,10 +9392,13 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> bool:
             if scope is None:
                 return False
-            key = (id(node), id(scope), module, name)
+            expression = ast.unparse(node)
+            key = (id(scope), expression, module, name)
             cached = self.source_denotations.get(key)
             if cached is not None:
                 return cached
+            if not any(item is scope for item in self.source_denotation_scopes):
+                self.source_denotation_scopes.append(scope)
             identity_key = (module, name)
             identity = self.source_qualified_names.get(identity_key)
             if identity is None:
@@ -9400,9 +9406,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.source_qualified_names[identity_key] = identity
             denoted = self.same_name(
                 identity,
-                FlextInfraUtilitiesRopeRuntime.expression_name(
-                    scope, ast.unparse(node)
-                ),
+                FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression),
             )
             self.source_denotations[key] = denoted
             return denoted
