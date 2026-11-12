@@ -4438,6 +4438,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                 )
             ]
+            # A mirrored base keeps the model's subscript arguments
+            # (``RootModel[Mapping[str, X]]``), and those evaluate at class
+            # creation even when the inherited root field no longer writes the
+            # annotation that used to bind them. Their names need the same
+            # provider binding as any other annotation root.
+            annotations.extend(
+                base.slice
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+            )
             annotations.extend(
                 parameter
                 for node, _path, _tree in classes
