@@ -63,6 +63,8 @@ class FlextInfraProtocolsDepsToolConfig:
             """Phase toggles read from config/tooling.yaml."""
             ...
 
+        scan_threads: t.PositiveInt
+
     @runtime_checkable
     class PytestWorkerCeiling(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

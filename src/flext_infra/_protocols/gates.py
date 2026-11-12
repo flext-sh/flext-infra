@@ -1058,7 +1058,7 @@ class FlextInfraProtocolsGates:
 
         @property
         def candidate(self) -> FlextInfraProtocolsGates.GateCandidateIdentity:
-            """Exact candidate identity."""
+            """Exact candidate identity as a JSON object."""
             ...
 
         @property
