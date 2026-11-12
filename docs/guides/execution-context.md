@@ -367,7 +367,10 @@ rewrites the editable receipt and applies the same Python/console verification
 as a publication, so a repeated setup costs a check, not a reinstall. Any other
 state, and every executor installation, prepares an invocation-owned native
 relocatable environment under the runtime's existing ignored state directory,
-installed with uv's clone link mode. Matching creator identities do not permit
+installed with uv's clone link mode and native `--compile-bytecode`, so imports
+never recompile site-packages even when the host exports
+`PYTHONDONTWRITEBYTECODE`; a kept environment keeps the bytecode its last
+installation compiled. Matching creator identities do not permit
 synchronizing the serving environment: a sync can remove dependencies before
 their replacements are ready. Frozen installation, editable binding, its
 environment-owned receipt and real Python/console validation precede one atomic
