@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from types import ModuleType
 
 from flext_infra import config
 from tests import c, m, p, t, tm, u
@@ -15,6 +17,19 @@ from tests import c, m, p, t, tm, u
 
 class TestsModelProtocolCallableContracts:
     """Exercise public projection, actual Pydantic models and native consumers."""
+
+    @staticmethod
+    def _import_generated_module(path: Path) -> ModuleType:
+        """Import a generated module from its file through the import system.
+
+        Returns:
+            The imported module.
+
+        """
+        spec = tm.not_none(spec_from_file_location("generated_protocols", path))
+        module = module_from_spec(spec)
+        tm.not_none(spec.loader).exec_module(module)
+        return module
 
     @staticmethod
     def _model_workspace(tmp_path: Path, declaration: str) -> tuple[Path, Path]:
@@ -387,11 +402,12 @@ class TestsModelProtocolCallableContracts:
         tm.ok("from flext_cli import FlextCliProtocols" in generated)
         tm.ok("class Request(FlextCliProtocols.ModelCopy, Protocol):" in generated)
         tm.fail("from flext_core import p\n" in generated)
-        namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execute generated protocol module to validate it loads
-            compile(generated, "<generated-_protocols/base.py>", "exec"), namespace
-        )
-        holder = namespace["FlextInfraProtocolsPayload"]
+        destination = package / "_protocols" / "payload.py"
+        tm.ok(u.Cli.ensure_dir(destination.parent))
+        tm.ok(u.Cli.atomic_write_text_file(destination, generated))
+        holder = TestsModelProtocolCallableContracts._import_generated_module(
+            destination
+        ).FlextInfraProtocolsPayload
         tm.that(isinstance(holder, type), eq=True)
         tm.that("Request" in vars(holder), eq=True)
 
@@ -446,16 +462,9 @@ class TestsModelProtocolCallableContracts:
         generated = planned[destination]
         tm.ok("from flext_cli import FlextCliProtocols\n" in generated)
         tm.ok(u.Cli.atomic_write_text_file(root / destination, generated))
-        namespace: dict[str, object] = {"__name__": "generated_protocols"}
-        exec(  # ruff: ignore[exec-builtin] - execute generated protocol module to validate it loads
-            compile(
-                (root / destination).read_text(encoding="utf-8"),
-                str(root / destination),
-                "exec",
-            ),
-            namespace,
-        )
-        holder = namespace["FlextInfraProtocolsPayload"]
+        holder = TestsModelProtocolCallableContracts._import_generated_module(
+            root / destination
+        ).FlextInfraProtocolsPayload
         tm.that("Request" in vars(holder), eq=True)
 
     @classmethod

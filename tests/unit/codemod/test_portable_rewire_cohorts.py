@@ -339,14 +339,14 @@ class TestsFlextInfraPortableRewireCohorts:
         )
         artifacts = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.rewire_artifact_file_plans(
-                    producer,
-                    projected,
-                    tm.ok(
-                        codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
-                            producer, projected, organization.census
-                        )
-                    ),
-                    pre_move_sources=organization.pre_move_sources,
+                producer,
+                projected,
+                tm.ok(
+                    codemod.FlextInfraCodemodSemanticApply.protocol_rewire_intents(
+                        producer, projected, organization.census
+                    )
+                ),
+                pre_move_sources=organization.pre_move_sources,
                 directory=config.Infra.refactor_csv_campaigns.rewire_directory,
             )
         )
