@@ -634,7 +634,7 @@ SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
-{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--link-mode", uv_link_mode] %}
+{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--compile-bytecode", "--link-mode", uv_link_mode] %}
 {% if make_profile == "workspace" %}{% set setup_sync_arguments = setup_sync_arguments + ["--all-packages"] %}{% endif %}
 override SETUP_SYNC_ARGS := {{ setup_sync_arguments | join(" ") }}
 

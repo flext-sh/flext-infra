@@ -32,7 +32,7 @@ repos:
         # way make check and make fmt do. Pre-push keeps the complete declared
         # verbs.
         entry: >-
-          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; FLEXT=${FLEXT_INFRA_BIN:-$(command -v flext-infra || true)}; [ -n "$FLEXT" ] || FLEXT=./.venv/bin/flext-infra; args=(); argc=0; md_count=0; for f in "$@"; do case "$f" in /*) continue;; esac; [ -f "$f" ] && [ ! -L "$f" ] || continue; case "$f" in *.py) args+=(--file "$f"); argc=$((argc+1));; *.md) md_count=$((md_count+1));; esac; done; if [ "$argc" -gt 0 ]; then CI=C "$FLEXT" check run --repository-root . "${args[@]}" --gates lint --gates format; fi; if [ "$md_count" -gt 0 ]; then CI=C "$FLEXT" check run --repository-root . --gates markdown --gates markdown-format; fi; git diff --cached --check' --
+          bash -eu -o pipefail -c 'unset $(git rev-parse --local-env-vars); unset MAKEFLAGS; FLEXT=${FLEXT_INFRA_BIN:-./.venv/bin/flext-infra}; [ -x "$FLEXT" ] || FLEXT=$(command -v flext-infra || true); args=(); argc=0; md_count=0; for f in "$@"; do case "$f" in /*) continue;; esac; [ -f "$f" ] && [ ! -L "$f" ] || continue; case "$f" in *.py) args+=(--file "$f"); argc=$((argc+1));; *.md) md_count=$((md_count+1));; esac; done; if [ "$argc" -gt 0 ]; then CI=C "$FLEXT" check run --repository-root . "${args[@]}" --gates lint --gates format; fi; if [ "$md_count" -gt 0 ]; then CI=C "$FLEXT" check run --repository-root . --gates markdown --gates markdown-format; fi; git diff --cached --check' --
         pass_filenames: true
         # Scenario-data roots are no gate's input (codegen.exclusions); the
         # hook's native filter keeps them out instead of a gate refusing an
