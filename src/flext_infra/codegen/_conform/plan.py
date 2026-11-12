@@ -523,8 +523,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             )
             current_repository = current_target.repository
         else:
-            rendered = workspace_services.FlextInfraWorkspaceDetector.conform_repository(
-                root, current_repository
+            rendered = (
+                workspace_services.FlextInfraWorkspaceDetector.conform_repository(
+                    root, current_repository
+                )
             )
             if rendered.failure:
                 return result_type.from_failure(rendered)
