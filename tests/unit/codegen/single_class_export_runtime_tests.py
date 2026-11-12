@@ -21,7 +21,7 @@ class TestsFlextInfraSingleClassExportRuntime:
     """Exercise the real catalog, publication and Python import boundaries."""
 
     @staticmethod
-    @c.Tests.MARK.parametrize("surface", tuple(c.Infra.NON_PUBLIC_LAZY_ROOTS))
+    @c.Tests.MARK.parametrize("surface", sorted(c.Infra.NON_PUBLIC_LAZY_ROOTS))
     def test_internal_source_is_published_through_its_lazy_package(
         tmp_path: Path,
         surface: str,
