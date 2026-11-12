@@ -1,0 +1,19 @@
+id: ban-bytecode-disable
+# `valid` MUST NOT match: stripping an inherited value, naming it in an unset
+# list, strings and comments.
+valid:
+- environment.pop("PYTHONDONTWRITEBYTECODE", None)
+- unset = ("PYTHONDONTWRITEBYTECODE", "PYTHONPATH")
+- message = "PYTHONDONTWRITEBYTECODE is banned"
+- "# never set PYTHONDONTWRITEBYTECODE"
+# `invalid` MUST match: every way code disables bytecode.
+invalid:
+- env["PYTHONDONTWRITEBYTECODE"] = "1"
+- os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+- environment.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+- os.putenv("PYTHONDONTWRITEBYTECODE", "1")
+- sys.dont_write_bytecode = True
+- |
+  env = {"PYTHONDONTWRITEBYTECODE": "1", "PATH": path}
+- |
+  env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")

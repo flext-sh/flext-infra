@@ -4,7 +4,10 @@ Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
+from collections.abc import Mapping
 from pathlib import Path
+
+import pytest
 
 from flext_infra.protocols_bootstrap import normalize_protocol_source
 from tests import p, tm, u
@@ -118,3 +121,77 @@ def test_authored_protocol_projection_is_stable_on_first_publication(
         second = tm.ok(u.Infra.protocol_model_sources_from_source(root, binding[0]))
     destination = (package / "_protocols/config.py").relative_to(root)
     tm.that(second[destination], eq=first[destination])
+
+
+def _project_sources(
+    tmp_path: Path, models: str, *, published: tuple[str, ...] = ("ModelsPayload",)
+) -> p.Result[Mapping[Path, str]]:
+    """Project one ``_models/payload.py`` source through the public generator API.
+
+    Returns:
+        The generator's protocol sources, or its original failure.
+
+    """
+    root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+    exports = ", ".join(published)
+    sources = {
+        package / "models.py": (
+            f"from {package.name}._models.payload import ModelsPayload\n"
+            "class Models(ModelsPayload): pass\nm = Models\n__all__ = ['Models', 'm']\n"
+        ),
+        package / "protocols.py": (
+            "class Protocols: pass\np = Protocols\n__all__ = ['Protocols', 'p']\n"
+        ),
+        package / "_models/payload.py": models + f"__all__ = [{exports!r}]\n",
+    }
+    for path, source in sources.items():
+        tm.ok(u.Cli.ensure_dir(path.parent))
+        tm.ok(u.Cli.atomic_write_text_file(path, source))
+    with u.Infra.facade_source_project(root) as binding:
+        return u.Infra.protocol_model_sources_from_source(root, binding[0]).map(
+            lambda rendered: {
+                path: text
+                for path, text in rendered.items()
+                if path == (package / "_protocols/payload.py").relative_to(root)
+            }
+        )
+
+
+def test_republished_module_model_is_not_a_self_alias(tmp_path: Path) -> None:
+    """``X = X`` republishes the model whose contract already owns its route."""
+    sources = tm.ok(
+        _project_sources(
+            tmp_path,
+            "from pydantic import BaseModel, StrictStr\n"
+            "class Item(BaseModel):\n"
+            "    name: StrictStr\n"
+            "class ModelsPayload:\n"
+            "    Item = Item\n",
+        )
+    )
+    (generated,) = sources.values()
+    tm.that(generated, has="class Item(")
+    tm.that(generated, lacks="type Item =")
+
+
+def test_unpublished_source_declaration_fails_loud(tmp_path: Path) -> None:
+    """A field typed by a plain module class has no bindable Protocol name."""
+    with pytest.raises(ValueError, match="neither a model nor an import") as raised:
+        _project_sources(
+            tmp_path,
+            "from __future__ import annotations\n"
+            "from dataclasses import dataclass\n"
+            "from pydantic import BaseModel\n"
+            "@dataclass(frozen=True)\n"
+            "class Column:\n"
+            "    end: int\n"
+            "class Account(BaseModel):\n"
+            "    code: str\n"
+            "class ModelsPayload:\n"
+            "    Account = Account\n"
+            "    class Layout(BaseModel):\n"
+            "        account: Account | None\n"
+            "        columns: list[Column] | None\n",
+        )
+    tm.that(str(raised.value), has="payload.Column;")
+    tm.that(str(raised.value), lacks="Account")
