@@ -351,7 +351,15 @@ class FlextInfraWorkspaceDetector(
             native_metadata = metadata.value
         if native_metadata is not None:
             project_name = native_metadata.metadata.project.name
-            package = u.Infra.project_package_participation(native_metadata.packaging)
+            # Conform owns [build-system]: the projection always declares the
+            # scaffold backend, so only an explicit tool.uv.package opts out.
+            package = u.Infra.project_package_participation(
+                native_metadata.packaging.model_copy(
+                    update={
+                        "build_backend": config.Infra.codegen.scaffold.build.backend
+                    },
+                ),
+            )
         else:
             scaffold = cls._declared_scaffold_project(repository_root)
             if scaffold.failure:
