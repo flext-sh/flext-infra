@@ -841,6 +841,10 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_method_cache: dict[
                 str, tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]
             ] = {}
+            # Invocation-local identity memos: one annotation compare resolves
+            # the same declared route and native expression repeatedly.
+            self.source_qualified_names: dict[tuple[str, str], p.Infra.RopePyName] = {}
+            self.source_denotations: dict[tuple[int, int, str, str], bool] = {}
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
@@ -9239,12 +9243,23 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> bool:
             if scope is None:
                 return False
-            return self.same_name(
-                self.qualified_name(self.project, name, module_name=module),
+            key = (id(node), id(scope), module, name)
+            cached = self.source_denotations.get(key)
+            if cached is not None:
+                return cached
+            identity_key = (module, name)
+            identity = self.source_qualified_names.get(identity_key)
+            if identity is None:
+                identity = self.qualified_name(self.project, name, module_name=module)
+                self.source_qualified_names[identity_key] = identity
+            denoted = self.same_name(
+                identity,
                 FlextInfraUtilitiesRopeRuntime.expression_name(
                     scope, ast.unparse(node)
                 ),
             )
+            self.source_denotations[key] = denoted
+            return denoted
 
         def _member(
             self, binding: p.Infra.RopePyName, route: str
