@@ -688,10 +688,20 @@ def _annotation_patches(
             if replacement is not None:
                 start, end = _span(annotation, offsets)
                 patches.append(_Patch(start, end, ast.unparse(replacement)))
-        for statement in protocol.body:
-            if isinstance(statement, ast.AnnAssign) and statement.value is not None:
-                start, end = _span(statement.value, offsets)
-                patches.append(_Patch(start, end, "..."))
+        # A Protocol member declares its type, never a value: an ``Ellipsis``
+        # placeholder is not assignable to the declared type, so the whole
+        # ``= value`` suffix is removed. A ``TypeAlias`` keeps its value.
+        patches.extend(
+            _Patch(
+                _span(statement.annotation, offsets)[1],
+                _span(statement.value, offsets)[1],
+                "",
+            )
+            for statement in protocol.body
+            if isinstance(statement, ast.AnnAssign)
+            and statement.value is not None
+            and not _is_type_alias_annotation(statement.annotation)
+        )
     return patches
 
 

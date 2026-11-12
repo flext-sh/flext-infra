@@ -261,9 +261,7 @@ class TestsFlextInfraPortableRewire:
                 )
             )
         tm.ok(consumer in replayed.candidate.updates)
-        tm.ok(
-            all(path.is_relative_to(receiver) for path in replayed.candidate.updates)
-        )
+        tm.ok(all(path.is_relative_to(receiver) for path in replayed.candidate.updates))
         tm.ok(
             codemod.FlextInfraCodemodSemanticApply.publish_candidate(receiver, replayed)
         )

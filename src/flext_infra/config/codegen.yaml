@@ -972,11 +972,9 @@ Infra:
         description: Validate declarations, projections, environment, documentation and configured gates without repairs or publication.
         arguments: [ CHECK_PHASE ]
       - name: tests
-        description: Run native incremental tests, or every test in FILE once.
-        arguments: [ FILE ]
+        description: Run native incremental tests through the persistent Testmon selection.
       - name: tests-full
-        description: Run the complete selected inventory once without Testmon; FILE selects one file.
-        arguments: [ FILE ]
+        description: Run the complete selected inventory once without Testmon.
       - name: help
         description: Discover the declared public interface without effects.
       - name: build
