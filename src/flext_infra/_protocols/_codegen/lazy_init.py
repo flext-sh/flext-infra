@@ -69,8 +69,22 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
+        def class_members(self) -> Mapping[str, Sequence[str]]:
+            """Names each defined class body binds, in order."""
+            ...
+
+        @property
         def values(self) -> Mapping[str, str]:
             """Source text of each assigned top-level value."""
+            ...
+
+        @property
+        def runtime_imports(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Absolute top-level packages imported at module scope outside type-
+            checking guards.
+            """
             ...
 
     @runtime_checkable
@@ -84,6 +98,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         imports: dict[str, str]
         classes: dict[str, Sequence[str]]
         class_exports: dict[str, Sequence[str] | None]
+        class_members: dict[str, Sequence[str]]
         values: dict[str, str]
         exports: list[str | None] | None
 
@@ -189,6 +204,15 @@ class FlextInfraProtocolsCodegenLazyInit:
 
             Importable direct child packages recorded as metadata; their symbols are
             not reexported by an ancestor.
+            """
+            ...
+
+        @property
+        def deferred_members(self) -> Mapping[str, Sequence[str]]:
+            """Structural member projected from the owning model.
+
+            Member names of each class export whose module imports a declared
+            deferred distribution; it loads on first member use.
             """
             ...
 
@@ -346,6 +370,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         declarations: dict[tuple[str, str], tuple[str, bool]]
         packages: dict[Path, str]
         collisions: list[str]
+        deferred_imports: dict[Path, frozenset[str]]
 
     @runtime_checkable
     class RopeProjectLayout(FlextCliProtocols.BaseModel, Protocol):
@@ -443,6 +468,15 @@ class FlextInfraProtocolsCodegenLazyInit:
         @property
         def lazy_export_mapping(self) -> t.NonEmptyStr:
             """Literal elected export-to-target installer argument."""
+            ...
+
+        @property
+        def deferred_members_mapping(self) -> str:
+            """Structural member projected from the owning model.
+
+            Line-prefixed ``deferred_members`` installer argument; empty when the
+            package defers no export.
+            """
             ...
 
     @runtime_checkable

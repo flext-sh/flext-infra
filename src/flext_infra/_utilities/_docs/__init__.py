@@ -131,4 +131,15 @@ install_lazy_exports(
         "FlextInfraUtilitiesDocsValidate": ".validate",
     },
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraUtilitiesDocsBuild": (
+            "docs_mkdocs_config_files",
+            "docs_run_mkdocs",
+            "_docs_run_one_mkdocs",
+            "_run_mkapi",
+            "docs_serve_mkdocs",
+            "docs_write_build_reports",
+            "_serve_sdk",
+        ),
+    },
 )
