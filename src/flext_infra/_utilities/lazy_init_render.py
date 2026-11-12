@@ -429,8 +429,8 @@ class FlextInfraUtilitiesLazyInitRender:
         """Render the installer's ``deferred_members`` argument in Ruff's fixed point.
 
         Every bracket ends with a magic trailing comma, so Ruff keeps the
-        mapping and each multi-member tuple exploded; a one-member tuple stays
-        on its entry line when that line fits.
+        mapping and each multi-member tuple exploded; an empty or one-member tuple
+        stays on its entry line when that line fits.
 
         Returns:
             The argument lines, each prefixed by a newline; empty for no export.
@@ -442,8 +442,12 @@ class FlextInfraUtilitiesLazyInitRender:
         indent = "        "
         for name in sorted(deferred, key=cls.lazy_init_export_key):
             members = deferred[name]
-            single = f'{indent}"{name}": ("{members[0]}",),'
-            if len(members) == 1 and len(single) <= cls.lazy_init_width():
+            single = (
+                f'{indent}"{name}": ("{members[0]}",),'
+                if members
+                else f'{indent}"{name}": (),'
+            )
+            if len(members) <= 1 and len(single) <= cls.lazy_init_width():
                 lines.append(single)
                 continue
             lines.append(f'{indent}"{name}": (')

@@ -317,6 +317,10 @@ class FlextInfraUtilitiesPythonModel:
                 statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
             ):
                 bound[statement.name] = None
+            elif isinstance(statement, ast.TypeAlias) and isinstance(
+                statement.name, ast.Name
+            ):
+                bound[statement.name.id] = None
             elif isinstance(statement, ast.Assign) or (
                 isinstance(statement, ast.AnnAssign) and statement.value is not None
             ):
@@ -463,6 +467,41 @@ class FlextInfraUtilitiesPythonModel:
         """
         path = run.module_files.get(name)
         return None if path is None else cls.python_model_module_at(run, path, name)
+
+    @classmethod
+    def python_model_namespace_bases(
+        cls, run: p.Infra.PythonModelRun, name: str, owner: str
+    ) -> Sequence[str]:
+        """Return the base expressions of every class nested in a top-level class.
+
+        A facade composes its namespace mixins through the nested namespace
+        classes its body declares, which the module facts do not record.
+
+        Returns:
+            The unparsed base expressions in source order.
+
+        Raises:
+            TypeError: If the parsed module carries no module syntax tree.
+
+        """
+        project = run.source_project
+        parsed = project.get_pymodule(
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, run.module_files[name]
+            )
+        )
+        tree = parsed.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = f"parsed source carries no module syntax tree: {name}"
+            raise TypeError(msg)
+        return tuple(
+            ast.unparse(base)
+            for outer in tree.body
+            if isinstance(outer, ast.ClassDef) and outer.name == owner
+            for nested in ast.walk(outer)
+            if isinstance(nested, ast.ClassDef) and nested is not outer
+            for base in nested.bases
+        )
 
     @staticmethod
     def python_model_exports(

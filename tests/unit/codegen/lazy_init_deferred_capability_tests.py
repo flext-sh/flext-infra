@@ -1,8 +1,9 @@
-"""Declared costly distributions defer the class exports that import them.
+"""Declared costly distributions defer the facade-composed classes that import them.
 
 The consumer's own provisioned environment maps each declared distribution to
-the import packages it installs; the generated initializer defers exactly the
-class exports whose module imports one of them at module scope.
+the import packages it installs; the generated initializer gives a stand-in to
+exactly the class exports of a module importing one of them at module scope that
+a facade composes by MRO. Every other class export stays a plain lazy export.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -16,7 +17,7 @@ from tests import c, tm, u
 
 
 class TestsFlextInfraCodegenLazyInitDeferredCapability:
-    """The initializer defers the importing export with its in-package members."""
+    """The initializer defers the composed export with its in-package members."""
 
     _DEFERRED_BLOCK = (
         "    deferred_members={\n"
@@ -50,7 +51,7 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         self,
         deferred_capability_project: Path,
     ) -> None:
-        """Only the export importing the declared library is deferred."""
+        """Only the facade-composed export of the importing module is deferred."""
         root = deferred_capability_project
         u.Tests.override_repository_declaration(
             root, {"deferred_distributions": ["requests"]}
@@ -58,6 +59,22 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
         tm.that(self._initializer(root), has=self._DEFERRED_BLOCK)
+
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    def test_class_outside_every_facade_stays_a_plain_lazy_export(
+        self,
+        deferred_capability_project: Path,
+    ) -> None:
+        """A third-party-based class of the heavy module gets no stand-in."""
+        root = deferred_capability_project
+        u.Tests.override_repository_declaration(
+            root, {"deferred_distributions": ["requests"]}
+        )
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        initializer = self._initializer(root)
+        tm.that(initializer, has="FlextDemoCapabilityClient")
+        tm.that(initializer, lacks='"FlextDemoCapabilityClient": (')
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote

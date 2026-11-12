@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 import requests
+from requests import Session
 
 from flext_demo._capability import FlextDemoCapabilityBase
 
@@ -29,4 +30,8 @@ class FlextDemoCapabilityHeavy(FlextDemoCapabilityBase):
         return 2
 
 
-__all__: list[str] = ["FlextDemoCapabilityHeavy"]
+class FlextDemoCapabilityClient(Session):
+    """Instantiated class with a third-party base: never composed into a facade."""
+
+
+__all__: list[str] = ["FlextDemoCapabilityClient", "FlextDemoCapabilityHeavy"]
