@@ -273,6 +273,7 @@ class FlextInfraDocsGeneratorBundle:
             request.projects,
             output_dir,
             include_root=request.include_root,
+            root_projection=root_projection,
         )
         if selected.failure:
             return result_type.from_failure(selected)
@@ -288,6 +289,7 @@ class FlextInfraDocsGeneratorBundle:
             None,
             output_dir,
             include_root=True,
+            root_projection=root_projection,
         )
         if aggregate.failure:
             return result_type.from_failure(aggregate)
