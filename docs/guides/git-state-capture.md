@@ -97,7 +97,15 @@ not acquire this admission gate.
 The current native requests cannot authenticate Beads lane ownership, the previous
 owned lane's integration, or retirement's published preservation and active-session
 proofs. Consequently `--operation create` and `--operation retire` fail closed even
-when the measured Git boundary is valid. No branch-name heuristic, caller boolean,
+when the measured Git boundary is valid.
+
+Automated lane publication (`u.Infra.git_publish_lane`, used by `make
+release-version` and `make propagate`) is not agent lane creation: it owns one
+deterministic protocol branch (`release/next`, the propagation lane), starts only
+from a clean checkout on the declared integration branch, and continues that branch
+when it already exists locally or on the remote. It therefore applies the `verify`
+preflight and the clean-base check, never `--operation create`, whose Beads-ownership
+proof a clean CI checkout cannot carry. No branch-name heuristic, caller boolean,
 correlation row, or foreign-lane count substitutes for those proofs. Creation checks
 run before directory creation; removal checks retain dirty, nested-submodule, and
 lock protection and do not force removal or prune other registrations.
