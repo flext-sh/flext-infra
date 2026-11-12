@@ -120,8 +120,8 @@ jobs:
 {%- endif %}
         run: chmod -R go-w .
 
-      # Why: every fresh runner paid a cold full-dependency Mypy,
-      # Pyrefly and Ruff analysis. The caches below are content-addressed by the
+      # Why: every fresh runner paid a cold full-dependency Pyrefly and
+      # Ruff analysis (Mypy is local-only and never runs here). The caches below are content-addressed by the
       # committed dependency locks, so a warm cache is always valid for the same
       # lock and can never hide a finding; it only removes the cold recompute.
       # Why: the same pair keeps the locked Mise tool storage, so

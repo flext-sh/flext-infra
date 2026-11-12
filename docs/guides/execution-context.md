@@ -360,14 +360,24 @@ Declared prerequisites of stage 6, open until they close:
   that carries it is published and the consumer's `make upg` locks it.
 
 A project source that no longer imports still has every lock written and
-installed. Every setup and executor installation prepares an invocation-owned
-native relocatable environment under the runtime's existing ignored state
-directory. Matching creator identities do not permit synchronizing the serving
-environment: a sync can remove dependencies before their replacements are ready.
-Frozen installation, editable binding, its environment-owned receipt and real
-Python/console validation precede one guarded atomic publication under the native
-environment lock. The previous environment remains recoverable; cleanup never
-removes a displaced environment after publication, including an interrupted swap.
+installed. Setup first asks native uv whether the published environment already
+satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
+when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
+rewrites the editable receipt and applies the same Python/console verification
+as a publication, so a repeated setup costs a check, not a reinstall. Any other
+state, and every executor installation, prepares an invocation-owned native
+relocatable environment under the runtime's existing ignored state directory,
+installed with uv's clone link mode and native `--compile-bytecode`, so imports
+never recompile site-packages even when the host exports
+`PYTHONDONTWRITEBYTECODE`; a kept environment keeps the bytecode its last
+installation compiled. Matching creator identities do not permit
+synchronizing the serving environment: a sync can remove dependencies before
+their replacements are ready. Frozen installation, editable binding, its
+environment-owned receipt and real Python/console validation precede one atomic
+exchange with the published environment, guarded by its recorded identity: a
+concurrent publication fails the later setup loudly instead of being serialized
+by a private lock. The exchanged previous environment is then removed with its
+stage; an interrupted preparation removes only its own stage.
 Unsupported publication capabilities fail before installation effects. No sync
 targets a directory without its native environment marker or a Mise base
 interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
@@ -1258,7 +1268,12 @@ gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
 Security gates reuse the gate-base source discovery (`source_scan.roots`) and
 native runner. Explicit file targets and generated Python remain auditable;
-owner authorization does not grant a Bandit exemption. Gate diagnostics cross
+owner authorization does not grant a Bandit exemption. The only skipped Bandit
+tests are declared once in `Infra.tooling.tools.bandit.skips` of the tooling
+SSOT: B101 (assert is the tests idiom) and the B404/B603 axiom (operator
+decision 2026-11-12: list-form `subprocess` without a shell is the safe pattern,
+and the single process-execution owner must import it); B602 (`shell=True`)
+stays active. Gate diagnostics cross
 parser and aggregation boundaries through `p.Infra.Issue`; their JSON and SARIF
 schemas remain owned by the canonical Pydantic models. Schema metadata delegates
 to those models rather than duplicating them or reconstructing validated issues.
@@ -1733,7 +1748,8 @@ The CI workflow also exposes an optional `full_check` boolean on
 `workflow_dispatch` and `workflow_call`, defaulting to false. It runs the
 existing complete check with `make.ci.local_value`, in addition to the unchanged
 required CI operations. This selects every active gate instead of the CI
-partition. The workflow records the candidate SHA and uploads the complete
+partition, except local-stage gates such as Mypy, which a remote runner never
+executes. The workflow records the candidate SHA and uploads the complete
 check's receipts through the same artifact owner; a primary-only result is
 not complete-check evidence.
 Native checks emit bounded progress at selection, identity/report preparation,
@@ -3953,7 +3969,13 @@ Local runs, CI, and hooks derive their gates from the same active set and from
 each gate's declared stage (`c.Infra.GateStage` in the registry row, or `stage` on a
 `make.project_check_gates` entry); no hand-kept gate list exists. `CI=N make check`
 and `make check` without `CI` run the complete active set. `CI=Y make check` runs
-the commit and CI stages (`make.check_gates_ci`, Pyrefly included). The commit hook
+the commit and CI stages (`make.check_gates_ci`, Pyrefly included). Mypy is a
+local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
+`full_check` run, and a remote check logs it as NOT EXECUTED; locally it shares
+one warm cache across every checkout, linked worktree and `.venv` of a repository
+(`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
+inside it and Python implementation and version, never by a checkout or
+virtualenv path). The commit hook
 passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
 (`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
 other validator. Staged Python files run the lint and format gates on those files; a
