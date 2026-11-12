@@ -151,7 +151,8 @@ class FlextInfraUtilitiesResourceLimits:
         if invocation.profile_output is not None:
             return (
                 interpreter,
-                str(Path(__file__).with_name("_mypy_profile.py")),
+                "-m",
+                f"{__package__}._mypy.profile",
                 str(invocation.profile_output.resolve()),
                 "--timing-stats",
                 str(invocation.profile_output.with_suffix(".timing.txt").resolve()),
@@ -310,7 +311,7 @@ class FlextInfraUtilitiesResourceLimits:
             return (
                 sys.executable,
                 "-m",
-                f"{__package__}._mypy_supervisor",
+                f"{__package__}._mypy.supervisor",
                 str(validated_limit.memory_limit_bytes),
                 str(validated_limit.timeout_seconds),
                 str(c.Infra.TIMEOUT_KILL_AFTER_SECONDS),

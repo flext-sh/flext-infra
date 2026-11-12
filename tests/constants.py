@@ -136,7 +136,6 @@ class TestsFlextInfraConstants(FlextInfraConstants):
             "CHANGED_ONLY",
             "CHECK_GATES",
             "CHECK_ONLY",
-            "FILE",
             "FILES",
             "FIX",
             "FLEXT_INFRA_PYTHON",
