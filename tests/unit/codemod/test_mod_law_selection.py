@@ -184,3 +184,14 @@ class TestsFlextInfraModLawSelection:
         )
         tm.that({entry.rule_id for entry in report.entries} >= {rule_id}, eq=True)
         tm.that(report.rule_plan, eq=focused)
+
+    @staticmethod
+    def test_selected_rule_keeps_the_generated_utilities_it_references(
+        mod_workspace: Path,
+    ) -> None:
+        """A selected catalog rule calling a generated utility still scans."""
+        rule_id = "rewire-collapsed-family-package"
+        with u.Infra.codemod_workspace_snapshot(mod_workspace) as snapshot:
+            focused = tm.ok(u.Infra.codemod_rule_plan(snapshot, rule_ids=(rule_id,)))
+        tm.that(c.Infra.CODEMOD_GENERATED_PROVIDER in focused.provider_order, eq=True)
+        tm.ok(FlextInfraModGateEngine.scan(mod_workspace, fix=False, selection=focused))

@@ -699,7 +699,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 "hatch_build_hook_path": (project.hatch_build_hook_path),
                 "uv_cache_key_files": (
                     (FlextInfraEnsurePackagingPhase.uv_cache_key_files)(
-                        project.hatch_build_hook_path,
+                        package=repository.package,
+                        data=packaged_data_paths,
+                        namespaces=project.repository_namespace_packages,
+                        hatch_build_hook_path=project.hatch_build_hook_path,
                     )
                 ),
                 "class_stem": (project.class_stem),

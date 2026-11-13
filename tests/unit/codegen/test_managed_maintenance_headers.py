@@ -9,8 +9,9 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
+from flext_infra import FlextInfraCli
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -143,9 +144,20 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         tm.that(evidence.outcomes[0].candidate_dirty, eq=identity.dirty)
 
     @staticmethod
-    def test_scaffold_preserves_original_git_failure(tmp_path: Path) -> None:
-        """Malformed destination Git metadata remains an identity failure."""
+    def test_scaffold_reports_original_git_failure(
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """Malformed destination Git metadata exits 1 with the typed Git error."""
         root = tmp_path / "fixture-project"
         (root / c.GIT_DIR_NAME).mkdir(parents=True)
-        with u.Tests.raises(OSError, match="cannot open git repository"):
-            u.Tests.scaffold_plan(root, what=c.Infra.CodegenConformSurface.MAKEFILE)
+        status = FlextInfraCli.infra_main([
+            "codegen",
+            "init",
+            "--repository-root",
+            str(root),
+        ])
+        error = capsys.readouterr().err
+        tm.that(status, eq=1)
+        tm.that(error, has="cannot open git repository")
+        tm.that(error, lacks="Traceback")
