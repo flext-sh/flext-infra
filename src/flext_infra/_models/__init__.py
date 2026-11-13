@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from flext_infra._models.enforcement_catalog import (
         FlextInfraModelsEnforcementCatalog,
     )
+    from flext_infra._models.gate_admission import FlextInfraModelsGateAdmission
     from flext_infra._models.gates import FlextInfraModelsGates
     from flext_infra._models.git import FlextInfraModelsGit
     from flext_infra._models.git_lane_inputs import FlextInfraModelsGitLaneInputs
@@ -97,6 +98,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDocsGeneration",
     "FlextInfraModelsDuplication",
     "FlextInfraModelsEnforcementCatalog",
+    "FlextInfraModelsGateAdmission",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
     "FlextInfraModelsGitLaneInputs",
@@ -149,6 +151,7 @@ install_lazy_exports(
         "FlextInfraModelsDocsGeneration": ".docs_generation",
         "FlextInfraModelsDuplication": ".duplication",
         "FlextInfraModelsEnforcementCatalog": ".enforcement_catalog",
+        "FlextInfraModelsGateAdmission": ".gate_admission",
         "FlextInfraModelsGates": ".gates",
         "FlextInfraModelsGit": ".git",
         "FlextInfraModelsGitLaneInputs": ".git_lane_inputs",

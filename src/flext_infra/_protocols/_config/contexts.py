@@ -272,15 +272,6 @@ class FlextInfraProtocolsConfigContexts:
             """Forced-termination grace period."""
             ...
 
-        @property
-        def check_timeout_seconds(self) -> int:
-            """Structural member projected from the owning model.
-
-            Make check wall-time bound derived from the largest declared budget of
-            the gates it runs.
-            """
-            ...
-
     @runtime_checkable
     class MakeRenderContext(MakeCommandContext, Protocol):
         """Structural data contract projected from the owning model."""

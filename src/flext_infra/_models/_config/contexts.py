@@ -265,16 +265,6 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             int,
             m.Field(gt=0, description="Forced-termination grace period"),
         ]
-        check_timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description=(
-                    "Make check wall-time bound derived from the largest "
-                    "declared budget of the gates it runs"
-                ),
-            ),
-        ]
 
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
