@@ -1190,7 +1190,13 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 "declared_files": (files),
                 "inputs": (tuple(inputs.values())),
                 "snapshot": (snapshot),
-                "import_edges": (run.source_imports),
+                # The cohort's witnesses exclude foreign members, so do its
+                # import facts; the closure reads those members from the snapshot.
+                "import_edges": {
+                    path: edges
+                    for path, edges in run.source_imports.items()
+                    if path in inputs
+                },
             }),
         ).flat_map(lambda outcome: outcome)
         if preview.failure:
