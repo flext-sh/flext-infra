@@ -9,7 +9,6 @@ from __future__ import annotations
 import dataclasses
 import os
 import runpy
-import shutil
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -712,7 +711,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 ),
             )
             member = parent / "apps" / "member"
-            shutil.copytree(source, member)
+            TestsFlextInfraUtilitiesToolingFixture.reflink_copy_tree(source, member)
             return member
 
         @staticmethod

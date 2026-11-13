@@ -346,8 +346,7 @@ MISE_CEILING_PATHS="$$(dirname "$${reader_root}")"; \
 MISE_AUTO_INSTALL=0; \
 MISE_OVERRIDE_CONFIG_FILENAMES=".mise.toml"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_AUTO_INSTALL MISE_OVERRIDE_CONFIG_FILENAMES; \
-case "$${OS:-}" in (Windows_NT) reader_mise="$${reader_root}/.bin/mise.exe" ;; (*) reader_mise="$${reader_root}/.bin/mise" ;; esac; \
-if [ -L "$${reader_root}/.bin" ] || [ -L "$${reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "$${reader_mise}" >&2; exit 2; fi; \
+case "$${OS:-}" in (Windows_NT) reader_mise="$${HOME}/.local/bin/mise.exe" ;; (*) reader_mise="$${HOME}/.local/bin/mise" ;; esac; \
 reader_mise="$$(MISE_LOCKED=1 "$${reader_mise}" -C "$${reader_root}" which mise)"; \
 if [ "$${OS:-}" = Windows_NT ]; then reader_mise="$$(cygpath --unix "$${reader_mise}")"; fi; \
 if [ "$${reader_root}" != "$${project_root}" ]; then \
@@ -368,11 +367,12 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-override SETUP_BIN := $(BOOTSTRAP_ROOT)/.bin
+# The acquisition Mise is the official installer's default executable, shared by
+# every checkout; the committed min_version makes Mise refuse an older one.
 ifeq ($(OS),Windows_NT)
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise.exe
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
 else
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
@@ -555,6 +555,7 @@ _bootstrap_setup_tools:
 			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	if bootstrap_candidate="$$(git -C "$(PROJECT_ROOT)" rev-parse --verify HEAD)"; then \
 		bootstrap_git_status=0; \
 		case "$${bootstrap_candidate}" in \
@@ -577,24 +578,14 @@ _bootstrap_setup_tools:
 		fi; \
 	fi; \
 	bootstrap_stage=acquisition; \
-	if [ -L "$(PROJECT_ROOT)/.bin" ] && [ ! -e "$(PROJECT_ROOT)/.bin" ]; then rm -f "$(PROJECT_ROOT)/.bin"; fi; mkdir -p "$(PROJECT_ROOT)/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	export MISE_VERSION="2026.10.3"; \
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
 	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "$(PROJECT_ROOT)/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
@@ -631,78 +622,36 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi
-# Every installation is prepared under the existing ignored runtime state.
-# Its frozen packages, editable receipt and real consumers precede one atomic
-# publication; the displaced physical environment remains recoverable.
+# uv owns the environment: `uv sync --frozen` creates or updates the physical
+# environment in place from the shared uv cache (configured link mode) and is a
+# no-op when it already satisfies the lock, so no run stages, copies or exchanges
+# a second environment.
 TARGET_ENVIRONMENT = install_target="$(1)"; \
-	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+	install_state="$$(dirname "$$install_target")"; \
 	if [ -L "$$install_target" ] || [ -L "$$install_state" ]; then \
-		printf 'ERROR[setup] environment and its state directory must be physical paths\n' >&2; exit 2; \
+		printf 'ERROR[setup] environment and its parent directory must be physical paths\n' >&2; exit 2; \
 	fi; \
-	mkdir -p "$$install_state"
-PREPARE_ENVIRONMENT = install_stage=; install_candidate_origin=; \
-	mv --exchange --no-copy --help >/dev/null; \
-	install_origin=; \
-	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
-	install_stage="$$(mktemp -d "$$install_state/setup.XXXXXXXX")"; \
-	install_environment="$$install_stage/.venv"; \
-	trap 'install_status=$$?; trap - EXIT; if [ -n "$$install_stage" ] && { [ -z "$$install_candidate_origin" ] || [ ! -e "$$install_environment" ] || [ "$$(stat -c "%d:%i" "$$install_environment")" = "$$install_candidate_origin" ]; }; then rm -rf -- "$$install_stage"; fi; exit "$$install_status"' EXIT; \
-	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
-	printf 'setup: preparing %s for %s\n' "$$install_environment" "$$install_target"; \
-	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
-	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
+	mkdir -p "$$install_state"; \
+	install_environment="$$install_target"; \
 	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
-# The candidate's own flext-infra console script. Setup runs its workspace step
+# The environment's own flext-infra console script. Setup runs its workspace step
 # through it, so one process does the work and proves the entry point.
 INSTALL_FLEXT_INFRA = "$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)"
 VERIFY_ENVIRONMENT = test -f "$$install_environment/pyvenv.cfg"; \
-	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"
-PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
-	if [ -n "$$install_origin" ]; then \
-		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
-			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
-		fi; \
-		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		rm -rf -- "$$install_stage"; \
-		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
-	else \
-		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
-		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
-		rmdir "$$install_stage"; \
-	fi; \
-	install_stage=; trap - EXIT HUP INT TERM
-# An environment that already satisfies the frozen lock is kept: uv's own
-# --check is the proof, and the same receipt and interpreter verification as a
-# publication applies. Only a differing environment (or a local FLEXT editable
-# selection) is rebuilt and atomically exchanged, so a repeated setup costs a
-# check, not a full reinstall and deletion.
-# The check's exit status is its whole result: a non-zero status only selects
-# the rebuild, so uv's native "environment is outdated" report is held in
-# probe_report instead of surfacing as an error on a successful setup. A real
-# failure recurs in the rebuild's own `uv sync --frozen`, which runs unfiltered
-# and fails loud with uv's native output.
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "environment interpreter leaves its environment")' "$$install_environment"
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
-	sync_args="$(SETUP_SYNC_ARGS)"; \
-	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && probe_report="$$(env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_target" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args 2>&1)"; then \
-		install_environment="$$install_target"; \
-		install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"; \
-		env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH $(INSTALL_FLEXT_INFRA) workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \
-		$(VERIFY_ENVIRONMENT); \
-		printf 'setup: %s already satisfies uv.lock; kept\n' "$$install_target"; \
-	else \
-		$(PREPARE_ENVIRONMENT); \
-		env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
-		if [ -n "$(strip $(FLEXT))" ]; then \
-			if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-			(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
-			$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
-		fi; \
-		env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH $(INSTALL_FLEXT_INFRA) workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
-		$(PUBLISH_ENVIRONMENT); \
-	fi
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
+	if [ -n "$(strip $(FLEXT))" ]; then \
+		if [ "$(CI)" = "Y" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
+		(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "requirements-infra.txt"); \
+		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
+	fi; \
+	env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH $(INSTALL_FLEXT_INFRA) workspace flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+	$(VERIFY_ENVIRONMENT); \
+	printf 'setup: %s synchronized with uv.lock\n' "$$install_target"
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -848,10 +797,10 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH -u MISE_PYTHON_UV_VENV_AUTO -u U
 # own runtime closure (derived from the installed metadata) supplies part of the
 # executor, so its locked non-editable build is installed, never the editable
 # source; every lock is already written before it runs.
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); $(PREPARE_ENVIRONMENT); \
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
 	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --link-mode clone; \
 	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
-	$(PUBLISH_ENVIRONMENT)
+	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
@@ -1272,6 +1221,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 			fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
 		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
@@ -1287,24 +1237,14 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
 	esac; \
 	bootstrap_stage=acquisition; \
-	if [ -L "$(PROJECT_ROOT)/.bin" ] && [ ! -e "$(PROJECT_ROOT)/.bin" ]; then rm -f "$(PROJECT_ROOT)/.bin"; fi; mkdir -p "$(PROJECT_ROOT)/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 	export MISE_VERSION="2026.10.3"; \
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
 	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "$(PROJECT_ROOT)/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
@@ -1387,6 +1327,8 @@ _upg_lifecycle:
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
+	"$$mise_bin" -C "$(RUNTIME_ROOT)" prune --yes; \
+	$(UV) cache prune; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \

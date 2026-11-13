@@ -541,6 +541,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 str(environment),
                 "--override",
                 str(overrides),
+                "--link-mode",
+                config.Infra.codegen.toolchain.uv_link_mode,
                 *(str(wheel) for wheel in wheels.value),
             ),
             cwd=root,
@@ -662,6 +664,22 @@ class TestsFlextInfraUtilitiesToolingFixture:
                 msg = f"fixture tool path is already occupied: {destination}"
                 raise FileExistsError(msg)
             destination.symlink_to(source)
+
+    @staticmethod
+    def reflink_copy_tree(source: Path, destination: Path) -> None:
+        """Copy a fixture tree sharing its extents where the filesystem can.
+
+        ``shutil.copytree`` writes every byte again; coreutils ``cp`` with
+        ``--reflink=auto`` clones extents on copy-on-write filesystems and
+        falls back to a byte copy elsewhere, so a fixture never duplicates the
+        environments and Git objects it copies.
+        """
+        tm.ok(
+            u.Cli.run_checked(
+                ("cp", "-a", "--reflink=auto", str(source), str(destination)),
+                cwd=source.parent,
+            )
+        )
 
     @staticmethod
     def make_read_only(path: Path) -> None:

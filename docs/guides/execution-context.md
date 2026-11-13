@@ -352,6 +352,10 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
+7. The verb that installs new versions removes the ones it superseded: native
+   `mise prune --yes` deletes versions no tracked configuration still selects,
+   and `uv cache prune` deletes dangling cache entries, both under the tools'
+   own in-use rules.
 
 Declared prerequisites of stage 6, open until they close:
 
