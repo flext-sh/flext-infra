@@ -478,6 +478,12 @@ class FlextInfraUtilitiesCodemodRules(
         identities, and rule drift fail through the validation helpers with
         ``ValueError``.
 
+        ``destination`` is the caller's private staging directory: every
+        caller creates it fresh and either reads it back in place or exposes
+        it through one directory rename, the atomic commit point. Its
+        documents are therefore written plainly, never one atomic replace
+        (and fsync) per document.
+
         Returns:
             The staged native scan ruleset and its projected configuration.
 
@@ -514,6 +520,7 @@ class FlextInfraUtilitiesCodemodRules(
             cls.codemod_write_native_documents(
                 utility_directory / f"{digest}{c.Infra.CODEMOD_RULE_SUFFIX}",
                 (document,),
+                atomic=False,
             )
         for ruleset in plan.rulesets:
             cls.codemod_catalog_rules(
@@ -535,11 +542,12 @@ class FlextInfraUtilitiesCodemodRules(
                     )
                     for rule in plan.rules
                 ),
+                atomic=False,
             )
         native_config[c.Infra.CODEMOD_RULE_DIRS_KEY] = [rule_directory.name]
         native_config[c.Infra.CODEMOD_UTIL_DIRS_KEY] = [utility_directory.name]
         config_path = destination / c.Infra.CODEMOD_CONFIG_FILENAME
-        cls.codemod_write_native_documents(config_path, (native_config,))
+        cls.codemod_write_native_documents(config_path, (native_config,), atomic=False)
         cls.codemod_validate_native_ruleset(
             destination, rule_ids=tuple(rule.id for rule in plan.rules)
         )

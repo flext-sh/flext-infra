@@ -75,7 +75,6 @@ class FlextInfraModGateEngine:
                     )
             with tempfile.TemporaryDirectory(
                 prefix="mod-rule-fixtures-",
-                dir=settings.work_dir,
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
                 cls.stage_rule_fixture_root(
@@ -135,7 +134,6 @@ class FlextInfraModGateEngine:
                 continue
             with tempfile.TemporaryDirectory(
                 prefix="mod-rule-snapshots-",
-                dir=settings.work_dir,
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
                 cls.stage_rule_fixture_root(
@@ -215,7 +213,7 @@ class FlextInfraModGateEngine:
         for rule in rules:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
             rules_by_owner.setdefault(owner, []).append(rule)
-        scratch = settings.work_dir
+        scratch = Path(tempfile.gettempdir())
         owners: list[tuple[Path, Sequence[Path], bool]] = []
         for config_root, owner_rules in sorted(rules_by_owner.items()):
             if scratch.resolve().is_relative_to(config_root.resolve()):
@@ -229,7 +227,6 @@ class FlextInfraModGateEngine:
                     for governed_root in governed_roots
                 ),
             ))
-        scratch.mkdir(parents=True, exist_ok=True)
         return tuple(owners)
 
     @staticmethod
@@ -1125,10 +1122,7 @@ class FlextInfraModGateEngine:
             targets=targets,
             json_stream=True,
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="mod-native-", dir=settings.work_dir
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix="mod-native-") as directory:
             stdout_file, stderr_file = (
                 Path(directory) / "stdout",
                 Path(directory) / "stderr",
@@ -1269,10 +1263,7 @@ class FlextInfraModGateEngine:
         native_targets = tuple(
             target for target in targets if Path(target).suffix != ".pyi"
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="mod-native-catalog-", dir=settings.work_dir
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix="mod-native-catalog-") as directory:
             entries: list[p.Infra.ModScanFinding] = []
             artifacts: list[p.Cli.AtomicFileReceipt] = []
             for project, project_targets in u.Infra.project_targets(
