@@ -24,4 +24,20 @@ install_lazy_exports(
     globals(),
     {"FlextInfraUtilitiesDependencyDeptry": ".deptry"},
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraUtilitiesDependencyDeptry": (
+            "capture_deptry_scan",
+            "_validated_deptry_coverage",
+            "_declared_wheel_target",
+            "_shipped_import_base",
+            "_declared_deptry_roots",
+            "_authenticated_deptry_sources",
+            "_verified_deptry_sources",
+            "_captured_deptry_inputs",
+            "_run_deptry",
+            "_parsed_deptry_report",
+            "_captured_deptry_native",
+            "_rechecked_deptry_states",
+        ),
+    },
 )

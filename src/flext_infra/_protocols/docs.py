@@ -30,8 +30,7 @@ if TYPE_CHECKING:
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
 # source models structurally; no concrete m type crosses a public interface.
-@runtime_checkable
-class FlextInfraProtocolsDocs(Protocol):
+class FlextInfraProtocolsDocs:
     """Documentation model protocols exposed through ``p.Infra``."""
 
     @runtime_checkable

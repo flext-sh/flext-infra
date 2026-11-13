@@ -51,11 +51,11 @@ for environment_path in "${VENV_DIR%/*}" "${VENV_DIR}" "${VENV_DIR}/bin" "${VENV
 done
 if [[ "${OS:-}" == Windows_NT ]]; then
   environment_bin="${VENV_DIR}/Scripts"
-  bootstrap_mise="${BOOTSTRAP_ROOT}/.bin/mise.exe"
+  bootstrap_mise="${HOME}/.local/bin/mise.exe"
   environment_python="${environment_bin}/python.exe"
 else
   environment_bin="${VENV_DIR}/bin"
-  bootstrap_mise="${BOOTSTRAP_ROOT}/.bin/mise"
+  bootstrap_mise="${HOME}/.local/bin/mise"
   environment_python="${environment_bin}/python"
 fi
 if [[ ! -x "${environment_python}" ]]; then
@@ -84,7 +84,7 @@ export MISE_CEILING_PATHS="${runtime_parent}"
 export MISE_OVERRIDE_CONFIG_FILENAMES="{{ mise_config_filename }}"
 export MISE_AUTO_INSTALL=0
 unset MISE_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_SYSTEM_CONFIG_DIR MISE_SYSTEM_CONFIG_FILE MISE_ENV MISE_ENV_FILE
-PATH_rm "${BOOTSTRAP_ROOT}/.bin/shims"
+PATH_rm "${BOOTSTRAP_ROOT}/{{ bootstrap_bin_dir }}/shims"
 mise_environment="$(
   export MISE_CONFIG_DIR="${RUNTIME_ROOT}/.mise"
   export MISE_GLOBAL_CONFIG_FILE="${MISE_CONFIG_DIR}/config.toml"

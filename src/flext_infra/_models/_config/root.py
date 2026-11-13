@@ -46,9 +46,9 @@ class FlextInfraModelsConfigRoot:
         rope: FlextInfraModelsConfigStatic.RopePreferencesSpec = m.Field(
             description="Native source-engine preference policy"
         )
-        mutation_lock: Annotated[
-            FlextInfraModelsConfigStatic.MutationLockSpec,
-            m.Field(description="Bounded wait for a mutation scope lock"),
+        gate_admission: Annotated[
+            FlextInfraModelsConfigStatic.GateAdmissionSpec,
+            m.Field(description="Host-wide FIFO admission for heavy gates"),
         ]
         release: Annotated[
             FlextInfraModelsConfigRelease.ReleasePolicySpec,

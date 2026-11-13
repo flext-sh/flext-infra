@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -133,7 +132,7 @@ class TestsFlextInfraCodegenConform:
 
         """
         root = tmp_path / scenario
-        shutil.copytree(template, root)
+        u.Tests.reflink_copy_tree(template, root)
         u.Tests.copy_tracked_mise_seeds(root, source_root=template)
         published = root / c.Infra.MAKEFILE_FILENAME
         original = published.read_bytes() + b"\n# recoverable drift\n"
@@ -601,7 +600,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """Test existing manifest converges to identical tree."""
         existing_root = tmp_path / "existing"
-        shutil.copytree(conformed_template, existing_root)
+        u.Tests.reflink_copy_tree(conformed_template, existing_root)
         u.Tests.copy_tracked_mise_seeds(existing_root, source_root=conformed_template)
         tm.that(
             tm.ok(u.Infra.exact_worktree_root(existing_root)).head_oid is not None,

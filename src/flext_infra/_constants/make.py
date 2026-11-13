@@ -20,6 +20,13 @@ if TYPE_CHECKING:
 class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """One canonical vocabulary shared by generated Make and its services."""
 
+    class HostPressureLevel(StrEnum):
+        """Host memory-pressure level published by the host-budget owner."""
+
+        NORMAL = "normal"
+        HIGH = "high"
+        CRITICAL = "critical"
+
     class PytestExecutionMode(StrEnum):
         """Keep test inventory scope distinct from dependency selection.
 
@@ -68,10 +75,8 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
-    PYTEST_BASETEMP_ARGUMENT: ClassVar[str] = "--basetemp"
-    """Native pytest option electing its owned temporary tree."""
-    PYTEST_TEMP_ENVIRONMENT_VARIABLES: ClassVar[t.StrTuple] = ("TMPDIR", "TMP", "TEMP")
-    """Native Python and platform temporary-directory environment names."""
+    TEMPORARY_DIRECTORY_VARIABLE: ClassVar[str] = "TMPDIR"
+    """Declared temporary root under which pytest keeps its own basetemp."""
     TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
         "-p",
         "no:pytest-testmon",
@@ -91,6 +96,36 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     CLI_GROUP_VALIDATE: ClassVar[str] = "validate"
     CLI_ROUTE_MAINTENANCE: ClassVar[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: ClassVar[str] = "workspace"
+
+    # Host-wide heavy-gate admission (FLEXT ADR-032).
+    GATE_ADMISSION_STATE_PARTS: ClassVar[tuple[str, ...]] = ("flext", "gate-admission")
+    GATE_ADMISSION_QUEUE_LOCK: ClassVar[str] = "queue.lock"
+    GATE_ADMISSION_SEQUENCE_FILE: ClassVar[str] = "sequence"
+    GATE_ADMISSION_TICKET_SUFFIX: ClassVar[str] = ".json"
+    GATE_ADMISSION_LIVENESS_SUFFIX: ClassVar[str] = ".lock"
+    GATE_ADMISSION_TICKET_ENV: ClassVar[str] = "FLEXT_GATE_ADMISSION_TICKET"
+    GATE_ADMISSION_GENERATION: ClassVar[str] = "gen"
+    GATE_ADMISSION_MODIFICATION: ClassVar[str] = "mod"
+    GATE_ADMISSION_PRESSURE_FILE_ENV: ClassVar[str] = (
+        "FLEXT_GATE_ADMISSION_PRESSURE_FILE"
+    )
+    GATE_ADMISSION_HISTORY_DIR: ClassVar[str] = "history"
+    GATE_ADMISSION_HISTORY_SUFFIX: ClassVar[str] = ".jsonl"
+    GATE_ADMISSION_REFUSED_EXIT_CODE: ClassVar[int] = 75
+    # prek exports the running hook stage; the pre-push hook runs the full
+    # matrix once per push by contract and is never repeat-limited.
+    GATE_REPEAT_HOOK_STAGE_ENV: ClassVar[str] = "PREK_HOOK_STAGE"
+    GATE_REPEAT_EXEMPT_HOOK_STAGE: ClassVar[str] = "pre-push"
+
+    # A Node tool sizes its heap from this share of the recipe's cgroup memory
+    # bound; the rest stays for Node's own non-heap memory.
+    NODE_OPTIONS_ENV: ClassVar[str] = "NODE_OPTIONS"
+    NODE_HEAP_OPTION: ClassVar[str] = "--max-old-space-size={megabytes}"
+    NODE_HEAP_SHARE_PERCENT: ClassVar[int] = 80
+    CGROUP_MEMBERSHIP_FILE: ClassVar[str] = "/proc/self/cgroup"
+    CGROUP_ROOT: ClassVar[str] = "/sys/fs/cgroup"
+    CGROUP_MEMORY_BOUND_FILE: ClassVar[str] = "memory.max"
+    CGROUP_UNBOUNDED: ClassVar[str] = "max"
 
     MYPY_MEMORY_LIMIT_MB_ENV: ClassVar[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: ClassVar[int] = 6144

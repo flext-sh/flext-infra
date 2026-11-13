@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-import tempfile
 from collections.abc import Iterator
-from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -33,8 +31,32 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
     / c.Infra.CODEGEN_CONFIG_DIR
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
-_SESSION_ISOLATION = pytest.StashKey[ExitStack]()
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+
+
+@pytest.fixture(scope="session")
+def suite_cache_home(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Scope the gates' persistent caches to pytest-owned session storage.
+
+    Gates resolve their native persistent caches (including Mypy) below
+    ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
+    so each worker's cache home is a directory of pytest's own basetemp, kept
+    under pytest's native retention. The native UV source cache selected
+    before that isolation is preserved, so hermetic Git fixtures can read the
+    provisioned objects.
+
+    Yields:
+        The session's cache home.
+
+    """
+    spec = config.Infra.codegen.make.mypy_cache
+    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
+    cache_home = tmp_path_factory.mktemp("xdg-cache")
+    with u.Tests.env_vars_context({
+        "UV_CACHE_DIR": uv_cache,
+        spec.data_home_environment_variable: str(cache_home),
+    }):
+        yield cache_home
 
 
 @pytest.fixture
@@ -88,47 +110,19 @@ def real_git_repo(tmp_path: Path) -> Path:
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
-    """Isolate the suite's FLEXT caches and snapshot the tracked codegen config.
+    """Snapshot the tracked codegen config.
 
-    Gates resolve their native persistent caches (including Mypy) below
-    ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
-    so the session scopes that home to one temporary directory per worker and
-    restores the environment on exit. The native UV source cache selected
-    before that isolation is preserved, so hermetic Git fixtures can read the
-    provisioned objects.
-
-    Root cause (flext-eles2): dependency-floor rewrite tests exercised the
-    public ``--rewrite-constraints`` entry point through workspaces that never
-    declared their own governed SSOT, so the floor writer fell back to the
-    packaged/installed ``flext_infra`` config directory — this very checkout
-    in an editable install — and silently flipped floors in the real tracked
-    file. The floor writer now resolves its target from the modernizer's own
-    ``repository_root`` and every workspace fixture declares its own isolated
-    ``config/codegen.yaml``; the session snapshot lets
-    ``pytest_sessionfinish`` prove the real file stays untouched by the whole
-    suite, current and future.
+    The session snapshot of the tracked codegen config lets
+    ``pytest_sessionfinish`` prove no test writes the real file
+    (flext-eles2).
     """
-    spec = config.Infra.codegen.make.mypy_cache
-    uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
-    isolation = ExitStack()
-    cache_home = isolation.enter_context(
-        tempfile.TemporaryDirectory(prefix="xdg-cache-"),
-    )
-    isolation.enter_context(
-        u.Tests.env_vars_context({
-            "UV_CACHE_DIR": uv_cache,
-            spec.data_home_environment_variable: cache_home,
-        }),
-    )
-    session.stash[_SESSION_ISOLATION] = isolation
     session.stash[_TRACKED_CODEGEN_CONFIG_BYTES] = (
         _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
     )
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
-    """Restore the cache environment and fail loud on a tracked config write."""
-    session.stash[_SESSION_ISOLATION].close()
+    """Fail loud on a tracked config write."""
     if (
         _TRACKED_CODEGEN_CONFIG_PATH.read_bytes()
         != session.stash[_TRACKED_CODEGEN_CONFIG_BYTES]
@@ -150,7 +144,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
     """
     for item in items:
-        item.add_marker(pytest.mark.usefixtures("runner_ci_context_cleared"))
+        item.add_marker(
+            pytest.mark.usefixtures("suite_cache_home", "runner_ci_context_cleared")
+        )
     make = config.Infra.codegen.make
     policy = make.ci
     if u.Infra.env_value(policy.variable).strip() != policy.value:

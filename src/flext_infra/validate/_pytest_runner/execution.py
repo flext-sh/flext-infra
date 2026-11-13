@@ -10,7 +10,6 @@ import os
 import shlex
 import sys
 import time
-import traceback
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
@@ -101,13 +100,6 @@ class FlextInfraPytestRunnerExecution(
                 msg = "incremental pytest requires its external Testmon database"
                 raise ValueError(msg)
             overrides.update(dict.fromkeys(testmon_keys, str(database)))
-        if self.scratch_root is not None:
-            overrides.update(
-                dict.fromkeys(
-                    c.Infra.PYTEST_TEMP_ENVIRONMENT_VARIABLES,
-                    str(self.scratch_root),
-                )
-            )
         if self.profile_enabled or self.collection_command_prefix:
             overrides[c.Infra.PYTEST_PROFILE_PROCESS_DIRECTORY_ENV] = (
                 config.Infra.tooling.tools.pytest.profile_process_directory
@@ -747,17 +739,13 @@ class FlextInfraPytestRunnerExecution(
             c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL
         ),
     ) -> int:
-        """Execute with the exclusive scratch created by the context factory.
-
-        Caller-provided scratch and persistent Testmon storage are not owned
-        by this lifecycle. A cleanup failure retains the primary exception.
+        """Execute the project's global suite; pytest owns its basetemp.
 
         Returns:
-            The unchanged native status after releasing the owned scratch.
+            The unchanged native status.
 
         Raises:
-            ValueError: If the context factory returned no owned scratch.
-                Also rejects nonglobal modes or changed inputs between suites.
+            ValueError: Rejects nonglobal modes or changed inputs between suites.
 
         """
         if execution_mode not in {
@@ -766,32 +754,17 @@ class FlextInfraPytestRunnerExecution(
         }:
             msg = f"project context requires a global pytest mode: {execution_mode}"
             raise ValueError(msg)
-        runner = cls.from_project_context(
-            context,
-            started_at_monotonic=started_at_monotonic,
-            target_file=target_file,
-            execution_mode=execution_mode,
+        return (
+            cls
+            .from_project_context(
+                context,
+                started_at_monotonic=started_at_monotonic,
+                target_file=target_file,
+                execution_mode=execution_mode,
+            )
+            .execute_global(execution_mode=execution_mode)
+            .unwrap()
         )
-        scratch = runner.scratch_root
-        if scratch is None:
-            msg = "project context runner requires its exclusive scratch directory"
-            raise ValueError(msg)
-        try:
-            return runner.execute_global(execution_mode=execution_mode).unwrap()
-        finally:
-            primary = sys.exception()
-            try:
-                u.Cli.files_remove_directory(scratch).unwrap()
-            except BaseException as cleanup_failure:
-                if primary is None or (
-                    isinstance(primary, SystemExit)
-                    and (primary.code is None or primary.code == 0)
-                ):
-                    raise
-                primary.add_note(
-                    "pytest scratch cleanup failed:\n"
-                    + "".join(traceback.format_exception(cleanup_failure, chain=False))
-                )
 
     def execute_full(self) -> p.Result[int]:
         """Run the complete suite once independently of quality-check receipts.

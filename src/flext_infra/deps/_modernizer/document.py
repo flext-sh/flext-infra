@@ -62,13 +62,6 @@ class FlextInfraPyprojectModernizerDocument(
         bool,
         m.Field(alias="skip-comments", description="Skip managed comment updates"),
     ] = False
-    rewrite_constraints: Annotated[
-        bool,
-        m.Field(
-            alias="rewrite-constraints",
-            description="Rewrite dependency constraints from the provisioned runtime",
-        ),
-    ] = False
     managed_artifacts: Annotated[
         t.Port[p.Infra.ProjectManagedArtifactsResolution] | None,
         m.Field(

@@ -8,7 +8,18 @@ from __future__ import annotations
 
 from flext_cli import FlextCli
 
-from flext_infra import c, codegen, h, m, p, r, t, u, workspace as workspace_services
+from flext_infra import (
+    c,
+    codegen,
+    config,
+    h,
+    m,
+    p,
+    r,
+    t,
+    u,
+    workspace as workspace_services,
+)
 
 
 class FlextInfraCodegenHandlers:
@@ -73,37 +84,42 @@ class FlextInfraCodegenHandlers:
 
         """
         requested = request.root.expanduser().resolve()
-        return u.Infra.runtime_owner_root(requested).flat_map(
-            lambda workspace_root: (
-                workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
-                    workspace_root,
-                    allow_unprovisioned_members=(
-                        request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
-                    ),
-                ).flat_map(
-                    lambda observed: (
-                        r[m.Infra.CodegenRootSelection].create_from_callable(
-                            lambda: m.Infra.CodegenRootSelection(
-                                workspace_root=workspace_root,
-                                requested_root=requested,
-                                members=tuple(
-                                    (workspace_root / member.path).resolve()
-                                    for member in observed.subprojects
-                                ),
-                            ),
-                        )
+        with u.Infra.gate_admitted(
+            c.Infra.GATE_ADMISSION_GENERATION,
+            requested,
+            config.Infra.gate_admission.generation,
+        ):
+            return u.Infra.runtime_owner_root(requested).flat_map(
+                lambda workspace_root: (
+                    workspace_services.FlextInfraWorkspaceDetector.load_workspace_spec(
+                        workspace_root,
+                        allow_unprovisioned_members=(
+                            request.what in c.Infra.ALLOW_UNPROVISIONED_SURFACES
+                        ),
                     ).flat_map(
-                        lambda admitted: (
-                            codegen.FlextInfraCodegenConform.Generate.execute_request(
-                                request,
-                                execution_context=self,
-                                repository_root=admitted.workspace_root,
+                        lambda observed: (
+                            r[m.Infra.CodegenRootSelection].create_from_callable(
+                                lambda: m.Infra.CodegenRootSelection(
+                                    workspace_root=workspace_root,
+                                    requested_root=requested,
+                                    members=tuple(
+                                        (workspace_root / member.path).resolve()
+                                        for member in observed.subprojects
+                                    ),
+                                ),
+                            )
+                        ).flat_map(
+                            lambda admitted: (
+                                codegen.FlextInfraCodegenConform.Generate.execute_request(
+                                    request,
+                                    execution_context=self,
+                                    repository_root=admitted.workspace_root,
+                                )
                             )
                         )
                     )
                 )
             )
-        )
 
     @h.handler(command=m.Infra.CodegenConformRequest)
     def codegen_conform(
