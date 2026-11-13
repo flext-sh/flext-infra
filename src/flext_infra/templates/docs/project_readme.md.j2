@@ -12,10 +12,12 @@
 
 {{ description }}
 
+{% if package_name -%}
 ## {{ text.MODULE_MAP }}
 
 {{ mk.public_surface(package_name) }}
 
+{% endif -%}
 {{ mk.collection_rules(text, links) }}
 
 ## {{ text.OPERATION_FLOW }}

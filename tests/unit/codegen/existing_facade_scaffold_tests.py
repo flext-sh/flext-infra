@@ -56,11 +56,12 @@ class TestsFlextInfraCodegenExistingFacadeScaffold:
                 },
             ),
         )
-        package_dir = root / c.Infra.DEFAULT_SRC_DIR / project.package_name
+        package = tm.not_none(project.package_name)
+        package_dir = root / c.Infra.DEFAULT_SRC_DIR / package
         package_dir.mkdir(parents=True, exist_ok=True)
         if authored_models is not None:
             (package_dir / "models.py").write_text(authored_models, encoding="utf-8")
-        return root, project.package_name
+        return root, package
 
     @staticmethod
     def _planned(root: Path) -> p.Infra.CodegenPlan:

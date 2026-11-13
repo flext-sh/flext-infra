@@ -429,7 +429,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             root
             / member.path
             / config.Infra.tooling.tools.pyright.path_rules.source_dir
-            / u.Tests.project_spec(member.distribution).package_name
+            / tm.not_none(u.Tests.project_spec(member.distribution).package_name)
         )
         (package / c.Infra.INIT_PY).unlink()
         u.Tests.commit_git_changes(root / member.path, "remove declared package")

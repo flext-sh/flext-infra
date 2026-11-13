@@ -465,9 +465,13 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="Configured constant project name"),
         ]
+        package: Annotated[
+            bool,
+            m.Field(description="Repository publishes a Python package"),
+        ]
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Python import package name"),
+            t.NonEmptyStr | None,
+            m.Field(description="Python import package name; absent without a package"),
         ]
         packaged_data_paths: Annotated[
             Sequence[str],
@@ -591,8 +595,11 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             return f"{self.dist.upper().replace('-', '_')}_"
 
         @property
-        def _config_base(self) -> p.Infra.ScaffoldConfigBaseSpec:
+        def _config_base(self) -> p.Infra.ScaffoldConfigBaseSpec | None:
             """ENFORCE-042 config base selected from declared requirements.
+
+            A repository without a package composes no ``_config.py`` and elects
+            no base.
 
             The fleet-converged ``_config.py`` inherits only the project's frozen
             config capability base, independently of runtime settings. The base
@@ -606,6 +613,8 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                     declared requirements of.
 
             """
+            if not self.package:
+                return None
             depended = {
                 t.Infra.REQUIREMENT_NAME_ADAPTER.validate_python(requirement)
                 for requirement in self.project_dependencies
@@ -624,39 +633,42 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
 
         @m.computed_field
         @property
-        def config_base_class(self) -> str:
+        def config_base_class(self) -> str | None:
             """Config base class composed by the generated ``_config.py``.
 
             Returns:
-                The resulting ``str``.
+                The base class name, or None without a package.
 
             """
-            return self._config_base.class_name
+            base = self._config_base
+            return None if base is None else base.class_name
 
         @m.computed_field
         @property
-        def config_base_module(self) -> str:
+        def config_base_module(self) -> str | None:
             """Import module exposing ``config_base_class``.
 
             Returns:
-                The resulting ``str``.
+                The base module, or None without a package.
 
             """
-            return self._config_base.module
+            base = self._config_base
+            return None if base is None else base.module
 
         @m.computed_field
         @property
-        def settings_base_class(self) -> str:
+        def settings_base_class(self) -> str | None:
             """Settings base class composed by the generated ``_settings.py``.
 
             It lives in ``config_base_module``, so both projections follow the
             same declared dependency profile.
 
             Returns:
-                The resulting ``str``.
+                The settings base class name, or None without a package.
 
             """
-            return self._config_base.settings_class_name
+            base = self._config_base
+            return None if base is None else base.settings_class_name
 
         description: Annotated[
             t.NonEmptyStr,

@@ -315,6 +315,70 @@ class FlextInfraModelsConfigWorkspace:
                 raise ValueError(msg)
             return names
 
+        @m.model_validator(mode="after")
+        def _validate_consumer_declaration(self) -> Self:
+            """Keep a consumer's declaration coherent with the package it omits.
+
+            A project that declares no ``package_name`` owns no import package: it
+            is a consumer, and ships no package, module, data or console script.
+            An explicitly declared kind must agree with that fact.
+
+            Returns:
+                The validated declaration.
+
+            Raises:
+                ValueError: A consumer ships code or is declared as another kind,
+                    or another kind declares a project without its package.
+
+            """
+            project = self.project
+            unpackaged = project is not None and project.package_name is None
+            declared = "kind" in self.model_fields_set
+            consumer = unpackaged or (
+                declared and self.kind is c.Infra.ProjectKind.CONSUMER
+            )
+            if project is None and consumer:
+                msg = "a consumer repository must declare its project"
+                raise ValueError(msg)
+            if (
+                declared
+                and project is not None
+                and unpackaged != (self.kind is c.Infra.ProjectKind.CONSUMER)
+            ):
+                msg = (
+                    "a consumer repository declares no package_name; "
+                    "every other kind declares one"
+                )
+                raise ValueError(msg)
+            if project is None:
+                return self
+            shipped = (
+                project.root_packages
+                or project.root_modules
+                or project.repository_namespace_packages
+                or project.packaged_data_paths
+                or project.console_scripts
+                or project.hatch_build_hook_path
+            )
+            if consumer and shipped:
+                msg = "a consumer repository ships no package, module or data"
+                raise ValueError(msg)
+            return self
+
+        @property
+        def effective_kind(self) -> c.Infra.ProjectKind:
+            """Own governance kind: a project without a package is a consumer.
+
+            Returns:
+                ``consumer`` when the declared project omits its package, else
+                the declared kind.
+
+            """
+            project = self.project
+            if project is not None and project.package_name is None:
+                return c.Infra.ProjectKind.CONSUMER
+            return self.kind
+
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
 

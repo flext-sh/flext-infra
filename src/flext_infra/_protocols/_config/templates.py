@@ -223,6 +223,15 @@ class FlextInfraProtocolsConfigTemplates:
             ...
 
         @property
+        def requires_package(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the seed belongs to the repository's own import package; a
+            consumer repository owns none.
+            """
+            ...
+
+        @property
         def bootstrap_distribution(self) -> t.NonEmptyStr | None:
             """Executor whose local dependency closure this artifact binds."""
             ...

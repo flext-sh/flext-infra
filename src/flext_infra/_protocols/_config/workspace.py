@@ -330,6 +330,11 @@ class FlextInfraProtocolsConfigWorkspace:
             """Own ordered `make help` sections."""
             ...
 
+        @property
+        def effective_kind(self) -> c.Infra.ProjectKind:
+            """Own governance kind: a project without a package is a consumer."""
+            ...
+
     @runtime_checkable
     class CandidateBootstrapTargetSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol

@@ -65,7 +65,7 @@ class TestsFlextInfraModelRoleAdmission:
         root, primary = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name=declaration.constant_name,
-            package_name=declaration.package_name,
+            package_name=tm.not_none(declaration.package_name),
         )
         tm.ok(
             u.Tests.provision_scan_workspace(

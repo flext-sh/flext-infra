@@ -91,6 +91,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         project = workspace.project
         if (
             project is None
+            or project.package_name is None
             or target.repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
         ):
             return {}
@@ -202,6 +203,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
             )
             and (not entry.requires_release_protocol or target.publishes_release)
             and (not entry.requires_beads or workspace.beads is not None)
+            and (not entry.requires_package or target.repository.package)
             and (
                 selected_destinations is None
                 or entry.destination in selected_destinations
@@ -464,7 +466,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
         project = render_inputs.workspace.project
         missing_stems: tuple[p.Infra.CodegenFilePlan, ...] = ()
-        if project is not None:
+        # A consumer's facades compose its consumed distribution, which is not
+        # installed before ``make setup``; ``codegen scaffold`` seeds them after.
+        if project is not None and project.package_name is not None:
             missing_stems = FlextInfraCodegenScaffolder.plan_stems(
                 render_inputs.target.root,
                 project,

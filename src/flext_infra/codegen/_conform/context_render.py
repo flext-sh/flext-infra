@@ -656,6 +656,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "canonical_project_name": (target.canonical_project_name),
                 "const_name": (project.constant_name),
+                "package": (repository.package),
                 "package_name": (project.package_name),
                 "packaged_data_paths": ((
                     *packaged_data_paths.files,
@@ -695,7 +696,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     project.repository_namespace_packages
                 ),
                 "root_modules": (project.root_modules),
-                "cli_module": (project.cli_module),
+                "cli_module": (project.cli_module and repository.package),
                 "console_scripts": (project.console_scripts),
                 "runtime_dependency_overlay": (project.runtime_dependency_overlay),
                 "description": (project.description),
@@ -861,7 +862,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Resolve the packaged data selection of the target make profile.
 
         A workspace-profile render owns no packaged data selection: workspace
-        aggregation renders no installable project payload of its own.
+        aggregation renders no installable project payload of its own, and a
+        repository without a package ships no data.
 
         Args:
             repository_root: Project root holding the declared data paths.
@@ -873,7 +875,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resolved packaged data selection of the render.
 
         """
-        if profile is c.Infra.MakeProfile.WORKSPACE:
+        if profile is c.Infra.MakeProfile.WORKSPACE or project.package_name is None:
             return m.Infra.PackagedDataSelection()
         return FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,

@@ -306,8 +306,9 @@ class FlextInfraUtilitiesModelsProtocol:
             # Only the source-bootstrap owner (flext-infra's own protocol family)
             # projects ahead of the surfaces: its engine imports those holders.
             # A consumer's projection is planned by the lazy-init surface, in the
-            # same ordered candidate as its regenerated initializers.
-            if primary is not None and not cls._is_bootstrap_owned_protocol_package(
+            # same ordered candidate as its regenerated initializers. A repository
+            # without a primary package (a consumer) owns no source bootstrap.
+            if primary is None or not cls._is_bootstrap_owned_protocol_package(
                 primary[0]
             ):
                 return r[bool].ok(value=False)
@@ -319,7 +320,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         (layout[2], True)
                         for layout in projection.namespacesource_layouts()
                     ),
-                    *(() if primary is None else ((primary[2], False),)),
+                    (primary[2], False),
                 ),
             )
             if prepared.failure:
