@@ -22,6 +22,15 @@
 {%- if private_dependency_auth %}
           token: {% raw %}${{ steps.private_dependency_token.outputs.token }}{% endraw %}
 {%- endif %}
+{%- if private_dependency_auth %}
+{%- include "_fragments/private_dependency_git_auth.j2" %}
+
+      # The authenticated checkout skips submodules; the member tree exists
+      # only after this init, which the declared credential authorizes.
+      - name: Initialize workspace submodules
+        working-directory: .
+        run: git submodule update --init --recursive
+{%- endif %}
       - name: Pin {{ dist }} at the tested commit
         working-directory: .
         run: |
