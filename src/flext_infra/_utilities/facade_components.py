@@ -710,17 +710,10 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         if planned.failure:
             return r[str].from_failure(planned)
-        module, owner, namespace, layout = planned.value[:4]
-        composition = (planned.value[4], planned.value[5], planned.value[7])
+        module, owner, namespace = planned.value[:3]
         step = cls._facade_indent_step(project)
         source = cls._facade_sorted_imports(
-            project,
-            path,
-            resource,
-            cls._facade_body_opening(resource, module, namespace, layout, step)
-            if composition[1]
-            else module.source_code,
-            planned.value[6],
+            project, path, resource, module.source_code, planned.value[5]
         )
         declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
             Path(project.root.real_path), (), {path: source}, source_project=project
@@ -734,7 +727,7 @@ class FlextInfraUtilitiesFacadeComponents:
             if projected.failure:
                 return r[str].from_failure(projected)
             rendered = cls._facade_rendered_class(
-                projected.value, source, composition, step
+                projected.value, source, planned.value[4], step
             )
         return rendered.flat_map(
             lambda text: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
@@ -919,16 +912,14 @@ class FlextInfraUtilitiesFacadeComponents:
             p.Infra.RopeSourceClass,
             p.Infra.RopeSourceClassLayout,
             list[tuple[str, p.Infra.RopePyObject]],
-            dict[str, str],
             list[t.Infra.RopeFromImport],
-            frozenset[str],
         ]
     ]:
         """Plan the facade composition against the module's own native epoch.
 
         Returns:
-            The module, owner, namespace layout, retained bases, nominal
-            publications, added imports and alias names, or the first failure.
+            The module, owner, namespace layout, retained bases and added
+            imports, or the first failure.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -946,9 +937,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClass,
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
                     list[t.Infra.RopeFromImport],
-                    frozenset[str],
                 ]
             ].from_failure(resolved)
         owner, namespace = resolved.value[0], resolved.value[1]
@@ -973,9 +962,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClass,
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
                     list[t.Infra.RopeFromImport],
-                    frozenset[str],
                 ]
             ].from_failure(framed)
         layout, bases = framed.value
@@ -1000,7 +987,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 if provider is not base
             )
         ]
-        aliases, alias_names = cls._facade_namespace_aliases(index, namespace)
+        aliases = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
             project,
             (
@@ -1029,9 +1016,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClass,
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
                     list[t.Infra.RopeFromImport],
-                    frozenset[str],
                 ]
             ].from_failure(providers)
         composed = cls._facade_retained_providers(
@@ -1057,24 +1042,19 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClass,
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
                     list[t.Infra.RopeFromImport],
-                    frozenset[str],
                 ]
             ].from_failure(composed)
         # Utility storage admits only ClassVar/Final members
-        # (``utility_namespace_declaration``): a ``TypeAlias`` publication in a
-        # utility namespace makes its family root refuse it, and a service that
-        # composes the namespace (``class Base(s, u.Ns)``) turns it into a
-        # Pydantic field. Utility facades publish no nominal aliases.
-        published = cls._facade_nominal_publications(
-            module,
-            path,
-            namespace,
+        # (``utility_namespace_declaration``); its nominal providers keep their
+        # own instance role and never reach the namespace.
+        loose = cls._facade_loose_declarations(
+            project,
+            owner,
             () if family is c.Infra.FacadeFamily.U else providers.value[1],
             (aliases, composed.value[0]),
         )
-        if published.failure:
+        if loose.failure:
             return r[
                 tuple[
                     p.Infra.RopeSourceModule,
@@ -1082,11 +1062,9 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClass,
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
-                    dict[str, str],
                     list[t.Infra.RopeFromImport],
-                    frozenset[str],
                 ]
-            ].from_failure(published)
+            ].from_failure(loose)
         return r[
             tuple[
                 p.Infra.RopeSourceModule,
@@ -1094,9 +1072,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 p.Infra.RopeSourceClass,
                 p.Infra.RopeSourceClassLayout,
                 list[tuple[str, p.Infra.RopePyObject]],
-                dict[str, str],
                 list[t.Infra.RopeFromImport],
-                frozenset[str],
             ]
         ].ok((
             module,
@@ -1104,13 +1080,10 @@ class FlextInfraUtilitiesFacadeComponents:
             namespace,
             layout,
             composed.value[0],
-            published.value,
             cls._facade_planned_imports(
                 cls._facade_declaring_packages(project, resolved.value[2]),
-                (*composed.value[1], *published.value),
-                type_alias=bool(published.value or alias_names),
+                composed.value[1],
             ),
-            alias_names,
         ))
 
     @staticmethod
@@ -1552,10 +1525,8 @@ class FlextInfraUtilitiesFacadeComponents:
                     raise
                 classified = True
             if rendered:
-                aliases, _ = (
-                    FlextInfraUtilitiesFacadeComponents._facade_namespace_aliases(
-                        child.get_module().get_source_binding_index(), child
-                    )
+                aliases = FlextInfraUtilitiesFacadeComponents._facade_namespace_aliases(
+                    child.get_module().get_source_binding_index(), child
                 )
                 if (
                     bool(aliases)
@@ -1648,17 +1619,29 @@ class FlextInfraUtilitiesFacadeComponents:
         index: p.Infra.RopeSourceBindingIndex,
         namespace: p.Infra.RopeSourceClass,
     ) -> tuple[p.Infra.RopeSourceAssignmentLayout, ...]:
-        """Resolve every namespace assignment except the authored model metadata.
+        """Resolve every namespace assignment except model metadata and publications.
+
+        A ``Name = Name`` publication reads its value from the module scope
+        (``facade_self_publications``); resolving it in the class scope would
+        infer the attribute from itself.
 
         Returns:
             Each direct assignment with its native value and root bindings.
 
         """
+        source = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            namespace.get_module()
+        ).source_code
         return tuple(
             assignment
             for declaration in index.assignment_layouts(namespace.get_scope())
             if declaration.targets
             and declaration.targets[0][0] != c.Infra.MODEL_CONFIG_ATTRIBUTE
+            and (
+                declaration.value is None
+                or source[declaration.value[0] : declaration.value[1]]
+                != declaration.targets[0][0]
+            )
             for assignment in index.assignment_layouts(
                 namespace.get_scope(),
                 name=declaration.targets[0][0],
@@ -1724,34 +1707,19 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         index: p.Infra.RopeSourceBindingIndex,
         namespace: p.Infra.RopeSourceClass,
-    ) -> tuple[dict[str, p.Infra.RopePyObject], frozenset[str]]:
-        """Read the namespace's resolved assignments once for both alias views.
+    ) -> dict[str, p.Infra.RopePyObject]:
+        """Read the namespace's resolved assignments as bound target identities.
 
         Returns:
-            Every bound target identity and the single-target class alias names.
+            Every bound target name with its resolved value.
 
         """
-        types = FlextInfraUtilitiesRopeRuntimeTypes
-        assignments = cls._facade_resolved_assignments(index, namespace)
-        aliases = {
+        return {
             target_name: assignment.value_binding.get_object()
-            for assignment in assignments
+            for assignment in cls._facade_resolved_assignments(index, namespace)
             if assignment.value_binding is not None
             for target_name, _region in assignment.targets
         }
-        # An authored annotation or native ``type`` declaration stays verbatim;
-        # generated inherited aliases retire with their composition below.
-        alias_names = frozenset(
-            assignment.targets[0][0]
-            for assignment in assignments
-            if assignment.kind == "Assign"
-            and assignment.value_binding is not None
-            and types.abstract_class(assignment.value_binding.get_object())
-            and assignment.value is not None
-            and len(assignment.targets) == 1
-            and not assignment.type_parameters
-        )
-        return aliases, alias_names
 
     @classmethod
     def _facade_admitted_providers(
@@ -2088,30 +2056,30 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(names)
 
     @classmethod
-    def _facade_nominal_publications(
+    def _facade_loose_declarations(
         cls,
-        module: p.Infra.RopeSourceModule,
-        path: Path,
-        namespace: p.Infra.RopeSourceClass,
+        project: p.Infra.RopeProject,
+        owner: p.Infra.RopeSourceClass,
         nominal: Sequence[p.Infra.RopeSourceClass],
         bound: tuple[
             Mapping[str, p.Infra.RopePyObject],
             Sequence[tuple[str, p.Infra.RopePyObject]],
         ],
-    ) -> p.Result[dict[str, str]]:
-        """Publish nominal providers that no alias or retained base already binds.
+    ) -> p.Result[bool]:
+        """Refuse family classes declared outside their module's part class.
 
-        A provider the namespace already composes, as a base or through a
-        base's MRO, is published by that base; a second
-        ``Name: TypeAlias = Name`` would only repeat it.
+        Every module keeps its declarations inside its single top-level class:
+        a family class reaches the facade only nested in its part class and
+        composed through the MRO. A provider an authored alias or a retained
+        base already reaches is composed, not loose.
 
         Returns:
-            The nominal publication names in declaration order, or the first
-            namespace definition or module import occupying that name.
+            True, or every loose declaration with the part class it must move
+            into.
 
         """
         aliases, retained = bound
-        publications: dict[str, str] = {}
+        loose: list[str] = []
         for provider in nominal:
             if provider in aliases.values() or any(
                 base is provider
@@ -2125,36 +2093,19 @@ class FlextInfraUtilitiesFacadeComponents:
                 for _expression, base in retained
             ):
                 continue
-            published_name = provider.get_name()
-            defined = namespace.get_scope().get_defined_names().get(published_name)
-            if defined is not None:
-                # Two producers of one run reaching the same publication collapse
-                # on its identity; only a different binding is an occupation. A
-                # prior ``Name: TypeAlias = Name`` publication is an assignment
-                # whose value Python reads from the module scope, so the module
-                # binding of that name is its target.
-                target = defined.get_object()
-                if not (
-                    FlextInfraUtilitiesRopeRuntimeTypes.py_class(target)
-                    or FlextInfraUtilitiesRopeRuntimeTypes.py_function(target)
-                ):
-                    module_binding = module.get_scope().get_names().get(published_name)
-                    if module_binding is not None:
-                        target = module_binding.get_object()
-                if cls._same_facade_target(target, provider):
-                    continue
-                return r[dict[str, str]].fail(
-                    f"Occupied nominal facade publication: {path}:{published_name}"
-                )
-            imported = module.get_scope().get_names().get(published_name)
-            if imported is not None and not cls._same_facade_target(
-                imported.get_object(), provider
-            ):
-                return r[dict[str, str]].fail(
-                    f"Occupied nominal facade import: {path}:{published_name}"
-                )
-            publications[published_name] = published_name
-        return r[dict[str, str]].ok(publications)
+            module = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                provider.get_module(), source_project=project
+            )
+            part = owner.get_name() + u.derive_class_stem(
+                module.rpartition(".")[2].strip("_")
+            )
+            loose.append(f"{module}.{provider.get_name()} -> {part}")
+        if loose:
+            return r[bool].fail(
+                "Module-level family declarations must nest in their part class"
+                f" (make mod): {', '.join(loose)}"
+            )
+        return r[bool].ok(value=True)
 
     @staticmethod
     def _facade_declaring_packages(
@@ -2191,8 +2142,6 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_planned_imports(
         packages: Mapping[str, str],
         bindings: Sequence[str],
-        *,
-        type_alias: bool,
     ) -> list[t.Infra.RopeFromImport]:
         """Build the imports this planning adds on top of the module's own epoch.
 
@@ -2201,24 +2150,19 @@ class FlextInfraUtilitiesFacadeComponents:
         Bindings of one package share one import statement.
 
         Returns:
-            One import per importing package, then ``TypeAlias`` if needed.
+            One import per importing package.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
         grouped: dict[str, list[str]] = {}
         for binding in bindings:
             grouped.setdefault(packages[binding], []).append(binding)
-        added_imports = [
+        return [
             runtime.from_import(
                 package, 0, tuple((binding, None) for binding in sorted(names))
             )
             for package, names in grouped.items()
         ]
-        if type_alias:
-            added_imports.append(
-                runtime.from_import("typing", 0, (("TypeAlias", None),))
-            )
-        return added_imports
 
     @staticmethod
     def _facade_indent_step(project: p.Infra.RopeProject) -> int:
@@ -2234,39 +2178,6 @@ class FlextInfraUtilitiesFacadeComponents:
             )(project),
             strict=True,
         )
-
-    @staticmethod
-    def _facade_body_opening(
-        resource: p.Infra.RopeFile,
-        module: p.Infra.RopeSourceModule,
-        namespace: p.Infra.RopeSourceClass,
-        layout: p.Infra.RopeSourceClassLayout,
-        step: int,
-    ) -> str:
-        """Open an inline namespace body before nominal publications are rendered.
-
-        Returns:
-            The module source, with an inline body moved to its own line.
-
-        """
-        source = module.source_code
-        body_line = module.lines.get_line_number(layout.body[0])
-        body_prefix = source[module.lines.get_line_start(body_line) : layout.body[0]]
-        if not body_prefix.strip():
-            return source
-        class_line = namespace.get_scope().get_start()
-        indentation = source[module.lines.get_line_start(class_line) : layout.region[0]]
-        return FlextInfraUtilitiesRopeRuntimeRefactors.content_change(
-            resource,
-            source,
-            (
-                m.Infra.SourceRewrite(
-                    start=layout.body[0],
-                    end=layout.body[0],
-                    text="\n" + indentation + " " * step,
-                ),
-            ),
-        ).new_contents
 
     @staticmethod
     def _facade_sorted_imports(
@@ -2371,11 +2282,7 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
         source: str,
-        composition: tuple[
-            Sequence[tuple[str, p.Infra.RopePyObject]],
-            dict[str, str],
-            frozenset[str],
-        ],
+        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
         step: int,
     ) -> p.Result[str]:
         """Fill the module skeleton from the projected namespace layout.
@@ -2385,7 +2292,6 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         current, actual = projected
-        retained, publications, alias_names = composition
         scope = actual.get_scope()
         # Epoch guard: the layout, lines and every offset below are read from
         # `current`'s frozen parse; the slices below index `source`. Different
@@ -2405,7 +2311,7 @@ class FlextInfraUtilitiesFacadeComponents:
             (current, actual),
             source,
             (layout, end),
-            (alias_names, step),
+            step,
             retained,
         )
         class_line = scope.get_start()
@@ -2428,7 +2334,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 source[layout.region[0] :].replace(
                     source[layout.region[0] : layout.header_end], ""
                 )
-                + " ".join((*desired_bases, *publications, *publications.values())),
+                + " ".join(desired_bases),
             ),
             module_suffix=source[end:],
             class_bases=desired_bases,
@@ -2447,7 +2353,6 @@ class FlextInfraUtilitiesFacadeComponents:
             ],
             indentation=" " * step,
             body_source=body_source,
-            publications=publications,
             managed_header=None
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else c.Infra.AUTOGEN_HEADER,
@@ -2515,92 +2420,102 @@ class FlextInfraUtilitiesFacadeComponents:
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
         source: str,
         frame: tuple[p.Infra.RopeSourceClassLayout, int],
-        rendering: tuple[frozenset[str], int],
+        step: int,
         retained: Sequence[tuple[str, p.Infra.RopePyObject]],
-    ) -> tuple[str | tuple[str, str], ...]:
+    ) -> str:
         """Split the namespace body, retiring obsolete generated bindings.
 
         A managed body whose every statement retired keeps a ``pass`` so the
         namespace stays a valid class body.
 
         Returns:
-            Verbatim body text interleaved with ``(alias, value source)`` pairs.
+            The verbatim body text without its retired statements.
 
         """
         current, actual = projected
         layout, end = frame
-        alias_names, step = rendering
         scope = actual.get_scope()
         index = current.get_source_binding_index()
         retired = (
             cls._facade_retired_bindings(index, actual, source, retained)
-            | cls._facade_retired_publications((current, scope), source, retained)
+            | cls._facade_retired_publications((current, scope), retained)
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else frozenset[tuple[int, int]]()
         )
-        body_source = cls._facade_alias_body_parts(
-            index, scope, source, (layout.header_end, end), (alias_names, retired)
+        body_source = cls._facade_retained_body(
+            index, scope, source, (layout.header_end, end), retired
         )
-        if retired and not any(
-            not isinstance(part, str) or part.strip() for part in body_source
-        ):
+        if retired and not body_source.strip():
             class_indent = source[
                 current.lines.get_line_start(scope.get_start()) : layout.region[0]
             ]
-            return (f"\n{class_indent}{' ' * step}pass",)
+            return f"\n{class_indent}{' ' * step}pass"
         return body_source
+
+    @staticmethod
+    def facade_self_publications(
+        module: p.Infra.RopeSourceModule, scope: p.Infra.RopeScope
+    ) -> dict[str, tuple[tuple[int, int], p.Infra.RopePyName | None]]:
+        """Read the ``Name = Name`` publications of one class body.
+
+        A class-body ``Name = Name`` (annotated or not) reads ``Name`` from
+        the module scope, so its target is that module binding, never the
+        class attribute the statement assigns.
+
+        Returns:
+            Each publication name with its statement region and module binding.
+
+        """
+        source = module.source_code
+        names = module.get_scope().get_names()
+        publications: dict[str, tuple[tuple[int, int], p.Infra.RopePyName | None]] = {}
+        for declaration in module.get_source_binding_index().assignment_layouts(scope):
+            if declaration.value is None or len(declaration.targets) != 1:
+                continue
+            name = declaration.targets[0][0]
+            begin, end = declaration.value
+            if source[begin:end] == name:
+                publications[name] = (declaration.region, names.get(name))
+        return publications
 
     @classmethod
     def _facade_retired_publications(
         cls,
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeScope],
-        source: str,
         retained: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> frozenset[tuple[int, int]]:
-        """Find earlier nominal publications this composition no longer needs.
+        """Find the ``Name = Name`` publications this composition retires.
 
-        A generated ``Name: TypeAlias = Name`` reads ``Name`` from the module
-        scope. It is obsolete once that name no longer binds a class (its
-        declaration was retired) or once a retained base already reaches the
-        class through its MRO.
+        A generated publication is obsolete once its module binding no longer
+        resolves to a class (its declaration moved into a part class) or once
+        a retained base reaches the name through its MRO.
 
         Returns:
-            The statement regions of every obsolete nominal publication.
+            The statement regions of every obsolete publication.
 
         """
         module, scope = projected
         types = FlextInfraUtilitiesRopeRuntimeTypes
-        names = module.get_scope().get_names()
         retired: set[tuple[int, int]] = set()
-        for declaration in module.get_source_binding_index().assignment_layouts(scope):
-            if (
-                declaration.annotation is None
-                or declaration.value is None
-                or len(declaration.targets) != 1
-            ):
-                continue
-            name = declaration.targets[0][0]
-            begin, end = declaration.value
-            if source[begin:end] != name:
-                continue
-            binding = names.get(name)
-            target = binding.get_object() if binding is not None else None
-            if (
-                target is None
-                or not types.abstract_class(target)
-                or (
-                    types.py_class(target)
-                    and any(
-                        types.py_class(base)
+        for name, (region, binding) in cls.facade_self_publications(
+            module, scope
+        ).items():
+            target = None if binding is None else binding.get_object()
+            if not types.abstract_class(target) or any(
+                types.py_class(base)
+                and (
+                    name in base.get_attributes()
+                    or (
+                        types.py_class(target)
                         and any(
                             cls._same_facade_target(ancestor, target)
                             for ancestor in base.get_mro()[1:]
                         )
-                        for _expression, base in retained
                     )
                 )
+                for _expression, base in retained
             ):
-                retired.add(declaration.region)
+                retired.add(region)
         return frozenset(retired)
 
     @classmethod
@@ -2667,43 +2582,30 @@ class FlextInfraUtilitiesFacadeComponents:
         )
 
     @staticmethod
-    def _facade_alias_body_parts(
+    def _facade_retained_body(
         index: p.Infra.RopeSourceBindingIndex,
         scope: p.Infra.RopeScope,
         source: str,
         span: tuple[int, int],
-        bindings: tuple[frozenset[str], frozenset[tuple[int, int]]],
-    ) -> tuple[str | tuple[str, str], ...]:
-        """Split the authored body span around every class alias assignment value.
-
-        A retired generated binding leaves the body with its whole line.
+        retired: frozenset[tuple[int, int]],
+    ) -> str:
+        """Keep the authored body span without the lines of retired bindings.
 
         Returns:
-            Verbatim body text interleaved with ``(alias, value source)`` pairs.
+            The verbatim body text without its retired statements.
 
         """
-        alias_names, retired = bindings
         cursor, end = span
-        parts: list[str | tuple[str, str]] = []
+        parts: list[str] = []
         for declaration in index.assignment_layouts(scope):
-            if declaration.region in retired:
-                line_start = source.rfind("\n", 0, declaration.region[0]) + 1
-                line_end = source.find("\n", declaration.region[1])
-                parts.append(source[cursor:line_start])
-                cursor = len(source) if line_end < 0 else line_end + 1
+            if declaration.region not in retired:
                 continue
-            if (
-                len(declaration.targets) != 1
-                or declaration.targets[0][0] not in alias_names
-                or declaration.value is None
-            ):
-                continue
-            parts.append(source[cursor : declaration.region[0]])
-            first, last = declaration.value
-            parts.append((declaration.targets[0][0], source[first:last]))
-            cursor = declaration.region[1]
+            line_start = source.rfind("\n", 0, declaration.region[0]) + 1
+            line_end = source.find("\n", declaration.region[1])
+            parts.append(source[cursor:line_start])
+            cursor = len(source) if line_end < 0 else line_end + 1
         parts.append(source[cursor:end])
-        return tuple(parts)
+        return "".join(parts)
 
     @staticmethod
     def _facade_header_comments(

@@ -18,9 +18,8 @@ from {{ base_module }} import {{ base_class }}
 {% if header_source is not none %}{{ header_source }}{% else %}class {{ class_name }}{{ type_parameters_source }}{% if arguments or header_comments %}(
 {% for comment in header_comments %}{{ class_indent }}{{ indentation }}{{ comment }}
 {% endfor %}{% for argument in arguments %}{{ class_indent }}{{ indentation }}{{ argument }},
-{% endfor %}{{ class_indent }}){% endif %}:{% endif %}{% if body_source is not none %}{% for part in body_source %}{% if part is string %}{{ part }}{% else %}{{ part[0] }}: TypeAlias = {{ part[1] }}{% endif %}{% endfor %}{% else %}
-{{ class_indent }}{{ indentation }}"""{{ documentation }}"""{% endif %}{% for name, expression in publications.items() %}
-{{ class_indent }}{{ indentation }}{{ name }}: TypeAlias = {{ expression }}{% endfor %}{{ module_suffix }}{% if exports is not none %}
+{% endfor %}{{ class_indent }}){% endif %}:{% endif %}{% if body_source is not none %}{{ body_source }}{% else %}
+{{ class_indent }}{{ indentation }}"""{{ documentation }}"""{% endif %}{{ module_suffix }}{% if exports is not none %}
 
 __all__: list[str] = [{% for name in exports %}"{{ name }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 {% elif module_prefix is none %}
