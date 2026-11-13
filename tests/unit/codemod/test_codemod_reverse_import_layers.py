@@ -52,7 +52,7 @@ class TestsFlextInfraCodemodReverseImportLayers:
         )
         (root / "config").mkdir()
         (root / "config" / "codegen.yaml").write_text(
-            "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+            "Infra:\n  codegen:\n    repository: {}\n",
             encoding="utf-8",
         )
         return module

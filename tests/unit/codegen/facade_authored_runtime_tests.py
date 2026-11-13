@@ -287,10 +287,9 @@ class TestsFlextInfraGeneratedRuntime:
     ) -> None:
         """Execute elected own imports alongside ancestor and external imports.
 
-        Premise: the public renderer expresses same-root targets relative to the
-        rendered package and binds an own child whose import line cannot fit
-        through a module alias; a namespace whose own import cannot fit at all
-        is rejected before any initializer is written.
+        Premise: the public renderer imports same-root targets from their
+        declaring modules, a module object from its parent package, and wraps an
+        import that cannot fit in Ruff's parenthesized form.
         """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         children = (segment,) * depth
@@ -322,9 +321,6 @@ class TestsFlextInfraGeneratedRuntime:
             },
             eager_dunders={},
         )
-        width: int = u.Infra.native_tool_setting(
-            config.Infra.tooling, "ruff", "line-length", int
-        )
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:
             project = snapshot.engine
             model = u.Infra.lazy_init_run(
@@ -333,13 +329,6 @@ class TestsFlextInfraGeneratedRuntime:
                 root=root,
                 scoped=True,
             ).model
-            if len(f"    from {namespace} import (") > width:
-                with u.Tests.raises(ValueError, match="exceeds Ruff line length"):
-                    u.Infra.lazy_init_render(
-                        plan, model=model, first_party=frozenset({package.name})
-                    )
-                tm.fail((child / c.Infra.INIT_PY).exists())
-                return
             rendered = u.Infra.lazy_init_render(
                 plan, model=model, first_party=frozenset({package.name})
             )

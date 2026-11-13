@@ -171,21 +171,18 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         TestsFlextInfraCodegenCandidateBootstrap._break_repository(failed, failure)
         before = TestsFlextInfraConformSupport.project_tree(root)
 
-        with u.Tests.raises(
-            ValueError,
-            match=(
-                "cannot resolve package name" if failure == "member-package" else ""
-            ),
-        ) as raised:
-            FlextInfraCodegenConform.Generate(
+        planner = FlextInfraCodegenConform.Generate(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(
                 repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    initial_workspace=workspace,
-                ),
-            ).plan(request)
+                initial_workspace=workspace,
+            ),
+        )
         if failure == "root-source":
-            tm.that(type(raised.value).__name__, eq="TOMLDecodeError")
+            tm.fail(planner.plan(request), has="is not valid TOML")
+        else:
+            with u.Tests.raises(ValueError, match="cannot resolve package name"):
+                planner.plan(request)
         tm.that(
             TestsFlextInfraConformSupport.project_tree(root),
             eq=before,

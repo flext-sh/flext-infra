@@ -1161,12 +1161,15 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 })
             )
         initializer: p.Infra.RopeProjectInitializer = Project.__dict__["__init__"]
+        # FLEXT supplies every preference; the checkout's pyproject is planned
+        # data under repair, never a Rope configuration source.
         initializer(
             self,
             root,
             fscommands=fscommands,
             ropefolder=ropefolder,
             external_project=external_project,
+            config_files=False,
             **prefs,
         )
         if self.root.real_path != root or (

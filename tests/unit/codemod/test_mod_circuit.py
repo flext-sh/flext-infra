@@ -400,7 +400,7 @@ class TestsFlextInfraModCliRoute:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 mod_workspace / "config" / "codegen.yaml",
-                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+                "Infra:\n  codegen:\n    repository: {}\n",
             ),
         )
         tm.ok(

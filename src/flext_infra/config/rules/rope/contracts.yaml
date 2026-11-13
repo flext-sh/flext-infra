@@ -13,14 +13,6 @@ rules:
   pattern: '${model}(${arguments})'
   goal: '${model}.model_validate({${arguments}})'
   arguments: {}
-- id: core-retire-generic-typing-wrappers
-  operation: retire-generic-typing-wrappers
-  source_revision: 35f2da92c92aa99be5beef560380ea79f659d901
-  phase: contract-normalization
-  pattern: '${provider}'
-  goal: '${provider}'
-  arguments:
-    provider: name=flext_core._typings.FlextTypingBase
 - id: core-rename-protocol-model-root
   phase: contract-normalization
   pattern: '${facade}.Model'
