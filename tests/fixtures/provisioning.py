@@ -263,6 +263,7 @@ _FLEET_PROVISION = partial(
 def fleet_session_runtime(
     tmp_path_factory: pytest.TempPathFactory,
     run_namespace: p.Tests.TestNamespace,
+    scratch_root: Path,
 ) -> Iterator[p.Tests.SessionRuntime]:
     """Own the distinct installed workspace seed through the shared runtime owner.
 
@@ -275,6 +276,7 @@ def fleet_session_runtime(
     """
     runtime = u.Tests.SessionRuntime(
         tmp_path_factory.mktemp(f"{run_namespace.token}-fleet"),
+        storage=scratch_root,
     )
     try:
         yield runtime
