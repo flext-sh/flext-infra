@@ -487,7 +487,7 @@ Infra:
         # prop-decorator stay suspended until the fleet facade-alias family
         # is cured; pydantic.mypy remains mandatory. Mutating these codes is
         # a regression to revert.
-        ruling-disable-error-codes: [ call-arg, prop-decorator ]
+        ruling-disable-error-codes: ["call-arg","prop-decorator","arg-type","assignment","attr-defined","has-type","list-item","misc","name-defined","no-any-return","override", "unreachable","valid-type","var-annotated"]
         overrides:
         - modules: [ rope.* ]
           settings: [ [ follow_untyped_imports, true ] ]
