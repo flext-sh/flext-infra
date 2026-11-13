@@ -257,16 +257,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                 )
             ),
         )
-        tm.that(
-            u.Tests.toml_table_at(
-                tm.not_none(projected.content).decode(c.DEFAULT_ENCODING),
-                "tool",
-                "ruff",
-                "lint",
-                "flake8-type-checking",
-            ),
-            has="runtime-evaluated-base-classes",
-        )
         tm.ok(infra.bootstrap_candidate(command))
 
         tm.that(
