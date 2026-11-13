@@ -197,13 +197,15 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         *,
         target_ref: str,
     ) -> p.Result[tuple[p.Infra.GitSourceReferenceMigration, ...]]:
-        """Elect one Git-ref migration per internal requirement off the line.
+        """Elect one Git-ref migration per internal Git source off the line.
 
-        Every declared internal requirement whose direct Git source names a
-        reference other than ``target_ref`` (the declared integration line)
+        Every declared internal requirement, and every native
+        ``[tool.uv.sources]`` Git entry of an internal distribution, whose
+        reference differs from ``target_ref`` (the declared integration line)
         yields the existing source-reference migration scoped to its own source
         directory and current reference; the manifest keeps the URL, the lock
-        alone pins the exact commit.
+        alone pins the exact commit. A native source shadows its requirement's
+        URL, so a source left off the line is a misalignment of its own.
 
         Returns:
             The distinct migrations aligning internal references, or the first
@@ -214,10 +216,20 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
+        sources = u.Cli.toml_mapping_path(
+            u.Cli.toml_as_mapping(document) or {}, (c.Infra.TOOL, "uv", "sources")
+        )
+        native = tuple(
+            f"{name} @ {c.Infra.GIT_URL_SCHEME_PREFIX}{source['git']}@{source[key]}"
+            for name, source in (sources or {}).items()
+            if isinstance(source, Mapping) and isinstance(source.get("git"), str)
+            for key in ("branch", "rev", "tag")
+            if isinstance(source.get(key), str)
+        )
         migrations: MutableMapping[
             tuple[str, str], p.Infra.GitSourceReferenceMigration
         ] = {}
-        for line in lines.value:
+        for line in (*lines.value, *native):
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
             )

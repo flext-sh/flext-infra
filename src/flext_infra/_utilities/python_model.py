@@ -17,7 +17,10 @@ from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
+)
 from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
@@ -97,6 +100,7 @@ class FlextInfraUtilitiesPythonModel:
             imports={},
             classes={},
             class_exports={},
+            class_members={},
             values={},
         )
         for node, parent in cls._python_model_statements(tree):
@@ -109,6 +113,9 @@ class FlextInfraUtilitiesPythonModel:
                     cls._python_model_bind(draft, node.name, "class")
                     draft.classes[node.name] = tuple(map(ast.unparse, node.bases))
                     draft.class_exports[node.name] = cls._python_model_class_exports(
+                        node
+                    )
+                    draft.class_members[node.name] = cls._python_model_class_members(
                         node
                     )
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
@@ -139,7 +146,9 @@ class FlextInfraUtilitiesPythonModel:
             exports=cls._python_model_literal(draft.exports),
             classes=draft.classes,
             class_exports=draft.class_exports,
+            class_members=draft.class_members,
             values=draft.values,
+            runtime_imports=cls._python_model_runtime_imports(tree.body),
         )
 
     @staticmethod
@@ -152,6 +161,7 @@ class FlextInfraUtilitiesPythonModel:
         draft.members[member] = kind
         draft.classes.pop(member, None)
         draft.class_exports.pop(member, None)
+        draft.class_members.pop(member, None)
         draft.values.pop(member, None)
 
     @classmethod
@@ -292,6 +302,81 @@ class FlextInfraUtilitiesPythonModel:
         return cls._python_model_literal(exports)
 
     @classmethod
+    def _python_model_class_members(cls, node: ast.ClassDef) -> Sequence[str]:
+        """Return the names one class body binds at class creation.
+
+        An annotation without a value binds no class attribute.
+
+        Returns:
+            The bound names in declaration order.
+
+        """
+        bound: dict[str, None] = {}
+        for statement, _ in cls._python_model_statements(node):
+            if isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
+                bound[statement.name] = None
+            elif isinstance(statement, ast.TypeAlias) and isinstance(
+                statement.name, ast.Name
+            ):
+                bound[statement.name.id] = None
+            elif isinstance(statement, ast.Assign) or (
+                isinstance(statement, ast.AnnAssign) and statement.value is not None
+            ):
+                bound.update(dict.fromkeys(cls._python_model_assigned(statement)))
+        return tuple(bound)
+
+    @classmethod
+    def _python_model_runtime_imports(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
+        """Return the absolute top-level packages a scope imports at runtime.
+
+        A type-checking guard's body never executes; its ``else`` branch does.
+        Function and class bodies are separate scopes and are not entered.
+
+        Returns:
+            The imported top-level package names.
+
+        """
+        guard = FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test
+        roots: set[str] = set()
+        for statement in body:
+            match statement:
+                case ast.Import():
+                    roots.update(alias.name.split(".")[0] for alias in statement.names)
+                case ast.ImportFrom(level=0, module=str() as module):
+                    roots.add(module.split(".")[0])
+                case ast.If() if guard(statement.test):
+                    roots |= cls._python_model_runtime_imports(statement.orelse)
+                case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                    pass
+                case _:
+                    roots |= cls._python_model_runtime_imports(
+                        cls._python_model_nested_statements(statement)
+                    )
+        return frozenset(roots)
+
+    @staticmethod
+    def _python_model_nested_statements(node: ast.stmt) -> Sequence[ast.stmt]:
+        """Return the statements directly nested in one compound statement.
+
+        Returns:
+            The child statements of its bodies, handlers and match cases.
+
+        """
+        nested: list[ast.stmt] = []
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.stmt):
+                nested.append(child)
+            elif isinstance(child, (ast.excepthandler, ast.match_case)):
+                nested.extend(
+                    grandchild
+                    for grandchild in ast.iter_child_nodes(child)
+                    if isinstance(grandchild, ast.stmt)
+                )
+        return tuple(nested)
+
+    @classmethod
     def _python_model_all(cls, value: ast.expr | None) -> list[str | None]:
         """Return the entries one ``__all__`` value declares.
 
@@ -382,6 +467,41 @@ class FlextInfraUtilitiesPythonModel:
         """
         path = run.module_files.get(name)
         return None if path is None else cls.python_model_module_at(run, path, name)
+
+    @classmethod
+    def python_model_namespace_bases(
+        cls, run: p.Infra.PythonModelRun, name: str, owner: str
+    ) -> Sequence[str]:
+        """Return the base expressions of every class nested in a top-level class.
+
+        A facade composes its namespace mixins through the nested namespace
+        classes its body declares, which the module facts do not record.
+
+        Returns:
+            The unparsed base expressions in source order.
+
+        Raises:
+            TypeError: If the parsed module carries no module syntax tree.
+
+        """
+        project = run.source_project
+        parsed = project.get_pymodule(
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                project, run.module_files[name]
+            )
+        )
+        tree = parsed.get_ast()
+        if not isinstance(tree, ast.Module):
+            msg = f"parsed source carries no module syntax tree: {name}"
+            raise TypeError(msg)
+        return tuple(
+            ast.unparse(base)
+            for outer in tree.body
+            if isinstance(outer, ast.ClassDef) and outer.name == owner
+            for nested in ast.walk(outer)
+            if isinstance(nested, ast.ClassDef) and nested is not outer
+            for base in nested.bases
+        )
 
     @staticmethod
     def python_model_exports(
