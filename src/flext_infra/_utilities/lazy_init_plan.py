@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import cast
 
 from flext_cli import p, r, t, u
-from packaging.utils import canonicalize_name
 
 from flext_infra import c, config
 from flext_infra._models._codegen import (
@@ -35,7 +34,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPythonModel,
 )
-from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRulesDistributions
 
 
 class FlextInfraUtilitiesLazyInitPlan:
@@ -81,7 +79,6 @@ class FlextInfraUtilitiesLazyInitPlan:
             "declarations": {},
             "packages": {},
             "collisions": [],
-            "deferred_imports": {},
         })
 
     @staticmethod
@@ -491,15 +488,12 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_deferrals(
         cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
     ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
-        """Give each heavy-module class export the facade import reaches a stand-in.
+        """Give every class a facade composes by MRO a stand-in.
 
-        A class is reached when a facade composes it by MRO, or when a module
-        that importing the facades loads binds it by a runtime import. Either
-        reach would load its heavy module, so it gets a stand-in. Selection
-        waits until every package is planned, because both reaches resolve
-        through the packages that publish them. Every other class export of a
-        heavy module stays a plain lazy export. Declared configuration roots
-        are deferred first, so the class selection reads those plans.
+        The facade root classes stay real. Selection waits until every package
+        is planned, because composition resolves through the packages that
+        publish each part. Declared configuration roots are deferred first, so
+        the class selection reads those plans.
 
         Returns:
             Each plan that gained stand-ins, by package directory.
@@ -507,32 +501,17 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         updated = dict(cls._lazy_init_instance_deferrals(run))
         run.plans.update(updated)
-        roots: dict[Path, frozenset[str]] = {}
-        composed: frozenset[tuple[str, str]] | None = None
-        python = FlextInfraUtilitiesPythonModel
+        parts = (
+            cls._lazy_init_facade_composed(run)
+            - cls._lazy_init_facade_roots(run).keys()
+        )
         for package_dir, plan in tuple(run.plans.items()):
-            heavy = roots.get(plan.context.pkg_dir)
-            if heavy is None:
-                heavy = cls._lazy_init_deferred_imports(run, plan.context.pkg_dir)
-                roots[plan.context.pkg_dir] = heavy
-            if not heavy:
-                continue
-            if composed is None:
-                composed = cls._lazy_init_import_reached(
-                    run, cls._lazy_init_facade_composed(run), heavy
-                )
-            deferred: dict[str, Sequence[str]] = {}
-            for name, (module, attr) in sorted(plan.lazy_map.items()):
-                facts = python.python_model_module(run.model, module)
-                if (
-                    facts is not None
-                    and attr in facts.classes
-                    and facts.runtime_imports & heavy
-                    and (module, attr) in composed
-                ):
-                    deferred[name] = cls._lazy_init_class_members(
-                        run, (plan.context, plan.lazy_map), (module, attr)
-                    )
+            scope = (plan.context, plan.lazy_map)
+            deferred = {
+                name: cls._lazy_init_class_members(run, scope, owner)
+                for name, owner in sorted(plan.lazy_map.items())
+                if owner in parts
+            }
             if deferred:
                 updated[package_dir] = plan.model_copy(
                     update={"deferred_members": deferred}
@@ -543,13 +522,18 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_facade_roots(
         cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
     ) -> Mapping[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
-        """Return the facade class of each root-namespace module with its package plan.
+        """Return the family facade class of each root-namespace module and its plan.
+
+        Only the namespace families (``c``, ``t``, ``p``, ``m``, ``u``, derived
+        from the core package) compose namespace mixins; another facade, such
+        as a service base, composes model mixins that stay real.
 
         Returns:
             The planned root package of each ``(module, class)`` facade pair.
 
         """
         python = FlextInfraUtilitiesPythonModel
+        families = FlextInfraUtilitiesCodegenNamespace.facade_families()
         roots: dict[tuple[str, str], FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
         for plan in run.plans.values():
             if not cls.lazy_init_is_facade_root(plan.context):
@@ -567,58 +551,9 @@ class FlextInfraUtilitiesLazyInitPlan:
                         run.model, module.file_path, module.module_name
                     )
                 )
-                if owner is not None:
+                if owner is not None and owner[0] in families:
                     roots[module.module_name, owner[1]] = plan
         return roots
-
-    @classmethod
-    def _lazy_init_import_reached(
-        cls,
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        composed: frozenset[tuple[str, str]],
-        heavy: frozenset[str],
-    ) -> frozenset[tuple[str, str]]:
-        """Return every in-package class importing the facades reaches.
-
-        The modules of the composed classes load with the facades unless the
-        class itself imports a declared distribution, and every class such a
-        loaded module binds by a runtime import is reached too; a reached
-        class of a light module loads that module in turn.
-
-        Returns:
-            The composed classes and every class their loaded modules import.
-
-        """
-        python = FlextInfraUtilitiesPythonModel
-        plans = {plan.context.current_pkg: plan for plan in run.plans.values()}
-
-        def light(module: str) -> bool:
-            facts = python.python_model_module(run.model, module)
-            return facts is not None and not (facts.runtime_imports & heavy)
-
-        reached = set(composed)
-        pending = sorted({module for module, _ in composed if light(module)})
-        loaded = set(pending)
-        while pending:
-            module = pending.pop()
-            facts = python.python_model_module(run.model, module)
-            plan = plans.get(module.rpartition(".")[0])
-            if facts is None or plan is None:
-                continue
-            for name in sorted(facts.runtime_names):
-                target = cls._lazy_init_base_target(
-                    run, (plan.context, plan.lazy_map), facts.imports.get(name)
-                )
-                if target is None:
-                    continue
-                target_facts = python.python_model_module(run.model, target[0])
-                if target_facts is None or target[1] not in target_facts.classes:
-                    continue
-                reached.add(target)
-                if target[0] not in loaded and light(target[0]):
-                    loaded.add(target[0])
-                    pending.append(target[0])
-        return frozenset(reached)
 
     @classmethod
     def _lazy_init_facade_composed(
@@ -666,58 +601,6 @@ class FlextInfraUtilitiesLazyInitPlan:
                 if target is not None:
                     pending.append((*target, plan))
         return frozenset(composed)
-
-    @staticmethod
-    def _lazy_init_deferred_imports(
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun, pkg_dir: Path
-    ) -> frozenset[str]:
-        """Return the import packages of the owning project's deferred distributions.
-
-        The owning project declares the distributions; its own environment
-        reports the import packages each one installs, once per project.
-
-        Returns:
-            The import packages, empty when the project declares none.
-
-        Raises:
-            ValueError: If a declared distribution installs no import package.
-
-        """
-        project_root = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
-            run.model, pkg_dir
-        )
-        known = run.deferred_imports.get(project_root)
-        if known is not None:
-            return known
-        artifacts = FlextInfraUtilitiesProjectManagedArtifacts
-        declared = frozenset(
-            artifacts
-            .load_repository_declaration_inputs(
-                project_root, source_project=run.model.source_project
-            )
-            .unwrap()
-            .spec.deferred_distributions
-        )
-        roots: frozenset[str] = frozenset()
-        if declared:
-            distributions = FlextInfraUtilitiesCodemodRulesDistributions
-            environment = distributions.codemod_target_environment(
-                project_root
-            ).unwrap()
-            installed = {
-                module: frozenset(map(canonicalize_name, providers)) & declared
-                for module, providers in environment.package_distributions.items()
-            }
-            missing = declared.difference(*installed.values())
-            if missing:
-                msg = (
-                    f"deferred distributions install no import package in "
-                    f"{project_root}: {sorted(missing)}"
-                )
-                raise ValueError(msg)
-            roots = frozenset(module for module, owners in installed.items() if owners)
-        run.deferred_imports[project_root] = roots
-        return roots
 
     @classmethod
     def _lazy_init_class_members(

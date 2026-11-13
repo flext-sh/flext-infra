@@ -42,7 +42,7 @@ from flext_infra._utilities._rope.runtime_types import (
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodNative,
     FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodNativeCascade,

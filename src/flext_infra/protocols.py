@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 from flext_cli import FlextCliProtocols
 
@@ -110,10 +110,11 @@ class FlextInfraProtocols(FlextCliProtocols):
     ):
         """Aggregate source-derived protocol contracts."""
 
-        NativeStorageSlot: TypeAlias = FlextInfraProtocolsCheck.NativeStorageSlot
-        RopeWildcard: TypeAlias = FlextInfraProtocolsRopeRuntime.RopeWildcard
-        ModScanCounts: TypeAlias = FlextInfraProtocolsScan.ModScanCounts
-        ModOccurrenceReport: TypeAlias = FlextInfraProtocolsScan.ModOccurrenceReport
+        if TYPE_CHECKING:
+            NativeStorageSlot: TypeAlias = FlextInfraProtocolsCheck.NativeStorageSlot
+            RopeWildcard: TypeAlias = FlextInfraProtocolsRopeRuntime.RopeWildcard
+            ModScanCounts: TypeAlias = FlextInfraProtocolsScan.ModScanCounts
+            ModOccurrenceReport: TypeAlias = FlextInfraProtocolsScan.ModOccurrenceReport
 
 
 p = FlextInfraProtocols

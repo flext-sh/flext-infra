@@ -1,9 +1,9 @@
-"""Importing a flext-infra facade loads none of its declared distributions.
+"""Importing a flext-infra facade loads none of its part modules.
 
-The project declares its costly third-party distributions once
-(``Infra.codegen.repository.deferred_distributions``). Each facade letter is
-imported in a fresh interpreter, so the observation is the real import closure
-and never this test process, which already holds every library.
+Every class a family facade composes by MRO is a lazy stand-in (ADR-018), so
+a fresh import of one letter loads only the facade module and the package
+initializers. Each letter is imported in a fresh interpreter, so the
+observation is the real import closure and never this test process.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -12,50 +12,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from importlib.metadata import packages_distributions
 from pathlib import Path
-
-from packaging.utils import canonicalize_name
 
 from tests import c, tm, u
 
 
-class TestsFlextInfraFacadesDeferDeclaredDistributions:
-    """The facades publish library members that load on first use."""
-
-    @staticmethod
-    def _declared_import_packages() -> tuple[str, ...]:
-        """Map the project's declared distributions to their import packages.
-
-        Returns:
-            The import package names the declared distributions install.
-
-        """
-        root = Path(__file__).resolve().parents[2]
-        document = tm.ok(
-            u.Cli.yaml_safe_load(
-                root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
-            )
-        )
-        infra = u.Cli.toml_mapping_child(document, "Infra") or {}
-        codegen = u.Cli.toml_mapping_child(infra, "codegen") or {}
-        repository = u.Cli.toml_mapping_child(codegen, "repository") or {}
-        names = repository.get("deferred_distributions")
-        tm.that(isinstance(names, list), truth=True)
-        declared = frozenset(
-            canonicalize_name(str(name))
-            for name in (names if isinstance(names, list) else ())
-        )
-        tm.that(len(declared) > 0, truth=True)
-        packages = tuple(
-            sorted(
-                package
-                for package, providers in packages_distributions().items()
-                if declared & frozenset(map(canonicalize_name, providers))
-            )
-        )
-        tm.that(len(packages) >= len(declared), truth=True)
-        return packages
+class TestsFlextInfraFacadesDeferEveryPart:
+    """The facades publish part members that load on first use."""
 
     @classmethod
     def _run(cls, script: str) -> str:
@@ -70,13 +33,14 @@ class TestsFlextInfraFacadesDeferDeclaredDistributions:
         return result.stdout
 
     @c.Tests.MARK.parametrize("letter", ["c", "t", "p", "m", "u"])
-    def test_facade_letter_loads_no_declared_distribution(self, letter: str) -> None:
-        """A fresh import of one facade letter imports no declared library."""
-        packages = self._declared_import_packages()
+    def test_facade_letter_loads_no_part_module(self, letter: str) -> None:
+        """A fresh import of one facade letter loads no module of a family."""
         script = (
             "import sys\n"
             f"from flext_infra import {letter}\n"
-            f"print(sorted(set({packages!r}) & set(sys.modules)))\n"
+            "print(sorted(name for name, module in sys.modules.items()\n"
+            "    if name.startswith('flext_infra._')\n"
+            "    and getattr(module, '__path__', None) is None))\n"
         )
         tm.that(self._run(script), eq="[]\n")
 
