@@ -383,7 +383,17 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if rule_plan is None:
             msg = "native syntax planning requires its original scan rule plan"
             raise ValueError(msg)
-        plans = self._native_plans(root, rule_plan, inputs, seed)
+        native_ids = frozenset(
+            rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
+        )
+        # Native rules and the Ruff stage rewrite file by file: a source with
+        # no native finding and no seeded update has nothing to converge.
+        scope = frozenset(seed.updates) | {
+            root / entry.file
+            for entry in current.entries
+            if entry.rule_id in native_ids
+        }
+        plans = self._native_plans(root, rule_plan, inputs, seed, scope)
         start = (
             self._preview_ast_candidate(root, plans, inputs, seed)
             if seed.updates or plans
@@ -391,9 +401,6 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         )
         if start.failure:
             return r[p.Infra.StageSourcePlan].from_failure(start)
-        native_ids = frozenset(
-            rule.id for rule in rule_plan.rules if u.Infra.codemod_native_eligible(rule)
-        )
         after_ast = FlextInfraModGateEngine.authored(start.value)
         if self.focused:
             # A focused transaction must not compose unrelated catalog
@@ -425,6 +432,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         rule_plan: p.Infra.CodemodRulePlan,
         inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
+        scope: frozenset[Path],
     ) -> dict[Path, p.Infra.SemanticFilePlan]:
         """Bind every native-cascade rewrite to its captured input state.
 
@@ -441,7 +449,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 "desired_mode": (inputs[path].mode),
                 "changes": ((c.Infra.MOD_NATIVE_CASCADE_CHANGE,)),
             })
-            for path, content in self._native_cascade(rule_plan, inputs, seed).items()
+            for path, content in self._native_cascade(
+                rule_plan, inputs, seed, scope
+            ).items()
         }
 
     def _syntax_waves(
@@ -579,11 +589,13 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         rule_plan: p.Infra.CodemodRulePlan,
         inputs: Mapping[Path, p.Cli.AtomicFileState],
         seed: p.Infra.StageSourcePlan,
+        scope: frozenset[Path],
     ) -> Mapping[Path, bytes]:
-        """Run each governed project's native cascade over the seeded sources.
+        """Run each governed project's native cascade over the scoped sources.
 
         Each source belongs to its deepest governed project; the plan carries
-        that project's generated provider beside its catalogs.
+        that project's generated provider beside its catalogs. Only the
+        sources in ``scope`` (a native finding or a seeded update) enter it.
 
         Returns:
             Absolute path to new bytes for every source a cascade changed.
@@ -592,7 +604,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         current: dict[Path, bytes] = {
             path: state.content
             for path, state in inputs.items()
-            if state.content is not None and path.suffix == c.Infra.EXT_PYTHON
+            if path in scope
+            and state.content is not None
+            and path.suffix == c.Infra.EXT_PYTHON
         }
         for path, source in seed.updates.items():
             if source is None:
