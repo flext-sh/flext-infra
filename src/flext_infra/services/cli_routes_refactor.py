@@ -200,6 +200,9 @@ class FlextInfraRefactorRoutes:
             or request.rule_ids
             or ((request.rule_id,) if request.rule_id else ())
         )
+        preflight = infra.mod_selection(request)
+        if preflight.failure:
+            return r[t.Cli.ResultValue].from_failure(preflight)
         writes = not (request.check or request.dry_run_mode)
         repeat = config.Infra.gate_admission.repeat
         if writes:
@@ -209,7 +212,7 @@ class FlextInfraRefactorRoutes:
                 repeat.mod_selection if selection else repeat.mod_full,
                 selection,
             )
-        with u.Infra.gate_admitted_budget(
+        with u.Infra.gate_admitted(
             c.Infra.GATE_ADMISSION_MODIFICATION,
             request.repository_root,
             config.Infra.gate_admission.modification,

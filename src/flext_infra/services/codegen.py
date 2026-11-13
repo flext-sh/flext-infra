@@ -84,7 +84,7 @@ class FlextInfraCodegenHandlers:
 
         """
         requested = request.root.expanduser().resolve()
-        with u.Infra.gate_admitted_budget(
+        with u.Infra.gate_admitted(
             c.Infra.GATE_ADMISSION_GENERATION,
             requested,
             config.Infra.gate_admission.generation,

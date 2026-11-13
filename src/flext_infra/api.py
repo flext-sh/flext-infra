@@ -261,16 +261,38 @@ class FlextInfra(
         ).build_report()
 
     @staticmethod
-    def _mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
-        """Accept a full-catalog run or a selection of laws the catalog derives.
+    def mod_selection(request: p.Infra.ModCommand) -> p.Result[bool]:
+        """Validate a mod selection before the route queues (ADR-032 fail early).
 
         A selector-free run converges the complete active catalog (ADR-028
-        Decision 18 item 2); a selection only narrows the focus.
+        Decision 18 item 2); a selection only narrows the focus. Laws must be
+        claimed by an active owner; authored rule IDs must exist in a governed
+        repository's authored catalog. Generated rule IDs (``<shape>--...``)
+        are proved by the exact plan selection.
 
         Returns:
-            Acceptance, the catalog failure, or the unknown-law failure.
+            Acceptance, the catalog failure, or the unknown-selection failure.
 
         """
+        if request.rule_ids is not None:
+            root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
+            authored: set[str] = set()
+            for project in u.Infra.governed_project_roots(root):
+                planned = u.Infra.codemod_compose_rule_plan(project, {project: None})
+                if planned.failure:
+                    return r[bool].from_failure(planned)
+                authored.update(rule.id for rule in planned.value.rules)
+            unknown = sorted(
+                rule_id
+                for rule_id in request.rule_ids
+                if rule_id not in authored
+                and c.Infra.CODEMOD_GENERATED_ID_SEPARATOR not in rule_id
+            )
+            if unknown:
+                return r[bool].fail(
+                    "unknown codemod rule IDs: " + ", ".join(unknown),
+                    error_code=c.ErrorCode.NOT_FOUND,
+                )
         if request.laws is None:
             return r[bool].ok(value=True)
         catalog = u.Infra.enforcement_catalog()
@@ -405,21 +427,19 @@ class FlextInfra(
         nothing, so every selected repository runs and one aggregated failure
         names each failing repository. A selector-free run converges the
         complete active catalog; laws, rule IDs, one rule or a rename plan
-        only narrow the focus (ADR-028 Decision 18 item 2). Laws are
-        validated once against the derived enforcement catalog; each
-        repository expands them into its own planned rules.
+        only narrow the focus (ADR-028 Decision 18 item 2). The CLI route
+        validates the selection once through ``mod_selection`` before it
+        queues; each repository expands laws into its own planned rules.
 
         Returns:
-            The selection failure, the first repository failure for a mutating
+            The project resolution failure, the first repository failure for a mutating
             run, the aggregated failure naming every failing repository for
             check/dry-run, or acceptance of every selected run.
 
         """
         root = u.Infra.resolve_repository_root_or_cwd(request.repository_root)
         governed = frozenset(u.Infra.governed_project_roots(root))
-        selected = self._mod_selection(request).flat_map(
-            lambda _: self._mod_selected_roots(root, request, governed)
-        )
+        selected = self._mod_selected_roots(root, request, governed)
         if selected.failure:
             return r[t.Cli.ResultValue].from_failure(selected)
         selected_roots = selected.value
