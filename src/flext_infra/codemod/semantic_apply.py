@@ -1643,8 +1643,13 @@ class FlextInfraCodemodSemanticApply(
         root: Path,
         seed: p.Infra.SemanticSourcePlan,
         sources: Mapping[Path, str],
+        *,
+        model_envelope_checker: t.Port[p.Infra.ModelEnvelopeChecker] | None = None,
     ) -> Generator[p.Infra.RopeWorkspaceDsl]:
         """Elect a bounded native graph over the live tree and planned bytes.
+
+        The caller's composition-owned model-envelope checker rides on the graph,
+        because contract normalization admits envelopes through it.
 
         Yields:
             The existing workspace DSL with target selection separate from read scope.
@@ -1730,6 +1735,7 @@ class FlextInfraCodemodSemanticApply(
                 ),
                 snapshot=snapshot,
             ) as workspace:
+                workspace.model_envelope_checker = model_envelope_checker
                 yield workspace
 
     @staticmethod
