@@ -369,10 +369,13 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
-7. The verb that installs new versions removes the ones it superseded: native
-   `mise prune --yes` deletes versions no tracked configuration still selects,
-   and `uv cache prune` deletes dangling cache entries, both under the tools'
-   own in-use rules.
+7. The verb that installs new packages removes the cache entries it
+   superseded: native `uv cache prune` deletes dangling entries under uv's own
+   in-use rule. Mise tool versions are not pruned by a project verb:
+   `mise prune` decides from every configuration tracked on the host, and it
+   reads a tracked file without that file's own `[vars]` (jdx/mise#15101), so
+   from another project's directory it either fails on a foreign configuration
+   or counts that project's tools as unused.
 
 Declared prerequisites of stage 6, open until they close:
 
@@ -2746,7 +2749,7 @@ candidate remains invalid. Both routes use the same marker scanner.
 `workspace check`, `workspace tests`, `workspace tests-full`, `codegen generate` and
 `refactor mod` admit themselves into one per-host FIFO queue before any work
 ([ADR-032](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/032-host-wide-heavy-gate-admission.md)).
-`u.Infra.gate_admitted` and `u.Infra.gate_admitted_budget` own the queue; the routes
+`u.Infra.gate_admitted` owns the queue; the routes
 enter it in their own process, and the generated Make recipes carry no `timeout`
 prefix for these verbs.
 
@@ -2761,14 +2764,17 @@ prefix for these verbs.
   keep the deadline of the pytest runner.
 - A waiter prints its position and the current holders on stderr each time they
   change, and is admitted only when a slot is free and no live ticket is ahead of it.
-- The budget is armed after admission, so time in the queue never counts. At
-  `budget_seconds - grace_seconds` the route receives SIGTERM, the process supervisor
-  stops its owned children, and the route exits 124. A route still alive at
-  `budget_seconds` is killed.
+- The budget is armed after admission through the flext-cli process deadline
+  (`u.Cli.process_deadline_scope`), so time in the queue never counts. At
+  `budget_seconds - grace_seconds` the kernel one-shot timer fires, the process
+  supervisor stops the owned children, and the route exits 124. Tests keep the
+  deadline of their native pytest runner and arm no route budget.
 - A gate started inside an admitted gate inherits `FLEXT_GATE_ADMISSION_TICKET` and
   neither queues nor arms a second budget.
 - A dead holder frees its slot when the next waiter looks at the queue. A holder
-  whose heartbeat is older than the TTL is reclaimed and receives SIGTERM.
+  whose heartbeat is older than the TTL is reclaimed; when its heartbeat finds the
+  ticket gone, it expires its own deadline (`u.Cli.process_deadline_expire`) and
+  stops the same way.
 - A full-weight run that succeeded in a checkout is refused before it queues while
   its repeat window in `Infra.gate_admission.repeat` is open: a complete `make check`,
   `make tests-full`, `make mod` without `LAWS`/`RULES`, and `make mod` repeating the
