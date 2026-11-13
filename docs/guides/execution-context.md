@@ -3723,9 +3723,8 @@ joint candidate planning, publication, catalog and import-cycle verdicts). A
 focused selection whose scan has no actionable finding, claims no semantic phase
 and declares no rename has nothing to plan: it goes straight to the fixed-point
 verdict, and an empty publication is never rescanned. The runtime import graph
-keeps one persistent fact per module under `settings.work_dir`, bound to the
-module's exact source digest, its name and the deriving code; only modules whose
-bytes changed are parsed again. The generated-rule rendering cache digests the
+is read from the run's Rope model and kept in memory for that run only; no
+persistent fact store backs it. The generated-rule rendering cache digests the
 project's own sources together with its FLEXT dependencies, so a source edit
 renders the generated rules again.
 
