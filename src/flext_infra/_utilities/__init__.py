@@ -5016,7 +5016,6 @@ install_lazy_exports(
             "mypy_cache_lock",
             "environment_cache_identity",
             "ruff_cache_directory",
-            "project_cache_directory",
             "external_cache_directory",
             "mypy_limited_command",
             "mypy_runner_timeout",

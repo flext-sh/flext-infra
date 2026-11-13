@@ -4096,7 +4096,9 @@ local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
 one warm cache across every checkout, linked worktree and `.venv` of a repository
 (`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
 inside it and Python implementation and version, never by a checkout or
-virtualenv path). The commit hook first provisions the checkout with `make setup`,
+virtualenv path). Ruff uses one shared external cache
+(`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
+package root inside it; FLEXT adds no namespace of its own. The commit hook first provisions the checkout with `make setup`,
 then passes `make.ci.pre_commit_value` to the check, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other

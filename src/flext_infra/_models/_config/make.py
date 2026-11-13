@@ -899,7 +899,9 @@ class FlextInfraModelsConfigMake(
         ]
         ruff_cache: Annotated[
             FlextInfraModelsConfigMake.RuffCacheSpec,
-            m.Field(description="External project-keyed native Ruff cache policy"),
+            m.Field(
+                description="Shared external Ruff cache; Ruff keys its own entries"
+            ),
         ]
 
     class MakeAdmissionOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
