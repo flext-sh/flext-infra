@@ -438,6 +438,56 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
 
     @classmethod
+    def _lazy_init_instance_deferrals(
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
+    ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
+        """Defer each declared configuration root in every initializer exporting it.
+
+        The owning project declares the roots whose validation is costly; the
+        initializer publishes each as a stand-in built on first attribute read,
+        so importing the package validates no configuration.
+
+        Returns:
+            Each plan that gained deferred roots, by package directory.
+
+        Raises:
+            ValueError: If a declared root is exported by no initializer of its
+                project.
+
+        """
+        updated: dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        declared: dict[Path, tuple[str, ...]] = {}
+        exported: dict[Path, set[str]] = {}
+        for package_dir, plan in run.plans.items():
+            root = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
+            if root not in declared:
+                declared[root] = (
+                    FlextInfraUtilitiesProjectManagedArtifacts
+                    .load_repository_declaration_inputs(
+                        root, source_project=run.model.source_project
+                    )
+                    .unwrap()
+                    .spec.deferred_instances
+                )
+            names = tuple(name for name in declared[root] if name in plan.lazy_map)
+            exported.setdefault(root, set()).update(names)
+            if names:
+                updated[package_dir] = plan.model_copy(
+                    update={"deferred_instances": names}
+                )
+        missing = {
+            root: sorted(set(names) - exported[root])
+            for root, names in declared.items()
+            if set(names) - exported[root]
+        }
+        if missing:
+            msg = f"deferred instances are exported by no initializer: {missing}"
+            raise ValueError(msg)
+        return updated
+
+    @classmethod
     def _lazy_init_deferrals(
         cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
     ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
@@ -448,13 +498,15 @@ class FlextInfraUtilitiesLazyInitPlan:
         reach would load its heavy module, so it gets a stand-in. Selection
         waits until every package is planned, because both reaches resolve
         through the packages that publish them. Every other class export of a
-        heavy module stays a plain lazy export.
+        heavy module stays a plain lazy export. Declared configuration roots
+        are deferred first, so the class selection reads those plans.
 
         Returns:
             Each plan that gained stand-ins, by package directory.
 
         """
-        updated: dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        updated = dict(cls._lazy_init_instance_deferrals(run))
+        run.plans.update(updated)
         roots: dict[Path, frozenset[str]] = {}
         composed: frozenset[tuple[str, str]] | None = None
         python = FlextInfraUtilitiesPythonModel
