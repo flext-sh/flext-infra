@@ -414,9 +414,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
             what=c.Infra.CodegenConformSurface.EDITOR,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         governed = next(
             item
             for item in config.Infra.codegen.managed_file_specs
