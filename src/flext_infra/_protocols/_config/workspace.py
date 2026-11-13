@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
     from flext_cli import p
 
-    from flext_infra import t
+    from flext_infra import c, t
     from flext_infra._protocols._config import (
         FlextInfraProtocolsConfigBeads,
         FlextInfraProtocolsConfigMake,
@@ -323,6 +323,13 @@ class FlextInfraProtocolsConfigWorkspace:
             self,
         ) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbGroupSpec, ...]:
             """Own ordered `make help` sections."""
+            ...
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Structural member projected from the owning model.
+
+            Elect the governance kind: a project without a package is a consumer.
+            """
             ...
 
     @runtime_checkable

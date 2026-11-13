@@ -279,7 +279,8 @@ Infra:
       # dependabot pip cooldown (security updates bypass it natively). A
       # repository adds its own cases through its config/codegen.yaml overlay
       # (mappings merge). Remove an entry once its fix ages past the cooldown.
-      dependency_cooldown_exceptions: {}
+      dependency_cooldown_exceptions:
+        soupsieve: GHSA-mmhr-3c5m-f64f
       # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
       # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
       # here, so `copy` duplicated about 1 GB per environment, twice per upg,
@@ -299,6 +300,7 @@ Infra:
       # the key from all projections.
       uv_constraint_dependencies:
       - pillow>=13.0.0
+      - soupsieve>=4.0.0
       - certifi>=2026.10.19
       - setuptools>=84.1.0
       - virtualenv>=21.14.13
@@ -957,6 +959,8 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
+      - name: lock
+        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
       - name: gen
         arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
@@ -2379,6 +2383,7 @@ Infra:
             - tool.pytest.ini_options
             - tool.uv.environments
             - tool.uv.link-mode
+            - tool.uv.package
             - tool.uv.constraint-dependencies
             - tool.uv.override-dependencies
             - tool.uv.workspace.members
@@ -2443,108 +2448,133 @@ Infra:
             policy: full
         "src/{package_name}/api.py":
           source: base/src/api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/cli.py":
           source: base/src/cli.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/__main__.py":
           source: base/src/__main__.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/base.py":
           source: base/src/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/models.py":
           source: base/src/models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/typings.py":
           source: base/src/typings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/protocols.py":
           source: base/src/protocols.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/constants.py":
           source: base/src/constants.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/utilities.py":
           source: base/src/utilities.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{config}.py":
           source: base/src/_config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{settings}.py":
           source: base/src/_settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/py.typed":
           source: base/src/py.typed.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Domain behavior is generated in services, not base.py.
         "src/{package_name}/services/ping.py":
           source: base/src/services/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Runtime defaults belong to the declaring import-package resource.
         "src/{package_name}/config/{ns}.yaml":
           source: base/src/config/ns.yaml.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         "src/{package_name}/_models/ping.py":
           source: base/src/_models/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/config.py":
           source: base/src/_models/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/config_models.py":
           source: base/src/config_models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/settings.py":
           source: base/src/_models/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/config.py":
           source: base/src/_constants/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/settings.py":
           source: base/src/_constants/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/config.py":
           source: base/src/_protocols/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/ping.py":
           source: base/src/_protocols/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/settings.py":
           source: base/src/_protocols/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_typings/base.py":
           source: base/src/_typings/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # New projects receive a real runtime test; subsequent generation preserves
         # this authored file because only managed_file_specs are reprojected.
         tests/test_api.py:
           source: base/tests/test_api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Every repository's pytest bootstrap is one projection of this template:

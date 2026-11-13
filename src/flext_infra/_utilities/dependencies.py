@@ -433,7 +433,7 @@ class FlextInfraUtilitiesDependencies(
             *scaffold.dev,
             *(
                 scaffold.required_flext_dev
-                if kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+                if kind in c.Infra.TOOLCHAIN_GOVERNED_KINDS
                 else ()
             ),
         )

@@ -284,6 +284,15 @@ class FlextInfraModelsConfigTemplates:
             bool,
             m.Field(description="Whether the projection requires Beads participation"),
         ] = False
+        requires_package: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Whether the seed belongs to the repository's own import "
+                    "package; a consumer repository owns none"
+                ),
+            ),
+        ] = False
         bootstrap_distribution: Annotated[
             t.NonEmptyStr | None,
             m.Field(

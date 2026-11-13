@@ -867,6 +867,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         with FlextInfraCodemodSemanticApply.planning_workspace(
             root, seed, self._candidate_sources(seed.candidate)
         ) as graph:
+            # Contract normalization admits model envelopes through the
+            # composition-owned checker, which the planning graph must carry.
+            graph.model_envelope_checker = self.rope.model_envelope_checker
             prepared = self._prepare_phase_seed(
                 root,
                 current,

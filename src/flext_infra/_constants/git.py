@@ -142,6 +142,12 @@ class FlextInfraConstantsGit:
     GIT_REV_PARSE_ABSOLUTE_PATHS: ClassVar[str] = "--path-format=absolute"
     "``git rev-parse`` option that prints the path queries following it as absolute."
 
+    GIT_PROJECTION_ATTRIBUTES: ClassVar[Mapping[str, str]] = MappingProxyType({
+        "merge": "unset",
+        "linguist-generated": "set",
+    })
+    "``git check-attr`` values ``.gitattributes`` gives a regenerated full projection."
+
     # --- Lane hygiene audit (stashes, merged branches, orphan worktrees) ---
 
     @unique

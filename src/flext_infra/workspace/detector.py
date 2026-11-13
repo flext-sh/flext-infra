@@ -275,6 +275,10 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
+        values["kind"] = declaration.governing_kind(observed.kind)
+        if values["kind"] is c.Infra.ProjectKind.CONSUMER:
+            # A consumer owns no package, whatever the metadata shows.
+            values["package"] = False
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
@@ -449,7 +453,7 @@ class FlextInfraWorkspaceDetector(
         )
         if provenance.failure:
             return result_type.from_failure(provenance)
-        fresh = cls._require_new_scaffold(repository_root)
+        fresh = cls._require_new_scaffold(repository_root, project.value)
         if fresh.failure:
             return result_type.from_failure(fresh)
         return project
@@ -529,8 +533,13 @@ class FlextInfraWorkspaceDetector(
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _require_new_scaffold(repository_root: Path) -> p.Result[bool]:
+    def _require_new_scaffold(
+        repository_root: Path, project: p.Infra.ProjectSpec
+    ) -> p.Result[bool]:
         """Require a tree with no manifest history and no authored Python sources.
+
+        A consumer owns no package: its authored tests are the content it exists
+        for, so only a ``src`` tree contradicts its declaration.
 
         Returns:
             Success for a new scaffold, or the typed rejection.
@@ -556,8 +565,14 @@ class FlextInfraWorkspaceDetector(
             return r[bool].fail(
                 f"new-project source inventory has no Git owner: {repository_root}",
             )
+        guarded = repository_root.resolve()
+        if project.package_name is None:
+            guarded /= c.Infra.DEFAULT_SRC_DIR
         authored = tuple(
-            path for path in sources if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            path
+            for path in sources
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and path.is_relative_to(guarded)
         )
         if authored:
             return r[bool].fail(

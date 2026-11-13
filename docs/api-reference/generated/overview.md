@@ -9,7 +9,7 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
-- Version: `0.12.1`
+- Version: `0.12.0`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation, and
   workspace management
 - Doc summary: Flext Infra package.
@@ -28,7 +28,7 @@
   `FlextInfraConstants`, `FlextInfraFlextInfraConfig`, `FlextInfraFlextInfraConform`,
   `FlextInfraFlextInfraCprofile`, `FlextInfraFlextInfraPreview`,
   `FlextInfraFlextInfraPytest`, `FlextInfraGitLanes` (+15 more)
-- Exported module shortcuts: _none_
+- Exported module shortcuts: *none*
 - Generated module pages: `21`
 
 ## Next Pages

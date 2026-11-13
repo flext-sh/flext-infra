@@ -151,7 +151,9 @@ class TestsFlextInfraUtilitiesCodegen(
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         project = declared.project
         package_name = (
-            metadata.package_name if project is None else project.package_name
+            metadata.package_name
+            if project is None
+            else tm.not_none(project.package_name)
         )
         class_stem = metadata.class_stem if project is None else project.class_stem
         namespace = (

@@ -183,7 +183,7 @@ no compatibility method is needed during a declaration cutover.
 ## Workspace Snapshot, Globs, and Transaction Acceptance
 
 Workspace model and acceptance (operator order 2026-10-25, tracker memory
-`operator-order-2026-10-25-rope-owns-model-refactors`; [ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 17):
+`operator-order-2026-10-25-rope-owns-model-refactors`; [ADR-028](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) Decision 17):
 
 - `apply-renames` runs on the run's workspace snapshot
   (`u.Infra.workspace_snapshot`), which binds exactly one analysis engine project;
