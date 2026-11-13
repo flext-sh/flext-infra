@@ -139,15 +139,15 @@ rules:
     - distribution: flext-oracle-wms
       module: flext_oracle_wms.config_models
   pattern: '${adapter}(${contract})'
-  goal: 'u.type_adapter(t.TypeForm(${contract}))'
+  goal: 'u.type_adapter(TypeForm(${contract}))'
   arguments:
     adapter: name=pydantic.TypeAdapter
   imports:
     u: from flext_core import u
-    t.TypeForm: from typing_extensions import TypeForm
+    TypeForm: from typing_extensions import TypeForm
   bindings:
     u.type_adapter: pydantic.TypeAdapter
-    t.TypeForm: typing_extensions.TypeForm
+    TypeForm: typing_extensions.TypeForm
 - id: pydantic-required-field-metadata
   phase: contract-normalization
   scope: *pydantic_config_models_scope
@@ -250,10 +250,10 @@ rules:
   goal: '${name}: ${annotated}[${contract}, ${metadata}] = ${field}(default_factory=u.empty(contract_factory=lambda: TypeForm(${annotated}[${contract}, ${metadata}])))'
   imports: &empty_imports
     u: from flext_core import u
-    t.TypeForm: from typing_extensions import TypeForm
+    TypeForm: from typing_extensions import TypeForm
   bindings: &empty_bindings
     u.empty: flext_core._utilities.pydantic.FlextUtilitiesPydantic.empty
-    t.TypeForm: typing_extensions.TypeForm
+    TypeForm: typing_extensions.TypeForm
   arguments:
     annotated: name=typing.Annotated
     collection: &empty_collections
