@@ -32,14 +32,6 @@ class FlextInfraModelsConfigStatic:
             m.Field(description="Ordered production source directory names"),
         ]
 
-    class MutationLockSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Concurrent-writer reconciliation for one mutation scope."""
-
-        reconcile_attempts: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Replans after another writer changed a destination"),
-        ]
-
     class RouteBudgetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Wall-time budget one heavy route arms after it is admitted."""
 
