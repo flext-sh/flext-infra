@@ -293,8 +293,16 @@ class FlextInfraUtilitiesDocsRender:
         return declared or default
 
     @staticmethod
-    def docs_directive_page(title: str, dotted_path: str, *, width: int) -> str:
+    def docs_directive_page(
+        title: str,
+        dotted_path: str,
+        *,
+        width: int,
+        documentation_language: t.Infra.DocumentationLanguage = "en",
+    ) -> str:
         """Return a mkdocstrings page for a module path.
+
+        An empty path renders the page of an unpackaged project: no directive.
 
         Returns:
             A mkdocstrings page for a module path.
@@ -303,7 +311,10 @@ class FlextInfraUtilitiesDocsRender:
         return FlextInfraUtilitiesDocsRender._render_template(
             c.Infra.TEMPLATE_DOCS_DIRECTIVE_PAGE,
             m.Infra.DocsDirectivePageContext(
-                line_width=width, title=title, dotted_path=dotted_path
+                documentation_language=documentation_language,
+                line_width=width,
+                title=title,
+                dotted_path=dotted_path,
             ),
         )
 

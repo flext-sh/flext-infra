@@ -273,6 +273,10 @@ class FlextInfraConstantsDocs:
             "_No public modules discovered._",
             "_Nenhum módulo público encontrado._",
         )
+        NO_PUBLIC_API = (
+            "_No package here: the API is the consumed distribution's._",
+            "_Sem pacote próprio: a API é a da distribuição consumida._",
+        )
         DARK_MODE = ("Switch to dark mode", "Alternar para o modo escuro")
         LIGHT_MODE = ("Switch to light mode", "Alternar para o modo claro")
         ROOT_SITE_DESCRIPTION = (
