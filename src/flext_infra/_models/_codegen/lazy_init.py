@@ -221,6 +221,13 @@ class FlextInfraModelsCodegenLazyInit:
                 "declared deferred distribution; it loads on first member use."
             ),
         )
+        deferred_instances: Sequence[str] = m.Field(
+            default_factory=tuple,
+            description=(
+                "Declared configuration-root exports published as stand-ins "
+                "that build the root on first attribute read."
+            ),
+        )
 
     class RopeModuleIndexEntry(m.ContractModel):
         """Generic Rope-backed index entry for one Python module resource."""
@@ -481,6 +488,13 @@ class FlextInfraModelsCodegenLazyInit:
             description=(
                 "Line-prefixed ``deferred_members`` installer argument; empty "
                 "when the package defers no export."
+            ),
+        )
+        deferred_instances_call: str = m.Field(
+            default_factory=str,
+            description=(
+                "``defer_lazy_instances`` call bound after the installer; empty "
+                "when the package defers no configuration root."
             ),
         )
 
