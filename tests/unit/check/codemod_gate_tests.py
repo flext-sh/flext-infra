@@ -110,17 +110,22 @@ class TestsFlextInfraCodemodGate:
         tm.that(execution.issues, empty=True)
         tm.that(execution.raw_output, has="exit=0")
 
+    @c.Tests.MARK.parametrize("truncated", [False, True])
     def test_timed_out_scan_reports_every_published_finding(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
         session_runtime: p.Tests.SessionRuntime,
+        *,
+        truncated: bool,
     ) -> None:
         """Measure the JSON a stopped scan published instead of counting it once.
 
         A scanner that reaches its deadline after emitting its final
         ``--json=compact`` array must report each published rule/file and the
         true policy-finding total, while the native timeout stays blocking.
+        A killed scanner can also leave the array without its closing bracket;
+        the complete records before the cut are still the native measurement.
         """
         project = self._project(tmp_path, installed_dependency_path, session_runtime)
         diagnostics = tuple(
@@ -179,7 +184,7 @@ class TestsFlextInfraCodemodGate:
                     })
                 )
 
-        _TimedOutScan.published = payload
+        _TimedOutScan.published = payload.rstrip()[:-1] if truncated else payload
         execution = FlextInfraGatesCodemod(tmp_path, runner=_TimedOutScan).check(
             project, u.Tests.gate_context(tmp_path)
         )

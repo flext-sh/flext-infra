@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import tempfile
 import time
 from collections import Counter
@@ -337,13 +338,48 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         payload = scan.stdout.strip()
         if not payload:
             return ()
-        try:
-            report = m.Infra.AstGrepReport.model_validate_json(payload)
-        except m.ValidationError:
-            return ()
         return tuple(
-            finding for finding in report.root if finding.rule_id in ruleset.rule_ids
+            finding
+            for finding in FlextInfraGatesCodemod._published_diagnostics(payload)
+            if finding.rule_id in ruleset.rule_ids
         )
+
+    @staticmethod
+    def _published_diagnostics(
+        payload: str,
+    ) -> Sequence[p.Infra.AstGrepDiagnostic]:
+        """Read every complete finding record a stopped scan published.
+
+        ``--json=compact`` emits one array, so a killed scanner can leave it
+        without its closing bracket. A complete array validates whole; a
+        truncated one yields every complete object before the cut.
+
+        Returns:
+            The validated native diagnostics the payload published.
+
+        """
+        try:
+            return m.Infra.AstGrepReport.model_validate_json(payload).root
+        except m.ValidationError:
+            if not payload.startswith(c.Infra.AST_GREP_JSON_ARRAY_OPEN):
+                return ()
+        decoder = json.JSONDecoder()
+        published: list[p.Infra.AstGrepDiagnostic] = []
+        cursor = 1
+        while cursor < len(payload):
+            while cursor < len(payload) and payload[cursor] in ", \t\r\n":
+                cursor += 1
+            if cursor >= len(payload) or payload[cursor] == "]":
+                break
+            start = cursor
+            try:
+                _, cursor = decoder.raw_decode(payload, cursor)
+                published.append(
+                    m.Infra.AstGrepDiagnostic.model_validate_json(payload[start:cursor])
+                )
+            except ValueError:
+                break
+        return tuple(published)
 
     @staticmethod
     def _validated_scan_report(
