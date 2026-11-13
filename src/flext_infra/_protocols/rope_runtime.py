@@ -78,6 +78,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Proto
             fscommands: FlextInfraProtocolsRopeRuntime.RopeProjectFiles | None,
             ropefolder: str | None,
             external_project: FlextInfraProtocolsRopeRuntime.RopeResourceOwner | None,
+            config_files: bool,
             **prefs: bool | Sequence[str],
         ) -> None: ...
 
