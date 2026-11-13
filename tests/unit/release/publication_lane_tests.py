@@ -16,6 +16,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from tests import c, m, p, r, tm, u
 
 if TYPE_CHECKING:
@@ -79,16 +81,16 @@ class TestsFlextInfraReleasePublicationLane:
 
     @staticmethod
     def _produce(
-        repo: Path,
+        target: Path,
         content: str = "produced\n",
     ) -> Callable[[], p.Result[bool]]:
-        """Return a producing step that writes one file.
+        """Return a producing step that writes ``target``.
 
         Returns:
-            A producing step that writes one file.
+            A producing step that writes ``target``.
 
         """
-        return lambda: u.Cli.files_write_text(repo / "produced.txt", content)
+        return lambda: u.Cli.files_write_text(target, content)
 
     def _published(self, tmp_path: Path) -> str:
         """Return the lane branch the bare origin carries, or an empty string.
@@ -115,7 +117,9 @@ class TestsFlextInfraReleasePublicationLane:
         produced path, pushes the lane and opens its pull request.
         """
         with self._lane(tmp_path) as (repo, request, gh_log):
-            result = u.Infra.git_publish_lane(request, self._produce(repo))
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
 
             tm.ok(result, eq=True)
             tm.that(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"), eq=True)
@@ -128,12 +132,74 @@ class TestsFlextInfraReleasePublicationLane:
             )
             tm.that(gh_log.exists(), eq=True)
 
+    def test_body_beyond_github_ceiling_fails_before_publication(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A body GitHub would reject fails loud: nothing pushed, no ``gh`` call."""
+        with self._lane(tmp_path) as (repo, request, gh_log):
+            request.body_file.write_text(
+                "x" * (c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS + 1),
+                encoding="utf-8",
+            )
+
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
+
+            tm.fail(result)
+            tm.that(result.error or "", has=str(request.body_file))
+            tm.that(self._published(tmp_path), eq="")
+            tm.fail(gh_log.exists())
+
+    @pytest.mark.parametrize(
+        ("open_numbers", "expected"),
+        [
+            ("", "pr create"),
+            ("7\n", "pr edit 7"),
+            ("7\n8\n", None),
+        ],
+    )
+    def test_only_an_open_pull_request_is_refreshed(
+        self,
+        tmp_path: Path,
+        open_numbers: str,
+        expected: str | None,
+    ) -> None:
+        """The lane edits its one open pull request, else opens a new one.
+
+        A merged or closed pull request on the same head (the previous
+        release) is never edited; several open ones fail loud.
+        """
+        with self._lane(tmp_path) as (repo, request, gh_log):
+            (gh_log.parent / f"{c.Infra.GH}.open").write_text(
+                open_numbers, encoding="utf-8"
+            )
+
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
+
+            calls = gh_log.read_text(encoding="utf-8")
+            tm.that(calls, has="--state open")
+            if expected is None:
+                tm.fail(result)
+                tm.that(result.error or "", has="several open pull requests")
+                tm.that(calls, lacks="pr edit")
+                tm.that(calls, lacks="pr create")
+            else:
+                tm.ok(result, eq=True)
+                tm.that(calls, has=expected)
+                tm.that(calls, lacks="pr view")
+
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
         with self._lane(tmp_path) as (repo, request, gh_log):
             (repo / "stray.txt").write_text("wip\n", encoding="utf-8")
 
-            tm.fail(u.Infra.git_publish_lane(request, self._produce(repo)))
+            tm.fail(
+                u.Infra.git_publish_lane(request, self._produce(repo / "produced.txt"))
+            )
             tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
             tm.fail(gh_log.exists())
 
@@ -142,7 +208,9 @@ class TestsFlextInfraReleasePublicationLane:
         with self._lane(tmp_path) as (repo, request, _):
             tm.ok(u.Tests.git_run(repo, "switch", "--create", "elsewhere"))
 
-            result = u.Infra.git_publish_lane(request, self._produce(repo))
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
 
             tm.fail(result)
             tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
@@ -187,3 +255,54 @@ class TestsFlextInfraReleasePublicationLane:
                 eq=original_head,
             )
             tm.fail(gh_log.exists())
+
+    def _diverge(self, repo: Path, request: p.Infra.GitLaneRequest, name: str) -> None:
+        """Publish ``name`` on the lane, then advance ``name`` on the base."""
+        tm.ok(
+            u.Infra.git_publish_lane(request, self._produce(repo / name, "lane\n")),
+            eq=True,
+        )
+        u.Tests.git_run(repo, "switch", request.base)
+        (repo / name).write_text("base\n", encoding="utf-8")
+        u.Tests.commit_git_changes(repo, "advance the base")
+
+    @pytest.mark.parametrize(
+        ("attributes", "published"),
+        [("-merge linguist-generated", True), ("", False)],
+    )
+    def test_rerun_regenerates_only_conflicting_projections(
+        self,
+        tmp_path: Path,
+        attributes: str,
+        *,
+        published: bool,
+    ) -> None:
+        """A projection conflict takes the base and is regenerated; others fail.
+
+        ``.gitattributes`` declares a full projection ``-merge
+        linguist-generated``: the rerun concludes the merge with the base's
+        rendering and commits what the producer regenerates from it. A
+        conflict on any other path keeps the merge state and fails loud.
+        """
+        name = "projection.md"
+        with self._lane(tmp_path) as (repo, request, _):
+            (repo / ".gitattributes").write_text(
+                f"/{name} {attributes}\n", encoding="utf-8"
+            )
+            (repo / name).write_text("seed\n", encoding="utf-8")
+            u.Tests.commit_git_changes(repo, "declare the projection")
+            self._diverge(repo, request, name)
+
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / name, "regenerated\n")
+            )
+
+            if published:
+                tm.ok(result, eq=True)
+                tm.that(
+                    u.Tests.git_capture(repo, "show", f"{self.LANE}:{name}"),
+                    eq="regenerated",
+                )
+            else:
+                tm.fail(result)
+                tm.that(result.error or "", has=name)

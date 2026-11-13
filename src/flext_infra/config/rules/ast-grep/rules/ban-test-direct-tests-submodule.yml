@@ -22,8 +22,12 @@ ignores:
   - "**/tests/*/__init__.py"
   - "**/tests/_*/**"
   - "**/tests/fixtures/**"
-  # The generated utilities facade composes the `tests._utilities` family; its
-  # imports are the projection's output, mirroring `test-facade-rewire`.
+  # The generated facades compose their `tests._<family>` stems; their imports
+  # are the projection's output, mirroring `test-facade-rewire`.
+  - "**/tests/constants.py"
+  - "**/tests/models.py"
+  - "**/tests/protocols.py"
+  - "**/tests/typings.py"
   - "**/tests/utilities.py"
 rule:
   any:

@@ -197,13 +197,15 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         *,
         target_ref: str,
     ) -> p.Result[tuple[p.Infra.GitSourceReferenceMigration, ...]]:
-        """Elect one Git-ref migration per internal requirement off the line.
+        """Elect one Git-ref migration per internal Git source off the line.
 
-        Every declared internal requirement whose direct Git source names a
-        reference other than ``target_ref`` (the declared integration line)
+        Every declared internal requirement, and every native
+        ``[tool.uv.sources]`` Git entry of an internal distribution, whose
+        reference differs from ``target_ref`` (the declared integration line)
         yields the existing source-reference migration scoped to its own source
         directory and current reference; the manifest keeps the URL, the lock
-        alone pins the exact commit.
+        alone pins the exact commit. A native source shadows its requirement's
+        URL, so a source left off the line is a misalignment of its own.
 
         Returns:
             The distinct migrations aligning internal references, or the first
@@ -214,10 +216,20 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         lines = cls.document_requirement_lines(document)
         if lines.failure:
             return result_type.from_failure(lines)
+        sources = u.Cli.toml_mapping_path(
+            u.Cli.toml_as_mapping(document) or {}, (c.Infra.TOOL, "uv", "sources")
+        )
+        native = tuple(
+            f"{name} @ {c.Infra.GIT_URL_SCHEME_PREFIX}{source['git']}@{source[key]}"
+            for name, source in (sources or {}).items()
+            if isinstance(source, Mapping) and isinstance(source.get("git"), str)
+            for key in ("branch", "rev", "tag")
+            if isinstance(source.get(key), str)
+        )
         migrations: MutableMapping[
             tuple[str, str], p.Infra.GitSourceReferenceMigration
         ] = {}
-        for line in lines.value:
+        for line in (*lines.value, *native):
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
             )
@@ -298,15 +310,27 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     def _sync_uv_constraints(
         uv: t.Cli.TomlTable, resolution: p.Infra.UvResolutionSpec
     ) -> None:
-        """Publish declared constraints and native linking, without cooldown copies."""
+        """Publish declared constraints, native linking and the rolling cooldown.
+
+        uv applies ``exclude-newer`` to registry distributions only; git, URL
+        and path sources (FLEXT members and forks) resolve at their pinned
+        revisions. The ISO 8601 span keeps the window rolling: uv records it in
+        ``uv.lock`` and never treats the lock as stale because time passed.
+        """
         constraints = tuple(resolution.constraint_dependencies)
         if constraints:
             u.Cli.toml_sync_string_list(uv, "constraint-dependencies", constraints)
         else:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         u.Cli.toml_sync_value(uv, "link-mode", resolution.link_mode)
-        u.Cli.toml_remove_key_if_present(uv, "exclude-newer")
-        u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        u.Cli.toml_sync_value(uv, "exclude-newer", f"P{resolution.cooldown_days}D")
+        if resolution.cooldown_exceptions:
+            exempt: dict[str, t.JsonValue] = dict.fromkeys(
+                resolution.cooldown_exceptions, False
+            )
+            u.Cli.toml_sync_value(uv, "exclude-newer-package", exempt)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
 
     @staticmethod
     def _sync_uv_environments(

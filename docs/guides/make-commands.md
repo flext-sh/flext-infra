@@ -183,6 +183,15 @@ handlers and workflow references; no duplicate `repository.extra_verbs` rows are
 required. Each handler invokes the existing release CLI directly.
 `PR_TITLE` supplies the optional plan title and `INDEX=Y` the explicit
 package-index publication request; `release-version` takes no argument.
+`release-version` lists the pull requests merged into the integration line since the
+previous tag (first-parent merges, never merges inside a lane) in
+`docs/releases/<tag>.md`, which the release commit carries and the GitHub release
+publishes. The release pull request body is that file's summary, so it stays inside
+GitHub's body limit; the lane refuses any longer body before pushing.
+The GitHub release body is that file verbatim, as reviewed in the release pull
+request, so notes over GitHub's release body limit fail when `release-version`
+generates them, before the pull request or tag exists, and again before
+`release-publish` creates the draft.
 Generation, checks and local builds never perform tagging or publication.
 The same full-owned catalog declaration authorizes a workflow update or its
 retirement when its profile or capability no longer applies. Both operations
@@ -241,8 +250,8 @@ to repair authored declarations.
 | `fix`        | Apply declared repairs to authored inputs through their canonical owners.                                                                                                                                   | —                         |
 | `fmt`        | Format authored content through the configured formatters.                                                                                                                                                  | —                         |
 | `check`      | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                         | CHECK_PHASE               |
-| `tests`      | Run native incremental tests, or every test in FILE once.                                                                                                                                                   | FILE                      |
-| `tests-full` | Run the complete selected inventory once without Testmon; FILE selects one file.                                                                                                                            | FILE                      |
+| `tests`      | Run native incremental tests through the persistent Testmon selection.                                                                                                                                      | —                         |
+| `tests-full` | Run the complete selected inventory once without Testmon.                                                                                                                                                   | —                         |
 | `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
 | `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
 | `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
@@ -609,11 +618,6 @@ Root `make check` checks the root and governed members through the existing
 The checker reads managed operation targets from `.gitmodules`; ordinary gate
 execution does not require Beads ledger configuration or a Git origin.
 
-For a bounded test diagnosis, `make tests-full FILE=tests/path.py` runs that
-complete file through the same native runner, credential selection and receipts.
-The CLI equivalent is `flext-infra workspace tests-full --repository-root <root>
---file tests/path.py`. The file selects the invoked repository; the final
-`make tests-full` acceptance still covers its complete configured inventory.
 The approved campaign uses selector-free public verbs from the workspace root.
 Missing governed-member coverage is corrected at the existing dispatcher
 owner, not through a member Makefile or a new selector.
@@ -737,7 +741,12 @@ never automatically retired. Checked-out refs are not exempted from that proof.
 
 Failures include the full exact refs, stash OIDs, and registered worktrees. A branch
 already contained in integration is residue; integration refs and symbolic remote
-HEAD are protected. Unknown ownership is inconclusive, never inferred from commit
+HEAD are protected. Active lanes are never residue: the branch checked out in the
+checking checkout (so a new branch cut from the integration tip can take its first
+commit) and any branch checked out in a worktree with staged, modified or untracked
+content, together with its configured-remote tracking ref, are derived from Git's
+own HEAD, worktree registry and per-worktree status. Only a merged ref with no WIP
+anywhere remains reported. Unknown ownership is inconclusive, never inferred from commit
 age or directory mtime. Open PRs and fresh, explicitly owned Bead lanes are allowed.
 Inactive owned work requires correlated tracker, ref activity, and worktree evidence;
 the activity window comes from the global governance SSOT configured by

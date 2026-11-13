@@ -20,6 +20,7 @@ from flext_infra._typings import (
     FlextInfraTypesAdapters,
     FlextInfraTypesBase,
     FlextInfraTypesCollections,
+    FlextInfraTypesCst,
     FlextInfraTypesPytest,
     FlextInfraTypesRope,
 )
@@ -43,6 +44,7 @@ class FlextInfraTypes(FlextCliTypes):
         FlextInfraTypesAdapters,
         FlextInfraTypesBase,
         FlextInfraTypesCollections,
+        FlextInfraTypesCst,
         FlextInfraTypesPytest,
         FlextInfraTypesRope,
     ):

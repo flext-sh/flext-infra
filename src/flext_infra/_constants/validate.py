@@ -203,10 +203,6 @@ class FlextInfraConstantsSharedInfra:
     TIMEOUT_MEDIUM: ClassVar[int] = 120
     TIMEOUT_LONG: ClassVar[int] = 600
     TIMEOUT_CI: ClassVar[int] = 900
-    # Whole-workspace whole-program runs measured 2026-11-05: the umbrella
-    # pyright analyzed 4829 files in 744s wall clock, exceeding TIMEOUT_LONG,
-    # so its gate needs the next ladder rung with headroom.
-    TIMEOUT_UMBRELLA: ClassVar[int] = 1200
 
     # --- Path constants (was: class Paths) ---
     DEFAULT_SRC_DIR: ClassVar[str] = "src"

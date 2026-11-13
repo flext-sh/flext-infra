@@ -13,7 +13,7 @@
   - [Provider Election, Source Bindings, and Native Module Resolution](#provider-election-source-bindings-and-native-module-resolution)
   - [Recursive Component Composition and Holder Election](#recursive-component-composition-and-holder-election)
 - [Namespace migration](#namespace-migration)
-  - [Incremental Testmon and Primary Check Admission (ADR-029)](#incremental-testmon-and-primary-check-admission-adr-029)
+  - [Independent Native Checks and Testmon Execution (ADR-029)](#independent-native-checks-and-testmon-execution-adr-029)
 - [New projects](#new-projects)
 - [Environment activation](#environment-activation)
   - [Make Activation, Packaged Resources, and Hatch Wheel Packaging](#make-activation-packaged-resources-and-hatch-wheel-packaging)
@@ -118,7 +118,11 @@ Generated facade bases are narrowed through the native class predicate before
 class-name queries; unresolved or non-class generated bases retain their existing
 reprojection treatment, and authored binding failures remain explicit.
 Provider classification composes native types in every family and structural
-protocols only in the protocol family; other declarations publish nominally.
+protocols only in the protocol family. A module-level family class (a model
+declared beside its part class) fails generation with the part class it must
+move into: facades publish classes only through MRO composition, and a stale
+generated `Name = Name` publication retires with its import once the name is
+reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
 assuming every MRO entry exposes a class name and a non-null module.
 
@@ -188,9 +192,9 @@ For `flext-0029c` only, diagnosis, real runtime, refactoring and applicable gate
 use the **direct public `flext-infra` CLI**. Make integration comes **last**, after
 the native public path is proven. This overrides older Make-only instructions for
 this task, not the command policy for other projects or work. The
-[local FLEXT law](../../../.agents/skills/flext-law/SKILL.md#sources-generation-and-commands)
+[local FLEXT law](https://github.com/flext-sh/flext/blob/0.12.0-dev/.agents/skills/flext-law/SKILL.md#sources-generation-and-commands)
 records this bounded exception; [parent
-ADR-010](../../../docs/architecture/adr/010-unified-project-standardization-via-codegen.md#2-common-verb-surface-for-every-project)
+ADR-010](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/010-unified-project-standardization-via-codegen.md#2-common-verb-surface-for-every-project)
 retains the common lifecycle contract. Reuse existing public operations and their
 typed owners, not raw tools, private-module execution or a second dispatcher.
 
@@ -360,14 +364,24 @@ Declared prerequisites of stage 6, open until they close:
   that carries it is published and the consumer's `make upg` locks it.
 
 A project source that no longer imports still has every lock written and
-installed. Every setup and executor installation prepares an invocation-owned
-native relocatable environment under the runtime's existing ignored state
-directory. Matching creator identities do not permit synchronizing the serving
-environment: a sync can remove dependencies before their replacements are ready.
-Frozen installation, editable binding, its environment-owned receipt and real
-Python/console validation precede one guarded atomic publication under the native
-environment lock. The previous environment remains recoverable; cleanup never
-removes a displaced environment after publication, including an interrupted swap.
+installed. Setup first asks native uv whether the published environment already
+satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
+when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
+rewrites the editable receipt and applies the same Python/console verification
+as a publication, so a repeated setup costs a check, not a reinstall. Any other
+state, and every executor installation, prepares an invocation-owned native
+relocatable environment under the runtime's existing ignored state directory,
+installed with uv's clone link mode and native `--compile-bytecode`, so imports
+never recompile site-packages even when the host exports
+`PYTHONDONTWRITEBYTECODE`; a kept environment keeps the bytecode its last
+installation compiled. Matching creator identities do not permit
+synchronizing the serving environment: a sync can remove dependencies before
+their replacements are ready. Frozen installation, editable binding, its
+environment-owned receipt and real Python/console validation precede one atomic
+exchange with the published environment, guarded by its recorded identity: a
+concurrent publication fails the later setup loudly instead of being serialized
+by a private lock. The exchanged previous environment is then removed with its
+stage; an interrupted preparation removes only its own stage.
 Unsupported publication capabilities fail before installation effects. No sync
 targets a directory without its native environment marker or a Mise base
 interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
@@ -389,7 +403,7 @@ body replacement and parameter retirement, and replans the resulting source to
 prove convergence. A parameter already absent from the current application proves
 only convergence; it does not qualify the SDK's caller argument mapping.
 The [projector bootstrap dependency
-cut](../../../docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
+cut](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#projector-bootstrap-dependency-cut)
 owns cold import repair. Elect the same projector and original planning models
 before the aggregate they repair, retaining public package imports. The former
 defining-module workaround is superseded; generated initializers remain owned by
@@ -400,10 +414,10 @@ records the bootstrap source cursor, owners and unqualified command receipts
 under `flext-9t6gn`. Read the latest Bead updates before resuming; this contract
 does not attest that the CLI is repaired.
 
-[make-consolidation-handoff]: ../../../docs/ways-of-working/make-consolidation-handoff.md
+[make-consolidation-handoff]: https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/ways-of-working/make-consolidation-handoff.md
 
 The root has one native uv workspace and composes member locks per
-[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md).
+[ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md).
 Root CI checks out its declared submodules and installs that same composed workspace
 noneditable; `--no-editable` changes installation mode, not dependency origins.
 Independent checkouts and member CI retain their own native project contracts and
@@ -610,7 +624,7 @@ once; the second executes the complete applicable population once without
 Testmon, a preliminary incremental run or any cache read, lease or publication.
 The existing database remains untouched. The operator's latest 2026-10-28
 clarification is owned by
-[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
+[ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 Tests execute independently of quality checks; no green check receipt is a
 prerequisite. Both operations retain applicability, original failure and the
 same complete invocation deadline. Historical commands
@@ -692,7 +706,7 @@ An annotation-only global in that stub declares a value, not a type alias. It
 retains the constant owner; duplicate class/value declarations remain ambiguous.
 Project dependency inspection and semantic Python transformations must use the
 existing native project and its capabilities under
-[ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17).
+[ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-17).
 The owning `c/t/p/m/u` families provide configuration, vocabulary, aliases,
 protocols, DTOs and adapters; composition roots inject capability-named contracts
 into services instead of exposing library names. Preserve the same native model
@@ -927,8 +941,9 @@ generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
 only the fully composed candidate enters the physical runtime. Preparation and
 default staged checks consume that same group before its journal publishes. The
-existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
-target-only AST and semantic planning before that group's publication. Ordinary
+existing CLI `mod --rename-plan=<artifact>` composes the artifact with
+target-only AST and semantic planning before that group's publication; it writes
+unless `--check` or `--dry-run` is given, and accepts no `--apply` option. Ordinary
 `mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
 the same captured read scope without a manual rename catalog. The request root
 remains the syntax/declaration target; elected consumers are reference readers
@@ -1258,7 +1273,12 @@ gen/fix/fmt on the unchanged candidate, and report failed or unexecuted scopes.
 
 Security gates reuse the gate-base source discovery (`source_scan.roots`) and
 native runner. Explicit file targets and generated Python remain auditable;
-owner authorization does not grant a Bandit exemption. Gate diagnostics cross
+owner authorization does not grant a Bandit exemption. The only skipped Bandit
+tests are declared once in `Infra.tooling.tools.bandit.skips` of the tooling
+SSOT: B101 (assert is the tests idiom) and the B404/B603 axiom (operator
+decision 2026-11-12: list-form `subprocess` without a shell is the safe pattern,
+and the single process-execution owner must import it); B602 (`shell=True`)
+stays active. Gate diagnostics cross
 parser and aggregation boundaries through `p.Infra.Issue`; their JSON and SARIF
 schemas remain owned by the canonical Pydantic models. Schema metadata delegates
 to those models rather than duplicating them or reconstructing validated issues.
@@ -1299,7 +1319,7 @@ stay unchanged. `make mod` owns the semantic moves and consumer rewiring;
 `make gen` projects declarations and retires generated conformance witnesses.
 Candidate admission requires no separate model-to-protocol witness module.
 The accepted 2026-10-28 [model and service protocol
-projection](../../../docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
+projection](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#model-and-service-protocol-projection)
 contract owns the automatic first-party projection, extending the model-to-`p`
 restoration tracked by `flext-vjj1s.8`. Its complete native inventory and source
 module ownership determine coverage and destinations; a consumed-model filter is
@@ -1441,7 +1461,7 @@ Runtime-base regression cases share parameterized public discovery calls for
 known/unknown guard bindings and non-class rebinding; consolidation
 retains every successful identity and original failure boundary.
 Upstream import bindings follow
-[ADR-028](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)
+[ADR-028](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)
 Decision 10: preserve a used bare letter
 or a source-proven existing alias according to the declaration's header references.
 A later publication of the package's own letter does not alone require aliasing the
@@ -1706,7 +1726,7 @@ reconcile installed metadata through `make setup` before running its consumer te
 
 `make tests` uses the persistent Testmon owner's native incremental selection over
 the complete applicable population
-([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)).
+([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
 The 2026-10-26 operator order supersedes the forced complete-run behavior:
 unchanged tests are not rerun merely because the verb was invoked again. Selection
 and execution share one persistent database and aggregate deadline, with no second
@@ -1797,6 +1817,14 @@ the public Infra facade. It consumes explicit `NAME`, `KIND`, `OUTPUT_ROOT`,
 that does not exist yet; missing or invalid values fail the service's validation.
 Make transports their literal values through the environment, preserving spaces
 without evaluating the values as shell code.
+
+A new project depends at runtime on its declared `UPSTREAM`: the first render
+writes that upstream's distribution, named by its `scaffold.project.config_bases`
+dependency profile, into `[project].dependencies` after the repository's own
+`runtime_dependency_overlay`, and the FLEXT line pins it like every other FLEXT
+requirement. An upstream without a declared profile fails the render. Governance
+kind is then detected natively from that dependency; configuration never
+declares it.
 
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
@@ -2175,7 +2203,7 @@ duplicates dependency programs and exhausts memory in a large editable workspace
 Diagnostic severity and strict checking remain owned by `[tool.pyright]`.
 
 Analyzer environment ownership follows
-[ADR-003, Decision 5](../../../docs/architecture/adr/003-workspace-tooling-hub-distribution.md#5-analyzers-use-the-environment-owned-by-the-checkout-topology).
+[ADR-003, Decision 5](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/003-workspace-tooling-hub-distribution.md#5-analyzers-use-the-environment-owned-by-the-checkout-topology).
 The 2026-10-28 approved correction is tracked by `flext-itpd1.13.11`: derive
 Pyright's relative environment binding from checkout attachment, and bind the
 mypy editor command to the opened interpreter with nearest-configuration
@@ -2361,7 +2389,7 @@ generation, `make upg` and the locked-install checks.
 One `make upg` resolves the declared native project/workspace and tool manifests.
 Attached members delegate resolution to their elected workspace; standalone
 repositories own their own locks. Lock ownership is
-[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md)
+[ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md)
 (tracker memory `operator-ruling-2026-10-25-member-locks-uv-mise-upg-guard`), which
 supersedes the earlier same-day "only the root lock" decision: member `uv.lock` and
 `mise.lock` are kept and formed by each member's own declarations, the workspace
@@ -2401,8 +2429,19 @@ When declarations change, explicitly generate their projections, resolve their
 locks and install the frozen resolution through their respective verbs. A missing
 generation input fails its prerequisite instead of triggering corrective generation
 inside upgrade. The declared lock platforms and release cooldown remain owned by
-the typed toolchain. Consumer convergence and runtime acceptance are tracked
-separately in `algar-723.1`; this contract is not a publication receipt.
+the typed toolchain. The cooldown binds every resolver (operator decision
+2026-11-13): `codegen.toolchain.dependency_cooldown_days` renders the Mise
+`minimum_release_age`, every Dependabot cooldown and the relative `[tool.uv]`
+`exclude-newer` span that pyproject conformance projects into each project, so a
+plain `uv lock` honours it and `uv.lock` records the span rather than a date.
+uv applies the span to registry distributions only; FLEXT members and `-dc` forks
+resolve through git, URL or path sources at their pinned revisions. Registry
+packages that must resolve inside the window for a CVE or critical fix are declared
+once in `dependency_cooldown_exceptions` (package to advisory or reason), extended
+by a repository's own `config/codegen.yaml` overlay, and rendered as
+`exclude-newer-package` exemptions and Dependabot pip cooldown exclusions. Consumer
+convergence and runtime acceptance are tracked separately in `algar-723.1`; this
+contract is not a publication receipt.
 
 ### Development Groups, Typing Policy, and Git Requirement Lines
 
@@ -2976,7 +3015,7 @@ authorized owned-effect rollback. Existing journal mechanics below are
 implementation context, not proof of the accepted transaction target.
 Generated output must already satisfy STRICT at its template/renderer;
 post-render repair or formatting is not admission. The owner is
-[ADR-028 Decision 8](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8).
+[ADR-028 Decision 8](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md#decision-8).
 A planned deletion has no staged replacement, but its successful result still
 carries a journal receipt: absence belongs inside the typed receipt, never in
 `r.ok(None)`. Repeated unchanged generation must converge before publication.
@@ -3593,6 +3632,17 @@ come from `Infra.codegen.make.generation_profile_path`,
 not the caller's working directory. Disabled capture retains the direct CLI call
 and creates no profile. There is no common profiling verb or legacy alias.
 
+`make mod` reports every stage with its duration (rule planning, campaign seed,
+joint candidate planning, publication, catalog and import-cycle verdicts). A
+focused selection whose scan has no actionable finding, claims no semantic phase
+and declares no rename has nothing to plan: it goes straight to the fixed-point
+verdict, and an empty publication is never rescanned. The runtime import graph
+keeps one persistent fact per module under `settings.work_dir`, bound to the
+module's exact source digest, its name and the deriving code; only modules whose
+bytes changed are parsed again. The generated-rule rendering cache digests the
+project's own sources together with its FLEXT dependencies, so a source edit
+renders the generated rules again.
+
 Make transport capture starts after settings admission and transport imports; those
 startup costs and Make/environment preflight are outside its raw statistics. Child
 process waits are parent wall time, not child CPU or evidence of child hot functions.
@@ -3960,10 +4010,11 @@ local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
 one warm cache across every checkout, linked worktree and `.venv` of a repository
 (`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
 inside it and Python implementation and version, never by a checkout or
-virtualenv path). The commit hook
-passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
-(`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
-other validator. Staged Python files run the lint and format gates on those files; a
+virtualenv path). The commit hook first provisions the checkout with `make setup`,
+then passes `make.ci.pre_commit_value` to the check, which runs only the fast
+commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
+through the engine that setup provisioned; it runs no tests and no other
+validator. Staged Python files run the lint and format gates on those files; a
 staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
@@ -3990,7 +4041,7 @@ for being staged.
 CI setup reconciles the owned physical environment through locked, noneditable
 installation, including an existing venv. Root CI checks out declared members
 before installing the composed workspace lock per
-[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md);
+[ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md);
 member and standalone CI retain their own committed member lock and project contract.
 The CI token does not replace native source
 declarations or select a synthetic resolver. Only explicit upgrade resolves or
@@ -4054,7 +4105,7 @@ resolution and lock publication.
 ### Testmon/Toolchain Caching, SSH Gate Attestations, and Smells Enforcement
 
 The ordinary `tests` operation uses incremental Testmon selection
-([ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md)).
+([ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md)).
 The explicit `tests-full` operation executes the applicable suite once without
 Testmon, an incremental pre-run or database access. Marker applicability remains
 owned by the declared execution context; neither operation invents exclusions.
@@ -4064,37 +4115,27 @@ The explicit single-file operation runs incremental selection followed by comple
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-Actions restores only that project database. Keys separate project, operating system,
-architecture, Python runtime and branch; generation IDs remain immutable. Restore first
-prefers matching lock/config inputs, then earlier generations in the branch, then the
-PR base or repository default branch seed within GitHub's cache visibility rules.
-Testmon revalidates restored inputs rather than discarding history on every lock change.
-Branch pushes and same-origin PRs may save with a fresh completed-run
-path/digest/saveability receipt. Fork PRs and other events remain restore-only. The
-SQLite owner checkpoints and checks integrity before the runner releases its lease
-and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
-a completed failing test run may save without changing its failing status, including
-when a later step fails. Publication never depends on a branch-name allowlist.
+The SQLite owner checkpoints and checks integrity before the runner releases its
+lease.
 
-Toolchain caches retain a separate immutable generation for each Actions run and
-attempt. Restore prefers the current lock and manifest inputs, then an earlier
-OS/Python generation within GitHub's repository and ref visibility rules. Save
-consumes the restore action's primary key and remains eligible after a completed
-failure or warm restore. Branch pushes, explicit dispatch and same-origin PRs may
-request publication; fork requests and cancelled runs do not. The native cache
+Toolchain caches hold one immutable entry per lock state: the key is the OS,
+Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and
+`.mise.toml`, and only that exact key restores, so a lock change installs cold and
+never carries superseded installs forward. Save consumes the restore action's
+primary key, runs only on a miss, and remains eligible after a completed failure.
+Only branch pushes and explicit dispatch publish; every pull request restores only,
+because a PR-scoped entry is visible to no other ref and would duplicate the same
+lock state once per PR against the repository cache quota. The native cache
 action's effective access mode still governs whether upload occurs. A successful
-save step alone proves no generation was stored: acceptance requires the actual
-saved key or cache record, including when a reserve collision was reported.
-Each workflow declares whether the shared save fragment may emit PR payload
-accesses. Docs accepts push and dispatch only, so its save conditions contain no
-PR payload references. The dispatch-only matrix groups runs by workflow, event
-and ref without accessing a PR number.
+save step alone proves no entry was stored: acceptance requires the actual saved
+key or cache record, including when a reserve collision was reported. The
+dispatch-only matrix groups runs by workflow, event and ref without accessing a PR
+number.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also
 runs when no test workflow row is selected, preserving the check reports independently.
-Its allowlist includes structured check summaries, coverage and JUnit artifacts,
-original
+Its allowlist includes structured check summaries, original
 suite/selection/inventory process outcomes, selection manifests, run context and
 accounting, cache integrity decisions and Markdown reconciliation. Raw process and test
 logs remain outside that artifact. Generation publication receipts include the latest
@@ -4778,7 +4819,7 @@ the performance result without reducing scope or raising deadlines.
 
 **Approved facade-planner cutover, 2026-10-29; implementation and runtime proof
 pending.** [ADR-018's nested projection
-contract](../../../docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
+contract](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/018-generator-declarations.md#nested-facade-projection)
 requires a total rewrite of `codegen_facades.py` into a few declarative
 composition lines, extending the existing workspace DSL with facade planning.
 Reuse its native session, source bindings, queries and the existing utility
@@ -4894,10 +4935,10 @@ members retain their own generation pass while remaining native import providers
 Dependent child initializers and the root family facade belong to that same
 candidate before runtime acceptance.
 
-| Infra declaration                                                 | FLEXT architectural declaration                                                                                                   |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)                |
-| ADR backlink to this exact Infra section.                         | [ADR-028 bidirectional traceability](../../../docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
+| Infra declaration                                                 | FLEXT architectural declaration                                                                                                                                            |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| This subproject's Workspace snapshot and analysis engine section. | [ADR-028 Decision 17](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md)                |
+| ADR backlink to this exact Infra section.                         | [ADR-028 bidirectional traceability](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/028-facade-boundary-orchestrators-declarative-enforcement.md) |
 
 ### Single-Project Repository Snapshot and Memoized Facts (ADR-028)
 
@@ -4907,7 +4948,7 @@ observations do not attest fulfillment of that contract.
 
 The operator-approved 2026-10-28 STRICT campaign starts with the documentation
 and Bead alignment described in
-[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md#current-state-and-recovery-order).
+[ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md#current-state-and-recovery-order).
 `flext-brr3y` tracks the campaign; `flext-ir794`, `flext-jskve`, `flext-s9r3a`
 and `flext-1engx.15` keep their existing bounded responsibilities. A command that
 cannot import its implementation has executed no downstream gate. Only the
@@ -4929,7 +4970,7 @@ The approved rollout qualifies three peripheral pilots, one dbt, one tap and
 one target, before structural foundation rollout. Their identities and proof
 belong to the active plan and Beads, not a fixed project list in this guide.
 The completion and admission owner remains
-[ADR-029](../../../docs/architecture/adr/029-always-working-one-complete-cycle.md).
+[ADR-029](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/029-always-working-one-complete-cycle.md).
 
 Generation and modification run through one workspace organizer. It loops over the
 selected repositories in dependency order without worker pools; each repository
@@ -5134,7 +5175,7 @@ consumed MRO capability. Account for legitimate eager metadata separately from
 lazy bindings. A child package's exports never become an ancestor export cohort.
 The generated initializer's bootstrap must be usable before its target package
 is repaired; the Core specialization remains at
-[ADR-014](../../../docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md#core-lazy-bootstrap).
+[ADR-014](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/014-family-part-shape-rope-codemod-rules.md#core-lazy-bootstrap).
 This acceptance contract is not evidence of an implemented or integrated repair.
 
 Conformance binds source-planning capabilities through the existing Codegen domain
@@ -5367,15 +5408,15 @@ scan-target discovery of the semantic source closure are being reduced under epi
 
 ## Related Documentation
 
-- [Make Commands Guide](../../../docs/guides/make-commands.md)
-- [Codemod Rules Guide](../../../docs/guides/codemod-rules.md)
+- [Make Commands Guide](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/make-commands.md)
+- [Codemod Rules Guide](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/guides/codemod-rules.md)
 - [CSV Rename Campaigns](csv-campaigns.md)
 - [Repository Configuration and Local Overrides](local-config-overrides.md)
 - [Model-Class Boundary Migration](model-fields-migration.md)
 - [Git State Capture](git-state-capture.md)
 - [Plan Collection](plan-collection.md)
 - [Recovery Runbook](recovery.md)
-- [ADR Index](../../../docs/architecture/adr/README.md)
+- [ADR Index](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/README.md)
 
 ### Workspace settings type correction (2026-11-02)
 

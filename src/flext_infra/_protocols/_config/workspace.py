@@ -232,11 +232,6 @@ class FlextInfraProtocolsConfigWorkspace:
         """Structural data contract projected from the owning model."""
 
         @property
-        def kind(self) -> c.Infra.ProjectKind:
-            """Declared project profile kind."""
-            ...
-
-        @property
         def beads_enabled(self) -> bool:
             """Repository participates in the Beads contract."""
             ...
@@ -289,6 +284,15 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
+        def deferred_distributions(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Own costly third-party distributions: a lazy export whose module imports
+            one at module scope loads on first member use.
+            """
+            ...
+
+        @property
         def examples_module(self) -> t.NonEmptyStr | None:
             """Own explicit examples module."""
             ...
@@ -319,6 +323,13 @@ class FlextInfraProtocolsConfigWorkspace:
             self,
         ) -> tuple[FlextInfraProtocolsConfigMake.MakeVerbGroupSpec, ...]:
             """Own ordered `make help` sections."""
+            ...
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Structural member projected from the owning model.
+
+            Elect the governance kind: a project without a package is a consumer.
+            """
             ...
 
     @runtime_checkable

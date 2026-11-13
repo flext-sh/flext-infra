@@ -45,7 +45,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             authored_root,
         )
         for relative in roots:
-            directory = root / relative / project.package_name
+            directory = root / relative / tm.not_none(project.package_name)
             directory.mkdir(parents=True, exist_ok=True)
             (directory / "__init__.py").write_text("", encoding="utf-8")
         repository = u.Tests.repository_ref(project_name).model_copy(

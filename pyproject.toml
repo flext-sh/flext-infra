@@ -37,7 +37,7 @@ dependencies = [
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@41b960329bb0c189be872f24ebe81bbeabfe5a66",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@bc2b0450c2a05f955ad5eaa52e8571b17614c9a8",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -190,22 +190,7 @@ optional_dependencies_dev_groups = []
 [tool.mypy]
 allow_redefinition = true
 check_untyped_defs = true
-disable_error_code = [
-  "call-arg",
-  "prop-decorator",
-  "arg-type",
-  "assignment",
-  "attr-defined",
-  "has-type",
-  "list-item",
-  "misc",
-  "name-defined",
-  "no-any-return",
-  "override",
-  "unreachable",
-  "valid-type",
-  "var-annotated",
-]
+disable_error_code = ["call-arg", "prop-decorator"]
 exclude = "(?s:(?:.+/)?[^/]*\\.bak)\\Z|(?s:(?:.+/)?[^/]*\\.egg\\-info/.*)\\Z|(?s:(?:.+/)?[^/]*\\.orig)\\Z|(?s:(?:.+/)?[^/]*\\.rej)\\Z|(?s:(?:.+/)?[^/]*\\.swp)\\Z|(?s:(?:.+/)?\\.agents\\-sync\\-home/.*)\\Z|(?s:(?:.+/)?\\.agents/.*)\\Z|(?s:(?:.+/)?\\.archive/.*)\\Z|(?s:(?:.+/)?\\.beads/.*)\\Z|(?s:(?:.+/)?\\.benchmarks/.*)\\Z|(?s:(?:.+/)?\\.bkp/.*)\\Z|(?s:(?:.+/)?\\.cache/.*)\\Z|(?s:(?:.+/)?\\.claude/.*)\\Z|(?s:(?:.+/)?\\.codex/.*)\\Z|(?s:(?:.+/)?\\.cursor/.*)\\Z|(?s:(?:.+/)?\\.gemini/.*)\\Z|(?s:(?:.+/)?\\.git/.*)\\Z|(?s:(?:.+/)?\\.hypothesis/.*)\\Z|(?s:(?:.+/)?\\.kilo/.*)\\Z|(?s:(?:.+/)?\\.mypy_cache/.*)\\Z|(?s:(?:.+/)?\\.omo/.*)\\Z|(?s:(?:.+/)?\\.opencode/.*)\\Z|(?s:(?:.+/)?\\.pylance_cache/.*)\\Z|(?s:(?:.+/)?\\.pyrefly_cache/.*)\\Z|(?s:(?:.+/)?\\.pytest_cache/.*)\\Z|(?s:(?:.+/)?\\.reports/.*)\\Z|(?s:(?:.+/)?\\.ruff_cache/.*)\\Z|(?s:(?:.+/)?\\.serena/.*)\\Z|(?s:(?:.+/)?\\.snapshots/.*)\\Z|(?s:(?:.+/)?\\.test\\-tmp/.*)\\Z|(?s:(?:.+/)?\\.tmp/.*)\\Z|(?s:(?:.+/)?\\.tox/.*)\\Z|(?s:(?:.+/)?\\.venv\\.[^/]*/.*)\\Z|(?s:(?:.+/)?\\.venv/.*)\\Z|(?s:(?:.+/)?\\.vscode/.*)\\Z|(?s:(?:.+/)?\\.worktrees/.*)\\Z|(?s:(?:.+/)?__pycache__/.*)\\Z|(?s:(?:.+/)?__pyrefly_virtual__/.*)\\Z|(?s:(?:.+/)?_tmp_[^/]*/.*)\\Z|(?s:(?:.+/)?build/.*)\\Z|(?s:(?:.+/)?dist\\-packages/.*)\\Z|(?s:(?:.+/)?dist/.*)\\Z|(?s:(?:.+/)?htmlcov/.*)\\Z|(?s:(?:.+/)?incoming/.*)\\Z|(?s:(?:.+/)?legado/.*)\\Z|(?s:(?:.+/)?node_modules/.*)\\Z|(?s:(?:.+/)?reports/.*)\\Z|(?s:(?:.+/)?site\\-packages/.*)\\Z|(?s:(?:.+/)?site/.*)\\Z|(?s:(?:.+/)?target/.*)\\Z|(?s:(?:.+/)?tests/fixtures/.*)\\Z|(?s:(?:.+/)?venv/.*)\\Z|(?s:\\.github/agents/.*)\\Z|(?s:\\.github/hooks/.*)\\Z|(?s:\\.github/instructions/.*)\\Z|(?s:\\.github/skills/.*)\\Z"
 explicit_package_bases = false
 extra_checks = true
@@ -685,6 +670,7 @@ whitelines = 1
 [tool.uv]
 constraint-dependencies = [
   "pillow>=13.0.0",
+  "soupsieve>=4.0.0",
   "certifi>=2026.10.19",
   "setuptools>=84.1.0",
   "virtualenv>=21.14.13",
@@ -692,9 +678,10 @@ constraint-dependencies = [
   "uv>=0.13.4",
 ]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
+exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@41b960329bb0c189be872f24ebe81bbeabfe5a66",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@bc2b0450c2a05f955ad5eaa52e8571b17614c9a8",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
@@ -717,6 +704,9 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
+
+[tool.uv.exclude-newer-package]
+soupsieve = false
 
 [tool.interrogate]
 fail-under = 70

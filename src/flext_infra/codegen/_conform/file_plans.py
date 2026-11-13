@@ -92,8 +92,8 @@ class FlextInfraCodegenConformFilePlans(FlextInfraCodegenConformBootstrap):
         if captured.failure:
             return result_type.from_failure(captured)
         state, delta, legacy = captured.value
-        if delta.project is not None:
-            project = delta.project
+        project = delta.project
+        if project is not None and project.package_name is not None:
             selected = (
                 dependency_phases.FlextInfraEnsurePackagingPhase.resolve_data_paths
             )(

@@ -262,9 +262,7 @@ class TestsFlextInfraPortableBindingRewire:
         artifact, driver = tm.ok(
             codemod.FlextInfraCodemodSemanticApply.load_rename_artifact(
                 receiver,
-                m.Infra.ModCommand(
-                    repository_root=receiver, rename_plan=artifact_path
-                ),
+                m.Infra.ModCommand(repository_root=receiver, rename_plan=artifact_path),
             )
         )
         for repeated in (False, True):

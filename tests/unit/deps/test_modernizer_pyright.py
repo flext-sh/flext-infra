@@ -653,7 +653,7 @@ class TestsFlextInfraDepsModernizerPyright:
             pyproject=f"[project]\nname='{project_name}'\nversion='0.1.0'\n[tool.flext.docs]\npackage_name='{u.Tests.project_spec(project_name).package_name}'\n",
         )
         u.Tests.initialize_git_repo(project_dir)
-        package_name = u.Tests.project_spec(project_name).package_name
+        package_name = tm.not_none(u.Tests.project_spec(project_name).package_name)
         active_roots = (
             rules.source_dir,
             "docs",

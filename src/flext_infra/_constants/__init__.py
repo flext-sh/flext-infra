@@ -26,6 +26,7 @@ if TYPE_CHECKING:
         FlextInfraConstantsCodegenRenderNames,
     )
     from flext_infra._constants.config import FlextInfraConstantsConfig
+    from flext_infra._constants.cst_surface import FlextInfraConstantsCst
     from flext_infra._constants.deps import FlextInfraConstantsDeps
     from flext_infra._constants.docs import FlextInfraConstantsDocs
     from flext_infra._constants.git import FlextInfraConstantsGit
@@ -55,6 +56,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConstantsCodegenProject",
     "FlextInfraConstantsCodegenRenderNames",
     "FlextInfraConstantsConfig",
+    "FlextInfraConstantsCst",
     "FlextInfraConstantsDeps",
     "FlextInfraConstantsDocs",
     "FlextInfraConstantsGit",
@@ -85,6 +87,7 @@ install_lazy_exports(
         "FlextInfraConstantsCodegenProject": ".codegen_project",
         "FlextInfraConstantsCodegenRenderNames": ".codegen_render_names",
         "FlextInfraConstantsConfig": ".config",
+        "FlextInfraConstantsCst": ".cst_surface",
         "FlextInfraConstantsDeps": ".deps",
         "FlextInfraConstantsDocs": ".docs",
         "FlextInfraConstantsGit": ".git",
@@ -101,4 +104,12 @@ install_lazy_exports(
         "FlextInfraConstantsWorkspace": ".workspace",
     },
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraConstantsCst": (
+            "Cst",
+            "CST_IMPORT_TYPES",
+            "CST_DEFINITION_TYPES",
+        ),
+        "FlextInfraConstantsPytest": ("Pytest",),
+    },
 )

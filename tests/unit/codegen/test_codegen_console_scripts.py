@@ -32,9 +32,10 @@ class TestsFlextInfraCodegenConsoleScripts:
         tm.that(project, none=False)
         if project is None:
             return
+        package = tm.not_none(project.package_name)
         script = m.Infra.ConsoleScriptSpec(
-            name=f"{project.package_name.replace('_', '-')}-hook",
-            target=f"{project.package_name}.hook_client:HookClient.main",
+            name=f"{package.replace('_', '-')}-hook",
+            target=f"{package}.hook_client:HookClient.main",
         )
         declared = workspace.model_copy(
             update={

@@ -31,4 +31,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesMypySupervisor": ".supervisor",
     },
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraUtilitiesMypyProfile": ("run_profiled",),
+    },
 )

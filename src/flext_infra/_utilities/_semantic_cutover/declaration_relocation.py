@@ -23,10 +23,8 @@ from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,

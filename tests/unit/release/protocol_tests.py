@@ -617,10 +617,30 @@ class TestsFlextInfraReleaseProtocol:
         tm.ok(plan.releasable)
 
     def test_pull_request_titles_decide_the_bump(self, tmp_path: Path) -> None:
-        """The most significant Conventional title since the last tag wins."""
+        """The most significant Conventional title since the last tag wins.
+
+        Only first-parent merges into the integration line are pull requests:
+        a lane that adopts its base carries a merge of its own, which is never
+        a release entry.
+        """
         workspace = self._released_workspace(tmp_path)
+        base = u.Tests.git_capture(workspace, "branch", "--show-current").strip()
+        u.Tests.git_run(workspace, "switch", "--create", "lane/adopting")
+        (workspace / "LANE.md").write_text("lane\n", encoding="utf-8")
+        u.Tests.commit_git_changes(workspace, "work: lane")
+        u.Tests.git_run(workspace, "switch", base)
         u.Tests.merge_pull_request(workspace, "fix(core): patch level")
-        u.Tests.merge_pull_request(workspace, "feat(cli): minor level")
+        u.Tests.git_run(workspace, "switch", "lane/adopting")
+        u.Tests.git_run(workspace, "merge", "--no-ff", "-m", "merge: adopt base", base)
+        u.Tests.git_run(workspace, "switch", base)
+        u.Tests.git_run(
+            workspace,
+            "merge",
+            "--no-ff",
+            "-m",
+            "feat(cli): minor level",
+            "lane/adopting",
+        )
         u.Tests.merge_pull_request(workspace, "[WIP] merge origin/integration")
 
         result = u.Tests.run_release_main(workspace, "--phase", "plan")
@@ -630,7 +650,14 @@ class TestsFlextInfraReleaseProtocol:
         tm.that(plan.next, eq="0.2.0")
         tm.that(plan.bump, eq=c.Infra.VersionBump.MINOR)
         tm.that(plan.previous_tag, eq="v0.1.0")
-        tm.that(len(plan.merges), eq=3)
+        tm.that(
+            plan.merges,
+            eq=(
+                "[WIP] merge origin/integration",
+                "feat(cli): minor level",
+                "fix(core): patch level",
+            ),
+        )
 
     def test_breaking_marker_earns_a_major_bump(self, tmp_path: Path) -> None:
         """``!`` in a pull-request title is a breaking change."""

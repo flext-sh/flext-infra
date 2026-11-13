@@ -44,8 +44,8 @@ class FlextInfraConstantsDocs:
         PACKAGE_DOCSTRING = ("{package_name} package.", "Pacote {package_name}.")
         DESCRIPTION = ("Description", "Descrição")
         UNKNOWN = ("unknown", "desconhecida")
-        NOT_DECLARED = ("_not declared_", "_não declarado_")
-        NONE = ("_none_", "_nenhum_")
+        NOT_DECLARED = ("*not declared*", "*não declarado*")
+        NONE = ("*none*", "*nenhum*")
         MORE = ("more", "a mais")
         COLLECTION_RULES = ("Collection Rules", "Regras da coleção")
         COLLECTION_BODY = (
@@ -272,6 +272,10 @@ class FlextInfraConstantsDocs:
         NO_MODULES = (
             "_No public modules discovered._",
             "_Nenhum módulo público encontrado._",
+        )
+        NO_PUBLIC_API = (
+            "_No package here: the API is the consumed distribution's._",
+            "_Sem pacote próprio: a API é a da distribuição consumida._",
         )
         DARK_MODE = ("Switch to dark mode", "Alternar para o modo escuro")
         LIGHT_MODE = ("Switch to light mode", "Alternar para o modo claro")

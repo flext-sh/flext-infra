@@ -131,10 +131,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 continue
             missing = {
                 root / destination
-                for destination in u.Cli.dag_closure(
-                    codegen.templates.artifact_requirements,
+                for destination in codegen.templates.artifact_closure(
                     frozenset({entry.destination}),
-                ).unwrap()
+                )
             }.difference(paths)
             if missing:
                 return result_type.fail(
@@ -940,7 +939,8 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             return r[p.BaseModel].from_failure(resolved_branch)
         branch = resolved_branch.value
         # Forks and local projects never enter the cooldown: they are the
-        # requirements this project takes by direct git reference.
+        # requirements this project takes by direct git reference. Declared
+        # CVE or critical-fix exceptions leave it the same way as in uv.
         excluded = self.direct_sources(render_inputs)
         if excluded.failure:
             return r[p.BaseModel].from_failure(excluded)
@@ -985,7 +985,12 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 "dependency_cooldown_days": (
                     codegen.toolchain.dependency_cooldown_days
                 ),
-                "cooldown_excluded_dependencies": (excluded.value),
+                "cooldown_excluded_dependencies": tuple(
+                    sorted({
+                        *excluded.value,
+                        *codegen.toolchain.dependency_cooldown_exceptions,
+                    })
+                ),
                 "checkout_submodules": (
                     codegen.checkout_submodules_overrides.get(
                         dist,

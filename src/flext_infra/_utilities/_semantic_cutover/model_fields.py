@@ -11,6 +11,7 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
+from flext_infra._utilities import FlextInfraUtilitiesWorkspaceSnapshot
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodProject
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeModulePatch,
@@ -408,16 +409,21 @@ class FlextInfraUtilitiesSemanticCutoverModelFields(
             The resulting ``p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]``.
 
         """
-        models = cls._pydantic_model_classes(sources, source_project=source_project)
-        return cls._semantic_edits(
-            cls._editable_sources(sources),
-            lambda path, source: cls._rewrite_fields(
-                path,
-                source,
-                source_project=source_project,
-                models=models,
-            ),
-        )
+        # Earlier phases rewrote the working sources; the native inventory
+        # reads exactly those planned bytes.
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            source_project, sources
+        ):
+            models = cls._pydantic_model_classes(sources, source_project=source_project)
+            return cls._semantic_edits(
+                cls._editable_sources(sources),
+                lambda path, source: cls._rewrite_fields(
+                    path,
+                    source,
+                    source_project=source_project,
+                    models=models,
+                ),
+            )
 
     @classmethod
     def _rewrite_fields(

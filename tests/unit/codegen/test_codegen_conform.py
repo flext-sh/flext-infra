@@ -182,7 +182,7 @@ class TestsFlextInfraCodegenConform:
             mode=mode,
         )
         with u.Tests.raises(e.OperationError, match="declares a variable"):
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+            u.Tests.conform_plan_result(root, request)
         with u.Tests.raises(e.OperationError, match=r"custom\.mk"):
             (
                 infra.codegen_generate(request)
@@ -485,9 +485,7 @@ class TestsFlextInfraCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         editor_settings = u.Cli.JSON_MAPPING_ADAPTER.validate_json(
             settings_path.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -775,7 +773,7 @@ class TestsFlextInfraCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
+            u.Tests.conform_plan_result(root, request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files

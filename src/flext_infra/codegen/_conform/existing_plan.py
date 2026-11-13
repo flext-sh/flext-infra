@@ -167,7 +167,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.from_failure(derived)
             project = derived.value
         dist = metadata.value.project.name
-        if dist != repository.distribution:
+        # A consumer is named by its declaration: generation rewrites the name
+        # a former package left in the live metadata.
+        if (
+            dist != repository.distribution
+            and repository.kind is not c.Infra.ProjectKind.CONSUMER
+        ):
             return result_type.fail(
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}",
@@ -975,7 +980,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         result_type = r[str]
         dependencies = self._declared_dependency_facts(
-            root, project, manifest_source=original_source
+            root, project, profiles=(), manifest_source=original_source
         )
         if dependencies.failure:
             return result_type.from_failure(dependencies)
@@ -1235,25 +1240,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
-        graph = codegen.templates.artifact_requirements
-        ordered = u.Cli.dag_closure(graph, destinations).flat_map(
-            lambda closed: u.Cli.dag_order({name: graph[name] for name in closed})
-        )
-        if ordered.failure:
-            return result_type.from_failure(ordered)
+        closed = codegen.templates.artifact_closure(destinations)
         # A dependency whose template declares no entry for the running
         # profile is not part of this profile's contract (a workspace-only
         # bootstrap requirement never applies to a standalone member): the
         # branch election skips it instead of failing the closure.
-        ordered = ordered.map(
-            lambda names: tuple(
-                name
-                for name in names
-                if any(
-                    entry.destination == name and target.make_profile in entry.profiles
-                    for entry in codegen.templates.entries
-                    if entry.source is not None
-                )
+        ordered = tuple(
+            name
+            for name in codegen.templates.artifact_order
+            if name in closed
+            and any(
+                entry.destination == name and target.make_profile in entry.profiles
+                for entry in codegen.templates.entries
+                if entry.source is not None
             )
         )
         managed = u.Infra.snapshot_project_managed_artifacts(target.root)
@@ -1267,7 +1266,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             managed_artifacts=managed.value,
         )
         plans: list[p.Infra.CodegenFilePlan] = []
-        for destination in ordered.value:
+        for destination in ordered:
             planned = self._bootstrap_destination_plan(
                 render_inputs,
                 destination,
@@ -1549,10 +1548,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if (
             contract.destinations is not None
             and managed.path.as_posix()
-            not in u.Cli.dag_closure(
-                codegen.templates.artifact_requirements,
-                contract.destinations,
-            ).unwrap()
+            not in codegen.templates.artifact_closure(contract.destinations)
         ):
             return True
         return managed.path == Path(c.PYPROJECT_FILENAME) and not contract.pyproject

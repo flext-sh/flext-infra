@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import codegen, config, infra
+from flext_infra import config, infra
 from tests import c, m, tm, u
 from tests.unit.codegen import conform_support
 
@@ -145,15 +145,7 @@ class TestsFlextInfraRootArtifactOwnership:
         }
         before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
-        plan = tm.ok(
-            codegen.FlextInfraCodegenConform.Generate(
-                repository_root=root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root,
-                    request=request,
-                ),
-            ).plan(request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},
@@ -212,13 +204,5 @@ class TestsFlextInfraRootArtifactOwnership:
             (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
             request = m.Infra.CodegenConformRequest(root=root)
             tm.ok(
-                codegen.FlextInfraCodegenConform.Generate(
-                    repository_root=root,
-                    state=m.Infra.CodegenConformState(
-                        repository_root=root,
-                        request=request,
-                    ),
-                ).plan(
-                    request,
-                ),
+                u.Tests.conform_plan_result(root, request),
             )

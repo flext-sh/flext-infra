@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -63,6 +63,29 @@ class FlextInfraModelsWorkspaceSnapshot:
             frozenset[str], m.Field(description="Runtime bootstrap dependencies")
         ]
 
+    class ImportGraphModuleFacts(m.ContractModel):
+        """Runtime import facts of one module, bound to its exact source bytes."""
+
+        name: Annotated[str, m.Field(description="Dotted module name")]
+        digest: Annotated[
+            t.NonEmptyStr, m.Field(description="SHA-256 of the exact source bytes")
+        ]
+        imports: Annotated[
+            tuple[str, ...], m.Field(description="Module-level imported module paths")
+        ]
+        aliases: Annotated[
+            Mapping[str, str],
+            m.Field(description="Lazy export name to provider module"),
+        ]
+
+    class ImportGraphFacts(m.ContractModel):
+        """Per-module runtime import facts of one project, keyed by file path."""
+
+        modules: Annotated[
+            Mapping[str, FlextInfraModelsWorkspaceSnapshot.ImportGraphModuleFacts],
+            m.Field(description="Module facts keyed by resolved file path"),
+        ]
+
     class WorkspaceSnapshot(m.ContractModel):
         """The one Rope model of a workspace run and the facts derived from it.
 
@@ -96,7 +119,8 @@ class FlextInfraModelsWorkspaceSnapshot:
         )
         python_module_facts: t.Port[
             dict[
-                t.Infra.RopeNativeParsedModule,
+                # The engine's parsed module is only this cache's identity key.
+                Hashable,
                 p.Infra.PythonModuleFacts,
             ]
         ] = m.Field(

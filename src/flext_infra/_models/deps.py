@@ -596,8 +596,12 @@ class FlextInfraModelsDeps(
             m.Field(description="Distribution name of the project"),
         ]
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Importable package name of the project"),
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Importable package name of the project; absent without a package"
+                ),
+            ),
         ]
         path: Annotated[
             Path,

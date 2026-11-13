@@ -539,8 +539,13 @@ def mod_workspace_artifact(
 def mod_workspace(
     installed_dependency_path: Path,
     mod_workspace_artifact: tuple[Path, Path],
+    session_runtime: p.Tests.SessionRuntime,
 ) -> Path:
     """Provide case-local sources and a genuinely installed fixture distribution.
+
+    The rule plan is elected against the target repository's own physical
+    runtime, so the workspace receives that environment through the fixture
+    provisioning owner, like ``declaration_workspace``.
 
     Returns:
         The source workspace beside the installed package root.
@@ -567,6 +572,12 @@ def mod_workspace(
         ),
     )
     u.Tests.initialize_git_repo(workspace)
+    tm.ok(
+        u.Tests.provision_scan_workspace(
+            workspace,
+            session_runtime=session_runtime,
+        )
+    )
     return workspace
 
 

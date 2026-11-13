@@ -546,7 +546,7 @@ class FlextInfraModelsDepsToolConfig(
             FlextInfraModelsDuplication.JscpdSemantic,
             m.Field(description="Embedding pass host (--semantic)."),
         ]
-        ignore_patterns: t.StrTuple = m.Field(
+        ignore_patterns: Sequence[str] = m.Field(
             alias="ignore-patterns",
             description=(
                 "Operator-authorized code-level regexes jscpd skips (--ignore-pattern)."
@@ -562,6 +562,13 @@ class FlextInfraModelsDepsToolConfig(
                 ),
             ),
         ] = ()
+
+    class BanditToolConfig(m.ArbitraryTypesModel):
+        """Bandit test ids the security gate skips (``--skip``)."""
+
+        skips: Sequence[str] = m.Field(
+            description="Bandit test ids the security gate does not report.",
+        )
 
     class MarkdownProjectedBlock(m.ArbitraryTypesModel):
         """One foreign writer's projected block that Markdown gates do not lint.
@@ -699,6 +706,9 @@ class FlextInfraModelsDepsToolConfig(
         )
         jscpd: FlextInfraModelsDepsToolConfig.JscpdToolConfig = m.Field(
             description="jscpd clone-semantics passes",
+        )
+        bandit: FlextInfraModelsDepsToolConfig.BanditToolConfig = m.Field(
+            description="Bandit security gate skipped test ids",
         )
 
     class LazyInitConfig(m.ArbitraryTypesModel):

@@ -325,7 +325,44 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
-    def python_dependency_projects(root: Path) -> tuple[Path, ...]:
+    @cache
+    def workspace_source_projects() -> Mapping[str, Path]:
+        """Map each workspace distribution to its source owner once per session.
+
+        The workspace topology is read-only for the whole session, so every
+        fixture resolves its dependency closure from this one native load
+        instead of reloading the workspace for each case.
+
+        Returns:
+            Each declared distribution and the checkout that owns its source.
+
+        """
+        # A linked worktree is never a registered submodule: its primary
+        # checkout names the superproject that owns the sibling sources. The
+        # checkout under test stays its own source, never the primary's copy.
+        checkout = Path(__file__).resolve().parents[1]
+        primary = tm.ok(
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=checkout)
+            )
+        ).primary_root.resolve()
+        source_root = tm.ok(
+            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
+        ).repository_root
+        specification = tm.ok(
+            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        )
+        return {
+            repository.distribution: (
+                checkout
+                if (source_root / repository.path).resolve() == primary
+                else source_root / repository.path
+            )
+            for repository in (specification.repository, *specification.subprojects)
+        }
+
+    @classmethod
+    def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
         """Resolve declared fixture dependencies to actual workspace source owners.
 
         Only dependencies that are declared workspace members are resolved;
@@ -341,23 +378,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             ValueError: When a ``flext-`` dependency has no workspace source owner.
 
         """
-        # A linked worktree is never a registered submodule: its primary
-        # checkout names the superproject that owns the member sources.
-        primary = tm.ok(
-            u.Infra.git_primary_worktree_root(
-                m.Infra.GitRepoRequest(repo_root=Path(__file__).resolve().parents[1])
-            )
-        ).primary_root
-        source_root = tm.ok(
-            u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
-        ).repository_root
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
-        )
-        projects = {
-            repository.distribution: source_root / repository.path
-            for repository in (specification.repository, *specification.subprojects)
-        }
+        projects = cls.workspace_source_projects()
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
@@ -751,11 +772,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
         log = bin_dir / f"{name}.log"
         shim = bin_dir / name
         # A ``view`` of a release or pull request answers "absent" (exit 1),
-        # the state every first publication starts from.
+        # the state every first publication starts from; a ``list`` answers
+        # the open pull-request numbers a test writes to ``<name>.open``.
         shim.write_text(
             "#!/bin/sh\n"
             f'printf "%s\\n" "$*" >> "{log}"\n'
-            'case "$2" in view) exit 1 ;; esac\n',
+            f'open="{bin_dir / name}.open"\n'
+            'case "$2" in\n'
+            "view) exit 1 ;;\n"
+            'list) [ ! -f "$open" ] || cat "$open" ;;\n'
+            "esac\n",
             encoding="utf-8",
         )
         shim.chmod(0o755)

@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from flext_cli import p
 
     from flext_infra._protocols import FlextInfraProtocolsRefactorAstGrep
@@ -366,10 +368,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> dict[
-            t.Infra.RopeNativeParsedModule,
-            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]:
+        ) -> dict[Hashable, FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts]:
             """Shared static facts keyed by the original engine parse."""
             ...
 
@@ -451,6 +450,41 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             tuple[Path, str], FlextInfraProtocolsRefactorAstGrep.CodemodNativeGenerated
         ]:
             """Native codemod rendering per member root and render-input digest."""
+            ...
+
+    @runtime_checkable
+    class ImportGraphModuleFacts(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Dotted module name."""
+            ...
+
+        @property
+        def digest(self) -> t.NonEmptyStr:
+            """SHA-256 of the exact source bytes."""
+            ...
+
+        @property
+        def imports(self) -> tuple[str, ...]:
+            """Module-level imported module paths."""
+            ...
+
+        @property
+        def aliases(self) -> Mapping[str, str]:
+            """Lazy export name to provider module."""
+            ...
+
+    @runtime_checkable
+    class ImportGraphFacts(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def modules(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsWorkspaceSnapshot.ImportGraphModuleFacts]:
+            """Module facts keyed by resolved file path."""
             ...
 
 

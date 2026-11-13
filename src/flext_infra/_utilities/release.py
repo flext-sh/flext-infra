@@ -227,17 +227,15 @@ class FlextInfraUtilitiesRelease:
         return match is not None and match.group("version") == version
 
     @staticmethod
-    def generate_notes(
-        version: str,
+    def _notes_header(
         tag: str,
+        version: str,
         project_list: Sequence[p.Infra.ProjectInfo],
-        changes: str,
-        output_path: Path,
-    ) -> p.Result[bool]:
-        """Generate release notes markdown from release context.
+    ) -> MutableSequence[str]:
+        """Return the scope and impacted-project sections both documents share.
 
         Returns:
-            The resulting ``p.Result[bool]``.
+            The heading, scope and project lines.
 
         """
         lines: MutableSequence[str] = [
@@ -253,14 +251,17 @@ class FlextInfraUtilitiesRelease:
             "- root",
         ]
         lines.extend(f"- {proj.name}" for proj in project_list)
-        lines.extend([
-            "",
-            "## Pull requests since last release",
-            "",
-            FlextInfraUtilitiesRelease._markdown_changelog(
-                changes or "- Initial tagged release",
-            ),
-        ])
+        lines.extend(["", "## Pull requests since last release", ""])
+        return lines
+
+    @staticmethod
+    def _write_document(output_path: Path, lines: Sequence[str]) -> p.Result[bool]:
+        """Write one release markdown document.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             u.write_file(
@@ -268,13 +269,88 @@ class FlextInfraUtilitiesRelease:
                 "\n".join(lines).rstrip() + "\n",
                 encoding=c.DEFAULT_ENCODING,
             )
-            u.fetch_logger(__name__).info(
-                "release_notes_written",
-                path=str(output_path),
-            )
-            return r[bool].ok(value=True)
         except OSError as exc:
-            return r[bool].fail(f"failed to write release notes: {exc}", exception=exc)
+            return r[bool].fail(
+                f"failed to write release document {output_path}: {exc}",
+                exception=exc,
+            )
+        u.fetch_logger(__name__).info("release_notes_written", path=str(output_path))
+        return r[bool].ok(value=True)
+
+    @staticmethod
+    def generate_notes(
+        version: str,
+        tag: str,
+        project_list: Sequence[p.Infra.ProjectInfo],
+        changes: str,
+        output_path: Path,
+    ) -> p.Result[bool]:
+        """Generate the full release notes: one bullet per merged pull request.
+
+        The notes become ``docs/releases/<tag>.md``, which ``release-publish``
+        sends verbatim as the GitHub release body, so notes GitHub would
+        refuse fail here, before the release pull request and the tag exist.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        lines = FlextInfraUtilitiesRelease._notes_header(tag, version, project_list)
+        lines.append(
+            FlextInfraUtilitiesRelease._markdown_changelog(
+                changes or "Initial tagged release",
+            ),
+        )
+        written = FlextInfraUtilitiesRelease._write_document(output_path, lines)
+        if written.failure:
+            return written
+        return FlextInfraUtilitiesRelease.release_body_admitted(output_path)
+
+    @staticmethod
+    def release_body_admitted(notes: Path) -> p.Result[bool]:
+        """Refuse release notes longer than GitHub accepts as a release body.
+
+        Returns:
+            Success when ``notes`` fits ``GH_RELEASE_BODY_MAX_CHARS``.
+
+        """
+        return u.Cli.files_read_text(notes).flat_map(
+            lambda text: (
+                r[bool].ok(value=True)
+                if len(text) <= c.Infra.GH_RELEASE_BODY_MAX_CHARS
+                else r[bool].fail(
+                    f"release notes {notes} have {len(text)} characters; GitHub "
+                    f"accepts a release body of {c.Infra.GH_RELEASE_BODY_MAX_CHARS}",
+                )
+            ),
+        )
+
+    @staticmethod
+    def generate_pull_request_body(
+        version: str,
+        tag: str,
+        project_list: Sequence[p.Infra.ProjectInfo],
+        merged: int,
+        output_path: Path,
+    ) -> p.Result[bool]:
+        """Generate the release pull request body: the notes' summary.
+
+        A release range carries one line per merged pull request, which
+        outgrows GitHub's body ceiling. The body keeps the scope sections and
+        names the full notes the release commit carries
+        (``docs/releases/<tag>.md``, also the GitHub release body), so its
+        size does not grow with the range.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        lines = FlextInfraUtilitiesRelease._notes_header(tag, version, project_list)
+        lines.append(
+            f"{merged} pull requests merged since the previous release; this pull "
+            f"request carries the full list in `docs/releases/{tag}.md`.",
+        )
+        return FlextInfraUtilitiesRelease._write_document(output_path, lines)
 
     @staticmethod
     def _markdown_changelog(changes: str) -> str:
@@ -296,18 +372,16 @@ class FlextInfraUtilitiesRelease:
             line = raw.strip()
             if not line:
                 continue
-            marker = ""
-            if line.startswith("- "):
-                marker, line = "- ", line[2:]
-            escaped = c.Infra.MARKDOWN_INLINE_ESCAPE_RE.sub(r"\\\1", line)
+            escaped = c.Infra.MARKDOWN_INLINE_ESCAPE_RE.sub(
+                r"\\\1",
+                line.removeprefix("- "),
+            )
             rendered.append(
                 textwrap.fill(
                     escaped,
                     width=c.Infra.RELEASE_NOTES_LINE_LENGTH,
-                    initial_indent=marker,
-                    subsequent_indent=(
-                        c.Infra.RELEASE_NOTES_CONTINUATION_INDENT if marker else ""
-                    ),
+                    initial_indent="- ",
+                    subsequent_indent=c.Infra.RELEASE_NOTES_CONTINUATION_INDENT,
                     break_long_words=False,
                     break_on_hyphens=False,
                 ),

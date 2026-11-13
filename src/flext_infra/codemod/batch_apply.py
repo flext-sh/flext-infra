@@ -236,6 +236,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         planned = self._plan_snapshot(snapshot, selection)
         if planned.failure:
             return outcome.from_failure(planned)
+        self.progress.emit(f"mod: planned {len(planned.value.rules)} rule(s)")
         rules = u.Infra.codemod_fixture_resources(planned.value)
         self.progress.emit("mod: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(
@@ -814,6 +815,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         seeded = self._phase_seed(root, rope_workspace)
         if seeded.failure:
             return self._attributed(seeded, voided)
+        self.progress.emit("mod: captured the source campaign seed")
         inputs: MutableMapping[Path, p.Cli.AtomicFileState] = {
             state.path: state for state in seeded.value.candidate.inputs
         }
@@ -829,6 +831,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         )
         if planned.failure:
             return self._attributed(planned, voided, tuple(inputs.values()))
+        self.progress.emit("mod: planned the joint iteration candidate")
         return self._publish_iteration(
             root,
             rope_workspace,
@@ -864,6 +867,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         with FlextInfraCodemodSemanticApply.planning_workspace(
             root, seed, self._candidate_sources(seed.candidate)
         ) as graph:
+            # Contract normalization admits model envelopes through the
+            # composition-owned checker, which the planning graph must carry.
+            graph.model_envelope_checker = self.rope.model_envelope_checker
             prepared = self._prepare_phase_seed(
                 root,
                 current,
@@ -1274,6 +1280,46 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             ),
         )
 
+    def _selected_phases(self) -> frozenset[c.Infra.SemanticCutoverPhase] | None:
+        """Elect the semantic phases repairing the selected rule families.
+
+        Returns:
+            The claimed phases of a focused selection, or ``None`` for the
+            complete catalog, which composes every phase.
+
+        """
+        selection = self.selected_rule_ids
+        if selection is None:
+            return None
+        families = {
+            rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
+            for rule_id in selection
+        }
+        return frozenset(
+            c.Infra.SemanticCutoverPhase(phase)
+            for phase, rule_ids in c.Infra.SEMANTIC_CUTOVER_RULE_IDS.items()
+            if families.intersection(rule_ids)
+        )
+
+    def _idle(self, current: p.Infra.ModScanReport) -> bool:
+        """Whether a focused iteration has nothing it could plan.
+
+        A focused selection composes only its own actionable findings, the
+        semantic phases its families claim and the declared renames; without
+        any of them the iteration's candidate is the captured sources.
+
+        Returns:
+            Whether the iteration can be skipped for the fixed-point verdict.
+
+        """
+        return (
+            self.focused
+            and not current.actionable
+            and self.rename_plan is None
+            and not self.rename_inputs
+            and not self._selected_phases()
+        )
+
     def _plan_semantic_phase(
         self,
         root: Path,
@@ -1291,20 +1337,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             The staged semantic candidate, or the seed for a phase-less theme.
 
         """
-        selection = self.selected_rule_ids
-        phases: frozenset[c.Infra.SemanticCutoverPhase] | None = None
-        if selection is not None:
-            families = {
-                rule_id.partition(c.Infra.CODEMOD_GENERATED_ID_SEPARATOR)[0]
-                for rule_id in selection
-            }
-            phases = frozenset(
-                c.Infra.SemanticCutoverPhase(phase)
-                for phase, rule_ids in c.Infra.SEMANTIC_CUTOVER_RULE_IDS.items()
-                if families.intersection(rule_ids)
-            )
-            if not phases:
-                return r[p.Infra.SemanticSourcePlan].ok(seed)
+        phases = self._selected_phases()
+        if phases is not None and not phases:
+            return r[p.Infra.SemanticSourcePlan].ok(seed)
         outcome = r[p.Infra.SemanticSourcePlan]
         syntax = seed.candidate
         semantic_preflight = self._preview_ast_candidate(
@@ -1408,13 +1443,18 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             )
         self.rename_plan = None
         self.progress.emit(f"mod: published {len(published_paths)} source file(s)")
-        rope_workspace.refresh()
-        after_ast = FlextInfraModGateEngine.scan(
-            root, fix=False, selection=self.selected_plan
-        ).unwrap()
-        phase_states.append(
-            FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
-        )
+        # An empty publication leaves every source as the current report
+        # scanned it: rescanning and refingerprinting it observes nothing new.
+        after_ast = current
+        if published_paths:
+            rope_workspace.refresh()
+            after_ast = FlextInfraModGateEngine.scan(
+                root, fix=False, selection=self.selected_plan
+            ).unwrap()
+            phase_states.append(
+                FlextInfraCodemodSemanticApply.source_fingerprint(root, after_ast)
+            )
+            self.progress.emit("mod: rescanned the published sources")
         # Exact optional migration receipts apply once per invocation,
         # not to every internal convergence pass after consuming matches.
         renames = self._apply_renames()
@@ -1507,6 +1547,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         if any(state != before for state in phase_states):
             return "mod cross-phase cycle returned to its starting source state"
         current_text, cycles = self._catalog_verdicts(validate_receipts=False)
+        self.progress.emit("mod: observed the catalog and import-cycle verdicts")
         if current.actionable or current_text.actionable:
             return (
                 "mod made no progress with "
@@ -1560,12 +1601,19 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 f"{current.actionable} actionable, "
                 f"{current.detection_only} detection-only",
             )
-            advanced = self._advance_phases(
-                root,
-                rope_workspace,
-                current,
-                text_precondition_pending=text_precondition_pending,
-            )
+            idle = self._idle(current)
+            if idle:
+                self.progress.emit("mod: focused selection has nothing to plan")
+                advanced = r[p.Infra.ModPhaseAdvance].ok(
+                    m.Infra.ModPhaseAdvance(report=current, phase_states=(before,))
+                )
+            else:
+                advanced = self._advance_phases(
+                    root,
+                    rope_workspace,
+                    current,
+                    text_precondition_pending=text_precondition_pending,
+                )
             if advanced.failure:
                 return r[t.Cli.ResultValue].from_failure(advanced)
             advance = advanced.value
@@ -1590,7 +1638,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 continue
             current, phase_states = advance.report, advance.phase_states
             text_precondition_pending = False
-            after = fingerprint(root, current)
+            after = before if idle else fingerprint(root, current)
             if after != before:
                 continue
             message = self._verdict_message(
