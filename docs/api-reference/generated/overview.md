@@ -9,7 +9,7 @@
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 - Package: `flext_infra`
-- Version: `0.12.0`
+- Version: `0.12.1`
 - Description: FLEXT Infrastructure Tooling - Build automation, code generation, and
   workspace management
 - Doc summary: Flext Infra package.
