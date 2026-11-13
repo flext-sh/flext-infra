@@ -200,6 +200,9 @@ class FlextInfraRefactorRoutes:
             or request.rule_ids
             or ((request.rule_id,) if request.rule_id else ())
         )
+        preflight = infra.mod_selection(request)
+        if preflight.failure:
+            return r[t.Cli.ResultValue].from_failure(preflight)
         writes = not (request.check or request.dry_run_mode)
         repeat = config.Infra.gate_admission.repeat
         if writes:
