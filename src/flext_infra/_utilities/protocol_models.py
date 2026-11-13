@@ -7334,6 +7334,48 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.get_source_segment(generated_source, emitted)
 
+        def _source_widened_signature(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            holder: ast.ClassDef,
+            destination: Path,
+        ) -> str:
+            """Compare an authored annotation widened exactly as the projection widens.
+
+            Every container the single owner ``_source_read_only_container``
+            maps is exposed through its read-only ABC by the same
+            ``_source_read_only_rewrite`` the projection uses, so an authored
+            concrete container matches only the widening the projection
+            performs, never the reverse.
+
+            Returns:
+                The identity-normalized signature of the widened annotation.
+
+            """
+            scope = self.project.get_module(
+                self.module_name_for(destination.relative_to(self.repository_root))
+            ).get_scope()
+            owner = self
+
+            class Widen(ast.NodeTransformer):
+                @override
+                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
+                    container = (
+                        owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
+                    )
+                    self.generic_visit(node)
+                    if container is None:
+                        return node
+                    return owner._source_read_only_rewrite(container, node)
+
+            # Only subscripts are rewritten, and only into subscripts, so the
+            # visited annotation remains an expression.
+            widened = cast(ast.expr, Widen().visit(copy.deepcopy(annotation)))
+            return self._source_protocol_signature(widened, tree, holder, destination)
+
         def _source_authored_contract_update(
             self,
             contract: tuple[ast.ClassDef, ast.ClassDef],
@@ -7372,9 +7414,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 in c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
             )
             conflicts = [
-                (name, annotation, expected[name])
-                for name, annotation in actual.items()
-                if name in expected and annotation != expected[name]
+                (field.target.id, actual[field.target.id], expected[field.target.id])
+                for field in present.body
+                if isinstance(field, ast.AnnAssign)
+                and isinstance(field.target, ast.Name)
+                and field.target.id in expected
+                and actual[field.target.id] != expected[field.target.id]
+                and self._source_widened_signature(
+                    field.annotation, tree, holder, destination
+                )
+                != expected[field.target.id]
             ]
             if conflicts and not projected:
                 message = (

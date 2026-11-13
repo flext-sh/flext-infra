@@ -120,6 +120,7 @@ class TestsFlextInfraUtilitiesConform:
         request: p.Infra.CodegenGenerateRequest,
         *,
         workspace: p.Infra.WorkspaceSpec | None = None,
+        snapshot: p.Infra.WorkspaceSnapshot | None = None,
     ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan through a planner bound to the public conform collaborators.
 
@@ -134,6 +135,7 @@ class TestsFlextInfraUtilitiesConform:
                 request=request,
                 initial_workspace=workspace,
                 ports=infra.codegen_conform_collaborators(),
+                snapshot=snapshot,
             ),
             runtime_settings=infra.settings,
             initial_context=infra.context,
