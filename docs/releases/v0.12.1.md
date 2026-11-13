@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(rope): pin the fork's last-binding reader and delete the \_\_all\_\_ workaround
+  (#2345)
 - feat(codemod): the compat window covers every facade letter (#2346)
 - fix(codegen): reconcile authored protocol contracts that lack runtime\_checkable
   (#2347)
