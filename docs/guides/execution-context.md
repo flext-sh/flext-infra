@@ -1760,7 +1760,15 @@ The 2026-10-26 operator order supersedes the forced complete-run behavior:
 unchanged tests are not rerun merely because the verb was invoked again. Selection
 and execution share one persistent database and aggregate deadline, with no second
 execution pass. The common catalog has no manual
-file selector. The explicitly requested `make tests-full` executes the complete
+file selector. When the selection cannot finish inside the invocation deadline (a
+new Testmon environment selects the whole population), the run stops at its suite
+stop instant and reports `outcome=incomplete`, after Testmon has made every
+executed result durable: under xdist through the shutdown marker, in a single
+process by making the next item the session's last, which Testmon flushes on its
+teardown. The next `make tests` selects only the unexecuted remainder, so repeated
+invocations converge to a complete run that exits 0. No budget grows, no test is
+deselected, and the stop never waits for a batch-size flush. The explicitly
+requested `make tests-full` executes the complete
 applicable population once without Testmon or an incremental pre-run, preserving
 the persistent database untouched. It is a distinct operation, not an alias for
 incremental execution. Checks and tests are independent native operations.
