@@ -97,5 +97,7 @@ class TestsFlextInfraCodegenLazyInitDeferredInstance:
         u.Tests.override_repository_declaration(
             repository, {"deferred_instances": ["absent_root"]}
         )
-        with u.Tests.raises(ValueError, match="exported by no initializer"):
-            u.Tests.create_lazy_init_service(repository).plan_files()
+        tm.fail(
+            u.Tests.create_lazy_init_service(repository).plan_files(),
+            has="exported by no initializer",
+        )
