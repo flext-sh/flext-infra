@@ -23,6 +23,19 @@ from flext_infra.codegen._conform.scaffold_plan import (
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
+    _planning_topology: (
+        tuple[
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
+        ]
+        | None
+    ) = m.PrivateAttr(default=None)
+    (
+        "The invocation's authenticated topology, loaded once from Git and its "
+        "declarations; every planning phase of this invocation reuses it."
+    )
+
     def plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
@@ -490,6 +503,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.RepositoryRef,
             ]
         ]
+        cached = self._planning_topology
+        if cached is not None:
+            return result_type.ok(cached)
         workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = (
@@ -551,7 +567,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 "gascity_enabled": workspace.gascity_enabled,
                 "external_dependency_paths": workspace.external_dependency_paths,
             })
-        return result_type.ok((workspace, current_target, current_repository))
+        topology = (workspace, current_target, current_repository)
+        self._planning_topology = topology
+        return result_type.ok(topology)
 
     @staticmethod
     def _planning_report_evidence(

@@ -1015,6 +1015,7 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             return r[str].ok(declared.strip())
         identity = FlextInfraUtilitiesGit.git_identity(
             m.Infra.GitRepoRequest(repo_root=repository_root),
+            include_status=False,
         )
         if identity.failure:
             return r[str].from_failure(identity)

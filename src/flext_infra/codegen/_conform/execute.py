@@ -346,6 +346,14 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
     ) -> p.Result[p.Infra.CodegenPlan]:
         """Plan the native file-only control cohort before Python inventory.
 
+        The cohort exists to materialize a scaffold's declared project metadata
+        before member planning when the manifest is not on disk yet. An
+        existing workspace already publishes every control destination from
+        the full managed plan of the same original tree, so planning it twice
+        only repeated the render and its Git probes; those destinations keep
+        their single owner in the full plan and the refusal still happens
+        before the run's one publication.
+
         Returns:
             The control cohort plan with every repository outcome, or the
             first workspace, selection, seed or ordering failure.
@@ -360,17 +368,55 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         if elected.failure:
             return result_type.from_failure(elected)
         workspace, current_target, current_repository = elected.value
-        selected = self._select_repositories(
-            request, workspace, current_repository
-        ).flat_map(self._control_identities)
+        selected = self._select_repositories(request, workspace, current_repository)
         if selected.failure:
             return result_type.from_failure(selected)
-        seed = self._control_seed(current_target, workspace, captured.value)
+        if workspace.flext_source is None:
+            return result_type.ok(
+                m.Infra.CodegenPlan(
+                    request=request,
+                    repositories=selected.value,
+                    workspace=workspace,
+                    uv_environments=(),
+                    files=(),
+                )
+            )
+        return self._scaffold_control_plan(
+            request,
+            root,
+            (workspace, current_target, current_repository),
+            captured.value,
+            selected.value,
+        )
+
+    def _scaffold_control_plan(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        root: Path,
+        planning: tuple[
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
+        ],
+        inputs: p.Infra.CodegenInputs,
+        selected: tuple[p.Infra.RepositoryRef, ...],
+    ) -> p.Result[p.Infra.CodegenPlan]:
+        """Plan the control cohort a scaffold needs before its members.
+
+        Returns:
+            The control cohort plan, or the first selection, seed or ordering
+            failure.
+
+        """
+        result_type = r[p.Infra.CodegenPlan]
+        workspace, current_target, _current_repository = planning
+        identities = self._control_identities(selected)
+        if identities.failure:
+            return result_type.from_failure(identities)
+        seed = self._control_seed(current_target, workspace, inputs)
         if seed.failure:
             return result_type.from_failure(seed)
-        graph = self._control_graph(
-            root, workspace, captured.value, tuple(selected.value.values()), seed.value
-        )
+        graph = self._control_graph(root, workspace, inputs, selected, seed.value)
         ordered = u.Cli.dag_order(graph)
         if ordered.failure:
             return result_type.from_failure(ordered)
@@ -388,11 +434,11 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                         "root": (root),
                         "workspace": (workspace),
                         "current_target": (current_target),
-                        "repository": (selected.value[name]),
+                        "repository": (identities.value[name]),
                         "surface": (request.what),
                         "selected_inputs": (
-                            captured.value
-                            if selected.value[name].name
+                            inputs
+                            if identities.value[name].name
                             == current_target.repository.name
                             else None
                         ),
@@ -405,7 +451,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         return result_type.ok(
             m.Infra.CodegenPlan(
                 request=request,
-                repositories=tuple(selected.value.values()),
+                repositories=selected,
                 workspace=workspace,
                 uv_environments=(),
                 files=u.Infra.codegen_compose_file_plans(
@@ -1028,7 +1074,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             return result_type.from_failure(changes)
         u.Cli.info("stage=admission-normalization state=end")
         normalized = {change.path: change for change in changes.value}
-        captured = tuple(self.state.source_inputs.values())
+        captured = self._admission_captured_sources(request, files)
         files = tuple(
             m.Infra.CodegenFilePlan(
                 project=file.project,
@@ -1046,6 +1092,44 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             for index, file in enumerate(files)
         )
         return self._validated_source_plans(request, files, self.state)
+
+    def _admission_captured_sources(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        files: tuple[p.Infra.CodegenFilePlan, ...],
+    ) -> tuple[p.Cli.AtomicFileState, ...]:
+        """Carry the original witnesses of the cohort's own projects.
+
+        Admission materializes every source it is handed and follows the
+        candidate's import closure from there. The run reads every selected
+        repository while planning, so handing it the whole run's witnesses
+        copied unrelated members into every cohort. The candidate closure
+        already reads each imported dependency from the run snapshot, so the
+        captured set retains the cohort's own sources (and the invoking root)
+        and excludes only members this cohort does not plan.
+
+        Returns:
+            The captured source witnesses in planning order.
+
+        """
+        captured = tuple(self.state.source_inputs.values())
+        topology = self._planning_topology
+        workspace = None if topology is None else topology[0]
+        if workspace is None or not workspace.subprojects:
+            return captured
+        root = request.root.expanduser().resolve()
+        included = {file.project.resolve() for file in files}
+        members = tuple(
+            (root / repository.path).resolve() for repository in workspace.subprojects
+        )
+        foreign = tuple(member for member in members if member not in included)
+        if not foreign:
+            return captured
+        return tuple(
+            state
+            for state in captured
+            if not any(state.path.is_relative_to(member) for member in foreign)
+        )
 
     @staticmethod
     def _validated_source_plans(

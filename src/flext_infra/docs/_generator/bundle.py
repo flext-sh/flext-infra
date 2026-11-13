@@ -204,16 +204,7 @@ class FlextInfraDocsGeneratorBundle:
             default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR),
         )
         result_type = r[FlextInfraDocsGeneratorBundle._DocsRenderedInventory]
-        # The root pyproject a generation plans resolves the scopes before it
-        # is published (a fresh project carries none on disk yet).
-        root_pyproject = repository_root / c.PYPROJECT_FILENAME
-        root_projection = next(
-            (plan for plan in declared_files if plan.path == root_pyproject),
-            None,
-        )
-        scopes = cls._validated_scopes(
-            repository_root, request, output_dir, root_projection
-        )
+        scopes = cls._validated_scopes(repository_root, request, output_dir)
         if scopes.failure:
             return result_type.from_failure(scopes)
         metadata = cls._presentation_metadata(scopes.value[0], declared_files)
@@ -249,7 +240,6 @@ class FlextInfraDocsGeneratorBundle:
         repository_root: Path,
         request: p.Infra.DocsGenerateRequest,
         output_dir: Path,
-        root_projection: p.Infra.CodegenFilePlan | None,
     ) -> p.Result[
         tuple[
             tuple[p.Infra.DocScope, ...],
