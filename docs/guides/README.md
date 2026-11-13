@@ -23,6 +23,7 @@ sourced from code and docstrings.
 - [Model fields migration](model-fields-migration.md)
 - [Onboarding](onboarding.md)
 - [Plan collection](plan-collection.md)
+- [Project kinds](project-kinds.md)
 - [Recovery](recovery.md)
 - [Security](security.md)
 - [Skill automation pattern](skill-automation-pattern.md)
