@@ -301,6 +301,25 @@ class FlextInfraUtilitiesProjectDiscovery(
         nonparticipants = cls.repository_nonparticipant_paths(
             project_dir, source_project=source_project
         )
+        # Git owns which files belong to the checkout: one inventory, taken at
+        # the checked root, decides the candidates. No directory below it is
+        # probed, so an ignored or ceiling-bounded directory is never entered.
+        source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(project_dir)
+        source_containers = (
+            None
+            if source_paths is None
+            else frozenset(
+                project_dir / path.relative_to(project_dir).parts[0]
+                for path in source_paths
+                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+                and len(path.relative_to(project_dir).parts) > 1
+                and not any(
+                    part.startswith(".") or part in effective_skip
+                    for part in path.relative_to(project_dir).parts[:-1]
+                )
+                and cls._source_file_admitted(path, source_project, owned_stub=False)
+            )
+        )
         return [
             subdir.name
             for subdir in (
@@ -333,10 +352,14 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if source_project is None
                 else source_project.source_query(subdir / c.Infra.GIT_DIR, "exists")
             )
-            and any(
-                cls._walk_python_files(
-                    subdir, effective_skip, source_project=source_project
+            and (
+                any(
+                    cls._walk_python_files(
+                        subdir, effective_skip, source_project=source_project
+                    )
                 )
+                if source_containers is None
+                else subdir in source_containers
             )
         ]
 
