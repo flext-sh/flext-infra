@@ -87,7 +87,15 @@ class TestsFlextInfraCodegenExistingFacadeScaffold:
     @c.Tests.MARK.slow
     def test_an_existing_facade_is_never_rewritten(self, tmp_path: Path) -> None:
         """An authored facade keeps its bytes; only absent ones are planned."""
-        authored = '"""Authored."""\n\nclass SampleLibraryModels:\n    pass\n'
+        authored = (
+            '"""Authored."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from flext_core import FlextModels\n\n\n"
+            "class SampleLibraryModels(FlextModels):\n"
+            '    """Authored models facade."""\n\n\n'
+            "m = SampleLibraryModels\n\n"
+            '__all__: list[str] = ["SampleLibraryModels", "m"]\n'
+        )
         root, package = self._plan(tmp_path, authored_models=authored)
         plan = self._planned(root)
         tm.that(u.Tests.planned_text(plan, f"src/{package}/models.py"), none=True)
