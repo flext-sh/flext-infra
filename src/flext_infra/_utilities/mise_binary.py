@@ -20,7 +20,7 @@ class FlextInfraUtilitiesMiseBinary:
 
     @staticmethod
     def managed_mise_binary(name: str, owner_root: Path) -> p.Result[Path]:
-        """Resolve one declared tool's executable through Mise in ``owner_root``.
+        """Resolve one tool's executable from the manifest governing ``owner_root``.
 
         The runtime manifest must declare the tool, then the existing lock owner
         selects its pinned release. Missing declarations or pins fail at this
@@ -46,25 +46,29 @@ class FlextInfraUtilitiesMiseBinary:
         if reader is None:
             return r[Path].fail("Mise executable is absent; run make setup")
         selector = tool.selector or tool.name
+        # Mise resolves from the runtime manifest that declares the tool: an
+        # attached member shares its containing workspace's runtime.
+        manifest_root = FlextInfraUtilitiesMiseBinary._mise_manifest_root(owner_root)
+        if manifest_root is None:
+            return r[Path].fail(f"runtime manifest does not declare {selector}")
         requested = FlextInfraUtilitiesMiseBinary._committed_mise_tool_request(
-            owner_root,
+            manifest_root,
             selector,
         )
         if requested.failure:
             return r[Path].from_failure(requested)
         if not requested.value:
             return r[Path].fail(f"runtime manifest does not declare {selector}")
-        pinned = FlextInfraUtilitiesMiseBinary.locked_mise_version(
-            owner_root,
+        return FlextInfraUtilitiesMiseBinary.locked_mise_version(
+            manifest_root,
             tool=selector,
             selector=requested.value[0],
-        )
-        if pinned.failure:
-            return r[Path].from_failure(pinned)
-        return FlextInfraUtilitiesMiseBinary._managed_mise_path(
-            tool.version_probe.binary,
-            owner_root,
-            Path(reader),
+        ).flat_map(
+            lambda _pinned: FlextInfraUtilitiesMiseBinary._managed_mise_path(
+                tool.version_probe.binary,
+                manifest_root,
+                Path(reader),
+            )
         )
 
     @staticmethod
@@ -172,16 +176,10 @@ class FlextInfraUtilitiesMiseBinary:
             One scalar or table version request, or an empty declaration tuple.
 
         """
-        manifest = next(
-            (
-                candidate / c.Infra.MISE_TOML_FILENAME
-                for candidate in (owner_root, *owner_root.parents)
-                if (candidate / c.Infra.MISE_TOML_FILENAME).is_file()
-            ),
-            None,
-        )
-        if manifest is None:
+        manifest_root = FlextInfraUtilitiesMiseBinary._mise_manifest_root(owner_root)
+        if manifest_root is None:
             return r[tuple[str] | tuple[()]].ok(())
+        manifest = manifest_root / c.Infra.MISE_TOML_FILENAME
         payload = u.Cli.toml_mapping_from_text(
             manifest.read_text(encoding=c.DEFAULT_ENCODING),
         )
@@ -280,6 +278,23 @@ class FlextInfraUtilitiesMiseBinary:
                 f"{tool}; run make upg so generation stays offline",
             )
         return cls._pinned_mise_lock_version(lock_path, tool=tool, selector=selector)
+
+    @staticmethod
+    def _mise_manifest_root(owner_root: Path) -> Path | None:
+        """Return the nearest directory above ``owner_root`` with a runtime manifest.
+
+        Returns:
+            The resulting ``Path | None``.
+
+        """
+        return next(
+            (
+                candidate
+                for candidate in (owner_root, *owner_root.parents)
+                if (candidate / c.Infra.MISE_TOML_FILENAME).is_file()
+            ),
+            None,
+        )
 
     @staticmethod
     def _mise_lock_path(execution_root: Path) -> Path | None:
