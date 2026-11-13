@@ -35,9 +35,12 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDepsDetectorRuntimeSteps):
         """
         # The environment under inspection is the repository's own; an ambient
         # UV_PROJECT_ENVIRONMENT would silently redirect detection elsewhere.
-        venv_bin = u.Infra.runtime_environment_dir(params.repository_root) / (
-            "Scripts" if os.name == "nt" else "bin"
-        )
+        owner = u.Infra.runtime_owner_root(params.repository_root)
+        if owner.failure:
+            return r[bool].from_failure(owner)
+        venv_bin = u.Infra.runtime_environment_dir(
+            params.repository_root, runtime_root=owner.value
+        ) / ("Scripts" if os.name == "nt" else "bin")
         env_result = self._validate_environment(
             params, params.repository_root, venv_bin
         )
