@@ -1745,9 +1745,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 or Path(resource.real_path).resolve() != local.resolve()
             ):
                 local_resource = self._project.get_resource(str(local))
-                if local_resource is not None:
-                    module = self._project.get_module(target, local_resource)
-                    resource = module.get_resource()
+                module = self._project.get_module(target, local_resource)
+                resource = module.get_resource()
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,
