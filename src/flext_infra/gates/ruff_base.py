@@ -32,7 +32,7 @@ class FlextInfraGatesRuffGate(FlextInfraGates):
         return {
             **(super()._check_env(project_dir, ctx) or {}),
             c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
-                u.Infra.ruff_cache_directory(project_dir)
+                u.Infra.ruff_cache_directory()
             ),
         }
 
