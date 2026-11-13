@@ -280,9 +280,17 @@ class TestsFlextInfraCodemodBatchApplyValidation:
         """Two native rule waves converge, or reject without changing live bytes."""
         u.Tests.provision_checkout(mod_workspace)
         sample = mod_workspace / "sample.py"
+        owner = u.derive_class_stem(mod_workspace.name) + u.derive_class_stem(
+            sample.stem
+        )
+        # The consumer keeps its value inside the module's single published class.
         source = (
             '"""General syntax cascade consumer."""\n'
-            "from __future__ import annotations\n\nvalue = 0\n"
+            "from __future__ import annotations\n\n\n"
+            f"class {owner}:\n"
+            '    """General syntax cascade owner."""\n\n'
+            "    value = 0\n\n\n"
+            f'__all__: list[str] = ["{owner}"]\n'
         )
         tm.ok(u.Cli.atomic_write_text_file(sample, source))
         final = (
@@ -318,31 +326,26 @@ class TestsFlextInfraCodemodBatchApplyValidation:
                 progress=progress,
                 rope=rope,
             )
-            if outcome != "converged":
-                with u.Tests.raises(
-                    RuntimeError,
-                    match="|".join(
-                        re.escape(message)
-                        for message in ("cycle", "Ruff", "normalization")
-                    ),
-                ):
+            if outcome == "cycle":
+                # A non-settling native stage names its rules and files.
+                with u.Tests.raises(RuntimeError, match=re.escape("does not settle")):
                     service.execute()
+            if outcome == "rejected":
+                # The candidate is refused by the validation it introduced.
+                tm.fail(service.execute(), has="introduced Ruff findings")
+            if outcome != "converged":
                 tm.that(sample.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
                 tm.fail(progress.validated)
                 return
             tm.ok(service.execute())
             first = sample.read_bytes()
             tm.ok(progress.validated)
-            tm.ok(
-                u.Cli.run((
-                    sys.executable,
-                    "-c",
-                    (
-                        "import runpy, sys; "
-                        "assert runpy.run_path(sys.argv[1])['value'] == 2"
-                    ),
-                    str(sample),
-                ))
+            tm.that(
+                u.Tests.run_lazy_init_probe(
+                    f"from sample import {owner}\nprint({owner}.value)\n",
+                    python_paths=(str(mod_workspace),),
+                ),
+                eq=["2"],
             )
             tm.ok(service.execute())
             tm.that(sample.read_bytes(), eq=first)

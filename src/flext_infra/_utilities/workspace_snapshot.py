@@ -309,6 +309,32 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         )
 
     @staticmethod
+    @contextmanager
+    def workspace_planned_source_view(
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+    ) -> Generator[p.Infra.RopeProject]:
+        """Bind a phase's planned sources that differ from the project's view.
+
+        Yields:
+            The project reading the planned bytes for this binding.
+
+        """
+        changed = {
+            path: source
+            for path, source in sources.items()
+            if not project.source_query(path, "isfile")
+            or project.source_text(path) != source
+        }
+        with project.source_view(
+            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path), (), changed, source_project=project
+            ),
+            additional_source_folders=None,
+        ):
+            yield project
+
+    @staticmethod
     def workspace_declared_sources(
         root: Path,
         declared_files: tuple[p.Infra.CodegenFilePlan, ...],
