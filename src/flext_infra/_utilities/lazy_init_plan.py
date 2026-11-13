@@ -143,9 +143,14 @@ class FlextInfraUtilitiesLazyInitPlan:
             entries = tuple(
                 entry for entry in entries if entry.project_root == run.root
             )
+        # Deepest first; at one depth the tests namespace comes last, because
+        # it publishes its sibling packages' planned exports.
         package_dirs = sorted(
             (entry.package_dir for entry in entries),
-            key=FlextInfraUtilitiesBase.path_depth,
+            key=lambda package_dir: (
+                FlextInfraUtilitiesBase.path_depth(package_dir),
+                package_dir.name != c.Infra.DIR_TESTS,
+            ),
             reverse=True,
         )
         if target is not None and target not in package_dirs:
@@ -1049,19 +1054,42 @@ class FlextInfraUtilitiesLazyInitPlan:
                 run, sibling_context
             ).items():
                 publics.setdefault(name, target)
-            root_init = sibling / c.Infra.INIT_PY
-            if run.model.source_project.source_query(root_init, "isfile"):
-                python = FlextInfraUtilitiesPythonModel
-                for name in (
-                    python.python_model_exports(
-                        python.python_model_module_at(
-                            run.model, root_init, sibling_context.current_pkg
-                        )
-                    )
-                    or ()
-                ):
-                    publics[name] = (sibling_context.current_pkg, name)
+            for name in cls._lazy_init_candidate_exports(
+                run, sibling, sibling_context.current_pkg
+            ):
+                publics[name] = (sibling_context.current_pkg, name)
         return publics
+
+    @staticmethod
+    def _lazy_init_candidate_exports(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        package_dir: Path,
+        package: str,
+    ) -> Sequence[str]:
+        """Return a package initializer's exports in this run's candidate.
+
+        A package this run planned publishes its planned exports; reading its
+        initializer from disk would replay the previous generation and take a
+        second run to converge. An unplanned package keeps its current
+        initializer.
+
+        Returns:
+            The exports the candidate initializer of ``package_dir`` declares.
+
+        """
+        planned = run.plans.get(package_dir)
+        if planned is not None:
+            return planned.exports
+        initializer = package_dir / c.Infra.INIT_PY
+        if not run.model.source_project.source_query(initializer, "isfile"):
+            return ()
+        python = FlextInfraUtilitiesPythonModel
+        return (
+            python.python_model_exports(
+                python.python_model_module_at(run.model, initializer, package)
+            )
+            or ()
+        )
 
     @staticmethod
     def _lazy_init_test_namespace_dirs(
