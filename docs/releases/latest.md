@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- fix(discovery): a stub keeps its own name and never becomes a foreign module (#2343)
+- test(codegen): governed plan fixtures write lawful facades and bind the snapshot
+  (#2341)
 - fix(codegen): elect the effective \_\_all\_\_ and reuse provided initializers (#2333)
 - fix(ci): mint the private-dependency token before the superproject checkout (#2342)
 - fix(codegen): publish generic member classes so mypy can subscript them (#2339)
