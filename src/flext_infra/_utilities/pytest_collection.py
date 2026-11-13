@@ -46,6 +46,11 @@ class FlextInfraUtilitiesPytestCollection:
     collection_worker_manifests: ClassVar[
         t.Infra.Pytest.StashKey[dict[str, p.Infra.PytestCollectionManifest]]
     ] = pytest.StashKey()
+    collection_inventory: ClassVar[t.Infra.Pytest.StashKey[t.StrTuple]] = (
+        pytest.StashKey()
+    )
+    testmon_select_plugin: ClassVar[str] = "TestmonSelect"
+    "Name under which pytest-testmon registers its selecting plugin."
 
     @staticmethod
     def markdown_item(
@@ -336,6 +341,69 @@ class FlextInfraUtilitiesPytestCollection:
         if stop_at is not None and not hasattr(config, "workerinput"):
             config.pluginmanager.register(cls.SuiteStop(stop_at_monotonic=stop_at))
 
+    @classmethod
+    def collection_selection_active(cls, config: t.Infra.Pytest.Config) -> bool:
+        """Return whether this is a runner selection collection under Testmon.
+
+        Returns:
+            Whether the manifest is requested by a read-only collection that
+            Testmon's selecting plugin also steers.
+
+        """
+        return (
+            config.pluginmanager.get_plugin(cls.testmon_select_plugin) is not None
+            and bool(config.getoption("collectonly"))
+            and config.getoption(c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION) is not None
+        )
+
+    @classmethod
+    def collection_keep_stable_files(
+        cls,
+        collection_path: Path,
+        config: t.Infra.Pytest.Config,
+        plugin: object,
+    ) -> bool | None:
+        """Keep Testmon's stable files collected so the inventory is complete.
+
+        Testmon ignores a whole file whose tests are all stable. Its
+        ``pytest_ignore_collect`` is therefore bypassed, and every other
+        plugin's own decision (``--ignore``, ``collect_ignore``) is still
+        asked through pluggy's public subset caller.
+
+        Returns:
+            ``None`` outside a selection collection; otherwise whether any
+            plugin other than Testmon's and ``plugin`` ignores the path.
+
+        """
+        if not cls.collection_selection_active(config):
+            return None
+        others = config.pluginmanager.subset_hook_caller(
+            "pytest_ignore_collect",
+            remove_plugins=[
+                config.pluginmanager.get_plugin(cls.testmon_select_plugin),
+                plugin,
+            ],
+        )
+        return bool(others(collection_path=collection_path, config=config))
+
+    @classmethod
+    def collection_record_inventory(
+        cls,
+        config: t.Infra.Pytest.Config,
+        items: list[t.Infra.Pytest.Item],
+    ) -> None:
+        """Record the items after the selectors and before Testmon deselects.
+
+        Pluggy runs the ``trylast`` implementations in registration order, and
+        Testmon registers its selecting plugin while configuring, after every
+        entry-point plugin: this hook therefore sees the items that pytest's
+        ``-m``/``-k`` and the other trailing selectors kept, ahead of Testmon.
+        """
+        if cls.collection_selection_active(config):
+            config.stash[cls.collection_inventory] = tuple(
+                item.nodeid for item in items
+            )
+
     @staticmethod
     def suite_manifest_target(config: t.Infra.Pytest.Config) -> Path | None:
         """Read the existing manifest destination for an executing suite.
@@ -540,15 +608,29 @@ class FlextInfraUtilitiesPytestCollection:
 
         """
         state = session.config.stash[cls.markdown_state]
+        node_ids = tuple(item.nodeid for item in session.items)
+        inventory = session.config.stash.get(cls.collection_inventory, ())
+        selected = set(node_ids)
+        testmon_deselected = {
+            node_id for node_id in inventory if node_id not in selected
+        }
         return m.Infra.PytestCollectionManifest(
-            node_ids=tuple(item.nodeid for item in session.items),
+            node_ids=node_ids,
+            inventory_node_ids=inventory,
             markdown_eligible=tuple(
                 cast("m.Infra.PytestMarkdownOrigin", item) for item in state.eligible
             ),
             markdown_collected=tuple(
                 cast("m.Infra.PytestMarkdownItem", item) for item in state.collected
             ),
-            markdown_deselected=tuple(state.deselected),
+            markdown_deselected=(
+                *state.deselected,
+                *(
+                    item.node_id
+                    for item in state.collected
+                    if item.node_id in testmon_deselected
+                ),
+            ),
         )
 
     @staticmethod

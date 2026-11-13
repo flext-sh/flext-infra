@@ -354,14 +354,14 @@ class TestsFlextInfraPytestRunner:
             has=["executed=0", "deselected=1", "cache_restored=True", "exit=0"],
         )
         warm_name = tm.ok(u.Cli.files_read_text(reports_root / "latest.txt")).strip()
-        for phase in ("testmon-selection", "testmon-inventory"):
-            profile = reports_root / warm_name / f"{phase}.pstats"
-            tm.that(profile.is_file() == profile_collection, truth=True)
-            if profile_collection:
-                tm.that(
-                    pstats.Stats(str(profile)).get_stats_profile().func_profiles,
-                    truth=True,
-                )
+        profile = reports_root / warm_name / "testmon-selection.pstats"
+        tm.that(profile.is_file() == profile_collection, truth=True)
+        if profile_collection:
+            tm.that(
+                pstats.Stats(str(profile)).get_stats_profile().func_profiles,
+                truth=True,
+            )
+        tm.fail((reports_root / warm_name / "testmon-inventory.pstats").exists())
         for receipt in ("cache-before.json", "cache-after.json"):
             warm_state = m.Infra.TestmonCacheState.model_validate_json(
                 tm.ok(u.Cli.files_read_text(reports_root / warm_name / receipt)),
@@ -975,21 +975,20 @@ class TestsFlextInfraPytestRunner:
         selection = m.Infra.PytestCollectionManifest.model_validate_json(
             (report_dir / "testmon-selection.json").read_text(),
         )
-        inventory = m.Infra.PytestCollectionManifest.model_validate_json(
-            (report_dir / "testmon-inventory.json").read_text(),
-        )
+        tm.fail((report_dir / "testmon-inventory.json").exists())
+        inventory = selection.inventory_node_ids
         tm.that(len(selection.node_ids), eq=1)
-        tm.that(len(inventory.node_ids), eq=2)
-        tm.ok(set(selection.node_ids) < set(inventory.node_ids))
+        tm.that(len(inventory), eq=2)
+        tm.ok(set(selection.node_ids) < set(inventory))
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (report_dir / "run-accounting.json").read_text(),
         )
-        tm.that(accounting.inventory_count, eq=len(inventory.node_ids))
+        tm.that(accounting.inventory_count, eq=len(inventory))
         tm.that(accounting.executed_count, eq=len(selection.node_ids))
         tm.that(accounting.reported_count, eq=len(selection.node_ids))
         tm.that(
             accounting.deselected_count,
-            eq=len(inventory.node_ids) - len(selection.node_ids),
+            eq=len(inventory) - len(selection.node_ids),
         )
         tm.that(
             u.Tests.PytestRunner.summary(reports_root),
@@ -1060,7 +1059,7 @@ class TestsFlextInfraPytestRunner:
     def test_warm_incremental_rejects_an_empty_complete_inventory(
         cached_runner_project: Path,
     ) -> None:
-        """A whole-suite complete inventory that collects nothing stays red."""
+        """A whole-suite collection that keeps no test at all stays red."""
         baseline = u.Tests.PytestRunner.runner_for(cached_runner_project)
         tm.that(tm.ok(baseline.execute()), eq=0)
         (cached_runner_project / "conftest.py").write_text(
@@ -1069,37 +1068,20 @@ class TestsFlextInfraPytestRunner:
             "    if config.getoption('collectonly'):\n"
             "        target = Path(config.getoption(\n"
             f"            {c.Infra.PYTEST_COLLECTION_MANIFEST_OPTION!r}))\n"
-            "        if target.name == 'testmon-inventory.json':\n"
+            "        if target.name == 'testmon-selection.json':\n"
             "            items.clear()\n",
             encoding="utf-8",
         )
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
 
-        status = tm.ok(runner.execute())
-
-        tm.that(status, eq=c.Tests.ExitCode.NO_TESTS_COLLECTED.value)
+        with u.Tests.raises(
+            RuntimeError, match="complete pytest inventory must contain at least one"
+        ):
+            runner.execute()
 
         contexts = sorted(
             (cached_runner_project / runner.reports).glob("*/run-context.json"),
         )
         tm.that(len(contexts), eq=2)
-        context = m.Infra.PytestRunContext.model_validate_json(contexts[-1].read_text())
-        tm.that(context.execution_mode, eq="incremental")
-        tm.that((contexts[0].parent / "summary.txt").read_text(), has="exit=0")
-        incremental_outcome = m.Cli.ProcessOutcome.model_validate_json(
-            (contexts[0].parent / "suite-outcome.json").read_text(),
-        )
-        tm.that(incremental_outcome.raw_return_code, eq=0)
-        full_outcome = m.Cli.ProcessOutcome.model_validate_json(
-            (contexts[-1].parent / "inventory-outcome.json").read_text(),
-        )
-        tm.that(full_outcome.raw_return_code, ne=0)
-        tm.that(
-            (cached_runner_project / runner.reports / "latest.txt").read_text().strip(),
-            eq=contexts[-1].parent.name,
-        )
         tm.fail((contexts[-1].parent / "suite-outcome.json").exists())
-        inventory = m.Infra.PytestCollectionManifest.model_validate_json(
-            (contexts[-1].parent / "testmon-inventory.json").read_text(),
-        )
-        tm.that(inventory.node_ids, eq=())
+        tm.fail((contexts[-1].parent / "testmon-inventory.json").exists())
