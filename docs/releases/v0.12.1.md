@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(mise): resolve a managed tool from the manifest that declares it (#2352)
+- test(check): the check contract fixtures are real Git repositories (#2351)
 - test(rope): a candidate retirement declares no mode (#2349)
 - fix(codegen): the model-protocol stage reads a generic publication as its class
   (#2350)
