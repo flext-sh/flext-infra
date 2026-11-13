@@ -211,17 +211,22 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     @staticmethod
     def test_bandit_scans_large_tree_with_sanitized_path(tmp_path: Path) -> None:
-        """The workspace interpreter runs Bandit without any PATH-provided tool."""
+        """The workspace interpreter runs Bandit without a PATH-provided Bandit.
+
+        The PATH carries only Git, which the source-scope owner declares a
+        required dependency of target discovery.
+        """
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         for index in range(51):
             (project_dir / c.Infra.DEFAULT_SRC_DIR / f"module_{index}.py").write_text(
                 "def identity(value):\n    return value\n",
                 encoding="utf-8",
             )
-        empty_path = tmp_path / "empty-path"
-        empty_path.mkdir()
+        git_only_path = tmp_path / "git-only-path"
+        git_only_path.mkdir()
+        (git_only_path / c.Infra.GIT).symlink_to(tm.not_none(shutil.which(c.Infra.GIT)))
 
-        with tm.scope(env={"PATH": str(empty_path)}):
+        with tm.scope(env={"PATH": str(git_only_path)}):
             result = u.Tests.run_gate_check(
                 FlextInfraGatesBandit, tmp_path, project_dir
             )
