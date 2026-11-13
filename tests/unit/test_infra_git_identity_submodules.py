@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from tests import c, m, tm, u
@@ -209,7 +208,7 @@ class TestsFlextInfraGitIdentitySubmodules:
         child = self._repo(tmp_path / "child")
         parent = self._repo(tmp_path / "parent")
         member = parent / "apps" / "member"
-        shutil.copytree(child, member)
+        u.Tests.reflink_copy_tree(child, member)
         (parent / ".gitmodules").write_text(
             f"[submodule 'member']\n\tpath = apps/member\n\turl = {child.as_uri()}\n",
             encoding="utf-8",

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from flext_infra import FlextInfraConfig
@@ -49,7 +48,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         source = tm.not_none(entry.source)
         templates = tmp_path / "templates"
-        shutil.copytree(u.Infra.codegen_templates_root(codegen), templates)
+        u.Tests.reflink_copy_tree(u.Infra.codegen_templates_root(codegen), templates)
         # A nonempty conditional source renders exactly the supplied test content.
         (templates / source).write_text(
             "{% if false %}undeclared capability{% endif %}" + content,
