@@ -140,7 +140,7 @@ class FlextInfraProtocolsDocsGeneration:
         def metadata_projection(
             self,
         ) -> FlextInfraProtocolsCodegenTransaction.CodegenFilePlan | None:
-            """The planned ``pyproject.toml`` this run leaves behind, if any."""
+            """Planned pyproject.toml the run publishes for this scope."""
             ...
 
         @property
