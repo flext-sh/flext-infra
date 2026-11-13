@@ -387,6 +387,7 @@ install_lazy_exports(
             "_utility_provider_nominal",
             "_facade_retained_providers",
             "_facade_root_precedence",
+            "_facade_generic_publications",
             "_facade_loose_declarations",
             "_facade_declaring_packages",
             "_facade_planned_imports",

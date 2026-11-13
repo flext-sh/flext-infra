@@ -470,14 +470,17 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         *,
         project: p.Infra.RopeProject | None = None,
     ) -> tuple[Path, ...]:
-        """Return one member's Python sources, listed through one project view.
+        """Return one member's Python modules, listed through one project view.
 
         The snapshot's engine lists once per member; a planned view project
         (with proposed additions and retirements) lists through itself.
         Sources of a member nested inside this one belong to that member.
+        Stubs are classified before any read: they are owned-path violations
+        detected by path alone, never decoded or analyzed as modules. A link
+        whose target leaves the member is not one of its modules.
 
         Returns:
-            The member's Python source and stub paths in path order.
+            The member's Python module paths in path order.
 
         """
         member = member.resolve()
@@ -497,7 +500,9 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     workspace_excluded_top_dirs=frozenset(),
                     source_project=view,
                 )
-                if not any(path.is_relative_to(other) for other in nested)
+                if path.suffix == c.Infra.EXT_PYTHON
+                and path.is_relative_to(member)
+                and not any(path.is_relative_to(other) for other in nested)
             )
             if cacheable:
                 snapshot.python_files[member] = listed

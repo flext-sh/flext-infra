@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TypeAlias
+
 from flext_cli import FlextCliModels
 
 from flext_infra._models import (
@@ -80,6 +82,9 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsConfig,
     ):
         """Infrastructure-domain models - all classes exposed directly."""
+
+        ModScanCounts: TypeAlias = FlextInfraModelsScan.ModScanCounts
+        ModOccurrenceReport: TypeAlias = FlextInfraModelsScan.ModOccurrenceReport
 
 
 m = FlextInfraModels

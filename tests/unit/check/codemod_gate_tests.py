@@ -169,16 +169,17 @@ class TestsFlextInfraCodemodGate:
             eq=[consumer],
         )
 
-    def test_generated_source_tree_is_outside_the_scan(
+    def test_generated_source_tree_is_inside_the_scan(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
         session_runtime: p.Tests.SessionRuntime,
     ) -> None:
-        """A tracked generated-source module never reaches the policy scan.
+        """A tracked generated-source module reaches the policy scan.
 
-        Premise (flext-gknfx): generated trees are tracked, so Git ignore rules
-        no longer hide them from ast-grep; the codegen artifact key does.
+        The ``generated_source`` flag owns tracked generation and the package
+        initializer only; it never feeds native source-scan exclusions, so
+        owned generated Python is admitted like authored Python.
         """
         names = config.Infra.codegen.generated_sources
         tm.that(names, empty=False)
@@ -190,8 +191,12 @@ class TestsFlextInfraCodemodGate:
 
         execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
-        tm.that(execution.result.passed, eq=True, msg=str(execution.issues))
-        tm.that(execution.issues, empty=True)
+        tm.fail(execution.result.passed)
+        tm.that(
+            (f"src/pkg/{names[0]}/wire_pb2.py", "contract-second")
+            in {(issue.file, issue.code) for issue in execution.issues},
+            eq=True,
+        )
 
     def test_owned_stub_paths_share_mod_and_check_admission(
         self,
@@ -582,7 +587,8 @@ class TestsFlextInfraCodemodGate:
         if receipt is None:
             msg = "A failed codemod gate must retain its native receipt"
             tm.reject(msg)
-        reports = receipt.parents[len(project.relative_to(tmp_path).parts)]
+        # Reports live at the invocation directory; receipts nest below it.
+        (reports,) = tuple(reports.iterdir())
         markdown = (reports / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )
