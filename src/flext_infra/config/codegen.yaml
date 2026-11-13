@@ -685,6 +685,31 @@ Infra:
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
       scan_threads: 4
+      # Host admission and run limits of every public verb (ADR-032): on the
+      # shared host a verb refuses to start while the 5-minute load average
+      # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
+      # memory_limit_gb and max_processes CPUs. overrides declares an explicit
+      # exception per public verb: the light verbs (and the commit hook's
+      # setup and stage-scoped check) stay admitted under a busy host, still
+      # inside the same memory and CPU scope; the heavy verbs keep max_load5.
+      admission:
+        max_load5: 20
+        memory_limit_gb: 5
+        max_processes: 2
+        overrides:
+          setup: {max_load5: 80}
+          check: {max_load5: 80}
+          fix: {max_load5: 80}
+          fmt: {max_load5: 80}
+          gen: {max_load5: 80}
+          help: {max_load5: 80}
+          clean: {max_load5: 80}
+        refusal_guidance:
+        - Wait until the 5-minute load drops to the limit, then run one heavy verb at a time.
+        - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
+        - Prefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.
+        - Use at most 2 workers and never run heavy verbs in parallel across lanes.
+        - A verb exception is a declared make.admission.overrides entry in the config SSOT, never a local edit or an environment bypass.
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each
@@ -908,9 +933,8 @@ Infra:
       - { verb: check, contexts: [ local ] }
       - { verb: tests, contexts: [ local ] }
       - { verb: build, contexts: [ local ] }
-      # Repository-local directory holding the bootstrap Mise binary. The
-      # generated Makefile places the binary there and the CI workflows cache
-      # it, so a pinned binary is fetched only when its version changes.
+      # Repository-local directory of the project's Mise shims. Mise itself is
+      # the official installer's shared default executable, never copied here.
       bootstrap_bin_dir: .bin
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.

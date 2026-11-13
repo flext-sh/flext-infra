@@ -252,7 +252,12 @@ that result with the caller's pre-execution path. UV owns creation of `.venv`.
 The shared native environment boundary removes an inherited
 `MISE_PYTHON_UV_VENV_AUTO` request so executable discovery cannot start a second
 environment creator. Acquisition passes only options supported by the official
-installer; its native temporary-file defaults remain tool-owned.
+installer, which places Mise at its default `~/.local/bin/mise`
+(`~\.local\bin\mise.exe` on Windows): one executable shared by every checkout,
+installed with the pinned `MISE_VERSION` only when absent. The rendered
+`.mise.toml` declares `min_version` as the pinned release, so Mise itself refuses
+an older acquisition executable, and execution resolves the pinned self-managed
+release through `mise which mise`. No checkout keeps its own Mise copy.
 
 Native executable discovery uses `mise which <binary>` in the authenticated
 configuration root with locked mode retained. Each lookup sets its discovery
@@ -368,30 +373,17 @@ Declared prerequisites of stage 6, open until they close:
   that carries it is published and the consumer's `make upg` locks it.
 
 A project source that no longer imports still has every lock written and
-installed. Setup first asks native uv whether the published environment already
-satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
-when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
-rewrites the editable receipt and applies the same Python/console verification
-as a publication, so a repeated setup costs a check, not a reinstall. The check's
-exit status is its whole result; its native report is held, not printed, so a
-rebuild that then succeeds never shows an `error:` line, while a real failure
-recurs in the unfiltered rebuild sync. Any other
-state, and every executor installation, prepares an invocation-owned native
-relocatable environment under the runtime's existing ignored state directory,
-installed with uv's clone link mode; bytecode follows uv's native default
-(compiled by Python on first import). Matching creator identities do not permit
-synchronizing the serving environment: a sync can remove dependencies before
-their replacements are ready. Frozen installation, editable binding, its
-environment-owned receipt and real Python/console validation precede one atomic
-exchange with the published environment, guarded by its recorded identity: a
-concurrent publication fails the later setup loudly instead of being serialized
-by a private lock. The exchanged previous environment is then removed with its
-stage; an interrupted preparation removes only its own stage.
-Unsupported publication capabilities fail before installation effects. No sync
-targets a directory without its native environment marker or a Mise base
-interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
-matching-identity sync path. Native ``--refresh`` retains its interpreter-cache
-contract. Full native setup, interruption, relocation and cross-platform
+installed. Setup runs `uv sync --frozen` in place on the physical `.venv`, and
+the upgrade executor likewise on its own environment (operator decision
+`operator-decision-2026-11-13-venv-sync-in-place`): uv creates or updates the
+environment from the shared uv cache with clone link mode, and a sync that already
+satisfies the lock changes nothing, so no run stages, copies or exchanges a second
+environment. Bytecode follows uv's native default (compiled by Python on first
+import). The editable binding, its environment-owned receipt and the real
+Python/console validation follow the sync. No sync targets a directory without its
+native environment marker or a Mise base interpreter. This contract supersedes the
+staged environment and atomic exchange. Native ``--refresh`` retains its
+interpreter-cache contract. Full native setup, interruption and cross-platform
 acceptance remain open until the original command proves them. Direnv
 exports no `UV_PROJECT` or `UV_PROJECT_ENVIRONMENT`. Each governed repository
 renders its own `.mise.toml` and commits its own `mise.lock`, and Mise resolves a
@@ -1969,6 +1961,9 @@ The project composes the native resource/module/layout interface through MRO;
 its authenticated source epoch remains the public consumer boundary. Native
 initialization uses the exact upstream class descriptor through the consumed
 initializer protocol, including Rope's documented `ropefolder=None` contract.
+The project owner fixes that folder to `None` for every opening, so Rope data
+files such as the autoimport `globalnames` pickle and its `.json` twin are never
+written into a repository root; a missing-imports run indexes in memory.
 The physical root and injected filesystem identity are checked after initialization;
 the protocol alone is not evidence of the vendor's signature or runtime behavior.
 

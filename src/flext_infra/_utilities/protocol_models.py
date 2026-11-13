@@ -3678,7 +3678,7 @@ class FlextInfraUtilitiesModelsProtocol:
                             f"{module_name}.{'.'.join(path)}"
                         )
                         raise ValueError(message)
-                    ancestors = source.get_mro()
+                    ancestors = self.facade_published_ancestry(source)
                     if model_base in ancestors:
                         classes.append((node, path))
                     elif any(

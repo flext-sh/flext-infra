@@ -16,7 +16,7 @@ from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import closing
 from pathlib import Path
 
-from flext_infra import c, config, m, p, r, settings, t, u
+from flext_infra import c, m, p, r, settings, t, u
 from flext_infra._codemod.scan_cache import FlextInfraCodemodScanCache
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
@@ -1091,15 +1091,7 @@ class FlextInfraModGateEngine:
         ruleset_files = {
             rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
-        threads = getattr(
-            getattr(getattr(config.Infra, "tooling", None), "mod", None),
-            "scan_threads",
-            getattr(
-                getattr(getattr(config.Infra, "codegen", None), "make", None),
-                "scan_threads",
-                4,
-            ),
-        )
+        threads = u.Infra.ast_grep_scan_threads()
         cache_key = FlextInfraCodemodScanCache.compute_key(
             config_path=ruleset.config,
             rule_ids=ruleset.rule_ids,
