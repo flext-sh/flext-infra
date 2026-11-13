@@ -264,6 +264,11 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             or outcome.raw_return_code not in {0, 1}
             or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
         ):
+            # A scanner that stops early still publishes the matches it emitted
+            # to stdout. Measure that payload so the gate reports the true
+            # finding total and each rule/file instead of collapsing the whole
+            # native report into this one failure.
+            found.extend(self._published_scan_findings(scan, ruleset))
             failures.append(failure)
             return False
         # DiagnosticError (exit 1) requires a valid RuleMatch array,
@@ -310,6 +315,34 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 started=started,
             ),
             ctx,
+        )
+
+    @staticmethod
+    def _published_scan_findings(
+        scan: p.Cli.CommandOutput,
+        ruleset: p.Infra.CodemodRuleset,
+    ) -> Sequence[p.Infra.AstGrepDiagnostic]:
+        """Measure the complete native matches a failed scan already published.
+
+        A timed-out or crashed scanner may still have emitted its final
+        ``--json=compact`` array before stopping. That payload is the only
+        native measurement available, so it is parsed and filtered to the
+        elected ruleset; the native failure remains a separate blocking issue.
+        A truncated or otherwise malformed stream yields no salvaged findings.
+
+        Returns:
+            The published diagnostics that belong to the elected ruleset.
+
+        """
+        payload = scan.stdout.strip()
+        if not payload:
+            return ()
+        try:
+            report = m.Infra.AstGrepReport.model_validate_json(payload)
+        except m.ValidationError:
+            return ()
+        return tuple(
+            finding for finding in report.root if finding.rule_id in ruleset.rule_ids
         )
 
     @staticmethod
