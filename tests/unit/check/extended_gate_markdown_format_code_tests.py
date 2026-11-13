@@ -24,6 +24,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraMarkdownFormatAndCodeGates:
     """Declarative public-contract tests for the markdown formatting gates."""
 
+    # MD019 (one space after the heading marker) takes no option, so these
+    # fixtures never freeze a style the markdown rule SSOT owns (MD004 list
+    # markers are config: `tooling.tools.markdown.rules`).
     FORMATTED_MARKDOWN = "# Test\n"
     UNFORMATTED_MARKDOWN = "#    Test\n"
     FORMATTED = "# Test\n\n```python\nx = 1\n```\n"
@@ -43,8 +46,6 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         config.Infra.tooling.tools.markdown,
         config.Infra.codegen.markdown_exclude_globs,
     )
-    UNFORMATTED_LIST = "# Test\n\n*   item one\n*   item two\n"
-    FORMATTED_LIST = "# Test\n\n* item one\n* item two\n"
     MKDOCS_MARKDOWN = (
         "# API\n\nSee [example.PublicApi][] for details.\n\n"
         "::: example.PublicApi\n"
@@ -77,7 +78,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-project",
-            self.UNFORMATTED_LIST,
+            self.UNFORMATTED_MARKDOWN,
         )
 
         with tm.scope(env={"FORCE_COLOR": force_color}):
@@ -101,7 +102,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-clean",
-            self.FORMATTED_LIST,
+            self.FORMATTED_MARKDOWN,
         )
 
         _ = u.Tests.check_gate_asserting(
@@ -129,7 +130,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         project_dir = self._project(
             tmp_path,
             "markdown-format-fix",
-            self.UNFORMATTED_LIST,
+            self.UNFORMATTED_MARKDOWN,
         )
         readme = project_dir / "README.md"
         u.Tests.initialize_git_repo(project_dir)
@@ -142,7 +143,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         result = FlextInfraGatesMarkdownFormat(tmp_path).fix(project_dir, context)
 
         tm.ok(result.result.passed)
-        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_LIST)
+        tm.that(readme.read_text(encoding="utf-8"), eq=self.FORMATTED_MARKDOWN)
         _ = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdownFormat,
             tmp_path,
@@ -157,7 +158,9 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
     ) -> None:
         """A missing generated rule projection is a generation gap, never a pass."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-format-no-rules")
-        (project_dir / "README.md").write_text(self.FORMATTED_LIST, encoding="utf-8")
+        (project_dir / "README.md").write_text(
+            self.FORMATTED_MARKDOWN, encoding="utf-8"
+        )
 
         result = u.Tests.run_gate_check(
             FlextInfraGatesMarkdownFormat,
