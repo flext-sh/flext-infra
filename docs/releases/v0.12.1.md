@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(codegen): admission keeps only the cohort's own import facts (#2362)
+- fix(setup): leave bytecode compilation at uv's native default (#2363)
 - fix(tests): pass the testmon environment name without literal quotes (#2360)
 - fix(codemod): an annotation source rooted in an unknown provider is refused (#2361)
 - fix(rope): the logging factory binding names its qualified identity (#2358)
