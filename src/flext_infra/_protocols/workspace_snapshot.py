@@ -453,5 +453,40 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
             """Native codemod rendering per member root and render-input digest."""
             ...
 
+    @runtime_checkable
+    class ImportGraphModuleFacts(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Dotted module name."""
+            ...
+
+        @property
+        def digest(self) -> t.NonEmptyStr:
+            """SHA-256 of the exact source bytes."""
+            ...
+
+        @property
+        def imports(self) -> tuple[str, ...]:
+            """Module-level imported module paths."""
+            ...
+
+        @property
+        def aliases(self) -> Mapping[str, str]:
+            """Lazy export name to provider module."""
+            ...
+
+    @runtime_checkable
+    class ImportGraphFacts(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def modules(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsWorkspaceSnapshot.ImportGraphModuleFacts]:
+            """Module facts keyed by resolved file path."""
+            ...
+
 
 __all__: list[str] = ["FlextInfraProtocolsWorkspaceSnapshot"]
