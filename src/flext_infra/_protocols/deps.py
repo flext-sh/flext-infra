@@ -25,8 +25,7 @@ if TYPE_CHECKING:
     )
 
 
-@runtime_checkable
-class FlextInfraProtocolsDeps(Protocol):
+class FlextInfraProtocolsDeps:
     """Dependency-analysis protocols exposed through ``p.Infra``."""
 
     @runtime_checkable

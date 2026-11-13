@@ -165,8 +165,7 @@ class FlextInfraUtilitiesTypesSemanticNesting(
         """
         project, module, scope = native
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        chain = FlextInfraUtilitiesCodemodBindingChain
-        proof = chain.FlextInfraUtilitiesCodemodBindingChain
+        proof = FlextInfraUtilitiesCodemodBindingChain
         actual = runtime.expression_name(scope, expression)
         if isinstance(actual, p.Infra.RopeImportedName) and not (
             proof.single_reaching_declarations(module, scope, expression)

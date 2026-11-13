@@ -124,8 +124,11 @@ declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
 `Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`), and that
-publication retires when the member stops being generic or moves. A stale
+(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
+through MRO and importing the facade loads no part (ADR-018, every facade part
+is deferred). That publication retires when the member stops being generic or
+moves. A stale
 generated `Name = Name` publication retires with its import once the name is
 reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
