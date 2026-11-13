@@ -12,11 +12,24 @@
 
 ## Pull requests since last release
 
+feat(codegen): apply the dependency cooldown to uv resolution (#2313)
+fix: new projects depend on their upstream; artifact scope tests follow the documented
+contracts (#2312)
+Merge branch '0.12.0-dev' of github.com:flext-sh/flext-infra into
+feat/uv-dependency-cooldown-20261113
+fix(docs): the bundle computes the planned root projection it forwards (#2314)
+merge: adopt 0.12.0-dev into the uv cooldown lane
+fix(check): locked lanes are never merged-but-alive (#2307)
+perf(setup): one flext-infra process verifies and wires the environment (#2310) no
+fix: law-9 re-audit of test-only changes; production defects fixed first (#2308)
+perf(codegen): coalesce fleet planning facts and bound admission (#2293)
 perf(lazy): the flext-infra facades import no declared distribution; config loads rules
 only (flext-df0b6) (#2311)
 merge: adopt 0.12.0-dev into the lazy facades lane
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/infra-tests-law9-20261113
 style(tests): format the fixture tooling helper (#2309)
 merge: adopt 0.12.0-dev into the lazy facades lane
+Merge branch '0.12.0-dev' into fix/lane-hygiene-current-branch-20261113
 fix: first group of 0.12.0-dev test failures fixed at their root cause (#2302)
 Merge branch '0.12.0-dev' into fix/infra-tests-green-20261112
 chore(lock): pin FLEXT upstreams to their 0.12.0-dev tips (#2304)
@@ -44,6 +57,7 @@ Merge remote-tracking branch 'origin/0.12.0-dev' into fix/review-findings-202611
 merge: 0.12.0-dev into feat/lazy-deferred-capabilities-20261112
 Merge branch '0.12.0-dev' into fix/lane-hygiene-active-wip-20261112
 merge: 0.12.0-dev into perf/setup-no-lifecycle-lease-20261112
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/gen-perf-20261112
 perf(setup): keep a .venv that already satisfies uv.lock (#2287)
 fix(make): remove the test file selector and validate the gen root (#2285)
 Merge branch '0.12.0-dev' into fix/make-selector-root-20261112
@@ -51,6 +65,7 @@ Integrate wt-pre-commit-setup-wip-20261112 into upload-20261007 (#2277)
 fix(security): load generated protocol modules through importlib; format codemod tests
 (#2292)
 fix(rules): ban disabling Python bytecode in every FLEXT project (ENFORCE-128) (#2291)
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/gen-perf-20261112
 Merge remote-tracking branch 'origin/0.12.0-dev' into fix/ban-bytecode-disable-20261112
 Merge 0.12.0-dev into fix/setup-noop-integrated-20261112
 fix(codegen): model protocol projection binds only what it writes (#2290)
@@ -59,6 +74,7 @@ fix(codemod): focused mod scans its selection; provision the mod\_workspace envi
 (#2289)
 perf(setup): keep a lock-satisfied .venv, compile bytecode, drop the private publication
 lock (#2288)
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/gen-perf-20261112
 Merge remote-tracking branch 'origin/0.12.0-dev' into fix/ban-bytecode-disable-20261112
 merge: 0.12.0-dev into fix/codemod-selection-scope-0120-20261112
 merge: 0.12.0-dev into perf/setup-noop-when-synced-20261112
