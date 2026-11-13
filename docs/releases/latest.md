@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- fix(codegen): one resolver reads a facade publication as the class it names (#2353)
 - fix(gates): a projected ruleset ast-grep refuses is a native codemod failure (#2348)
 - fix(mise): resolve a managed tool from the manifest that declares it (#2352)
 - test(check): the check contract fixtures are real Git repositories (#2351)
