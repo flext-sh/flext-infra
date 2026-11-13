@@ -564,69 +564,17 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.ok(f"for directory in {env_dirs}; do" in rendered)
         tm.ok("MYPY_PATHS := $(RUFF_PATHS)" in rendered)
 
-    def test_every_pytest_verb_declares_the_project_scratch_root(
+    def test_pytest_verbs_leave_basetemp_to_pytest(
         self,
         tmp_path: Path,
     ) -> None:
-        """Every pytest-running verb declares the project scratch root.
-
-        The fleet's test law rejects a test scratch under /tmp: the caller of
-        pytest must declare a project scratch root through TMPDIR (cosmos-charts
-        CI run 37235165752 died in pytest_configure on an inherited /tmp). The
-        Makefile verb is that caller, so each pytest verb renders ONE shared
-        declaration next to its testmon database guard. The storage law places
-        that root under the user home keyed by the absolute checkout
-        (config make.pytest_scratch), never beside the checkout: inside a
-        workspace the checkout's parent is the superproject tree, where Git
-        refuses every fixture repository a test creates. The transient sandbox
-        resolves the standard temp triplet inside it and is deleted when the
-        recipe shell exits.
-        """
+        """Pytest owns its basetemp; the verbs only refuse a /tmp TMPDIR."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
             script_dispatch=None,
         )
-        scratch = config.Infra.codegen.make.pytest_scratch
         tm.that(
-            rendered,
-            has=(
-                f"$({scratch.user_home_environment_variable})/"
-                f"{scratch.home_relative_directory}/"
-                f"{scratch.state_directory_name}$(PROJECT_ROOT)/{scratch.namespace}"
-            ),
+            rendered, lacks=["--basetemp", "export TMPDIR TMP TEMP", "scratch_root"]
         )
-        verbs = (
-            "_builtin_test_all:",
-            "_builtin_test_full_all:",
-            "_builtin_test_file_all:",
-            "_builtin-profile-test:",
-        )
-        bodies = {
-            verb: rendered.split(verb, 1)[1].split("\n\n", 1)[0] for verb in verbs
-        }
-        sandbox = 'scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"'
-        for body in bodies.values():
-            tm.that(
-                body,
-                has=[
-                    'scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"',
-                    sandbox,
-                    'mkdir -p "$$scratch/tmp"',
-                    "export TMPDIR TMP TEMP",
-                    "trap 'find \"$$scratch\" -depth -delete' EXIT",
-                ],
-            )
-            # The pytest entry runs after the declaration in the same shell.
-            tm.that(
-                body.index("export TMPDIR TMP TEMP") < body.index("_pytest_entry"),
-                eq=True,
-            )
-            # No verb owns a private variant of the shared fragment.
-            tm.that(body.count(sandbox), eq=1)
-        # The declaration is ONE rendered fragment across the four verbs.
-        tm.that(rendered.count(sandbox), eq=len(verbs))
-        # Never beside the checkout (inside a workspace that is another
-        # repository's tree), never under /tmp, never a durable in-tree scratch.
-        tm.that(rendered, lacks=["project_parent", ".test-tmp", "PROJECT_SCRATCH"])
-        tm.that(rendered, lacks='TMPDIR="$$test_tmp"')
+        tm.that(rendered, has="declare TMPDIR outside it")

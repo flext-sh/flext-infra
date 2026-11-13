@@ -59,10 +59,6 @@ class FlextInfraPytestRunnerBase(s[int]):
             description="Repository-elected graceful stop reserve inside the deadline.",
         ),
     ]
-    scratch_root: Annotated[
-        Path | None,
-        m.Field(description="External repository-owned native pytest scratch root."),
-    ] = None
     ci_context: Annotated[
         bool,
         m.Field(description="CI/pre-commit selection captured at the Make boundary."),
@@ -143,11 +139,6 @@ class FlextInfraPytestRunnerBase(s[int]):
         root = context.cwd
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
-        scratch = make.pytest_scratch
-        home = Path(settings.env_required(scratch.user_home_environment_variable))
-        if not home.is_absolute():
-            msg = "pytest home anchor must be absolute"
-            raise ValueError(msg)
         database: Path | None = None
         if execution_mode.is_incremental:
             cache_home_value = u.Infra.env_value(cache.data_home_environment_variable)
@@ -166,21 +157,10 @@ class FlextInfraPytestRunnerBase(s[int]):
                 / context.target.canonical_project_name
                 / cache.database_filename
             )
-        scratch_base = (
-            home / scratch.home_relative_directory / scratch.state_directory_name
-        )
-        scratch_root = (
-            Path(f"{scratch_base}{root}") / scratch.namespace / u.generate_id()
-        )
-        if scratch_root.resolve().is_relative_to(
-            context.runtime.runtime_root.resolve()
-        ):
-            msg = f"pytest scratch must be outside the runtime checkout: {scratch_root}"
-            raise ValueError(msg)
         run_timeout_seconds, termination_grace_seconds = cls._elected_pytest_deadline(
             root
         )
-        runner = cls(
+        return cls(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
             run_timeout_seconds=run_timeout_seconds,
@@ -189,12 +169,9 @@ class FlextInfraPytestRunnerBase(s[int]):
             target_file=target_file,
             reports=cache.reports_directory,
             testmon_db=database,
-            scratch_root=scratch_root,
             ci_context=u.Infra.env_value(make.ci.variable) == make.ci.value,
             profile_enabled=settings.Infra.profile,
         )
-        scratch_root.mkdir(parents=True, exist_ok=False)
-        return runner
 
     @classmethod
     def _elected_pytest_deadline(
