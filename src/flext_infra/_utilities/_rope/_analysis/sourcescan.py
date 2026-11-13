@@ -340,39 +340,18 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     ) -> Sequence[str]:
         """Read the effective declared strings from the native binding index.
 
-        Python resolves repeated assignments to the last one, and a package's
-        generated initializer elects exactly that last ``__all__`` as the
-        published ABI. Reading the first assignment instead diverges from the
-        initializer and made facades import flat child classes the package
-        does not publish. The native index already carries every direct
-        assignment, so the last one wins without reparsing the source.
+        The native reader elects the binding Python keeps: the last direct
+        assignment, extended by later literal ``+=`` statements, which is the
+        ``__all__`` a package's generated initializer publishes.
 
         Returns:
             The declared strings, or an empty sequence when absent.
 
         """
-        index = source_module.get_source_binding_index()
-        layouts = tuple(index.assignment_layouts(name=name))
-        effective: tuple[str, ...] | None = None
-        for layout in layouts:
-            if layout.kind == "AugAssign":
-                effective = (effective or ()) + (layout.string_sequence or ())
-                continue
-            effective = layout.string_sequence
-        if not layouts:
-            values = index.assignment_string_sequence(
-                name, class_metadata=name == c.Infra.DUNDER_ALL
-            )
-            return () if values is None else values
-        if effective is not None:
-            return effective
-        singular = tuple(layout for layout in layouts if layout.kind != "AugAssign")
-        if len(singular) == 1:
-            values = index.assignment_string_sequence(
-                name, class_metadata=name == c.Infra.DUNDER_ALL
-            )
-            return () if values is None else values
-        return ()
+        values = source_module.get_source_binding_index().assignment_string_sequence(
+            name, class_metadata=name == c.Infra.DUNDER_ALL
+        )
+        return () if values is None else values
 
     @staticmethod
     def _native_sequence_items(

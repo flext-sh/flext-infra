@@ -316,7 +316,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@bc2b0450c2a05f955ad5eaa52e8571b17614c9a8
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@a6f233e157e59b137fce01692e49046e1648d112
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
