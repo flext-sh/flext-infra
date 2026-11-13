@@ -164,8 +164,8 @@ Infra:
       - name: codemod_type_set_rules
         shapes: [ type-set ]
         enforce: [ ENFORCE-079 ]
-      # One rule failing and rewiring every read of a compat-marked constant
-      # to the new owner its warnings.deprecated marker names.
+      # One rule failing and rewiring every read of a compat-marked name of
+      # any facade letter to the new owner its warnings.deprecated marker names.
       - name: codemod_compat_rules
         shapes: [ compat-read ]
       # Layer-zero import boundary rendered from the import-law classifier:

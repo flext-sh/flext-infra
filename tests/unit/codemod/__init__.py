@@ -24,6 +24,9 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_codemod_own_package_scans import (
         TestsFlextInfraCodemodOwnPackageScans,
     )
+    from tests.unit.codemod.test_compat_read_all_letters import (
+        TestsFlextInfraCodemodCompatReadAllLetters,
+    )
     from tests.unit.codemod.test_concrete_mixin_shells import (
         TestsFlextInfraConcreteMixinShells,
     )
@@ -48,6 +51,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "TestsFlextInfraCodemodCompatReadAllLetters",
     "TestsFlextInfraCodemodDeepImportOwnRoot",
     "TestsFlextInfraCodemodGeneratedModuleUtility",
     "TestsFlextInfraCodemodImportCycleSourceScan",
@@ -65,6 +69,7 @@ install_lazy_exports(
     __name__,
     globals(),
     {
+        "TestsFlextInfraCodemodCompatReadAllLetters": ".test_compat_read_all_letters",
         "TestsFlextInfraCodemodDeepImportOwnRoot": ".test_deep_import_own_root",
         "TestsFlextInfraCodemodGeneratedModuleUtility": (
             ".test_generated_module_utility"
