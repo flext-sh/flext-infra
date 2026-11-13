@@ -338,7 +338,6 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(
                 u.Infra.new_project(
                     str(tmp_path),
-                    ropefolder="",
                     save_objectdb=False,
                     filter_lists=((), tuple(root.name for root in roots)),
                 )
@@ -394,7 +393,6 @@ class TestsFlextInfraRopeRuntimePymodule:
             closing(
                 u.Infra.new_project(
                     str(tmp_path),
-                    ropefolder="",
                     save_objectdb=False,
                     filter_lists=((), (package.name,)),
                 ),
