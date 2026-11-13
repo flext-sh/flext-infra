@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+chore(lock): pin FLEXT upstreams to their 0.12.0-dev tips (#2304)
 perf(tests): resolve selection and inventory in one collection pass (#2306)
 Merge branch '0.12.0-dev' into perf/test-single-collection-20261112
 fix(codegen): close the verified review findings of #2262/#2264/#2266 (#2300)
