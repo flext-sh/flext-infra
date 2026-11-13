@@ -400,8 +400,23 @@ class FlextInfraProtocolsMiseToolchain:
             """Structural member projected from the owning model.
 
             Supply-chain cooldown in days, the single value every resolver honours:
-            the generated mise minimum_release_age and every dependabot ecosystem
-            entry. Forks and local projects (direct git references) are excluded.
+            the generated mise minimum_release_age, the [tool.uv] exclude-newer span
+            and every dependabot ecosystem entry. Forks and local projects (direct
+            git, URL and path sources) are outside it natively.
+            """
+            ...
+
+        @property
+        def dependency_cooldown_exceptions(
+            self,
+        ) -> Mapping[t.NonEmptyStr, t.NonEmptyStr]:
+            """Structural member projected from the owning model.
+
+            Registry packages released inside the cooldown on purpose, each mapped
+            to its advisory id or critical-fix reason: rendered as [tool.uv]
+            exclude-newer-package false and excluded from the dependabot pip
+            cooldown. Repository config overlays add entries; remove one once the
+            fixed release ages past the cooldown.
             """
             ...
 

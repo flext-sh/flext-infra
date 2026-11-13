@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
+from typing import ClassVar
 
 
 class FlextInfraConstantsConfig:
@@ -41,11 +42,24 @@ class FlextInfraConstantsConfig:
 
     @unique
     class ProjectKind(StrEnum):
-        """Own governance profile; external forks retain upstream contracts."""
+        """Own governance profile; external forks retain upstream contracts.
+
+        ``consumer`` is a deployment or client repository without code of its
+        own: it pins the distribution it consumes and carries only
+        configuration, documentation and tests over that distribution's
+        public API. It owns no ``src`` package and publishes none.
+        """
 
         INTERNAL_FLEXT = "internal_flext"
+        CONSUMER = "consumer"
         INTERNAL = "internal"
         THIRD_PARTY_FORK = "third_party_fork"
+
+    TOOLCHAIN_GOVERNED_KINDS: ClassVar[frozenset[ProjectKind]] = frozenset({
+        ProjectKind.INTERNAL_FLEXT,
+        ProjectKind.CONSUMER,
+    })
+    "Kinds the FLEXT toolchain generates and rewrites."
 
     @unique
     class MakeProfile(StrEnum):

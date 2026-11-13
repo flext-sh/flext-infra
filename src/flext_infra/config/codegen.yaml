@@ -257,22 +257,30 @@ Infra:
       # model forbids).
       python_version: "3.13"
       # Supply-chain cooldown (rule security/supply-chain: a rolling cooldown
-      # of at least seven days): ONE value for every resolver — the generated
-      # mise `minimum_release_age` (so `make upg` never selects a release
-      # younger than this, e.g. a Python patch with no precompiled builds yet)
-      # and every dependabot ecosystem entry. Forks and local projects never
-      # enter it: dependabot excludes the requirements a project takes by
-      # direct git reference. No project surface carries a uv cooldown key
-      # (`exclude-newer` is banned, rule ethics/conformance-sweep; pyproject
-      # conformance removes it from [tool.uv]). The one native writer is mise:
-      # for a `pypi:` tool it passes this cutoff to uv, and uv serializes it as
-      # `[options] exclude-newer` in the tool's sidecar lock
-      # (.mise/locks/pypi-<tool>/<version>/uv.lock), written only by
-      # `make upg` and digest-pinned by mise.lock (flext-qqasl, operator
-      # decision "Allow in the mise lock"). 10d, not 7d: the asset-less
-      # 20260929 python-build release aged past a 7d window and re-entered
-      # every python resolution, breaking the 3.13 lock-time listing.
+      # of at least seven days). Operator decision 2026-11-13: the cooldown
+      # applies to everything, uv included, except FLEXT's own packages, our
+      # `-dc` forks and declared CVE/critical-fix cases. ONE value for every
+      # resolver: the generated mise `minimum_release_age`, every dependabot
+      # ecosystem entry and the [tool.uv] `exclude-newer` span ("P<days>D")
+      # that pyproject conformance projects into every project. The span is
+      # relative, so uv.lock records `exclude-newer-span` and stays current as
+      # time passes; only `make upg` re-resolves under it. uv applies it to
+      # registry distributions only: FLEXT members and forks resolve by git,
+      # URL or path source at their pinned revisions, natively outside it
+      # (dependabot excludes those direct git requirements likewise). For a
+      # `pypi:` tool mise passes the same cutoff to uv in its sidecar lock.
+      # 10d, not 7d: the asset-less 20260929 python-build release aged past a
+      # 7d window and re-entered every python resolution, breaking the 3.13
+      # lock-time listing.
       dependency_cooldown_days: 10
+      # Registry packages that must resolve inside the cooldown: package ->
+      # advisory id (GHSA/CVE) or the critical problem it fixes. Rendered as
+      # [tool.uv] exclude-newer-package `false` and excluded from the
+      # dependabot pip cooldown (security updates bypass it natively). A
+      # repository adds its own cases through its config/codegen.yaml overlay
+      # (mappings merge). Remove an entry once its fix ages past the cooldown.
+      dependency_cooldown_exceptions:
+        soupsieve: GHSA-mmhr-3c5m-f64f
       # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
       # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
       # here, so `copy` duplicated about 1 GB per environment, twice per upg,
@@ -284,14 +292,15 @@ Infra:
       uv_environments: [ "sys_platform == 'linux'", "sys_platform == 'darwin'" ]
       # Security floors become [tool.uv] constraint-dependencies in every
       # project, including projects that use the package only transitively.
-      # Operator decision 2026-10-24 (bead flext-y9dqj, "cooldown via
-      # constraint floors"): exclude-newer stays banned; each floor below is
-      # the first release fixing an open Dependabot advisory, reviewed by hand.
+      # Each floor below is the first release fixing an open Dependabot
+      # advisory, reviewed by hand; a floor younger than the cooldown also
+      # declares its package in dependency_cooldown_exceptions.
       # Raise a floor only for a reviewed advisory and remove it once every
       # direct dependent requires the fixed release; an empty list removes
       # the key from all projections.
       uv_constraint_dependencies:
       - pillow>=13.0.0
+      - soupsieve>=4.0.0
       - certifi>=2026.10.19
       - setuptools>=84.1.0
       - virtualenv>=21.14.13
@@ -950,6 +959,8 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
+      - name: lock
+        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
       - name: gen
         arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.
@@ -2372,6 +2383,7 @@ Infra:
             - tool.pytest.ini_options
             - tool.uv.environments
             - tool.uv.link-mode
+            - tool.uv.package
             - tool.uv.constraint-dependencies
             - tool.uv.override-dependencies
             - tool.uv.workspace.members
@@ -2436,108 +2448,133 @@ Infra:
             policy: full
         "src/{package_name}/api.py":
           source: base/src/api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/cli.py":
           source: base/src/cli.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/__main__.py":
           source: base/src/__main__.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/base.py":
           source: base/src/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/models.py":
           source: base/src/models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/typings.py":
           source: base/src/typings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/protocols.py":
           source: base/src/protocols.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/constants.py":
           source: base/src/constants.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/utilities.py":
           source: base/src/utilities.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{config}.py":
           source: base/src/_config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/{settings}.py":
           source: base/src/_settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/py.typed":
           source: base/src/py.typed.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Domain behavior is generated in services, not base.py.
         "src/{package_name}/services/ping.py":
           source: base/src/services/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Runtime defaults belong to the declaring import-package resource.
         "src/{package_name}/config/{ns}.yaml":
           source: base/src/config/ns.yaml.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         "src/{package_name}/_models/ping.py":
           source: base/src/_models/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/config.py":
           source: base/src/_models/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/config_models.py":
           source: base/src/config_models.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_models/settings.py":
           source: base/src/_models/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/config.py":
           source: base/src/_constants/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_constants/settings.py":
           source: base/src/_constants/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/config.py":
           source: base/src/_protocols/config.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/ping.py":
           source: base/src/_protocols/ping.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_protocols/settings.py":
           source: base/src/_protocols/settings.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         "src/{package_name}/_typings/base.py":
           source: base/src/_typings/base.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # New projects receive a real runtime test; subsequent generation preserves
         # this authored file because only managed_file_specs are reprojected.
         tests/test_api.py:
           source: base/tests/test_api.py.j2
+          requires_package: true
           profiles: [ workspace, standalone ]
           ownership: null
         # Every repository's pytest bootstrap is one projection of this template:

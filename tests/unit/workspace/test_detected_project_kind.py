@@ -75,7 +75,14 @@ class TestsFlextInfraDetectedProjectKind:
         )
 
     @staticmethod
-    @c.Tests.MARK.parametrize("kind", tuple(c.Infra.ProjectKind))
+    @c.Tests.MARK.parametrize(
+        "kind",
+        tuple(
+            kind
+            for kind in c.Infra.ProjectKind
+            if kind is not c.Infra.ProjectKind.CONSUMER
+        ),
+    )
     @c.Tests.MARK.parametrize("policy_key", ["kind", "unrelated_invalid"])
     def test_write_containment_retains_native_kind_and_strict_policy_loading(
         tmp_path: Path,

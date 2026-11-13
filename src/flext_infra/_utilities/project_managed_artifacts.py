@@ -145,7 +145,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         if (
             authority is not None
             and not project.is_relative_to(authority.resolve())
-            and kind is not c.Infra.ProjectKind.INTERNAL_FLEXT
+            and kind not in c.Infra.TOOLCHAIN_GOVERNED_KINDS
         ):
             msg = (
                 f"write project {project} is outside the selected root "

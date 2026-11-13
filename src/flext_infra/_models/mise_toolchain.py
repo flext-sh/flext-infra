@@ -447,9 +447,24 @@ class FlextInfraModelsMiseToolchain:
                 ge=1,
                 description=(
                     "Supply-chain cooldown in days, the single value every "
-                    "resolver honours: the generated mise minimum_release_age "
-                    "and every dependabot ecosystem entry. Forks and local "
-                    "projects (direct git references) are excluded."
+                    "resolver honours: the generated mise minimum_release_age, "
+                    "the [tool.uv] exclude-newer span and every dependabot "
+                    "ecosystem entry. Forks and local projects (direct git, "
+                    "URL and path sources) are outside it natively."
+                ),
+            ),
+        ]
+        dependency_cooldown_exceptions: Annotated[
+            Mapping[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Registry packages released inside the cooldown on purpose, "
+                    "each mapped to its advisory id or critical-fix reason: "
+                    "rendered as [tool.uv] exclude-newer-package false and "
+                    "excluded from the dependabot pip cooldown. Repository "
+                    "config overlays add entries; remove one once the fixed "
+                    "release ages past the cooldown."
                 ),
             ),
         ]

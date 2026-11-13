@@ -28,7 +28,7 @@
   `FlextInfraConstants`, `FlextInfraFlextInfraConfig`, `FlextInfraFlextInfraConform`,
   `FlextInfraFlextInfraCprofile`, `FlextInfraFlextInfraPreview`,
   `FlextInfraFlextInfraPytest`, `FlextInfraGitLanes` (+15 more)
-- Exported module shortcuts: _none_
+- Exported module shortcuts: *none*
 - Generated module pages: `21`
 
 ## Next Pages

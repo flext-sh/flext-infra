@@ -501,8 +501,13 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def package_name(self) -> t.NonEmptyStr:
-            """Python import package name."""
+        def package(self) -> bool:
+            """Repository publishes a Python package."""
+            ...
+
+        @property
+        def package_name(self) -> t.NonEmptyStr | None:
+            """Python import package name; absent without a package."""
             ...
 
         @property
@@ -619,17 +624,17 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def config_base_class(self) -> str:
+        def config_base_class(self) -> str | None:
             """Config base class composed by the generated ``_config.py``."""
             ...
 
         @property
-        def config_base_module(self) -> str:
+        def config_base_module(self) -> str | None:
             """Import module exposing ``config_base_class``."""
             ...
 
         @property
-        def settings_base_class(self) -> str:
+        def settings_base_class(self) -> str | None:
             """Settings base class composed by the generated ``_settings.py``."""
             ...
 

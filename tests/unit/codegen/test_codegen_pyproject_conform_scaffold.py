@@ -131,8 +131,12 @@ constraint-dependencies = ["uv>=0"]
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         """Test full conformance is idempotent without uv version pin."""
         workspace = self._workspace(role=c.Infra.MakeProfile.STANDALONE)
+        exception = "cve-fixed-package"
         toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={"uv_link_mode": "copy"},
+            update={
+                "uv_link_mode": "copy",
+                "dependency_cooldown_exceptions": {exception: "GHSA-test"},
+            },
         )
         required_dev = self._detached_dev_floors()
         declared_member_source = (
@@ -173,12 +177,13 @@ python = ".venv/bin/python"
         uv = u.Tests.toml_table_at(first, "tool", "uv")
         tm.that(second, eq=first)
         tm.that(uv["link-mode"], eq=toolchain.uv_link_mode)
-        # The supply-chain cooldown is exterminated fleet-wide (flext-fphyv):
-        # uv resolves every version published up to now, and a removed
-        # declaration exterminates the keys everywhere (flext-gzfd2 class), so
-        # pre-existing projections carrying the old cap converge to no keys.
-        tm.ok("exclude-newer" not in uv)
-        tm.ok("exclude-newer-package" not in uv)
+        # The one fleet cooldown binds uv as a rolling span; an authored
+        # exemption converges to exactly the declared CVE/critical exceptions.
+        tm.that(uv["exclude-newer"], eq=f"P{toolchain.dependency_cooldown_days}D")
+        tm.that(
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(uv["exclude-newer-package"]),
+            eq={exception: False},
+        )
         tm.ok("required-version" not in uv)
         tm.that(
             "python-interpreter-path"

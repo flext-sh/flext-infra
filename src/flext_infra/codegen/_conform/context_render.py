@@ -149,6 +149,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             uv_resolution=m.Infra.UvResolutionSpec.model_validate({
                 "link_mode": (cls.link_mode(target.repository, toolchain)),
+                "cooldown_days": toolchain.dependency_cooldown_days,
+                "cooldown_exceptions": tuple(
+                    sorted(toolchain.dependency_cooldown_exceptions)
+                ),
                 "constraint_dependencies": (
                     tuple(toolchain.uv_constraint_dependencies)
                 ),
@@ -670,6 +674,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "canonical_project_name": (target.canonical_project_name),
                 "const_name": (project.constant_name),
+                "package": (repository.package),
                 "package_name": (project.package_name),
                 "packaged_data_paths": ((
                     *packaged_data_paths.files,
@@ -709,7 +714,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     project.repository_namespace_packages
                 ),
                 "root_modules": (project.root_modules),
-                "cli_module": (project.cli_module),
+                "cli_module": (project.cli_module and repository.package),
                 "console_scripts": (project.console_scripts),
                 "runtime_dependency_overlay": (project.runtime_dependency_overlay),
                 "description": (project.description),
@@ -747,7 +752,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         An existing ``pyproject.toml`` owns the declared runtime dependencies
         and development extras. A new project depends at runtime on its
         declared upstream, whose distribution its dependency profile names;
-        the repository overlay comes ahead of that profile's runtime set.
+        the repository overlay comes ahead of that profile's runtime set. A
+        consumer needs no profile: its overlay names the consumed distribution.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
@@ -769,7 +775,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 (base for base in profiles if base.module == project.upstream),
                 None,
             )
-            if profile is None:
+            # A consumer names its consumed distribution in its own overlay and
+            # needs no dependency profile for its upstream.
+            if profile is None and project.package_name is not None:
                 return result_type.fail(
                     f"upstream has no declared dependency profile: {project.upstream}"
                 )
@@ -777,7 +785,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tuple(
                     dict.fromkeys((
                         *project.runtime_dependency_overlay,
-                        profile.distribution,
+                        *(() if profile is None else (profile.distribution,)),
                     ))
                 ),
                 (),
@@ -894,7 +902,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Resolve the packaged data selection of the target make profile.
 
         A workspace-profile render owns no packaged data selection: workspace
-        aggregation renders no installable project payload of its own.
+        aggregation renders no installable project payload of its own, and a
+        repository without a package ships no data.
 
         Args:
             repository_root: Project root holding the declared data paths.
@@ -906,7 +915,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resolved packaged data selection of the render.
 
         """
-        if profile is c.Infra.MakeProfile.WORKSPACE:
+        if profile is c.Infra.MakeProfile.WORKSPACE or project.package_name is None:
             return m.Infra.PackagedDataSelection()
         return FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,

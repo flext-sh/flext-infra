@@ -84,7 +84,7 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(plan.workspace.project, eq=declared.project)
         for managed in inputs.spec.managed_file_specs:
             tm.that((root / managed.path).parent.is_dir(), eq=True)
-        package_dir = root / c.Infra.DEFAULT_SRC_DIR / project.package_name
+        package_dir = root / c.Infra.DEFAULT_SRC_DIR / tm.not_none(project.package_name)
         for family in u.Infra.facade_families().values():
             if (package_dir / family.directory).is_dir():
                 tm.that(

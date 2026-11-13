@@ -52,7 +52,9 @@ class TestsFlextInfraCodegenPackagedDataWheel:
             The resulting ``Path``.
 
         """
-        package_name = u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
+        package_name = tm.not_none(
+            u.Tests.project_spec(FIXTURE_DISTRIBUTION).package_name
+        )
         return (
             root
             / c.Infra.DEFAULT_SRC_DIR
