@@ -270,6 +270,9 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                 self.repository_root,
                 self.rope,
                 pending,
+                start_state=FlextInfraCodemodSemanticApply.source_fingerprint(
+                    self.repository_root, pending
+                ),
                 text_precondition_pending=True,
                 publish=False,
             )
@@ -799,12 +802,14 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             self.progress.emit_rename(renamed.value)
         return r[tuple[p.Cli.AtomicFileState, ...]].ok(tuple(published.values()))
 
+    @override
     def _advance_phases(
         self,
         root: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         current: p.Infra.ModScanReport,
         *,
+        start_state: tuple[tuple[str, str], ...],
         text_precondition_pending: bool,
         publish: bool = True,
     ) -> p.Result[p.Infra.ModPhaseAdvance]:
@@ -822,10 +827,10 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
             or quarantine, or the first unattributed failure.
 
         """
-        fingerprint = FlextInfraCodemodSemanticApply.source_fingerprint
-        voided = m.Infra.ModPhaseAdvance(
-            report=current, phase_states=(fingerprint(root, current),)
-        )
+        # ``start_state`` is the caller's fingerprint of ``current``: reading
+        # and hashing the whole governed inventory again here observed the
+        # same unchanged sources a second time.
+        voided = m.Infra.ModPhaseAdvance(report=current, phase_states=(start_state,))
         seeded = self._phase_seed(root, rope_workspace)
         if seeded.failure:
             return self._attributed(seeded, voided)
@@ -1626,6 +1631,7 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
                     root,
                     rope_workspace,
                     current,
+                    start_state=before,
                     text_precondition_pending=text_precondition_pending,
                 )
             if advanced.failure:
