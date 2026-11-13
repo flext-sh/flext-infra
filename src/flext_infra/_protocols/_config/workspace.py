@@ -284,15 +284,6 @@ class FlextInfraProtocolsConfigWorkspace:
             ...
 
         @property
-        def deferred_distributions(self) -> tuple[t.NonEmptyStr, ...]:
-            """Structural member projected from the owning model.
-
-            Own costly third-party distributions: a lazy export whose module imports
-            one at module scope loads on first member use.
-            """
-            ...
-
-        @property
         def deferred_instances(self) -> tuple[t.NonEmptyStr, ...]:
             """Structural member projected from the owning model.
 
