@@ -274,9 +274,9 @@ class TestsFlextInfraDeclarationRelocationGroups:
         root, sources = TestsFlextInfraDeclarationRelocationSupport.seed(tmp_path)
         preflight = FlextInfraModGateEngine.scan(root, fix=False).unwrap()
         phase = c.Infra.SemanticCutoverPhase.DECLARATION_RELOCATION
-        rule_id = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase]
+        rule_ids = c.Infra.SEMANTIC_CUTOVER_RULE_IDS[phase]
         tm.that(
-            any(finding.rule_id == rule_id for finding in preflight.entries),
+            any(finding.rule_id in rule_ids for finding in preflight.entries),
             eq=True,
         )
         with infra.rope_workspace(root) as rope:

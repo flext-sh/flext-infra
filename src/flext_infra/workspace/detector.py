@@ -370,7 +370,8 @@ class FlextInfraWorkspaceDetector(
         origin_url, provider_name = origin.value
         checkout = u.Infra.validate_git_remote_url(declared_url or origin_url).flat_map(
             lambda remote: u.Infra.git_identity(
-                m.Infra.GitRepoRequest(repo_root=repository_root)
+                m.Infra.GitRepoRequest(repo_root=repository_root),
+                include_status=False,
             ).map(lambda identity: (remote, identity))
         )
         if checkout.failure:
@@ -1053,7 +1054,10 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 f"repository root is not a directory: {resolved_root}",
             )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved_root),
+            include_status=False,
+        )
         if identity.failure:
             return result_type.from_failure(identity)
         return result_type.ok(identity.value)

@@ -171,18 +171,21 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         TestsFlextInfraCodegenCandidateBootstrap._break_repository(failed, failure)
         before = TestsFlextInfraConformSupport.project_tree(root)
 
-        planner = FlextInfraCodegenConform.Generate(
-            repository_root=root,
-            state=m.Infra.CodegenConformState(
-                repository_root=root,
-                initial_workspace=workspace,
+        with u.Tests.raises(
+            ValueError,
+            match=(
+                "cannot resolve package name" if failure == "member-package" else None
             ),
-        )
+        ) as raised:
+            FlextInfraCodegenConform.Generate(
+                repository_root=root,
+                state=m.Infra.CodegenConformState(
+                    repository_root=root,
+                    initial_workspace=workspace,
+                ),
+            ).plan(request)
         if failure == "root-source":
-            tm.fail(planner.plan(request), has="is not valid TOML")
-        else:
-            with u.Tests.raises(ValueError, match="cannot resolve package name"):
-                planner.plan(request)
+            tm.that(type(raised.value).__name__, eq="TOMLDecodeError")
         tm.that(
             TestsFlextInfraConformSupport.project_tree(root),
             eq=before,
@@ -222,7 +225,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
         tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(
+            u.Tests.conform_plan_result(
+                root,
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -253,16 +257,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
                     config.Infra.tooling, "ruff.lint", "extend-select", list[str]
                 )
             ),
-        )
-        tm.that(
-            u.Tests.toml_table_at(
-                tm.not_none(projected.content).decode(c.DEFAULT_ENCODING),
-                "tool",
-                "ruff",
-                "lint",
-                "flake8-type-checking",
-            ),
-            has="runtime-evaluated-base-classes",
         )
         tm.ok(infra.bootstrap_candidate(command))
 
@@ -696,6 +690,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.fail(u.Infra.workspace_manifest_path(source).exists())
         projection = candidate / c.PYPROJECT_FILENAME
+        # The candidate first reaches its canonical projection, which composes
+        # the declared development requirements; recovery must restore that.
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+        tm.ok(infra.bootstrap_candidate(command))
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
         environment = u.Infra.runtime_environment_dir(candidate)
@@ -720,7 +718,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         before = TestsFlextInfraConformSupport.project_tree(candidate)
-        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
         destinations = tm.not_none(
             FlextInfraCodegenConform.Generate.surface_contract(

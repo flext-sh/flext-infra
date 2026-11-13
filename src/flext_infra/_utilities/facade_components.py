@@ -1376,8 +1376,14 @@ class FlextInfraUtilitiesFacadeComponents:
         )
         # A generated facade's own base list is the previous projection, which
         # this run re-derives from the family declarations: a base it no longer
-        # resolves awaits that re-render instead of blocking it.
-        rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER)
+        # resolves awaits that re-render instead of blocking it. A facade the
+        # generator scaffolds in this run is the same kind of projection.
+        rendered = project.source_text(path).startswith(c.Infra.AUTOGEN_HEADER) or any(
+            plan.path == path
+            and plan.before.content is None
+            and plan.desired_content is not None
+            for plan in project.source_plans
+        )
         proven: list[tuple[p.Infra.SourceClassReference]] = []
         # A class nested in a deferred holder is reached through the holder's
         # stale bases, so it awaits the same re-render.

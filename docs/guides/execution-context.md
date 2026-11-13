@@ -937,8 +937,9 @@ generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
 only the fully composed candidate enters the physical runtime. Preparation and
 default staged checks consume that same group before its journal publishes. The
-existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
-target-only AST and semantic planning before that group's publication. Ordinary
+existing CLI `mod --rename-plan=<artifact>` composes the artifact with
+target-only AST and semantic planning before that group's publication; it writes
+unless `--check` or `--dry-run` is given, and accepts no `--apply` option. Ordinary
 `mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
 the same captured read scope without a manual rename catalog. The request root
 remains the syntax/declaration target; elected consumers are reference readers
@@ -1813,6 +1814,14 @@ that does not exist yet; missing or invalid values fail the service's validation
 Make transports their literal values through the environment, preserving spaces
 without evaluating the values as shell code.
 
+A new project depends at runtime on its declared `UPSTREAM`: the first render
+writes that upstream's distribution, named by its `scaffold.project.config_bases`
+dependency profile, into `[project].dependencies` after the repository's own
+`runtime_dependency_overlay`, and the FLEXT line pins it like every other FLEXT
+requirement. An upstream without a declared profile fails the render. Governance
+kind is then detected natively from that dependency; configuration never
+declares it.
+
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
 `make gen`, `make check`, `make tests`, and `make build`. Its physical environment
@@ -2416,8 +2425,19 @@ When declarations change, explicitly generate their projections, resolve their
 locks and install the frozen resolution through their respective verbs. A missing
 generation input fails its prerequisite instead of triggering corrective generation
 inside upgrade. The declared lock platforms and release cooldown remain owned by
-the typed toolchain. Consumer convergence and runtime acceptance are tracked
-separately in `algar-723.1`; this contract is not a publication receipt.
+the typed toolchain. The cooldown binds every resolver (operator decision
+2026-11-13): `codegen.toolchain.dependency_cooldown_days` renders the Mise
+`minimum_release_age`, every Dependabot cooldown and the relative `[tool.uv]`
+`exclude-newer` span that pyproject conformance projects into each project, so a
+plain `uv lock` honours it and `uv.lock` records the span rather than a date.
+uv applies the span to registry distributions only; FLEXT members and `-dc` forks
+resolve through git, URL or path sources at their pinned revisions. Registry
+packages that must resolve inside the window for a CVE or critical fix are declared
+once in `dependency_cooldown_exceptions` (package to advisory or reason), extended
+by a repository's own `config/codegen.yaml` overlay, and rendered as
+`exclude-newer-package` exemptions and Dependabot pip cooldown exclusions. Consumer
+convergence and runtime acceptance are tracked separately in `algar-723.1`; this
+contract is not a publication receipt.
 
 ### Development Groups, Typing Policy, and Git Requirement Lines
 

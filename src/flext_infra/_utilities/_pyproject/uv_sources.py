@@ -310,15 +310,27 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
     def _sync_uv_constraints(
         uv: t.Cli.TomlTable, resolution: p.Infra.UvResolutionSpec
     ) -> None:
-        """Publish declared constraints and native linking, without cooldown copies."""
+        """Publish declared constraints, native linking and the rolling cooldown.
+
+        uv applies ``exclude-newer`` to registry distributions only; git, URL
+        and path sources (FLEXT members and forks) resolve at their pinned
+        revisions. The ISO 8601 span keeps the window rolling: uv records it in
+        ``uv.lock`` and never treats the lock as stale because time passed.
+        """
         constraints = tuple(resolution.constraint_dependencies)
         if constraints:
             u.Cli.toml_sync_string_list(uv, "constraint-dependencies", constraints)
         else:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         u.Cli.toml_sync_value(uv, "link-mode", resolution.link_mode)
-        u.Cli.toml_remove_key_if_present(uv, "exclude-newer")
-        u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        u.Cli.toml_sync_value(uv, "exclude-newer", f"P{resolution.cooldown_days}D")
+        if resolution.cooldown_exceptions:
+            exempt: dict[str, t.JsonValue] = dict.fromkeys(
+                resolution.cooldown_exceptions, False
+            )
+            u.Cli.toml_sync_value(uv, "exclude-newer-package", exempt)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
 
     @staticmethod
     def _sync_uv_environments(
