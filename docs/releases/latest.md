@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- test(check): read native diagnostics from the receipt and invocation report (#2327)
+- fix(codegen): plan the tests namespace from the root exports planned in the same run
+  (#2330)
 - fix(codegen): a generated facade stops composing an orchestrator moved out of its
   family (#2326)
 - fix(release): the lane refreshes only its open pull request (#2325)
