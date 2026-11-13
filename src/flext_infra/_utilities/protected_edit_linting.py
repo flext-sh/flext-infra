@@ -814,17 +814,17 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return u.Cli.json_pick_str(finding, "name"), row, detail
 
     @classmethod
-    def _ruff_environment(cls, command_cwd: Path) -> Mapping[str, str]:
-        """Run Ruff with the gate environment and its external project cache.
+    def _ruff_environment(cls) -> Mapping[str, str]:
+        """Run Ruff with the gate environment and the shared external cache.
 
         Returns:
-            The lint environment carrying the project's external Ruff cache.
+            The lint environment carrying the shared external Ruff cache.
 
         """
         return {
             **cls._command_env(),
             c.Infra.RUFF_CACHE_ENVIRONMENT_VARIABLE: str(
-                FlextInfraUtilitiesResourceLimits.ruff_cache_directory(command_cwd)
+                FlextInfraUtilitiesResourceLimits.ruff_cache_directory()
             ),
         }
 
@@ -854,7 +854,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 ),
                 cwd=project,
                 options=m.Cli.ProcessOptions(
-                    env=cls._ruff_environment(project),
+                    env=cls._ruff_environment(),
                     remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 ),
                 timeout=cls._gate_deadline(c.Infra.RUFF),
@@ -887,7 +887,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             f"normalize: ruff {arguments[0]} settings source="
             f"{'staged' if settings else 'none'} project={command_cwd} path={path}"
         ).unwrap()
-        environment = cls._ruff_environment(command_cwd)
+        environment = cls._ruff_environment()
         executed = u.Cli.run_raw(
             (
                 *cls._workspace_tool_command(c.Infra.RUFF),
@@ -1529,7 +1529,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             )
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
-            environment = dict(cls._ruff_environment(command_cwd))
+            environment = dict(cls._ruff_environment())
         elif tool_name == c.Infra.MYPY:
             environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
                 FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
