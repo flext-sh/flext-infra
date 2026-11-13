@@ -17,15 +17,12 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import os
-import signal
-import sys
 import threading
 import time
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from types import FrameType
 
 from flext_cli import u
 
@@ -95,23 +92,24 @@ class FlextInfraUtilitiesGateAdmission:
         cls,
         gate: str,
         repository: Path,
+        budget: p.Infra.RouteBudgetSpec | None,
         *,
         wait_seconds: float | None = None,
     ) -> Generator[p.Infra.GateTicket]:
-        """Hold one admitted slot for the duration of the block.
+        """Admit one heavy route, then bound it by its budget from admission on.
 
-        A process started inside an admitted gate inherits its ancestor's
-        ticket through ``FLEXT_GATE_ADMISSION_TICKET`` and never queues again.
-        When the queue reclaims a stalled owner's ticket, the owner receives
-        SIGTERM: the process supervisor stops its owned children and the
-        route exits non-zero.
+        The queue wait never counts against the budget: the flext-cli process
+        deadline is armed only once the route is admitted, and on expiry the
+        process supervisor stops the owned children and the route exits with
+        the timeout status; a route without a budget keeps the deadline of its
+        native runner. A process started inside an admitted gate inherits
+        its ancestor's ticket through ``FLEXT_GATE_ADMISSION_TICKET``, runs
+        inside its ancestor's deadline and never queues again. When the queue
+        reclaims a stalled owner's ticket, the owner expires that same
+        deadline; a ticket reclaimed while still waiting fails the admission.
 
         Yields:
             The admitted ticket; its path is exported to every child process.
-
-        Raises:
-            RuntimeError: If the queue reclaimed the ticket.
-            TimeoutError: If a ``TimeoutError`` is caught.
 
         """
         inherited = u.Cli.process_env().get(c.Infra.GATE_ADMISSION_TICKET_ENV)
@@ -122,6 +120,7 @@ class FlextInfraUtilitiesGateAdmission:
         root.mkdir(parents=True, exist_ok=True)
         ticket, liveness = cls._enqueue(root, gate, repository)
         reclaimed = threading.Event()
+        bounded = threading.Event()
         stop = threading.Event()
 
         def refresh() -> None:
@@ -137,8 +136,9 @@ class FlextInfraUtilitiesGateAdmission:
                             update={"heartbeat_at": datetime.now(UTC)}
                         ),
                     )
-            if reclaimed.is_set():
-                os.kill(os.getpid(), signal.SIGTERM)
+            if reclaimed.is_set() and bounded.is_set():
+                u.Cli.error(f"gate admission ticket {ticket.name} was reclaimed")
+                u.Cli.process_deadline_expire()
 
         heartbeat = threading.Thread(
             target=refresh, name=f"gate-admission-{ticket.stem}", daemon=True
@@ -147,12 +147,16 @@ class FlextInfraUtilitiesGateAdmission:
         try:
             admitted = cls._await_admission(root, ticket, reclaimed, wait_seconds)
             os.environ[c.Infra.GATE_ADMISSION_TICKET_ENV] = str(ticket)
-            yield admitted
-        except TimeoutError as exc:
-            if reclaimed.is_set():
-                msg = f"gate admission ticket {ticket.name} was reclaimed"
-                raise RuntimeError(msg) from exc
-            raise
+            with u.Cli.process_deadline_scope(
+                None
+                if budget is None
+                else m.Cli.ProcessDeadline(
+                    expires_at_monotonic=time.monotonic() + budget.budget_seconds,
+                    termination_grace_seconds=budget.grace_seconds,
+                )
+            ):
+                bounded.set()
+                yield admitted
         finally:
             os.environ.pop(c.Infra.GATE_ADMISSION_TICKET_ENV, None)
             stop.set()
@@ -161,73 +165,6 @@ class FlextInfraUtilitiesGateAdmission:
                 ticket.unlink(missing_ok=True)
             cls._liveness_path(ticket).unlink(missing_ok=True)
             os.close(liveness)
-        if reclaimed.is_set():
-            msg = f"gate admission ticket {ticket.name} was reclaimed"
-            raise RuntimeError(msg)
-
-    @classmethod
-    @contextmanager
-    def gate_admitted_budget(
-        cls,
-        gate: str,
-        repository: Path,
-        budget: p.Infra.RouteBudgetSpec,
-    ) -> Generator[p.Infra.GateTicket]:
-        """Admit one heavy route, then bound it by its budget from admission on.
-
-        The queue wait never counts against the budget. An inherited admission
-        runs inside its ancestor's budget and arms no second one. The budget
-        keeps the contract ``timeout --signal=TERM --kill-after`` gave the
-        Make recipes: SIGTERM reaches this process ``grace_seconds`` before
-        the budget ends, the process supervisor forwards it to the owned
-        children, and the route leaves with the timeout status. A process
-        still alive when the budget ends is killed.
-
-        Yields:
-            The admitted ticket; the slot and the budget hold until the block
-            exits.
-
-        Raises:
-            SystemExit: With the timeout status once the budget expired.
-
-        """
-        if u.Cli.process_env().get(c.Infra.GATE_ADMISSION_TICKET_ENV) is not None:
-            with cls.gate_admitted(gate, repository) as inherited:
-                yield inherited
-            return
-        with cls.gate_admitted(gate, repository) as admitted:
-            expired = threading.Event()
-
-            def expire() -> None:
-                expired.set()
-                os.kill(os.getpid(), signal.SIGTERM)
-
-            def terminated(signum: int, _frame: FrameType | None) -> None:
-                if expired.is_set():
-                    raise SystemExit(c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
-                signal.signal(signum, previous)
-                os.kill(os.getpid(), signum)
-
-            timers = (
-                threading.Timer(budget.budget_seconds - budget.grace_seconds, expire),
-                threading.Timer(
-                    budget.budget_seconds,
-                    os.kill,
-                    (os.getpid(), signal.SIGKILL),
-                ),
-            )
-            previous = signal.signal(signal.SIGTERM, terminated)
-            for timer in timers:
-                timer.daemon = True
-                timer.start()
-            try:
-                yield admitted
-            finally:
-                for timer in timers:
-                    timer.cancel()
-                signal.signal(signal.SIGTERM, previous)
-                if expired.is_set():
-                    raise SystemExit(c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
 
     @classmethod
     def gate_repeat_refuse(
@@ -264,14 +201,15 @@ class FlextInfraUtilitiesGateAdmission:
         if elapsed >= window.window_seconds:
             return
         scope = "".join(f" {item}" for item in selection)
-        sys.stderr.write(
+        u.Cli.emit_raw(
             f"gate admission: refused {gate}{scope} in {repository}: the same "
             f"full-weight run succeeded at "
             f"{earlier[-1].finished_at.isoformat(timespec='seconds')} "
             f"({elapsed:.0f}s ago); its repeat window is "
             f"{window.window_seconds}s, {window.window_seconds - elapsed:.0f}s "
             f"left.\nRun the lighter form instead: {window.lighter}\n"
-            "This refusal is a failure, never a pass (FLEXT ADR-032).\n"
+            "This refusal is a failure, never a pass (FLEXT ADR-032).\n",
+            error=True,
         )
         raise SystemExit(c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE)
 
@@ -456,7 +394,9 @@ class FlextInfraUtilitiesGateAdmission:
                     )
                     cls._write(ticket, admitted)
                     if reported:
-                        sys.stderr.write(f"gate admission: {mine.gate} admitted\n")
+                        u.Cli.emit_raw(
+                            f"gate admission: {mine.gate} admitted\n", error=True
+                        )
                     return admitted
                 position = [record.sequence for record in waiting].index(mine.sequence)
             state = (
@@ -468,8 +408,7 @@ class FlextInfraUtilitiesGateAdmission:
                 )
             )
             if state != reported:
-                sys.stderr.write(f"{state}\n")
-                sys.stderr.flush()
+                u.Cli.emit_raw(f"{state}\n", error=True)
                 reported = state
             if deadline is not None and time.monotonic() >= deadline:
                 msg = f"{state} (wait of {wait_seconds}s expired)"
@@ -498,10 +437,11 @@ class FlextInfraUtilitiesGateAdmission:
             stalled = (now - record.heartbeat_at).total_seconds()
             if ticket != own and stalled > ttl:
                 ticket.unlink()
-                sys.stderr.write(
+                u.Cli.emit_raw(
                     f"gate admission: reclaimed ticket {record.sequence} "
                     f"({record.gate} pid {record.pid} {record.repository}): "
-                    f"heartbeat {stalled:.0f}s old exceeds ttl {ttl}s\n"
+                    f"heartbeat {stalled:.0f}s old exceeds ttl {ttl}s\n",
+                    error=True,
                 )
                 continue
             live.append(record)

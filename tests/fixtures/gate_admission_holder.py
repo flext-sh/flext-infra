@@ -52,12 +52,12 @@ class TestsFlextInfraGateAdmissionHolder:
             u.Infra.gate_repeat_refuse(
                 name, root, config.Infra.gate_admission.repeat.check
             )
-        with u.Infra.gate_admitted_budget(name, root, budget) as ticket:
+        with u.Infra.gate_admitted(name, root, budget) as ticket:
             (root / f"{name}.started").write_text(str(time.time()), encoding="utf-8")
             while not (root / f"{name}.release").exists():
                 time.sleep(0.1)
             if mode is cls.Mode.NESTED:
-                with u.Infra.gate_admitted(f"{name}-inner", root):
+                with u.Infra.gate_admitted(f"{name}-inner", root, budget):
                     (root / f"{name}.nested").write_text("", encoding="utf-8")
             (root / f"{name}.ended").write_text(str(time.time()), encoding="utf-8")
         if mode is cls.Mode.FAIL:
