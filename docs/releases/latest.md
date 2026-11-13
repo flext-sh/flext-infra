@@ -12,6 +12,12 @@
 
 ## Pull requests since last release
 
+- fix(codegen): publish generic member classes so mypy can subscript them (#2339)
+- fix(codemod): bind-registration-specialization ignores already-specialized algebra
+  (salvage of #2334) (#2340)
+- test(check): codemod gate cases follow the generated-source and report contracts
+  (#2338)
+- fix(codemod): snapshot module listing classifies stubs before any read (#2337)
 - fix(setup): hold the freshness probe's native report so success shows no error line
   (#2336)
 - fix(codemod): read library providers from the target runtime (#2335)
