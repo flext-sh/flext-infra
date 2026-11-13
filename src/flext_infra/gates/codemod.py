@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 import tempfile
 import time
 from collections import Counter
@@ -264,6 +265,11 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             or outcome.raw_return_code not in {0, 1}
             or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
         ):
+            # A scanner that stops early still publishes the matches it emitted
+            # to stdout. Measure that payload so the gate reports the true
+            # finding total and each rule/file instead of collapsing the whole
+            # native report into this one failure.
+            found.extend(self._published_scan_findings(scan, ruleset))
             failures.append(failure)
             return False
         # DiagnosticError (exit 1) requires a valid RuleMatch array,
@@ -311,6 +317,69 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             ),
             ctx,
         )
+
+    @staticmethod
+    def _published_scan_findings(
+        scan: p.Cli.CommandOutput,
+        ruleset: p.Infra.CodemodRuleset,
+    ) -> Sequence[p.Infra.AstGrepDiagnostic]:
+        """Measure the complete native matches a failed scan already published.
+
+        A timed-out or crashed scanner may still have emitted its final
+        ``--json=compact`` array before stopping. That payload is the only
+        native measurement available, so it is parsed and filtered to the
+        elected ruleset; the native failure remains a separate blocking issue.
+        A truncated or otherwise malformed stream yields no salvaged findings.
+
+        Returns:
+            The published diagnostics that belong to the elected ruleset.
+
+        """
+        payload = scan.stdout.strip()
+        if not payload:
+            return ()
+        return tuple(
+            finding
+            for finding in FlextInfraGatesCodemod._published_diagnostics(payload)
+            if finding.rule_id in ruleset.rule_ids
+        )
+
+    @staticmethod
+    def _published_diagnostics(
+        payload: str,
+    ) -> Sequence[p.Infra.AstGrepDiagnostic]:
+        """Read every complete finding record a stopped scan published.
+
+        ``--json=compact`` emits one array, so a killed scanner can leave it
+        without its closing bracket. A complete array validates whole; a
+        truncated one yields every complete object before the cut.
+
+        Returns:
+            The validated native diagnostics the payload published.
+
+        """
+        try:
+            return m.Infra.AstGrepReport.model_validate_json(payload).root
+        except m.ValidationError:
+            if not payload.startswith(c.Infra.AST_GREP_JSON_ARRAY_OPEN):
+                return ()
+        decoder = json.JSONDecoder()
+        published: list[p.Infra.AstGrepDiagnostic] = []
+        cursor = 1
+        while cursor < len(payload):
+            while cursor < len(payload) and payload[cursor] in ", \t\r\n":
+                cursor += 1
+            if cursor >= len(payload) or payload[cursor] == "]":
+                break
+            start = cursor
+            try:
+                _, cursor = decoder.raw_decode(payload, cursor)
+                published.append(
+                    m.Infra.AstGrepDiagnostic.model_validate_json(payload[start:cursor])
+                )
+            except ValueError:
+                break
+        return tuple(published)
 
     @staticmethod
     def _validated_scan_report(
