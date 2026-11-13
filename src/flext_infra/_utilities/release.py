@@ -287,6 +287,10 @@ class FlextInfraUtilitiesRelease:
     ) -> p.Result[bool]:
         """Generate the full release notes: one bullet per merged pull request.
 
+        The notes become ``docs/releases/<tag>.md``, which ``release-publish``
+        sends verbatim as the GitHub release body, so notes GitHub would
+        refuse fail here, before the release pull request and the tag exist.
+
         Returns:
             The resulting ``p.Result[bool]``.
 
@@ -297,7 +301,29 @@ class FlextInfraUtilitiesRelease:
                 changes or "Initial tagged release",
             ),
         )
-        return FlextInfraUtilitiesRelease._write_document(output_path, lines)
+        written = FlextInfraUtilitiesRelease._write_document(output_path, lines)
+        if written.failure:
+            return written
+        return FlextInfraUtilitiesRelease.release_body_admitted(output_path)
+
+    @staticmethod
+    def release_body_admitted(notes: Path) -> p.Result[bool]:
+        """Refuse release notes longer than GitHub accepts as a release body.
+
+        Returns:
+            Success when ``notes`` fits ``GH_RELEASE_BODY_MAX_CHARS``.
+
+        """
+        return u.Cli.files_read_text(notes).flat_map(
+            lambda text: (
+                r[bool].ok(value=True)
+                if len(text) <= c.Infra.GH_RELEASE_BODY_MAX_CHARS
+                else r[bool].fail(
+                    f"release notes {notes} have {len(text)} characters; GitHub "
+                    f"accepts a release body of {c.Infra.GH_RELEASE_BODY_MAX_CHARS}",
+                )
+            ),
+        )
 
     @staticmethod
     def generate_pull_request_body(

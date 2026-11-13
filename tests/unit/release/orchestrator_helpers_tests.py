@@ -130,6 +130,27 @@ class TestsFlextInfraReleaseHelpers:
             )
 
         @staticmethod
+        def test_notes_beyond_github_release_ceiling_fail_loud(
+            tmp_path: Path,
+        ) -> None:
+            """Notes GitHub would refuse as the release body fail at generation."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            subject = f"{c.Tests.RELEASE_NOTES_CHANGE_LINE} " + "x" * 60
+            merged = c.Infra.GH_RELEASE_BODY_MAX_CHARS // len(subject) + 1
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [],
+                "\n".join([subject] * merged),
+                notes_path,
+            )
+
+            tm.fail(result)
+            tm.that(result.error or "", has=str(c.Infra.GH_RELEASE_BODY_MAX_CHARS))
+            tm.fail(u.Infra.release_body_admitted(notes_path))
+
+        @staticmethod
         def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
             """Return a typed failure when the note path is a directory."""
             notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME

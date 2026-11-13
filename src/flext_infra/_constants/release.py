@@ -78,6 +78,12 @@ class FlextInfraConstantsRelease:
     GH: ClassVar[str] = "gh"
     GH_PULL_REQUEST_BODY_MAX_CHARS: ClassVar[int] = 65536
     "GitHub's pull-request body ceiling; a longer body fails ``Body is too long``."
+    GH_RELEASE_BODY_MAX_CHARS: ClassVar[int] = 125000
+    """GitHub's release body ceiling, from its API error.
+
+    The release create call answers ``body is too long (maximum is 125000
+    characters)``; GitHub's REST reference states no number.
+    """
     RELEASE_LICENSE_NAMES: ClassVar[frozenset[str]] = frozenset({
         "copying",
         "copying.md",
