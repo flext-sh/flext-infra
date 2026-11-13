@@ -276,9 +276,11 @@ class FlextInfraWorkspaceDetector(
             ),
         )
         values["kind"] = declaration.governing_kind(observed.kind)
-        if values["kind"] is c.Infra.ProjectKind.CONSUMER:
-            # A consumer owns no package, whatever the metadata shows.
+        if values["kind"] is c.Infra.ProjectKind.CONSUMER and declaration.project:
+            # A consumer owns no package and is named by its declaration, not by
+            # the distribution it consumes, whatever the metadata shows.
             values["package"] = False
+            values["distribution"] = declaration.project.constant_name
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
@@ -1376,7 +1378,8 @@ class FlextInfraWorkspaceDetector(
 
         Conform owns ``[build-system]`` and always declares the scaffold
         backend, so only an explicit ``tool.uv.package`` opts out. Reading the
-        pre-render tree would flip participation between two generations.
+        pre-render tree would flip participation between two generations. A
+        consumer owns no package whatever the pre-render metadata shows.
 
         Returns:
             The repository with its rendered package participation.
@@ -1384,6 +1387,11 @@ class FlextInfraWorkspaceDetector(
         """
         result_type = r[p.Infra.RepositoryRef]
         reference = m.Infra.RepositoryRef.model_validate(repository)
+        if reference.kind is c.Infra.ProjectKind.CONSUMER:
+            # The declared kind owns participation: a consumer converted from a
+            # packaged project still carries the old package metadata until the
+            # render drops it.
+            return result_type.ok(reference.model_copy(update={"package": False}))
         if not (repository_root / c.PYPROJECT_FILENAME).is_file():
             return result_type.ok(reference)
         metadata = u.Infra.read_project_metadata_state(repository_root)
