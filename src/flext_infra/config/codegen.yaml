@@ -953,6 +953,8 @@ Infra:
         arguments: [ FLEXT, RECREATE ]
       - name: upg
         description: Resolve declared dependency and tool updates and publish their resolution metadata and locks.
+      - name: lock
+        description: Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
       - name: gen
         arguments: [ ROOT ]
         description: Materialize explicitly declared new projects and publish every applicable generated projection.

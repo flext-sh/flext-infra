@@ -60,7 +60,7 @@ VERB_CONTRACT := $(filter 1 TRUE Y YES true y yes True Yes,$(OPTIONS) $(HELP))
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $(CI)),Y)
 override APPROVAL_CONTEXT := Y
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
@@ -290,7 +290,7 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary. A verb exists
 # only in the profiles it declares (make.verbs[].profiles).
-PUBLIC_VERBS := setup upg gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
+PUBLIC_VERBS := setup upg lock gen gen-scope mod fix fmt check tests tests-full help build clean mod-snapshots release-plan release-version release-tag release-build release-publish
 SCRIPT_VERBS := mod-snapshots
 
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
@@ -817,6 +817,9 @@ VERB_ARGUMENTS_setup := FLEXT RECREATE
 VERB_DESCRIPTION_upg := Resolve declared dependency and tool updates and publish their resolution metadata and locks.
 VERB_ARGUMENTS_upg :=
 
+VERB_DESCRIPTION_lock := Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.
+VERB_ARGUMENTS_lock :=
+
 VERB_DESCRIPTION_gen := Materialize explicitly declared new projects and publish every applicable generated projection.
 VERB_ARGUMENTS_gen := ROOT
 
@@ -930,6 +933,16 @@ upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchai
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
+endif
+
+# Attached members delegate the same operation to their physical workspace owner
+# before resolving anything.
+ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+lock: _builtin_require_workspace _builtin_require_github_credential
+	+@$(SELF_MAKE) _lock_lifecycle
+else
+lock: _builtin_require_workspace
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
 endif
 SCRIPT_VERBS_PLAIN :=
 SCRIPT_VERBS_DISPATCH :=
@@ -1294,6 +1307,37 @@ _upg_lifecycle:
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
 	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
+
+# Lock resolves a changed dependency declaration (a newly declared requirement)
+# into the UV locks and keeps every pin they already hold; only upg moves a pin.
+# It runs from the environment setup installed, provisions no tool, and ends with
+# the same frozen installation, so the new requirement is installed.
+.PHONY: _lock_lifecycle
+_lock_lifecycle:
+	+@set -eu; \
+	bootstrap_stage=network-auth; \
+	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
+		printf 'ERROR: Global Git URL rewrite configuration embeds credentials and shadows the fleet SSH route; correct that configuration at its owner\n' >&2; \
+		exit 2; \
+	else \
+		rewrite_status=$$?; \
+		if [ "$$rewrite_status" -ne 1 ]; then \
+			printf 'ERROR: Cannot inspect the global Git URL rewrite configuration\n' >&2; \
+			exit "$$rewrite_status"; \
+		fi; \
+	fi; \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(INSTALL_RUNTIME_RECIPE)
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.
