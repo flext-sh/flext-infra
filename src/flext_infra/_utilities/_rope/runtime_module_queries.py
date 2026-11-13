@@ -167,7 +167,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         cls,
         root: str,
         *,
-        ropefolder: str,
         save_objectdb: bool,
         filter_lists: tuple[Sequence[str], Sequence[str]],
         fscommands: p.Infra.RopeProjectFiles | None = None,
@@ -200,7 +199,6 @@ class FlextInfraUtilitiesRopeRuntimeModuleQueries(FlextInfraUtilitiesRopeRuntime
         project = project_factory(
             root,
             fscommands=(fscommands if fscommands is not None else fscommands_factory()),
-            ropefolder=ropefolder,
             save_objectdb=save_objectdb,
             save_history=False,
             ignored_resources=list(ignored_resources),

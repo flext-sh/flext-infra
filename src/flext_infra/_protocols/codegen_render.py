@@ -439,6 +439,11 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def bootstrap_bin_dir(self) -> t.NonEmptyStr:
+            """Repository-local directory of the Mise shims."""
+            ...
+
+        @property
         def environment_directory(self) -> t.NonEmptyStr:
             """Runtime-root-local development environment."""
             ...

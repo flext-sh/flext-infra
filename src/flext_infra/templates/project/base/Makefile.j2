@@ -24,7 +24,7 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
     lane census (outside CI) and documentation. The commit hook token runs
     only the stage-derived commit gates. -#}
 {%- macro local_check_body() -%}
-{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ check_timeout_seconds }}s $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
+{{ "\t" }}@$(if $(CHECK_PROFILE),FLEXT_INFRA_PROFILE=$(CHECK_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.check_profile_path }}" $(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} check --repository-root "$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(PROJECT_ROOT),$(if $(filter primary,$(CHECK_PHASE)),$(RUNTIME_ROOT),$(PROJECT_ROOT)))"$(if $(CHECK_PHASE), --phase "$$CHECK_PHASE")
 {%- endmacro -%}
 {%- macro fmt_body() -%}
 {{ "\t" }}@{{ check_run("fmt", " --scope $(GATE_SCOPE) --apply") }}
@@ -32,35 +32,6 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 {%- macro fix_body() -%}
 {{ "\t" }}@{{ check_run("fix", " --scope $(GATE_SCOPE) --apply") }}
 {{ "\t" }}@$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects . --apply
-{%- endmacro -%}
-{%- macro pytest_testmon_guard() -%}
-set -eu; \
-database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-mkdir -p "$$(dirname "$$database")"; \
-{%- endmacro -%}
-{#- Every pytest-running verb owns its children's scratch: ONE transient
-    sandbox per recipe shell under the declared scratch root
-    (make.pytest_scratch: $HOME/.local/state/.flext-runtime<checkout>/scratch), exposed
-    through the standard temp triplet and deleted when the shell exits. The
-    verb DECLARES the scratch for the suite it starts instead of inheriting the
-    caller's ambient /tmp (fleet repos reject a test scratch under /tmp;
-    cosmos-charts CI run 37235165752 died in pytest_configure on exactly that)
-    and never places it beside the checkout, which inside a workspace is the
-    superproject's tree. One definition feeds every verb, so no pytest verb can
-    drift back to an undeclared scratch. -#}
-{%- macro pytest_scratch_root() -%}
-scratch_root="$(FLEXT_PYTEST_SCRATCH_ROOT)"; \
-case "$$scratch_root" in /*) ;; *) printf 'ERROR: pytest scratch root requires {{ make.pytest_scratch.user_home_environment_variable }}: %s\n' "$$scratch_root" >&2; exit 2 ;; esac; \
-mkdir -p "$$scratch_root"; \
-scratch="$$(mktemp -d "$$scratch_root/pytest.XXXXXX")"; \
-trap 'find "$$scratch" -depth -delete' EXIT; \
-mkdir -p "$$scratch/tmp"; \
-scratch_tmp="$$(cd "$$scratch/tmp" && pwd -P)"; \
-TMPDIR="$$scratch_tmp"; TMP="$$scratch_tmp"; TEMP="$$scratch_tmp"; \
-export TMPDIR TMP TEMP; \
 {%- endmacro -%}
 {#- Select impacted cases from the global inventory using the persistent database. -#}
 {%- macro pytest_test_runner(operation="tests") -%}
@@ -78,6 +49,47 @@ $(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_RO
 # End SECTION: header
 
 override SHELL := /bin/sh
+# === SECTION: host admission (managed) ===
+# Source: config:make.admission (ADR-032 host admission and run limits)
+# On the shared host (never on a CI runner) every recipe and $(shell) runs in
+# a cgroup scope of the user's systemd manager at idle CPU and IO weight,
+# bounded by MemoryMax and CPUQuota; children and nested Make inherit the
+# scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
+# verb refuses to start while the 5-minute load average exceeds its limit; a
+# mod without RULES or LAWS is the full form, named mod-full. Overrides apply
+# when the invocation names exactly one verb.
+ifeq ($(MAKELEVEL)$(filter {{ make.ci.value }},$({{ make.ci.variable }})),0)
+override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
+override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
+override ADMISSION_MAX_LOAD5 := {{ make.admission.max_load5 }}
+override ADMISSION_MEMORY_LIMIT_BYTES := {{ make.admission.memory_limit_bytes }}
+override ADMISSION_MAX_PROCESSES := {{ make.admission.max_processes }}
+{%- for verb, limits in make.admission.verb_limits.items() %}
+ifeq ($(ADMISSION_VERB),{{ verb }})
+override ADMISSION_MAX_LOAD5 := {{ limits.max_load5 }}
+override ADMISSION_MEMORY_LIMIT_BYTES := {{ limits.memory_limit_bytes }}
+override ADMISSION_MAX_PROCESSES := {{ limits.max_processes }}
+endif
+{%- endfor %}
+override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
+ifneq ($(.SHELLSTATUS),0)
+$(error Cannot read the 5-minute load average from /proc/loadavg)
+endif
+ifneq ($(ADMISSION_LOAD5),)
+{%- for line in make.admission.refusal_guidance %}
+$(info {{ line }})
+{%- endfor %}
+$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in flext-infra src/flext_infra/config/codegen.yaml)
+endif
+override ADMISSION_SYSTEMD_RUN := $(shell command -v systemd-run)
+ifeq ($(ADMISSION_SYSTEMD_RUN),)
+$(error The run limits require systemd-run and a cgroup v2 user manager)
+endif
+export PYTHON_CPU_COUNT := $(ADMISSION_MAX_PROCESSES)
+override SHELL := $(ADMISSION_SYSTEMD_RUN)
+override .SHELLFLAGS := --user --scope --quiet --collect --expand-environment=no -p CPUWeight=idle -p IOWeight=1 -p MemoryMax=$(ADMISSION_MEMORY_LIMIT_BYTES) -p CPUQuota=$(ADMISSION_MAX_PROCESSES)00% -- /bin/sh -c
+endif
+# End SECTION: host admission
 ifneq ($(strip $(MAKEFILES)),)
 $(error MAKEFILES makes the selected project Makefile ambiguous; invoke one project Makefile directly)
 endif
@@ -161,9 +173,6 @@ PYTEST_CACHE_HOME = $(if $(strip $({{ make.testmon_cache.data_home_environment_v
 # file checksum, so a new lane starts from the project's measured selection
 # instead of a cold full inventory.
 override FLEXT_PYTEST_TESTMON_DATABASE = $(if $(strip $(PYTEST_CACHE_HOME)),$(PYTEST_CACHE_HOME)/{{ make.testmon_cache.external_storage_directory }}/$(PROJECT_NAME)/{{ make.testmon_cache.database_filename }})
-# Storage law: the pytest scratch root sits under the user home, keyed by the
-# absolute checkout path, never under /tmp and never inside a versioned tree.
-override FLEXT_PYTEST_SCRATCH_ROOT = $(if $(strip $({{ make.pytest_scratch.user_home_environment_variable }})),$({{ make.pytest_scratch.user_home_environment_variable }})/{{ make.pytest_scratch.home_relative_directory }}/{{ make.pytest_scratch.state_directory_name }}$(PROJECT_ROOT)/{{ make.pytest_scratch.namespace }})
 override PYTEST_RUN_TIMEOUT_SECONDS := {{ pytest.run_timeout_seconds }}
 override PYTEST_TERMINATION_GRACE_SECONDS := {{ pytest.termination_grace_seconds }}
 override PYTEST_TIMEOUT_EXIT_CODE := {{ mypy_timeout_exit_code }}
@@ -233,11 +242,12 @@ ifneq ($(.SHELLSTATUS),0)
 $(error Cannot resolve the physical workspace for $(MAKEFILE_ROOT))
 endif
 endif
-override SETUP_BIN := $(BOOTSTRAP_ROOT)/{{ make.bootstrap_bin_dir }}
+# The acquisition Mise is the official installer's default executable, shared by
+# every checkout; the committed min_version makes Mise refuse an older one.
 ifeq ($(OS),Windows_NT)
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise.exe
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise.exe
 else
-override BOOTSTRAP_MISE := $(SETUP_BIN)/mise
+override BOOTSTRAP_MISE := $(HOME)/.local/bin/mise
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
@@ -408,80 +418,38 @@ RESOLVE_DESIRED_PYTHON = desired_python="$$($(MISE) -C "$(RUNTIME_ROOT)" which p
 		printf 'ERROR[setup] Mise-resolved Python is not executable: %s\n' "$$desired_python" >&2; \
 		exit 2; \
 	fi
-# Every installation is prepared under the existing ignored runtime state.
-# Its frozen packages, editable receipt and real consumers precede one atomic
-# publication; the displaced physical environment remains recoverable.
+# uv owns the environment: `uv sync --frozen` creates or updates the physical
+# environment in place from the shared uv cache (configured link mode) and is a
+# no-op when it already satisfies the lock, so no run stages, copies or exchanges
+# a second environment.
 TARGET_ENVIRONMENT = install_target="$(1)"; \
-	install_state="$$(dirname "$(FLEXT_INFRA_EXECUTOR_VENV)")"; \
+	install_state="$$(dirname "$$install_target")"; \
 	if [ -L "$$install_target" ] || [ -L "$$install_state" ]; then \
-		printf 'ERROR[setup] environment and its state directory must be physical paths\n' >&2; exit 2; \
+		printf 'ERROR[setup] environment and its parent directory must be physical paths\n' >&2; exit 2; \
 	fi; \
-	mkdir -p "$$install_state"
-PREPARE_ENVIRONMENT = install_stage=; install_candidate_origin=; \
-	mv --exchange --no-copy --help >/dev/null; \
-	install_origin=; \
-	if [ -e "$$install_target" ]; then install_origin="$$(stat -c '%d:%i' "$$install_target")"; fi; \
-	install_stage="$$(mktemp -d "$$install_state/setup.XXXXXXXX")"; \
-	install_environment="$$install_stage/{{ environment_directory }}"; \
-	trap 'install_status=$$?; trap - EXIT; if [ -n "$$install_stage" ] && { [ -z "$$install_candidate_origin" ] || [ ! -e "$$install_environment" ] || [ "$$(stat -c "%d:%i" "$$install_environment")" = "$$install_candidate_origin" ]; }; then rm -rf -- "$$install_stage"; fi; exit "$$install_status"' EXIT; \
-	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
-	printf 'setup: preparing %s for %s\n' "$$install_environment" "$$install_target"; \
-	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
-	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
+	mkdir -p "$$install_state"; \
+	install_environment="$$install_target"; \
 	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
-# The candidate's own flext-infra console script. Setup runs its workspace step
+# The environment's own flext-infra console script. Setup runs its workspace step
 # through it, so one process does the work and proves the entry point.
 INSTALL_FLEXT_INFRA = "$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)"
 VERIFY_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | default('pyvenv.cfg') }}"; \
-	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"
-PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
-	if [ -n "$$install_origin" ]; then \
-		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
-			printf 'ERROR[setup] environment changed during preparation: %s\n' "$$install_target" >&2; exit 2; \
-		fi; \
-		mv --exchange --no-copy -T "$$install_environment" "$$install_target"; \
-		rm -rf -- "$$install_stage"; \
-		printf 'setup: published %s; previous environment removed\n' "$$install_target"; \
-	else \
-		mv --no-copy --no-clobber -T "$$install_environment" "$$install_target"; \
-		if [ -e "$$install_environment" ]; then printf 'ERROR[setup] environment appeared before publication\n' >&2; exit 2; fi; \
-		rmdir "$$install_stage"; \
-	fi; \
-	install_stage=; trap - EXIT HUP INT TERM
-# An environment that already satisfies the frozen lock is kept: uv's own
-# --check is the proof, and the same receipt and interpreter verification as a
-# publication applies. Only a differing environment (or a local FLEXT editable
-# selection) is rebuilt and atomically exchanged, so a repeated setup costs a
-# check, not a full reinstall and deletion.
-# The check's exit status is its whole result: a non-zero status only selects
-# the rebuild, so uv's native "environment is outdated" report is held in
-# probe_report instead of surfacing as an error on a successful setup. A real
-# failure recurs in the rebuild's own `uv sync --frozen`, which runs unfiltered
-# and fails loud with uv's native output.
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "environment interpreter leaves its environment")' "$$install_environment"
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
-	sync_args="$(SETUP_SYNC_ARGS)"; \
-	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && probe_report="$$(env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_target" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args 2>&1)"; then \
-		install_environment="$$install_target"; \
-		install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"; \
-		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \
-		$(VERIFY_ENVIRONMENT); \
-		printf 'setup: %s already satisfies uv.lock; kept\n' "$$install_target"; \
-	else \
-		$(PREPARE_ENVIRONMENT); \
-		env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; \
-		if [ -n "$(strip $(FLEXT))" ]; then \
-			if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
-			(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $(SETUP_SYNC_ARGS); \
+	if [ -n "$(strip $(FLEXT))" ]; then \
+		if [ "$({{ make.ci.variable }})" = "{{ make.ci.value }}" ]; then printf 'ERROR[setup] local editable sources are forbidden in CI\n' >&2; exit 2; fi; \
+		(cd "$(FLEXT)"; $(UV) pip install --no-config --python "$$install_python" --no-deps --requirement "{{ bootstrap_requirements }}"); \
 {%- if package %}
-			$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
+		$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
-		fi; \
-		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
-		$(PUBLISH_ENVIRONMENT); \
-	fi
+	fi; \
+	env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+	$(VERIFY_ENVIRONMENT); \
+	printf 'setup: %s synchronized with uv.lock\n' "$$install_target"
 
 # The governed checkouts of this repository: itself (`.`) and every
 # initialized gitlink its .gitmodules declares without flext-managed = false.
@@ -578,11 +546,13 @@ INSTALL_GIT_HOOKS_RECIPE = set -eu; \
 				printf '%s\n' '\#!/bin/sh' "\# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); rerun make setup to refresh."; \
 				if [ "$$stage" = pre-push ]; then \
 					printf '%s\n' \
-						'flext_hook_stdin="$$(mktemp "$$(git rev-parse --absolute-git-dir)/flext-pre-push.XXXXXX")"' \
-						'cat > "$$flext_hook_stdin"' \
-						"PREK=$$prek_binary $$validator $$stage \"\$$@\" < \"\$$flext_hook_stdin\" || { flext_hook_status=\$$?; rm -f \"\$$flext_hook_stdin\"; exit \"\$$flext_hook_status\"; }" \
-						'exec < "$$flext_hook_stdin"' \
-						'rm -f "$$flext_hook_stdin"'; \
+						'flext_hook_stdin="$$(cat)"' \
+						"printf '%s\\n' \"\$$flext_hook_stdin\" | PREK=$$prek_binary $$validator $$stage \"\$$@\" || exit \$$?" \
+						'if [ -n "$$flext_hook_stdin" ]; then' \
+						'exec <<FLEXT_PRE_PUSH_STDIN' \
+						'$$flext_hook_stdin' \
+						'FLEXT_PRE_PUSH_STDIN' \
+						'else exec </dev/null; fi'; \
 				else \
 					printf '%s\n' "PREK=$$prek_binary $$validator $$stage \"\$$@\" || exit \$$?"; \
 				fi; \
@@ -630,10 +600,10 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # own runtime closure (derived from the installed metadata) supplies part of the
 # executor, so its locked non-editable build is installed, never the editable
 # source; every lock is already written before it runs.
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); $(PREPARE_ENVIRONMENT); \
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
 	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --link-mode {{ uv_link_mode }}; \
 	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
-	$(PUBLISH_ENVIRONMENT)
+	$(VERIFY_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
@@ -909,6 +879,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	trap 'bootstrap_status=$$?; trap - EXIT; \
 		{{ mise_staging_cleanup() }} \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	{{ mise_network_admission() }} \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" pre-upg "*) $(SELF_MAKE) pre-upg ;; \
@@ -925,7 +896,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 		{{ mise_lock_changed("$(BOOTSTRAP_MISE)", '"$$lock_root"', mise_install_tools) }} \
 	done; \
 	set +f; \
-	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools) }} \
+	{{ mise_install("$(PROJECT_ROOT)", mise_install_tools, make.bootstrap_bin_dir) }} \
 	printf 'upg: locks classified, Mise locks current, locked toolchain provisioned\n'
 
 _upg_lifecycle:
@@ -934,6 +905,8 @@ _upg_lifecycle:
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
+	"$$mise_bin" -C "$(RUNTIME_ROOT)" prune --yes; \
+	$(UV) cache prune; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
@@ -986,17 +959,11 @@ _builtin_fix_all: _builtin_require_environment
 _builtin_clean_generated: _builtin_require_interpreter
 	@$(PROJECT_FLEXT_INFRA) maintenance clean --repository-root "$(PROJECT_ROOT)" --apply
 
-# Generation is a fenced, budgeted operation: `codegen generate` holds the
-# tree's mutation lock for the whole run (a concurrent writer waits visibly,
-# bounded by config Infra.mutation_lock), terminated inside the declared budget
-# with its kill reserve (the profile checkpoint survives a budget kill).
-GEN_BUDGET_SECONDS ?= 900
-GEN_KILL_RESERVE_SECONDS ?= 30
+# Heavy verbs (check, tests, tests-full, gen, gen-scope, mod) admit themselves
+# into the per-host FIFO queue and arm their wall-time budget only once
+# admitted (FLEXT ADR-032, config Infra.gate_admission): queue time never
+# counts against a budget. GEN_PROFILE=1 / MOD_PROFILE=1 capture cProfile.
 GEN_PROFILE ?=
-# Modification is a budgeted operation too: a stuck catalog run is killed
-# inside the declared budget, and MOD_PROFILE=1 captures its cProfile.
-MOD_BUDGET_SECONDS ?= 120
-MOD_KILL_RESERVE_SECONDS ?= 10
 MOD_PROFILE ?=
 # Check profiling is opt-in like generation (CHECK_PROFILE=1 make check).
 CHECK_PROFILE ?=
@@ -1006,7 +973,7 @@ _builtin_gen_all: _builtin_require_interpreter
 	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
 	scope=all; \
 	if [ "$$root" != "$(PROJECT_ROOT)" ] || [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then scope=self; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path }}" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --scope "$$scope"
 
 # Focal generation is the bounded diagnosis vehicle: one surface (and, for
 # facades, one module) through the identical engine, lock and budget.
@@ -1016,7 +983,7 @@ _builtin_gen_scope_all: _builtin_require_interpreter
 	scope="$(or $(strip $(SCOPE)),self)"; \
 	module_args=""; \
 	if [ -n "$(strip $(MODULE))" ]; then module_args=" --module $(strip $(MODULE))"; fi; \
-	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path | replace('.pstats', '-scope.pstats') }}" timeout --signal=TERM --kill-after=$(GEN_KILL_RESERVE_SECONDS)s $(GEN_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
+	$(if $(GEN_PROFILE),FLEXT_INFRA_PROFILE=$(GEN_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$$root/{{ make.generation_profile_path | replace('.pstats', '-scope.pstats') }}" $(PROJECT_FLEXT_INFRA) codegen generate --root "$$root" --what "$(strip $(WHAT))" --scope "$$scope"$$module_args
 
 # Structural rewrites run one theme at a time (ADR-028 Decision 18 item 2):
 # LAWS selects ENFORCE law ids, RULES selects exact rule ids; the engine refuses
@@ -1026,7 +993,7 @@ _builtin_mod_apply: _builtin_require_environment
 	selection=""; \
 	for law in $(strip $(LAWS)); do selection="$$selection --laws $$law"; done; \
 	for rule in $(strip $(RULES)); do selection="$$selection --rule-ids $$rule"; done; \
-	$(if $(MOD_PROFILE),FLEXT_INFRA_PROFILE=$(MOD_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.modification_profile_path }}" timeout --signal=TERM --kill-after=$(MOD_KILL_RESERVE_SECONDS)s $(MOD_BUDGET_SECONDS)s $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
+	$(if $(MOD_PROFILE),FLEXT_INFRA_PROFILE=$(MOD_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.modification_profile_path }}" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
 
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts

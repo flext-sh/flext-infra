@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from flext_infra._protocols.enforcement_catalog import (
         FlextInfraProtocolsEnforcementCatalog,
     )
+    from flext_infra._protocols.gate_admission import FlextInfraProtocolsGateAdmission
     from flext_infra._protocols.gates import FlextInfraProtocolsGates
     from flext_infra._protocols.git import FlextInfraProtocolsGit
     from flext_infra._protocols.git_lane_inputs import FlextInfraProtocolsGitLaneInputs
@@ -114,6 +115,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraProtocolsDocsGeneration",
     "FlextInfraProtocolsDuplication",
     "FlextInfraProtocolsEnforcementCatalog",
+    "FlextInfraProtocolsGateAdmission",
     "FlextInfraProtocolsGates",
     "FlextInfraProtocolsGit",
     "FlextInfraProtocolsGitLaneInputs",
@@ -173,6 +175,7 @@ install_lazy_exports(
         "FlextInfraProtocolsDocsGeneration": ".docs_generation",
         "FlextInfraProtocolsDuplication": ".duplication",
         "FlextInfraProtocolsEnforcementCatalog": ".enforcement_catalog",
+        "FlextInfraProtocolsGateAdmission": ".gate_admission",
         "FlextInfraProtocolsGates": ".gates",
         "FlextInfraProtocolsGit": ".git",
         "FlextInfraProtocolsGitLaneInputs": ".git_lane_inputs",
@@ -492,7 +495,9 @@ install_lazy_exports(
             "MakeHarnessSpecTestmonCachePolicySpec",
             "MakeHarnessSpecTestmonCacheSpec",
             "MakeHarnessSpecExecutorEnvironmentSpec",
-            "MakeHarnessSpecPytestScratchSpec",
+            "MakeAdmissionOverrideSpec",
+            "MakeAdmissionLimitsSpec",
+            "MakeAdmissionSpec",
             "MakeVerbCatalogSpec",
             "MakeSpec",
             "CustomHandlerPolicy",
@@ -539,6 +544,10 @@ install_lazy_exports(
             "RopePreferencesSpec",
             "SourceScanSpec",
             "MutationLockSpec",
+            "RouteBudgetSpec",
+            "GateRepeatWindow",
+            "GateRepeatSpec",
+            "GateAdmissionSpec",
             "ConsolidationOutcome",
             "CodegenVscodeSpec",
             "CodegenVscodeDeclarationDelta",
@@ -726,6 +735,11 @@ install_lazy_exports(
         "FlextInfraProtocolsEnforcementCatalog": (
             "EnforcementClaim",
             "EnforcementCatalog",
+        ),
+        "FlextInfraProtocolsGateAdmission": (
+            "GateTicket",
+            "GateRunRecord",
+            "HostPressureSnapshot",
         ),
         "FlextInfraProtocolsGates": (
             "SccFile",

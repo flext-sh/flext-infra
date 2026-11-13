@@ -97,6 +97,7 @@ class FlextInfraUtilitiesCodegen(
             environment_path_prepends=(
                 config.Infra.codegen.toolchain.environment_path_prepends
             ),
+            bootstrap_bin_dir=config.Infra.codegen.make.bootstrap_bin_dir,
         )
 
     @staticmethod

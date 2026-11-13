@@ -67,7 +67,11 @@ if TYPE_CHECKING:
     from tests.base import TestsFlextInfraServiceBase, s
     from tests.constants import TestsFlextInfraConstants, c
     from tests.constants_scan import TestsFlextInfraConstantsScan
-    from tests.fixtures import TestsImportedModelCollision, TestsImportedModelReference
+    from tests.fixtures import (
+        TestsFlextInfraGateAdmissionHolder,
+        TestsImportedModelCollision,
+        TestsImportedModelReference,
+    )
     from tests.models import TestsFlextInfraModels, m
     from tests.protocols import TestsFlextInfraProtocols, p
     from tests.refactor import TestsFlextInfraRefactorRopeStubs
@@ -118,6 +122,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraConstants",
     "TestsFlextInfraConstantsScan",
     "TestsFlextInfraConstantsSemanticCutover",
+    "TestsFlextInfraGateAdmissionHolder",
     "TestsFlextInfraModels",
     "TestsFlextInfraModelsBase",
     "TestsFlextInfraModelsPytestMarkdown",
@@ -203,6 +208,7 @@ install_lazy_exports(
         "TestsFlextInfraConstants": ".constants",
         "TestsFlextInfraConstantsScan": ".constants_scan",
         "TestsFlextInfraConstantsSemanticCutover": "._constants",
+        "TestsFlextInfraGateAdmissionHolder": ".fixtures",
         "TestsFlextInfraModels": ".models",
         "TestsFlextInfraModelsBase": "._models",
         "TestsFlextInfraModelsPytestMarkdown": ".unit",
@@ -432,6 +438,7 @@ install_lazy_exports(
             "provision_python_project_environment",
             "provision_scan_workspace",
             "provision_checkout",
+            "reflink_copy_tree",
             "make_read_only",
             "copy_tracked_mise_seeds",
             "write_executable",
