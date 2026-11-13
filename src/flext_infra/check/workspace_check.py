@@ -688,26 +688,9 @@ class FlextInfraWorkspaceChecker(
                 fail_fast=effective_ctx.fail_fast,
             )
         )
-        if (
-            pending_gates
-            and (not outcome.failed or not effective_ctx.fail_fast)
-            and len(outcome.results) == len(targets)
-            and not any(
-                execution.interrupted
-                for project in outcome.results
-                for execution in project.gates.values()
-            )
-        ):
-            targets = self._targets_for_gates(targets, gates, effective_ctx)
-            admission_gates = pending_gates
-            pending_gates = ()
-            outcome = self._run_project_phase(
-                targets,
-                admission_gates,
-                effective_ctx,
-                fail_fast=effective_ctx.fail_fast,
-                previous=outcome,
-            )
+        outcome, targets, pending_gates = self._run_cost_phases(
+            targets, (gates, pending_gates), effective_ctx, outcome
+        )
         global_targets: tuple[p.Infra.CheckProjectTarget, ...] | None = None
         if not pending_gates and unfiltered:
             global_plan = self.plan_global_targets(gates, effective_ctx)
@@ -729,6 +712,62 @@ class FlextInfraWorkspaceChecker(
             publish_summary(summary)
         self._print_summary(effective_ctx.reports_dir, outcome, summary)
         return r[p.Infra.CheckReportSummary].ok(summary)
+
+    def _run_cost_phases(
+        self,
+        targets: tuple[p.Infra.CheckProjectTarget, ...],
+        selection: tuple[Sequence[str], tuple[str, ...]],
+        ctx: p.Infra.GateContext,
+        outcome: p.Infra.LoopOutcome,
+    ) -> tuple[
+        p.Infra.LoopOutcome, tuple[p.Infra.CheckProjectTarget, ...], tuple[str, ...]
+    ]:
+        """Run the pending gates one declared cost stage at a time.
+
+        Cheapest evidence first (ADR-032 "Fail early"): a failed, incomplete
+        or interrupted phase ends the verb before the next, slower stage
+        starts, and the gates it never reached stay pending.
+
+        Returns:
+            The last outcome, the elected targets and the gates not executed.
+
+        """
+        gates, pending_gates = selection
+        stages = (
+            u.Infra
+            .load_codegen_policy(self._repository_root)
+            .unwrap()
+            .make.check_gate_stages
+        )
+        phases = tuple(
+            phase
+            for stage in c.Infra.GateStage
+            if (phase := tuple(gate for gate in pending_gates if stages[gate] is stage))
+        )
+        if phases:
+            targets = self._targets_for_gates(targets, gates, ctx)
+        for phase_gates in phases:
+            if (
+                outcome.failed
+                or len(outcome.results) != len(targets)
+                or any(
+                    execution.interrupted
+                    for project in outcome.results
+                    for execution in project.gates.values()
+                )
+            ):
+                break
+            pending_gates = tuple(
+                gate for gate in pending_gates if gate not in phase_gates
+            )
+            outcome = self._run_project_phase(
+                targets,
+                phase_gates,
+                ctx,
+                fail_fast=ctx.fail_fast,
+                previous=outcome,
+            )
+        return outcome, targets, pending_gates
 
     @staticmethod
     def _prepare_report_invocation(
