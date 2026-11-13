@@ -637,7 +637,23 @@ Infra:
       # generated file as documentation only.
       # The committed lock contract supersedes the former lockfile-ban exclusion.
       # An empty list resets the setting and requires an empty effective readback.
-      issue_exclusions: []
+      issue_exclusions:
+      # Axiom "generic facade publication" (python/mypy#22457; operator
+      # decision 2026-11-13: "Yes, add to the axiom"): the generated
+      # `Name: TypeAlias = Part.Name` publication is the only form mypy can
+      # subscript; Sonar python:S6794 (use a `type` statement) rejects it as
+      # ruff UP040 does. Justification and retirement condition at
+      # tools.ruff.lint.ruling-disabled-rules in tooling.yaml; retire this
+      # entry together with those four when mypy resolves #22457.
+      - rule_key: python:S6794
+        resource_key: "**/*.py"
+        reason: >-
+          Axiom "generic facade publication" (python/mypy#22457; operator
+          decision 2026-11-13 "Yes, add to the axiom"): the generated
+          `Name: TypeAlias = Part.Name` publication is the only form mypy can
+          subscript. Retire with ruff UP040, pyright reportMissingTypeArgument,
+          pyrefly implicit-any-type-argument and bad-override when mypy
+          resolves #22457.
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
