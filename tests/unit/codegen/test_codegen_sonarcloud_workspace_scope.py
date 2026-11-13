@@ -15,7 +15,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, tm, u
 
 
@@ -39,7 +38,7 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request)
+            u.Tests.conform_plan_result(root, request)
         )
         rendered = tm.not_none(
             u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME),

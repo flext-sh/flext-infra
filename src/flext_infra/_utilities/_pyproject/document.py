@@ -237,8 +237,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
             One mapping validated by the shared TOML ingress.
 
         Raises:
-            RuntimeError: If failed to read pyproject payload at; or if pyproject
-                payload at.
+            RuntimeError: If the live pyproject cannot be read.
 
         """
         if not (
@@ -261,27 +260,21 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         # process that rewrites a manifest (gen, mod, a test) reads its new
         # content on the next call instead of a stale parse.
         return FlextInfraUtilitiesPyprojectDocument._parsed_pyproject_payload(
-            pyproject_path,
-            live.value,
+            live.value
         )
 
     @staticmethod
     @cache
-    def _parsed_pyproject_payload(pyproject_path: Path, text: str) -> t.JsonMapping:
+    def _parsed_pyproject_payload(text: str) -> t.JsonMapping:
         """Parse and validate one manifest text (memoized per exact content).
+
+        Invalid TOML propagates its original decoder exception unchanged.
 
         Returns:
             The validated mapping of ``text``.
 
-        Raises:
-            RuntimeError: If ``text`` is not valid TOML.
-
         """
-        payload = u.Cli.toml_mapping_from_text(text)
-        if payload is None:
-            msg = f"pyproject payload at {pyproject_path} is not valid TOML"
-            raise RuntimeError(msg)
-        return payload
+        return u.Cli.toml_mapping_from_text_result(text).unwrap()
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:

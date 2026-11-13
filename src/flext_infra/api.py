@@ -50,8 +50,8 @@ class FlextInfra(
 
     app_name: ClassVar[str] = "flext-infra"
 
-    @staticmethod
     def bootstrap_candidate(
+        self,
         request: p.Infra.CandidateBootstrapCommand,
     ) -> p.Result[bool]:
         """Compose typed declarations, conform planner and one atomic publisher.
@@ -78,7 +78,12 @@ class FlextInfra(
         return services.FlextInfraCandidateBootstrapService(
             planner=codegen.FlextInfraCodegenConform.Generate(
                 repository_root=source_root,
-                state=m.Infra.CodegenConformState(repository_root=source_root),
+                state=m.Infra.CodegenConformState(
+                    repository_root=source_root,
+                    ports=self.codegen_conform_collaborators(),
+                ),
+                runtime_settings=self.settings,
+                initial_context=self.context,
             ),
         ).execute(source_root, observed.value, request)
 

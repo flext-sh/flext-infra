@@ -58,9 +58,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[p.Infra.CodegenPlan]``.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        root = request.root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
-            return r[p.Infra.CodegenPlan].from_failure(inputs)
+            # The first planning failure escapes with its original exception.
+            u.Infra.codegen_raise_failure(root, inputs)
         return self._plan_repositories(request, inputs.value)
 
     def _plan_single_surface(
