@@ -1100,7 +1100,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         self,
         projectroot: str | PathLike[str],
         fscommands: p.Infra.RopeProjectFiles | None = None,
-        ropefolder: str | None = ".ropeproject",
         external_project: p.Infra.RopeResourceOwner | None = None,
         **prefs: bool | Sequence[str],
     ) -> None:
@@ -1109,7 +1108,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         Args:
             projectroot: The root directory of the existing project.
             fscommands: The filesystem view, or ``None`` for the live tree.
-            ropefolder: Native state folder, or ``None`` for a read-only view.
             external_project: Resource owner for external Python modules.
             prefs: Native project preferences.
 
@@ -1167,7 +1165,9 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
             self,
             root,
             fscommands=fscommands,
-            ropefolder=ropefolder,
+            # FLEXT keeps no Rope state: Rope's documented ``None`` folder
+            # disables every data file, so no repository root receives one.
+            ropefolder=None,
             external_project=external_project,
             config_files=False,
             **prefs,
@@ -1227,7 +1227,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         snapshot = cls(
             root,
             fscommands=files,
-            ropefolder=None,
             save_objectdb=False,
             save_history=False,
             ignored_resources=list(election.ignored_resources),
@@ -1289,7 +1288,6 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         preferences.set("ignored_resources", value=list(selected.ignored_resources))
         preferences.set("extension_modules", value=list(selected.extension_modules))
         preferences.set("source_folders", value=list(selected.source_folders))
-        self._ropefolder_name = None
         self._source_election = selected
         self._set_source_view(declared_files, (), None)
         return self

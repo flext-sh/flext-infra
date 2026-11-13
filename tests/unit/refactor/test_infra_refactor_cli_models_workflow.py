@@ -344,6 +344,39 @@ class TestsFlextInfraModelsRefactorInfraRefactorCliWorkflow:
         tm.that(result, ne=0)
 
     @staticmethod
+    def test_missing_imports_cli_resolves_without_root_state(tmp_path: Path) -> None:
+        """Missing-imports resolves a name and writes no Rope data into the root."""
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject="[project]\nname='sample'\ndependencies = []\n",
+            with_src=True,
+        )
+        module_dir = workspace / "src" / "sample_pkg"
+        module_dir.mkdir(parents=True)
+        (module_dir / "__init__.py").write_text("", encoding="utf-8")
+        (module_dir / "widget.py").write_text(
+            "class SampleWidget:\n    pass\n", encoding="utf-8"
+        )
+        (module_dir / "consumer.py").write_text(
+            "WIDGET = SampleWidget\n", encoding="utf-8"
+        )
+        buffer = StringIO()
+        with redirect_stdout(buffer):
+            result = FlextInfraCli.infra_main([
+                "refactor",
+                "missing-imports",
+                f"--repository-root={workspace!s}",
+                "--verbose",
+                "--dry-run",
+            ])
+        tm.that(result, eq=0)
+        tm.that(buffer.getvalue(), has="SampleWidget <- sample_pkg.widget")
+        root_names = {path.name for path in workspace.iterdir()}
+        tm.that(root_names, lacks="globalnames")
+        tm.that(root_names, lacks="globalnames.json")
+
+    @staticmethod
     def test_wrapper_root_namespace_cli_dry_run_succeeds(tmp_path: Path) -> None:
         """Test wrapper root namespace cli dry run succeeds."""
         workspace = u.Tests.mk_project(

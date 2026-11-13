@@ -98,7 +98,6 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
             else closing(
                 native.new_project(
                     str(root),
-                    ropefolder="",
                     save_objectdb=False,
                     filter_lists=(config.Infra.codegen.source_scan_ignored, ("",)),
                 )

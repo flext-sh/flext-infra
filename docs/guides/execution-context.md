@@ -1961,6 +1961,9 @@ The project composes the native resource/module/layout interface through MRO;
 its authenticated source epoch remains the public consumer boundary. Native
 initialization uses the exact upstream class descriptor through the consumed
 initializer protocol, including Rope's documented `ropefolder=None` contract.
+The project owner fixes that folder to `None` for every opening, so Rope data
+files such as the autoimport `globalnames` pickle and its `.json` twin are never
+written into a repository root; a missing-imports run indexes in memory.
 The physical root and injected filesystem identity are checked after initialization;
 the protocol alone is not evidence of the vendor's signature or runtime behavior.
 
