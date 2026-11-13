@@ -25,6 +25,7 @@
   - [Development Groups, Typing Policy, and Git Requirement Lines](#development-groups-typing-policy-and-git-requirement-lines)
   - [Deptry Detection, Dependency Repair, and Cold Initialization](#deptry-detection-dependency-repair-and-cold-initialization)
 - [Runtime environment](#runtime-environment)
+  - [Heavy-gate admission (ADR-032)](#heavy-gate-admission-adr-032)
   - [Check engine contract](#check-engine-contract)
 - [Mise toolchain](#mise-toolchain)
   - [Self-Managed Mise and Reality Proof (mise-proof)](#self-managed-mise-and-reality-proof-mise-proof)
@@ -2721,6 +2722,50 @@ candidate explicitly supplies that inventory. A staged source tree does not cont
 Git index. An absent candidate inventory selects the tracked and unpublished Git
 inventory, regardless of which physical runtime owns the check; an explicitly empty
 candidate remains invalid. Both routes use the same marker scanner.
+
+### Heavy-gate admission (ADR-032)
+
+`workspace check`, `workspace tests`, `workspace tests-full`, `codegen generate` and
+`refactor mod` admit themselves into one per-host FIFO queue before any work
+([ADR-032](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/032-host-wide-heavy-gate-admission.md)).
+`u.Infra.gate_admitted` and `u.Infra.gate_admitted_budget` own the queue; the routes
+enter it in their own process, and the generated Make recipes carry no `timeout`
+prefix for these verbs.
+
+- The queue lives in `$XDG_STATE_HOME/flext/gate-admission/` (default
+  `~/.local/state/flext/gate-admission/`) and is shared by every checkout and lane of
+  the user on that host. Each `<sequence>.json` ticket names its gate, pid and
+  repository.
+- `Infra.gate_admission` in `config/infra.yaml` declares the capacity (`capacity_normal`,
+  and `capacity_high` when `FLEXT_GATE_ADMISSION_PRESSURE_FILE` publishes a high or
+  critical level), the heartbeat, the TTL and the budgets of generation and
+  modification. Check arms the largest declared budget of the gates it runs; tests
+  keep the deadline of the pytest runner.
+- A waiter prints its position and the current holders on stderr each time they
+  change, and is admitted only when a slot is free and no live ticket is ahead of it.
+- The budget is armed after admission, so time in the queue never counts. At
+  `budget_seconds - grace_seconds` the route receives SIGTERM, the process supervisor
+  stops its owned children, and the route exits 124. A route still alive at
+  `budget_seconds` is killed.
+- A gate started inside an admitted gate inherits `FLEXT_GATE_ADMISSION_TICKET` and
+  neither queues nor arms a second budget.
+- A dead holder frees its slot when the next waiter looks at the queue. A holder
+  whose heartbeat is older than the TTL is reclaimed and receives SIGTERM.
+- A full-weight run that succeeded in a checkout is refused before it queues while
+  its repeat window in `Infra.gate_admission.repeat` is open: a complete `make check`,
+  `make tests-full`, `make mod` without `LAWS`/`RULES`, and `make mod` repeating the
+  same selection. `u.Infra.gate_repeat_refuse` exits 75 and names the earlier run,
+  the time left and the declared lighter form. `u.Infra.gate_repeat_record` keeps the
+  latest success per gate and selection in `history/<checkout digest>.jsonl` under
+  the queue lock. A failed, refused, timed-out or killed run records nothing, so it
+  never opens a window. The declared CI token, a remote runner, and prek's pre-push
+  stage (`PREK_HOOK_STAGE=pre-push`) are not limited. `CHECK_PHASE=primary`,
+  `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
+  slot.
+
+The fail-early phase order of ADR-032 is not implemented yet (bead `flext-mcjop`).
+The per-verb load, processor and memory limits are owned by the Make admission
+prelude (`make.admission` in `config/codegen.yaml`), not by this queue.
 
 ### Check engine contract
 
