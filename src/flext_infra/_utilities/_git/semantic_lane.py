@@ -302,11 +302,21 @@ class FlextInfraUtilitiesGitSemanticLane:
     def _git_open_pull_request(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
         """Push the lane, then open its pull request or refresh the open one.
 
+        A body beyond GitHub's ceiling fails before the push and the call.
+
         Returns:
             The resulting ``p.Result[bool]``.
 
         """
         root, branch = request.repo_root, request.branch
+        body = u.Cli.files_read_text(request.body_file)
+        if body.failure:
+            return r[bool].from_failure(body)
+        if len(body.value) > c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS:
+            return r[bool].fail(
+                f"pull request body {request.body_file} has {len(body.value)} "
+                f"characters; GitHub accepts {c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS}",
+            )
         pushed = FlextInfraUtilitiesGitSemanticPublish.git_push_upstream(
             m.Infra.GitPushRequest(repo_root=root, branch=branch),
         )
