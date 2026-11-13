@@ -813,7 +813,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return result_type.ok((
             tuple(
                 dict.fromkeys((
-                    *runtime,
+                    # A consumer owns no code: its requirements are its overlay,
+                    # never the leftovers of a former package.
+                    *(() if project.package_name is None else runtime),
                     *project.runtime_dependency_overlay,
                 ))
             ),

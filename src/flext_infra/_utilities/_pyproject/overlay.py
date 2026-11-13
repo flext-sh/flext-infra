@@ -24,6 +24,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
     _PACKAGE_DERIVED_KEYS: tuple[str, ...] = (
         c.Infra.NAME,
         "description",
+        c.Infra.DEPENDENCIES,
         "scripts",
         "entry-points",
     )
@@ -154,9 +155,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
             project[c.Infra.DEPENDENCIES] = cls._merged_requirements(required, custom)
         if cls._render_is_unpackaged(merged):
             # An unpackaged project owns no package: the identity and the
-            # console scripts a former package left in the live table are the
-            # render's, so a converted repository converges. Runtime
-            # requirements stay CUSTOM, as for every project.
+            # requirements and console scripts a former package left in the live
+            # table are the render's, so a converted repository converges.
             for key in cls._PACKAGE_DERIVED_KEYS:
                 if key in rendered_project:
                     project[key] = rendered_project[key]
