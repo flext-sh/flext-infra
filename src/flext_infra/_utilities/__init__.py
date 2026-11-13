@@ -364,6 +364,7 @@ install_lazy_exports(
             "render_type_facade",
             "render_utility_facade",
             "facade_component_source",
+            "_facade_source_rewrites",
             "_facade_foreign_publications",
             "_facade_settled_initializers",
             "_facade_rendered_order",

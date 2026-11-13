@@ -679,21 +679,14 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
-        headers = (
-            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
-                Path(project.root.real_path),
-                {path: project.source_text(path)},
-                (path,),
-                source_project=project,
-            )
-        )
-        if headers.failure:
-            return r[str].from_failure(headers)
-        if headers.value:
+        rewrites = cls._facade_source_rewrites(project, path, directory)
+        if rewrites.failure:
+            return r[str].from_failure(rewrites)
+        if rewrites.value:
             declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                 Path(project.root.real_path),
                 (),
-                {edit.file_path: edit.updated_source for edit in headers.value},
+                rewrites.value,
                 source_project=project,
             )
             with project.source_view(
@@ -706,20 +699,6 @@ class FlextInfraUtilitiesFacadeComponents:
         if settled.failure:
             return r[str].from_failure(settled)
         resource = FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path)
-        unpublished = cls._facade_foreign_publications(project, resource, directory)
-        if unpublished is not None:
-            declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {path: unpublished},
-                source_project=project,
-            )
-            with project.source_view(
-                declared_files=declared, additional_source_folders=None
-            ):
-                return cls.facade_component_source(
-                    project, path, directory, family=selected, owner_name=owner_name
-                )
         planned = cls._facade_component_plan(
             project, path, directory, family=selected, owner_name=owner_name
         )
@@ -766,6 +745,40 @@ class FlextInfraUtilitiesFacadeComponents:
             lambda text: cls._facade_rendered_order(
                 project, (path, directory), owner, (text, owner_name is not None)
             )
+        )
+
+    @classmethod
+    def _facade_source_rewrites(
+        cls, project: p.Infra.RopeProject, path: Path, directory: Path
+    ) -> p.Result[Mapping[Path, str]]:
+        """Plan the facade source edits that precede composition.
+
+        Returns:
+            The upstream facade-base import edits, else the retired foreign
+            publications, else no edit.
+
+        """
+        headers = (
+            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
+                Path(project.root.real_path),
+                {path: project.source_text(path)},
+                (path,),
+                source_project=project,
+            )
+        )
+        if headers.failure:
+            return r[Mapping[Path, str]].from_failure(headers)
+        if headers.value:
+            return r[Mapping[Path, str]].ok({
+                edit.file_path: edit.updated_source for edit in headers.value
+            })
+        unpublished = cls._facade_foreign_publications(
+            project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
+            directory,
+        )
+        return r[Mapping[Path, str]].ok(
+            {} if unpublished is None else {path: unpublished}
         )
 
     @classmethod
@@ -818,8 +831,7 @@ class FlextInfraUtilitiesFacadeComponents:
             )
             if (
                 origin.startswith(f"{own.partition('.')[0]}.")
-                and origin != own
-                and origin != family
+                and origin not in {own, family}
                 and not origin.startswith(f"{family}.")
             ):
                 foreign.add(name)
