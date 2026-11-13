@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import codegen
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
@@ -71,9 +70,7 @@ class TestsFlextInfraCodegenExistingFacadeScaffold:
 
         """
         request = u.Tests.conform_request(root)
-        result = codegen.FlextInfraCodegenConform.Generate(
-            state=m.Infra.CodegenConformState(repository_root=root, request=request),
-        ).plan(request)
+        result = u.Tests.conform_plan_result(root, request)
         return m.Infra.CodegenPlan.model_validate(tm.ok(result))
 
     @c.Tests.MARK.slow
