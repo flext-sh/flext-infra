@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- fix(codegen): a generated facade stops composing an orchestrator moved out of its
+  family (#2326)
+- fix(release): the lane refreshes only its open pull request (#2325)
 - fix(codemod): the semantic planning graph carries the injected envelope checker
   (#2316)
 - fix(release): notes GitHub cannot publish fail before the release exists (#2324)
