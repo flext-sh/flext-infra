@@ -182,6 +182,25 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
     WORKSPACE_MANIFEST_FILENAME: ClassVar[str] = "workspace.yaml"
     UV_LOCK_FILENAME: ClassVar[str] = "uv.lock"
     MISE_LOCK_FILENAME: ClassVar[str] = "mise.lock"
+    UV_SOURCES_KEY: ClassVar[str] = "sources"
+    UV_CONSTRAINT_DEPENDENCIES_KEY: ClassVar[str] = "constraint-dependencies"
+    UV_CONSTRAINT_DEPENDENCIES_SECTION: ClassVar[str] = (
+        "tool.uv.constraint-dependencies"
+    )
+    "Section label of the SSOT-projected security floors."
+    UV_COOLDOWN_COMPILE_ARGUMENTS: ClassVar[tuple[str, ...]] = (
+        "pip",
+        "compile",
+        "--quiet",
+        "--no-deps",
+        "--universal",
+        "--no-header",
+    )
+    "Native resolution, under the project's own cooldown, the admission asks of uv."
+    UPG_BOUNDS_TABLE: ClassVar[tuple[str, ...]] = ("tool", "flext", "upg")
+    "Pyproject table recording the requirement bounds ``make upg`` owns."
+    UPG_FLOOR_OPERATOR: ClassVar[str] = ">="
+    UPG_PIN_OPERATOR: ClassVar[str] = "=="
     MISE_LOCK_JOURNAL_FILENAME: ClassVar[str] = "transaction.json"
     "Staged journal the mise.lock publisher commits before the lock rename."
     MISE_LOCK_NEW_FILENAME: ClassVar[str] = "new.lock"
