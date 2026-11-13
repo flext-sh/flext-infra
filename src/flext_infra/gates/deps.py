@@ -102,11 +102,7 @@ class FlextInfraGatesDeps(FlextInfraGates):
             m.Infra.GateExecutionParams(
                 project_dir=project_dir,
                 verdict=False,
-                outcome=(
-                    execution.outcome
-                    if execution.outcome is c.Infra.ToolOutcome.ERROR
-                    else c.Infra.ToolOutcome.FINDINGS
-                ),
+                outcome=c.Infra.ToolOutcome.FINDINGS,
                 issues=tuple(
                     m.Infra.Issue.model_validate(issue, from_attributes=True)
                     for issue in (*execution.issues, *issues)

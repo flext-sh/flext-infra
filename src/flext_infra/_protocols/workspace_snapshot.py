@@ -32,8 +32,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-@runtime_checkable
-class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
+class FlextInfraProtocolsWorkspaceSnapshot:
     """Workspace snapshot protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
