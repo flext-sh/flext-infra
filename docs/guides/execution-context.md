@@ -120,7 +120,11 @@ reprojection treatment, and authored binding failures remain explicit.
 Provider classification composes native types in every family and structural
 protocols only in the protocol family. A module-level family class (a model
 declared beside its part class) fails generation with the part class it must
-move into: facades publish classes only through MRO composition, and a stale
+move into: facades publish classes through MRO composition. A PEP 695 generic
+member class a namespace inherits from its family part is also published as
+`Name: TypeAlias = Part.Name`, the one form mypy can subscript there
+(python/mypy#22457; global axiom in `config/tooling.yaml`), and that
+publication retires when the member stops being generic or moves. A stale
 generated `Name = Name` publication retires with its import once the name is
 reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of

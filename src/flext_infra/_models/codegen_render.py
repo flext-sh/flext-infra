@@ -607,6 +607,13 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 "Authored class body source, retaining declaration order and trivia."
             ),
         )
+        publications: Mapping[str, str] = m.Field(
+            default_factory=dict[str, str],
+            description=(
+                "Generic member class publications and their ``Part.Name``"
+                " expressions (python/mypy#22457)."
+            ),
+        )
         exports: tuple[str, ...] | None = m.Field(
             default=None,
             description=(

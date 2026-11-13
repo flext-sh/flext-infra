@@ -721,7 +721,10 @@ class FlextInfraUtilitiesFacadeComponents:
             if projected.failure:
                 return r[str].from_failure(projected)
             rendered = cls._facade_rendered_class(
-                projected.value, source, planned.value[4], step
+                projected.value,
+                source,
+                (planned.value[4], planned.value[6]),
+                step,
             )
         return rendered.flat_map(
             lambda text: FlextInfraUtilitiesProtectedEditLinting.normalize_source(
@@ -1030,13 +1033,14 @@ class FlextInfraUtilitiesFacadeComponents:
             p.Infra.RopeSourceClassLayout,
             list[tuple[str, p.Infra.RopePyObject]],
             list[t.Infra.RopeFromImport],
+            dict[str, str],
         ]
     ]:
         """Plan the facade composition against the module's own native epoch.
 
         Returns:
-            The module, owner, namespace layout, retained bases and added
-            imports, or the first failure.
+            The module, owner, namespace layout, retained bases, added
+            imports and generic member publications, or the first failure.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -1055,6 +1059,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
                     list[t.Infra.RopeFromImport],
+                    dict[str, str],
                 ]
             ].from_failure(resolved)
         owner, namespace = resolved.value[0], resolved.value[1]
@@ -1080,6 +1085,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
                     list[t.Infra.RopeFromImport],
+                    dict[str, str],
                 ]
             ].from_failure(framed)
         layout, bases = framed.value
@@ -1135,6 +1141,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
                     list[t.Infra.RopeFromImport],
+                    dict[str, str],
                 ]
             ].from_failure(providers)
         composed = cls._facade_retained_providers(
@@ -1161,6 +1168,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
                     list[t.Infra.RopeFromImport],
+                    dict[str, str],
                 ]
             ].from_failure(composed)
         # Utility storage admits only ClassVar/Final members
@@ -1172,6 +1180,16 @@ class FlextInfraUtilitiesFacadeComponents:
             () if family is c.Infra.FacadeFamily.U else providers.value[1],
             (aliases, composed.value[0]),
         )
+        # Utility namespaces admit no TypeAlias storage (see above).
+        publications = (
+            {}
+            if family is c.Infra.FacadeFamily.U
+            else cls._facade_generic_publications(
+                namespace,
+                composed.value[0],
+                frozenset(provider for _path, provider in resolved.value[2]),
+            )
+        )
         if loose.failure:
             return r[
                 tuple[
@@ -1181,6 +1199,7 @@ class FlextInfraUtilitiesFacadeComponents:
                     p.Infra.RopeSourceClassLayout,
                     list[tuple[str, p.Infra.RopePyObject]],
                     list[t.Infra.RopeFromImport],
+                    dict[str, str],
                 ]
             ].from_failure(loose)
         return r[
@@ -1191,6 +1210,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 p.Infra.RopeSourceClassLayout,
                 list[tuple[str, p.Infra.RopePyObject]],
                 list[t.Infra.RopeFromImport],
+                dict[str, str],
             ]
         ].ok((
             module,
@@ -1201,7 +1221,9 @@ class FlextInfraUtilitiesFacadeComponents:
             cls._facade_planned_imports(
                 cls._facade_declaring_packages(project, resolved.value[2]),
                 composed.value[1],
+                type_alias=bool(publications),
             ),
+            publications,
         ))
 
     @staticmethod
@@ -2174,6 +2196,60 @@ class FlextInfraUtilitiesFacadeComponents:
         return tuple(names)
 
     @classmethod
+    def _facade_generic_publications(
+        cls,
+        namespace: p.Infra.RopeSourceClass,
+        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
+        parts: frozenset[p.Infra.RopeSourceClass],
+    ) -> dict[str, str]:
+        """Publish the PEP 695 generic member classes a namespace inherits.
+
+        mypy binds ``C.attr`` only from C's own names (python/mypy#22457), so
+        an inherited generic member class is not subscriptable through the
+        namespace; ``Name: TypeAlias = Part.Name`` keeps the class itself and
+        makes it subscriptable. Non-generic members stay pure MRO.
+
+        Returns:
+            Each published name with its ``Part.Name`` expression.
+
+        """
+        types = FlextInfraUtilitiesRopeRuntimeTypes
+        module = types.require_source_module(namespace.get_module())
+        # A name the namespace already binds stays authored unless the binding
+        # is this publication itself, read back from an earlier generation.
+        bound = {
+            declaration.targets[0][0]: module.source_code[
+                declaration.value[0] : declaration.value[1]
+            ]
+            for declaration in module.get_source_binding_index().assignment_layouts(
+                namespace.get_scope()
+            )
+            if declaration.value is not None and len(declaration.targets) == 1
+        }
+        defined = namespace.get_scope().get_defined_names()
+        publications: dict[str, str] = {}
+        for expression, base in retained:
+            if not (
+                types.py_class(base)
+                and any(cls._same_facade_target(base, part) for part in parts)
+            ):
+                continue
+            index = types.require_source_module(
+                base.get_module()
+            ).get_source_binding_index()
+            for scope in base.get_scope().get_scopes():
+                member = scope.pyobject
+                if not types.py_class(member):
+                    continue
+                name = member.get_name()
+                published = f"{expression}.{name}"
+                if index.class_layout(scope).type_parameters and (
+                    name not in defined or bound.get(name) == published
+                ):
+                    publications.setdefault(name, published)
+        return publications
+
+    @classmethod
     def _facade_loose_declarations(
         cls,
         project: p.Infra.RopeProject,
@@ -2260,6 +2336,8 @@ class FlextInfraUtilitiesFacadeComponents:
     def _facade_planned_imports(
         packages: Mapping[str, str],
         bindings: Sequence[str],
+        *,
+        type_alias: bool,
     ) -> list[t.Infra.RopeFromImport]:
         """Build the imports this planning adds on top of the module's own epoch.
 
@@ -2268,7 +2346,8 @@ class FlextInfraUtilitiesFacadeComponents:
         Bindings of one package share one import statement.
 
         Returns:
-            One import per importing package.
+            One import per importing package, then ``TypeAlias`` when a
+            generic member publication needs it.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -2276,10 +2355,17 @@ class FlextInfraUtilitiesFacadeComponents:
         for binding in bindings:
             grouped.setdefault(packages[binding], []).append(binding)
         return [
-            runtime.from_import(
-                package, 0, tuple((binding, None) for binding in sorted(names))
-            )
-            for package, names in grouped.items()
+            *(
+                runtime.from_import(
+                    package, 0, tuple((binding, None) for binding in sorted(names))
+                )
+                for package, names in grouped.items()
+            ),
+            *(
+                (runtime.from_import("typing", 0, (("TypeAlias", None),)),)
+                if type_alias
+                else ()
+            ),
         ]
 
     @staticmethod
@@ -2400,7 +2486,9 @@ class FlextInfraUtilitiesFacadeComponents:
         cls,
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
         source: str,
-        retained: Sequence[tuple[str, p.Infra.RopePyObject]],
+        composition: tuple[
+            Sequence[tuple[str, p.Infra.RopePyObject]], Mapping[str, str]
+        ],
         step: int,
     ) -> p.Result[str]:
         """Fill the module skeleton from the projected namespace layout.
@@ -2409,6 +2497,7 @@ class FlextInfraUtilitiesFacadeComponents:
             Rendered source or the template owner's original typed failure.
 
         """
+        retained, publications = composition
         current, actual = projected
         scope = actual.get_scope()
         # Epoch guard: the layout, lines and every offset below are read from
@@ -2429,7 +2518,7 @@ class FlextInfraUtilitiesFacadeComponents:
             (current, actual),
             source,
             (layout, end),
-            step,
+            (step, bool(publications)),
             retained,
         )
         class_line = scope.get_start()
@@ -2471,6 +2560,7 @@ class FlextInfraUtilitiesFacadeComponents:
             ],
             indentation=" " * step,
             body_source=body_source,
+            publications=publications,
             managed_header=None
             if source.startswith(c.Infra.AUTOGEN_HEADER)
             else c.Infra.AUTOGEN_HEADER,
@@ -2538,13 +2628,14 @@ class FlextInfraUtilitiesFacadeComponents:
         projected: tuple[p.Infra.RopeSourceModule, p.Infra.RopeSourceClass],
         source: str,
         frame: tuple[p.Infra.RopeSourceClassLayout, int],
-        step: int,
+        rendering: tuple[int, bool],
         retained: Sequence[tuple[str, p.Infra.RopePyObject]],
     ) -> str:
         """Split the namespace body, retiring obsolete generated bindings.
 
-        A managed body whose every statement retired keeps a ``pass`` so the
-        namespace stays a valid class body.
+        A managed body whose every statement retired, and that receives no
+        generic member publication, keeps a ``pass`` so the namespace stays a
+        valid class body.
 
         Returns:
             The verbatim body text without its retired statements.
@@ -2552,6 +2643,7 @@ class FlextInfraUtilitiesFacadeComponents:
         """
         current, actual = projected
         layout, end = frame
+        step, published = rendering
         scope = actual.get_scope()
         index = current.get_source_binding_index()
         retired = (
@@ -2563,7 +2655,7 @@ class FlextInfraUtilitiesFacadeComponents:
         body_source = cls._facade_retained_body(
             index, scope, source, (layout.header_end, end), retired
         )
-        if retired and not body_source.strip():
+        if retired and not published and not body_source.strip():
             class_indent = source[
                 current.lines.get_line_start(scope.get_start()) : layout.region[0]
             ]

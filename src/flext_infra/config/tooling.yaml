@@ -175,7 +175,8 @@ Infra:
       ruff.lint:
       - [ select, [ ALL ] ]
       - [ ignore, [] ]
-      # non-pep695-type-alias (UP040) stays detected but is never autofixed:
+      # non-pep695-type-alias (UP040) is disabled by the generic facade
+      # publication axiom below and, should it return, is never autofixed:
       # its fix turns a facade class publication `Name: TypeAlias = Owner`
       # into a PEP 695 `type` statement, replacing the class with a
       # TypeAliasType (2026-10-25: `type Cli = FlextCliUtilitiesCli` killed the
@@ -372,6 +373,21 @@ Infra:
           # runtime evaluation) and proven by fresh import.
           ruling-disabled-rules:
           - TC
+          # Axiom "generic facade publication" (operator decisions 2026-11-13:
+          # "Axiom TypeAlias in facade", "extend the axiom", "extenda o axioma para
+          # global no mypy"). mypy 2.4.1 binds `C.attr` in an expression only from
+          # C's own names (semanal.visit_member_expr), so a generic member class a
+          # facade namespace inherits from its family part is not subscriptable
+          # there: `m.Ns.Box[int](...)` becomes `types.GenericAlias`
+          # (https://github.com/python/mypy/issues/22457). The generated `Name: TypeAlias = Part.Name`
+          # publication is the only form that keeps the class itself at runtime and
+          # subscriptable for mypy; ruff UP040 (non-pep695-type-alias), pyright
+          # reportMissingTypeArgument and pyrefly implicit-any-type-argument
+          # reject that bare generic alias, and pyrefly bad-override rejects the
+          # alias shadowing the inherited member class (operator decision
+          # 2026-11-13: "coloque como axioma global"). Retire all four when
+          # mypy resolves #22457.
+          - non-pep695-type-alias
           # RUF067 flags the generated family __init__ files that carry the
           # install_lazy_exports call: that PEP 562 lazy facade IS the
           # canonical projection shape, so the rule is structurally
@@ -516,6 +532,9 @@ Infra:
          - reportAssignmentType
          - reportReturnType
          - reportAbstractUsage
+         # Axiom "generic facade publication" (python/mypy#22457): justification
+         # and retirement condition at tools.ruff.lint.ruling-disabled-rules.
+         - reportMissingTypeArgument
          path-rules:
           # Source and tracked consumer surfaces are all
           # first-class environments so no analyzer can hide their diagnostics.
@@ -539,6 +558,11 @@ Infra:
           other-report-private-usage: error
       pyrefly:
         findings-exit-codes: [ 1 ]
+        # Axiom "generic facade publication" (python/mypy#22457): justification
+        # and retirement condition at tools.ruff.lint.ruling-disabled-rules.
+        ruling-disabled-rules:
+        - implicit-any-type-argument
+        - bad-override
         path-rules:
           source-dir: src
           project-root: .

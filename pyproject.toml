@@ -295,6 +295,7 @@ bad-index = "error"
 bad-instantiation = "error"
 bad-keyword-argument = "error"
 bad-match = "error"
+bad-override = "ignore"
 bad-param-name-override = "error"
 bad-raise = "error"
 bad-return = "error"
@@ -305,6 +306,7 @@ bad-unpacking = "error"
 deprecated = "error"
 implicit-abstract-class = "error"
 implicit-any = "error"
+implicit-any-type-argument = "ignore"
 implicit-import = "error"
 implicitly-defined-attribute = "error"
 inconsistent-inheritance = "error"
@@ -442,6 +444,7 @@ reportInconsistentConstructor = "error"
 reportInvalidTypeForm = "none"
 reportMissingImports = "error"
 reportMissingModuleSource = "error"
+reportMissingTypeArgument = "none"
 reportMissingTypeStubs = "none"
 reportPrivateUsage = "error"
 reportReturnType = "none"
@@ -590,7 +593,12 @@ skip-magic-trailing-comma = false
 [tool.ruff.lint]
 extend-safe-fixes = ["relative-imports", "camelcase-imported-as-lowercase"]
 extend-select = ["missing-blank-line-after-last-section"]
-ignore = ["TC", "missing-trailing-comma", "non-empty-init-module"]
+ignore = [
+  "TC",
+  "missing-trailing-comma",
+  "non-empty-init-module",
+  "non-pep695-type-alias",
+]
 select = ["ALL"]
 unfixable = [
   "multi-value-repeated-key-literal",
