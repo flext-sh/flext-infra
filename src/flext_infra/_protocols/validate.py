@@ -194,6 +194,16 @@ class FlextInfraProtocolsValidate:
             ...
 
         @property
+        def inventory_node_ids(self) -> t.StrTuple:
+            """Structural member projected from the owning model.
+
+            Unique node IDs of the complete inventory kept after the marker and
+            keyword selectors and before Testmon deselects; empty when the manifest
+            is itself the complete collection.
+            """
+            ...
+
+        @property
         def markdown_eligible(
             self,
         ) -> tuple[FlextInfraProtocolsValidate.PytestMarkdownOrigin, ...]:

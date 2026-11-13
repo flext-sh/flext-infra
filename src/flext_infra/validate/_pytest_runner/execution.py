@@ -124,79 +124,26 @@ class FlextInfraPytestRunnerExecution(
             deadline=self._process_deadline(),
         )
 
-    def _resolve_selection(
-        self,
-        report_dir: Path,
-        *,
-        execution_mode: c.Infra.PytestExecutionMode,
-        database: Path | None = None,
-        complete: bool = False,
-        verify_inventory: bool = True,
-    ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
-        """Return the typed testmon selection and its manifest owner.
-
-        Each collection is one deadline-bound child of the flext-cli process
-        owner, which runs deadline processes on the main interpreter thread
-        only; the selection and the complete inventory therefore run in order.
-
-        Returns:
-            The typed selection or the original failed collection outcome.
-
-        Raises:
-            RuntimeError: If testmon selected node IDs outside the complete collection
-                inventory.
-
-        """
-        complete = complete or self.target_file is not None
-        selection = self._collect_selection(
-            report_dir,
-            complete=complete,
-            execution_mode=execution_mode,
-            database=database,
-        )
-        if not isinstance(selection, m.Infra.PytestSelectionPlan):
-            return selection
-        if complete or not verify_inventory:
-            return selection
-        inventory = self._collect_selection(
-            report_dir,
-            complete=True,
-            execution_mode=execution_mode,
-            database=database,
-        )
-        if not isinstance(inventory, m.Infra.PytestSelectionPlan):
-            return inventory
-        if inventory.owns_no_tests:
-            return inventory
-        if not set(selection.node_ids).issubset(inventory.node_ids):
-            msg = "testmon selected node IDs outside the complete collection inventory"
-            raise RuntimeError(msg)
-        return selection.model_copy(
-            update={
-                "whole_target": selection.node_ids == inventory.node_ids,
-                "inventory_collected": True,
-            },
-        )
-
     def _collect_selection(
         self,
         report_dir: Path,
         *,
         execution_mode: c.Infra.PytestExecutionMode,
-        complete: bool,
+        complete: bool = False,
         database: Path | None = None,
     ) -> p.Infra.PytestSelectionPlan | p.Cli.ProcessOutcome:
-        """Run one read-only collection and publish its manifest artifacts.
+        """Run the one read-only collection and publish its manifest artifacts.
+
+        The collection is one deadline-bound child of the flext-cli process
+        owner. An incremental one records the selection and the complete
+        inventory in the same manifest; a declared file or a coverage run
+        collects its complete inventory directly.
 
         Returns:
             The selection plan or original failed collection outcome.
 
-        Raises:
-            RuntimeError: If pytest reports no collection with a
-                nonempty manifest; or if a complete inventory outside the slow
-                phase holds no test.
-
         """
+        complete = complete or self.target_file is not None
         artifact = "testmon-inventory" if complete else "testmon-selection"
         selection_log = report_dir / f"{artifact}.log"
         manifest_path = report_dir / f"{artifact}.json"
@@ -285,20 +232,12 @@ class FlextInfraPytestRunnerExecution(
             manifest_path.read_text(encoding="utf-8"),
         )
         node_ids = manifest.node_ids
-        if (
-            outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
-            and node_ids
-        ):
-            msg = "pytest reported no collection with a nonempty manifest"
-            raise RuntimeError(msg)
-        if complete and not node_ids and not owns_no_tests and not scope_may_be_empty:
-            msg = "complete pytest inventory must contain at least one test"
-            raise RuntimeError(msg)
-        # An empty complete inventory in an allowed scope owns no in-scope
-        # test. Collection diagnostics already ran, so a collection failure
-        # never becomes this receipt.
-        owns_no_tests = owns_no_tests or (
-            complete and not node_ids and scope_may_be_empty
+        inventory = self._manifest_inventory(
+            manifest,
+            no_tests_collected=(
+                outcome.raw_return_code == c.Infra.PytestExitCode.NO_TESTS_COLLECTED
+            ),
+            empty_allowed=owns_no_tests or scope_may_be_empty,
         )
         u.Cli.atomic_write_text_file(
             report_dir / f"{artifact}.txt",
@@ -307,10 +246,46 @@ class FlextInfraPytestRunnerExecution(
         return m.Infra.PytestSelectionPlan(
             manifest_path=manifest_path,
             node_ids=node_ids,
-            whole_target=True,
+            whole_target=set(node_ids) == set(inventory),
             inventory_collected=complete,
-            owns_no_tests=owns_no_tests,
+            # An empty complete inventory in an allowed scope owns no in-scope
+            # test. Collection diagnostics already ran, so a collection failure
+            # never becomes this receipt.
+            owns_no_tests=owns_no_tests or (not inventory and scope_may_be_empty),
         )
+
+    @staticmethod
+    def _manifest_inventory(
+        manifest: p.Infra.PytestCollectionManifest,
+        *,
+        no_tests_collected: bool,
+        empty_allowed: bool,
+    ) -> t.StrTuple:
+        """Return the complete inventory the one manifest selected from.
+
+        An incremental collection records it beside the selection; every other
+        manifest is its own complete collection.
+
+        Returns:
+            The complete inventory node IDs.
+
+        Raises:
+            RuntimeError: If pytest reports no collection with a nonempty
+                manifest; if the complete inventory holds no test outside an
+                allowed empty scope; or if the selection lies outside it.
+
+        """
+        if no_tests_collected and manifest.node_ids:
+            msg = "pytest reported no collection with a nonempty manifest"
+            raise RuntimeError(msg)
+        inventory = manifest.inventory_node_ids or manifest.node_ids
+        if not inventory and not empty_allowed:
+            msg = "complete pytest inventory must contain at least one test"
+            raise RuntimeError(msg)
+        if not set(manifest.node_ids).issubset(inventory):
+            msg = "testmon selected node IDs outside the complete collection inventory"
+            raise RuntimeError(msg)
+        return inventory
 
     def _owns_no_tests(self) -> bool:
         """Return whether the project owns zero test files by design.
@@ -1029,14 +1004,9 @@ class FlextInfraPytestRunnerExecution(
         """
         pre_digest = FlextInfraTestmonDbInspector.digest_file(database)
         cache_restored = self._preflight_cache(pre_digest, report_dir, database)
-        selection_plan = self._resolve_selection(
+        selection_plan = self._collect_selection(
             report_dir,
             database=database,
-            verify_inventory=(
-                pre_digest is not None
-                or self.slow_phase
-                or self.target_file is not None
-            ),
             execution_mode=execution_mode,
         )
         if isinstance(selection_plan, p.Cli.ProcessOutcome):
@@ -1295,11 +1265,10 @@ class FlextInfraPytestRunnerExecution(
             ),
         )
         # The inventory pass enforces the same collection policy before coverage.
-        selection = self._resolve_selection(
+        selection = self._collect_selection(
             report_dir,
             complete=True,
             execution_mode=c.Infra.PytestExecutionMode.COVERAGE,
-            verify_inventory=False,
         )
         if isinstance(selection, p.Cli.ProcessOutcome):
             return r.ok(selection.raw_return_code)
