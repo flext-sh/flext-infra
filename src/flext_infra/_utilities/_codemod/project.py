@@ -89,7 +89,7 @@ class FlextInfraUtilitiesCodemodProject(
                 )
                 if path.suffix == c.Infra.EXT_PYTHON
             )
-            return cls.snapshot_import_graph(project, resources=resources)
+            return cls.persistent_import_graph(project, resources)
 
     @classmethod
     def composes_family_package(

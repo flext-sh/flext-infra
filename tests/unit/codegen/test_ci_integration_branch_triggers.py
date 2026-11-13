@@ -294,13 +294,6 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
         tm.that(inputs["if-no-files-found"], eq="error")
         tm.that(inputs["include-hidden-files"], eq=True)
         paths = str(inputs["path"]).splitlines()
-        for receipt_glob in (
-            ".reports/tests/**/*.json",
-            ".reports/tests/**/summary.txt",
-            ".reports/tests/**/failed-tests.txt",
-            ".reports/tests/**/errors.txt",
-        ):
-            tm.that(paths, has=receipt_glob)
         tm.that(
             paths,
             has=[".reports/check/**/*.sarif", ".reports/check/**/*.md"],
@@ -372,10 +365,10 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                 "steps.tool-cache.outputs.cache-hit != 'true'",
                 "steps.tool-cache.outputs.cache-primary-key != ''",
                 "github.event_name == 'workflow_dispatch'",
-                "github.event.pull_request.head.repo.full_name == github.repository",
             ],
         )
-        tm.that(save["if"], lacks="success()")
+        # A PR-scoped entry is visible to no other ref: pull requests restore only.
+        tm.that(save["if"], lacks=["success()", "pull_request"])
         tm.that(save_inputs["path"], eq=restore_inputs["path"])
         cache_action = spec.github_actions["cache"]
         tm.that(

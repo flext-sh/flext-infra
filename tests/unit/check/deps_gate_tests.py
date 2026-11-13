@@ -552,11 +552,20 @@ class TestsFlextInfraDepsGate:
 
         The manifest keeps the Git URL and moves only its reference onto the
         FLEXT line the checkout consumes; the lock alone pins exact commits.
+        A native UV Git source shadows its requirement's URL, so a source on
+        another branch follows the line as well.
         """
         source = "https://github.com/fixture-org/flext-fixture.git"
         pinned = f"flext-fixture @ git+{source}@{'a' * 40}"
         root, integration = TestsFlextInfraDepsGate._flext_line_project(
             tmp_path, pinned
+        )
+        pyproject = root / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding="utf-8")
+            + f'\n[tool.uv.sources.flext-fixture]\ngit = "{source}"\n'
+            f'branch = "{integration}-retired"\n',
+            encoding="utf-8",
         )
         infra_source = TestsFlextInfraDepsGate._INFRA_SOURCE
         gate = tm.not_none(FlextInfraGateRegistry.default().create(c.Infra.DEPS, root))
@@ -590,6 +599,11 @@ class TestsFlextInfraDepsGate:
                 f"flext-infra @ git+{infra_source}@{integration}",
             ),
         )
+        native = u.Cli.toml_mapping_path(
+            u.Cli.toml_read_json(pyproject).unwrap(),
+            ("tool", "uv", "sources", "flext-fixture"),
+        )
+        tm.that(dict(tm.not_none(native)), eq={"git": source, "branch": integration})
 
     @staticmethod
     def test_consumer_branch_never_becomes_the_flext_line(tmp_path: Path) -> None:
