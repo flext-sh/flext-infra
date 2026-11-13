@@ -137,6 +137,9 @@ class FlextInfraPytestRunnerBase(s[int]):
         # its receipt under; the Git toplevel is an ancestor when the project
         # is a subdirectory of its checkout (CI checks out into <repo>/<repo>).
         root = context.cwd
+        # Pytest keeps its own basetemp under the declared temporary root; an
+        # undeclared one would fall back to the system /tmp (storage law).
+        settings.env_required(c.Infra.TEMPORARY_DIRECTORY_VARIABLE)
         make = u.Infra.load_codegen_inputs(root).unwrap().spec.make
         cache = make.testmon_cache
         database: Path | None = None

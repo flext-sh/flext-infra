@@ -75,6 +75,8 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
+    TEMPORARY_DIRECTORY_VARIABLE: ClassVar[str] = "TMPDIR"
+    """Declared temporary root under which pytest keeps its own basetemp."""
     TEST_SELECTION_DISABLE_PLUGIN_ARGS: ClassVar[t.StrTuple] = (
         "-p",
         "no:pytest-testmon",

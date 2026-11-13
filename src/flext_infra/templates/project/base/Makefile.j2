@@ -33,15 +33,6 @@ $(shell awk -v reference="{{ reference }}" 'index($$0, reference) { count++ } EN
 {{ "\t" }}@{{ check_run("fix", " --scope $(GATE_SCOPE) --apply") }}
 {{ "\t" }}@$(PROJECT_FLEXT_INFRA) docs fix --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects . --apply
 {%- endmacro -%}
-{%- macro pytest_testmon_guard() -%}
-set -eu; \
-database="$(FLEXT_PYTEST_TESTMON_DATABASE)"; \
-case "$$database" in /*) ;; *) printf 'ERROR: persistent testmon database requires XDG_CACHE_HOME or HOME\n' >&2; exit 2 ;; esac; \
-case "$$database" in "$(PROJECT_ROOT)"/*) printf 'ERROR: persistent testmon database must be outside the checkout: %s\n' "$$database" >&2; exit 2 ;; esac; \
-case "$$database" in "$${TMPDIR:-/tmp}"/*|/tmp/*) printf 'ERROR: persistent testmon database must not live under the temporary directory: %s\n' "$$database" >&2; exit 2 ;; esac; \
-case "$$(cd "$${TMPDIR:-/tmp}" && pwd -P)/" in /tmp/*) printf 'ERROR: pytest basetemp would live under /tmp; declare TMPDIR outside it\n' >&2; exit 2 ;; esac; \
-mkdir -p "$$(dirname "$$database")"; \
-{%- endmacro -%}
 {#- Select impacted cases from the global inventory using the persistent database. -#}
 {%- macro pytest_test_runner(operation="tests") -%}
 $(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_ROOT)" --scope "$(GATE_SCOPE)"

@@ -568,7 +568,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Pytest owns its basetemp; the verbs only refuse a /tmp TMPDIR."""
+        """Pytest owns its basetemp: no verb injects a basetemp or temp root."""
         rendered = self._render_root_makefile(
             tmp_path,
             extra_verbs=(),
@@ -577,4 +577,3 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.that(
             rendered, lacks=["--basetemp", "export TMPDIR TMP TEMP", "scratch_root"]
         )
-        tm.that(rendered, has="declare TMPDIR outside it")
