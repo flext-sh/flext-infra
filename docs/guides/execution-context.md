@@ -13,7 +13,7 @@
   - [Provider Election, Source Bindings, and Native Module Resolution](#provider-election-source-bindings-and-native-module-resolution)
   - [Recursive Component Composition and Holder Election](#recursive-component-composition-and-holder-election)
 - [Namespace migration](#namespace-migration)
-  - [Incremental Testmon and Primary Check Admission (ADR-029)](#incremental-testmon-and-primary-check-admission-adr-029)
+  - [Independent Native Checks and Testmon Execution (ADR-029)](#independent-native-checks-and-testmon-execution-adr-029)
 - [New projects](#new-projects)
 - [Environment activation](#environment-activation)
   - [Make Activation, Packaged Resources, and Hatch Wheel Packaging](#make-activation-packaged-resources-and-hatch-wheel-packaging)
