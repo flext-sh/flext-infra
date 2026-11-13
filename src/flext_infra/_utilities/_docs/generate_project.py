@@ -157,6 +157,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
         contract = FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             scope.path,
             analyzed_contract,
+            metadata_projection=scope.metadata_projection,
         )
         module_names = FlextInfraUtilitiesDocsGenerateProject._module_names(scope)
         rendered: list[tuple[Path, str]] = [

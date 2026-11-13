@@ -270,8 +270,14 @@ class FlextInfraUtilitiesDocsContract:
     def docs_current_project_contract(
         project_root: Path,
         rendered_contract: t.JsonMapping,
+        *,
+        metadata_projection: p.Infra.CodegenFilePlan | None = None,
     ) -> t.JsonMapping:
-        """Bind rendered API analysis to the current pyproject bytes.
+        """Bind rendered API analysis to the pyproject bytes the run publishes.
+
+        The planned ``pyproject.toml`` is the metadata the generation leaves
+        behind, so the pages never lag one run behind a metadata change such as
+        a renamed project.
 
         Returns:
             The resulting ``t.JsonMapping``.
@@ -280,9 +286,9 @@ class FlextInfraUtilitiesDocsContract:
             TypeError: If docs project metadata is missing.
 
         """
-        payload = FlextInfraUtilitiesDocsScope.project_payload(
-            project_root,
-        )
+        payload = FlextInfraUtilitiesDocsScope.project_state(
+            project_root, metadata_projection=metadata_projection
+        ).payload
         project_value = payload.get(c.Infra.PROJECT)
         if not isinstance(project_value, Mapping):
             msg = f"docs project metadata is missing: {project_root}"
