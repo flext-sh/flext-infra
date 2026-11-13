@@ -757,11 +757,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
         log = bin_dir / f"{name}.log"
         shim = bin_dir / name
         # A ``view`` of a release or pull request answers "absent" (exit 1),
-        # the state every first publication starts from.
+        # the state every first publication starts from; a ``list`` answers
+        # the open pull-request numbers a test writes to ``<name>.open``.
         shim.write_text(
             "#!/bin/sh\n"
             f'printf "%s\\n" "$*" >> "{log}"\n'
-            'case "$2" in view) exit 1 ;; esac\n',
+            f'open="{bin_dir / name}.open"\n'
+            'case "$2" in\n'
+            "view) exit 1 ;;\n"
+            'list) [ ! -f "$open" ] || cat "$open" ;;\n'
+            "esac\n",
             encoding="utf-8",
         )
         shim.chmod(0o755)

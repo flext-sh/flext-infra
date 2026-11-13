@@ -152,6 +152,46 @@ class TestsFlextInfraReleasePublicationLane:
             tm.that(self._published(tmp_path), eq="")
             tm.fail(gh_log.exists())
 
+    @pytest.mark.parametrize(
+        ("open_numbers", "expected"),
+        [
+            ("", "pr create"),
+            ("7\n", "pr edit 7"),
+            ("7\n8\n", None),
+        ],
+    )
+    def test_only_an_open_pull_request_is_refreshed(
+        self,
+        tmp_path: Path,
+        open_numbers: str,
+        expected: str | None,
+    ) -> None:
+        """The lane edits its one open pull request, else opens a new one.
+
+        A merged or closed pull request on the same head (the previous
+        release) is never edited; several open ones fail loud.
+        """
+        with self._lane(tmp_path) as (repo, request, gh_log):
+            (gh_log.parent / f"{c.Infra.GH}.open").write_text(
+                open_numbers, encoding="utf-8"
+            )
+
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
+
+            calls = gh_log.read_text(encoding="utf-8")
+            tm.that(calls, has="--state open")
+            if expected is None:
+                tm.fail(result)
+                tm.that(result.error or "", has="several open pull requests")
+                tm.that(calls, lacks="pr edit")
+                tm.that(calls, lacks="pr create")
+            else:
+                tm.ok(result, eq=True)
+                tm.that(calls, has=expected)
+                tm.that(calls, lacks="pr view")
+
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
         with self._lane(tmp_path) as (repo, request, gh_log):
