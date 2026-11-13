@@ -51,11 +51,11 @@ for environment_path in "${VENV_DIR%/*}" "${VENV_DIR}" "${VENV_DIR}/bin" "${VENV
 done
 if [[ "${OS:-}" == Windows_NT ]]; then
   environment_bin="${VENV_DIR}/Scripts"
-  bootstrap_mise="${BOOTSTRAP_ROOT}/.bin/mise.exe"
+  bootstrap_mise="${HOME}/.local/bin/mise.exe"
   environment_python="${environment_bin}/python.exe"
 else
   environment_bin="${VENV_DIR}/bin"
-  bootstrap_mise="${BOOTSTRAP_ROOT}/.bin/mise"
+  bootstrap_mise="${HOME}/.local/bin/mise"
   environment_python="${environment_bin}/python"
 fi
 if [[ ! -x "${environment_python}" ]]; then

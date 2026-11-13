@@ -558,6 +558,14 @@ accounting; it is never reported as tests passed. The native inventory and manif
 must agree; neither may silently expand into another target. Warnings remain visible
 in the native result.
 
+Pytest owns its temporary directories: the runner passes no `--basetemp` and no
+`TMPDIR`, so each run uses pytest's own numbered basetemp under
+`$TMPDIR/pytest-of-$USER/` and its native retention removes all but the latest runs.
+The runner requires a declared `TMPDIR` (an undeclared one would fall back to the
+system `/tmp`); generated CI exports the runner's own `RUNNER_TEMP`,
+which GitHub empties at every job boundary. Fixtures reuse the shared tool data
+(Mise, the uv cache with clone links) instead of copying it into a test tree.
+
 Connectivity tests follow the root environment and reachability prerequisites;
 availability skips never prove connectivity or production readiness. Once a service
 is available, authentication, protocol and assertion errors remain failures. Pure unit

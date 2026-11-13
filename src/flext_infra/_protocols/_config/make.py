@@ -481,13 +481,6 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def pytest_scratch(
-            self,
-        ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecPytestScratchSpec:
-            """Scratch root declared by every pytest verb."""
-            ...
-
-        @property
         def executor_environment(
             self,
         ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecExecutorEnvironmentSpec:
@@ -669,31 +662,79 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class MakeHarnessSpecPytestScratchSpec(
+    class MakeAdmissionOverrideSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
         """Structural data contract projected from the owning model."""
 
         @property
-        def user_home_environment_variable(
+        def max_load5(self) -> t.PositiveFloat | None:
+            """Highest 5-minute load average that admits the verb."""
+            ...
+
+        @property
+        def memory_limit_gb(self) -> t.PositiveInt | None:
+            """Memory limit of each verb recipe, in GiB."""
+            ...
+
+        @property
+        def max_processes(self) -> t.PositiveInt | None:
+            """CPU limit of each verb recipe."""
+            ...
+
+    @runtime_checkable
+    class MakeAdmissionLimitsSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def max_load5(self) -> t.PositiveFloat:
+            """Highest 5-minute load average that admits the verb."""
+            ...
+
+        @property
+        def memory_limit_gb(self) -> t.PositiveInt:
+            """Memory limit of each verb recipe, in GiB."""
+            ...
+
+        @property
+        def max_processes(self) -> t.PositiveInt:
+            """CPU limit of each verb recipe."""
+            ...
+
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Memory limit in bytes, the unit MemoryMax accepts."""
+            ...
+
+    @runtime_checkable
+    class MakeAdmissionSpec(MakeAdmissionLimitsSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def overrides(
             self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """User home variable anchoring the scratch root."""
+        ) -> Mapping[
+            t.NonEmptyStr, FlextInfraProtocolsConfigMake.MakeAdmissionOverrideSpec
+        ]:
+            """Explicit per-verb exceptions to the defaults."""
             ...
 
         @property
-        def home_relative_directory(self) -> t.NonEmptyStr:
-            """Home-relative scratch base directory."""
+        def refusal_guidance(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Lighter-route guidance printed with every refusal; plain Make text
+            without '$', '#' or newlines.
+            """
             ...
 
         @property
-        def state_directory_name(self) -> t.NonEmptyStr:
-            """Runtime-state directory name under the base."""
-            ...
-
-        @property
-        def namespace(self) -> t.NonEmptyStr:
-            """Scratch namespace below the checkout path."""
+        def verb_limits(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsConfigMake.MakeAdmissionLimitsSpec]:
+            """Each overridden verb's limits merged over the defaults."""
             ...
 
     @runtime_checkable
@@ -817,6 +858,11 @@ class FlextInfraProtocolsConfigMake:
         @property
         def scan_threads(self) -> t.PositiveInt:
             """Bounded thread budget for ast-grep scan execution."""
+            ...
+
+        @property
+        def admission(self) -> FlextInfraProtocolsConfigMake.MakeAdmissionSpec:
+            """Host admission and run limits of every public verb."""
             ...
 
         @property
