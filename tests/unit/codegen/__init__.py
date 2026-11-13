@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from tests.unit.codegen.test_codegen_ci_matrix_artifacts import (
         TestsFlextInfraCodegenCiMatrixArtifacts,
     )
+    from tests.unit.codegen.test_facade_foreign_publication import (
+        TestsFlextInfraFacadeForeignPublication,
+    )
 
 
 __all__: tuple[str, ...] = (
@@ -34,6 +37,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenCiMatrixArtifacts",
     "TestsFlextInfraCodegenCiMatrixSupport",
     "TestsFlextInfraCodegenLayoutSupport",
+    "TestsFlextInfraFacadeForeignPublication",
     "TestsFlextInfraLazyInitTestNamespace",
 )
 
@@ -46,6 +50,7 @@ install_lazy_exports(
         "TestsFlextInfraCodegenCiMatrixArtifacts": ".test_codegen_ci_matrix_artifacts",
         "TestsFlextInfraCodegenCiMatrixSupport": ".ci_matrix_support",
         "TestsFlextInfraCodegenLayoutSupport": ".layout_support",
+        "TestsFlextInfraFacadeForeignPublication": ".test_facade_foreign_publication",
         "TestsFlextInfraLazyInitTestNamespace": ".lazy_init_test_namespace_tests",
     },
     public_exports=__all__,

@@ -355,7 +355,10 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
     ) -> p.Result[tuple[str, ...]]:
         """Return commit subjects reachable from HEAD since ``since``.
 
-        Merge commits carry the pull-request titles the bump derives from.
+        The first-parent merges are the pull requests merged into the
+        integration line; they carry the titles the bump and the notes derive
+        from. Merges inside a lane (base adoption, lane-to-lane) are not
+        releases and stay out.
 
         Returns:
             Commit subjects reachable from HEAD since ``since``.
@@ -365,7 +368,7 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             [
                 c.Infra.GIT,
                 "log",
-                *(("--merges",) if merges_only else ()),
+                *(("--merges", "--first-parent") if merges_only else ()),
                 "--format=%s",
                 f"{since}..{c.Infra.GIT_HEAD}",
             ],

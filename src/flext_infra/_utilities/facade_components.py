@@ -41,6 +41,7 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeModulePatch,
     FlextInfraUtilitiesRopeRuntime,
     FlextInfraUtilitiesRopeRuntimeModules,
     FlextInfraUtilitiesRopeRuntimeRefactors,
@@ -678,21 +679,14 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
-        headers = (
-            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
-                Path(project.root.real_path),
-                {path: project.source_text(path)},
-                (path,),
-                source_project=project,
-            )
-        )
-        if headers.failure:
-            return r[str].from_failure(headers)
-        if headers.value:
+        rewrites = cls._facade_source_rewrites(project, path, directory)
+        if rewrites.failure:
+            return r[str].from_failure(rewrites)
+        if rewrites.value:
             declared = FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
                 Path(project.root.real_path),
                 (),
-                {edit.file_path: edit.updated_source for edit in headers.value},
+                rewrites.value,
                 source_project=project,
             )
             with project.source_view(
@@ -752,6 +746,101 @@ class FlextInfraUtilitiesFacadeComponents:
                 project, (path, directory), owner, (text, owner_name is not None)
             )
         )
+
+    @classmethod
+    def _facade_source_rewrites(
+        cls, project: p.Infra.RopeProject, path: Path, directory: Path
+    ) -> p.Result[Mapping[Path, str]]:
+        """Plan the facade source edits that precede composition.
+
+        Returns:
+            The upstream facade-base import edits, else the retired foreign
+            publications, else no edit.
+
+        """
+        headers = (
+            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
+                Path(project.root.real_path),
+                {path: project.source_text(path)},
+                (path,),
+                source_project=project,
+            )
+        )
+        if headers.failure:
+            return r[Mapping[Path, str]].from_failure(headers)
+        if headers.value:
+            return r[Mapping[Path, str]].ok({
+                edit.file_path: edit.updated_source for edit in headers.value
+            })
+        unpublished = cls._facade_foreign_publications(
+            project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
+            directory,
+        )
+        return r[Mapping[Path, str]].ok(
+            {} if unpublished is None else {path: unpublished}
+        )
+
+    @classmethod
+    def _facade_foreign_publications(
+        cls,
+        project: p.Infra.RopeProject,
+        resource: p.Infra.RopeFile,
+        directory: Path,
+    ) -> str | None:
+        """Retire generated re-exports of own classes declared outside the family.
+
+        A generated family facade publishes its owner, its letter and the parts
+        of its family package. An own-package class it only imports from
+        another package (one moved out of the family, for example) already has
+        that package as its single publisher; re-exporting it from the facade
+        would duplicate the publication and bind the family to an orchestrator.
+
+        Returns:
+            The facade source without those exports and their unused imports,
+            or ``None`` when the facade publishes none.
+
+        """
+        module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+            project.get_pymodule(resource)
+        )
+        if (
+            not module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+            or directory.parent != Path(resource.real_path).parent
+        ):
+            return None
+        own = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            module, source_project=project
+        )
+        parent = own.rpartition(".")[0]
+        family = f"{parent}.{directory.name}"
+        exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
+            module
+        )
+        names = module.get_scope().get_names()
+        foreign: set[str] = set()
+        for name in exports:
+            binding = names.get(name)
+            target = binding.get_object() if binding is not None else None
+            if target is None or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(
+                target
+            ):
+                continue
+            origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+                target.get_module(), source_project=project
+            )
+            if (
+                origin.startswith(f"{own.partition('.')[0]}.")
+                and origin not in {own, family}
+                and not origin.startswith(f"{family}.")
+            ):
+                foreign.add(name)
+        if not foreign:
+            return None
+        retired = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
+            module, names=[name for name in exports if name not in foreign]
+        )
+        return cls._facade_prune_dropped_imports(retired, frozenset(foreign), "")
 
     @staticmethod
     def _facade_settled_initializers(
