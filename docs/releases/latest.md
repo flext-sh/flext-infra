@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(codegen): consumer kind converges from a packaged project; consumer docs build;
+  empty src is absent (#2329)
 - test(check): read native diagnostics from the receipt and invocation report (#2327)
 - fix(codegen): plan the tests namespace from the root exports planned in the same run
   (#2330)
