@@ -50,8 +50,7 @@ if TYPE_CHECKING:
     )
 
 
-@runtime_checkable
-class FlextInfraProtocolsBase(Protocol):
+class FlextInfraProtocolsBase:
     """Base protocols for flext-infra project."""
 
     @runtime_checkable

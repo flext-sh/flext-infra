@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 from flext_cli import FlextCliModels
 
@@ -23,6 +23,7 @@ from flext_infra._models import (
     FlextInfraModelsDeps,
     FlextInfraModelsDocs,
     FlextInfraModelsEnforcementCatalog,
+    FlextInfraModelsGateAdmission,
     FlextInfraModelsGates,
     FlextInfraModelsGit,
     FlextInfraModelsLayout,
@@ -44,7 +45,7 @@ from flext_infra._models import (
     FlextInfraModelsWorktree,
 )
 from flext_infra._models._codegen import FlextInfraCodegen
-from flext_infra._models._config.base import FlextInfraModelsConfig
+from flext_infra._models._config import FlextInfraModelsConfig
 
 
 class FlextInfraModels(FlextCliModels):
@@ -59,6 +60,7 @@ class FlextInfraModels(FlextCliModels):
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
         FlextInfraModelsEnforcementCatalog,
+        FlextInfraModelsGateAdmission,
         FlextInfraModelsGates,
         FlextInfraModelsGit,
         FlextInfraModelsLayout,
@@ -83,8 +85,9 @@ class FlextInfraModels(FlextCliModels):
     ):
         """Infrastructure-domain models - all classes exposed directly."""
 
-        ModScanCounts: TypeAlias = FlextInfraModelsScan.ModScanCounts
-        ModOccurrenceReport: TypeAlias = FlextInfraModelsScan.ModOccurrenceReport
+        if TYPE_CHECKING:
+            ModScanCounts: TypeAlias = FlextInfraModelsScan.ModScanCounts
+            ModOccurrenceReport: TypeAlias = FlextInfraModelsScan.ModOccurrenceReport
 
 
 m = FlextInfraModels

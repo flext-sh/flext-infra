@@ -246,7 +246,6 @@ class FlextInfraConstantsBase(
     "Root of regenerable codegen transaction state; never repository content."
     MUTATION_LOCK_NAME: ClassVar[str] = "flext-infra.lock"
     "Exclusive lock serializing every writer of one mutation scope."
-    ATOMIC_SOURCE_CHANGED: ClassVar[str] = "atomic source changed"
     "Publisher verdict: another writer changed a planned destination first."
     RELEASE_GITLEAKS_CONFIG_PATH: ClassVar[str] = "config/gitleaks-release.toml"
     "Workspace-relative trusted release secret-scan configuration."

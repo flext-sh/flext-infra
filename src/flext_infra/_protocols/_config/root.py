@@ -61,8 +61,8 @@ class FlextInfraProtocolsConfigRoot:
             ...
 
         @property
-        def mutation_lock(self) -> FlextInfraProtocolsConfigStatic.MutationLockSpec:
-            """Bounded wait for a mutation scope lock."""
+        def gate_admission(self) -> FlextInfraProtocolsConfigStatic.GateAdmissionSpec:
+            """Host-wide FIFO admission for heavy gates."""
             ...
 
         @property

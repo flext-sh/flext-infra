@@ -40,12 +40,99 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
-    class MutationLockSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+    class RouteBudgetSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
         @property
-        def reconcile_attempts(self) -> t.NonNegativeInt:
-            """Replans after another writer changed a destination."""
+        def budget_seconds(self) -> t.PositiveInt:
+            """Wall time from admission to forced termination."""
+            ...
+
+        @property
+        def grace_seconds(self) -> t.PositiveInt:
+            """Graceful termination reserve inside the budget."""
+            ...
+
+    @runtime_checkable
+    class GateRepeatWindow(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def window_seconds(self) -> t.PositiveInt:
+            """Time after a success during which the form is refused."""
+            ...
+
+        @property
+        def lighter(self) -> t.NonEmptyStr:
+            """Lighter command a refusal names."""
+            ...
+
+    @runtime_checkable
+    class GateRepeatSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def check(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of a complete make check."""
+            ...
+
+        @property
+        def tests_full(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make tests-full."""
+            ...
+
+        @property
+        def mod_full(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make mod without LAWS or RULES."""
+            ...
+
+        @property
+        def mod_selection(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make mod repeating one LAWS/RULES selection."""
+            ...
+
+    @runtime_checkable
+    class GateAdmissionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def capacity_normal(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted at normal pressure."""
+            ...
+
+        @property
+        def capacity_high(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted under host pressure."""
+            ...
+
+        @property
+        def heartbeat_seconds(self) -> t.PositiveInt:
+            """Interval at which a live ticket refreshes itself."""
+            ...
+
+        @property
+        def ttl_seconds(self) -> t.PositiveInt:
+            """Heartbeat age after which a held ticket is reclaimed."""
+            ...
+
+        @property
+        def poll_seconds(self) -> t.PositiveInt:
+            """Interval between admission decisions of a waiter."""
+            ...
+
+        @property
+        def generation(self) -> FlextInfraProtocolsConfigStatic.RouteBudgetSpec:
+            """Budget of codegen generate after admission."""
+            ...
+
+        @property
+        def modification(self) -> FlextInfraProtocolsConfigStatic.RouteBudgetSpec:
+            """Budget of refactor mod after admission."""
+            ...
+
+        @property
+        def repeat(self) -> FlextInfraProtocolsConfigStatic.GateRepeatSpec:
+            """Repeat limit of the full-weight forms."""
             ...
 
     @runtime_checkable

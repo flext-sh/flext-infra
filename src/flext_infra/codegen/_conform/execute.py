@@ -18,7 +18,6 @@ from typing_extensions import TypeForm
 from flext_infra import (
     c,
     config,
-    e,
     m,
     p,
     r,
@@ -180,38 +179,19 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             f"profile_output={settings.Infra.profile_output}"
         )
         root = request.root.expanduser().resolve()
-        # Concurrent writers are the normal operating state: planning reads
-        # without a tree-wide lock, the atomic publisher verifies every
-        # destination's observed state, and a destination changed by another
-        # actor triggers a reconciling replan over the new state instead of
-        # waiting for, or failing because of, that actor.
-        attempts = config.Infra.mutation_lock.reconcile_attempts
-
-        def _run_once() -> p.Result[p.Infra.CodegenResult]:
+        lock = u.Infra.mutation_lock_path(root)
+        if lock.failure:
+            return r[p.Infra.CodegenResult].from_failure(lock)
+        # One writer per tree (ADR-018 single-read, single-batch publication):
+        # the existing mutation barrier is held from the first live read to the
+        # validated publication, so a second same-tree generation waits here.
+        u.Cli.info(f"operation=generate root={root} barrier={lock.value}")
+        with u.Cli.file_changes_lock(lock.value):
             self.state.source_inputs.clear()
             self.state.source_imports.clear()
-            try:
-                return self._execute_once(
-                    request, root, after_publication, after_cohort_publication
-                )
-            except e.OperationError as exc:
-                if c.Infra.ATOMIC_SOURCE_CHANGED not in str(exc):
-                    raise
-                return r[p.Infra.CodegenResult].fail(str(exc))
-
-        result = _run_once()
-        while (
-            attempts > 0
-            and result.failure
-            and c.Infra.ATOMIC_SOURCE_CHANGED in (result.error or "")
-        ):
-            attempts -= 1
-            u.Cli.info(
-                f"operation=generate root={root} reconcile=replan "
-                f"cause={(result.error or '').split(';', 1)[0]}"
+            return self._execute_once(
+                request, root, after_publication, after_cohort_publication
             )
-            result = _run_once()
-        return result
 
     def _execute_once(
         self,

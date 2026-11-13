@@ -169,8 +169,7 @@ class FlextInfraUtilitiesSemanticCutoverNestingReferences(
             root_binding = runtime.expression_name(scope, root)
             if not matches and not isinstance(root_binding, p.Infra.RopeAssignedName):
                 return None
-            chain = FlextInfraUtilitiesCodemodBindingChain
-            proof = chain.FlextInfraUtilitiesCodemodBindingChain
+            proof = FlextInfraUtilitiesCodemodBindingChain
             declarations = proof.single_reaching_declarations(
                 self.original,
                 scope,

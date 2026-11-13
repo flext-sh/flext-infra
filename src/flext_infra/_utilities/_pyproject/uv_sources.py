@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 
 from flext_cli import u
 from packaging.requirements import Requirement
@@ -195,17 +195,20 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
         cls,
         document: t.Cli.TomlDocument,
         *,
-        target_ref: str,
+        target_ref: Callable[[], p.Result[str]],
     ) -> p.Result[tuple[p.Infra.GitSourceReferenceMigration, ...]]:
         """Elect one Git-ref migration per internal Git source off the line.
 
         Every declared internal requirement, and every native
         ``[tool.uv.sources]`` Git entry of an internal distribution, whose
-        reference differs from ``target_ref`` (the declared integration line)
-        yields the existing source-reference migration scoped to its own source
-        directory and current reference; the manifest keeps the URL, the lock
-        alone pins the exact commit. A native source shadows its requirement's
-        URL, so a source left off the line is a misalignment of its own.
+        reference differs from the declared integration line yields the
+        existing source-reference migration scoped to its own source directory
+        and current reference; the manifest keeps the URL, the lock alone pins
+        the exact commit. A native source shadows its requirement's URL, so a
+        source left off the line is a misalignment of its own. ``target_ref``
+        resolves that line only once the document declares an internal Git
+        source: a project consuming no internal distribution has nothing to
+        align and needs no line.
 
         Returns:
             The distinct migrations aligning internal references, or the first
@@ -226,9 +229,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             for key in ("branch", "rev", "tag")
             if isinstance(source.get(key), str)
         )
-        migrations: MutableMapping[
-            tuple[str, str], p.Infra.GitSourceReferenceMigration
-        ] = {}
+        references: list[tuple[str, str]] = []
         for line in (*lines.value, *native):
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
@@ -238,19 +239,24 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             declared = FlextInfraUtilitiesGitRequirementSource.declared_git_source(line)
             if declared.failure:
                 return result_type.from_failure(declared)
-            url, reference = declared.value
-            if not url or reference == target_ref:
-                continue
-            prefix = f"{url.rpartition('/')[0]}/"
-            migrations.setdefault(
-                (prefix, reference),
-                m.Infra.GitSourceReferenceMigration(
-                    url_prefix=prefix,
-                    source_ref=reference,
-                    target_ref=target_ref,
-                ),
+            if declared.value[0]:
+                references.append(declared.value)
+        if not references:
+            return result_type.ok(())
+        return target_ref().map(
+            lambda line_ref: tuple(
+                {
+                    (prefix, reference): m.Infra.GitSourceReferenceMigration(
+                        url_prefix=prefix,
+                        source_ref=reference,
+                        target_ref=line_ref,
+                    )
+                    for url, reference in references
+                    if reference != line_ref
+                    for prefix in (f"{url.rpartition('/')[0]}/",)
+                }.values()
             )
-        return result_type.ok(tuple(migrations.values()))
+        )
 
     @classmethod
     def _sync_uv_candidates(

@@ -47,8 +47,7 @@ if TYPE_CHECKING:
     )
 
 
-@runtime_checkable
-class FlextInfraProtocolsRope(Protocol):
+class FlextInfraProtocolsRope:
     """Application contracts layered around the concrete Rope boundary."""
 
     @runtime_checkable

@@ -20,8 +20,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-@runtime_checkable
-class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot, Protocol):
+class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot):
     """Rope object contracts used instead of importing untyped Rope classes."""
 
     @runtime_checkable

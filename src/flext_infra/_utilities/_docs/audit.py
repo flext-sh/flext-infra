@@ -110,10 +110,13 @@ class FlextInfraUtilitiesDocsAudit(
         issues: MutableSequence[p.Infra.AuditIssue],
         md_file: Path,
         rel: str,
-        number: int,
-        raw: str,
+        link: p.Cli.MarkdownLink,
+        *,
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec] | None = None,
     ) -> None:
         """Append one issue for a single link target when it violates policy."""
+        raw = link.target
+        number = link.line
         target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
         if re.match(
             config.Infra.codegen.make.docs.cross_project_relative_link_pattern,
@@ -135,12 +138,12 @@ class FlextInfraUtilitiesDocsAudit(
             return
         if FlextInfraUtilitiesDocsBase.docs_is_external(target):
             issues.extend(
-                FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues(
+                FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues_in(
                     file=rel,
                     line_number=number,
                     raw=raw,
                     target=target,
-                    repository_root=md_file.parent,
+                    repositories=repositories or (),
                 ),
             )
             return
@@ -162,6 +165,8 @@ class FlextInfraUtilitiesDocsAudit(
         md_file: Path,
         rel: str,
         issues: MutableSequence[p.Infra.AuditIssue],
+        *,
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec] | None = None,
     ) -> None:
         """Check every parsed link and image destination of one markdown file."""
         for link in u.Cli.markdown_links(content):
@@ -169,8 +174,8 @@ class FlextInfraUtilitiesDocsAudit(
                 issues,
                 md_file,
                 rel,
-                link.line,
-                link.target,
+                link,
+                repositories=repositories,
             )
 
     @staticmethod
@@ -184,17 +189,26 @@ class FlextInfraUtilitiesDocsAudit(
 
         """
         issues: MutableSequence[p.Infra.AuditIssue] = []
+        repositories: Sequence[p.Infra.DocsGithubRepoSpec] | None = None
         for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
                 encoding=c.DEFAULT_ENCODING,
                 errors=c.Infra.IGNORE,
             )
+            if repositories is None and "github.com/" in content:
+                # The governed declaration set is a scope fact, not a link
+                # fact: deriving it per GitHub URL re-runs Git and codegen
+                # policy resolution for every link on every page.
+                repositories = FlextInfraUtilitiesDocsGithubLinks.docs_github_repos(
+                    scope.path
+                )
             FlextInfraUtilitiesDocsAudit._scan_broken_links(
                 content,
                 md_file,
                 rel,
                 issues,
+                repositories=repositories,
             )
         return issues
 

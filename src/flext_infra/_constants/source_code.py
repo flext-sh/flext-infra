@@ -78,11 +78,6 @@ class FlextInfraConstantsSourceCode:
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."
-    TRANSIENT_PYTEST_SCRATCH_PART: ClassVar[t.RegexPattern] = re.compile(
-        r"^\.flext-.+\.pytest-scratch\.",
-    )
-    "Transient per-run pytest basetemp directories the runners create inside"
-    " the repository; analyzers must never descend into them."
 
     # --- Encoding (was: class Encoding) ---
     ENCODING_DEFAULT: ClassVar[str] = "utf-8"

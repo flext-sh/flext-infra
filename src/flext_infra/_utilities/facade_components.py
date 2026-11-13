@@ -2206,7 +2206,9 @@ class FlextInfraUtilitiesFacadeComponents:
         mypy binds ``C.attr`` only from C's own names (python/mypy#22457), so
         an inherited generic member class is not subscriptable through the
         namespace; ``Name: TypeAlias = Part.Name`` keeps the class itself and
-        makes it subscriptable. Non-generic members stay pure MRO.
+        makes it subscriptable. It is emitted under ``if TYPE_CHECKING:``, so
+        the runtime still reaches the class through MRO and importing the
+        facade loads no part. Non-generic and private members stay pure MRO.
 
         Returns:
             Each published name with its ``Part.Name`` expression.
@@ -2242,8 +2244,10 @@ class FlextInfraUtilitiesFacadeComponents:
                     continue
                 name = member.get_name()
                 published = f"{expression}.{name}"
-                if index.class_layout(scope).type_parameters and (
-                    name not in defined or bound.get(name) == published
+                if (
+                    not name.startswith("_")
+                    and index.class_layout(scope).type_parameters
+                    and (name not in defined or bound.get(name) == published)
                 ):
                     publications.setdefault(name, published)
         return publications
@@ -2309,8 +2313,8 @@ class FlextInfraUtilitiesFacadeComponents:
 
         A generated facade imports through the nearest package lazy export,
         never a module path below it (ADR-028 Decision 10): a part declared in
-        a ``_<family>`` package is imported from that family package; any
-        other part keeps its defining module.
+        a ``_<family>`` package, or in a package nested in one, is imported
+        from its own package; any other part keeps its defining module.
 
         Returns:
             Each declaration name with its importing package.
@@ -2327,7 +2331,7 @@ class FlextInfraUtilitiesFacadeComponents:
             )
             parent, _separator, _leaf = module.rpartition(".")
             packages[declaration.get_name()] = (
-                parent if parent.rpartition(".")[2] in directories else module
+                parent if directories.intersection(parent.split(".")) else module
             )
         return packages
 
@@ -2345,8 +2349,8 @@ class FlextInfraUtilitiesFacadeComponents:
         Bindings of one package share one import statement.
 
         Returns:
-            One import per importing package, then ``TypeAlias`` when a
-            generic member publication needs it.
+            One import per importing package, then ``TYPE_CHECKING`` and
+            ``TypeAlias`` when a generic member publication needs them.
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
@@ -2361,7 +2365,11 @@ class FlextInfraUtilitiesFacadeComponents:
                 for package, names in grouped.items()
             ),
             *(
-                (runtime.from_import("typing", 0, (("TypeAlias", None),)),)
+                (
+                    runtime.from_import(
+                        "typing", 0, (("TYPE_CHECKING", None), ("TypeAlias", None))
+                    ),
+                )
                 if type_alias
                 else ()
             ),

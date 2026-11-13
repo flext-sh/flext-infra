@@ -196,6 +196,20 @@ class TestsFlextInfraDepsModernizerPackaging:
             u.Tests.toml_mapping(sdist["force-include"])[c.PYPROJECT_FILENAME],
             eq=c.PYPROJECT_FILENAME,
         )
+        # uv rebuilds a non-editable install only when a cache key changes, so
+        # the package sources are keys beside uv's own manifest defaults.
+        tm.that(
+            {
+                str(u.Tests.toml_mapping(entry)["file"])
+                for entry in u.Tests.toml_list(
+                    u.Tests.toml_table_at(manifest, c.Infra.TOOL, "uv")["cache-keys"]
+                )
+            },
+            eq={
+                *c.Infra.UV_PROJECT_CACHE_KEY_FILES,
+                f"{c.Infra.DEFAULT_SRC_DIR}/**",
+            },
+        )
 
         manifest_path = infra_git_repo / c.PYPROJECT_FILENAME
         header = "[tool.hatch.build.targets.sdist.force-include]\n"
