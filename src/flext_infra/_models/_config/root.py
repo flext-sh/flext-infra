@@ -50,6 +50,10 @@ class FlextInfraModelsConfigRoot:
             FlextInfraModelsConfigStatic.MutationLockSpec,
             m.Field(description="Bounded wait for a mutation scope lock"),
         ]
+        gate_admission: Annotated[
+            FlextInfraModelsConfigStatic.GateAdmissionSpec,
+            m.Field(description="Host-wide FIFO admission for heavy gates"),
+        ]
         release: Annotated[
             FlextInfraModelsConfigRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy"),

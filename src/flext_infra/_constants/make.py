@@ -20,6 +20,13 @@ if TYPE_CHECKING:
 class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     """One canonical vocabulary shared by generated Make and its services."""
 
+    class HostPressureLevel(StrEnum):
+        """Host memory-pressure level published by the host-budget owner."""
+
+        NORMAL = "normal"
+        HIGH = "high"
+        CRITICAL = "critical"
+
     class PytestExecutionMode(StrEnum):
         """Keep test inventory scope distinct from dependency selection.
 
@@ -91,6 +98,26 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     CLI_GROUP_VALIDATE: ClassVar[str] = "validate"
     CLI_ROUTE_MAINTENANCE: ClassVar[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: ClassVar[str] = "workspace"
+
+    # Host-wide heavy-gate admission (FLEXT ADR-032).
+    GATE_ADMISSION_STATE_PARTS: ClassVar[tuple[str, ...]] = ("flext", "gate-admission")
+    GATE_ADMISSION_QUEUE_LOCK: ClassVar[str] = "queue.lock"
+    GATE_ADMISSION_SEQUENCE_FILE: ClassVar[str] = "sequence"
+    GATE_ADMISSION_TICKET_SUFFIX: ClassVar[str] = ".json"
+    GATE_ADMISSION_LIVENESS_SUFFIX: ClassVar[str] = ".lock"
+    GATE_ADMISSION_TICKET_ENV: ClassVar[str] = "FLEXT_GATE_ADMISSION_TICKET"
+    GATE_ADMISSION_GENERATION: ClassVar[str] = "gen"
+    GATE_ADMISSION_MODIFICATION: ClassVar[str] = "mod"
+    GATE_ADMISSION_PRESSURE_FILE_ENV: ClassVar[str] = (
+        "FLEXT_GATE_ADMISSION_PRESSURE_FILE"
+    )
+    GATE_ADMISSION_HISTORY_DIR: ClassVar[str] = "history"
+    GATE_ADMISSION_HISTORY_SUFFIX: ClassVar[str] = ".jsonl"
+    GATE_ADMISSION_REFUSED_EXIT_CODE: ClassVar[int] = 75
+    # prek exports the running hook stage; the pre-push hook runs the full
+    # matrix once per push by contract and is never repeat-limited.
+    GATE_REPEAT_HOOK_STAGE_ENV: ClassVar[str] = "PREK_HOOK_STAGE"
+    GATE_REPEAT_EXEMPT_HOOK_STAGE: ClassVar[str] = "pre-push"
 
     MYPY_MEMORY_LIMIT_MB_ENV: ClassVar[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: ClassVar[int] = 6144

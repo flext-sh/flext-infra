@@ -10,17 +10,7 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import (
-    c,
-    check as validation_services,
-    config,
-    deps as dependency_services,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, config, deps as dependency_services, m, p, r, t, u
 from flext_infra.codegen._conform.context_render import (
     FlextInfraCodegenConformContextRender,
 )
@@ -1135,23 +1125,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             if workspace_profile
             else ()
         )
-        # The check wrapper covers the largest declared budget of the gates
-        # it runs, plus the forced-termination grace of that gate's runner.
-        try:
-            gate_budget = validation_services.FlextInfraGateRegistry(
-                project_gates=codegen.make.project_check_gates,
-            ).check_budget_seconds(
-                codegen.make.check_gates_default,
-                (
-                    target.root,
-                    *(
-                        target.root / item.path
-                        for item in (workspace.subprojects if workspace_profile else ())
-                    ),
-                ),
-            )
-        except ValueError as exc:
-            return r[p.Infra.MakefileRenderSpec].fail(str(exc), exception=exc)
         return r[p.Infra.MakefileRenderSpec].ok(
             m.Infra.MakefileRenderSpec.model_validate({
                 "bootstrap_requirements": (
@@ -1224,9 +1197,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 "mypy_timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
                 "timeout_command": (c.Infra.TIMEOUT_COMMAND),
                 "timeout_kill_after_seconds": (c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
-                "check_timeout_seconds": (
-                    gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS
-                ),
             }),
         )
 
