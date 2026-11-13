@@ -470,16 +470,5 @@ class FlextInfraProtocolsWorkspaceSnapshot:
             """Lazy export name to provider module."""
             ...
 
-    @runtime_checkable
-    class ImportGraphFacts(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def modules(
-            self,
-        ) -> Mapping[str, FlextInfraProtocolsWorkspaceSnapshot.ImportGraphModuleFacts]:
-            """Module facts keyed by resolved file path."""
-            ...
-
 
 __all__: list[str] = ["FlextInfraProtocolsWorkspaceSnapshot"]
