@@ -1305,8 +1305,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         ]
         is_current_repository = repository.name == current_target.repository.name
         if is_current_repository:
+            rendered = self._rendered_members(repository_root, workspace)
+            if rendered.failure:
+                return result_type.from_failure(rendered)
             return result_type.ok(
-                (repository_root, current_target, workspace),
+                (repository_root, current_target, rendered.value),
             )
         local = self._member_local_workspace(
             workspace,
@@ -1328,8 +1331,44 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={"toolchain_root": current_target.toolchain_root},
         )
         if repository.path != Path():
-            target = target.model_copy(update={"repository": repository})
+            # Only the parent-relative path differs; participation stays rendered.
+            target = target.model_copy(
+                update={
+                    "repository": target.repository.model_copy(
+                        update={"path": repository.path},
+                    ),
+                },
+            )
         return result_type.ok((repository_root, target, local_workspace))
+
+    @staticmethod
+    def _rendered_members(
+        root: Path,
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
+        """Give root projections each member's rendered package participation.
+
+        The same generation writes every member's ``[build-system]``, so root
+        projections that filter members on ``package`` read the rendered value,
+        never the pre-render one.
+
+        Returns:
+            The render workspace whose members carry rendered participation.
+
+        """
+        result_type = r[m.Infra.WorkspaceSpec]
+        detector = workspace_services.FlextInfraWorkspaceDetector
+        members: list[p.Infra.RepositoryRef] = []
+        for member in workspace.subprojects:
+            rendered = detector.conform_repository(root / member.path, member)
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            members.append(rendered.value)
+        return result_type.ok(
+            m.Infra.WorkspaceSpec.model_validate(workspace).model_copy(
+                update={"subprojects": tuple(members)},
+            ),
+        )
 
     def _resolved_repository_root(
         self,

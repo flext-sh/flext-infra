@@ -342,12 +342,12 @@ class TestsFlextInfraUtilitiesToolingFixture:
 
         """
         # A linked worktree is never a registered submodule: its primary
-        # checkout names the superproject that owns the member sources.
+        # checkout names the superproject that owns the sibling sources. The
+        # checkout under test stays its own source, never the primary's copy.
+        checkout = Path(__file__).resolve().parents[1]
         primary = tm.ok(
-            u.Infra.git_primary_worktree_root(
-                m.Infra.GitRepoRequest(repo_root=Path(__file__).resolve().parents[1])
-            )
-        ).primary_root
+            u.Infra.git_primary_worktree_root(m.Infra.GitRepoRequest(repo_root=checkout))
+        ).primary_root.resolve()
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
@@ -355,7 +355,11 @@ class TestsFlextInfraUtilitiesToolingFixture:
             workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
         )
         projects = {
-            repository.distribution: source_root / repository.path
+            repository.distribution: (
+                checkout
+                if (source_root / repository.path).resolve() == primary
+                else source_root / repository.path
+            )
             for repository in (specification.repository, *specification.subprojects)
         }
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))

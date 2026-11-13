@@ -32,7 +32,10 @@ class {{ class_stem }}ProtocolsPing:
     class PingResult(Protocol):
         """Structural surface of a successful ping response."""
 
-        message: t.StrictStr
+        @property
+        def message(self) -> t.StrictStr:
+            """Read-only greeting of the frozen ping result."""
+            ...
 
 
 __all__: list[str] = ["{{ class_stem }}ProtocolsPing"]
