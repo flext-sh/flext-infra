@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import sys
@@ -13,7 +14,7 @@ import time
 from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, mkdtemp
 from textwrap import indent
 
 from typing_extensions import TypeForm
@@ -406,15 +407,41 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return tuple(selected.values())
 
     @staticmethod
+    def python_dependency_source_digest(project: Path) -> str:
+        """Return the content key of the sources one dependency wheel is built from.
+
+        The key covers the build declaration and every file below ``src``, so an
+        edited dependency source selects a new wheel and an unchanged one reuses
+        the published build.
+
+        Returns:
+            The SHA-256 hex digest of the project's build inputs.
+
+        """
+        digest = hashlib.sha256(sys.version.encode(c.DEFAULT_ENCODING))
+        sources = sorted(
+            path
+            for path in (project / c.Infra.DEFAULT_SRC_DIR).rglob("*")
+            if path.is_file() and c.Infra.DUNDER_PYCACHE not in path.parts
+        )
+        for path in (project / c.PYPROJECT_FILENAME, *sources):
+            digest.update(path.relative_to(project).as_posix().encode())
+            digest.update(b"\0")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+        return digest.hexdigest()
+
+    @staticmethod
     @cache
     def python_dependency_wheels(
-        directory: Path,
+        storage: Path,
         dependency_projects: tuple[Path, ...],
     ) -> p.Result[tuple[Path, ...]]:
-        """Build current dependency sources once in the shared worker allocation.
+        """Build each dependency wheel once per source content, for every worker.
 
-        UV reuses its native artifact cache; no installed executor package or
-        environment is copied into a fixture. The session owner removes the wheels.
+        Wheels live in the persistent storage every xdist worker and run share,
+        keyed by the content of each dependency's sources. A build is staged
+        beside its destination and published by one atomic rename, so no worker
+        ever reads a partial wheel and a later worker reuses the first build.
 
         Returns:
             Real wheels, or the original build failure without retrying it.
@@ -423,32 +450,40 @@ class TestsFlextInfraUtilitiesToolingFixture:
         fixture = TestsFlextInfraUtilitiesToolingFixture
         binary = fixture.managed_uv()
         wheels: list[Path] = []
-        with u.Cli.file_changes_lock(directory / "dependency-wheels.lock"):
-            for project in dependency_projects:
-                metadata = tm.ok(u.Infra.read_project_metadata_result(project))
-                destination = directory / "dependency-wheels" / metadata.project.name
-                destination.mkdir(parents=True, exist_ok=True)
-                built = u.Cli.run_checked(
-                    (
-                        binary,
-                        "build",
-                        "--wheel",
-                        "--python",
-                        sys.executable,
-                        "--out-dir",
-                        str(destination),
-                        str(project),
-                    ),
-                    cwd=project,
-                )
-                if built.failure:
-                    return r[tuple[Path, ...]].from_failure(built)
-                artifacts = tuple(destination.glob("*.whl"))
-                if len(artifacts) != 1:
-                    return r[tuple[Path, ...]].fail(
-                        f"Dependency build must publish one wheel: {destination}",
+        for project in dependency_projects:
+            metadata = tm.ok(u.Infra.read_project_metadata_result(project))
+            owner = storage / "dependency-wheels" / metadata.project.name
+            destination = owner / fixture.python_dependency_source_digest(project)
+            owner.mkdir(parents=True, exist_ok=True)
+            with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+                if not destination.is_dir():
+                    # Earlier content keys and interrupted stagings are retired.
+                    for stale in owner.iterdir():
+                        shutil.rmtree(stale)
+                    staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
+                    built = u.Cli.run_checked(
+                        (
+                            binary,
+                            "build",
+                            "--wheel",
+                            "--python",
+                            sys.executable,
+                            "--out-dir",
+                            str(staging),
+                            str(project),
+                        ),
+                        cwd=project,
                     )
-                wheels.extend(artifacts)
+                    if built.failure:
+                        shutil.rmtree(staging)
+                        return r[tuple[Path, ...]].from_failure(built)
+                    staging.rename(destination)
+            artifacts = tuple(destination.glob("*.whl"))
+            if len(artifacts) != 1:
+                return r[tuple[Path, ...]].fail(
+                    f"Dependency build must publish one wheel: {destination}",
+                )
+            wheels.extend(artifacts)
         return r[tuple[Path, ...]].ok(tuple(wheels))
 
     @staticmethod
@@ -479,7 +514,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         if session_runtime is None:
             return r[bool].fail("Fixture dependency builds require a session runtime")
         wheels = TestsFlextInfraUtilitiesToolingFixture.python_dependency_wheels(
-            session_runtime.directory,
+            session_runtime.storage,
             tuple(dependency_projects),
         )
         if wheels.failure:

@@ -528,7 +528,7 @@ def mod_workspace_artifact(
     )
     wheels = tm.ok(
         u.Tests.python_dependency_wheels(
-            session_runtime.directory,
+            session_runtime.storage,
             (workspace,),
         ),
     )
