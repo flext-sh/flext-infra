@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- fix(codemod): read library providers from the target runtime (#2335)
 - chore(tests): declare the measured dc-finan pytest worker ceiling (#2332)
 - perf(workspace): one superproject index read for member attachment; session workspace
   map in fixtures (#2331)
