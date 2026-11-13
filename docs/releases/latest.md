@@ -12,6 +12,10 @@
 
 ## Pull requests since last release
 
+- fix(tests): pass the testmon environment name without literal quotes (#2360)
+- fix(codemod): an annotation source rooted in an unknown provider is refused (#2361)
+- fix(rope): the logging factory binding names its qualified identity (#2358)
+- fix(rope): a bound view yields the sources it captured (#2357)
 - feat(lazy-init): defer declared configuration roots to their first read (#2356)
 - chore(sonar): add python:S6794 to the generic facade publication axiom (#2359)
 - fix(codemod): end the xdist worker crash in semantic publication tests (#2355)
