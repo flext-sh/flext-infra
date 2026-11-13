@@ -22,10 +22,11 @@ class TestsFlextInfraFacadePublishedObject:
         """Port lookup through a ``TypeAlias`` publication elects its facade.
 
         Premise: flext-core's ``p`` publishes
-        ``BaseModel: TypeAlias = FlextProtocolsPydantic.BaseModel``. Rope reads
-        that attribute from its annotation, so the upstream facade that
-        exposes the copy port was never elected and the model-protocol stage
-        raised "protocol facade chain has no upstream owner of BaseModel".
+        ``BaseModel: TypeAlias = FlextProtocolsPydantic.BaseModel``. Rope binds
+        that attribute to the class its value names, so the upstream facade
+        that exposes the copy port is elected; when it was read from the
+        annotation, the model-protocol stage raised "protocol facade chain has
+        no upstream owner of BaseModel".
         """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         upstream = root / c.Infra.DEFAULT_SRC_DIR / "acme_upstream"
@@ -82,12 +83,8 @@ class TestsFlextInfraFacadePublishedObject:
                         "from acme_upstream import AcmeUpstreamProtocols",
                     ),
                 )
-            published = u.Infra.facade_published_object(
-                facade.get_attribute("BaseModel")
-            )
-            tm.that(published is port, eq=True)
-            single = u.Infra.facade_published_object(facade.get_attribute("Port"))
-            tm.that(single is port, eq=True)
+            tm.that(facade.get_attribute("BaseModel").get_object() is port, eq=True)
+            tm.that(facade.get_attribute("Port").get_object() is port, eq=True)
 
     @staticmethod
     def test_published_generic_base_reaches_the_ancestry(tmp_path: Path) -> None:
@@ -95,9 +92,10 @@ class TestsFlextInfraFacadePublishedObject:
 
         Premise: flext-core's ``m`` publishes
         ``RootModel: TypeAlias = FlextModelsPydantic.RootModel``. A consumer
-        declaring ``class Listing(m.RootModel[list[str]])`` held only an
-        unresolved witness in its native ancestry, so the model-source
-        collection raised "model ancestry is unresolved".
+        declaring ``class Listing(m.RootModel[list[str]])`` inherits the
+        ancestry of that class; when the publication was read from its
+        annotation, the consumer held only an unresolved witness and the
+        model-source collection raised "model ancestry is unresolved".
         """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         upstream = root / c.Infra.DEFAULT_SRC_DIR / "acme_upstream"
@@ -157,12 +155,13 @@ class TestsFlextInfraFacadePublishedObject:
             )
             tm.that(u.Infra.py_class(listing), eq=True)
             if u.Infra.py_class(listing):
-                native = tuple(listing.get_mro())
-                tm.that(generic in native, eq=False)
-                ancestry = u.Infra.facade_published_ancestry(listing)
-                tm.that(ancestry[: len(native)], eq=native)
+                ancestry = tuple(listing.get_mro())
                 tm.that(generic in ancestry, eq=True)
                 tm.that(ancestor in ancestry, eq=True)
+                tm.that(
+                    any(u.Infra.unresolved_witness(base) for base in ancestry),
+                    eq=False,
+                )
 
 
 __all__: list[str] = ["TestsFlextInfraFacadePublishedObject"]
