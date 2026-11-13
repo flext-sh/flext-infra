@@ -689,23 +689,28 @@ Infra:
       # shared host a verb refuses to start while the 5-minute load average
       # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
       # memory_limit_gb and max_processes CPUs. overrides declares an explicit
-      # exception per public verb: the light verbs (and the commit hook's
-      # setup and stage-scoped check) stay admitted under a busy host, still
-      # inside the same memory and CPU scope; the heavy verbs keep max_load5.
+      # exception per public verb. Every verb runs at idle CPU and IO weight,
+      # so agents use light processes instead of waiting for the load; only the
+      # full forms (tests-full, and mod without RULES or LAWS, named mod-full)
+      # keep max_load5. A selected mod is admitted through the mod override.
       admission:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
         overrides:
           setup: {max_load5: 80}
-          check: {max_load5: 80}
+          upg: {max_load5: 80}
+          gen: {max_load5: 80}
+          mod: {max_load5: 80}
           fix: {max_load5: 80}
           fmt: {max_load5: 80}
-          gen: {max_load5: 80}
+          check: {max_load5: 80}
+          tests: {max_load5: 80}
           help: {max_load5: 80}
+          build: {max_load5: 80}
           clean: {max_load5: 80}
         refusal_guidance:
-        - Wait until the 5-minute load drops to the limit, then run one heavy verb at a time.
+        - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
         - Prefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.
         - Use at most 2 workers and never run heavy verbs in parallel across lanes.

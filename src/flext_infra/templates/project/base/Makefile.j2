@@ -80,14 +80,16 @@ $(PROJECT_FLEXT_INFRA) workspace {{ operation }} --repository-root "$(PROJECT_RO
 override SHELL := /bin/sh
 # === SECTION: host admission (managed) ===
 # Source: config:make.admission (ADR-032 host admission and run limits)
-# On the shared host (never on a CI runner) the top-level invocation of every
-# verb refuses to start while the 5-minute load average exceeds its limit, and
-# runs every recipe and $(shell) in a cgroup scope of the user's systemd
-# manager bounded by MemoryMax and CPUQuota; children and nested Make inherit
-# the scope. PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs.
-# Overrides apply when the invocation names exactly one verb.
+# On the shared host (never on a CI runner) every recipe and $(shell) runs in
+# a cgroup scope of the user's systemd manager at idle CPU and IO weight,
+# bounded by MemoryMax and CPUQuota; children and nested Make inherit the
+# scope, and PYTHON_CPU_COUNT sizes Python worker pools to the same CPUs. A
+# verb refuses to start while the 5-minute load average exceeds its limit; a
+# mod without RULES or LAWS is the full form, named mod-full. Overrides apply
+# when the invocation names exactly one verb.
 ifeq ($(MAKELEVEL)$(filter {{ make.ci.value }},$({{ make.ci.variable }})),0)
 override ADMISSION_VERB := $(if $(word 2,$(MAKECMDGOALS)),,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL),help))
+override ADMISSION_VERB := $(if $(filter mod,$(ADMISSION_VERB)),$(if $(strip $(RULES)$(LAWS)),mod,mod-full),$(ADMISSION_VERB))
 override ADMISSION_MAX_LOAD5 := {{ make.admission.max_load5 }}
 override ADMISSION_MEMORY_LIMIT_BYTES := {{ make.admission.memory_limit_bytes }}
 override ADMISSION_MAX_PROCESSES := {{ make.admission.max_processes }}
@@ -106,7 +108,7 @@ ifneq ($(ADMISSION_LOAD5),)
 {%- for line in make.admission.refusal_guidance %}
 $(info {{ line }})
 {%- endfor %}
-$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; retry when the host load drops, or declare make.admission.overrides.<verb>.max_load5 in flext-infra src/flext_infra/config/codegen.yaml)
+$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in flext-infra src/flext_infra/config/codegen.yaml)
 endif
 override ADMISSION_SYSTEMD_RUN := $(shell command -v systemd-run)
 ifeq ($(ADMISSION_SYSTEMD_RUN),)
@@ -114,7 +116,7 @@ $(error The run limits require systemd-run and a cgroup v2 user manager)
 endif
 export PYTHON_CPU_COUNT := $(ADMISSION_MAX_PROCESSES)
 override SHELL := $(ADMISSION_SYSTEMD_RUN)
-override .SHELLFLAGS := --user --scope --quiet --collect --expand-environment=no -p MemoryMax=$(ADMISSION_MEMORY_LIMIT_BYTES) -p CPUQuota=$(ADMISSION_MAX_PROCESSES)00% -- /bin/sh -c
+override .SHELLFLAGS := --user --scope --quiet --collect --expand-environment=no -p CPUWeight=idle -p IOWeight=1 -p MemoryMax=$(ADMISSION_MEMORY_LIMIT_BYTES) -p CPUQuota=$(ADMISSION_MAX_PROCESSES)00% -- /bin/sh -c
 endif
 # End SECTION: host admission
 ifneq ($(strip $(MAKEFILES)),)
