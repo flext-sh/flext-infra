@@ -344,9 +344,8 @@ toolchain nor a corrupt lock stops it:
    gap. Native uv syncs the executor from the project's frozen lock, only the
    dependency group that pins flext-infra, without the project and without
    editable installs, and runs it with `python -I`, so the step never imports
-   the project's source. The sync passes native `--compile-bytecode`, so the
-   first import after a recreation finds compiled bytecode even when the host
-   exports `PYTHONDONTWRITEBYTECODE`.
+   the project's source. Bytecode follows uv's native default: Python compiles
+   it on first import.
 
 Declared prerequisites of stage 6, open until they close:
 
@@ -378,10 +377,8 @@ rebuild that then succeeds never shows an `error:` line, while a real failure
 recurs in the unfiltered rebuild sync. Any other
 state, and every executor installation, prepares an invocation-owned native
 relocatable environment under the runtime's existing ignored state directory,
-installed with uv's clone link mode and native `--compile-bytecode`, so imports
-never recompile site-packages even when the host exports
-`PYTHONDONTWRITEBYTECODE`; a kept environment keeps the bytecode its last
-installation compiled. Matching creator identities do not permit
+installed with uv's clone link mode; bytecode follows uv's native default
+(compiled by Python on first import). Matching creator identities do not permit
 synchronizing the serving environment: a sync can remove dependencies before
 their replacements are ready. Frozen installation, editable binding, its
 environment-owned receipt and real Python/console validation precede one atomic
