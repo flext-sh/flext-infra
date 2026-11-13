@@ -1,0 +1,68 @@
+# A protocols-family module publishes its contracts as classes nested in one
+# plain namespace class, as flext-core and flext-cli do. Declaring that
+# namespace itself a runtime-checkable `Protocol` adds nothing a consumer reads,
+# and it keeps the facade from composing the part as a lazy stand-in (ADR-018:
+# every facade part is deferred). The fix drops `Protocol` from the namespace's
+# direct bases and its `@runtime_checkable` decorator; the nested contracts stay
+# protocols.
+#
+# A namespace is a top-level class whose body declares no function: a real
+# protocol declares its members as methods or properties.
+id: protocol-namespace-part-plain
+language: python
+severity: error
+files:
+  - "**/_protocols/**/*.py"
+metadata:
+  family: p
+utils:
+  namespace-protocol-class:
+    kind: class_definition
+    all:
+      - has:
+          field: superclasses
+          has:
+            kind: identifier
+            regex: "^Protocol$"
+      - not:
+          has:
+            field: body
+            has:
+              any:
+                - kind: function_definition
+                - kind: decorated_definition
+                  has:
+                    field: definition
+                    kind: function_definition
+rule:
+  inside:
+    kind: module
+  any:
+    - kind: class_definition
+      pattern: $CLASS
+      matches: namespace-protocol-class
+    - kind: decorated_definition
+      not:
+        has:
+          kind: decorator
+          not:
+            regex: "^@runtime_checkable$"
+      has:
+        field: definition
+        pattern: $CLASS
+        matches: namespace-protocol-class
+transform:
+  ALONE:
+    replace:
+      source: $CLASS
+      replace: "^(class \\w+)\\(Protocol\\)"
+      by: "$1"
+  PLAIN:
+    replace:
+      source: $ALONE
+      replace: "^(class \\w+\\([^)]*?),\\s*Protocol\\)"
+      by: "$1)"
+fix: $PLAIN
+message: >-
+  A protocols-family namespace class is a plain class: drop Protocol and
+  @runtime_checkable from it; the contracts it nests stay protocols.

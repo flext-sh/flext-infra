@@ -244,15 +244,6 @@ class FlextInfraModelsConfigWorkspace:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Own additional duplication-analysis trees"),
         ] = ()
-        deferred_distributions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Own costly third-party distributions: a lazy export whose "
-                    "module imports one at module scope loads on first member use"
-                ),
-            ),
-        ] = ()
         deferred_instances: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -319,29 +310,6 @@ class FlextInfraModelsConfigWorkspace:
                 msg = "deferred instances must be unique"
                 raise ValueError(msg)
             return values
-
-        @m.field_validator("deferred_distributions")
-        @classmethod
-        def _validate_deferred_distributions(
-            cls, values: tuple[str, ...]
-        ) -> tuple[str, ...]:
-            """Canonicalize each deferred distribution and require uniqueness.
-
-            Returns:
-                The canonical PEP 503 distribution names, in declared order.
-
-            Raises:
-                ValueError: If a canonical distribution name repeats.
-
-            """
-            names = tuple(
-                t.Infra.DISTRIBUTION_NAME_ADAPTER.validate_python(value)
-                for value in values
-            )
-            if len(set(names)) != len(names):
-                msg = "deferred distributions must be unique"
-                raise ValueError(msg)
-            return names
 
         @m.model_validator(mode="after")
         def _validate_consumer_declaration(self) -> Self:

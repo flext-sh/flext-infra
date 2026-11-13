@@ -144,7 +144,9 @@ class FlextInfraCooldownAdmission(s[bool]):
             return result.ok({})
         lock_path = project_root / c.Infra.UV_LOCK_FILENAME
         lock = u.Cli.toml_read_json(lock_path).flat_map(
-            lambda payload: u.validate_value(m.Infra.LockedEnvironment, payload),
+            lambda payload: u.validate_value(
+                m.Infra.LockedEnvironment, payload, strict=False
+            ),
         )
         if lock.failure:
             return result.from_failure(lock)

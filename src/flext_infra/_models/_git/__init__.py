@@ -32,4 +32,22 @@ install_lazy_exports(
         "FlextInfraModelsGitWorktreeState": ".worktree_state",
     },
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraModelsGitIdentity": ("GitIdentityReport",),
+        "FlextInfraModelsGitWorktreeFacts": ("GitTreeStats",),
+        "FlextInfraModelsGitWorktreeState": (
+            "GitMutationScope",
+            "GitWorktreeCheckpointPublication",
+            "GitWorktreeStateRequest",
+            "GitWorktreeIndexEntry",
+            "GitIndexFileState",
+            "GitIndexRetirementRequest",
+            "GitWorktreeObservedFile",
+            "GitWorktreeFileState",
+            "GitWorktreeObservedContent",
+            "GitWorktreeStateSnapshot",
+            "GitWorktreeStateCheckpoint",
+            "GitLaneOwnershipReceipt",
+        ),
+    },
 )

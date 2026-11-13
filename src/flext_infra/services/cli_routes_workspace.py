@@ -151,10 +151,19 @@ class FlextInfraWorkspaceRoutes:
         cls,
         params: p.Infra.GateCaptureRequest,
     ) -> p.Cli.ErasedCommandResult:
-        """Retain the original checker process and return its unchanged status."""
+        """Retain the original checker process and return its unchanged status.
+
+        Returns:
+            The input or capture failure; a captured status exits with itself.
+
+        """
         root = params.repository_root.expanduser().resolve()
-        inputs = u.Infra.load_codegen_inputs(root).unwrap()
-        u.Cli.framework_exit(cls._captured_gate_status(params, inputs))
+        status = u.Infra.load_codegen_inputs(root).flat_map(
+            lambda inputs: cls._captured_gate_status(params, inputs)
+        )
+        if status.success:
+            u.Cli.framework_exit(status.value)
+        return r[bool].from_failure(status)
 
     @classmethod
     def _check(
@@ -178,14 +187,17 @@ class FlextInfraWorkspaceRoutes:
 
         """
         root = params.repository_root.expanduser().resolve()
-        inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        loaded = u.Infra.load_codegen_inputs(root)
+        if loaded.failure:
+            return r[bool].from_failure(loaded)
+        inputs = loaded.value
         make = inputs.spec.make
-        members = (
-            workspace.FlextInfraWorkspaceDetector
-            .load_workspace_spec(root, inputs=inputs)
-            .unwrap()
-            .subprojects
+        spec = workspace.FlextInfraWorkspaceDetector.load_workspace_spec(
+            root, inputs=inputs
         )
+        if spec.failure:
+            return r[bool].from_failure(spec)
+        members = spec.value.subprojects
         grace = c.Infra.TIMEOUT_KILL_AFTER_SECONDS
         budget = m.Infra.RouteBudgetSpec(
             budget_seconds=check.FlextInfraGateRegistry(
@@ -231,8 +243,10 @@ class FlextInfraWorkspaceRoutes:
             and token != make.ci.pre_commit_value
         )
         status = cls._captured_gate_status(params, inputs)
-        if status:
-            u.Cli.framework_exit(status)
+        if status.failure:
+            return r[bool].from_failure(status)
+        if status.value:
+            u.Cli.framework_exit(status.value)
         if complete:
             conformed = infra.codegen_conform(
                 m.Infra.CodegenConformRequest(
@@ -265,11 +279,11 @@ class FlextInfraWorkspaceRoutes:
     def _captured_gate_status(
         params: p.Infra.GateCaptureRequest,
         inputs: p.Infra.CodegenInputs,
-    ) -> int:
+    ) -> p.Result[int]:
         """Capture the original checker once and return its unchanged status.
 
         Returns:
-            The checker process's raw return code.
+            The checker process's raw return code, or the capture failure.
 
         """
         report_output = u.Infra.env_value(
@@ -291,13 +305,12 @@ class FlextInfraWorkspaceRoutes:
                 ),
             )
 
-        captured = u.Infra.git_capture_gate(
+        return u.Infra.git_capture_gate(
             request,
             inputs=inputs,
             load_inputs=u.Infra.load_codegen_inputs,
             read_runtime_identity=runtime_identity,
-        ).unwrap()
-        return captured.process.raw_return_code
+        ).map(lambda captured: captured.process.raw_return_code)
 
     @staticmethod
     def _attestation_context(

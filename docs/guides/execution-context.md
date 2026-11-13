@@ -124,8 +124,11 @@ declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
 `Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`), and that
-publication retires when the member stops being generic or moves. A stale
+(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
+through MRO and importing the facade loads no part (ADR-018, every facade part
+is deferred). That publication retires when the member stops being generic or
+moves. A stale
 generated `Name = Name` publication retires with its import once the name is
 reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
@@ -1934,6 +1937,13 @@ declared once in the pyproject ownership `conflict_sections`. Generation and the
 modernizer read that same declaration and replace both tables from the packaging
 declarations, so a retired or authored entry leaves on the next `make gen` or
 `deps modernize`.
+uv rebuilds a local project only when one of its cache keys changes, and its
+defaults cover `pyproject.toml`, `setup.py` and `setup.cfg` alone. A package
+project therefore declares every input of its wheel as a key: those defaults,
+`src/**`, each packaged data file, each packaged data directory and repository
+namespace as `<path>/**`, and the declared Hatch hook. Without them a non-editable
+install, such as the `upg` executor, keeps a wheel built from older sources. A
+non-package project declares none.
 Migration validates these inputs before publishing its declaration. A legacy
 manifest explicitly selected as distribution data retains its original bytes;
 retaining that resource does not make it a runtime configuration source again.

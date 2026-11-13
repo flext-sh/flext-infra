@@ -33,4 +33,23 @@ install_lazy_exports(
         "FlextInfraUtilitiesProjectDiscoveryShape": ".discovery_shape",
     },
     public_exports=__all__,
+    deferred_members={
+        "FlextInfraUtilitiesProjectDiscoveryCandidates": (
+            "repository_operation_targets",
+            "discover_project_candidates",
+            "repository_nonparticipant_paths",
+            "detected_project_kind",
+            "_uses_flext_imports",
+            "_is_nonparticipant",
+            "_looks_like_project",
+            "nearest_project_root",
+        ),
+        "FlextInfraUtilitiesProjectDiscoveryShape": (
+            "detected_project_kind",
+            "_uses_flext_imports",
+            "_is_nonparticipant",
+            "_looks_like_project",
+            "nearest_project_root",
+        ),
+    },
 )

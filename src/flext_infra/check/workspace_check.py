@@ -194,7 +194,12 @@ class FlextInfraWorkspaceChecker(
                 f"file-gate: source={selected_files[0]} gates={gates} "
                 "selection=CLI:check run --gates"
             )
-        runtime_root = u.Infra.runtime_owner_root(params.repository_root).unwrap()
+        # The runtime owner is elected from Git; a target outside a checkout
+        # is a typed failure the route reports, never a raised exception.
+        runtime = u.Infra.runtime_owner_root(params.repository_root)
+        if runtime.failure:
+            return r[p.Infra.CheckReportSummary].from_failure(runtime)
+        runtime_root = runtime.value
         gate_ctx = m.Infra.GateContext(
             repository_root=params.repository_root,
             runtime_root=runtime_root,

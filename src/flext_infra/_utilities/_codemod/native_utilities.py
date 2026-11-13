@@ -511,10 +511,8 @@ class FlextInfraUtilitiesCodemodNative:
         digest.update(b"\0")
         digest.update(config.Infra.tooling.model_dump_json().encode(c.DEFAULT_ENCODING))
         digest.update(b"\0")
-        manifest = root / c.PYPROJECT_FILENAME
-        if manifest.is_file():
-            digest.update(manifest.read_bytes())
-            digest.update(b"\0")
+        digest.update((root / c.PYPROJECT_FILENAME).read_bytes())
+        digest.update(b"\0")
         selected_ids: t.JsonValue = (
             None if rule_ids is None else list[t.JsonValue](sorted(rule_ids))
         )
@@ -642,7 +640,9 @@ class FlextInfraUtilitiesCodemodNative:
 
         The caller injects its single repository snapshot. The public workspace
         composition invokes each repository separately, so generated identities
-        and scopes never merge with a sibling's project plan.
+        and scopes never merge with a sibling's project plan. A repository is
+        identified by its ``pyproject.toml`` ``[project]`` table; a root without
+        one fails before any rendering reads it.
 
         Returns:
             The resulting ``p.Result[p.Infra.CodemodRulePlan]``.
@@ -663,6 +663,9 @@ class FlextInfraUtilitiesCodemodNative:
                 return r[p.Infra.CodemodRulePlan].fail(
                     "duplicate codemod rule IDs in selection",
                 )
+        project = FlextInfraUtilitiesCodemodRules.project_requirements(root)
+        if project.failure:
+            return r[p.Infra.CodemodRulePlan].from_failure(project)
         provider = cls.codemod_generated_provider(
             snapshot, root, spec, rule_ids=rule_ids
         )

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import FlextInfraCli, config, deps
-from tests import c, m, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraDepsDetectorMain:
@@ -50,16 +50,22 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that(root.name in report.projects, eq=True)
 
     @staticmethod
-    def test_main_preserves_repository_failure(tmp_path: Path) -> None:
-        """Preserve the native repository error at the public CLI boundary."""
-        with u.Tests.raises(OSError, match="cannot open git repository"):
-            FlextInfraCli.infra_main([
-                "deps",
-                "detect",
-                "--repository-root",
-                str(tmp_path / "missing"),
-                "--no-pip-check",
-            ])
+    def test_main_reports_repository_failure(
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """A non-Git target exits 1 with the typed Git error, never a traceback."""
+        status = FlextInfraCli.infra_main([
+            "deps",
+            "detect",
+            "--repository-root",
+            str(tmp_path / "missing"),
+            "--no-pip-check",
+        ])
+        error = capsys.readouterr().err
+        tm.that(status, eq=1)
+        tm.that(error, has="cannot open git repository")
+        tm.that(error, lacks="Traceback")
 
     # Why: commit ec3b159c7 (bead X-17, "detector venv from root") retired
     # ambient `UV_PROJECT_ENVIRONMENT`/`VIRTUAL_ENV` resolution from
