@@ -322,20 +322,8 @@ class FlextInfraUtilitiesSemanticContracts(
             Edits for the selected native contract rules.
 
         """
-        project = workspace.rope_project
-        with project.source_view(
-            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
-                Path(project.root.real_path),
-                (),
-                {
-                    path: source
-                    for path, source in sources.items()
-                    if not project.source_query(path, "isfile")
-                    or project.source_text(path) != source
-                },
-                source_project=project,
-            ),
-            additional_source_folders=None,
+        with FlextInfraUtilitiesWorkspaceSnapshot.workspace_planned_source_view(
+            workspace.rope_project, sources
         ):
             return cls._plan_contract_rules_in_view(
                 workspace, sources, rules, options=options

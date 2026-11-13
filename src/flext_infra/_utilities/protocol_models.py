@@ -27,6 +27,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesProjectDiscovery,
@@ -3135,6 +3136,57 @@ class FlextInfraUtilitiesModelsProtocol:
                 if len(targets) == 1
             }
 
+        @staticmethod
+        def _source_facade_attributes(
+            owner: p.Infra.RopeSourceClass,
+        ) -> list[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]]:
+            """Pair each owner attribute with the object it publishes.
+
+            Python reads the value of a class-body ``Name = Name`` from the module
+            scope, so such a publication resolves through that module binding,
+            never through the class attribute the statement assigns. A generated
+            publication whose binding no longer resolves is retired by the facade
+            projection of the same run and publishes nothing.
+
+            Returns:
+                Each attribute name, binding and published object (``None`` for a
+                retiring generated publication).
+
+            Raises:
+                ValueError: If an authored publication resolves to nothing.
+
+            """
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+                owner.get_module()
+            )
+            publications = FlextInfraUtilitiesFacadeComponents.facade_self_publications(
+                module, owner.get_scope()
+            )
+            attributes: list[
+                tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]
+            ] = []
+            for name, binding in owner.get_attributes().items():
+                region, target = publications.get(name, (None, binding))
+                if region is None or (
+                    target is not None and target.get_definition_location()[0]
+                ):
+                    attributes.append((
+                        name,
+                        binding,
+                        None if target is None else target.get_object(),
+                    ))
+                    continue
+                if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                    resource = module.get_resource()
+                    msg = (
+                        f"{resource.path if resource is not None else name}:"
+                        f"{module.lines.get_line_number(region[0])}: facade"
+                        f" publication {name} = {name} resolves to no module binding"
+                    )
+                    raise ValueError(msg)
+                attributes.append((name, binding, None))
+            return attributes
+
         def _source_collect_facade_owners(
             self,
             owner: p.Infra.RopeSourceClass,
@@ -3158,8 +3210,7 @@ class FlextInfraUtilitiesModelsProtocol:
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity(owner)
             if identity in seen:
                 return
-            for name, binding in owner.get_attributes().items():
-                value = binding.get_object()
+            for name, binding, value in self._source_facade_attributes(owner):
                 if not self.py_class(value):
                     continue
                 declaring_module, declaration = self._source_class_identity(value)

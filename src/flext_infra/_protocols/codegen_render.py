@@ -564,8 +564,7 @@ class FlextInfraProtocolsCodegenRender:
         header_comments: tuple[str, ...]
         class_indent: str
         indentation: str
-        body_source: tuple[str | tuple[str, str], ...] | None
-        publications: Mapping[str, str]
+        body_source: str | None
         exports: tuple[str, ...] | None
         managed_header: str | None
 
