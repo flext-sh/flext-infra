@@ -326,7 +326,7 @@ class TestsFlextInfraCodegenConsumerProject:
         shutil.rmtree(packaged / c.Infra.DEFAULT_SRC_DIR)
         shutil.rmtree(packaged / c.Infra.DIR_TESTS)
         (packaged / c.Infra.DIR_TESTS).mkdir()
-        cls._write_declaration(packaged, "client-incident", packaged=False)
+        cls._write_declaration(packaged, "client-consumer", packaged=False)
         cls._generate(packaged)
         return packaged
 
@@ -355,6 +355,7 @@ class TestsFlextInfraCodegenConsumerProject:
         tm.that(text, lacks="client_incident")
         project = u.Cli.toml_mapping_child(document, "project") or {}
         tm.that(project.get("scripts"), none=True)
+        tm.that(project.get("name"), eq="client-consumer")
         tm.that(
             project.get("dependencies"),
             has=TestsFlextInfraCodegenConsumerProject.CONSUMED,
