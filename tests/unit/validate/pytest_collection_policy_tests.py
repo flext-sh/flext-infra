@@ -167,7 +167,7 @@ class TestsFlextInfraPytestCollectionPolicy:
     def test_warm_inventory_captures_warnings_from_stable_modules(
         cached_runner_project: Path,
     ) -> None:
-        """A file omitted by testmon remains covered by complete collection policy."""
+        """A file testmon deselects is still collected under the collection policy."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         target = cached_runner_project / runner.target
         (target / "test_stable.py").write_text(
@@ -194,7 +194,7 @@ class TestsFlextInfraPytestCollectionPolicy:
         )
         tm.that(selection.node_ids, eq=())
         diagnostics = m.Infra.PytestDiagnostics.model_validate_json(
-            (context.parent / "testmon-inventory.events.diagnostics.json").read_text(),
+            (context.parent / "testmon-selection.events.diagnostics.json").read_text(),
         )
         tm.that(diagnostics.warning_count, eq=1)
         tm.that(diagnostics.warning_lines[0], contains="stable inventory finding")
