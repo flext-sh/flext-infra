@@ -330,6 +330,31 @@ class FlextInfraUtilitiesGitSemanticPaths(FlextInfraUtilitiesGitStateFiles):
         )
 
     @classmethod
+    def git_enclosing_repository_tracks(cls, path: Path) -> p.Result[bool]:
+        """Return whether the Git repository enclosing ``path`` tracks that file.
+
+        A file under an ignored environment directory lies inside a repository
+        without being part of it: that repository owns no history of it.
+
+        Returns:
+            Whether the enclosing repository tracks the file; false outside Git.
+
+        """
+        resolved = path.resolve()
+        try:
+            root = cls.git_repo_root(str(resolved.parent))
+        except OSError as exc:
+            return r[bool].fail(str(exc), exception=exc)
+        if root is None:
+            return r[bool].ok(value=False)
+        return cls.git_is_tracked(
+            m.Infra.GitRelativePathRequest(
+                repo_root=Path(root),
+                relative_path=resolved.relative_to(root).as_posix(),
+            ),
+        ).map(lambda tracked: tracked.value)
+
+    @classmethod
     def git_path_has_history(
         cls,
         request: p.Infra.GitRelativePathRequest,

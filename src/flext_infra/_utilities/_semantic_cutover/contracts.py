@@ -369,6 +369,12 @@ class FlextInfraUtilitiesSemanticContracts(
                 == c.Infra.RopeContractOperation.RETIRE_GENERIC_TYPING_WRAPPERS
                 and revision is not None
             ):
+                # History lives in the provider's own repository. A provider
+                # installed into an environment carries none: the enclosing
+                # repository (the consumer's) does not track it and owns no
+                # revision of it, so there is nothing to lend.
+                if not cls._generic_history_tracked(workspace.rope_project, selection):
+                    continue
                 path, candidate, names = cls._generic_collection_history(
                     workspace.rope_project, selection, revision=revision
                 )
@@ -670,6 +676,21 @@ class FlextInfraUtilitiesSemanticContracts(
         )
         indentation = current[current.rfind("\n", 0, anchor.start) + 1 : anchor.start]
         return anchor, indentation
+
+    @classmethod
+    def _generic_history_tracked(
+        cls,
+        project: p.Infra.RopeProject,
+        selection: p.Infra.RopeContractRule,
+    ) -> bool:
+        """Whether the provider's file is tracked by the Git repository enclosing it.
+
+        Returns:
+            True when that repository tracks the file and so owns its history.
+
+        """
+        path = Path(cls._generic_history_provider(project, selection)[3].real_path)
+        return FlextInfraUtilitiesGit.git_enclosing_repository_tracks(path).unwrap()
 
     @staticmethod
     def _generic_history_source(

@@ -17,6 +17,24 @@ class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
     @staticmethod
+    def test_enclosing_repository_tracks_only_its_own_files(tmp_path: Path) -> None:
+        """An installed provider under an ignored environment has no history there."""
+        repository = u.Tests.git_repository(tmp_path, "consumer")
+        owned = repository / "owned.py"
+        installed = repository / ".venv" / "site-packages" / "provider.py"
+        installed.parent.mkdir(parents=True)
+        for path in (owned, installed):
+            path.write_text("VALUE = 1\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(".venv/\n", encoding="utf-8")
+        u.Tests.git_run(repository, "add", "owned.py", ".gitignore")
+        tm.that(tm.ok(u.Infra.git_enclosing_repository_tracks(owned)), eq=True)
+        tm.that(tm.ok(u.Infra.git_enclosing_repository_tracks(installed)), eq=False)
+        tm.that(
+            tm.ok(u.Infra.git_enclosing_repository_tracks(tmp_path / "outside.py")),
+            eq=False,
+        )
+
+    @staticmethod
     def test_inside_work_tree_uses_requested_directory(tmp_path: Path) -> None:
         """Control storage and its previews are outside the working tree."""
         repository = u.Tests.git_repository(tmp_path, "consumer")
