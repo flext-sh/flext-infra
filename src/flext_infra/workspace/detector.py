@@ -276,9 +276,11 @@ class FlextInfraWorkspaceDetector(
             ),
         )
         values["kind"] = declaration.governing_kind(observed.kind)
-        if values["kind"] is c.Infra.ProjectKind.CONSUMER:
-            # A consumer owns no package, whatever the metadata shows.
+        if values["kind"] is c.Infra.ProjectKind.CONSUMER and declaration.project:
+            # A consumer owns no package and is named by its declaration, not by
+            # the distribution it consumes, whatever the metadata shows.
             values["package"] = False
+            values["distribution"] = declaration.project.constant_name
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
