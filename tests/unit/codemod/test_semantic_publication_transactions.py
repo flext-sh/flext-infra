@@ -182,7 +182,10 @@ class TestsFlextInfraSemanticPublicationTransactions:
             ),
         )
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
-        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        # A new Python destination receives the declared full repair, so the
+        # live bytes are the normalized view publication admitted.
+        (normalized,) = tm.ok(u.Infra.normalized_codegen_changes((plan,)))
+        tm.that(target.read_bytes(), eq=normalized.desired_content)
 
     def test_artifact_publication_retires_old_package_with_its_move(
         self,
