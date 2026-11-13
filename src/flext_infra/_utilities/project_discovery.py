@@ -246,7 +246,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             and not cls._scenario_data_tree(path.relative_to(resolved_root))
         }
         if source_files is not None:
-            source_files = tuple(path for path in source_files if path.is_file())
+            # An owned stub is selected by its own name, even when it is a
+            # link whose target is foreign or absent.
+            source_files = tuple(
+                path
+                for path in source_files
+                if path.is_file() or (path.suffix == ".pyi" and path.is_symlink())
+            )
             selected = {
                 (path.absolute() if path.suffix == ".pyi" else path.resolve())
                 .relative_to(resolved_root)
@@ -615,11 +621,13 @@ class FlextInfraUtilitiesProjectDiscovery(
             project_dir / relative
             for relative in (*workspace_excluded_top_dirs, *nonparticipants)
         )
+        # A stub is classified by its own name before any resolution: it keeps
+        # that name even when it links to a module, so it never turns into a
+        # foreign module source. Every other source resolves, and an alias
+        # leaving the project still fails loudly at its consumer.
         return tuple(
             sorted({
-                path.absolute()
-                if owned_path_admission and path.suffix == ".pyi"
-                else path.resolve()
+                path.absolute() if path.suffix == ".pyi" else path.resolve()
                 for path in cls._walk_python_files(
                     project_dir,
                     skip_dirs - owned_artifacts,

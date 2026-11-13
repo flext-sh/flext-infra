@@ -476,8 +476,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         (with proposed additions and retirements) lists through itself.
         Sources of a member nested inside this one belong to that member.
         Stubs are classified before any read: they are owned-path violations
-        detected by path alone, never decoded or analyzed as modules. A link
-        whose target leaves the member is not one of its modules.
+        detected by path alone, never decoded or analyzed as modules.
 
         Returns:
             The member's Python module paths in path order.
@@ -501,7 +500,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     source_project=view,
                 )
                 if path.suffix == c.Infra.EXT_PYTHON
-                and path.is_relative_to(member)
                 and not any(path.is_relative_to(other) for other in nested)
             )
             if cacheable:
