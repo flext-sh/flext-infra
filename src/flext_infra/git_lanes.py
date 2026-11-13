@@ -911,6 +911,7 @@ class FlextInfraGitLanes:
         if (
             entry.path == request.repo_root
             or entry.bare
+            or entry.locked
             or entry.head is None
             or entry.branch in {None, integration[0]}
         ):
@@ -936,10 +937,11 @@ class FlextInfraGitLanes:
         request: p.Infra.GitLaneVerificationRequest,
         findings: list[str],
     ) -> frozenset[str]:
-        """Name the lanes with a live owner: the checking HEAD and dirty worktrees.
+        """Name the live-owner lanes: HEAD, locked and dirty worktrees.
 
-        A branch being committed, or checked out where staged, modified or
-        untracked content exists, is active work and never merged-but-alive.
+        A branch being committed, locked by its owner, or checked out where
+        staged, modified or untracked content exists, is active work and never
+        merged-but-alive.
 
         Returns:
             Short branch names derived only from Git's HEAD, worktree registry
@@ -959,6 +961,9 @@ class FlextInfraGitLanes:
             return frozenset(active)
         for entry in worktrees.value.entries:
             if entry.branch is None or entry.bare or not entry.path.is_dir():
+                continue
+            if entry.locked:
+                active.add(entry.branch)
                 continue
             status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=entry.path))
             if status.failure:
