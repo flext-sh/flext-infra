@@ -837,74 +837,9 @@ class FlextInfraModelsConfigMake(
                     raise ValueError(msg)
                 return self
 
-        class PytestScratchSpec(FlextInfraModelsConfigContract.ConfigContract):
-            """Scratch root every pytest-running verb declares (storage law).
-
-            The root is ``$<home>/<home_relative_directory>/<state_directory_name>``
-            followed by the absolute checkout path and ``<namespace>``: never
-            ``/tmp`` and never inside a versioned tree (a workspace member's
-            parent directory is the superproject checkout).
-            """
-
-            user_home_environment_variable: Annotated[
-                FlextInfraConstantsConfig.PytestCacheEnvironment,
-                m.Field(description="User home variable anchoring the scratch root"),
-            ]
-            home_relative_directory: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Home-relative scratch base directory"),
-            ]
-            state_directory_name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Runtime-state directory name under the base"),
-            ]
-            namespace: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Scratch namespace below the checkout path"),
-            ]
-
-            @m.model_validator(mode="after")
-            def require_home_relative_components(self) -> Self:
-                """Keep the scratch root anchored at home and free of traversal.
-
-                Returns:
-                    The resulting ``Self``.
-
-                Raises:
-                    ValueError: If the home variable is not the user home, or a
-                        component is absolute, traverses upward, or is not a
-                        single path segment where one is required.
-
-                """
-                if (
-                    self.user_home_environment_variable
-                    != FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME
-                ):
-                    msg = (
-                        "pytest scratch user_home_environment_variable must be "
-                        f"{FlextInfraConstantsConfig.PytestCacheEnvironment.USER_HOME.value}"
-                    )
-                    raise ValueError(msg)
-                base = Path(self.home_relative_directory)
-                if base.is_absolute() or ".." in base.parts:
-                    msg = "pytest scratch home_relative_directory must stay below home"
-                    raise ValueError(msg)
-                for name, value in (
-                    ("state_directory_name", self.state_directory_name),
-                    ("namespace", self.namespace),
-                ):
-                    if Path(value).name != value or value in {".", ".."}:
-                        msg = f"pytest scratch {name} must be one path segment"
-                        raise ValueError(msg)
-                return self
-
         testmon_cache: Annotated[
             TestmonCacheSpec,
             m.Field(description="Adaptive testmon Actions cache policy"),
-        ]
-        pytest_scratch: Annotated[
-            PytestScratchSpec,
-            m.Field(description="Scratch root declared by every pytest verb"),
         ]
         executor_environment: Annotated[
             ExecutorEnvironmentSpec,
@@ -967,6 +902,91 @@ class FlextInfraModelsConfigMake(
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
 
+    class MakeAdmissionOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Explicit per-verb exception to the admission limits; unset keeps defaults."""
+
+        max_load5: Annotated[
+            t.PositiveFloat | None,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
+        ] = None
+        memory_limit_gb: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ] = None
+        max_processes: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="CPU limit of each verb recipe"),
+        ] = None
+
+    class MakeAdmissionLimitsSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Resolved admission and run limits of one public Make verb."""
+
+        max_load5: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
+        ]
+        memory_limit_gb: Annotated[
+            t.PositiveInt,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ]
+        max_processes: Annotated[
+            t.PositiveInt,
+            m.Field(description="CPU limit of each verb recipe"),
+        ]
+
+        @m.computed_field
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Memory limit in bytes, the unit MemoryMax accepts."""
+            return self.memory_limit_gb * c.Infra.BYTES_PER_GIB
+
+    class MakeAdmissionSpec(MakeAdmissionLimitsSpec):
+        """Host admission and run limits of every public Make verb.
+
+        ADR-032: on the shared host every verb refuses to start above
+        ``max_load5`` and runs bounded by ``memory_limit_gb`` and
+        ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        """
+
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec,
+            ],
+            m.Field(description="Explicit per-verb exceptions to the defaults"),
+        ] = m.Field(default_factory=dict)
+        refusal_guidance: Annotated[
+            tuple[
+                Annotated[
+                    str,
+                    m.StringConstraints(min_length=1, pattern=r"^[^$#\n]+$"),
+                ],
+                ...,
+            ],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Lighter-route guidance printed with every refusal; plain "
+                    "Make text without '$', '#' or newlines"
+                ),
+            ),
+        ]
+
+        @m.computed_field
+        @property
+        def verb_limits(
+            self,
+        ) -> Mapping[str, FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec]:
+            """Each overridden verb's limits merged over the defaults."""
+            return {
+                verb: FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec(
+                    max_load5=override.max_load5 or self.max_load5,
+                    memory_limit_gb=override.memory_limit_gb or self.memory_limit_gb,
+                    max_processes=override.max_processes or self.max_processes,
+                )
+                for verb, override in self.overrides.items()
+            }
+
     class MakeVerbCatalogSpec(MakeHarnessSpec):
         """Public verb catalog, CLI routing and lifecycle policies of Make."""
 
@@ -1028,10 +1048,7 @@ class FlextInfraModelsConfigMake(
         bootstrap_bin_dir: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description=(
-                    "Repository-local directory of the bootstrap Mise binary, "
-                    "cached by the generated CI workflows"
-                ),
+                description="Repository-local directory of the project's Mise shims",
             ),
         ]
         clean: Annotated[
@@ -1096,6 +1113,29 @@ class FlextInfraModelsConfigMake(
                 description=("Bounded thread budget for ast-grep scan execution"),
             ),
         ] = 4
+        admission: Annotated[
+            FlextInfraModelsConfigMake.MakeAdmissionSpec,
+            m.Field(description="Host admission and run limits of every public verb"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_admission_overrides(self) -> Self:
+            """Admission overrides name declared public verbs only.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If an override names an undeclared verb.
+
+            """
+            unknown = sorted(
+                set(self.admission.overrides) - {verb.name for verb in self.verbs},
+            )
+            if unknown:
+                msg = f"make.admission.overrides name undeclared verbs: {unknown}"
+                raise ValueError(msg)
+            return self
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:

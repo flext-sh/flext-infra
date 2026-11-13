@@ -105,7 +105,6 @@ class FlextInfraUtilitiesRopeCore(
         )
         project = FlextInfraUtilitiesRopeRuntime.new_project(
             str(resolved_root),
-            ropefolder="",
             save_objectdb=False,
             filter_lists=(
                 sorted({

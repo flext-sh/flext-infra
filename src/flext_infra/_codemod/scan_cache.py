@@ -7,12 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, p, settings, u
-
-_AST_GREP_VERSION = "0.51.0"
 
 
 class FlextInfraCodemodScanCache:
@@ -35,12 +33,17 @@ class FlextInfraCodemodScanCache:
         cls,
         *,
         config_path: Path,
-        rule_ids: Sequence[str] = (),
+        rules: Mapping[str, Path],
         targets: Sequence[str] = (),
         sources: Sequence[p.Cli.AtomicFileState] = (),
-        options: tuple[str, int | None] = ("scan", None),
+        options: tuple[str, int | None, Path],
     ) -> str:
         """Compute a deterministic SHA256 cache key from scan inputs.
+
+        The key covers the resolved scanner executable (its pinned release),
+        the configuration, every elected rule id with its rule document's
+        content, the targets and every scanned source's content, so a changed
+        rule or scanner release never reuses an earlier scan.
 
         Returns:
             The hex digest representing this exact scan state.
@@ -49,11 +52,11 @@ class FlextInfraCodemodScanCache:
             ValueError: If an atomic file state carries no content.
 
         """
-        prefix, threads = options
+        prefix, threads, scanner = options
         hasher = hashlib.sha256()
         hasher.update(prefix.encode())
         hasher.update(b"\x00")
-        hasher.update(_AST_GREP_VERSION.encode())
+        hasher.update(str(scanner.resolve()).encode())
         hasher.update(b"\x00")
         hasher.update(str(threads or 0).encode())
         hasher.update(b"\x00")
@@ -64,8 +67,10 @@ class FlextInfraCodemodScanCache:
             hasher.update(str(config_path).encode())
         hasher.update(b"\x00")
 
-        for rule_id in sorted(rule_ids):
+        for rule_id, resource in sorted(rules.items()):
             hasher.update(rule_id.encode())
+            hasher.update(b"=")
+            hasher.update(hashlib.sha256(resource.read_bytes()).hexdigest().encode())
             hasher.update(b",")
         hasher.update(b"\x00")
 
