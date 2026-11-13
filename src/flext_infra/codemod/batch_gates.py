@@ -1094,10 +1094,14 @@ class FlextInfraModGateEngine:
         threads = u.Infra.ast_grep_scan_threads()
         cache_key = FlextInfraCodemodScanCache.compute_key(
             config_path=ruleset.config,
-            rule_ids=ruleset.rule_ids,
+            rules=ruleset_files,
             targets=targets,
             sources=tuple(context.inventory.values()),
-            options=("ruleset", threads),
+            options=(
+                "ruleset",
+                threads,
+                u.Infra.managed_mise_binary(c.Infra.SG, root).unwrap(),
+            ),
         )
         cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
         if cached_file is not None:
