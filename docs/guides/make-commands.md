@@ -565,6 +565,9 @@ The runner requires a declared `TMPDIR` (an undeclared one would fall back to th
 system `/tmp`); generated CI exports the runner's own `RUNNER_TEMP`,
 which GitHub empties at every job boundary. Fixtures reuse the shared tool data
 (Mise, the uv cache with clone links) instead of copying it into a test tree.
+The `check` and `mod` codemod scans stage their scratch the same way, in a
+`tempfile` directory under `TMPDIR` that the scan removes on exit (a Make timeout's
+`SIGTERM` exits through the CLI, so the removal also runs when a verb is stopped).
 
 Connectivity tests follow the root environment and reachability prerequisites;
 availability skips never prove connectivity or production readiness. Once a service
