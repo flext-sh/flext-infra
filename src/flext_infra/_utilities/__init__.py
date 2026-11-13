@@ -40,6 +40,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesFacadeComponents,
     )
     from flext_infra._utilities.facade_members import FlextInfraUtilitiesFacadeMembers
+    from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
     from flext_infra._utilities.generation_inventory import (
         FlextInfraGenerationInventory,
         FlextInfraGenerationSource,
@@ -191,6 +192,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesEnforcementCatalog",
     "FlextInfraUtilitiesFacadeComponents",
     "FlextInfraUtilitiesFacadeMembers",
+    "FlextInfraUtilitiesGateAdmission",
     "FlextInfraUtilitiesGenerationInventory",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesImportLaw",
@@ -281,6 +283,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesEnforcementCatalog": ".enforcement_catalog",
         "FlextInfraUtilitiesFacadeComponents": ".facade_components",
         "FlextInfraUtilitiesFacadeMembers": ".facade_members",
+        "FlextInfraUtilitiesGateAdmission": ".gate_admission",
         "FlextInfraUtilitiesGenerationInventory": ".generation_inventory",
         "FlextInfraUtilitiesGit": ".git",
         "FlextInfraUtilitiesImportLaw": ".import_law",

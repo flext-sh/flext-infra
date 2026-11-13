@@ -49,6 +49,35 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
+    class GateAdmissionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def capacity_normal(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted at normal pressure."""
+            ...
+
+        @property
+        def capacity_high(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted under host pressure."""
+            ...
+
+        @property
+        def heartbeat_seconds(self) -> t.PositiveInt:
+            """Interval at which a live ticket refreshes itself."""
+            ...
+
+        @property
+        def ttl_seconds(self) -> t.PositiveInt:
+            """Heartbeat age after which a held ticket is reclaimed."""
+            ...
+
+        @property
+        def poll_seconds(self) -> t.PositiveInt:
+            """Interval between admission decisions of a waiter."""
+            ...
+
+    @runtime_checkable
     class ConsolidationOutcome(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
