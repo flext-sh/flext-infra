@@ -325,20 +325,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
 
     @staticmethod
-    def python_dependency_projects(root: Path) -> tuple[Path, ...]:
-        """Resolve declared fixture dependencies to actual workspace source owners.
+    @cache
+    def workspace_source_projects() -> Mapping[str, Path]:
+        """Map each workspace distribution to its source owner once per session.
 
-        Only dependencies that are declared workspace members are resolved;
-        external (PyPI) dependencies are skipped because they have no local
-        source owner. A dependency that looks like a workspace member (its
-        name is in the workspace spec) but is missing from the filesystem
-        is a configuration error and is not silently skipped.
+        The workspace topology is read-only for the whole session, so every
+        fixture resolves its dependency closure from this one native load
+        instead of reloading the workspace for each case.
 
         Returns:
-            The declared projects and their local runtime dependency closure.
-
-        Raises:
-            ValueError: When a ``flext-`` dependency has no workspace source owner.
+            Each declared distribution and the checkout that owns its source.
 
         """
         # A linked worktree is never a registered submodule: its primary
@@ -356,7 +352,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
         specification = tm.ok(
             workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
         )
-        projects = {
+        return {
             repository.distribution: (
                 checkout
                 if (source_root / repository.path).resolve() == primary
@@ -364,6 +360,25 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
             for repository in (specification.repository, *specification.subprojects)
         }
+
+    @classmethod
+    def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
+        """Resolve declared fixture dependencies to actual workspace source owners.
+
+        Only dependencies that are declared workspace members are resolved;
+        external (PyPI) dependencies are skipped because they have no local
+        source owner. A dependency that looks like a workspace member (its
+        name is in the workspace spec) but is missing from the filesystem
+        is a configuration error and is not silently skipped.
+
+        Returns:
+            The declared projects and their local runtime dependency closure.
+
+        Raises:
+            ValueError: When a ``flext-`` dependency has no workspace source owner.
+
+        """
+        projects = cls.workspace_source_projects()
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
