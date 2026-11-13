@@ -314,8 +314,8 @@ class FlextInfraUtilitiesBase:
     def ast_grep_scan_threads() -> int:
         """Declared ast-grep scan threads, bounded by the CPUs this process may use.
 
-        The Make admission prelude pins every verb to its declared CPUs, so the
-        process CPU count carries that limit (operator order 2026-11-13).
+        The Make admission prelude exports ``PYTHON_CPU_COUNT`` with the verb's
+        declared CPUs, so the process CPU count carries that limit (ADR-032).
 
         Returns:
             ``min(declared scan_threads, os.process_cpu_count())``.

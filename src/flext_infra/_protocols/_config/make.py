@@ -709,12 +709,12 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def memory_limit_gb(self) -> t.PositiveInt | None:
-            """Address-space limit of every verb process, in GiB."""
+            """Memory limit of each verb recipe, in GiB."""
             ...
 
         @property
         def max_processes(self) -> t.PositiveInt | None:
-            """CPUs the verb and its children may run on."""
+            """CPU limit of each verb recipe."""
             ...
 
     @runtime_checkable
@@ -730,22 +730,17 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def memory_limit_gb(self) -> t.PositiveInt:
-            """Address-space limit of every verb process, in GiB."""
+            """Memory limit of each verb recipe, in GiB."""
             ...
 
         @property
         def max_processes(self) -> t.PositiveInt:
-            """CPUs the verb and its children may run on."""
+            """CPU limit of each verb recipe."""
             ...
 
         @property
         def memory_limit_bytes(self) -> int:
-            """Address-space limit in bytes, the unit prlimit accepts."""
-            ...
-
-        @property
-        def cpu_list(self) -> str:
-            """The first ``max_processes`` CPUs, in taskset list form."""
+            """Memory limit in bytes, the unit MemoryMax accepts."""
             ...
 
     @runtime_checkable

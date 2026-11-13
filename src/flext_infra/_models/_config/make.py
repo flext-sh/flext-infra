@@ -976,11 +976,11 @@ class FlextInfraModelsConfigMake(
         ] = None
         memory_limit_gb: Annotated[
             t.PositiveInt | None,
-            m.Field(description="Address-space limit of every verb process, in GiB"),
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
         ] = None
         max_processes: Annotated[
             t.PositiveInt | None,
-            m.Field(description="CPUs the verb and its children may run on"),
+            m.Field(description="CPU limit of each verb recipe"),
         ] = None
 
     class MakeAdmissionLimitsSpec(FlextInfraModelsConfigContract.ConfigContract):
@@ -992,31 +992,25 @@ class FlextInfraModelsConfigMake(
         ]
         memory_limit_gb: Annotated[
             t.PositiveInt,
-            m.Field(description="Address-space limit of every verb process, in GiB"),
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
         ]
         max_processes: Annotated[
             t.PositiveInt,
-            m.Field(description="CPUs the verb and its children may run on"),
+            m.Field(description="CPU limit of each verb recipe"),
         ]
 
         @m.computed_field
         @property
         def memory_limit_bytes(self) -> int:
-            """Address-space limit in bytes, the unit prlimit accepts."""
+            """Memory limit in bytes, the unit MemoryMax accepts."""
             return self.memory_limit_gb * c.Infra.BYTES_PER_GIB
-
-        @m.computed_field
-        @property
-        def cpu_list(self) -> str:
-            """The first ``max_processes`` CPUs, in taskset list form."""
-            return f"0-{self.max_processes - 1}"
 
     class MakeAdmissionSpec(MakeAdmissionLimitsSpec):
         """Host admission and run limits of every public Make verb.
 
-        Operator order 2026-11-13 (ADR-032 immediate rule): every verb refuses
-        to start above ``max_load5`` and runs bounded by ``memory_limit_gb``
-        and ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        ADR-032: on the shared host every verb refuses to start above
+        ``max_load5`` and runs bounded by ``memory_limit_gb`` and
+        ``max_processes``; ``overrides`` declares explicit verb exceptions.
         """
 
         overrides: Annotated[

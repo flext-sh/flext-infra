@@ -685,17 +685,25 @@ Infra:
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
       scan_threads: 4
-      # Host admission and run limits of every public verb (operator order
-      # 2026-11-13; ADR-032 immediate rule, its FIFO queue is bead flext-mcjop).
-      # A verb refuses to start while the 5-minute load average exceeds
-      # max_load5, and every process it starts runs on max_processes CPUs
-      # with at most memory_limit_gb of address space. overrides declares an
-      # explicit exception per public verb.
+      # Host admission and run limits of every public verb (ADR-032): on the
+      # shared host a verb refuses to start while the 5-minute load average
+      # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
+      # memory_limit_gb and max_processes CPUs. overrides declares an explicit
+      # exception per public verb: the light verbs (and the commit hook's
+      # setup and stage-scoped check) stay admitted under a busy host, still
+      # inside the same memory and CPU scope; the heavy verbs keep max_load5.
       admission:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
-        overrides: {}
+        overrides:
+          setup: {max_load5: 80}
+          check: {max_load5: 80}
+          fix: {max_load5: 80}
+          fmt: {max_load5: 80}
+          gen: {max_load5: 80}
+          help: {max_load5: 80}
+          clean: {max_load5: 80}
         refusal_guidance:
         - Wait until the 5-minute load drops to the limit, then run one heavy verb at a time.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
