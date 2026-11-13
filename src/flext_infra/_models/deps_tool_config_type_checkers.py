@@ -203,6 +203,15 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         findings_exit_codes: tuple[int, ...] = m.Field(
             (), alias="findings-exit-codes", description="Native diagnostic statuses"
         )
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...] = m.Field(
+            (),
+            alias="ruling-disabled-rules",
+            strict=False,
+            description=(
+                "Operator-authorized global axioms: Pyrefly error kinds disabled "
+                "at the SSOT for every project, projected as ignore."
+            ),
+        )
 
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""

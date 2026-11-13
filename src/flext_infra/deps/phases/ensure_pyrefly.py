@@ -99,6 +99,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 )
             ),
         })
+        # Operator-authorized global axioms render as ignore in every
+        # project; the declaration lives once, in tools.pyrefly.
+        errors = u.Cli.toml_mapping_ensure_table(options, c.Infra.SUB_CONFIG_ERRORS)
+        for rule in self._tool_config.tools.pyrefly.ruling_disabled_rules:
+            errors[rule] = "ignore"
         # The same authorized entries render Pyright environments; Pyrefly
         # scopes them through glob-matched sub-configs relative to this file.
         sub_configs: list[t.JsonValue] = [
