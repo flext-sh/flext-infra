@@ -94,11 +94,26 @@ class TestsFlextInfraRopeContractCatalog:
         )
 
     @staticmethod
-    def test_source_export_reader_uses_binding_index_contract(tmp_path: Path) -> None:
-        """Read explicit exports through the installed Rope binding-index API."""
+    @c.Tests.MARK.parametrize(
+        ("source", "expected"),
+        [
+            ("__all__ = ('First', 'Second')\n", ("First", "Second")),
+            (
+                "__all__ = ('Stale',)\n__all__ = ('First', 'Second')\n",
+                ("First", "Second"),
+            ),
+            ("__all__ = ['First']\n__all__ += ['Second']\n", ("First", "Second")),
+        ],
+    )
+    def test_source_export_reader_uses_binding_index_contract(
+        source: str,
+        expected: tuple[str, ...],
+        tmp_path: Path,
+    ) -> None:
+        """Read the effective exports, last binding plus ``+=``, through Rope."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "exports.py"
-        path.write_text("__all__ = ('First', 'Second')\n", encoding=c.DEFAULT_ENCODING)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with u.Infra.facade_source_project(root) as (project, _sources):
             module = u.Infra.require_source_module(
                 project.get_pymodule(
@@ -107,7 +122,7 @@ class TestsFlextInfraRopeContractCatalog:
             )
             tm.that(
                 u.Infra.module_assignment_strings_source(module, c.Infra.DUNDER_ALL),
-                eq=("First", "Second"),
+                eq=expected,
             )
 
     @staticmethod
