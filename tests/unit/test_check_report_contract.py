@@ -38,6 +38,8 @@ class TestsFlextInfraCheckReportContract:
             '"""Fixture module."""\n\nimport os\n',
             encoding="utf-8",
         )
+        # `check run` elects its runtime owner from the Git top level.
+        u.Tests.initialize_git_repo(project)
         return project
 
     @staticmethod
@@ -148,6 +150,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             with_src=True,
         )
+        u.Tests.initialize_git_repo(project)
         source = project / "src" / "diagnostics.py"
         source.write_text(
             "def diagnose() -> None:\n"
@@ -394,6 +397,7 @@ class TestsFlextInfraCheckReportContract:
             ),
             with_src=True,
         )
+        u.Tests.initialize_git_repo(root)
         member = self._project(root)
         pyproject = member / c.PYPROJECT_FILENAME
         pyproject.write_text(

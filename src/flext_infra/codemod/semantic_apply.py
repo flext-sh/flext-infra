@@ -2370,6 +2370,9 @@ class FlextInfraCodemodSemanticApply(
                 root, rope_repository_root=authority, source_project=source_project
             ) as captured,
         ):
+            # Contract normalization admits model envelopes through the
+            # composition-owned checker, which the captured graph must carry.
+            captured.model_envelope_checker = rope_workspace.model_envelope_checker
             original = cls.source_inventory(
                 root, preflight, source_project=source_project
             )
