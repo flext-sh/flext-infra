@@ -340,7 +340,11 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[p.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
-        ``kind`` comes from the shared native project-fact detector.
+        ``kind`` comes from the shared native project-fact detector. The role
+        reflects only the checkout's own topology; the caller that holds the
+        attachment fact (the root's discovered members, or the superproject
+        index's gitlinks for a member) settles the final role, so no
+        per-repository identity query runs here.
 
         Returns:
             The resulting ``p.Result[p.Infra.RepositoryRef]``.
@@ -372,18 +376,12 @@ class FlextInfraWorkspaceDetector(
         if origin.failure:
             return r[p.Infra.RepositoryRef].from_failure(origin)
         origin_url, provider_name = origin.value
-        checkout = u.Infra.validate_git_remote_url(declared_url or origin_url).flat_map(
-            lambda remote: u.Infra.git_identity(
-                m.Infra.GitRepoRequest(repo_root=repository_root),
-                include_status=False,
-            ).map(lambda identity: (remote, identity))
-        )
-        if checkout.failure:
-            return r[p.Infra.RepositoryRef].from_failure(checkout)
+        remote = u.Infra.validate_git_remote_url(declared_url or origin_url)
+        if remote.failure:
+            return r[p.Infra.RepositoryRef].from_failure(remote)
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if checkout.value[1].is_submodule
-            or (repository_root / c.Infra.GITMODULES).is_file()
+            if (repository_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(
@@ -403,7 +401,7 @@ class FlextInfraWorkspaceDetector(
                 inputs=() if native_metadata is None else (native_metadata.source,),
                 name=repository_name,
                 distribution=project_name,
-                url=checkout.value[0],
+                url=remote.value,
                 path=path,
                 role=role,
                 provider=provider_name,
@@ -630,10 +628,14 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
+        gitlinks = u.Infra.git_index_gitlink_paths(repository_root)
+        if gitlinks.failure:
+            return result_type.from_failure(gitlinks)
         context = m.Infra.SubprojectLoadContext.model_validate({
             "integration_branch": (baseline.value),
             "workspace_beads": (workspace_beads),
             "allow_unprovisioned_members": (allow_unprovisioned_members),
+            "superproject_gitlinks": tuple(gitlinks.value),
         })
         for declaration in declared.value:
             loaded = cls._load_subproject(
@@ -785,7 +787,17 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        return cls._member_commands_ref(repository.value, inputs.value)
+        # A checkout the superproject index records as a gitlink is attached:
+        # the same fact `rev-parse --show-superproject-working-tree` reads,
+        # taken once for every member.
+        member = (
+            repository.value.model_copy(
+                update={"role": c.Infra.MakeProfile.WORKSPACE},
+            )
+            if path.as_posix() in context.superproject_gitlinks
+            else repository.value
+        )
+        return cls._member_commands_ref(member, inputs.value)
 
     @classmethod
     def _beads_route_gate(
@@ -1174,12 +1186,17 @@ class FlextInfraWorkspaceDetector(
             superproject_root,
             policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
-        if baseline.failure:
-            return result_type.from_failure(baseline)
-        context = m.Infra.SubprojectLoadContext.model_validate({
-            "integration_branch": baseline.value,
-            "workspace_beads": inherited_beads.value,
-        })
+        context = baseline.flat_map(
+            lambda branch: u.Infra.git_index_gitlink_paths(superproject_root).map(
+                lambda gitlinks: m.Infra.SubprojectLoadContext.model_validate({
+                    "integration_branch": branch,
+                    "workspace_beads": inherited_beads.value,
+                    "superproject_gitlinks": tuple(gitlinks),
+                }),
+            ),
+        )
+        if context.failure:
+            return result_type.from_failure(context)
         loaded_member = u.Infra.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(
                 repo_root=superproject_root,
@@ -1189,7 +1206,7 @@ class FlextInfraWorkspaceDetector(
             lambda declaration: cls._load_subproject(
                 superproject_root,
                 declaration,
-                context=context,
+                context=context.value,
             ),
         )
         undeclared = f"Git submodule is not a declared governed project: {member_root}"
