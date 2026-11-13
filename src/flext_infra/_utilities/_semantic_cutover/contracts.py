@@ -1172,7 +1172,11 @@ class FlextInfraUtilitiesSemanticContracts(
 
         """
         runtime = FlextInfraUtilitiesRopeRuntimeModules
-        source = runtime.expression_name(scope, owner.source)
+        # An unresolvable root (an import Rope cannot load) leaves no path to
+        # evaluate; its own binding is then the provider to authenticate.
+        source = runtime.expression_name(
+            scope, owner.source
+        ) or runtime.expression_name(scope, owner.source.partition(".")[0])
         if source is not None:
             source_object = source.get_object()
             unknown = runtime.runtime_callable("rope.base.pyobjects", "get_unknown")()

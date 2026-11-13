@@ -224,6 +224,15 @@ class FlextInfraProtocolsCodegenLazyInit:
             """
             ...
 
+        @property
+        def deferred_instances(self) -> Sequence[str]:
+            """Structural member projected from the owning model.
+
+            Declared configuration-root exports published as stand-ins that build
+            the root on first attribute read.
+            """
+            ...
+
     @runtime_checkable
     class RopeModuleIndexEntry(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -484,6 +493,15 @@ class FlextInfraProtocolsCodegenLazyInit:
 
             Line-prefixed ``deferred_members`` installer argument; empty when the
             package defers no export.
+            """
+            ...
+
+        @property
+        def deferred_instances_call(self) -> str:
+            """Structural member projected from the owning model.
+
+            ``defer_lazy_instances`` call bound after the installer; empty when the
+            package defers no configuration root.
             """
             ...
 

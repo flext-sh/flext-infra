@@ -305,7 +305,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                 # exactly that case (never combined with ``--testmon-noselect``).
                 *(("--testmon-noselect",) if complete else ("--testmon-forceselect",)),
                 "--testmon-env",
-                f"'{self.testmon_environment(execution_mode)}'",
+                self.testmon_environment(execution_mode),
             )
         )
         pytest_arguments = (
@@ -425,7 +425,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
                             else ("--testmon-forceselect",)
                         ),
                         "--testmon-env",
-                        f"'{self.testmon_environment(execution_mode)}'",
+                        self.testmon_environment(execution_mode),
                     )
                     if execution_mode.is_incremental
                     else ()

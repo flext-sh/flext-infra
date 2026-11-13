@@ -253,6 +253,15 @@ class FlextInfraModelsConfigWorkspace:
                 ),
             ),
         ] = ()
+        deferred_instances: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Own configuration roots whose validation is costly: each "
+                    "export is published as a stand-in built on first attribute read"
+                ),
+            ),
+        ] = ()
         examples_module: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -287,6 +296,29 @@ class FlextInfraModelsConfigWorkspace:
             ],
             m.Field(description="Own ordered `make help` sections"),
         ] = ()
+
+        @m.field_validator("deferred_instances")
+        @classmethod
+        def _validate_deferred_instances(
+            cls, values: tuple[str, ...]
+        ) -> tuple[str, ...]:
+            """Require each deferred configuration root to be a unique identifier.
+
+            Returns:
+                The declared export names, in declared order.
+
+            Raises:
+                ValueError: If a name is not an identifier or repeats.
+
+            """
+            invalid = [value for value in values if not value.isidentifier()]
+            if invalid:
+                msg = f"deferred instances must be identifiers: {invalid}"
+                raise ValueError(msg)
+            if len(set(values)) != len(values):
+                msg = "deferred instances must be unique"
+                raise ValueError(msg)
+            return values
 
         @m.field_validator("deferred_distributions")
         @classmethod

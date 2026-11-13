@@ -249,7 +249,8 @@ class TestsFlextInfraPytestRunner:
             env_index = command.index("--testmon-env")
             names.append(command[env_index + 1])
         tm.that(len(set(names)) == 1, truth=True)
-        (name,) = {name.strip("'") for name in names}
+        (name,) = set(names)
+        tm.fail(name.startswith("'") or name.endswith("'"))
         tm.that(
             name,
             eq=runner.testmon_environment(c.Infra.PytestExecutionMode.INCREMENTAL),
