@@ -97,7 +97,7 @@ class FlextInfraWorkspaceRoutes:
                 params.repository_root,
                 config.Infra.gate_admission.repeat.tests_full,
             )
-        with u.Infra.gate_admitted(gate, params.repository_root) as ticket:
+        with u.Infra.gate_admitted(gate, params.repository_root, None) as ticket:
             completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
@@ -205,7 +205,7 @@ class FlextInfraWorkspaceRoutes:
             u.Infra.gate_repeat_refuse(
                 c.Infra.VERB_CHECK, root, config.Infra.gate_admission.repeat.check
             )
-        with u.Infra.gate_admitted_budget(c.Infra.VERB_CHECK, root, budget) as ticket:
+        with u.Infra.gate_admitted(c.Infra.VERB_CHECK, root, budget) as ticket:
             result = cls._check_admitted(params, root, inputs)
         if complete and result.success:
             u.Infra.gate_repeat_record(ticket)

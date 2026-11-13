@@ -309,6 +309,8 @@ class TestsFlextInfraRepositoryLocalTopology:
 
         tm.that(workspace.subprojects, empty=True)
         tm.that(workspace.external_dependency_paths, has=Path(relative))
+        # No governed member: the checkout keeps the standalone profile.
+        tm.that(workspace.repository.role, eq=c.Infra.MakeProfile.STANDALONE)
 
     def test_member_origin_must_match_its_gitmodules_url(
         self,
