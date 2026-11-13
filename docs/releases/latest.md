@@ -12,13 +12,17 @@
 
 ## Pull requests since last release
 
+fix: first group of 0.12.0-dev test failures fixed at their root cause (#2302)
+Merge branch '0.12.0-dev' into fix/infra-tests-green-20261112
 chore(lock): pin FLEXT upstreams to their 0.12.0-dev tips (#2304)
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/infra-tests-green-20261112
 perf(tests): resolve selection and inventory in one collection pass (#2306)
 Merge branch '0.12.0-dev' into perf/test-single-collection-20261112
 fix(codegen): close the verified review findings of #2262/#2264/#2266 (#2300)
 perf(mod): focused make mod within budget; reuse import facts; fix rendering cache key
 (#2305)
 Merge remote-tracking branch 'origin/0.12.0-dev' into perf/mod-producers-budget-20261112
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/infra-tests-green-20261112
 Merge branch '0.12.0-dev' into fix/review-findings-20261112
 fix(codegen): uv sources follow the FLEXT line; project subscripted sibling bases
 (#2303)
