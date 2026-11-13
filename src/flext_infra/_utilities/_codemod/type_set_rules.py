@@ -363,13 +363,16 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
 
         The marker is the stdlib PEP 702 decorator used as ``Annotated``
         metadata (``Annotated[ClassVar[...], warnings.deprecated("compat: ...")]``),
-        read from the attribute's own annotation source.
+        read from the attribute's own annotation source. A class implemented
+        in C (``type``, reached through a metaclass) exposes
+        ``__annotations__`` as a descriptor and declares no annotation source.
 
         Returns:
             The marker message, or ``None`` for an unmarked attribute.
 
         """
-        raw = vars(klass).get("__annotations__", {}).get(name)
+        declared = vars(klass).get("__annotations__")
+        raw = declared.get(name) if isinstance(declared, Mapping) else None
         if not isinstance(raw, str):
             return None
         marker = warnings.deprecated.__name__
