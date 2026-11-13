@@ -43,7 +43,11 @@ class TestsFlextInfraCiToolCacheReuse:
         restore_paths = str(restore_with["path"]).split()
         for directory in config.Infra.codegen.make.clean.cache_dirs:
             tm.ok(directory in restore_paths)
-        tm.that(save_with["key"], eq=restore_with["key"])
+        # Save publishes exactly the key the restore step computed.
+        tm.that(
+            save_with["key"],
+            eq="${{ steps.tool-cache.outputs.cache-primary-key }}",
+        )
         # One path list for both steps; Mise shims never travel through the
         # cache (a restored shim names an earlier run's Mise binary, which Mise
         # refuses as unmanaged and warns once per tool).

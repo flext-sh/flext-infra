@@ -188,6 +188,14 @@ class FlextInfraModelsCore:
         """The selected node IDs after every collection hook has completed."""
 
         node_ids: t.StrTuple = m.Field(description="Unique node IDs in execution order")
+        inventory_node_ids: t.StrTuple = m.Field(
+            default_factory=tuple,
+            description=(
+                "Unique node IDs of the complete inventory kept after the "
+                "marker and keyword selectors and before Testmon deselects; "
+                "empty when the manifest is itself the complete collection"
+            ),
+        )
         markdown_eligible: tuple[
             FlextInfraModelsCore.PytestMarkdownOrigin,
             ...,
@@ -216,6 +224,11 @@ class FlextInfraModelsCore:
                 self.node_ids,
             ) != len(set(self.node_ids)):
                 msg = "collection manifest requires nonempty unique node IDs"
+                raise ValueError(msg)
+            if any(not node_id for node_id in self.inventory_node_ids) or len(
+                self.inventory_node_ids,
+            ) != len(set(self.inventory_node_ids)):
+                msg = "collection manifest requires nonempty unique inventory IDs"
                 raise ValueError(msg)
             origins = tuple(item.origin for item in self.markdown_collected)
             collected_ids = tuple(item.node_id for item in self.markdown_collected)

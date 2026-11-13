@@ -282,18 +282,13 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 (log.parent / "testmon-selection.json").read_text(encoding="utf-8"),
             )
         )
-        inventory = (
-            selected
-            if context.execution_mode == c.Infra.PytestExecutionMode.FULL
-            or not selection_plan.inventory_collected
-            else m.Infra.PytestCollectionManifest.model_validate_json(
-                (log.parent / "testmon-inventory.json").read_text(encoding="utf-8"),
-            )
-        )
-        if not set(selected.node_ids).issubset(inventory.node_ids):
+        # An incremental selection manifest carries the complete inventory it
+        # selected from; every other manifest is its own complete collection.
+        inventory = selected.inventory_node_ids or selected.node_ids
+        if not set(selected.node_ids).issubset(inventory):
             msg = "testmon selected node IDs outside the complete collection inventory"
             raise RuntimeError(msg)
-        inventory_count = len(inventory.node_ids)
+        inventory_count = len(inventory)
         # Deselection follows the centrally enforced manifest. An empty
         # incremental suite selection deselects the complete inventory; declared
         # file and full requests execute their complete in-scope inventory.
@@ -477,11 +472,7 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
                 # collection, so only the inventory receipt exists.
                 if self.target_file is not None and selection_plan.inventory_collected
                 else (
-                    (
-                        ("selection", "inventory")
-                        if selection_plan.inventory_collected
-                        else ("selection",)
-                    )
+                    ("selection",)
                     if context.execution_mode.is_incremental
                     else ("inventory",)
                 )

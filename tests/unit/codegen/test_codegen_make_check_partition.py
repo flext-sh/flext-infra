@@ -245,7 +245,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
 
     @staticmethod
     def test_ci_workflow_runs_only_the_ci_partition() -> None:
-        """The CI job runs each declared approval step once, in order, under CI.
+        """The CI job runs each approval verb once, in order, under the CI token.
 
         CI never runs the pre-commit hook verb. The local partition runs only
         in the operator-dispatched full qualification, never on push or PR.
@@ -257,15 +257,17 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             ),
         )
         commands = [str(step.get("run", "")) for step in steps]
-        approvals = [
-            f"{make.ci.variable}={make.ci.value} {step.make_command}"
-            for step in make.workflow
-            if "ci" in step.contexts
-        ]
-        # A command declared by two steps appears once per step, in order.
-        position = -1
-        for approval in approvals:
-            position = commands.index(approval, position + 1)
+        # Rows may share a command (complete then incremental tests), so each
+        # approval is located by its unique step id, then checked by command.
+        identifiers = [str(step.get("id", "")) for step in steps]
+        rows = [step for step in make.workflow if "ci" in step.contexts]
+        positions = [identifiers.index(f"approval-{row.identity}") for row in rows]
+        tm.that(positions, eq=sorted(positions))
+        for position, row in zip(positions, rows, strict=True):
+            tm.that(
+                commands[position],
+                eq=f"{make.ci.variable}={make.ci.value} {row.make_command}",
+            )
         local = f"{make.ci.variable}={make.ci.local_value} make"
         for step in steps:
             if local in str(step.get("run", "")):

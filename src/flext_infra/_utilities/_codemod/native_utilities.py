@@ -505,17 +505,21 @@ class FlextInfraUtilitiesCodemodNative:
         requirements = FlextInfraUtilitiesCodemodRules.project_requirements(
             root
         ).unwrap()[1]
-        for requirement in requirements:
-            identity = FlextInfraUtilitiesDependencyRequirements.requirement_identity(
-                requirement
-            )
-            if not identity.startswith("flext-"):
-                continue
-            member_root = workspace / identity
-            if not member_root.is_dir():
-                continue
+        identities = (
+            FlextInfraUtilitiesDependencyRequirements.requirement_identity(requirement)
+            for requirement in requirements
+        )
+        members = (
+            root,
+            *(
+                workspace / identity
+                for identity in identities
+                if identity.startswith("flext-") and (workspace / identity).is_dir()
+            ),
+        )
+        for member_root in members:
             for path in snapshots.workspace_python_files(snapshot, member_root):
-                digest.update(path.read_bytes())
+                digest.update(path.as_posix().encode(c.DEFAULT_ENCODING))
                 digest.update(b"\0")
                 digest.update(path.read_bytes())
                 digest.update(b"\0")
