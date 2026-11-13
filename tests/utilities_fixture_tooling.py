@@ -346,7 +346,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
         # checkout under test stays its own source, never the primary's copy.
         checkout = Path(__file__).resolve().parents[1]
         primary = tm.ok(
-            u.Infra.git_primary_worktree_root(m.Infra.GitRepoRequest(repo_root=checkout))
+            u.Infra.git_primary_worktree_root(
+                m.Infra.GitRepoRequest(repo_root=checkout)
+            )
         ).primary_root.resolve()
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
