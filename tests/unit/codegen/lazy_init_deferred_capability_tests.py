@@ -1,9 +1,8 @@
-"""Declared costly distributions defer the facade-composed classes that import them.
+"""Every class a family facade composes by MRO is a lazy stand-in.
 
-The consumer's own provisioned environment maps each declared distribution to
-the import packages it installs; the generated initializer gives a stand-in to
-exactly the class exports of a module importing one of them at module scope that
-a facade composes by MRO. Every other class export stays a plain lazy export.
+The generated initializer gives a stand-in to each facade-composed part with
+its in-package members. A class no facade composes stays a plain lazy export,
+and a composed part whose base is a third-party type fails generation by name.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,14 +12,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 
 class TestsFlextInfraCodegenLazyInitDeferredCapability:
-    """The initializer defers the composed export with its in-package members."""
+    """The initializer defers every composed part with its in-package members."""
 
     _DEFERRED_BLOCK = (
         "    deferred_members={\n"
+        '        "FlextDemoCapabilityBase": ("base_value",),\n'
         '        "FlextDemoCapabilityHeavy": (\n'
         '            "TIMEOUT_ERROR",\n'
         '            "heavy_value",\n'
@@ -47,15 +47,12 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
-    def test_declared_distribution_defers_its_importing_export(
+    def test_every_facade_part_is_deferred(
         self,
         deferred_capability_project: Path,
     ) -> None:
-        """Only the facade-composed export of the importing module is deferred."""
+        """Each part the facade composes gets a stand-in, with no declaration."""
         root = deferred_capability_project
-        u.Tests.override_repository_declaration(
-            root, {"deferred_distributions": ["requests"]}
-        )
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
         tm.that(self._initializer(root), has=self._DEFERRED_BLOCK)
@@ -66,37 +63,22 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         self,
         deferred_capability_project: Path,
     ) -> None:
-        """A third-party-based class of the heavy module gets no stand-in."""
+        """A third-party-based class no facade composes gets no stand-in."""
         root = deferred_capability_project
-        u.Tests.override_repository_declaration(
-            root, {"deferred_distributions": ["requests"]}
-        )
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         initializer = self._initializer(root)
         tm.that(initializer, has="FlextDemoCapabilityClient")
         tm.that(initializer, lacks='"FlextDemoCapabilityClient": (')
 
-    @c.Tests.MARK.slow
-    @c.Tests.MARK.remote
-    def test_undeclared_project_defers_nothing(
-        self,
-        deferred_capability_project: Path,
-    ) -> None:
-        """Without a declaration the initializer keeps every export eager."""
-        root = deferred_capability_project
-        tm.that(u.Tests.run_lazy_init(root), eq=0)
-        tm.that(self._initializer(root), lacks="deferred_members")
-
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
-    def test_declared_distribution_without_import_package_fails(
+    def test_composed_part_with_third_party_base_fails(
         deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
     ) -> None:
-        """A declared distribution the environment does not install fails loud."""
+        """A facade-composed part that cannot be deferred fails generation."""
         root = deferred_capability_project
-        u.Tests.override_repository_declaration(
-            root, {"deferred_distributions": ["flext-absent-distribution"]}
-        )
-        with u.Tests.raises(ValueError, match="install no import package"):
+        fixture_tree("lazy-deferred-capability-foreign-base", destination=root)
+        with u.Tests.raises(ValueError, match="not a class of its package"):
             u.Tests.create_lazy_init_service(root).plan_files()

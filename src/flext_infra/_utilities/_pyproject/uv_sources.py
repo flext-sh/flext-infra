@@ -229,10 +229,7 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             for key in ("branch", "rev", "tag")
             if isinstance(source.get(key), str)
         )
-        migrations: MutableMapping[
-            tuple[str, str], p.Infra.GitSourceReferenceMigration
-        ] = {}
-        line_ref: str | None = None
+        references: list[tuple[str, str]] = []
         for line in (*lines.value, *native):
             name = cls._internal_dependency_name(
                 line, declared_sources={}, candidate_sources={}
@@ -242,26 +239,24 @@ class FlextInfraUtilitiesPyprojectUvSources(FlextInfraUtilitiesPyprojectRequirem
             declared = FlextInfraUtilitiesGitRequirementSource.declared_git_source(line)
             if declared.failure:
                 return result_type.from_failure(declared)
-            url, reference = declared.value
-            if not url:
-                continue
-            if line_ref is None:
-                resolved = target_ref()
-                if resolved.failure:
-                    return result_type.from_failure(resolved)
-                line_ref = resolved.value
-            if reference == line_ref:
-                continue
-            prefix = f"{url.rpartition('/')[0]}/"
-            migrations.setdefault(
-                (prefix, reference),
-                m.Infra.GitSourceReferenceMigration(
-                    url_prefix=prefix,
-                    source_ref=reference,
-                    target_ref=line_ref,
-                ),
+            if declared.value[0]:
+                references.append(declared.value)
+        if not references:
+            return result_type.ok(())
+        return target_ref().map(
+            lambda line_ref: tuple(
+                {
+                    (prefix, reference): m.Infra.GitSourceReferenceMigration(
+                        url_prefix=prefix,
+                        source_ref=reference,
+                        target_ref=line_ref,
+                    )
+                    for url, reference in references
+                    if reference != line_ref
+                    for prefix in (f"{url.rpartition('/')[0]}/",)
+                }.values()
             )
-        return result_type.ok(tuple(migrations.values()))
+        )
 
     @classmethod
     def _sync_uv_candidates(

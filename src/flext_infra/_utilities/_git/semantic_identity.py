@@ -47,8 +47,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             Consolidated Git identity for one repository path.
 
         """
+        opened = cls._open_repo(request.repo_root)
+        if opened.failure:
+            return r[p.Infra.GitIdentityReport].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(request.repo_root)
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
                 return r[p.Infra.GitIdentityReport].from_failure(primary)
@@ -183,8 +186,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             The authenticated Git directory, or the causal topology failure.
 
         """
+        opened = cls._open_repo(requested)
+        if opened.failure:
+            return r[Path].from_failure(opened)
         try:
-            with cls._repo(requested) as repo:
+            with opened.value as repo:
                 return cls._exact_worktree_control(repo, requested)
         except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
             return r[Path].fail(

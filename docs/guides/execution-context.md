@@ -124,8 +124,11 @@ declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
 `Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`), and that
-publication retires when the member stops being generic or moves. A stale
+(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
+through MRO and importing the facade loads no part (ADR-018, every facade part
+is deferred). That publication retires when the member stops being generic or
+moves. A stale
 generated `Name = Name` publication retires with its import once the name is
 reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
@@ -369,13 +372,13 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
-7. The verb that installs new packages removes the cache entries it
-   superseded: native `uv cache prune` deletes dangling entries under uv's own
-   in-use rule. Mise tool versions are not pruned by a project verb:
-   `mise prune` decides from every configuration tracked on the host, and it
-   reads a tracked file without that file's own `[vars]` (jdx/mise#15101), so
-   from another project's directory it either fails on a foreign configuration
-   or counts that project's tools as unused.
+7. A project verb removes no host-wide cache or tool version. The uv cache
+   and the Mise installs are shared by every project on the host:
+   `uv cache prune` needs an exclusive lock on the shared cache and fails after
+   uv's 300 s lock wait while any other uv process runs, and `mise prune`
+   decides from every configuration tracked on the host while reading a
+   tracked file without that file's own `[vars]` (jdx/mise#15101). Pruning
+   either is a host operation, outside project verbs.
 
 Declared prerequisites of stage 6, open until they close:
 
@@ -1934,6 +1937,13 @@ declared once in the pyproject ownership `conflict_sections`. Generation and the
 modernizer read that same declaration and replace both tables from the packaging
 declarations, so a retired or authored entry leaves on the next `make gen` or
 `deps modernize`.
+uv rebuilds a local project only when one of its cache keys changes, and its
+defaults cover `pyproject.toml`, `setup.py` and `setup.cfg` alone. A package
+project therefore declares every input of its wheel as a key: those defaults,
+`src/**`, each packaged data file, each packaged data directory and repository
+namespace as `<path>/**`, and the declared Hatch hook. Without them a non-editable
+install, such as the `upg` executor, keeps a wheel built from older sources. A
+non-package project declares none.
 Migration validates these inputs before publishing its declaration. A legacy
 manifest explicitly selected as distribution data retains its original bytes;
 retaining that resource does not make it a runtime configuration source again.
