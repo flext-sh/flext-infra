@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+style(tests): format the fixture tooling helper (#2309)
 fix: first group of 0.12.0-dev test failures fixed at their root cause (#2302)
 Merge branch '0.12.0-dev' into fix/infra-tests-green-20261112
 chore(lock): pin FLEXT upstreams to their 0.12.0-dev tips (#2304)
