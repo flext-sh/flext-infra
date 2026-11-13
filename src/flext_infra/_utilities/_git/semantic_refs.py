@@ -577,8 +577,11 @@ class FlextInfraUtilitiesGitSemanticRefs(
             The resulting ``p.Result[p.Infra.GitRootReport]``.
 
         """
+        opened = cls._open_repo(request.repo_root)
+        if opened.failure:
+            return r[p.Infra.GitRootReport].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(request.repo_root)
             root = (
                 Path(repo.working_tree_dir).resolve() if repo.working_tree_dir else None
             )
