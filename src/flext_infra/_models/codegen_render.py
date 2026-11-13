@@ -463,6 +463,25 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         """
 
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
+        cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description=(
+                    "Fleet supply-chain cooldown rendered as the relative "
+                    "exclude-newer span every uv resolution honours"
+                ),
+            ),
+        ]
+        cooldown_exceptions: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Declared CVE or critical-fix packages exempt from the "
+                    "cooldown; empty removes exclude-newer-package"
+                ),
+            ),
+        ] = ()
         constraint_dependencies: Annotated[
             tuple[str, ...],
             m.Field(description="Declared constraints, projected as declared"),
@@ -582,17 +601,17 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 "Template indentation; native refactors supply their project policy."
             ),
         )
-        body_source: tuple[str | tuple[str, str], ...] | None = m.Field(
+        body_source: str | None = m.Field(
             default=None,
             description=(
-                "Ordered authored source and native class-publication"
-                " slots, retaining declaration order and trivia."
+                "Authored class body source, retaining declaration order and trivia."
             ),
         )
         publications: Mapping[str, str] = m.Field(
             default_factory=dict[str, str],
             description=(
-                "Native class-publication targets and their authenticated expressions."
+                "Generic member class publications and their ``Part.Name``"
+                " expressions (python/mypy#22457)."
             ),
         )
         exports: tuple[str, ...] | None = m.Field(

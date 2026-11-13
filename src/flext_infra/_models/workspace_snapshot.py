@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -119,7 +119,8 @@ class FlextInfraModelsWorkspaceSnapshot:
         )
         python_module_facts: t.Port[
             dict[
-                t.Infra.RopeNativeParsedModule,
+                # The engine's parsed module is only this cache's identity key.
+                Hashable,
                 p.Infra.PythonModuleFacts,
             ]
         ] = m.Field(

@@ -56,15 +56,15 @@ class TestsFlextInfraGateErrorReporting:
             project.total_findings,
             eq=sum(len(item.issues) for item in project.gates.values()),
         )
-        receipt = tm.not_none(project.gates[gates[0]].raw_receipt)
-        report_path = receipt.parent.parent / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME
-        report = report_path.read_text(
+        # Reports live at the invocation directory; receipts nest below it.
+        (invocation,) = tuple(reports_dir.iterdir())
+        report = (invocation / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )
         for gate in gates:
             tm.that(report, has=f"- {gate}: FAIL")
         sarif = m.Infra.SarifReport.model_validate_json(
-            (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
+            (invocation / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
         )
         summary = tm.not_none(sarif.properties)
         retained = summary.results[0]
@@ -142,11 +142,9 @@ class TestsFlextInfraGateErrorReporting:
             raw_receipt.read_bytes().decode("utf-8"),
             eq=execution.raw_output,
         )
+        # The console points at the receipt that carries the native output.
         captured = capsys.readouterr()
-        tm.that(
-            f"{captured.out}\n{captured.err}",
-            has=[str(execution.raw_receipt), "invalid-line-length"],
-        )
+        tm.that(f"{captured.out}\n{captured.err}", has=str(execution.raw_receipt))
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -295,9 +293,11 @@ class TestsFlextInfraGateErrorReporting:
             any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
             eq=True,
         )
+        raw_receipt = tm.not_none(execution.raw_receipt)
         captured = capsys.readouterr()
+        tm.that(f"{captured.out}\n{captured.err}", has=str(raw_receipt))
         tm.that(
-            f"{captured.out}\n{captured.err}",
+            raw_receipt.read_text(encoding="utf-8"),
             has=[
                 "Error calling the plugin(version) entry point",
                 "Traceback (most recent call last)",
@@ -333,11 +333,18 @@ class TestsFlextInfraGateErrorReporting:
 
         tm.ok(result)
         tm.fail(result.value[0].passed)
-        captured = capsys.readouterr()
-        tm.that(f"{captured.out}\n{captured.err}", has=list(expected))
         receipt = tm.not_none(result.value[0].gates[c.Infra.MARKDOWN].raw_receipt)
+        captured = capsys.readouterr()
+        tm.that(f"{captured.out}\n{captured.err}", has=str(receipt))
+        (invocation,) = tuple((tmp_path / "reports").iterdir())
+        tm.that(
+            (invocation / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
+                encoding="utf-8",
+            ),
+            has=list(expected),
+        )
         report = m.Infra.SarifReport.model_validate_json(
-            (receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
+            (invocation / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_text(
                 encoding="utf-8",
             ),
         )

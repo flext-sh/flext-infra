@@ -275,6 +275,12 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
+        values["kind"] = declaration.governing_kind(observed.kind)
+        if values["kind"] is c.Infra.ProjectKind.CONSUMER and declaration.project:
+            # A consumer owns no package and is named by its declaration, not by
+            # the distribution it consumes, whatever the metadata shows.
+            values["package"] = False
+            values["distribution"] = declaration.project.constant_name
         validated = u.validate_value(m.Infra.RepositoryRef, values)
         if validated.failure:
             return r[
@@ -336,7 +342,11 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[p.Infra.RepositoryRef]:
         """Build identity from validated checkout metadata and native Git inputs.
 
-        ``kind`` comes from the shared native project-fact detector.
+        ``kind`` comes from the shared native project-fact detector. The role
+        reflects only the checkout's own topology; the caller that holds the
+        attachment fact (the root's discovered members, or the superproject
+        index's gitlinks for a member) settles the final role, so no
+        per-repository identity query runs here.
 
         Returns:
             The resulting ``p.Result[p.Infra.RepositoryRef]``.
@@ -368,17 +378,12 @@ class FlextInfraWorkspaceDetector(
         if origin.failure:
             return r[p.Infra.RepositoryRef].from_failure(origin)
         origin_url, provider_name = origin.value
-        checkout = u.Infra.validate_git_remote_url(declared_url or origin_url).flat_map(
-            lambda remote: u.Infra.git_identity(
-                m.Infra.GitRepoRequest(repo_root=repository_root)
-            ).map(lambda identity: (remote, identity))
-        )
-        if checkout.failure:
-            return r[p.Infra.RepositoryRef].from_failure(checkout)
+        remote = u.Infra.validate_git_remote_url(declared_url or origin_url)
+        if remote.failure:
+            return r[p.Infra.RepositoryRef].from_failure(remote)
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if checkout.value[1].is_submodule
-            or (repository_root / c.Infra.GITMODULES).is_file()
+            if (repository_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(
@@ -398,7 +403,7 @@ class FlextInfraWorkspaceDetector(
                 inputs=() if native_metadata is None else (native_metadata.source,),
                 name=repository_name,
                 distribution=project_name,
-                url=checkout.value[0],
+                url=remote.value,
                 path=path,
                 role=role,
                 provider=provider_name,
@@ -448,7 +453,7 @@ class FlextInfraWorkspaceDetector(
         )
         if provenance.failure:
             return result_type.from_failure(provenance)
-        fresh = cls._require_new_scaffold(repository_root)
+        fresh = cls._require_new_scaffold(repository_root, project.value)
         if fresh.failure:
             return result_type.from_failure(fresh)
         return project
@@ -528,8 +533,13 @@ class FlextInfraWorkspaceDetector(
         return r[bool].ok(value=True)
 
     @staticmethod
-    def _require_new_scaffold(repository_root: Path) -> p.Result[bool]:
+    def _require_new_scaffold(
+        repository_root: Path, project: p.Infra.ProjectSpec
+    ) -> p.Result[bool]:
         """Require a tree with no manifest history and no authored Python sources.
+
+        A consumer owns no package: its authored tests are the content it exists
+        for, so only a ``src`` tree contradicts its declaration.
 
         Returns:
             Success for a new scaffold, or the typed rejection.
@@ -555,8 +565,14 @@ class FlextInfraWorkspaceDetector(
             return r[bool].fail(
                 f"new-project source inventory has no Git owner: {repository_root}",
             )
+        guarded = repository_root.resolve()
+        if project.package_name is None:
+            guarded /= c.Infra.DEFAULT_SRC_DIR
         authored = tuple(
-            path for path in sources if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            path
+            for path in sources
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and path.is_relative_to(guarded)
         )
         if authored:
             return r[bool].fail(
@@ -614,10 +630,14 @@ class FlextInfraWorkspaceDetector(
         )
         if baseline.failure:
             return result_type.from_failure(baseline)
+        gitlinks = u.Infra.git_index_gitlink_paths(repository_root)
+        if gitlinks.failure:
+            return result_type.from_failure(gitlinks)
         context = m.Infra.SubprojectLoadContext.model_validate({
             "integration_branch": (baseline.value),
             "workspace_beads": (workspace_beads),
             "allow_unprovisioned_members": (allow_unprovisioned_members),
+            "superproject_gitlinks": tuple(gitlinks.value),
         })
         for declaration in declared.value:
             loaded = cls._load_subproject(
@@ -769,7 +789,17 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.from_failure(repository)
-        return cls._member_commands_ref(repository.value, inputs.value)
+        # A checkout the superproject index records as a gitlink is attached:
+        # the same fact `rev-parse --show-superproject-working-tree` reads,
+        # taken once for every member.
+        member = (
+            repository.value.model_copy(
+                update={"role": c.Infra.MakeProfile.WORKSPACE},
+            )
+            if path.as_posix() in context.superproject_gitlinks
+            else repository.value
+        )
+        return cls._member_commands_ref(member, inputs.value)
 
     @classmethod
     def _beads_route_gate(
@@ -1053,7 +1083,10 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 f"repository root is not a directory: {resolved_root}",
             )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved_root),
+            include_status=False,
+        )
         if identity.failure:
             return result_type.from_failure(identity)
         return result_type.ok(identity.value)
@@ -1155,12 +1188,17 @@ class FlextInfraWorkspaceDetector(
             superproject_root,
             policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
-        if baseline.failure:
-            return result_type.from_failure(baseline)
-        context = m.Infra.SubprojectLoadContext.model_validate({
-            "integration_branch": baseline.value,
-            "workspace_beads": inherited_beads.value,
-        })
+        context = baseline.flat_map(
+            lambda branch: u.Infra.git_index_gitlink_paths(superproject_root).map(
+                lambda gitlinks: m.Infra.SubprojectLoadContext.model_validate({
+                    "integration_branch": branch,
+                    "workspace_beads": inherited_beads.value,
+                    "superproject_gitlinks": tuple(gitlinks),
+                }),
+            ),
+        )
+        if context.failure:
+            return result_type.from_failure(context)
         loaded_member = u.Infra.git_submodule_declaration(
             m.Infra.GitSubmoduleContractRequest(
                 repo_root=superproject_root,
@@ -1170,7 +1208,7 @@ class FlextInfraWorkspaceDetector(
             lambda declaration: cls._load_subproject(
                 superproject_root,
                 declaration,
-                context=context,
+                context=context.value,
             ),
         )
         undeclared = f"Git submodule is not a declared governed project: {member_root}"
@@ -1340,7 +1378,8 @@ class FlextInfraWorkspaceDetector(
 
         Conform owns ``[build-system]`` and always declares the scaffold
         backend, so only an explicit ``tool.uv.package`` opts out. Reading the
-        pre-render tree would flip participation between two generations.
+        pre-render tree would flip participation between two generations. A
+        consumer owns no package whatever the pre-render metadata shows.
 
         Returns:
             The repository with its rendered package participation.
@@ -1348,6 +1387,11 @@ class FlextInfraWorkspaceDetector(
         """
         result_type = r[p.Infra.RepositoryRef]
         reference = m.Infra.RepositoryRef.model_validate(repository)
+        if reference.kind is c.Infra.ProjectKind.CONSUMER:
+            # The declared kind owns participation: a consumer converted from a
+            # packaged project still carries the old package metadata until the
+            # render drops it.
+            return result_type.ok(reference.model_copy(update={"package": False}))
         if not (repository_root / c.PYPROJECT_FILENAME).is_file():
             return result_type.ok(reference)
         metadata = u.Infra.read_project_metadata_state(repository_root)

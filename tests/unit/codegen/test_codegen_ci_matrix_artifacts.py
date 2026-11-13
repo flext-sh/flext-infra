@@ -107,7 +107,7 @@ class TestsFlextInfraCodegenCiMatrixArtifacts(TestsFlextInfraCodegenCiMatrixSupp
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "config" / "codegen.yaml",
-                "Infra:\n  codegen:\n    repository:\n      kind: internal_flext\n",
+                "Infra:\n  codegen:\n    repository: {}\n",
             )
         )
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:

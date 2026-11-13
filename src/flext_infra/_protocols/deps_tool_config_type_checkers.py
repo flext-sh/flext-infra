@@ -127,6 +127,7 @@ class FlextInfraProtocolsDepsToolConfigTypeCheckers:
         """Structural data contract projected from the owning model."""
 
         findings_exit_codes: tuple[int, ...]
+        ruling_disabled_rules: tuple[t.NonEmptyStr, ...]
 
         @property
         def path_rules(

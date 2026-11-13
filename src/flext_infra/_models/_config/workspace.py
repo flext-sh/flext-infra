@@ -204,10 +204,6 @@ class FlextInfraModelsConfigWorkspace:
             use_enum_values=False, extra="forbid"
         )
 
-        kind: Annotated[
-            c.Infra.ProjectKind,
-            m.Field(description="Declared project profile kind"),
-        ] = c.Infra.ProjectKind.INTERNAL_FLEXT
         beads_enabled: Annotated[
             bool,
             m.Field(description="Repository participates in the Beads contract"),
@@ -257,6 +253,15 @@ class FlextInfraModelsConfigWorkspace:
                 ),
             ),
         ] = ()
+        deferred_instances: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Own configuration roots whose validation is costly: each "
+                    "export is published as a stand-in built on first attribute read"
+                ),
+            ),
+        ] = ()
         examples_module: Annotated[
             t.NonEmptyStr | None,
             m.Field(
@@ -292,6 +297,29 @@ class FlextInfraModelsConfigWorkspace:
             m.Field(description="Own ordered `make help` sections"),
         ] = ()
 
+        @m.field_validator("deferred_instances")
+        @classmethod
+        def _validate_deferred_instances(
+            cls, values: tuple[str, ...]
+        ) -> tuple[str, ...]:
+            """Require each deferred configuration root to be a unique identifier.
+
+            Returns:
+                The declared export names, in declared order.
+
+            Raises:
+                ValueError: If a name is not an identifier or repeats.
+
+            """
+            invalid = [value for value in values if not value.isidentifier()]
+            if invalid:
+                msg = f"deferred instances must be identifiers: {invalid}"
+                raise ValueError(msg)
+            if len(set(values)) != len(values):
+                msg = "deferred instances must be unique"
+                raise ValueError(msg)
+            return values
+
         @m.field_validator("deferred_distributions")
         @classmethod
         def _validate_deferred_distributions(
@@ -314,6 +342,49 @@ class FlextInfraModelsConfigWorkspace:
                 msg = "deferred distributions must be unique"
                 raise ValueError(msg)
             return names
+
+        @m.model_validator(mode="after")
+        def _validate_consumer_declaration(self) -> Self:
+            """Keep a consumer's declaration free of everything a package ships.
+
+            A project that declares no ``package_name`` owns no import package: it
+            is a consumer, and ships no package, module, data or console script.
+
+            Returns:
+                The validated declaration.
+
+            Raises:
+                ValueError: A consumer ships code.
+
+            """
+            project = self.project
+            if project is None or project.package_name is not None:
+                return self
+            shipped = (
+                project.root_packages
+                or project.root_modules
+                or project.repository_namespace_packages
+                or project.packaged_data_paths
+                or project.console_scripts
+                or project.hatch_build_hook_path
+            )
+            if shipped:
+                msg = "a consumer repository ships no package, module or data"
+                raise ValueError(msg)
+            return self
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Elect the governance kind: a project without a package is a consumer.
+
+            Returns:
+                ``consumer`` when the declared project omits its package, else the
+                natively detected kind.
+
+            """
+            project = self.project
+            if project is not None and project.package_name is None:
+                return c.Infra.ProjectKind.CONSUMER
+            return detected
 
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""

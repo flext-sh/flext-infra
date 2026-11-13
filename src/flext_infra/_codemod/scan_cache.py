@@ -37,7 +37,7 @@ class FlextInfraCodemodScanCache:
         config_path: Path,
         rule_ids: Sequence[str] = (),
         targets: Sequence[str] = (),
-        sources: Sequence[Path | p.Cli.AtomicFileState] = (),
+        sources: Sequence[p.Cli.AtomicFileState] = (),
         options: tuple[str, int | None] = ("scan", None),
     ) -> str:
         """Compute a deterministic SHA256 cache key from scan inputs.
@@ -74,19 +74,12 @@ class FlextInfraCodemodScanCache:
             hasher.update(b",")
         hasher.update(b"\x00")
 
-        for source in sorted(
-            sources,
-            key=lambda item: str(item) if isinstance(item, Path) else str(item.path),
-        ):
-            if isinstance(source, Path):
-                if source.is_file():
-                    hasher.update(str(source).encode())
-            else:
-                hasher.update(str(source.path).encode())
-                if source.content is None:
-                    msg = "atomic file state has no content"
-                    raise ValueError(msg)
-                hasher.update(hashlib.sha256(source.content).hexdigest().encode())
+        for source in sorted(sources, key=lambda item: str(item.path)):
+            hasher.update(str(source.path).encode())
+            if source.content is None:
+                msg = "atomic file state has no content"
+                raise ValueError(msg)
+            hasher.update(hashlib.sha256(source.content).hexdigest().encode())
             hasher.update(b";")
 
         return hasher.hexdigest()

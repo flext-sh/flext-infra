@@ -33,7 +33,7 @@ from flext_infra._utilities._codemod import (
 )
 from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.source_bases_runtime import (

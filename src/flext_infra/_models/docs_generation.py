@@ -88,6 +88,13 @@ class FlextInfraModelsDocsGeneration:
             exclude=True,
             description="Captured presentation candidates",
         )
+        metadata_projection: FlextInfraModelsConfigArtifact.CodegenFilePlan | None = (
+            m.Field(
+                default=None,
+                exclude=True,
+                description="Planned pyproject.toml the run publishes for this scope",
+            )
+        )
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute lexical scope root")]
         report_dir: Annotated[

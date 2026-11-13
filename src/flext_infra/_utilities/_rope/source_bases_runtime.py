@@ -1331,6 +1331,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._provider_value_reference(
                     binding, tuple(remaining), visiting, depth
                 )
+            except TypeError as exc:
+                # The declaration resolves here: name the unbound base before
+                # Rope's generic class failure hides which base it was.
+                message = f"Unresolved declared provider base: {target}"
+                raise ValueError(message) from exc
             except (ValueError, ImportError) as exc:
                 resource = module.get_resource()
                 captured = tuple(
@@ -1740,9 +1745,8 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 or Path(resource.real_path).resolve() != local.resolve()
             ):
                 local_resource = self._project.get_resource(str(local))
-                if local_resource is not None:
-                    module = self._project.get_module(target, local_resource)
-                    resource = module.get_resource()
+                module = self._project.get_module(target, local_resource)
+                resource = module.get_resource()
             if resource is not None and not isinstance(
                 module,
                 self._native_module_type,

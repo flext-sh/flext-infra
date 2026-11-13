@@ -149,6 +149,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             uv_resolution=m.Infra.UvResolutionSpec.model_validate({
                 "link_mode": (cls.link_mode(target.repository, toolchain)),
+                "cooldown_days": toolchain.dependency_cooldown_days,
+                "cooldown_exceptions": tuple(
+                    sorted(toolchain.dependency_cooldown_exceptions)
+                ),
                 "constraint_dependencies": (
                     tuple(toolchain.uv_constraint_dependencies)
                 ),
@@ -408,14 +412,26 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         protocol is its only writer, so conform reads it and never syncs it.
         A tree that has no pyproject yet is being created: it starts at the
         typed initial version and the protocol owns every change after that.
+        The version is read through the same managed-conflict recovery as the
+        pyproject it renders, so a conflicted projection can be regenerated.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            return u.Infra.current_workspace_version(repository_root)
-        return r[str].ok(config.Infra.initial_project_version)
+        state = u.Cli.atomic_read_binary_file_state(
+            repository_root / c.PYPROJECT_FILENAME
+        )
+        if state.failure:
+            return r[str].from_failure(state)
+        if state.value.content is None:
+            return r[str].ok(config.Infra.initial_project_version)
+        return (
+            u.Infra
+            .recover_live_pyproject_text(state.value.content.decode(c.DEFAULT_ENCODING))
+            .flat_map(u.Infra.pyproject_regeneration_source)
+            .flat_map(u.Infra.project_version_from_text)
+        )
 
     def _resolved_render_project(
         self,
@@ -550,7 +566,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
-        declared = self._declared_dependency_facts(repository_root, project)
+        declared = self._declared_dependency_facts(
+            repository_root, project, profiles=codegen.scaffold.project.config_bases
+        )
         if declared.failure:
             return result_type.from_failure(declared)
         project_dependencies, declared_dev = declared.value
@@ -656,6 +674,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "canonical_project_name": (target.canonical_project_name),
                 "const_name": (project.constant_name),
+                "package": (repository.package),
                 "package_name": (project.package_name),
                 "packaged_data_paths": ((
                     *packaged_data_paths.files,
@@ -695,7 +714,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     project.repository_namespace_packages
                 ),
                 "root_modules": (project.root_modules),
-                "cli_module": (project.cli_module),
+                "cli_module": (project.cli_module and repository.package),
                 "console_scripts": (project.console_scripts),
                 "runtime_dependency_overlay": (project.runtime_dependency_overlay),
                 "description": (project.description),
@@ -725,17 +744,21 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_root: Path,
         project: p.Infra.ProjectSpec,
         *,
+        profiles: Sequence[p.Infra.ScaffoldConfigBaseSpec],
         manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
-        and development extras. The repository overlay extends those runtime
-        requirements for existing projects as well as new scaffolds.
+        and development extras. A new project depends at runtime on its
+        declared upstream, whose distribution its dependency profile names;
+        the repository overlay comes ahead of that profile's runtime set. A
+        consumer needs no profile: its overlay names the consumed distribution.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
             project: Resolved render project used before the pyproject exists.
+            profiles: Dependency profiles naming each upstream's distribution.
             manifest_source: Original captured TOML; when provided, no file is read.
 
         Returns:
@@ -748,7 +771,25 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             manifest_source is None
             and not (repository_root / c.PYPROJECT_FILENAME).is_file()
         ):
-            return result_type.ok((project.runtime_dependency_overlay, ()))
+            profile = next(
+                (base for base in profiles if base.module == project.upstream),
+                None,
+            )
+            # A consumer names its consumed distribution in its own overlay and
+            # needs no dependency profile for its upstream.
+            if profile is None and project.package_name is not None:
+                return result_type.fail(
+                    f"upstream has no declared dependency profile: {project.upstream}"
+                )
+            return result_type.ok((
+                tuple(
+                    dict.fromkeys((
+                        *project.runtime_dependency_overlay,
+                        *(() if profile is None else (profile.distribution,)),
+                    ))
+                ),
+                (),
+            ))
         declared = FlextInfraCodegenConformContextRender._declared_runtime_requirements(
             repository_root, manifest_source=manifest_source
         )
@@ -772,7 +813,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         return result_type.ok((
             tuple(
                 dict.fromkeys((
-                    *runtime,
+                    # A consumer owns no code: its requirements are its overlay,
+                    # never the leftovers of a former package.
+                    *(() if project.package_name is None else runtime),
                     *project.runtime_dependency_overlay,
                 ))
             ),
@@ -861,7 +904,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         """Resolve the packaged data selection of the target make profile.
 
         A workspace-profile render owns no packaged data selection: workspace
-        aggregation renders no installable project payload of its own.
+        aggregation renders no installable project payload of its own, and a
+        repository without a package ships no data.
 
         Args:
             repository_root: Project root holding the declared data paths.
@@ -873,7 +917,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             The resolved packaged data selection of the render.
 
         """
-        if profile is c.Infra.MakeProfile.WORKSPACE:
+        if profile is c.Infra.MakeProfile.WORKSPACE or project.package_name is None:
             return m.Infra.PackagedDataSelection()
         return FlextInfraEnsurePackagingPhase.resolve_data_paths(
             repository_root,

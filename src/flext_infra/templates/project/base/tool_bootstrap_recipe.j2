@@ -55,6 +55,25 @@
 	fi;
 {%- endmacro %}
 
+{#- One lock resolution per project (ADR-030): each governed member forms its
+    own uv.lock, then this project, whose lock is their composition. Only
+    ``upgrade`` moves the pins a lock already holds; without it a changed
+    declaration resolves and every existing pin stays. -#}
+{% macro uv_lock_resolution(upgrade) -%}
+	{{ mise_network_admission() }} \
+	mise_bin="$(MISE)"; \
+	$(RESOLVE_DESIRED_PYTHON); \
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		case "$$checkout" in .) continue ;; esac; \
+		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
+			$(UV) lock{{ " --upgrade" if upgrade }} --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+	done; \
+	set +f; \
+	$(UV) lock{{ " --upgrade" if upgrade }} --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads;
+{%- endmacro %}
+
 {#- Native installation preserves valid pins. Setup fills absent lock entries;
     upgrade installs the exact pins its preceding resolution published. -#}
 {% macro mise_install(project_root, install_tools, locked=true) -%}
@@ -125,8 +144,8 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 {% set mise_selector = toolchain.mise_selector -%}
 .PHONY: {{ target }}
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 {{ target }}:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="{{ project_root }}/{{ report_relative_path }}"; \

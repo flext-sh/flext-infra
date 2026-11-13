@@ -24,9 +24,7 @@ class FlextInfraGatesPyright(FlextInfraGates):
     gate_name: ClassVar[str] = "Pyright"
     can_fix: ClassVar[bool] = False
     requires_python_targets: ClassVar[bool] = True
-    # The umbrella run analyzes the whole workspace (measured 744s on
-    # 2026-11-05); the member-scale TIMEOUT_LONG bound killed it as interrupted.
-    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_UMBRELLA
+    check_timeout: ClassVar[int] = c.Infra.TIMEOUT_LONG
 
     @override
     def _get_check_dirs(

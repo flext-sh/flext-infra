@@ -356,6 +356,22 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             )
         )
 
+    @staticmethod
+    def _has_authored_sources(root: Path) -> bool:
+        """Report whether ``src`` holds Python sources.
+
+        A repository without a package (a consumer, or one whose package was
+        deleted) owns no source tree even when an empty ``src`` directory
+        remains: that is an absent layout, not an unresolved one. Sources
+        beside a missing layout stay a loud contradiction.
+
+        Returns:
+            Whether any Python module lives under ``src``.
+
+        """
+        source = root / c.Infra.DEFAULT_SRC_DIR
+        return source.is_dir() and any(source.rglob(c.Infra.EXT_PYTHON_GLOB))
+
     @classmethod
     def codemod_layout_scopes(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
@@ -397,7 +413,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         root = project.resolve()
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
-            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            if not cls._has_authored_sources(root):
                 return dict.fromkeys(scopes, ())
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)
@@ -1353,7 +1369,7 @@ class FlextInfraUtilitiesCodemodProjectFacts:
         own = FlextInfraUtilitiesPyprojectConform.project_package_name(root)
         layout = FlextInfraUtilitiesCodegenNamespace.layout(root)
         if layout is None:
-            if not (root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            if not FlextInfraUtilitiesCodemodProjectFacts._has_authored_sources(root):
                 return {}
             msg = f"project layout is unresolved: {root}"
             raise ValueError(msg)

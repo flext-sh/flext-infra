@@ -107,7 +107,7 @@ preview, or a runtime-only membership check does not establish production readin
 
 `verify-environment` rejects a checkout synced in the other mode (CI's
 locked noneditable build vs the local editable binding). Per
-[ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md),
+[ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md),
 root CI checks out declared submodules and installs the composed workspace lock, while
 member CI and standalone checkouts install their own committed member lock. Operation prerequisites
 require the selected physical interpreter; they do not install or retry setup.

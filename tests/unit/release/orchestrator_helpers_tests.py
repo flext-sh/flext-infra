@@ -86,6 +86,71 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(len(checked.issues), eq=0)
 
         @staticmethod
+        def test_pull_request_body_summarizes_any_release_range(
+            tmp_path: Path,
+        ) -> None:
+            """The body stays under GitHub's ceiling while the notes keep every PR."""
+            release_dir = tmp_path / "release"
+            subject = f"{c.Tests.RELEASE_NOTES_CHANGE_LINE} " + "x" * 60
+            merged = c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS // len(subject) + 1
+            changes = "\n".join([subject] * merged)
+            notes_path = release_dir / c.Infra.RELEASE_NOTES_FILENAME
+            body_path = release_dir / c.Infra.RELEASE_PULL_REQUEST_BODY_FILENAME
+
+            tm.ok(
+                u.Infra.generate_notes(
+                    c.Tests.RELEASE_VERSION_TARGET,
+                    c.Tests.RELEASE_TAG_TARGET,
+                    [],
+                    changes,
+                    notes_path,
+                )
+            )
+            tm.ok(
+                u.Infra.generate_pull_request_body(
+                    c.Tests.RELEASE_VERSION_TARGET,
+                    c.Tests.RELEASE_TAG_TARGET,
+                    [],
+                    merged,
+                    body_path,
+                )
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            body = body_path.read_text(encoding="utf-8")
+            tm.that(len(notes), gt=c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS)
+            tm.that(notes.count("\n- fix: release flow"), eq=merged)
+            tm.that(len(body), lt=c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS)
+            tm.that(
+                body,
+                has=[
+                    f"{merged} pull requests",
+                    f"docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md",
+                ],
+            )
+
+        @staticmethod
+        def test_notes_beyond_github_release_ceiling_fail_loud(
+            tmp_path: Path,
+        ) -> None:
+            """Notes GitHub would refuse as the release body fail at generation."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            subject = f"{c.Tests.RELEASE_NOTES_CHANGE_LINE} " + "x" * 60
+            merged = c.Infra.GH_RELEASE_BODY_MAX_CHARS // len(subject) + 1
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [],
+                "\n".join([subject] * merged),
+                notes_path,
+            )
+
+            tm.fail(result)
+            tm.that(result.error or "", has=str(c.Infra.GH_RELEASE_BODY_MAX_CHARS))
+            tm.fail(u.Infra.release_body_admitted(notes_path))
+
+        @staticmethod
         def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
             """Return a typed failure when the note path is a directory."""
             notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME

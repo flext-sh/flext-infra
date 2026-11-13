@@ -97,7 +97,9 @@ class FlextInfraUtilitiesLazyInitRender:
             m.Infra.LazyInitRootRender(
                 autogen_header=c.Infra.AUTOGEN_HEADER,
                 docstring=cls._lazy_init_docstring(plan, project_root, model),
-                runtime_import_lines=cls._lazy_init_runtime_imports(helpers),
+                runtime_import_lines=cls._lazy_init_runtime_imports(
+                    helpers, deferring=bool(plan.deferred_instances)
+                ),
                 type_checking_lines="\n".join(
                     cls._lazy_init_type_checking(public, first_party)
                 ),
@@ -107,6 +109,9 @@ class FlextInfraUtilitiesLazyInitRender:
                 deferred_members_mapping=cls._lazy_init_deferred_mapping(
                     plan.deferred_members
                 ),
+                deferred_instances_call=cls._lazy_init_instances_call({
+                    name: entries[name] for name in plan.deferred_instances
+                }),
             ),
         ).unwrap()
         compile(rendered, str(plan.context.init_path), "exec")
@@ -218,20 +223,46 @@ class FlextInfraUtilitiesLazyInitRender:
         )
 
     @classmethod
-    def _lazy_init_runtime_imports(cls, helpers: Sequence[str]) -> str:
+    def _lazy_init_runtime_imports(
+        cls, helpers: Sequence[str], *, deferring: bool
+    ) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
         Returns:
             The runtime import lines.
 
         """
+        names = sorted({
+            *(helpers or ("install_lazy_exports",)),
+            *(("defer_lazy_instances",) if deferring else ()),
+        })
         return "\n".join(
-            cls.source_import_lines(
-                "",
-                c.Infra.LAZY_BOOTSTRAP_MODULE,
-                helpers or ("install_lazy_exports",),
-            )
+            cls.source_import_lines("", c.Infra.LAZY_BOOTSTRAP_MODULE, names)
         )
+
+    @classmethod
+    def _lazy_init_instances_call(cls, entries: t.LazyAliasMap) -> str:
+        """Render the ``defer_lazy_instances`` call bound after the installer.
+
+        It receives exactly the lazy entries of the deferred roots, so it
+        resolves each root through the module the installer maps it to.
+
+        Returns:
+            The call source, empty when no configuration root is deferred.
+
+        """
+        if not entries:
+            return ""
+        names = sorted(entries, key=cls.lazy_init_export_key)
+        quoted = ", ".join(f'"{name}"' for name in names)
+        return "\n".join((
+            "defer_lazy_instances(",
+            "    __name__,",
+            "    globals(),",
+            cls._lazy_init_mapping(entries),
+            f"    ({quoted}{',' if len(names) == 1 else ''}),",
+            ")",
+        ))
 
     @classmethod
     def _lazy_init_eager_bindings(
@@ -298,7 +329,8 @@ class FlextInfraUtilitiesLazyInitRender:
     ) -> Mapping[str, Sequence[tuple[str, str]]]:
         """Group public targets by the module their static import names.
 
-        Preserve the elected origin used by the runtime lazy mapping.
+        Preserve the elected origin used by the runtime lazy mapping. A module
+        object export (no attribute) is imported from its parent package.
 
         Returns:
             The ``(export, imported)`` pairs per importing module.
@@ -307,6 +339,8 @@ class FlextInfraUtilitiesLazyInitRender:
         groups: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for name in sorted(public):
             module, attr = public[name]
+            if not attr:
+                module, _, attr = module.rpartition(".")
             groups[module].append((name, attr))
         return groups
 

@@ -55,6 +55,10 @@ class FlextInfraUtilitiesDocsGenerateProject(
     ) -> list[tuple[Path, str]]:
         """Render package API pages before their owning tree is pruned.
 
+        A consumer owns no package: its public API page holds no mkdocstrings
+        directive, which has nothing to collect, and states that the API is the
+        consumed distribution's.
+
         Returns:
             The resulting ``list[tuple[Path, str]]``.
 
@@ -69,6 +73,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
                     f"{scope.documentation_text(c.Infra.DocumentationText.PUBLIC_API)}",
                     scope.package_name,
                     width=width,
+                    documentation_language=scope.documentation_language,
                 ),
             ),
             (
@@ -152,6 +157,7 @@ class FlextInfraUtilitiesDocsGenerateProject(
         contract = FlextInfraUtilitiesDocsContract.docs_current_project_contract(
             scope.path,
             analyzed_contract,
+            metadata_projection=scope.metadata_projection,
         )
         module_names = FlextInfraUtilitiesDocsGenerateProject._module_names(scope)
         rendered: list[tuple[Path, str]] = [

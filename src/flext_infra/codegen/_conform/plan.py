@@ -23,6 +23,19 @@ from flext_infra.codegen._conform.scaffold_plan import (
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
+    _planning_topology: (
+        tuple[
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
+        ]
+        | None
+    ) = m.PrivateAttr(default=None)
+    (
+        "The invocation's authenticated topology, loaded once from Git and its "
+        "declarations; every planning phase of this invocation reuses it."
+    )
+
     def plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
@@ -45,9 +58,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[p.Infra.CodegenPlan]``.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        root = request.root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
-            return r[p.Infra.CodegenPlan].from_failure(inputs)
+            # The first planning failure escapes with its original exception.
+            u.Infra.codegen_raise_failure(root, inputs)
         return self._plan_repositories(request, inputs.value)
 
     def _plan_single_surface(
@@ -358,7 +373,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         participants = tuple(
             participant
             for participant in repositories
-            if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            if participant.kind in c.Infra.TOOLCHAIN_GOVERNED_KINDS
         )
         roots = tuple(
             (root / participant.path).resolve() for participant in participants
@@ -490,6 +505,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.RepositoryRef,
             ]
         ]
+        cached = self._planning_topology
+        if cached is not None:
+            return result_type.ok(cached)
         workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = (
@@ -551,7 +569,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 "gascity_enabled": workspace.gascity_enabled,
                 "external_dependency_paths": workspace.external_dependency_paths,
             })
-        return result_type.ok((workspace, current_target, current_repository))
+        topology = (workspace, current_target, current_repository)
+        self._planning_topology = topology
+        return result_type.ok(topology)
 
     @staticmethod
     def _planning_report_evidence(
@@ -988,7 +1008,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         surface: c.Infra.CodegenConformSurface,
         inputs: p.Infra.CodegenInputs,
     ) -> p.Result[tuple[p.Infra.CodegenRepositoryPlanTask, ...]]:
-        """Build one planning task per selected internal FLEXT repository.
+        """Build one planning task per selected toolchain-governed repository.
 
         Returns:
             The ordered planning tasks, or the first member configuration
@@ -999,7 +1019,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         result_type = r[tuple[p.Infra.CodegenRepositoryPlanTask, ...]]
         tasks: list[p.Infra.CodegenRepositoryPlanTask] = []
         for repository in selected:
-            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
+            if repository.kind not in c.Infra.TOOLCHAIN_GOVERNED_KINDS:
                 u.Cli.info(
                     f"  stage=skip repository={repository.name} "
                     f"kind={repository.kind.value} is not rewritten by generation",

@@ -37,6 +37,7 @@ only-include = [
 ]
 {%- endmacro -%}
 
+{% if package %}
 # [MANAGED] build-system
 [build-system]
 build-backend = {{ scaffold.build.backend | tojson }}
@@ -45,6 +46,7 @@ requires = [
   {{ item | tojson }},
 {% endfor %}
 ]
+{% endif %}
 
 # [CUSTOM] name, description, authors, maintainers, scripts, entry-points, classifiers, keywords, license, urls, readme, version, dependencies, optional-dependencies
 # [MANAGED] requires-python
@@ -104,7 +106,9 @@ Repository = "{{ repository }}"
 {% endif %}
 
 [tool.flext.docs]
+{% if package_name %}
 package_name = {{ package_name | tojson }}
+{% endif %}
 {% if documentation_language != "en" %}documentation_language = {{ documentation_language | tojson }}
 {% endif %}
 
@@ -112,15 +116,7 @@ package_name = {{ package_name | tojson }}
 forced files into editable wheels, installing a stale namespace portion beside
 the editable source. Package config ships through only-include; the producer
 declaration ships as wheel extra-metadata under <dist>.dist-info/. -#}
-{% if make_profile == "workspace" and project_declaration_resource %}
-
-[tool.hatch.build.targets.wheel.extra-metadata]
-{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
-
-[tool.hatch.build.targets.sdist.force-include]
-{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
-{% endif %}
-{% if make_profile != "workspace" %}
+{% if package %}
 {% if hatch_build_hook_path %}
 
 {# NOTE: emit only the project-owned declaration. #}
@@ -176,6 +172,9 @@ path = {{ hatch_build_hook_path | tojson }}
 # [MANAGED] tool.uv
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
+{% if not package %}
+package = false
+{% endif %}
 {% if uv_cache_key_files %}
 cache-keys = [
 {% for key_file in uv_cache_key_files %}

@@ -1,5 +1,5 @@
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
-{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, mise_staging_cleanup, mise_acquisition, mise_install, toml_projection_preflight, mise_lock_changed -%}
+{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe, mise_network_admission, uv_lock_resolution, mise_staging_cleanup, mise_acquisition, mise_install, toml_projection_preflight, mise_lock_changed -%}
 {% from "runtime_context_recipe.j2" import physical_file_reader, git_root_reader, bootstrap_root_reader, runtime_root_reader -%}
 {% set direnv_tool = toolchain.tools | selectattr("name", "equalto", "direnv") | first -%}
 {% set uv_tool = toolchain.tools | selectattr("name", "equalto", "uv") | first %}
@@ -106,7 +106,7 @@ VERB_CONTRACT := $(filter {{ ((contract_env_values | list) + (contract_env_value
 # Capture the selected approval mode before any project-owned include.
 ifeq ($(strip $({{ make.ci.variable }})),{{ make.ci.value }})
 override APPROVAL_CONTEXT := {{ make.ci.value }}
-ifneq ($(filter $(if $(VERB_CONTRACT),,upg) _upg% dep propagate,$(MAKECMDGOALS)),)
+ifneq ($(filter $(if $(VERB_CONTRACT),,upg lock) _upg% _lock% dep propagate,$(MAKECMDGOALS)),)
 $(error Resolution and member propagation are forbidden in CI)
 endif
 endif
@@ -429,9 +429,11 @@ PREPARE_ENVIRONMENT = install_stage=; install_candidate_origin=; \
 	$(UV) venv --relocatable --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads "$$install_environment"; \
 	install_candidate_origin="$$(stat -c '%d:%i' "$$install_environment")"; \
 	install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"
+# The candidate's own flext-infra console script. Setup runs its workspace step
+# through it, so one process does the work and proves the entry point.
+INSTALL_FLEXT_INFRA = "$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)"
 VERIFY_ENVIRONMENT = test -f "$$install_environment/{{ environment_metadata | default('pyvenv.cfg') }}"; \
-	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"; \
-	"$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_BIN))/flext-infra$(if $(filter Windows_NT,$(OS)),.exe,)" --help >/dev/null
+	"$$install_python" -I -c 'import pathlib, sys; sys.exit(0 if sys.prefix != sys.base_prefix and pathlib.Path(sys.prefix).resolve() == pathlib.Path(sys.argv[1]).resolve() else "candidate interpreter leaves its environment")' "$$install_environment"
 PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
 	if [ -n "$$install_origin" ]; then \
 		if [ -L "$$install_target" ] || [ "$$(stat -c '%d:%i' "$$install_target")" != "$$install_origin" ]; then \
@@ -451,15 +453,20 @@ PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
 # publication applies. Only a differing environment (or a local FLEXT editable
 # selection) is rebuilt and atomically exchanged, so a repeated setup costs a
 # check, not a full reinstall and deletion.
+# The check's exit status is its whole result: a non-zero status only selects
+# the rebuild, so uv's native "environment is outdated" report is held in
+# probe_report instead of surfacing as an error on a successful setup. A real
+# failure recurs in the rebuild's own `uv sync --frozen`, which runs unfiltered
+# and fails loud with uv's native output.
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_target" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; then \
+	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && probe_report="$$(env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_target" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args 2>&1)"; then \
 		install_environment="$$install_target"; \
 		install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"; \
-		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} "$$install_python" -m flext_infra {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \
+		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \
 		$(VERIFY_ENVIRONMENT); \
 		printf 'setup: %s already satisfies uv.lock; kept\n' "$$install_target"; \
 	else \
@@ -472,7 +479,7 @@ INSTALL_RUNTIME_RECIPE = set -eu; \
 			$(UV) pip install --python "$$install_python" --no-deps --editable "$(RUNTIME_ROOT)"; \
 {%- endif %}
 		fi; \
-		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} "$$install_python" -m flext_infra {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
+		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"$(if $(strip $(FLEXT)), --flext-root "$(FLEXT)"); \
 		$(PUBLISH_ENVIRONMENT); \
 	fi
 
@@ -623,15 +630,14 @@ override EXECUTOR_FLEXT_INFRA = env -u MYPYPATH{% for variable in make.native_en
 # own runtime closure (derived from the installed metadata) supplies part of the
 # executor, so its locked non-editable build is installed, never the editable
 # source; every lock is already written before it runs.
-# Native `--compile-bytecode` writes the .pyc at install time, so the first import
-# never compiles the stack (the host may export PYTHONDONTWRITEBYTECODE).
 SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); $(PREPARE_ENVIRONMENT); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --compile-bytecode --link-mode {{ uv_link_mode }}; \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --link-mode {{ uv_link_mode }}; \
+	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
 	$(PUBLISH_ENVIRONMENT)
 
 # Setup checks native lock freshness without writing the lock. Native uv selects
 # every member's declared extras and groups, without copying dependency graphs.
-{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--compile-bytecode", "--link-mode", uv_link_mode] %}
+{% set setup_sync_arguments = ["--all-extras", "--all-groups", "--link-mode", uv_link_mode] %}
 {% if make_profile == "workspace" %}{% set setup_sync_arguments = setup_sync_arguments + ["--all-packages"] %}{% endif %}
 override SETUP_SYNC_ARGS := {{ setup_sync_arguments | join(" ") }}
 
@@ -685,7 +691,7 @@ endef
    process; a hooked or interpreter-bound one runs through RUN_PUBLIC. -#}
 {% macro verb_rules(group, verbs) -%}
 {% set ns = namespace(plain=[], dispatch=[], active=[], interp=[]) -%}
-{% for verb in verbs if verb.name not in ("setup", "upg") -%}
+{% for verb in verbs if verb.name not in ("setup", "upg", "lock") -%}
 {% if not verb.requires_activation %}{% set ns.plain = ns.plain + [verb.name] -%}
 {% elif verb.name in ("help", "clean") %}{% set ns.dispatch = ns.dispatch + [verb.name] -%}
 {% else %}{% set ns.active = ns.active + [verb.name] -%}
@@ -761,6 +767,16 @@ upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchai
 else
 upg: _builtin_require_workspace
 	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" upg
+endif
+
+# Attached members delegate the same operation to their physical workspace owner
+# before resolving anything.
+ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
+lock: _builtin_require_workspace _builtin_require_github_credential
+	+@$(SELF_MAKE) _lock_lifecycle
+else
+lock: _builtin_require_workspace
+	+@"$(SELF_MAKE_EXECUTABLE)" --no-print-directory -C "$(RUNTIME_ROOT)" -f "$(RUNTIME_ROOT)/Makefile" lock
 endif
 {{ verb_rules("SCRIPT_VERBS", script_verbs) }}
 else
@@ -914,18 +930,7 @@ _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 
 _upg_lifecycle:
 	+@set -eu; \
-	{{ mise_network_admission() }} \
-	mise_bin="$(MISE)"; \
-	$(RESOLVE_DESIRED_PYTHON); \
-	set -f; \
-	$(GOVERNED_CHECKOUTS); \
-	for checkout in $$checkouts; do \
-		case "$$checkout" in .) continue ;; esac; \
-		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
-			$(UV) lock --upgrade --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
-	done; \
-	set +f; \
-	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	{{ uv_lock_resolution(true) }} \
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
@@ -933,6 +938,16 @@ _upg_lifecycle:
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
 	$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),:,$(DIRENV) allow "$(PROJECT_ROOT)")
+
+# Lock resolves a changed dependency declaration (a newly declared requirement)
+# into the UV locks and keeps every pin they already hold; only upg moves a pin.
+# It runs from the environment setup installed, provisions no tool, and ends with
+# the same frozen installation, so the new requirement is installed.
+.PHONY: _lock_lifecycle
+_lock_lifecycle:
+	+@set -eu; \
+	{{ uv_lock_resolution(false) }} \
+	$(INSTALL_RUNTIME_RECIPE)
 
 # Gate, fix and build verbs act on this repository only, with one body per verb
 # in every profile: a workspace root evaluates itself exactly as CI does.

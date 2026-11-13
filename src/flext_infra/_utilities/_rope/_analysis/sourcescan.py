@@ -338,7 +338,11 @@ class FlextInfraUtilitiesRopeAnalysisSourceScan:
     def module_assignment_strings_source(
         source_module: p.Infra.RopePyModule, name: str
     ) -> Sequence[str]:
-        """Read declared strings from the elected native binding index.
+        """Read the effective declared strings from the native binding index.
+
+        The native reader elects the binding Python keeps: the last direct
+        assignment, extended by later literal ``+=`` statements, which is the
+        ``__all__`` a package's generated initializer publishes.
 
         Returns:
             The declared strings, or an empty sequence when absent.

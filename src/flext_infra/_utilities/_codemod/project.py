@@ -34,8 +34,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
@@ -246,7 +244,7 @@ class FlextInfraUtilitiesCodemodProject(
                 "ruleId": rule.id,
                 "severity": c.Infra.NativeRuleSeverity.ERROR,
                 "message": rule.message,
-                "origin": "owned-path",
+                "origin": c.Infra.ModFindingOrigin.OWNED_PATH,
                 "text": "",
                 "lines": "",
                 "range": {

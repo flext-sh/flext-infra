@@ -143,9 +143,14 @@ class FlextInfraUtilitiesLazyInitPlan:
             entries = tuple(
                 entry for entry in entries if entry.project_root == run.root
             )
+        # Deepest first; at one depth the tests namespace comes last, because
+        # it publishes its sibling packages' planned exports.
         package_dirs = sorted(
             (entry.package_dir for entry in entries),
-            key=FlextInfraUtilitiesBase.path_depth,
+            key=lambda package_dir: (
+                FlextInfraUtilitiesBase.path_depth(package_dir),
+                package_dir.name != c.Infra.DIR_TESTS,
+            ),
             reverse=True,
         )
         if target is not None and target not in package_dirs:
@@ -433,21 +438,75 @@ class FlextInfraUtilitiesLazyInitPlan:
         )
 
     @classmethod
+    def _lazy_init_instance_deferrals(
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
+    ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
+        """Defer each declared configuration root in every initializer exporting it.
+
+        The owning project declares the roots whose validation is costly; the
+        initializer publishes each as a stand-in built on first attribute read,
+        so importing the package validates no configuration.
+
+        Returns:
+            Each plan that gained deferred roots, by package directory.
+
+        Raises:
+            ValueError: If a declared root is exported by no initializer of its
+                project.
+
+        """
+        updated: dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        declared: dict[Path, tuple[str, ...]] = {}
+        exported: dict[Path, set[str]] = {}
+        for package_dir, plan in run.plans.items():
+            root = FlextInfraUtilitiesLazyInitRender.lazy_init_project_root(
+                run.model, plan.context.pkg_dir
+            )
+            if root not in declared:
+                declared[root] = (
+                    FlextInfraUtilitiesProjectManagedArtifacts
+                    .load_repository_declaration_inputs(
+                        root, source_project=run.model.source_project
+                    )
+                    .unwrap()
+                    .spec.deferred_instances
+                )
+            names = tuple(name for name in declared[root] if name in plan.lazy_map)
+            exported.setdefault(root, set()).update(names)
+            if names:
+                updated[package_dir] = plan.model_copy(
+                    update={"deferred_instances": names}
+                )
+        missing = {
+            root: sorted(set(names) - exported[root])
+            for root, names in declared.items()
+            if set(names) - exported[root]
+        }
+        if missing:
+            msg = f"deferred instances are exported by no initializer: {missing}"
+            raise ValueError(msg)
+        return updated
+
+    @classmethod
     def _lazy_init_deferrals(
         cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
     ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
-        """Give each facade-composed class export of a heavy module its stand-in.
+        """Give each heavy-module class export the facade import reaches a stand-in.
 
-        A stand-in is valid only for a class composed by MRO into a facade
-        surface, so selection waits until every package is planned: the
-        facade's bases resolve through the packages that publish them. Every
-        other class export of a heavy module stays a plain lazy export.
+        A class is reached when a facade composes it by MRO, or when a module
+        that importing the facades loads binds it by a runtime import. Either
+        reach would load its heavy module, so it gets a stand-in. Selection
+        waits until every package is planned, because both reaches resolve
+        through the packages that publish them. Every other class export of a
+        heavy module stays a plain lazy export. Declared configuration roots
+        are deferred first, so the class selection reads those plans.
 
         Returns:
             Each plan that gained stand-ins, by package directory.
 
         """
-        updated: dict[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan] = {}
+        updated = dict(cls._lazy_init_instance_deferrals(run))
+        run.plans.update(updated)
         roots: dict[Path, frozenset[str]] = {}
         composed: frozenset[tuple[str, str]] | None = None
         python = FlextInfraUtilitiesPythonModel
@@ -459,7 +518,9 @@ class FlextInfraUtilitiesLazyInitPlan:
             if not heavy:
                 continue
             if composed is None:
-                composed = cls._lazy_init_facade_composed(run)
+                composed = cls._lazy_init_import_reached(
+                    run, cls._lazy_init_facade_composed(run), heavy
+                )
             deferred: dict[str, Sequence[str]] = {}
             for name, (module, attr) in sorted(plan.lazy_map.items()):
                 facts = python.python_model_module(run.model, module)
@@ -509,6 +570,55 @@ class FlextInfraUtilitiesLazyInitPlan:
                 if owner is not None:
                     roots[module.module_name, owner[1]] = plan
         return roots
+
+    @classmethod
+    def _lazy_init_import_reached(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        composed: frozenset[tuple[str, str]],
+        heavy: frozenset[str],
+    ) -> frozenset[tuple[str, str]]:
+        """Return every in-package class importing the facades reaches.
+
+        The modules of the composed classes load with the facades unless the
+        class itself imports a declared distribution, and every class such a
+        loaded module binds by a runtime import is reached too; a reached
+        class of a light module loads that module in turn.
+
+        Returns:
+            The composed classes and every class their loaded modules import.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        plans = {plan.context.current_pkg: plan for plan in run.plans.values()}
+
+        def light(module: str) -> bool:
+            facts = python.python_model_module(run.model, module)
+            return facts is not None and not (facts.runtime_imports & heavy)
+
+        reached = set(composed)
+        pending = sorted({module for module, _ in composed if light(module)})
+        loaded = set(pending)
+        while pending:
+            module = pending.pop()
+            facts = python.python_model_module(run.model, module)
+            plan = plans.get(module.rpartition(".")[0])
+            if facts is None or plan is None:
+                continue
+            for name in sorted(facts.runtime_names):
+                target = cls._lazy_init_base_target(
+                    run, (plan.context, plan.lazy_map), facts.imports.get(name)
+                )
+                if target is None:
+                    continue
+                target_facts = python.python_model_module(run.model, target[0])
+                if target_facts is None or target[1] not in target_facts.classes:
+                    continue
+                reached.add(target)
+                if target[0] not in loaded and light(target[0]):
+                    loaded.add(target[0])
+                    pending.append(target[0])
+        return frozenset(reached)
 
     @classmethod
     def _lazy_init_facade_composed(
@@ -996,19 +1106,42 @@ class FlextInfraUtilitiesLazyInitPlan:
                 run, sibling_context
             ).items():
                 publics.setdefault(name, target)
-            root_init = sibling / c.Infra.INIT_PY
-            if run.model.source_project.source_query(root_init, "isfile"):
-                python = FlextInfraUtilitiesPythonModel
-                for name in (
-                    python.python_model_exports(
-                        python.python_model_module_at(
-                            run.model, root_init, sibling_context.current_pkg
-                        )
-                    )
-                    or ()
-                ):
-                    publics[name] = (sibling_context.current_pkg, name)
+            for name in cls._lazy_init_candidate_exports(
+                run, sibling, sibling_context.current_pkg
+            ):
+                publics[name] = (sibling_context.current_pkg, name)
         return publics
+
+    @staticmethod
+    def _lazy_init_candidate_exports(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        package_dir: Path,
+        package: str,
+    ) -> Sequence[str]:
+        """Return a package initializer's exports in this run's candidate.
+
+        A package this run planned publishes its planned exports; reading its
+        initializer from disk would replay the previous generation and take a
+        second run to converge. An unplanned package keeps its current
+        initializer.
+
+        Returns:
+            The exports the candidate initializer of ``package_dir`` declares.
+
+        """
+        planned = run.plans.get(package_dir)
+        if planned is not None:
+            return planned.exports
+        initializer = package_dir / c.Infra.INIT_PY
+        if not run.model.source_project.source_query(initializer, "isfile"):
+            return ()
+        python = FlextInfraUtilitiesPythonModel
+        return (
+            python.python_model_exports(
+                python.python_model_module_at(run.model, initializer, package)
+            )
+            or ()
+        )
 
     @staticmethod
     def _lazy_init_test_namespace_dirs(

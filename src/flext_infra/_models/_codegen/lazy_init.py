@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
@@ -16,7 +16,7 @@ from flext_infra import c
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenLazyInit
-from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
+from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraModelsCodegenLazyInit:
@@ -71,6 +71,15 @@ class FlextInfraModelsCodegenLazyInit:
                 ),
             ),
         ]
+        runtime_names: Annotated[
+            frozenset[str],
+            m.Field(
+                description=(
+                    "Local names bound by from-imports at module scope outside "
+                    "type-checking guards"
+                ),
+            ),
+        ]
 
     class PythonModuleFactsDraft(m.ArbitraryTypesModel):
         """Facts of one module accumulated statement by statement, then frozen."""
@@ -121,7 +130,8 @@ class FlextInfraModelsCodegenLazyInit:
         modules: Annotated[
             t.Port[
                 MutableMapping[
-                    FlextInfraTypesRopeNative.RopeNativeParsedModule,
+                    # The engine's parsed module is only this cache's identity key.
+                    Hashable,
                     FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],
@@ -209,6 +219,13 @@ class FlextInfraModelsCodegenLazyInit:
             description=(
                 "Member names of each class export whose module imports a "
                 "declared deferred distribution; it loads on first member use."
+            ),
+        )
+        deferred_instances: Sequence[str] = m.Field(
+            default_factory=tuple,
+            description=(
+                "Declared configuration-root exports published as stand-ins "
+                "that build the root on first attribute read."
             ),
         )
 
@@ -471,6 +488,13 @@ class FlextInfraModelsCodegenLazyInit:
             description=(
                 "Line-prefixed ``deferred_members`` installer argument; empty "
                 "when the package defers no export."
+            ),
+        )
+        deferred_instances_call: str = m.Field(
+            default_factory=str,
+            description=(
+                "``defer_lazy_instances`` call bound after the installer; empty "
+                "when the package defers no configuration root."
             ),
         )
 

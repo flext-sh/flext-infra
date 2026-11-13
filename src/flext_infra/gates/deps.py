@@ -33,14 +33,21 @@ class FlextInfraGatesDeps(FlextInfraGates):
 
     @override
     def selected_for(self, project_dir: Path, ctx: p.Infra.GateContext) -> bool:
-        """Select projects that declare dependencies (a pyproject exists).
+        """Select packaged projects that declare dependencies (a pyproject exists).
+
+        Deptry compares the imports of production source with the declaration; an
+        unpackaged project (a consumer) ships no production source to compare.
 
         Returns:
-            The resulting ``bool``.
+            Whether the project declares a manifest and participates in packaging.
 
         """
         del ctx
-        return (project_dir / c.PYPROJECT_FILENAME).is_file()
+        return (project_dir / c.PYPROJECT_FILENAME).is_file() and (
+            u.Infra.project_package_participation(
+                u.Infra.read_project_metadata_state(project_dir).unwrap().packaging
+            )
+        )
 
     @override
     def check(

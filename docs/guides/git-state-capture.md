@@ -99,16 +99,10 @@ owned lane's integration, or retirement's published preservation and active-sess
 proofs. Consequently `--operation create` and `--operation retire` fail closed even
 when the measured Git boundary is valid.
 
-Automated lane publication (`u.Infra.git_publish_lane`, used by `make
-release-version` and `make propagate`) is not agent lane creation: it owns one
-deterministic protocol branch (`release/next`, the propagation lane), starts only
-from a clean checkout on the declared integration branch, and continues that branch
-when it already exists locally or on the remote. It therefore applies the `verify`
-preflight and the clean-base check, never `--operation create`, whose Beads-ownership
-proof a clean CI checkout cannot carry. No branch-name heuristic, caller boolean,
-correlation row, or foreign-lane count substitutes for those proofs. Creation checks
-run before directory creation; removal checks retain dirty, nested-submodule, and
-lock protection and do not force removal or prune other registrations.
+No branch-name heuristic, caller boolean, correlation row, or foreign-lane count
+substitutes for the lane proofs. Creation checks run before directory creation;
+removal checks retain dirty, nested-submodule, and lock protection and do not force
+removal or prune other registrations.
 
 Automated lane publication (`u.Infra.git_publish_lane`, used by `make
 release-version` and `make propagate`) is not agent lane creation. It owns one
@@ -122,6 +116,19 @@ Beads-ownership proof. The operator authorized this contract on 2026-11-12
 de exigir o recibo que nada produz; mantenho as verificações somente-leitura e o
 checkout limpo, apago o código morto do recibo, provo com make release-version real
 e faço merge."), retiring the release `LANE_CHECKPOINT_REF` receipt transport.
+
+Continuing the lane merges the base in with `git merge --no-ff`. A full generated
+projection is declared `-merge linguist-generated` in `.gitattributes`, so Git
+never combines two renderings of it and the lane's earlier rendering always
+conflicts with the base's (Git reports "Cannot merge binary files"). When every
+conflicted path carries both attributes, the merge concludes with the base's
+rendering and the producing step regenerates it from the merged sources; any other
+conflict keeps the merge state and fails with the original error.
+
+The lane then refreshes its pull request, resolved by head, base and `open` state.
+A merged or closed pull request on the same head, such as the previous release, is
+history and is never edited: with none open, the lane opens a new one. Several open
+pull requests on one lane fail loud.
 
 This boundary does not claim verified runtime stability, PR approval, authorized
 retirement, or enforcement over arbitrary external Git commands. Checkpoint capture,

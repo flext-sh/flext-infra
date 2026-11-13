@@ -12,9 +12,7 @@ from pathlib import Path
 
 from flext_infra import c, m, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope.runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )

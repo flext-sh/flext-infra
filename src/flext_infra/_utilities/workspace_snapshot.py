@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import ast
 import hashlib
-from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
-from contextlib import ExitStack, closing, contextmanager
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -27,11 +27,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
 )
 from flext_infra._utilities._rope import (
-    FlextInfraRopeProject,
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.source_bases_runtime import (
@@ -119,64 +118,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 sources[name] = (path, project.source_text(path))
         return sources
 
-    class BoundSources(MutableMapping[Path, str]):
-        """Python sources of one bound view, read on first access inside it.
-
-        A binding consumer that never reads the sources pays no discovery walk
-        and no read; a read after the view closed would observe another view,
-        so it fails loud instead.
-        """
-
-        def __init__(
-            self, project: p.Infra.RopeProject, scopes: tuple[Path, ...]
-        ) -> None:
-            self._project = project
-            self._scopes = scopes
-            self._sources: dict[Path, str] | None = None
-            self._open = True
-
-        def close(self) -> None:
-            """Close the binding; unread sources can no longer be read."""
-            self._open = False
-
-        def _loaded(self) -> dict[Path, str]:
-            if self._sources is None:
-                if not self._open:
-                    msg = "bound sources read after their source view closed"
-                    raise RuntimeError(msg)
-                self._sources = {
-                    path: self._project.source_text(path)
-                    for scope in self._scopes
-                    for path in (
-                        FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                            scope,
-                            workspace_excluded_top_dirs=frozenset(),
-                            source_project=self._project,
-                        )
-                    )
-                }
-            return self._sources
-
-        @override
-        def __getitem__(self, key: Path) -> str:
-            return self._loaded()[key]
-
-        @override
-        def __setitem__(self, key: Path, value: str) -> None:
-            self._loaded()[key] = value
-
-        @override
-        def __delitem__(self, key: Path) -> None:
-            del self._loaded()[key]
-
-        @override
-        def __iter__(self) -> Iterator[Path]:
-            return iter(self._loaded())
-
-        @override
-        def __len__(self) -> int:
-            return len(self._loaded())
-
     @staticmethod
     def snapshot_engine(
         snapshot: p.Infra.WorkspaceSnapshot | None,
@@ -254,7 +195,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 root, project_roots, declared_files, original_root=original_root
             )
             project_context = (
-                cls.workspace_overlay_project(
+                FlextInfraUtilitiesRopeCore.workspace_overlay_project(
                     root,
                     project_roots,
                     declared_files=declared_files,
@@ -267,11 +208,20 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 )
             )
             project = bindings.enter_context(project_context)
-            sources = cls.BoundSources(project, project_roots or (root,))
-            try:
-                yield (project, sources)
-            finally:
-                sources.close()
+            yield (
+                project,
+                {
+                    path: project.source_text(path)
+                    for scope in project_roots or (root,)
+                    for path in (
+                        FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                            scope,
+                            workspace_excluded_top_dirs=frozenset(),
+                            source_project=project,
+                        )
+                    )
+                },
+            )
 
     @staticmethod
     def _workspace_planned_folders(
@@ -308,6 +258,32 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 or any(path.is_relative_to(folder) for path in proposed)
             }),
         )
+
+    @staticmethod
+    @contextmanager
+    def workspace_planned_source_view(
+        project: p.Infra.RopeProject,
+        sources: Mapping[Path, str],
+    ) -> Generator[p.Infra.RopeProject]:
+        """Bind a phase's planned sources that differ from the project's view.
+
+        Yields:
+            The project reading the planned bytes for this binding.
+
+        """
+        changed = {
+            path: source
+            for path, source in sources.items()
+            if not project.source_query(path, "isfile")
+            or project.source_text(path) != source
+        }
+        with project.source_view(
+            declared_files=FlextInfraUtilitiesWorkspaceSnapshot.workspace_declared_sources(
+                Path(project.root.real_path), (), changed, source_project=project
+            ),
+            additional_source_folders=None,
+        ):
+            yield project
 
     @staticmethod
     def workspace_declared_sources(
@@ -385,68 +361,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
             )
         return tuple((inherited | declarations).values())
 
-    @staticmethod
-    @contextmanager
-    def workspace_overlay_project(
-        root: Path,
-        project_roots: tuple[Path, ...],
-        *,
-        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
-        additional_source_folders: tuple[str, ...] = (),
-    ) -> Generator[p.Infra.RopeProject]:
-        """Open the native source engine project that reads planned sources first.
-
-        The live project elects the source folders, extension modules and
-        Python path once; the returned project reads the declared plans before
-        the live tree through the same native resolver.
-
-        Yields:
-            The overlaid native project.
-
-        Raises:
-            ValueError: If a declared project root lies outside ``root``.
-
-        """
-        root = root.resolve()
-        if any(not project.is_relative_to(root) for project in project_roots):
-            msg = "Rope declared project root is outside the original authority"
-            raise ValueError(msg)
-        files = FlextInfraRopeProject.OverlayFiles((), source_roots=(root,))
-        with FlextInfraUtilitiesRopeCore.open_project(
-            next(path for path in (root, *root.parents) if path.is_dir()),
-            project_roots=project_roots or None,
-            fscommands=files,
-        ) as live:
-            election = m.Infra.RopeProjectElection(
-                preferred_import_style=live.get_prefs().imports.preferred_import_style,
-                ignored_resources=tuple(
-                    sorted(config.Infra.codegen.source_scan_ignored)
-                ),
-                source_folders=tuple(
-                    sorted(folder.path for folder in live.get_source_folders())
-                ),
-                extension_modules=(
-                    FlextInfraUtilitiesRopeRuntime.extension_module_names(live)
-                ),
-                python_path_folders=tuple(
-                    folder.real_path
-                    for folder in live.get_python_path_folders()
-                    if folder.is_folder()
-                ),
-            )
-            with (
-                closing(
-                    FlextInfraRopeProject.from_atomic_reads(
-                        live,
-                        election=election,
-                        declared_files=declared_files,
-                        additional_source_folders=additional_source_folders,
-                    )
-                ) as project,
-                project.frozen_layout(),
-            ):
-                yield project
-
     @classmethod
     @contextmanager
     def workspace_snapshot(
@@ -470,7 +384,7 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         root = root.resolve()
         member_roots = tuple(dict.fromkeys(member.resolve() for member in members))
         project_context = (
-            cls.workspace_overlay_project(root, (root,))
+            FlextInfraUtilitiesRopeCore.workspace_overlay_project(root, (root,))
             if source_project is None
             else source_project.source_view(
                 declared_files=None, additional_source_folders=None
@@ -507,14 +421,16 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         *,
         project: p.Infra.RopeProject | None = None,
     ) -> tuple[Path, ...]:
-        """Return one member's Python sources, listed through one project view.
+        """Return one member's Python modules, listed through one project view.
 
         The snapshot's engine lists once per member; a planned view project
         (with proposed additions and retirements) lists through itself.
         Sources of a member nested inside this one belong to that member.
+        Stubs are classified before any read: they are owned-path violations
+        detected by path alone, never decoded or analyzed as modules.
 
         Returns:
-            The member's Python source and stub paths in path order.
+            The member's Python module paths in path order.
 
         """
         member = member.resolve()
@@ -534,7 +450,8 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                     workspace_excluded_top_dirs=frozenset(),
                     source_project=view,
                 )
-                if not any(path.is_relative_to(other) for other in nested)
+                if path.suffix == c.Infra.EXT_PYTHON
+                and not any(path.is_relative_to(other) for other in nested)
             )
             if cacheable:
                 snapshot.python_files[member] = listed

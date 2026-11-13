@@ -69,9 +69,14 @@ class FlextInfraModelsConfigRepository:
             m.Field(description="Project-relative Hatch custom build hook module"),
         ] = None
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Import package name"),
-        ]
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Import package name; a consumer repository declares none "
+                    "because it owns no package"
+                ),
+            ),
+        ] = None
         class_stem: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical public facade class stem"),
@@ -117,7 +122,12 @@ class FlextInfraModelsConfigRepository:
 
         upstream: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Upstream FLEXT facade module"),
+            m.Field(
+                description=(
+                    "Upstream facade module; a consumer repository composes its "
+                    "test facades from this consumed distribution's public facades"
+                ),
+            ),
         ] = "flext_cli"
         namespace_scan_dirs: Annotated[
             Sequence[str],
@@ -261,7 +271,7 @@ class FlextInfraModelsConfigRepository:
 
         @m.field_validator("package_name", "upstream")
         @classmethod
-        def _validate_python_module(cls, value: str) -> str:
+        def _validate_python_module(cls, value: str | None) -> str | None:
             """Validate qualified import names without choosing another package.
 
             Returns:
@@ -271,7 +281,7 @@ class FlextInfraModelsConfigRepository:
                 ValueError: An import component is empty or not a Python name.
 
             """
-            if any(
+            if value is not None and any(
                 not part.isidentifier() or iskeyword(part) for part in value.split(".")
             ):
                 msg = f"project declaration requires a Python module name: {value!r}"

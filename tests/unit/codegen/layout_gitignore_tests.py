@@ -1,4 +1,4 @@
-"""Tests for layout ignore, tracked-file moves, and the canonical render.
+"""Tests for layout gitignore, tracked-file moves, and the canonical render.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +15,7 @@ from tests.unit.codegen.layout_support import TestsFlextInfraCodegenLayoutSuppor
 
 
 class TestsFlextInfraCodegenLayoutGitignore:
-    """Test suite for layout ignore, tracked-file moves, and canonical render."""
+    """Test suite for layout gitignore, tracked-file moves, and canonical render."""
 
     @staticmethod
     def _declare_layout_override(root: Path, project_name: str) -> None:
@@ -224,7 +224,9 @@ class TestsFlextInfraCodegenLayoutGitignore:
         report = FlextInfraCodegenLayout(repository_root=root).check_project(root)
         tm.that(report.project, eq=owner)
         tm.that(
-            tuple(finding for finding in report.findings if finding.rule == "ignore"),
+            tuple(
+                finding for finding in report.findings if finding.rule == "gitignore"
+            ),
             eq=(),
         )
 

@@ -27,6 +27,7 @@ from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesDiscovery,
+    FlextInfraUtilitiesFacadeComponents,
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesProjectDiscovery,
@@ -306,8 +307,9 @@ class FlextInfraUtilitiesModelsProtocol:
             # Only the source-bootstrap owner (flext-infra's own protocol family)
             # projects ahead of the surfaces: its engine imports those holders.
             # A consumer's projection is planned by the lazy-init surface, in the
-            # same ordered candidate as its regenerated initializers.
-            if primary is not None and not cls._is_bootstrap_owned_protocol_package(
+            # same ordered candidate as its regenerated initializers. A repository
+            # without a primary package (a consumer) owns no source bootstrap.
+            if primary is None or not cls._is_bootstrap_owned_protocol_package(
                 primary[0]
             ):
                 return r[bool].ok(value=False)
@@ -319,7 +321,7 @@ class FlextInfraUtilitiesModelsProtocol:
                         (layout[2], True)
                         for layout in projection.namespacesource_layouts()
                     ),
-                    *(() if primary is None else ((primary[2], False),)),
+                    (primary[2], False),
                 ),
             )
             if prepared.failure:
@@ -841,6 +843,13 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_method_cache: dict[
                 str, tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]
             ] = {}
+            # Invocation-local identity memos: one annotation compare resolves
+            # the same declared route and native expression repeatedly.
+            self.source_qualified_names: dict[tuple[str, str], p.Infra.RopePyName] = {}
+            self.source_denotations: dict[tuple[int, str, str, str], bool] = {}
+            # Keep each compared scope alive so its id cannot be reused by a
+            # different scope while a memo entry is still addressable.
+            self.source_denotation_scopes: list[p.Infra.RopeScope] = []
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
@@ -1467,7 +1476,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if family:
                 nested = model_facade.get_attributes().get(family)
                 if nested is not None and self._source_model_facade_namespace(
-                    nested.get_object()
+                    self.facade_published_object(nested)
                 ) == (family,):
                     public_roots.append(self._source_class(nested))
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
@@ -2723,7 +2732,7 @@ class FlextInfraUtilitiesModelsProtocol:
             owner, namespaced = resolved
             if namespaced:
                 accumulators[3].append(owner)
-            expected = self._source_expected_members(model, classes)
+            expected: set[str] | None = None
             for (
                 source_path,
                 holder_name,
@@ -2732,9 +2741,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ) in self._source_displaced_candidates(
                 owner, member_name, destination, (protocols_root, protocol_base)
             ):
+                # A stale generated holder retires with no member check; every
+                # other candidate needs the model's projected members. Deriving
+                # them only on that branch keeps the retirement pass off the
+                # field/method projection for the common already-generated tree.
+                if not stale and expected is None:
+                    expected = self._source_expected_members(model, classes)
                 self._source_require_retirable(
                     protocol,
-                    expected,
+                    expected if expected is not None else set[str](),
                     protocols_root,
                     (source_path, holder_name, member_name, public_model),
                     stale=stale,
@@ -3121,6 +3136,57 @@ class FlextInfraUtilitiesModelsProtocol:
                 if len(targets) == 1
             }
 
+        @staticmethod
+        def _source_facade_attributes(
+            owner: p.Infra.RopeSourceClass,
+        ) -> list[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]]:
+            """Pair each owner attribute with the object it publishes.
+
+            Python reads the value of a class-body ``Name = Name`` from the module
+            scope, so such a publication resolves through that module binding,
+            never through the class attribute the statement assigns. A generated
+            publication whose binding no longer resolves is retired by the facade
+            projection of the same run and publishes nothing.
+
+            Returns:
+                Each attribute name, binding and published object (``None`` for a
+                retiring generated publication).
+
+            Raises:
+                ValueError: If an authored publication resolves to nothing.
+
+            """
+            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
+                owner.get_module()
+            )
+            publications = FlextInfraUtilitiesFacadeComponents.facade_self_publications(
+                module, owner.get_scope()
+            )
+            attributes: list[
+                tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject | None]
+            ] = []
+            for name, binding in owner.get_attributes().items():
+                region, target = publications.get(name, (None, binding))
+                if region is None or (
+                    target is not None and target.get_definition_location()[0]
+                ):
+                    attributes.append((
+                        name,
+                        binding,
+                        None if target is None else target.get_object(),
+                    ))
+                    continue
+                if not module.source_code.startswith(c.Infra.AUTOGEN_HEADER):
+                    resource = module.get_resource()
+                    msg = (
+                        f"{resource.path if resource is not None else name}:"
+                        f"{module.lines.get_line_number(region[0])}: facade"
+                        f" publication {name} = {name} resolves to no module binding"
+                    )
+                    raise ValueError(msg)
+                attributes.append((name, binding, None))
+            return attributes
+
         def _source_collect_facade_owners(
             self,
             owner: p.Infra.RopeSourceClass,
@@ -3144,8 +3210,7 @@ class FlextInfraUtilitiesModelsProtocol:
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity(owner)
             if identity in seen:
                 return
-            for name, binding in owner.get_attributes().items():
-                value = binding.get_object()
+            for name, binding, value in self._source_facade_attributes(owner):
                 if not self.py_class(value):
                     continue
                 declaring_module, declaration = self._source_class_identity(value)
@@ -3601,7 +3666,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     path = (*parents, node.name)
                     owner = module
                     for part in path[:-1]:
-                        owner = owner.get_attribute(part).get_object()
+                        owner = self.facade_published_object(owner.get_attribute(part))
                     try:
                         source = self._source_class(owner.get_attribute(path[-1]))
                     except TypeError as exc:
@@ -4453,6 +4518,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                 )
             ]
+            # A mirrored base keeps the model's subscript arguments
+            # (``RootModel[Mapping[str, X]]``), and those evaluate at class
+            # creation even when the inherited root field no longer writes the
+            # annotation that used to bind them. Their names need the same
+            # provider binding as any other annotation root.
+            annotations.extend(
+                base.slice
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+            )
             annotations.extend(
                 parameter
                 for node, _path, _tree in classes
@@ -7178,10 +7254,22 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                     False,
                 )
-            if not any(
+            # The authored contract is reconciled with its model whether or not
+            # it is already runtime-checkable: a missing decorator never skips
+            # the signature comparison or the duplicate-accessor replacement.
+            update = self._source_authored_contract_update(
+                (node, present),
+                classes,
+                expected,
+                ((tree, holder, destination), owner),
+                (generated_source, offsets),
+            )
+            if any(
                 "runtime_checkable" in ast.unparse(decorator)
                 for decorator in present.decorator_list
             ):
+                return update, False
+            if update is None:
                 return (
                     (
                         offsets[present.lineno - 1],
@@ -7190,16 +7278,15 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                     True,
                 )
+            # The replacement starts at the class keyword; the decorator and
+            # the class keep the authored indentation from the line start.
+            indent = " " * present.col_offset
+            _start, end, replacement = update
             return (
-                self._source_authored_contract_update(
-                    (node, present),
-                    classes,
-                    expected,
-                    ((tree, holder, destination), owner),
-                    (generated_source, offsets),
-                ),
-                False,
-            )
+                offsets[present.lineno - 1],
+                end,
+                f"{indent}@runtime_checkable\n{indent}{replacement}",
+            ), True
 
         @staticmethod
         def _source_authored_holder(
@@ -7258,6 +7345,48 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.get_source_segment(generated_source, emitted)
 
+        def _source_widened_signature(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            holder: ast.ClassDef,
+            destination: Path,
+        ) -> str:
+            """Compare an authored annotation widened exactly as the projection widens.
+
+            Every container the single owner ``_source_read_only_container``
+            maps is exposed through its read-only ABC by the same
+            ``_source_read_only_rewrite`` the projection uses, so an authored
+            concrete container matches only the widening the projection
+            performs, never the reverse.
+
+            Returns:
+                The identity-normalized signature of the widened annotation.
+
+            """
+            scope = self.project.get_module(
+                self.module_name_for(destination.relative_to(self.repository_root))
+            ).get_scope()
+            owner = self
+
+            class Widen(ast.NodeTransformer):
+                @override
+                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
+                    container = (
+                        owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
+                    )
+                    self.generic_visit(node)
+                    if container is None:
+                        return node
+                    return owner._source_read_only_rewrite(container, node)
+
+            # Only subscripts are rewritten, and only into subscripts, so the
+            # visited annotation remains an expression.
+            widened = cast(ast.expr, Widen().visit(copy.deepcopy(annotation)))
+            return self._source_protocol_signature(widened, tree, holder, destination)
+
         def _source_authored_contract_update(
             self,
             contract: tuple[ast.ClassDef, ast.ClassDef],
@@ -7296,9 +7425,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 in c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
             )
             conflicts = [
-                (name, annotation, expected[name])
-                for name, annotation in actual.items()
-                if name in expected and annotation != expected[name]
+                (field.target.id, actual[field.target.id], expected[field.target.id])
+                for field in present.body
+                if isinstance(field, ast.AnnAssign)
+                and isinstance(field.target, ast.Name)
+                and field.target.id in expected
+                and actual[field.target.id] != expected[field.target.id]
+                and self._source_widened_signature(
+                    field.annotation, tree, holder, destination
+                )
+                != expected[field.target.id]
             ]
             if conflicts and not projected:
                 message = (
@@ -9407,12 +9543,24 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> bool:
             if scope is None:
                 return False
-            return self.same_name(
-                self.qualified_name(self.project, name, module_name=module),
-                FlextInfraUtilitiesRopeRuntime.expression_name(
-                    scope, ast.unparse(node)
-                ),
+            expression = ast.unparse(node)
+            key = (id(scope), expression, module, name)
+            cached = self.source_denotations.get(key)
+            if cached is not None:
+                return cached
+            if not any(item is scope for item in self.source_denotation_scopes):
+                self.source_denotation_scopes.append(scope)
+            identity_key = (module, name)
+            identity = self.source_qualified_names.get(identity_key)
+            if identity is None:
+                identity = self.qualified_name(self.project, name, module_name=module)
+                self.source_qualified_names[identity_key] = identity
+            denoted = self.same_name(
+                identity,
+                FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression),
             )
+            self.source_denotations[key] = denoted
+            return denoted
 
         def _member(
             self, binding: p.Infra.RopePyName, route: str
@@ -9432,7 +9580,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If the model has no authenticated native source class.
 
             """
-            value = binding.get_object()
+            value = self.facade_published_object(binding)
             if not self.py_class(value):
                 message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)

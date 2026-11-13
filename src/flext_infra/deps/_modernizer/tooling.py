@@ -242,6 +242,15 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         if live_dev_result.failure:
             return result_type.from_failure(live_dev_result)
         live_dev = live_dev_result.value
+        docs_seed: t.JsonMapping = (
+            {}
+            if request.package_name is None
+            else {
+                c.Infra.TOOL: {
+                    "flext": {"docs": {"package_name": request.package_name}}
+                }
+            }
+        )
         # Seed only the target's requirements before deriving analyzer ownership.
         seed: t.JsonMapping = {
             c.Infra.PROJECT: {
@@ -256,12 +265,14 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                     u.Infra.project_development_requirements(
                         request.codegen.scaffold.project,
                         distribution=request.project_name,
-                        kind=declaration.value.kind,
+                        kind=declaration.value.spec.governing_kind(
+                            declaration.value.kind
+                        ),
                         declared=live_dev,
                     )
                 ),
             },
-            c.Infra.TOOL: {"flext": {"docs": {"package_name": request.package_name}}},
+            **docs_seed,
         }
         # Atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through empty ones.

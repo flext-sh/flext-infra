@@ -94,11 +94,26 @@ class TestsFlextInfraRopeContractCatalog:
         )
 
     @staticmethod
-    def test_source_export_reader_uses_binding_index_contract(tmp_path: Path) -> None:
-        """Read explicit exports through the installed Rope binding-index API."""
+    @c.Tests.MARK.parametrize(
+        ("source", "expected"),
+        [
+            ("__all__ = ('First', 'Second')\n", ("First", "Second")),
+            (
+                "__all__ = ('Stale',)\n__all__ = ('First', 'Second')\n",
+                ("First", "Second"),
+            ),
+            ("__all__ = ['First']\n__all__ += ['Second']\n", ("First", "Second")),
+        ],
+    )
+    def test_source_export_reader_uses_binding_index_contract(
+        source: str,
+        expected: tuple[str, ...],
+        tmp_path: Path,
+    ) -> None:
+        """Read the effective exports, last binding plus ``+=``, through Rope."""
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "exports.py"
-        path.write_text("__all__ = ('First', 'Second')\n", encoding=c.DEFAULT_ENCODING)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with u.Infra.facade_source_project(root) as (project, _sources):
             module = u.Infra.require_source_module(
                 project.get_pymodule(
@@ -107,7 +122,7 @@ class TestsFlextInfraRopeContractCatalog:
             )
             tm.that(
                 u.Infra.module_assignment_strings_source(module, c.Infra.DUNDER_ALL),
-                eq=("First", "Second"),
+                eq=expected,
             )
 
     @staticmethod
@@ -369,7 +384,7 @@ class TestsFlextInfraRopeContractCatalog:
             (
                 (
                     "from flext_cli import m, p\n"
-                    "def consume(value: p.Cli.AtomicFileState): return value\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
                 ),
                 "flext_core.protocols.FlextProtocols",
                 "has no member in declared owner",
@@ -377,7 +392,7 @@ class TestsFlextInfraRopeContractCatalog:
             (
                 (
                     "from flext_cli import m, p\n"
-                    "def consume(value: p.Cli.Missing): return value\n"
+                    "def consume(value: m.Cli.Missing): return value\n"
                 ),
                 "flext_cli.protocols.FlextCliProtocols.Cli",
                 "model annotation source is undeclared",
@@ -386,7 +401,7 @@ class TestsFlextInfraRopeContractCatalog:
                 (
                     "from missing_model_package import m\n"
                     "from flext_cli import p\n"
-                    "def consume(value: p.Cli.AtomicFileState): return value\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
                 ),
                 "flext_cli.protocols.FlextCliProtocols.Cli",
                 "source namespace .* is unknown",
@@ -452,51 +467,6 @@ class TestsFlextInfraRopeContractCatalog:
                 annotation_member_source="m.Cli",
                 annotation_only=True,
             )
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        "source",
-        [
-            "__all__ = ['u']; side_effect()\n",
-            "side_effect(); __all__ = ['u']\n",
-            "PUBLIC = __all__ = ['u']\n",
-            "__all__ = ['u']\n__all__ += ['kept']\n",
-        ],
-    )
-    def test_export_retirement_refuses_shared_lines_and_chained_targets(
-        source: str,
-        tmp_path: Path,
-    ) -> None:
-        """The owned writer cannot discard effects or another public binding."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "exports.py"
-        path.write_text(source, encoding="utf-8")
-        with u.Infra.facade_source_project(root) as (project, _sources):
-            module = u.Infra.require_source_module(
-                project.get_pymodule(
-                    project.get_resource(path.relative_to(root).as_posix())
-                )
-            )
-            with u.Tests.raises(ValueError, match=r"__all__|exports"):
-                u.Infra.remove_runtime_alias_export(module, alias="u")
-
-    @staticmethod
-    def test_export_retirement_keeps_an_explicit_empty_literal(tmp_path: Path) -> None:
-        """Empty literal exports stay explicit, so unrelated statements stay intact."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
-        path = package / "exports.py"
-        path.write_text("kept = 'kept'\n__all__ = ['u']\n", encoding="utf-8")
-        with u.Infra.facade_source_project(root) as (project, _sources):
-            module = u.Infra.require_source_module(
-                project.get_pymodule(
-                    project.get_resource(path.relative_to(root).as_posix())
-                )
-            )
-            updated = u.Infra.remove_runtime_alias_export(module, alias="u")
-        path.write_text(updated, encoding="utf-8")
-        namespace = runpy.run_path(str(path))
-        tm.that(namespace["__all__"], empty=True)
-        tm.that(namespace["kept"], eq="kept")
 
     @staticmethod
     def test_catalog_phases_roundtrip_and_reject_unknown_values(
@@ -1445,3 +1415,81 @@ class TestsFlextInfraRopeLoggingContracts:
                 sources={path: source},
             )
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+
+
+class TestsFlextInfraRopeExportRetirement:
+    """Retire one runtime alias export through its native source region."""
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("source", "expected"),
+        [
+            (
+                "__all__ = ['u']; side_effect()\n",
+                "__all__: list[str] = []; side_effect()\n",
+            ),
+            (
+                "side_effect(); __all__ = ['u']\n",
+                "side_effect(); __all__: list[str] = []\n",
+            ),
+        ],
+    )
+    def test_export_retirement_keeps_statements_sharing_its_line(
+        source: str,
+        expected: str,
+        tmp_path: Path,
+    ) -> None:
+        """The region writer replaces only the export; shared effects survive."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            tm.that(u.Infra.remove_runtime_alias_export(module, alias="u"), eq=expected)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "source",
+        [
+            "PUBLIC = __all__ = ['u']\n",
+            "__all__ = ['u']\n__all__ += ['kept']\n",
+        ],
+    )
+    def test_export_retirement_refuses_chained_and_augmented_targets(
+        source: str,
+        tmp_path: Path,
+    ) -> None:
+        """The owned writer cannot discard another public binding."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text(source, encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            with u.Tests.raises(ValueError, match=r"__all__|exports"):
+                u.Infra.remove_runtime_alias_export(module, alias="u")
+
+    @staticmethod
+    def test_export_retirement_keeps_an_explicit_empty_literal(tmp_path: Path) -> None:
+        """Empty literal exports stay explicit, so unrelated statements stay intact."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        path = package / "exports.py"
+        path.write_text("kept = 'kept'\n__all__ = ['u']\n", encoding="utf-8")
+        with u.Infra.facade_source_project(root) as (project, _sources):
+            module = u.Infra.require_source_module(
+                project.get_pymodule(
+                    project.get_resource(path.relative_to(root).as_posix())
+                )
+            )
+            updated = u.Infra.remove_runtime_alias_export(module, alias="u")
+        path.write_text(updated, encoding="utf-8")
+        namespace = runpy.run_path(str(path))
+        tm.that(namespace["__all__"], empty=True)
+        tm.that(namespace["kept"], eq="kept")

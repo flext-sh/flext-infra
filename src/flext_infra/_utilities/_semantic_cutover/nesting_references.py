@@ -27,8 +27,8 @@ from libcst.metadata import (
 from flext_infra import c, p, t
 from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodBindingChain
-from flext_infra._utilities._rope import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities._rope.runtime_modules import (
+from flext_infra._utilities._rope import (
+    FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (

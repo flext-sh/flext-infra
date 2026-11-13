@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import sys
 import threading
 from collections.abc import Sequence
@@ -181,7 +182,10 @@ class TestsFlextInfraSemanticPublicationTransactions:
             ),
         )
         tm.ok(u.Cli.process_succeeded(consumer.outcome))
-        tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        # A new Python destination receives the declared full repair, so the
+        # live bytes are the normalized view publication admitted.
+        (normalized,) = tm.ok(u.Infra.normalized_codegen_changes((plan,)))
+        tm.that(target.read_bytes(), eq=normalized.desired_content)
 
     def test_artifact_publication_retires_old_package_with_its_move(
         self,
@@ -330,9 +334,8 @@ class TestsFlextInfraSemanticPublicationTransactions:
     ) -> None:
         """A successful false result rejects publication without filesystem effects."""
         publication = transformers.FlextInfraTransformersSemantic
-        before = tuple(
-            (path, path.stat().st_mode, path.read_bytes() if path.is_file() else None)
-            for path in sorted(mod_workspace.rglob("*"))
+        before = TestsFlextInfraSemanticPublicationTransactions._worktree_effects(
+            mod_workspace
         )
         calls = 0
         accepted = False
@@ -356,18 +359,39 @@ class TestsFlextInfraSemanticPublicationTransactions:
         )
         tm.that(calls, eq=2)
         tm.that(
-            tuple(
-                (
-                    path,
-                    path.stat().st_mode,
-                    path.read_bytes() if path.is_file() else None,
-                )
-                for path in sorted(mod_workspace.rglob("*"))
+            TestsFlextInfraSemanticPublicationTransactions._worktree_effects(
+                mod_workspace
             ),
             eq=before,
         )
         tm.that(tm.ok(published), eq=())
         tm.fail(rejected)
+
+    @staticmethod
+    def _worktree_effects(root: Path) -> tuple[tuple[Path, int, str | None], ...]:
+        """Observe every working-tree path by mode and content digest.
+
+        The mutation lease lives in Git storage by contract, so Git storage is
+        not a publication effect. Digests keep a mismatch report bounded.
+
+        Returns:
+            The sorted path, mode and content digest of every worktree entry.
+
+        """
+        git_dir = tm.ok(
+            u.Infra.git_mutation_scope(m.Infra.GitRepoRequest(repo_root=root))
+        ).git_dir
+        return tuple(
+            (
+                path,
+                path.stat().st_mode,
+                hashlib.sha256(path.read_bytes()).hexdigest()
+                if path.is_file()
+                else None,
+            )
+            for path in sorted(root.rglob("*"))
+            if git_dir is None or not path.is_relative_to(git_dir)
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("raises", [False, True])

@@ -237,16 +237,17 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
     def codemod_compat_rules(
         cls, snapshot: p.Infra.WorkspaceSnapshot, project: Path
     ) -> Mapping[str, t.JsonMapping]:
-        """Render the rule that fails and rewires reads of compat-marked constants.
+        """Render the rule that fails and rewires reads of compat-marked names.
 
-        Every attribute of the constants facade whose annotation carries the
+        Every attribute of any facade letter whose annotation carries the
         stdlib compat marker contributes one rewriter from its facade path to
-        the new path its marker names. The declaration is never matched, only
+        the new path its marker names (``u.Field`` -> ``m.Field``, for
+        example); one rule covers every letter. The declaration is never matched, only
         reads are, so the marked alias survives until its last reader is gone.
 
         Returns:
             The single native rule document keyed by its rule id, or nothing
-            when the facade marks no constant.
+            when no facade marks a name.
 
         Raises:
             ValueError: If a marker message breaks the compat grammar or names
@@ -261,9 +262,15 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         # absence); an installed package that fails to import raises.
         if find_spec(package) is None:
             return {}
-        facade = getattr(import_module(package), c.Infra.FacadeFamily.C, None)
-        if not inspect.isclass(facade):
-            return {}
+        root = import_module(package)
+        # Every facade letter the package publishes (c, t, p, m, u and the
+        # operational letters) is a facade class bound to a one-letter name.
+        facades = {
+            letter: facade
+            for letter in getattr(root, "__all__", ())
+            if len(letter) == 1
+            and inspect.isclass(facade := getattr(root, letter, None))
+        }
         grammar = re.compile(c.Infra.CODEMOD_COMPAT_MESSAGE_PATTERN)
         moves: dict[str, str] = {}
         # One declaration is reachable under every facade path that composes
@@ -271,8 +278,9 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
         # its marker names the path it retires and that path must be one of
         # the declaration's own facade paths.
         reachable: dict[str, list[str]] = {}
-        for path, message in cls._compat_markers(facade, (c.Infra.FacadeFamily.C,)):
-            reachable.setdefault(message, []).append(".".join(path))
+        for letter, facade in sorted(facades.items()):
+            for path, message in cls._compat_markers(facade, (letter,)):
+                reachable.setdefault(message, []).append(".".join(path))
         for message, paths in reachable.items():
             parsed = grammar.match(message)
             if parsed is None or parsed["old"] not in paths:
@@ -320,8 +328,7 @@ class FlextInfraUtilitiesCodemodTypeSetRules:
                 },
                 "fix": "$NEW",
                 "message": (
-                    "Read of a compat-marked constant: read the new owner its "
-                    "marker names."
+                    "Read of a compat-marked name: read the new owner its marker names."
                 ),
             }
         }

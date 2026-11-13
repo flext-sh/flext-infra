@@ -167,7 +167,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.from_failure(derived)
             project = derived.value
         dist = metadata.value.project.name
-        if dist != repository.distribution:
+        # A consumer is named by its declaration: generation rewrites the name
+        # a former package left in the live metadata.
+        if (
+            dist != repository.distribution
+            and repository.kind is not c.Infra.ProjectKind.CONSUMER
+        ):
             return result_type.fail(
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}",
@@ -429,7 +434,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         staged = u.Infra.codegen_compose_file_plans(
             (*staged, *facades.value), ordered=True
         )
-        initializers = self._projected_exports(root, staged, selection=selection)
+        # A facade pass that changed no byte leaves the seed's candidate
+        # exactly as planned: replaying the initializer election there would
+        # compute the same projection a second time on unchanged source.
+        unchanged = selection is None and not any(
+            u.Infra.codegen_file_requires_effect(plan) for plan in facades.value
+        )
+        initializers = (
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(exported.value))
+            if unchanged
+            else self._projected_exports(root, staged, selection=selection)
+        )
         if initializers.failure:
             return result_type.from_failure(initializers)
         return result_type.ok((
@@ -487,6 +502,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Reuse the complete lazy plan only while its candidate is unchanged.
 
+        The fleet map already planned every governed initializer for the run.
+        Re-planning must happen only when this repository's own projected
+        sources (facades or protocol mirrors) changed after that plan, because
+        those change the interfaces the initializer publishes. Another
+        repository's pending effects never invalidate this repository's
+        exports.
+
         Returns:
             Initial exports over the admitted source cohort.
 
@@ -498,16 +520,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             and all(plan.project == root for plan in cohort)
         ):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(cohort)
+        provided = self._provided_lazy_sources(root)
         if (
             selection is None
-            and self.state.provider_plans is not None
+            and provided
             and not any(
-                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
+                plan.project == root
+                and plan.path.name != c.Infra.INIT_PY
                 and u.Infra.codegen_file_requires_effect(plan)
                 for plan in cohort
             )
         ):
-            return self._existing_lazy_sources(root).map(tuple)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(provided)
         return self._projected_exports(root, cohort, selection=selection)
 
     def _custom_candidate_sources(
@@ -602,21 +626,41 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             root, declared_files=declared_files, snapshot=active, selection=selection
         )
 
+    def _provided_lazy_sources(
+        self,
+        root: Path,
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        """Return this run's provided initializer plans for one repository.
+
+        The provider cohort carries the fleet map's initializers together with
+        metadata and control seeds consumed by unrelated native readers. Only
+        the initializer plans of this repository are export publication, so
+        callers reuse exactly those and never replay the lazy-init election.
+
+        Returns:
+            The repository's provided initializer plans, empty when absent.
+
+        """
+        return tuple(
+            plan
+            for plan in self.state.provider_plans or ()
+            if plan.project == root and plan.path.name == c.Infra.INIT_PY
+        )
+
     def _existing_lazy_sources(
         self,
         root: Path,
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
-        """Elect the repository's planned or provided initializers.
+        """Reuse the repository's provided initializers, otherwise plan them.
 
         Returns:
-            Planned initializers of the repository.
+            Provided or freshly planned initializers of the repository.
 
         """
-        if self.state.provider_plans is None:
-            return self._planned_lazy_init_files(root)
-        return r[Sequence[p.Infra.CodegenFilePlan]].ok(
-            tuple(plan for plan in self.state.provider_plans if plan.project == root)
-        )
+        provided = self._provided_lazy_sources(root)
+        if provided:
+            return r[Sequence[p.Infra.CodegenFilePlan]].ok(provided)
+        return self._planned_lazy_init_files(root)
 
     def _render_existing_managed(
         self,
@@ -936,7 +980,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         result_type = r[str]
         dependencies = self._declared_dependency_facts(
-            root, project, manifest_source=original_source
+            root, project, profiles=(), manifest_source=original_source
         )
         if dependencies.failure:
             return result_type.from_failure(dependencies)
@@ -1196,25 +1240,19 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
         """
         result_type = r[Sequence[p.Infra.CodegenFilePlan]]
-        graph = codegen.templates.artifact_requirements
-        ordered = u.Cli.dag_closure(graph, destinations).flat_map(
-            lambda closed: u.Cli.dag_order({name: graph[name] for name in closed})
-        )
-        if ordered.failure:
-            return result_type.from_failure(ordered)
+        closed = codegen.templates.artifact_closure(destinations)
         # A dependency whose template declares no entry for the running
         # profile is not part of this profile's contract (a workspace-only
         # bootstrap requirement never applies to a standalone member): the
         # branch election skips it instead of failing the closure.
-        ordered = ordered.map(
-            lambda names: tuple(
-                name
-                for name in names
-                if any(
-                    entry.destination == name and target.make_profile in entry.profiles
-                    for entry in codegen.templates.entries
-                    if entry.source is not None
-                )
+        ordered = tuple(
+            name
+            for name in codegen.templates.artifact_order
+            if name in closed
+            and any(
+                entry.destination == name and target.make_profile in entry.profiles
+                for entry in codegen.templates.entries
+                if entry.source is not None
             )
         )
         managed = u.Infra.snapshot_project_managed_artifacts(target.root)
@@ -1228,7 +1266,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             managed_artifacts=managed.value,
         )
         plans: list[p.Infra.CodegenFilePlan] = []
-        for destination in ordered.value:
+        for destination in ordered:
             planned = self._bootstrap_destination_plan(
                 render_inputs,
                 destination,
@@ -1510,10 +1548,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         if (
             contract.destinations is not None
             and managed.path.as_posix()
-            not in u.Cli.dag_closure(
-                codegen.templates.artifact_requirements,
-                contract.destinations,
-            ).unwrap()
+            not in codegen.templates.artifact_closure(contract.destinations)
         ):
             return True
         return managed.path == Path(c.PYPROJECT_FILENAME) and not contract.pyproject

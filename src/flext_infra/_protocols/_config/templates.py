@@ -223,6 +223,15 @@ class FlextInfraProtocolsConfigTemplates:
             ...
 
         @property
+        def requires_package(self) -> bool:
+            """Structural member projected from the owning model.
+
+            Whether the seed belongs to the repository's own import package; a
+            consumer repository owns none.
+            """
+            ...
+
+        @property
         def bootstrap_distribution(self) -> t.NonEmptyStr | None:
             """Executor whose local dependency closure this artifact binds."""
             ...
@@ -267,6 +276,21 @@ class FlextInfraProtocolsConfigTemplates:
         @property
         def artifact_requirements(self) -> Mapping[str, Sequence[str]]:
             """Expose each catalog key's declared artifact dependencies."""
+            ...
+
+        @cached_property
+        def artifact_order(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Order every artifact dependencies-first, proving the graph acyclic.
+            """
+            ...
+
+        def artifact_closure(self, destinations: frozenset[str]) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Return the destinations with every artifact they transitively require.
+            """
             ...
 
         @property
