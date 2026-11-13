@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- fix(ci): mint the private-dependency token before the superproject checkout (#2342)
 - fix(codegen): publish generic member classes so mypy can subscript them (#2339)
 - fix(codemod): bind-registration-specialization ignores already-specialized algebra
   (salvage of #2334) (#2340)
