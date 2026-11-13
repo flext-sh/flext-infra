@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, config, tm, u
+from tests import c, config, p, tm, u
 
 
 class TestsFlextInfraCodemodLibraryMemberCapabilities:
@@ -19,6 +19,7 @@ class TestsFlextInfraCodemodLibraryMemberCapabilities:
     @staticmethod
     def prefixes(
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
         *,
         subpackage: str | None = None,
         declared: str | None = None,
@@ -50,33 +51,52 @@ class TestsFlextInfraCodemodLibraryMemberCapabilities:
                 f"      domain_capabilities: [{declared}]\n",
                 encoding=c.DEFAULT_ENCODING,
             )
+        # Installed metadata is read from the target's own runtime, so the
+        # fixture repository owns a provisioned environment.
+        tm.ok(
+            u.Tests.provision_scan_workspace(
+                repository, session_runtime=session_runtime
+            )
+        )
         with u.Infra.codemod_workspace_snapshot(repository) as snapshot:
             return tuple(u.Infra.facade_library_prefixes(snapshot, repository))
 
-    def test_undeclared_libraries_are_prefixes(self, tmp_path: Path) -> None:
+    def test_undeclared_libraries_are_prefixes(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """Neither an own package nor a declaration keeps the library prefixes."""
-        found = self.prefixes(tmp_path)
+        found = self.prefixes(tmp_path, session_runtime)
         tm.that("jinja2" in found and "rope" in found, eq=True)
 
-    def test_own_subpackage_is_a_capability(self, tmp_path: Path) -> None:
+    def test_own_subpackage_is_a_capability(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """An own subpackage named like a distribution exempts that prefix."""
-        found = self.prefixes(tmp_path, subpackage="jinja2")
+        found = self.prefixes(tmp_path, session_runtime, subpackage="jinja2")
         tm.that("jinja2" in found, eq=False)
         tm.that("rope" in found, eq=True)
 
-    def test_fixture_directory_is_not_a_capability(self, tmp_path: Path) -> None:
+    def test_fixture_directory_is_not_a_capability(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """A tests-tier directory named like a distribution exempts nothing."""
-        found = self.prefixes(tmp_path, tier_directory="tests/fixtures/ci/jinja2")
+        found = self.prefixes(
+            tmp_path, session_runtime, tier_directory="tests/fixtures/ci/jinja2"
+        )
         tm.that("jinja2" in found, eq=True)
 
-    def test_declared_capability_is_exempt(self, tmp_path: Path) -> None:
+    def test_declared_capability_is_exempt(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """A repository ``domain_capabilities`` name exempts that prefix."""
-        found = self.prefixes(tmp_path, declared="Rope")
+        found = self.prefixes(tmp_path, session_runtime, declared="Rope")
         tm.that("rope" in found, eq=False)
         tm.that("jinja2" in found, eq=True)
 
-    def test_stdlib_backports_are_never_prefixes(self, tmp_path: Path) -> None:
+    def test_stdlib_backports_are_never_prefixes(
+        self, tmp_path: Path, session_runtime: p.Tests.SessionRuntime
+    ) -> None:
         """A declared stdlib backport is never a library prefix."""
-        found = self.prefixes(tmp_path)
+        found = self.prefixes(tmp_path, session_runtime)
         for backport in config.Infra.tooling.lazy_init.stdlib_backports:
             tm.that(backport in found, eq=False)

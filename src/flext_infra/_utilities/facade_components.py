@@ -18,7 +18,6 @@ import sys
 import tokenize
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from functools import partial
-from importlib.metadata import packages_distributions
 from pathlib import Path
 
 from flext_cli import u
@@ -3560,7 +3559,7 @@ class FlextInfraUtilitiesFacadeComponents:
             *native.codemod_facade_packages(snapshot, root),
             *FlextInfraUtilitiesCodemodNative.codemod_own_package_names(root),
         }
-        providers = packages_distributions()
+        providers = FlextInfraUtilitiesCodemodNative.codemod_runtime_distributions(root)
         artifacts = FlextInfraUtilitiesProjectManagedArtifacts
         declared = artifacts.load_repository_declaration_inputs(
             root, source_project=snapshot.engine

@@ -20,6 +20,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenScaffolder,
 )
+from flext_infra.docs import FlextInfraDocGenerator
 from tests import c, m, p, t, tm, u
 
 
@@ -33,10 +34,10 @@ class TestsFlextInfraCodegenConsumerProject:
 
     @staticmethod
     def _declare(root: Path, name: str) -> Path:
-        """Create one consumer checkout: its declaration, docs and one test.
+        """Create one checkout: its declaration, docs and one test.
 
         Returns:
-            The repository root.
+            The repository root, declared as a consumer.
 
         """
         root.mkdir(parents=True, exist_ok=True)
@@ -47,6 +48,17 @@ class TestsFlextInfraCodegenConsumerProject:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, name)
+        return TestsFlextInfraCodegenConsumerProject._write_declaration(root, name)
+
+    @staticmethod
+    def _write_declaration(root: Path, name: str) -> Path:
+        """Write the declaration, docs and test of one checkout.
+
+        Returns:
+            The repository root.
+
+        """
+        integration = u.Tests.integration()
         project = u.Tests.project_spec(name).model_copy(
             update={
                 "package_name": None,
@@ -247,4 +259,144 @@ class TestsFlextInfraCodegenConsumerProject:
                 repository_root=root, apply_changes=True
             ).execute(),
             has="not a new scaffold",
+        )
+
+    @staticmethod
+    def _generate(root: Path) -> tuple[Path, ...]:
+        """Run the public generator over one checkout.
+
+        Returns:
+            The files the run wrote.
+
+        """
+        return tm.ok(
+            FlextInfraCodegenConform.Generate.execute_request(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.ALL,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                execution_context=infra,
+            )
+        ).written_files
+
+    PACKAGED_MANIFEST = """[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+dependencies = ["sqlmodel>=0.0.27", "typing-extensions>=4.16.0"]
+description = "A packaged project"
+name = "dc-recon"
+requires-python = ">=3.13,<3.14"
+version = "0.1.0"
+
+[project.scripts]
+dc-recon = "client_incident.cli:main"
+
+[tool.flext.docs]
+package_name = "client_incident"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/client_incident"]
+"""
+
+    @u.Tests.fixture(scope="class")
+    @staticmethod
+    def converted(tmp_path_factory: t.Tests.TempPathFactory) -> Path:
+        """Start from a committed packaged manifest, drop its package, generate once.
+
+        The packaged project is the input of the conversion (the manifest of an
+        engine repository), so it is written, not generated: one generation
+        converts it.
+
+        Returns:
+            The repository root after the first generation as a consumer.
+
+        """
+        cls = TestsFlextInfraCodegenConsumerProject
+        root = cls._declare(
+            tmp_path_factory.mktemp("conversion") / "client-incident",
+            "client-consumer",
+        )
+        (root / c.PYPROJECT_FILENAME).write_text(
+            cls.PACKAGED_MANIFEST, encoding="utf-8"
+        )
+        (root / "conftest.py").write_text('"""Conftest."""\n', encoding="utf-8")
+        # The deleted package leaves its empty source directory behind.
+        (root / c.Infra.DEFAULT_SRC_DIR).mkdir()
+        u.Tests.commit_git_changes(root, "packaged project")
+        cls._generate(root)
+        return root
+
+    @u.Tests.fixture(scope="class")
+    @staticmethod
+    def settled(converted: Path) -> tuple[Path, ...]:
+        """Generate again after the conversion.
+
+        Returns:
+            The files the second generation wrote.
+
+        """
+        return TestsFlextInfraCodegenConsumerProject._generate(converted)
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_a_converted_project_generates_the_consumer_manifest(
+        converted: Path,
+    ) -> None:
+        """Generation alone drops the package, its build targets and its self pin."""
+        text = (converted / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        document = tm.not_none(u.Cli.toml_parse_text(text))
+        tm.that(document.get("build-system"), none=True)
+        tool = u.Cli.toml_mapping_child(document, c.Infra.TOOL) or {}
+        tm.that((u.Cli.toml_mapping_child(tool, "uv") or {}).get("package"), eq=False)
+        tm.that((u.Cli.toml_mapping_child(tool, "hatch") or {}).get("build"), none=True)
+        tm.that(text, lacks="client_incident")
+        tm.that(text, lacks="sqlmodel")
+        tm.that(text, lacks="typing-extensions")
+        project = u.Cli.toml_mapping_child(document, "project") or {}
+        tm.that(project.get("scripts"), none=True)
+        tm.that(project.get("name"), eq="client-consumer")
+        tm.that(
+            project.get("dependencies"),
+            eq=[TestsFlextInfraCodegenConsumerProject.CONSUMED],
+        )
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_a_converted_project_reaches_a_fixed_point(
+        settled: tuple[Path, ...],
+    ) -> None:
+        """The generation after the conversion publishes nothing."""
+        tm.that(settled, eq=())
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_docs_of_a_consumer_collect_no_package_api(generated: Path) -> None:
+        """A consumer's API pages hold no empty directive and no stray whitespace."""
+        tm.ok(
+            FlextInfraDocGenerator(
+                repository_root=generated, selected_projects=["."]
+            ).generate(
+                m.Infra.DocsGenerateRequest(repository_root=generated, projects=["."])
+            )
+        )
+        api = generated / "docs" / "api-reference" / "generated"
+        public = (api / "public-api.md").read_text(encoding="utf-8")
+        tm.that(public, lacks=":::")
+        tm.that(public, has="consumed distribution")
+        for page in api.rglob("*.md"):
+            text = page.read_text(encoding="utf-8")
+            tm.that(text, lacks=":::")
+            tm.that(
+                [line for line in text.splitlines() if line != line.rstrip()],
+                eq=[],
+            )
+        tm.that(
+            (generated / "docs" / "api-reference" / "README.md").read_text(
+                encoding="utf-8"
+            ),
+            lacks="src//",
         )

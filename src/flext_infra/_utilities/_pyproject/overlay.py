@@ -21,6 +21,26 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectRequir
 class FlextInfraUtilitiesPyprojectOverlay:
     """Merge one rendered pyproject with its live CUSTOM surface."""
 
+    _PACKAGE_DERIVED_KEYS: tuple[str, ...] = (
+        c.Infra.NAME,
+        "description",
+        c.Infra.DEPENDENCIES,
+        "scripts",
+        "entry-points",
+    )
+    """``[project]`` keys that an unpackaged render owns over the live values."""
+
+    @staticmethod
+    def _render_is_unpackaged(rendered: t.JsonMapping) -> bool:
+        """Report whether the render declares an unpackaged uv project.
+
+        Returns:
+            Whether ``tool.uv.package`` is ``false`` in the render.
+
+        """
+        tool = u.Cli.toml_mapping_child(rendered, c.Infra.TOOL) or {}
+        return (u.Cli.toml_mapping_child(tool, "uv") or {}).get("package") is False
+
     @staticmethod
     def _validated_requirement_lists(
         project: t.JsonMapping,
@@ -133,6 +153,15 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 return r[t.JsonDict].from_failure(validated)
             required, custom = validated.value
             project[c.Infra.DEPENDENCIES] = cls._merged_requirements(required, custom)
+        if cls._render_is_unpackaged(merged):
+            # An unpackaged project owns no package: the identity and the
+            # requirements and console scripts a former package left in the live
+            # table are the render's, so a converted repository converges.
+            for key in cls._PACKAGE_DERIVED_KEYS:
+                if key in rendered_project:
+                    project[key] = rendered_project[key]
+                else:
+                    project.pop(key, None)
         return r[t.JsonDict].ok(project)
 
     @staticmethod
@@ -311,6 +340,21 @@ class FlextInfraUtilitiesPyprojectOverlay:
         if tool or rendered_tool is not None:
             merged[c.Infra.TOOL] = tool
 
+    @staticmethod
+    def _drop_package_declaration(merged: t.MutableJsonMapping) -> None:
+        """Remove the documentation package a former package left in the live table."""
+        tool = u.Cli.toml_mapping_child(merged, c.Infra.TOOL) or {}
+        flext = u.Cli.toml_mapping_child(tool, "flext") or {}
+        docs = u.Cli.toml_mapping_child(flext, "docs") or {}
+        if "package_name" in docs:
+            merged[c.Infra.TOOL] = {
+                **tool,
+                "flext": {
+                    **flext,
+                    "docs": {k: v for k, v in docs.items() if k != "package_name"},
+                },
+            }
+
     @classmethod
     def overlay_preserved(
         cls,
@@ -376,6 +420,8 @@ class FlextInfraUtilitiesPyprojectOverlay:
         if dev.failure:
             return r[str].from_failure(dev)
         cls._overlay_tool_tables(merged, live_payload.value, tool_tables)
+        if cls._render_is_unpackaged(merged):
+            cls._drop_package_declaration(merged)
         return r[str].ok(u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(merged)))
 
 

@@ -640,6 +640,15 @@ class FlextInfraModelsWorkspace:
                 ),
             ),
         ] = False
+        superproject_gitlinks: Annotated[
+            t.StrTuple,
+            m.Field(
+                description=(
+                    "Paths the superproject index records as gitlinks; a member "
+                    "checkout at one of them is an attached submodule"
+                ),
+            ),
+        ]
 
         declared_member: Annotated[
             FlextInfraModelsConfigContexts.RepositoryRef | None,

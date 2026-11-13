@@ -15,11 +15,31 @@ class TestsFlextInfraLayoutScopeIngress:
     """Exercise layout admission with native filesystem and repository snapshots."""
 
     @staticmethod
+    def test_empty_source_directory_is_an_absent_layout(tmp_path: Path) -> None:
+        """The empty ``src`` a deleted package leaves is no source tree at all."""
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / c.PYPROJECT_FILENAME,
+                '[project]\nname = "scope-consumer"\nversion = "1.0.0"\n'
+                'dependencies = ["flext-core"]\n[tool.uv]\npackage = false\n',
+            )
+        )
+        u.Tests.initialize_git_repo(tmp_path)
+        tm.ok(u.Cli.ensure_dir(tmp_path / c.Infra.DEFAULT_SRC_DIR / "retired"))
+        with u.Infra.workspace_snapshot(tmp_path, (tmp_path,)) as snapshot:
+            scopes = u.Infra.codemod_layout_scopes(snapshot, tmp_path)
+            tm.that(scopes[c.Infra.CODEMOD_COMPOSITION_ROOT_SCOPE], empty=True)
+            tm.that(
+                set(u.Infra.codemod_alias_utilities(snapshot, tmp_path)),
+                eq={"local-alias", "runtime-alias"},
+            )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("source_directory", [False, True])
     def test_nonpackage_root_preserves_scope_admission(
         tmp_path: Path, *, source_directory: bool
     ) -> None:
-        """Absent source is supported; an unresolved existing source stays red."""
+        """Absent source is supported; sources without a package stay red."""
         tm.ok(
             u.Cli.atomic_write_text_file(
                 tmp_path / c.PYPROJECT_FILENAME,
@@ -30,6 +50,11 @@ class TestsFlextInfraLayoutScopeIngress:
         u.Tests.initialize_git_repo(tmp_path)
         if source_directory:
             tm.ok(u.Cli.ensure_dir(tmp_path / c.Infra.DEFAULT_SRC_DIR))
+            tm.ok(
+                u.Cli.atomic_write_text_file(
+                    tmp_path / c.Infra.DEFAULT_SRC_DIR / "stray.py", "VALUE = 1\n"
+                )
+            )
         with u.Infra.workspace_snapshot(tmp_path, (tmp_path,)) as snapshot:
             if source_directory:
                 with u.Tests.raises(ValueError, match="project layout is unresolved"):

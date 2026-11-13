@@ -59,6 +59,7 @@ class FlextInfraUtilitiesDocsGenerateSources:
             "governance_source": (governance_source),
             "repository_root_override": (scope.repository_root_override),
             "declared_files": (declared_files),
+            "metadata_projection": (metadata_projection),
         })
 
 

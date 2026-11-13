@@ -619,6 +619,12 @@ Infra:
             workers: 4
           cosmos-docgen:
             workers: 4
+          # dc-finan measured 2026-11-13 (20 cores, shared host): cold suite,
+          # 528 passed + 104 subtests, -n 8 289 s, -n 16 183 s. The critical
+          # path is two suites still spawning `python -m`; their in-process
+          # cure lowers the run and then this ceiling is re-measured.
+          dc-finan:
+            workers: 16
           # The measured ceiling for this suite; higher ceilings regressed the
           # cold run because per-window dispatch overhead dominates.
           flext-infra:

@@ -167,7 +167,12 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 return result_type.from_failure(derived)
             project = derived.value
         dist = metadata.value.project.name
-        if dist != repository.distribution:
+        # A consumer is named by its declaration: generation rewrites the name
+        # a former package left in the live metadata.
+        if (
+            dist != repository.distribution
+            and repository.kind is not c.Infra.ProjectKind.CONSUMER
+        ):
             return result_type.fail(
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}",
