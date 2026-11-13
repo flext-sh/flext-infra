@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- fix(codegen): the model-protocol stage reads a generic publication as its class
+  (#2350)
 - fix(rope): pin the fork's last-binding reader and delete the \_\_all\_\_ workaround
   (#2345)
 - feat(codemod): the compat window covers every facade letter (#2346)
