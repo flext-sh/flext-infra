@@ -722,27 +722,27 @@ class FlextInfraWorkspaceChecker(
     ) -> tuple[
         p.Infra.LoopOutcome, tuple[p.Infra.CheckProjectTarget, ...], tuple[str, ...]
     ]:
-        """Run the pending gates one declared cost stage at a time.
+        """Run the pending gates in phases ordered by declared check budget.
 
-        Cheapest evidence first (ADR-032 "Fail early"): a failed, incomplete
-        or interrupted phase ends the verb before the next, slower stage
-        starts, and the gates it never reached stay pending.
+        Cheapest evidence first (ADR-032 "Fail early"): gates sharing one
+        declared budget form a phase, phases run from the smallest budget up,
+        so the long gates start only after every faster gate passed. A failed,
+        incomplete or interrupted phase ends the verb before the next one,
+        and the gates it never reached stay pending.
 
         Returns:
             The last outcome, the elected targets and the gates not executed.
 
         """
         gates, pending_gates = selection
-        stages = (
-            u.Infra
-            .load_codegen_policy(self._repository_root)
-            .unwrap()
-            .make.check_gate_stages
-        )
+        projects = tuple(target.path for target in targets)
+        budgets = {
+            gate: self._registry.check_budget_seconds((gate,), projects)
+            for gate in pending_gates
+        }
         phases = tuple(
-            phase
-            for stage in c.Infra.GateStage
-            if (phase := tuple(gate for gate in pending_gates if stages[gate] is stage))
+            tuple(gate for gate in pending_gates if budgets[gate] == budget)
+            for budget in sorted(set(budgets.values()))
         )
         if phases:
             targets = self._targets_for_gates(targets, gates, ctx)
