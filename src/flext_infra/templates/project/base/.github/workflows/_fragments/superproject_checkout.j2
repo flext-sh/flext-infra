@@ -10,6 +10,7 @@
      ``push`` authorizes a releasing job's pushes to the member repository
      with the job token, as a persisted checkout credential would. -#}
 {% macro superproject_checkout(sha_expression, push=false) %}
+{%- include "_fragments/private_dependency_token.j2" %}
       - name: Checkout workspace {{ superproject.repository }}
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].version }}
         with:
