@@ -1,5 +1,17 @@
 # Project kinds
 
+<!-- TOC START -->
+
+- [Consumer repositories](#consumer-repositories)
+  - [What it may contain](#what-it-may-contain)
+  - [Declaration](#declaration)
+  - [What is generated](#what-is-generated)
+  - [Gates](#gates)
+  - [Bootstrap](#bootstrap)
+  - [Adding a dependency](#adding-a-dependency)
+
+<!-- TOC END -->
+
 The FLEXT toolchain governs a repository by its kind. Generation, the gates and the Make
 verbs follow it. A project declaration that omits `package_name` derives the `consumer`
 kind; every other kind owns its package.
