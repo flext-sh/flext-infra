@@ -3608,6 +3608,17 @@ come from `Infra.codegen.make.generation_profile_path`,
 not the caller's working directory. Disabled capture retains the direct CLI call
 and creates no profile. There is no common profiling verb or legacy alias.
 
+`make mod` reports every stage with its duration (rule planning, campaign seed,
+joint candidate planning, publication, catalog and import-cycle verdicts). A
+focused selection whose scan has no actionable finding, claims no semantic phase
+and declares no rename has nothing to plan: it goes straight to the fixed-point
+verdict, and an empty publication is never rescanned. The runtime import graph
+keeps one persistent fact per module under `settings.work_dir`, bound to the
+module's exact source digest, its name and the deriving code; only modules whose
+bytes changed are parsed again. The generated-rule rendering cache digests the
+project's own sources together with its FLEXT dependencies, so a source edit
+renders the generated rules again.
+
 Make transport capture starts after settings admission and transport imports; those
 startup costs and Make/environment preflight are outside its raw statistics. Child
 process waits are parent wall time, not child CPU or evidence of child hot functions.
