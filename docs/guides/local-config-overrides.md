@@ -110,7 +110,7 @@ installation operation and its temporary constraints/pip overlay are also retire
 explicit native sources and locked setup are the single installation route.
 
 The approved root target declares one native uv workspace, derived from `.gitmodules`,
-and composes member locks per [ADR-030](../../../docs/architecture/adr/030-member-locks-composition-upg-guard.md)
+and composes member locks per [ADR-030](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/030-member-locks-composition-upg-guard.md)
 (member `uv.lock` and `mise.lock` are formed by each member's declarations, the workspace
 lock is their composition, and only `make upg` writes locks behind its guard). Root CI
 checks out those declared submodules and installs the composed workspace lock noneditable;
