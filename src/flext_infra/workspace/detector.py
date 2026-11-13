@@ -381,9 +381,12 @@ class FlextInfraWorkspaceDetector(
         remote = u.Infra.validate_git_remote_url(declared_url or origin_url)
         if remote.failure:
             return r[p.Infra.RepositoryRef].from_failure(remote)
+        # Only a governed member makes a workspace: a checkout whose
+        # .gitmodules declares just flext-managed = false submodules stays
+        # standalone.
         role = (
             c.Infra.MakeProfile.WORKSPACE
-            if (repository_root / c.Infra.GITMODULES).is_file()
+            if u.Infra.workspace_project_paths(repository_root)
             else c.Infra.MakeProfile.STANDALONE
         )
         _, separator, repository_name = u.Infra.git_remote_identity(
@@ -1275,7 +1278,7 @@ class FlextInfraWorkspaceDetector(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects or external or pending
+                    if subprojects or pending
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },
