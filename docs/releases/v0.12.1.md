@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- test(codemod): compare a new published module with its admitted normalized bytes
+  (#2366)
+- fix(pytest): stop a distributed suite at its instant without a flushed batch (#2365)
 - fix(codegen): admission keeps only the cohort's own import facts (#2362)
 - fix(setup): leave bytecode compilation at uv's native default (#2363)
 - fix(tests): pass the testmon environment name without literal quotes (#2360)
