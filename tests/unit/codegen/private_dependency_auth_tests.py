@@ -363,6 +363,56 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
 
     @c.Tests.MARK.parametrize(
         "template",
+        [
+            "ci.yml.j2",
+            "ci-matrix.yml.j2",
+            "docs.yml.j2",
+            "release-plan.yml.j2",
+            "release.yml.j2",
+        ],
+    )
+    def test_member_fetch_follows_authentication_and_submodule_init(
+        self,
+        template: str,
+    ) -> None:
+        """An attached member is fetched only once Git can reach it.
+
+        The authenticated superproject checkout skips submodules, so the
+        member tree does not exist and Git holds no credential until the
+        token is handed over and the submodules are initialized
+        (cosmos-gitops run 43427385814: ``could not read Username``).
+        """
+        pinned = 0
+        for job in self._jobs(template, attached=True):
+            steps = self._steps(job)
+            fetches = tuple(
+                step
+                for step in steps
+                if f'git -C "{self._SUPERPROJECT.path}" fetch'
+                in str(step.get("run", ""))
+            )
+            if not fetches:
+                continue
+            pinned += 1
+            handovers = tuple(
+                step
+                for step in steps
+                if "GIT_CONFIG_COUNT=" in str(step.get("run", ""))
+            )
+            tm.that(len(handovers), eq=1)
+            tm.that(steps.index(self._mint(steps)) < steps.index(handovers[0]))
+            init = next(
+                step
+                for step in steps
+                if str(step.get("run", "")).startswith("git submodule update --init")
+            )
+            tm.that(init.get("working-directory"), eq=".")
+            tm.that(steps.index(handovers[0]) < steps.index(init))
+            tm.that(steps.index(init) < steps.index(fetches[0]))
+        tm.that(pinned > 0)
+
+    @c.Tests.MARK.parametrize(
+        "template",
         ["ci.yml.j2", "docs.yml.j2", "release-plan.yml.j2", "release.yml.j2"],
     )
     def test_standalone_job_mints_after_its_own_checkout(
