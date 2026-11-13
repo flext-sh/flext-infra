@@ -25,13 +25,11 @@ from flext_infra import c, config, e, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesProjectDiscovery,
+    FlextInfraUtilitiesPythonModel,
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities._rope._analysis import (
-    FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.source_bases_runtime import (
     FlextInfraUtilitiesRopeSourceBasesRuntime,
@@ -640,6 +638,10 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
     ) -> Sequence[str]:
         """Read a module's public exports once from its authenticated native tree.
 
+        The names come from the static facts of the engine's one parse of the
+        module (the lazy-init export owner), never from a full binding index
+        built only to read one assignment.
+
         Returns:
             The names declared by the source module's literal ``__all__``.
 
@@ -647,16 +649,14 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
         owner = FlextInfraUtilitiesWorkspaceSnapshot
         if path not in snapshot.exports:
             owner.workspace_source(snapshot, path)
+            model = FlextInfraUtilitiesPythonModel
             snapshot.exports[path] = (
-                FlextInfraUtilitiesRopeAnalysisSourceScan.module_assignment_strings_source(
-                    FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                        snapshot.engine,
-                        FlextInfraUtilitiesRopeRuntime.file_resource_at(
-                            snapshot.engine, path
-                        ),
-                    ),
-                    c.Infra.DUNDER_ALL,
+                model.python_model_exports(
+                    model.python_model_module_at(
+                        model.python_model_run(snapshot.engine, {}), path, path.stem
+                    )
                 )
+                or ()
             )
         return snapshot.exports[path]
 
