@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- test(rope): state the export-retirement and competing-declaration contracts (#2364)
 - fix(codegen): a facade never publishes a private generic member class (#2367)
 - test(codemod): compare a new published module with its admitted normalized bytes
   (#2366)
