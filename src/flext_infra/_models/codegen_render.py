@@ -416,6 +416,10 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Project-relative executable paths"),
         ]
+        bootstrap_bin_dir: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Repository-local directory of the Mise shims"),
+        ]
         environment_directory: Annotated[
             t.NonEmptyStr,
             m.Field(description="Runtime-root-local development environment"),

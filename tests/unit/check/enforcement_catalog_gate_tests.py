@@ -94,7 +94,7 @@ class TestsFlextInfraEnforcementCatalogGate:
             for claim in catalog.claims
             if claim.engine == c.Infra.EnforcementEngine.AST_GREP
         }
-        tm.that(claimed, eq={("ENFORCE-900", "fixture-active", True)})
+        tm.that(("ENFORCE-900", "fixture-active", True) in claimed, eq=True)
 
     @staticmethod
     def test_repeated_claim_fails_as_duplicate(tmp_path: Path) -> None:

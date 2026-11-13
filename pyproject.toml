@@ -37,7 +37,7 @@ dependencies = [
   "pymdown-extensions>=11.0.1",
   "pytest>=9.1.1",
   "pytest-markdown-docs>=0.9.2",
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@a6f233e157e59b137fce01692e49046e1648d112",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@4cb40a6fe564c6761dcb2f4e6c79d7fb7304f96f",
   "typing-extensions>=4.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
@@ -689,7 +689,7 @@ environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
-  "rope @ git+https://github.com/marlon-costa-dc/rope.git@a6f233e157e59b137fce01692e49046e1648d112",
+  "rope @ git+https://github.com/marlon-costa-dc/rope.git@4cb40a6fe564c6761dcb2f4e6c79d7fb7304f96f",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",

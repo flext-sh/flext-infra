@@ -72,6 +72,11 @@ class FlextInfraGatesDeps(FlextInfraGates):
 
         """
         execution = self._scan(project_dir, ctx)[0]
+        # The scanner's own failure (an invalid or missing declaration among
+        # them) is the first failure; reference alignment depends on a
+        # declaration the scan could read.
+        if execution.outcome == c.Infra.ToolOutcome.ERROR:
+            return execution
         pyproject = project_dir / c.PYPROJECT_FILENAME
         document = u.Cli.toml_parse_text(
             pyproject.read_text(encoding=c.DEFAULT_ENCODING)
@@ -130,15 +135,13 @@ class FlextInfraGatesDeps(FlextInfraGates):
             The change notes of every reference moved onto the line.
 
         """
-        inputs = u.Infra.load_codegen_inputs(project_dir).unwrap()
-        integration = (
-            u.Infra
-            .flext_integration_line(codegen=inputs.spec, repository_root=project_dir)
-            .unwrap()
-            .branch
-        )
         migrations = u.Infra.internal_reference_migrations(
-            document, target_ref=integration
+            document,
+            target_ref=lambda: u.Infra.load_codegen_inputs(project_dir).flat_map(
+                lambda inputs: u.Infra.flext_integration_line(
+                    codegen=inputs.spec, repository_root=project_dir
+                ).map(lambda line: line.branch)
+            ),
         ).unwrap()
         if not migrations:
             return ()

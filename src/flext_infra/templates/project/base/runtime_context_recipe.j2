@@ -104,8 +104,7 @@ MISE_CEILING_PATHS="{{ d }}(dirname "{{ d }}{reader_root}")"; \
 MISE_AUTO_INSTALL=0; \
 MISE_OVERRIDE_CONFIG_FILENAMES="{{ mise_config_filename }}"; \
 export MISE_CONFIG_DIR MISE_SYSTEM_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_CEILING_PATHS MISE_AUTO_INSTALL MISE_OVERRIDE_CONFIG_FILENAMES; \
-case "{{ d }}{OS:-}" in (Windows_NT) reader_mise="{{ d }}{reader_root}/.bin/mise.exe" ;; (*) reader_mise="{{ d }}{reader_root}/.bin/mise" ;; esac; \
-if [ -L "{{ d }}{reader_root}/.bin" ] || [ -L "{{ d }}{reader_mise}" ]; then printf 'ERROR: Mise acquisition must be physical: %s\n' "{{ d }}{reader_mise}" >&2; exit 2; fi; \
+case "{{ d }}{OS:-}" in (Windows_NT) reader_mise="{{ d }}{HOME}/.local/bin/mise.exe" ;; (*) reader_mise="{{ d }}{HOME}/.local/bin/mise" ;; esac; \
 reader_mise="{{ d }}(MISE_LOCKED=1 "{{ d }}{reader_mise}" -C "{{ d }}{reader_root}" which mise)"; \
 if [ "{{ d }}{OS:-}" = Windows_NT ]; then reader_mise="{{ d }}(cygpath --unix "{{ d }}{reader_mise}")"; fi; \
 if [ "{{ d }}{reader_root}" != "{{ d }}{project_root}" ]; then \

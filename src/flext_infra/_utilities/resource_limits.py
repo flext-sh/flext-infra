@@ -73,6 +73,37 @@ class FlextInfraUtilitiesResourceLimits:
         return int(raw_value)
 
     @staticmethod
+    def node_heap_megabytes(
+        membership: Path = Path(c.Infra.CGROUP_MEMBERSHIP_FILE),
+        root: Path = Path(c.Infra.CGROUP_ROOT),
+    ) -> int | None:
+        """Size a Node tool's heap from the memory bound of the running recipe.
+
+        A verb recipe runs in a cgroup scope bounded by the admission memory
+        limit. Inside a 5 GiB scope Node stops near 2 GiB of heap, and Pyright
+        aborts with "heap out of memory" on a project it checks in under a
+        minute with a 4 GiB heap in the same scope. The bound is read from the
+        process's own cgroup v2 scope; a scope without a bound keeps Node's
+        default.
+
+        Returns:
+            The heap size in mebibytes, or ``None`` without a memory bound.
+
+        """
+        if not membership.is_file():
+            return None
+        scope = membership.read_text(encoding=c.DEFAULT_ENCODING).partition("::")[2]
+        bound = root / scope.strip().lstrip("/") / c.Infra.CGROUP_MEMORY_BOUND_FILE
+        if not bound.is_file():
+            return None
+        raw = bound.read_text(encoding=c.DEFAULT_ENCODING).strip()
+        if raw == c.Infra.CGROUP_UNBOUNDED:
+            return None
+        return (
+            int(raw) * c.Infra.NODE_HEAP_SHARE_PERCENT // 100 // c.Infra.BYTES_PER_MIB
+        )
+
+    @staticmethod
     def mypy_resource_limit() -> p.Infra.MypyResourceLimit:
         """Validate the external Mypy memory and time settings exactly once.
 
