@@ -122,14 +122,7 @@ class FlextInfraCliDispatchService(FlextInfraCliRouteService, FlextCli):
             )
             exit_code: int = process_exit.exit_code
             return exit_code
-        error_message = result.error
-        # One emission boundary: framework_exit_result already printed plain
-        # Result-route failures (error_code is None). Coded boundary failures
-        # (validation/operation) never crossed that emitter and still need
-        # exactly one console line — same rule as PROCESS_EXIT above.
-        if error_message and result.error_code is not None:
-            self.display_message(error_message, c.Cli.MessageTypes.ERROR)
-        return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
+        return self.finalize_result(result)
 
 
 __all__: list[str] = ["FlextInfraCliDispatchService"]
