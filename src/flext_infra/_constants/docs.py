@@ -352,6 +352,7 @@ class FlextInfraConstantsDocs:
         "undocumented-public-init",
         "missing-copyright-notice",
         "implicit-namespace-package",
+        "shebang-not-executable",
         "print",
         "assert",
         "boolean-positional-value-in-call",
@@ -363,6 +364,8 @@ class FlextInfraConstantsDocs:
     )
     """Only module-header (docstring, copyright notice) and package rules are
     inapplicable to a standalone Markdown fence, which is not a module file;
+    a fence is materialized as one non-executable temporary file for the
+    native batch, so a shebang in its content has no executable-file contract;
     the pydocstyle public-surface family is inapplicable for the same reason
     (the surrounding prose is the fence's documentation), as is the
     docstring-completeness contract (example helpers keep their one-line
