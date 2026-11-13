@@ -384,7 +384,7 @@ class TestsFlextInfraRopeContractCatalog:
             (
                 (
                     "from flext_cli import m, p\n"
-                    "def consume(value: p.Cli.AtomicFileState): return value\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
                 ),
                 "flext_core.protocols.FlextProtocols",
                 "has no member in declared owner",
@@ -392,7 +392,7 @@ class TestsFlextInfraRopeContractCatalog:
             (
                 (
                     "from flext_cli import m, p\n"
-                    "def consume(value: p.Cli.Missing): return value\n"
+                    "def consume(value: m.Cli.Missing): return value\n"
                 ),
                 "flext_cli.protocols.FlextCliProtocols.Cli",
                 "model annotation source is undeclared",
@@ -401,7 +401,7 @@ class TestsFlextInfraRopeContractCatalog:
                 (
                     "from missing_model_package import m\n"
                     "from flext_cli import p\n"
-                    "def consume(value: p.Cli.AtomicFileState): return value\n"
+                    "def consume(value: m.Cli.AtomicFileState): return value\n"
                 ),
                 "flext_cli.protocols.FlextCliProtocols.Cli",
                 "source namespace .* is unknown",
