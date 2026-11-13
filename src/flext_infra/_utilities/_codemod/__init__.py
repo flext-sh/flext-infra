@@ -530,7 +530,6 @@ install_lazy_exports(
             "_import_law_header_end",
             "snapshot_bootstrap_dependencies",
             "_bootstrap_inputs_unchanged",
-            "persistent_import_graph",
             "snapshot_import_graph",
             "_module_import_facts",
             "import_cycle_statements",

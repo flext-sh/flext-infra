@@ -1056,7 +1056,6 @@ install_lazy_exports(
             "WorkspaceSnapshotSource",
             "WorkspaceBootstrapDependencies",
             "ImportGraphModuleFacts",
-            "ImportGraphFacts",
             "WorkspaceSnapshot",
         ),
         "FlextInfraModelsWorktree": (
