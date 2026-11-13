@@ -60,7 +60,7 @@ rules:
   imports: &logging_imports
     u: from flext_core import u
   bindings: &logging_bindings
-    u.fetch_logger: u.fetch_logger
+    u.fetch_logger: flext_core.u.fetch_logger
   implementation_owner: &logging_implementation [ flext_core, u.fetch_logger ]
   # Numeric stdlib log(), handler management, exported and escaping logger
   # interfaces have no proven factory translation. Keep those native.
