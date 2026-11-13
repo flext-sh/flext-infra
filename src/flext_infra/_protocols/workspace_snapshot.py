@@ -461,11 +461,6 @@ class FlextInfraProtocolsWorkspaceSnapshot:
             ...
 
         @property
-        def digest(self) -> t.NonEmptyStr:
-            """SHA-256 of the exact source bytes."""
-            ...
-
-        @property
         def imports(self) -> tuple[str, ...]:
             """Module-level imported module paths."""
             ...
