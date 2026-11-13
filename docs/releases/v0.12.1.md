@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- test(rope): a candidate retirement declares no mode (#2349)
 - fix(codegen): the model-protocol stage reads a generic publication as its class
   (#2350)
 - fix(rope): pin the fork's last-binding reader and delete the \_\_all\_\_ workaround
