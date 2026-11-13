@@ -135,17 +135,17 @@ class FlextInfraUtilitiesCodemodNativeCascade:
                 shutil.rmtree(final)
             return None
         rule_ids = frozenset(rule.id for rule in rules)
-        staging = Path(tempfile.mkdtemp(prefix=f".{stage.name}-", dir=reports))
-        FlextInfraUtilitiesCodemodRules.codemod_stage_scan_ruleset(
-            FlextInfraUtilitiesCodemodRules.project_plan(plan, root, rule_ids),
-            staging,
-        )
-        retired = reports / f".{stage.name}-retired"
-        if final.exists():
-            final.replace(retired)
-        staging.replace(final)
-        if retired.exists():
-            shutil.rmtree(retired)
+        with tempfile.TemporaryDirectory(
+            prefix=f".{stage.name}-", dir=reports
+        ) as directory:
+            staging = Path(directory) / stage.name
+            FlextInfraUtilitiesCodemodRules.codemod_stage_scan_ruleset(
+                FlextInfraUtilitiesCodemodRules.project_plan(plan, root, rule_ids),
+                staging,
+            )
+            if final.exists():
+                final.replace(Path(directory) / "retired")
+            staging.replace(final)
         staged_ids = tuple(sorted(rule_ids))
         return m.Infra.CodemodRuleset(
             provider=stage.name,
@@ -344,10 +344,7 @@ class FlextInfraUtilitiesCodemodNativeCascade:
         ):
             return {}
         binary = cls.codemod_tool_binary(c.Infra.SG)
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="mod-native-cascade-", dir=settings.work_dir
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix="mod-native-cascade-") as directory:
             preview = Path(directory)
             for relative, content in originals.items():
                 u.Cli.ensure_dir((preview / relative).parent).unwrap()
