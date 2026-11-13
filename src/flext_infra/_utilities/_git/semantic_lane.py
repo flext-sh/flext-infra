@@ -192,9 +192,79 @@ class FlextInfraUtilitiesGitSemanticLane:
             )
         if switched.failure:
             return switched
-        return FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
+        merged = FlextInfraUtilitiesGitSemanticPublish.git_merge_no_edit(
             m.Infra.GitCommitishRequest(repo_root=root, commitish=request.base),
-        ).map(lambda _report: True)
+        )
+        if merged.success:
+            return r[bool].ok(value=True)
+        return cls._git_take_base_projections(request, merged.error or "")
+
+    @classmethod
+    def _git_take_base_projections(
+        cls,
+        request: p.Infra.GitLaneRequest,
+        merge_error: str,
+    ) -> p.Result[bool]:
+        """Conclude a merge whose only conflicts are full generated projections.
+
+        ``.gitattributes`` marks a full projection ``-merge linguist-generated``:
+        Git never combines it textually, so the lane's earlier rendering and
+        the base's always conflict. The merge takes the base's rendering and
+        the producing step regenerates it from the merged sources. Any other
+        conflict keeps the merge state and fails with the original error.
+
+        Returns:
+            The resulting ``p.Result[bool]``.
+
+        """
+        root = request.repo_root
+        listed = u.Cli.capture(
+            [c.Infra.GIT, "diff", "--name-only", "--diff-filter=U", "-z"],
+            cwd=root,
+        )
+        if listed.failure:
+            return r[bool].from_failure(listed)
+        conflicted = tuple(path for path in listed.value.split("\0") if path)
+        if not conflicted:
+            return r[bool].fail(merge_error)
+        attributes = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "check-attr",
+                "-z",
+                *c.Infra.GIT_PROJECTION_ATTRIBUTES,
+                "--",
+                *conflicted,
+            ],
+            cwd=root,
+        )
+        if attributes.failure:
+            return r[bool].from_failure(attributes)
+        fields = attributes.value.split("\0")
+        declared = set(zip(fields[::3], fields[1::3], fields[2::3], strict=False))
+        regenerated = {
+            path
+            for path in conflicted
+            if all(
+                (path, name, value) in declared
+                for name, value in c.Infra.GIT_PROJECTION_ATTRIBUTES.items()
+            )
+        }
+        foreign = sorted(set(conflicted) - regenerated)
+        if foreign:
+            return r[bool].fail(
+                f"{merge_error}\nconflicts outside generated projections: "
+                + ", ".join(foreign),
+            )
+        for command in (
+            [c.Infra.GIT, "checkout", "--theirs", "--", *conflicted],
+            [c.Infra.GIT, "add", "--", *conflicted],
+            [c.Infra.GIT, "commit", "--no-edit"],
+        ):
+            outcome = u.Cli.run_checked(command, cwd=root)
+            if outcome.failure:
+                return outcome
+        return r[bool].ok(value=True)
 
     @classmethod
     def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
