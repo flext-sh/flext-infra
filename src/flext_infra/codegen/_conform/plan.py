@@ -373,7 +373,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         participants = tuple(
             participant
             for participant in repositories
-            if participant.kind is c.Infra.ProjectKind.INTERNAL_FLEXT
+            if participant.kind in c.Infra.TOOLCHAIN_GOVERNED_KINDS
         )
         roots = tuple(
             (root / participant.path).resolve() for participant in participants
@@ -1008,7 +1008,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         surface: c.Infra.CodegenConformSurface,
         inputs: p.Infra.CodegenInputs,
     ) -> p.Result[tuple[p.Infra.CodegenRepositoryPlanTask, ...]]:
-        """Build one planning task per selected internal FLEXT repository.
+        """Build one planning task per selected toolchain-governed repository.
 
         Returns:
             The ordered planning tasks, or the first member configuration
@@ -1019,7 +1019,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         result_type = r[tuple[p.Infra.CodegenRepositoryPlanTask, ...]]
         tasks: list[p.Infra.CodegenRepositoryPlanTask] = []
         for repository in selected:
-            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
+            if repository.kind not in c.Infra.TOOLCHAIN_GOVERNED_KINDS:
                 u.Cli.info(
                     f"  stage=skip repository={repository.name} "
                     f"kind={repository.kind.value} is not rewritten by generation",

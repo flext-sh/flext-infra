@@ -578,7 +578,7 @@ class FlextInfraProtocolsDeps(Protocol):
         environment_dir: Path
         planned_sources: Mapping[Path, str]
         project_name: t.NonEmptyStr
-        package_name: t.NonEmptyStr
+        package_name: t.NonEmptyStr | None
         path: Path
 
         @property

@@ -311,6 +311,49 @@ class FlextInfraModelsConfigWorkspace:
                 raise ValueError(msg)
             return names
 
+        @m.model_validator(mode="after")
+        def _validate_consumer_declaration(self) -> Self:
+            """Keep a consumer's declaration free of everything a package ships.
+
+            A project that declares no ``package_name`` owns no import package: it
+            is a consumer, and ships no package, module, data or console script.
+
+            Returns:
+                The validated declaration.
+
+            Raises:
+                ValueError: A consumer ships code.
+
+            """
+            project = self.project
+            if project is None or project.package_name is not None:
+                return self
+            shipped = (
+                project.root_packages
+                or project.root_modules
+                or project.repository_namespace_packages
+                or project.packaged_data_paths
+                or project.console_scripts
+                or project.hatch_build_hook_path
+            )
+            if shipped:
+                msg = "a consumer repository ships no package, module or data"
+                raise ValueError(msg)
+            return self
+
+        def governing_kind(self, detected: c.Infra.ProjectKind) -> c.Infra.ProjectKind:
+            """Elect the governance kind: a project without a package is a consumer.
+
+            Returns:
+                ``consumer`` when the declared project omits its package, else the
+                natively detected kind.
+
+            """
+            project = self.project
+            if project is not None and project.package_name is None:
+                return c.Infra.ProjectKind.CONSUMER
+            return detected
+
     class CandidateBootstrapTargetSpec(FlextInfraModelsConfigContract.ConfigContract):
         """One declared worktree and canonical conform surface."""
 
