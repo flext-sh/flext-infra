@@ -1331,6 +1331,11 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
                 return self._provider_value_reference(
                     binding, tuple(remaining), visiting, depth
                 )
+            except TypeError as exc:
+                # The declaration resolves here: name the unbound base before
+                # Rope's generic class failure hides which base it was.
+                message = f"Unresolved declared provider base: {target}"
+                raise ValueError(message) from exc
             except (ValueError, ImportError) as exc:
                 resource = module.get_resource()
                 captured = tuple(
