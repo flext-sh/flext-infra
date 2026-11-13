@@ -699,6 +699,10 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         tm.fail(u.Infra.workspace_manifest_path(source).exists())
         projection = candidate / c.PYPROJECT_FILENAME
+        # The candidate first reaches its canonical projection, which composes
+        # the declared development requirements; recovery must restore that.
+        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
+        tm.ok(infra.bootstrap_candidate(command))
         original = projection.read_text(encoding="utf-8")
         original_groups = u.Tests.toml_table_at(original, "dependency-groups")
         environment = u.Infra.runtime_environment_dir(candidate)
@@ -723,7 +727,6 @@ class TestsFlextInfraCodegenCandidateBootstrap:
             ),
         )
         before = TestsFlextInfraConformSupport.project_tree(candidate)
-        command = m.Infra.CandidateBootstrapCommand(repository_root=source)
         inputs = tm.ok(u.Infra.load_codegen_inputs(candidate))
         destinations = tm.not_none(
             FlextInfraCodegenConform.Generate.surface_contract(
