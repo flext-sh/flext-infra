@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- feat(codemod): the compat window covers every facade letter (#2346)
+- fix(codegen): reconcile authored protocol contracts that lack runtime\_checkable
+  (#2347)
 - fix(cli): finalize group results through flext-cli's single renderer (#2344)
 - fix(discovery): a stub keeps its own name and never becomes a foreign module (#2343)
 - test(codegen): governed plan fixtures write lawful facades and bind the snapshot
