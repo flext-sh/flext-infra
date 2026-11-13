@@ -47,8 +47,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             Consolidated Git identity for one repository path.
 
         """
+        opened = cls._open_repo(request.repo_root)
+        if opened.failure:
+            return r[p.Infra.GitIdentityReport].from_failure(opened)
+        repo = opened.value
         try:
-            repo = cls._repo(request.repo_root)
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
                 return r[p.Infra.GitIdentityReport].from_failure(primary)
