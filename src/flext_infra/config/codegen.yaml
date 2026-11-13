@@ -944,9 +944,8 @@ Infra:
       - { verb: check, contexts: [ local ] }
       - { verb: tests, contexts: [ local ] }
       - { verb: build, contexts: [ local ] }
-      # Repository-local directory holding the bootstrap Mise binary. The
-      # generated Makefile places the binary there and the CI workflows cache
-      # it, so a pinned binary is fetched only when its version changes.
+      # Repository-local directory of the project's Mise shims. Mise itself is
+      # the official installer's shared default executable, never copied here.
       bootstrap_bin_dir: .bin
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.

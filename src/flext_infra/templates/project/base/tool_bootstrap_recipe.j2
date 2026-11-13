@@ -1,30 +1,19 @@
-{#- The official installer owns initial acquisition, including platform and
-    checksum handling. Mise then reads its own lock and provisions the explicit
-    declared tools; neither Make nor CI interprets lock or release formats. -#}
+{#- The official installer owns acquisition, platform and checksum handling, and
+    places Mise at its default $(BOOTSTRAP_MISE), shared by every checkout. It
+    runs only when that executable is absent; the committed min_version makes
+    Mise itself refuse an older one. Native `mise install` then provisions the
+    pinned self-managed release, which execution resolves through `mise which`. -#}
 {% macro mise_acquisition(project_root, toolchain) -%}
 	bootstrap_stage=acquisition; \
-	if [ -L "{{ project_root }}/.bin" ] && [ ! -e "{{ project_root }}/.bin" ]; then rm -f "{{ project_root }}/.bin"; fi; mkdir -p "{{ project_root }}/.bin"; \
-	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0; \
+	if [ ! -x "$(BOOTSTRAP_MISE)" ]; then \
+	export MISE_INSTALL_FROM_GITHUB=1 MISE_INSTALL_HELP=0; \
 {% if toolchain.mise_version == "latest" %}	unset MISE_VERSION; \
-	mise_acquired=false; \
 {% else %}	export MISE_VERSION="{{ toolchain.mise_version }}"; \
-	{#- The declared version is the gate: a present binary reporting exactly
-	    it needs no installer download, so a no-op setup needs no network. #}
-	mise_acquired=false; \
-	if [ -x "$(BOOTSTRAP_MISE)" ]; then \
-		mise_present="$$("$(BOOTSTRAP_MISE)" --version)"; \
-		if [ "$${mise_present%% *}" = "$${MISE_VERSION}" ]; then mise_acquired=true; fi; \
-	fi; \
-{% endif %}	if [ "$${mise_acquired}" = true ]; then \
-		printf 'setup: mise %s already acquired at %s\n' "$${MISE_VERSION}" "$(BOOTSTRAP_MISE)"; \
-	else \
-	case "$${OS:-}" in \
+{% endif %}	case "$${OS:-}" in \
 		(Windows_NT) \
-			export MISE_INSTALL_PATH="$$(cygpath --windows "$(BOOTSTRAP_MISE)")"; \
 			powershell.exe -NoProfile -Command '$$ErrorActionPreference = "Stop"; Invoke-RestMethod https://mise.run/powershell | Invoke-Expression' ;; \
 		(*) \
-			export MISE_INSTALL_PATH="$(BOOTSTRAP_MISE)"; \
-			mise_stage="$$(mktemp -d "{{ project_root }}/.bin/.mise-install.XXXXXXXX")"; \
+			mise_stage="$$(mktemp -d)"; \
 			curl --proto '=https' --tlsv1.2 -fsSL -o "$${mise_stage}/install.sh" https://mise.run; \
 			sh "$${mise_stage}/install.sh" ;; \
 	esac; \
@@ -76,8 +65,8 @@
 
 {#- Native installation preserves valid pins. Setup fills absent lock entries;
     upgrade installs the exact pins its preceding resolution published. -#}
-{% macro mise_install(project_root, install_tools, locked=true) -%}
-	export MISE_SHIMS_DIR="{{ project_root }}/.bin/shims"; \
+{% macro mise_install(project_root, install_tools, bin_dir, locked=true) -%}
+	export MISE_SHIMS_DIR="{{ project_root }}/{{ bin_dir }}/shims"; \
 	export MISE_LOCKED={{ "1" if locked else "0" }}; \
 	bootstrap_stage=tool-install; \
 	"$(BOOTSTRAP_MISE)" -C "{{ project_root }}" install --yes{% for tool in install_tools %} "{{ tool }}"{% endfor %};
@@ -85,9 +74,9 @@
 
 {#- Setup acquires the declared Mise and lets its native installer complete
     incomplete lock inputs before the runtime reader consumes them. -#}
-{% macro mise_toolchain_provision(project_root, toolchain, install_tools) -%}
+{% macro mise_toolchain_provision(project_root, toolchain, install_tools, bin_dir) -%}
 {{ mise_acquisition(project_root, toolchain) }} \
-	{{ mise_install(project_root, install_tools, locked=false) }}
+	{{ mise_install(project_root, install_tools, bin_dir, locked=false) }}
 {%- endmacro %}
 
 {#- Syntax preflight of one committed TOML lock (a projection never
@@ -167,6 +156,7 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 			if [ "$${bootstrap_status}" -eq 0 ]; then bootstrap_status=$${bootstrap_report_status}; fi; \
 		fi; \
 		exit "$${bootstrap_status}"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	if bootstrap_candidate="$$(git -C "{{ project_root }}" rev-parse --verify HEAD)"; then \
 		bootstrap_git_status=0; \
 		case "$${bootstrap_candidate}" in \
@@ -178,7 +168,7 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 		esac; \
 	else bootstrap_git_status=$$?; fi; \
 	{{ mise_network_admission() }} \
-	{{ mise_toolchain_provision(project_root, toolchain, install_tools) }} \
+	{{ mise_toolchain_provision(project_root, toolchain, install_tools, make.bootstrap_bin_dir) }} \
 	mise_active="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" tool "{{ mise_selector }}" --active)"; \
 	mise_binary="$$("$(BOOTSTRAP_MISE)" -C "{{ project_root }}" which mise)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then mise_binary="$$(cygpath --unix "$${mise_binary}")"; fi; \

@@ -675,12 +675,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
         A governed repository carries the declaration and the dependency lock
         together. Native dependency graphs referenced by the lock must travel
         with it so frozen setup never resolves replacements. Conform renders
-        declarations; only ``make upg`` resolves new versions. Reader fixtures
-        also receive a physical copy of the qualified native Mise executable.
-
-        Raises:
-            ValueError: A fixture bootstrap path is a symlink.
-
+        declarations; only ``make upg`` resolves new versions. The fixture
+        reuses the shared Mise executable; it never copies it.
         """
         source_root = (
             Path(__file__).resolve().parents[1] if source_root is None else source_root
@@ -694,14 +690,6 @@ class TestsFlextInfraUtilitiesToolingFixture:
             destination.parent.mkdir(parents=True, exist_ok=True)
             _ = shutil.copy2(source, destination)
         reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[1]))
-        bootstrap = root / config.Infra.codegen.make.bootstrap_bin_dir
-        destination = bootstrap / reader.name
-        if bootstrap.is_symlink() or destination.is_symlink():
-            msg = f"fixture bootstrap must be physical: {destination}"
-            raise ValueError(msg)
-        bootstrap.mkdir(parents=True, exist_ok=True)
-        if not destination.exists():
-            _ = shutil.copy2(reader, destination)
         tm.ok(
             u.Cli.run_checked(
                 (str(reader), "trust", str(root / c.Infra.MISE_TOML_FILENAME)),

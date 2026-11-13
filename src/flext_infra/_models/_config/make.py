@@ -1113,10 +1113,7 @@ class FlextInfraModelsConfigMake(
         bootstrap_bin_dir: Annotated[
             t.NonEmptyStr,
             m.Field(
-                description=(
-                    "Repository-local directory of the bootstrap Mise binary, "
-                    "cached by the generated CI workflows"
-                ),
+                description="Repository-local directory of the project's Mise shims",
             ),
         ]
         clean: Annotated[
