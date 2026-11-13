@@ -114,7 +114,6 @@ install_lazy_exports(
             "ScaffoldSpec",
             "RopePreferencesSpec",
             "SourceScanSpec",
-            "MutationLockSpec",
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",
@@ -415,7 +414,6 @@ install_lazy_exports(
         "FlextInfraModelsConfigStatic": (
             "RopePreferencesSpec",
             "SourceScanSpec",
-            "MutationLockSpec",
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",

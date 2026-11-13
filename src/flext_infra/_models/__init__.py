@@ -406,6 +406,7 @@ install_lazy_exports(
             "DeptryReport",
             "ProjectDependencyReport",
             "WorkspaceDependencyReport",
+            "UpgBounds",
             "ToolingContextRequest",
             "ModStageConfig",
             "ModPhasesConfig",

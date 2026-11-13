@@ -44,6 +44,45 @@ class TestsFlextInfraFacadesDeferEveryPart:
         )
         tm.that(self._run(script), eq="[]\n")
 
+    def test_every_stand_in_lists_every_member_of_its_class(self) -> None:
+        """Each generated stand-in lists every name its real class's MRO binds.
+
+        The walk follows stand-ins nested in a real part's MRO to their own
+        classes, so an index generated before a member was added fails here.
+        """
+        script = (
+            "import importlib\n"
+            "from flext_infra import c, t, p, m, u\n"
+            "def target(k):\n"
+            "    return vars(k).get('__flext_lazy_target__')\n"
+            "def real(k):\n"
+            "    module, owner, _ = target(k)\n"
+            "    return getattr(importlib.import_module(module), owner)\n"
+            "def plain(names):\n"
+            "    return {n for n in names if not (n[:2] == '__' == n[-2:])}\n"
+            "def bound(cls):\n"
+            "    names = set()\n"
+            "    for k in cls.__mro__:\n"
+            "        names |= bound(real(k)) if target(k) else plain(vars(k))\n"
+            "    return names\n"
+            "seen, missing = set(), []\n"
+            "def walk(cls):\n"
+            "    for k in cls.__mro__:\n"
+            "        if not target(k) or not target(k)[0].startswith('flext_infra')"
+            " or k in seen:\n"
+            "            continue\n"
+            "        seen.add(k)\n"
+            "        lost = bound(real(k)) - plain(vars(k))\n"
+            "        missing.extend(f'{k.__name__}.{n}' for n in sorted(lost))\n"
+            "        walk(real(k))\n"
+            "for f in (c, t, p, m, u):\n"
+            "    for root in (f, *(v for v in vars(f).values() "
+            "if isinstance(v, type))):\n"
+            "        walk(root)\n"
+            "print(bool(seen), missing)\n"
+        )
+        tm.that(self._run(script), eq="True []\n")
+
     def test_deferred_members_resolve_to_the_library_objects(self) -> None:
         """The first member access loads the library and returns its own object."""
         script = (

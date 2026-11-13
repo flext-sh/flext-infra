@@ -239,7 +239,6 @@ install_lazy_exports(
         "FlextInfraProtocolsConfigStatic": (
             "RopePreferencesSpec",
             "SourceScanSpec",
-            "MutationLockSpec",
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",

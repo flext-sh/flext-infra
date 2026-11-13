@@ -543,7 +543,6 @@ install_lazy_exports(
             "SonarcloudIssueExclusionSpec",
             "RopePreferencesSpec",
             "SourceScanSpec",
-            "MutationLockSpec",
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",
@@ -606,6 +605,7 @@ install_lazy_exports(
             "ProjectDependencyReport",
             "WorkspaceDependencyReport",
             "ToolingContextRequest",
+            "UpgBounds",
         ),
         "FlextInfraProtocolsDepsToml": (
             "MemberRequirements",
