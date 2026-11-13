@@ -56,6 +56,26 @@ Infra:
   # up to reconcile_attempts.
   mutation_lock:
     reconcile_attempts: 3
+  # Heavy gates (check, tests, tests-full, gen, gen-scope, mod and ai-hub's
+  # post-edit mypy/pyrefly/pytest) share one per-host FIFO queue (ADR-032):
+  # two at normal host pressure, one when the host-budget owner publishes
+  # high or critical pressure. A dead holder frees its slot at once; a live
+  # holder whose heartbeat is older than ttl_seconds is reclaimed.
+  gate_admission:
+    capacity_normal: 2
+    capacity_high: 1
+    heartbeat_seconds: 10
+    ttl_seconds: 120
+    poll_seconds: 2
+    # Each route arms its budget only after it is admitted. Generation keeps a
+    # 30 s reserve so its profile checkpoint survives a budget kill; check
+    # derives its budget from the gates it runs, tests from tools.pytest.
+    generation:
+      budget_seconds: 900
+      grace_seconds: 30
+    modification:
+      budget_seconds: 120
+      grace_seconds: 10
   source_scan:
     # tests/ and examples/ are first-class code under the same gates as src/;
     # leaving them out of the scan blinds every analyzer to half the
