@@ -347,7 +347,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             apply_changes=False,
             skip_check=True,
             skip_comments=True,
-            rewrite_constraints=False,
         )
 
         tm.that(modernizer.run(), eq=0)
