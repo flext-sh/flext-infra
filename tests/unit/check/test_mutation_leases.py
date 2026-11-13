@@ -9,7 +9,6 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from flext_infra import config
 from flext_infra.gates import FlextInfraGatesRuffFormat
 from tests import c, m, tm, u
 
@@ -72,12 +71,6 @@ class TestsFlextInfraMutationLeases:
         tm.that(target.read_text(encoding="utf-8"), ne=before)
         tm.that(target.read_text(encoding="utf-8"), has="import os")
         tm.ok(gate.check(root, context).result.passed)
-
-    @staticmethod
-    def test_scope_has_no_operation_wide_lock() -> None:
-        """Concurrent sessions are never serialized by a tree-wide operation lock."""
-        tm.that(hasattr(u.Infra, "hold_mutation_scope"), eq=False)
-        tm.that(config.Infra.mutation_lock.reconcile_attempts, gt=0)
 
     @staticmethod
     def test_malformed_git_marker_is_not_a_file_scope(tmp_path: Path) -> None:

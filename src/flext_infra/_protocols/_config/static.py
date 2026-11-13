@@ -40,15 +40,6 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
-    class MutationLockSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def reconcile_attempts(self) -> t.NonNegativeInt:
-            """Replans after another writer changed a destination."""
-            ...
-
-    @runtime_checkable
     class RouteBudgetSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 

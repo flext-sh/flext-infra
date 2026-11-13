@@ -372,13 +372,13 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
-7. The verb that installs new packages removes the cache entries it
-   superseded: native `uv cache prune` deletes dangling entries under uv's own
-   in-use rule. Mise tool versions are not pruned by a project verb:
-   `mise prune` decides from every configuration tracked on the host, and it
-   reads a tracked file without that file's own `[vars]` (jdx/mise#15101), so
-   from another project's directory it either fails on a foreign configuration
-   or counts that project's tools as unused.
+7. A project verb removes no host-wide cache or tool version. The uv cache
+   and the Mise installs are shared by every project on the host:
+   `uv cache prune` needs an exclusive lock on the shared cache and fails after
+   uv's 300 s lock wait while any other uv process runs, and `mise prune`
+   decides from every configuration tracked on the host while reading a
+   tracked file without that file's own `[vars]` (jdx/mise#15101). Pruning
+   either is a host operation, outside project verbs.
 
 Declared prerequisites of stage 6, open until they close:
 
