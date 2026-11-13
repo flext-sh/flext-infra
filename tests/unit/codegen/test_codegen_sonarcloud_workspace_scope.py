@@ -37,9 +37,7 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(
-            u.Tests.conform_plan_result(root, request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         rendered = tm.not_none(
             u.Tests.planned_text(plan, c.Infra.SONARCLOUD_PROPERTIES_FILENAME),
         )
@@ -70,9 +68,6 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
         member = u.Tests.WorktreeFixture.governed_workspace_with_member(root)
         tm.ok((root / c.Infra.GITMODULES).is_file())
         sonarcloud = config.Infra.codegen.sonarcloud
-        # Tracked generated-source trees join the declared exclusions from
-        # their one codegen artifact key (flext-gknfx).
-        generated = config.Infra.codegen.generated_source_globs
         tests_scope = f"{c.Infra.DIR_TESTS}/**"
 
         exclusions, cpd_exclusions, members = self._rendered_scope(root)
@@ -80,7 +75,7 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
         member_pattern = members[0]
         tm.that(
             exclusions,
-            eq=(*sonarcloud.exclusions, *generated, tests_scope, member_pattern),
+            eq=(*sonarcloud.exclusions, tests_scope, member_pattern),
         )
         tm.that(
             cpd_exclusions,
@@ -93,6 +88,6 @@ class TestsFlextInfraCodegenSonarcloudWorkspaceScope:
         tm.that(standalone_members, empty=True)
         tm.that(
             standalone_exclusions,
-            eq=(*sonarcloud.exclusions, *generated, tests_scope),
+            eq=(*sonarcloud.exclusions, tests_scope),
         )
         tm.that(standalone_cpd, eq=tuple(sonarcloud.cpd_exclusions))
