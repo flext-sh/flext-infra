@@ -51,9 +51,23 @@ utils:
 rule:
   any:
     - kind: import_statement
-      regex: '^import\s+(?:unittest\.mock|mock|pytest_mock)\b'
+      regex: '^import\s+(?:unittest\.mock|mock|pytest_mock|responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\b'
     - kind: import_from_statement
-      regex: '^from\s+(?:unittest\.mock|mock|pytest_mock)\s+import\b'
+      regex: '^from\s+(?:unittest\.mock|mock|pytest_mock|responses|requests_mock|vcr|freezegun|time_machine|aioresponses|pytest_httpx)\s+import\b'
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+httpx\s+import\b'
+        - has:
+            kind: dotted_name
+            regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: attribute
+        - regex: '(?:^|\.)MockTransport$'
+    - all:
+        - kind: call
+        - has:
+            field: function
+            regex: '^(?:responses|requests_mock|aioresponses|pytest_httpx|freezegun|time_machine|vcr)\.'
     - kind: import_from_statement
       regex: '^from\s+unittest\s+import\s+(?:[^\n]*[\s,(])?mock\b'
     - all:

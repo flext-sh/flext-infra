@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import re
 import tempfile
 from collections.abc import Mapping, MutableMapping, Sequence
 from functools import cache
 from pathlib import Path, PurePosixPath
+from typing import ClassVar
 
 from flext_cli import u
 from packaging.utils import canonicalize_name
@@ -27,6 +29,8 @@ class FlextInfraUtilitiesCodemodRules(
     FlextInfraUtilitiesCodemodRulesDistributions,
 ):
     """Resolve universal, runtime-transitive, and local ast-grep rule layers."""
+
+    _VALIDATED_RULESET_HASHES: ClassVar[set[str]] = set()
 
     @staticmethod
     def tests_tier_documents(
@@ -563,6 +567,9 @@ class FlextInfraUtilitiesCodemodRules(
         )
         if not bundle.is_file():
             return
+        bundle_hash = hashlib.sha256(bundle.read_bytes()).hexdigest()
+        if bundle_hash in cls._VALIDATED_RULESET_HASHES:
+            return
         binary = flext_infra.u.Infra.codemod_tool_binary(c.Infra.SG)
         command = flext_infra.u.Infra.ast_grep_scan_command(
             bundle, rule_ids=rule_ids, targets=(".",)
@@ -588,6 +595,7 @@ class FlextInfraUtilitiesCodemodRules(
             if any(marker in output for marker in c.Infra.CODEMOD_RULESET_PARSE_ERRORS):
                 msg = f"{prefix}: {config_path}: {output}"
                 raise ValueError(msg)
+        cls._VALIDATED_RULESET_HASHES.add(bundle_hash)
 
     @staticmethod
     def project_targets(

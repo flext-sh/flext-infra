@@ -204,6 +204,10 @@ class FlextInfraModelsConfigWorkspace:
             use_enum_values=False, extra="forbid"
         )
 
+        kind: Annotated[
+            FlextInfraConstantsConfig.ProjectKind | None,
+            m.Field(description="Declared project kind"),
+        ] = None
         beads_enabled: Annotated[
             bool,
             m.Field(description="Repository participates in the Beads contract"),

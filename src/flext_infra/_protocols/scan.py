@@ -253,7 +253,7 @@ class FlextInfraProtocolsScan:
         @property
         def authenticated(
             self,
-        ) -> Mapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]:
+        ) -> MutableMapping[str, p.Result[tuple[Path, p.Cli.AtomicFileState]]]:
             """One authentication per file."""
             ...
 

@@ -11,16 +11,18 @@ files:
   - "**/*.py"
 rule:
   all:
-    - pattern: "model_config = m.$CONFIG($$$ARGS)"
+    - pattern: "model_config = $QUALIFIER.$CONFIG($$$ARGS)"
     - inside:
         kind: block
         stopBy: end
         inside:
           kind: class_definition
 constraints:
+  QUALIFIER:
+    regex: "^(?:m|FlextModelsPydantic)$"
   CONFIG:
     regex: "^(Settings)?ConfigDict$"
-fix: "model_config: ClassVar[t.$CONFIG] = m.$CONFIG($$$ARGS)"
+fix: "model_config: ClassVar[t.$CONFIG] = $QUALIFIER.$CONFIG($$$ARGS)"
 message: >-
   Declare model_config as ClassVar[t.ConfigDict] or
   ClassVar[t.SettingsConfigDict], retaining the matching m constructor.

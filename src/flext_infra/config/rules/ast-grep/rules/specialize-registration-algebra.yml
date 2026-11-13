@@ -65,7 +65,12 @@ rule:
     all:
       - has:
           stopBy: end
-          pattern: $OWNER.$ALIAS
+          all:
+            - pattern: $OWNER.$ALIAS
+            - not:
+                inside:
+                  kind: subscript
+                  field: value
       - not:
           has:
             stopBy: end

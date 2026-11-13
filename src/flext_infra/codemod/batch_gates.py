@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import re
 import shutil
 import stat
@@ -17,6 +18,7 @@ from contextlib import closing
 from pathlib import Path
 
 from flext_infra import c, m, p, r, settings, t, u
+from flext_infra._utilities._codemod.scan_cache import FlextInfraCodemodScanCache
 from flext_infra.codemod import (
     FlextInfraCodemodSnapshotReconciler,
     FlextInfraModReplacements,
@@ -1065,7 +1067,7 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
 
     @classmethod
-    def _ruleset_report(
+    def _ruleset_report(  # ruff: ignore[too-many-arguments,too-many-locals]
         cls,
         root: Path,
         ruleset: p.Infra.CodemodRuleset,
@@ -1073,6 +1075,8 @@ class FlextInfraModGateEngine:
         selection: tuple[Sequence[str], p.Infra.ModScanSourceContext],
         *,
         artifact_root: Path,
+        threads: int | None = None,
+        filter_rules: bool = True,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Collect one provider's complete native findings before shared admission.
 
@@ -1089,10 +1093,44 @@ class FlextInfraModGateEngine:
             rule_ids=ruleset.rule_ids,
             targets=targets,
             json_stream=True,
+            threads=threads,
+            filter_rules=filter_rules,
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        stage_dir = FlextInfraCodemodScanCache.ensure_safe_storage(
+            artifact_root / ".tmp"
+        )
+        actual_threads = threads or u.Infra.codemod_scan_threads(root)
+        rules_digest = hashlib.sha256(
+            "".join(
+                f"{r_id}:{rules_by_id[r_id].digest}"
+                for r_id in sorted(ruleset.rule_ids)
+                if r_id in rules_by_id
+            ).encode()
+        ).hexdigest()
+        sources_digest = FlextInfraCodemodScanCache.sources_digest(root, targets)
+        cache_key = FlextInfraCodemodScanCache.cache_key(
+            root, rules_digest, sources_digest, actual_threads
+        )
+        cached_output = FlextInfraCodemodScanCache.get_cached_raw_output(
+            root, cache_key
+        )
+        if cached_output is not None:
+            sys.stderr.write(
+                f"mod: ast-grep scan cache hit key={cache_key[:12]}\n"
+            )
+            sys.stderr.flush()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, cached_output)
+            report = cls._parse_findings(
+                artifact.path,
+                root,
+                (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
+                context,
+                artifact,
+            ).unwrap()
+            return r[p.Infra.ModScanReport].ok(report)
+
         with tempfile.TemporaryDirectory(
-            prefix="mod-native-", dir=settings.work_dir
+            prefix="mod-native-", dir=stage_dir
         ) as directory:
             stdout_file, stderr_file = (
                 Path(directory) / "stdout",
@@ -1107,6 +1145,9 @@ class FlextInfraModGateEngine:
             )
             if run.failure:
                 return r[p.Infra.ModScanReport].from_failure(run)
+            FlextInfraCodemodScanCache.put_cached_raw_output(
+                root, cache_key, stdout_file
+            )
             sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
             sys.stderr.flush()
             artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
@@ -1205,7 +1246,7 @@ class FlextInfraModGateEngine:
         )
 
     @classmethod
-    def _native_scan_report(
+    def _native_scan_report(  # ruff: ignore[too-many-locals]
         cls,
         root: Path,
         plan: p.Infra.CodemodRulePlan,
@@ -1233,9 +1274,13 @@ class FlextInfraModGateEngine:
         native_targets = tuple(
             target for target in targets if Path(target).suffix != ".pyi"
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        threads = u.Infra.codemod_scan_threads(root)
+
+        stage_dir = FlextInfraCodemodScanCache.ensure_safe_storage(
+            artifact_root / ".tmp"
+        )
         with tempfile.TemporaryDirectory(
-            prefix="mod-native-catalog-", dir=settings.work_dir
+            prefix="mod-native-catalog-", dir=stage_dir
         ) as directory:
             entries: list[p.Infra.ModScanFinding] = []
             artifacts: list[p.Cli.AtomicFileReceipt] = []
@@ -1258,7 +1303,8 @@ class FlextInfraModGateEngine:
                 )
                 sys.stderr.write(
                     f"mod: ast-grep project={project.name} "
-                    f"provider={ruleset.provider} rules={len(ruleset.rule_ids)}\n",
+                    f"provider={ruleset.provider} rules={len(ruleset.rule_ids)} "
+                    f"threads={threads}\n",
                 )
                 sys.stderr.flush()
                 projected = cls._ruleset_report(
@@ -1267,6 +1313,7 @@ class FlextInfraModGateEngine:
                     rules_by_id,
                     (project_targets, context),
                     artifact_root=artifact_root / resolved_project.relative_to(root),
+                    threads=threads,
                 )
                 if projected.failure:
                     return r[p.Infra.ModScanReport].from_failure(projected)

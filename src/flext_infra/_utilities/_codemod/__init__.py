@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from flext_infra._utilities._codemod.rules_distributions import (
         FlextInfraUtilitiesCodemodRulesDistributions,
     )
+    from flext_infra._utilities._codemod.scan_cache import FlextInfraCodemodScanCache
     from flext_infra._utilities._codemod.scopes import FlextInfraUtilitiesCodemodScopes
     from flext_infra._utilities._codemod.type_set_rules import (
         FlextInfraUtilitiesCodemodTypeSetRules,
@@ -44,6 +45,7 @@ if TYPE_CHECKING:
 
 
 __all__: tuple[str, ...] = (
+    "FlextInfraCodemodScanCache",
     "FlextInfraUtilitiesCodemodBindingChain",
     "FlextInfraUtilitiesCodemodImportLawRules",
     "FlextInfraUtilitiesCodemodNative",
@@ -61,6 +63,7 @@ install_lazy_exports(
     __name__,
     globals(),
     {
+        "FlextInfraCodemodScanCache": ".scan_cache",
         "FlextInfraUtilitiesCodemodBindingChain": ".binding_chain",
         "FlextInfraUtilitiesCodemodImportLawRules": ".import_law_rules",
         "FlextInfraUtilitiesCodemodNative": ".native_utilities",

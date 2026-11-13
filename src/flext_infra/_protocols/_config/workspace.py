@@ -232,6 +232,11 @@ class FlextInfraProtocolsConfigWorkspace:
         """Structural data contract projected from the owning model."""
 
         @property
+        def kind(self) -> FlextInfraConstantsConfig.ProjectKind | None:
+            """Declared project kind."""
+            ...
+
+        @property
         def beads_enabled(self) -> bool:
             """Repository participates in the Beads contract."""
             ...

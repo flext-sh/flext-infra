@@ -272,6 +272,7 @@ class FlextInfraWorkspaceDetector(
         values.update(
             declaration.model_dump(
                 include=set(m.Infra.RepositoryRef.model_fields),
+                exclude_none=True,
                 round_trip=True,
             ),
         )

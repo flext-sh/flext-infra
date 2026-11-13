@@ -65,16 +65,15 @@ class FlextInfraStagedPackage:
             return r[T].from_failure(planned)
         plan = planned.value
         u.Cli.info(f"stage=source-preview-plan state=end inputs={len(plan.inputs)}")
-        lock = u.Infra.mutation_lock_path(
+        preview_base = (
             plan.workspace if storage_root is None else storage_root
-        )
-        if lock.failure:
-            return r[T].from_failure(lock)
-        storage = u.Cli.ensure_dir(lock.value.parent)
-        if storage.failure:
-            return r[T].from_failure(storage)
+        ) / ".reports" / "codegen" / "preview"
+        u.Cli.ensure_dir(preview_base).unwrap()
+        gitignore = preview_base / ".gitignore"
+        if not gitignore.is_file():
+            gitignore.write_text("*\n!.gitignore\n", encoding=c.DEFAULT_ENCODING)
         with TemporaryDirectory(
-            prefix="flext-source-preview-", dir=lock.value.parent
+            prefix="flext-source-preview-", dir=preview_base
         ) as directory:
             root = Path(directory)
             u.Cli.info("stage=source-preview-materialize state=start")

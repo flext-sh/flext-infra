@@ -30,3 +30,29 @@ fix: "from typing import ClassVar, $$$NAMES"
 message: >-
   Modules declaring FlextTestsConstants.Tests constants bind ClassVar at
   module level.
+---
+id: namespace-constant-classvar-import-new
+language: python
+severity: error
+files:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+rule:
+  all:
+    - pattern: "from __future__ import annotations"
+    - inside:
+        kind: module
+        all:
+          - has:
+              stopBy: end
+              matches: pydantic-namespace-constant
+          - not:
+              has:
+                kind: import_from_statement
+                has:
+                  field: module_name
+                  regex: "^typing$"
+fix: "from __future__ import annotations\n\nfrom typing import ClassVar"
+message: >-
+  Modules declaring FlextTestsConstants.Tests constants bind ClassVar at
+  module level.

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
+import os
 import platform
 import shutil
 import signal
@@ -20,6 +21,9 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 
 class FlextInfraUtilitiesResourceLimits:
@@ -510,6 +514,31 @@ class FlextInfraUtilitiesResourceLimits:
             exit_code=exit_code,
             signal=signal_number if signal_number is not None else "none",
         )
+
+    @staticmethod
+    def codemod_scan_threads(repository_root: Path | None = None) -> int:
+        """Resolve the bounded thread budget for ast-grep scans.
+
+        Reads codemod_scan_threads from make policy if configured;
+        otherwise defaults adaptively:
+        - CI (CI=Y): 2
+        - Local: min(8, max(1, (os.cpu_count() or 4) // 2))
+
+        Returns:
+            The resolved thread budget as a positive integer.
+
+        """
+        if repository_root is not None:
+            policy = FlextInfraUtilitiesProjectManagedArtifacts.load_codegen_policy(
+                repository_root
+            )
+            if policy.ok and policy.value.make.codemod_scan_threads is not None:
+                return policy.value.make.codemod_scan_threads
+        is_ci = settings.env_lookup("CI") in {"Y", "true", "1", "yes"}
+        if is_ci:
+            return 2
+        cpu_count = os.cpu_count() or 4
+        return min(8, max(1, cpu_count // 2))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesResourceLimits"]

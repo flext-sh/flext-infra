@@ -51,3 +51,14 @@ invalid:
   def test_context() -> None:
       with pytest.MonkeyPatch.context() as mp:
           mp.setattr(Service, "run", lambda: True)
+- import responses
+- import requests_mock
+- from vcr import use_cassette
+- from aioresponses import aioresponses
+- from pytest_httpx import HTTPXMock
+- from freezegun import freeze_time
+- from time_machine import travel
+- |
+  from httpx import MockTransport
+  transport = MockTransport(handler)
+- transport = httpx.MockTransport(handler)

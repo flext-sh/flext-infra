@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import hashlib
 import tempfile
 import time
 from collections import Counter
@@ -17,7 +18,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, settings, u
+from flext_infra import c, config, m, p, u
+from flext_infra._utilities._codemod.scan_cache import FlextInfraCodemodScanCache
 from flext_infra.gates import FlextInfraGates
 
 
@@ -27,6 +29,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
     can_fix: ClassVar[bool] = False
+    union_capable: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][1]
 
@@ -136,9 +139,12 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 planned.value.rules,
             )
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        threads = u.Infra.codemod_scan_threads(self._repository_root)
+        stage_dir = FlextInfraCodemodScanCache.ensure_safe_storage(
+            project_dir / ".reports" / "ast-grep" / ".tmp"
+        )
         with tempfile.TemporaryDirectory(
-            prefix="check-codemod-", dir=settings.work_dir
+            prefix="check-codemod-", dir=stage_dir
         ) as directory:
             for index, (project, project_targets) in enumerate(
                 u.Infra.project_targets(planned.value, native_targets)
@@ -152,6 +158,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                     ruleset,
                     project_targets,
                     (found, failures, raw_output),
+                    threads=threads,
                 ):
                     break
         findings = (
@@ -202,12 +209,14 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             ctx=ctx,
         )
 
-    def _scan_ruleset(
+    def _scan_ruleset(  # ruff: ignore[too-many-locals]
         self,
         scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
         ruleset: p.Infra.CodemodRuleset,
         targets: Sequence[str],
         sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
+        *,
+        threads: int | None = None,
     ) -> bool:
         """Scan one project's staged ruleset and collect its native report.
 
@@ -217,12 +226,47 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         """
         project_dir, ctx, binary, nonparticipants = scope
         found, failures, raw_output = sinks
+        actual_threads = threads or u.Infra.codemod_scan_threads(project_dir)
+        rules_digest = hashlib.sha256(
+            "".join(f"{r_id}" for r_id in sorted(ruleset.rule_ids)).encode()
+        ).hexdigest()
+        sources_digest = FlextInfraCodemodScanCache.sources_digest(
+            project_dir, targets
+        )
+        cache_key = FlextInfraCodemodScanCache.cache_key(
+            project_dir, rules_digest, sources_digest, actual_threads
+        )
+        cached_file = FlextInfraCodemodScanCache.get_cached_raw_output(
+            project_dir, cache_key
+        )
+        if cached_file is not None:
+            cached_stdout = cached_file.read_text(encoding=c.DEFAULT_ENCODING)
+            cached_scan = m.Cli.CommandOutput(
+                stdout=cached_stdout,
+                stderr="",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1 if cached_stdout.strip() else 0,
+                    timed_out=False,
+                ),
+            )
+            report, _ = self._validated_scan_report(cached_scan, ruleset)
+            found.extend(report.root)
+            return True
+
         scan = self._run(
-            self._scan_command(ruleset, targets, binary, nonparticipants),
+            self._scan_command(
+                ruleset, targets, binary, nonparticipants, threads=threads
+            ),
             project_dir,
             ctx,
         )
         outcome = scan.outcome
+        if outcome.raw_return_code in {0, 1} and not outcome.timed_out:
+            cache_file = (
+                FlextInfraCodemodScanCache.cache_directory(project_dir)
+                / f"{cache_key}.jsonl"
+            )
+            u.Cli.atomic_write_text_file(cache_file, scan.stdout).unwrap()
         raw_output.extend((
             (
                 f"{ruleset.provider}: exit={outcome.raw_return_code}, "
@@ -328,6 +372,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         targets: Sequence[str],
         binary: Path,
         nonparticipants: frozenset[str] = frozenset(),
+        *,
+        threads: int | None = None,
     ) -> Sequence[str]:
         """Canonical ast-grep invocation for one composed provider ruleset.
 
@@ -362,6 +408,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             u.Infra.codemod_rule_filter(ruleset.rule_ids),
             "--json=compact",
         ]
+        if threads is not None:
+            cmd.extend(["-j", str(threads)])
         for glob in globs:
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.extend(targets)
