@@ -529,8 +529,7 @@ class TestsFlextInfraDepsGate:
         )
         (root / "config").mkdir()
         (root / "config" / "codegen.yaml").write_text(
-            "Infra:\n  codegen:\n    repository:\n"
-            f"      kind: {c.Infra.ProjectKind.INTERNAL_FLEXT.value}\n{policy}",
+            f"Infra:\n  codegen:\n{policy}" if policy else "Infra:\n  codegen: {}\n",
             encoding="utf-8",
         )
         flext_line = (
