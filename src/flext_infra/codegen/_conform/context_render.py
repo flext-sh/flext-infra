@@ -149,6 +149,10 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             ),
             uv_resolution=m.Infra.UvResolutionSpec.model_validate({
                 "link_mode": (cls.link_mode(target.repository, toolchain)),
+                "cooldown_days": toolchain.dependency_cooldown_days,
+                "cooldown_exceptions": tuple(
+                    sorted(toolchain.dependency_cooldown_exceptions)
+                ),
                 "constraint_dependencies": (
                     tuple(toolchain.uv_constraint_dependencies)
                 ),

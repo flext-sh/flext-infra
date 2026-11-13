@@ -2416,8 +2416,19 @@ When declarations change, explicitly generate their projections, resolve their
 locks and install the frozen resolution through their respective verbs. A missing
 generation input fails its prerequisite instead of triggering corrective generation
 inside upgrade. The declared lock platforms and release cooldown remain owned by
-the typed toolchain. Consumer convergence and runtime acceptance are tracked
-separately in `algar-723.1`; this contract is not a publication receipt.
+the typed toolchain. The cooldown binds every resolver (operator decision
+2026-11-13): `codegen.toolchain.dependency_cooldown_days` renders the Mise
+`minimum_release_age`, every Dependabot cooldown and the relative `[tool.uv]`
+`exclude-newer` span that pyproject conformance projects into each project, so a
+plain `uv lock` honours it and `uv.lock` records the span rather than a date.
+uv applies the span to registry distributions only; FLEXT members and `-dc` forks
+resolve through git, URL or path sources at their pinned revisions. Registry
+packages that must resolve inside the window for a CVE or critical fix are declared
+once in `dependency_cooldown_exceptions` (package to advisory or reason), extended
+by a repository's own `config/codegen.yaml` overlay, and rendered as
+`exclude-newer-package` exemptions and Dependabot pip cooldown exclusions. Consumer
+convergence and runtime acceptance are tracked separately in `algar-723.1`; this
+contract is not a publication receipt.
 
 ### Development Groups, Typing Policy, and Git Requirement Lines
 

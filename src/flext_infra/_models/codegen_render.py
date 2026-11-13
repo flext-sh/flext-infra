@@ -463,6 +463,25 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
         """
 
         link_mode: Annotated[str, m.Field(description="uv installation link mode")]
+        cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                description=(
+                    "Fleet supply-chain cooldown rendered as the relative "
+                    "exclude-newer span every uv resolution honours"
+                ),
+            ),
+        ]
+        cooldown_exceptions: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Declared CVE or critical-fix packages exempt from the "
+                    "cooldown; empty removes exclude-newer-package"
+                ),
+            ),
+        ] = ()
         constraint_dependencies: Annotated[
             tuple[str, ...],
             m.Field(description="Declared constraints, projected as declared"),
