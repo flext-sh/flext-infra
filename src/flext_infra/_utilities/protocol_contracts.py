@@ -743,7 +743,11 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         )
         current = refreshed
         for part in identity.removeprefix(declaring_module + ".").split("."):
-            current = current.get_attribute(part).get_object()
+            current = (
+                FlextInfraUtilitiesModelsProtocolContracts.facade_published_object(
+                    current.get_attribute(part)
+                )
+            )
         if not FlextInfraUtilitiesRopeRuntime.py_class(current):
             msg = f"protocol namespace lost its native class identity: {identity}"
             raise TypeError(msg)
@@ -851,7 +855,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         inherited = owner.get_attributes().get(name)
         if inherited is None:
             return source, ()
-        value = inherited.get_object()
+        value = FlextInfraUtilitiesModelsProtocolContracts.facade_published_object(
+            inherited
+        )
         if not FlextInfraUtilitiesRopeRuntime.py_class(value):
             msg = f"protocol namespace destination is occupied: {name}"
             raise ValueError(msg)
@@ -1509,6 +1515,50 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         return members
 
     @staticmethod
+    def facade_published_object(
+        binding: p.Infra.RopePyName,
+    ) -> p.Infra.RopePyObject:
+        """Resolve a facade attribute to the object it publishes.
+
+        A facade publishes an inherited PEP 695 generic member class as
+        ``Name: TypeAlias = Part.Name``. Rope infers that binding from its
+        ``TypeAlias`` annotation, not from the class it names, so every reader
+        that expects the class reads the publication's native assigned value
+        instead. A binding that already is a class, or that is no such
+        assignment, keeps its own object.
+
+        Returns:
+            The class a publication's assigned value names, else the binding's
+            own native object.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        value = binding.get_object()
+        if runtime.py_class(value):
+            return value
+        holder, line = binding.get_definition_location()
+        if holder is None or line is None or not runtime.source_module(holder):
+            return value
+        scope = holder.get_scope().get_inner_scope_for_line(line)
+        # Rope locates a wrapped publication on its value's line, so the
+        # statement whose lines span the definition line is the publication.
+        lines = holder.lines
+        published = next(
+            (
+                layout.value_binding.get_object()
+                for layout in holder.get_source_binding_index().assignment_layouts(
+                    scope, resolve_values=True
+                )
+                if layout.value_binding is not None
+                and lines.get_line_number(layout.region[0])
+                <= line
+                <= lines.get_line_number(layout.region[1])
+            ),
+            None,
+        )
+        return published if runtime.py_class(published) else value
+
+    @staticmethod
     def upstream_protocol_facade(
         chain: Sequence[p.Infra.RopePyObject],
         package: Path,
@@ -1546,7 +1596,10 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 or published.get_object() is not ancestor
                 or "p" not in analysis.public_export_names_source(module)
                 or exposed is None
-                or exposed.get_object() is not port
+                or FlextInfraUtilitiesModelsProtocolContracts.facade_published_object(
+                    exposed
+                )
+                is not port
             ):
                 continue
             # The declared source identity, not Rope's source-folder-relative

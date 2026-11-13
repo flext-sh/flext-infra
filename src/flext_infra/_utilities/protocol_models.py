@@ -1476,7 +1476,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if family:
                 nested = model_facade.get_attributes().get(family)
                 if nested is not None and self._source_model_facade_namespace(
-                    nested.get_object()
+                    self.facade_published_object(nested)
                 ) == (family,):
                     public_roots.append(self._source_class(nested))
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
@@ -3666,7 +3666,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     path = (*parents, node.name)
                     owner = module
                     for part in path[:-1]:
-                        owner = owner.get_attribute(part).get_object()
+                        owner = self.facade_published_object(owner.get_attribute(part))
                     try:
                         source = self._source_class(owner.get_attribute(path[-1]))
                     except TypeError as exc:
@@ -9580,46 +9580,11 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If the model has no authenticated native source class.
 
             """
-            value = binding.get_object()
-            if not self.py_class(value):
-                value = self._source_published_class(binding)
+            value = self.facade_published_object(binding)
             if not self.py_class(value):
                 message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)
             return value
-
-        @staticmethod
-        def _source_published_class(
-            binding: p.Infra.RopePyName,
-        ) -> p.Infra.RopePyObject | None:
-            """Read the class a facade's generic publication binds.
-
-            A facade publishes an inherited PEP 695 generic member class as
-            ``Name: TypeAlias = Part.Name``; Rope infers that binding from its
-            ``TypeAlias`` annotation, not from the class it names. The
-            publication's native value binding is that class.
-
-            Returns:
-                The class the publication's value names, or ``None`` when the
-                binding is no such assignment.
-
-            """
-            holder, line = binding.get_definition_location()
-            if holder is None or line is None:
-                return None
-            module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(holder)
-            scope = module.get_scope().get_inner_scope_for_line(line)
-            return next(
-                (
-                    layout.value_binding.get_object()
-                    for layout in module.get_source_binding_index().assignment_layouts(
-                        scope, resolve_values=True
-                    )
-                    if layout.value_binding is not None
-                    and module.lines.get_line_number(layout.region[0]) == line
-                ),
-                None,
-            )
 
     @classmethod
     def model_protocol_routes(
