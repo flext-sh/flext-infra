@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:
@@ -34,19 +35,15 @@ class TestsFlextInfraCodegenArtifactSsot:
         return config.Infra.codegen
 
     @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("dependencies", "error"),
-        [
-            u.Tests.param("cycle", "cyclic dependency graph:", id="cycle"),
-            u.Tests.param("unknown", "outside the graph:", id="unknown"),
-        ],
-    )
-    def test_template_artifact_dependencies_form_a_closed_dag(
-        codegen: p.Infra.CodegenConfigSpec,
-        dependencies: str,
-        error: str,
-    ) -> None:
-        """A cyclic or undeclared artifact dependency rejects the catalog."""
+    def _linked_catalog(
+        codegen: p.Infra.CodegenConfigSpec, *, cycle: bool
+    ) -> t.JsonDict:
+        """Link the first two production entries into a cycle or a dangling edge.
+
+        Returns:
+            The production catalog payload with the two linked entries.
+
+        """
         payload = u.json_dict_adapter().validate_python(
             codegen.templates.model_dump(
                 mode="json", by_alias=True, exclude_computed_fields=True
@@ -58,13 +55,71 @@ class TestsFlextInfraCodegenArtifactSsot:
         second_entry = u.json_dict_adapter().validate_python(entries[second])
         first_entry["requires_artifacts"] = [second]
         second_entry["requires_artifacts"] = (
-            [first] if dependencies == "cycle" else [f"{second}.undeclared"]
+            [first] if cycle else [f"{second}.undeclared"]
         )
         entries[first] = first_entry
         entries[second] = second_entry
         payload["entries"] = entries
-        with u.Tests.raises(c.ValidationError, match=error):
-            m.Infra.TemplatesSpec.model_validate(payload)
+        return payload
+
+    @classmethod
+    def test_undeclared_artifact_dependency_rejects_the_catalog(
+        cls, codegen: p.Infra.CodegenConfigSpec
+    ) -> None:
+        """A dependency on an undeclared artifact fails while the catalog validates."""
+        with u.Tests.raises(c.ValidationError, match="outside the graph:"):
+            m.Infra.TemplatesSpec.model_validate(
+                cls._linked_catalog(codegen, cycle=False)
+            )
+
+    @classmethod
+    def test_cyclic_artifact_dependencies_fail_every_graph_query(
+        cls, codegen: p.Infra.CodegenConfigSpec
+    ) -> None:
+        """A cycle fails the first order or closure query that generation runs."""
+        catalog = m.Infra.TemplatesSpec.model_validate(
+            cls._linked_catalog(codegen, cycle=True)
+        )
+        first = min(catalog.catalog)
+        with u.Tests.raises(ValueError, match="cyclic dependency graph:"):
+            _ = catalog.artifact_order
+        with u.Tests.raises(ValueError, match="cyclic dependency graph:"):
+            catalog.artifact_closure(frozenset({first}))
+
+    @staticmethod
+    def test_configuration_load_never_starts_the_graph_engine() -> None:
+        """A fresh process validates the whole configuration without NetworkX."""
+        loaded = tm.ok(
+            u.Cli.capture([
+                sys.executable,
+                "-I",
+                "-c",
+                (
+                    "import sys\n"
+                    "from flext_infra import config\n"
+                    "config.Infra.codegen.templates.entries\n"
+                    "print('networkx' in sys.modules)"
+                ),
+            ])
+        )
+        tm.that(loaded, eq="False")
+
+    @staticmethod
+    def test_artifact_order_puts_every_dependency_first(
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> None:
+        """Each artifact follows everything it requires, and closures stay closed."""
+        templates = codegen.templates
+        position = {name: index for index, name in enumerate(templates.artifact_order)}
+        tm.that(set(position), eq=set(templates.catalog))
+        for name, requirements in templates.artifact_requirements.items():
+            tm.ok(
+                all(
+                    position[dependency] < position[name] for dependency in requirements
+                )
+            )
+            closure = templates.artifact_closure(frozenset({name}))
+            tm.ok(set(requirements) <= closure)
 
     @staticmethod
     def test_artifact_names_are_unique(codegen: p.Infra.CodegenConfigSpec) -> None:
