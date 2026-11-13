@@ -69,7 +69,7 @@ class TestsFlextInfraFacadesDeferDeclaredDistributions:
         tm.that(result.outcome.raw_return_code, eq=0, msg=result.stderr)
         return result.stdout
 
-    @c.Tests.MARK.parametrize("letter", ["c", "t", "p", "m"])
+    @c.Tests.MARK.parametrize("letter", ["c", "t", "p", "m", "u"])
     def test_facade_letter_loads_no_declared_distribution(self, letter: str) -> None:
         """A fresh import of one facade letter imports no declared library."""
         packages = self._declared_import_packages()
