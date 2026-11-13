@@ -387,7 +387,6 @@ class FlextInfraProtocolsCodegenLazyInit:
         declarations: dict[tuple[str, str], tuple[str, bool]]
         packages: dict[Path, str]
         collisions: list[str]
-        deferred_imports: dict[Path, frozenset[str]]
 
     @runtime_checkable
     class RopeProjectLayout(FlextCliProtocols.BaseModel, Protocol):

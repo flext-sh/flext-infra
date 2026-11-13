@@ -408,15 +408,6 @@ class FlextInfraModelsCodegenLazyInit:
             t.Port[list[str]],
             m.Field(description="Ambiguous export ownership findings"),
         ]
-        deferred_imports: Annotated[
-            t.Port[dict[Path, frozenset[str]]],
-            m.Field(
-                description=(
-                    "Import packages of each project's declared deferred "
-                    "distributions, observed once per project"
-                ),
-            ),
-        ]
 
     class RopeProjectLayout(m.ContractModel):
         """Canonical project layout derived once for Rope-backed codegen flows."""

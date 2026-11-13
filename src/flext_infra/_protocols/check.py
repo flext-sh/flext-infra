@@ -28,8 +28,7 @@ if TYPE_CHECKING:
     from flext_infra._protocols._git import FlextInfraProtocolsGitIdentity
 
 
-@runtime_checkable
-class FlextInfraProtocolsCheck(Protocol):
+class FlextInfraProtocolsCheck:
     """Check-domain protocol definitions."""
 
     @runtime_checkable

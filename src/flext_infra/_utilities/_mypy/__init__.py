@@ -33,5 +33,14 @@ install_lazy_exports(
     public_exports=__all__,
     deferred_members={
         "FlextInfraUtilitiesMypyProfile": ("run_profiled",),
+        "FlextInfraUtilitiesMypySupervisor": (
+            "ProcessGroupAbsentError",
+            "_signal_group",
+            "_usage",
+            "_ask_group_exit",
+            "_kill_group",
+            "_supervised_exit_code",
+            "run",
+        ),
     },
 )

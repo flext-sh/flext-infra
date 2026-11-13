@@ -141,24 +141,36 @@ class FlextInfraUtilitiesDocsBase(FlextInfraUtilitiesDocsScopeBuild):
             )
         )
         if scope.name == c.Infra.RK_ROOT:
+            relative_paths = tuple(
+                path.relative_to(docs_root)
+                if path.is_relative_to(docs_root)
+                else path.relative_to(scope_root)
+                for path in files
+            )
+            excluded = FlextInfraUtilitiesDocsScope.excluded_doc_paths(
+                scope_root,
+                relative_paths,
+            )
             return [
                 path
-                for path in files
-                if not FlextInfraUtilitiesDocsScope.excluded_doc_path(
-                    scope_root,
-                    path.relative_to(docs_root)
-                    if path.is_relative_to(docs_root)
-                    else path.relative_to(scope_root),
-                )
+                for path, relative_path in zip(files, relative_paths, strict=True)
+                if relative_path not in excluded
             ]
+        relative_paths = tuple(
+            path.relative_to(docs_root)
+            for path in files
+            if path.is_relative_to(docs_root)
+        )
+        excluded = FlextInfraUtilitiesDocsScope.excluded_doc_paths(
+            scope_root,
+            relative_paths,
+        )
         return [
             path
             for path in files
             if not (
                 path.is_relative_to(docs_root)
-                and FlextInfraUtilitiesDocsScope.excluded_doc_path(
-                    scope_root, path.relative_to(docs_root)
-                )
+                and path.relative_to(docs_root) in excluded
             )
         ]
 
