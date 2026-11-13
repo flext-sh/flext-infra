@@ -1100,12 +1100,11 @@ class FlextInfraModGateEngine:
                 4,
             ),
         )
-        inventory_sources = tuple(getattr(context, "inventory", ()))
         cache_key = FlextInfraCodemodScanCache.compute_key(
             config_path=ruleset.config,
             rule_ids=ruleset.rule_ids,
             targets=targets,
-            sources=inventory_sources,
+            sources=tuple(context.inventory.values()),
             options=("ruleset", threads),
         )
         cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
