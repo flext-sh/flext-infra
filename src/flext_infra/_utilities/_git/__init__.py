@@ -251,6 +251,10 @@ install_lazy_exports(
             "git_mutation_scope",
             "mutation_lock_path",
         ),
+        "FlextInfraUtilitiesGitPhysicalScope": (
+            "scope_paths",
+            "lock_path",
+        ),
         "FlextInfraUtilitiesGitRepo": (
             "_publication_index",
             "_git_index_path",

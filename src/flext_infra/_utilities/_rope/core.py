@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Sequence
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 
 from rope.base.exceptions import RopeError
 
-from flext_infra import c, config, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesGit,
     FlextInfraUtilitiesProjectDiscovery,
@@ -20,6 +20,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesWorkspaceInventory,
 )
 from flext_infra._utilities._rope import (
+    FlextInfraRopeProject,
     FlextInfraUtilitiesRopeCorePyModule,
     FlextInfraUtilitiesRopeCoreResources,
     FlextInfraUtilitiesRopeRuntime,
@@ -206,6 +207,68 @@ class FlextInfraUtilitiesRopeCore(
             producer,
             *(project for project in projects if public and project is not producer),
         )
+
+    @staticmethod
+    @contextmanager
+    def workspace_overlay_project(
+        root: Path,
+        project_roots: tuple[Path, ...],
+        *,
+        declared_files: tuple[p.Infra.CodegenFilePlan, ...] = (),
+        additional_source_folders: tuple[str, ...] = (),
+    ) -> Generator[p.Infra.RopeProject]:
+        """Open the native source engine project that reads planned sources first.
+
+        The live project elects the source folders, extension modules and
+        Python path once; the returned project reads the declared plans before
+        the live tree through the same native resolver.
+
+        Yields:
+            The overlaid native project.
+
+        Raises:
+            ValueError: If a declared project root lies outside ``root``.
+
+        """
+        root = root.resolve()
+        if any(not project.is_relative_to(root) for project in project_roots):
+            msg = "Rope declared project root is outside the original authority"
+            raise ValueError(msg)
+        files = FlextInfraRopeProject.OverlayFiles((), source_roots=(root,))
+        with FlextInfraUtilitiesRopeCore.open_project(
+            next(path for path in (root, *root.parents) if path.is_dir()),
+            project_roots=project_roots or None,
+            fscommands=files,
+        ) as live:
+            election = m.Infra.RopeProjectElection(
+                preferred_import_style=live.get_prefs().imports.preferred_import_style,
+                ignored_resources=tuple(
+                    sorted(config.Infra.codegen.source_scan_ignored)
+                ),
+                source_folders=tuple(
+                    sorted(folder.path for folder in live.get_source_folders())
+                ),
+                extension_modules=(
+                    FlextInfraUtilitiesRopeRuntime.extension_module_names(live)
+                ),
+                python_path_folders=tuple(
+                    folder.real_path
+                    for folder in live.get_python_path_folders()
+                    if folder.is_folder()
+                ),
+            )
+            with (
+                closing(
+                    FlextInfraRopeProject.from_atomic_reads(
+                        live,
+                        election=election,
+                        declared_files=declared_files,
+                        additional_source_folders=additional_source_folders,
+                    )
+                ) as project,
+                project.frozen_layout(),
+            ):
+                yield project
 
     @staticmethod
     @contextmanager

@@ -204,22 +204,24 @@ class FlextInfraUtilitiesModelsProtocolContracts:
     ) -> p.Infra.RopeSourceClass | None:
         runtime = FlextInfraUtilitiesRopeRuntime
         supplier = runtime.annotation_origin(project, operand, scope)
-        if isinstance(operand, ast.Call) and len(operand.args) == 2:
-            provider_node, name_node = operand.args
-            expected = runtime.qualified_name(
-                project,
-                "FlextInfraUtilitiesRopeRuntimeBase.runtime_type",
-                module_name="flext_infra._utilities._rope.runtime_base",
-            )
-            if runtime.same_name(
-                expected, runtime.expression_name(scope, ast.unparse(operand.func))
-            ):
-                provider = cls._native_guard_string(provider_node, scope)
-                name = cls._native_guard_string(name_node, scope)
-                if provider is not None and name is not None:
-                    supplier = runtime.qualified_name(
-                        project, name, module_name=provider
-                    )
+        match operand:
+            case ast.Call(args=[provider_node, name_node]):
+                expected = runtime.qualified_name(
+                    project,
+                    "FlextInfraUtilitiesRopeRuntimeBase.runtime_type",
+                    module_name="flext_infra._utilities._rope.runtime_base",
+                )
+                if runtime.same_name(
+                    expected, runtime.expression_name(scope, ast.unparse(operand.func))
+                ):
+                    provider = cls._native_guard_string(provider_node, scope)
+                    name = cls._native_guard_string(name_node, scope)
+                    if provider is not None and name is not None:
+                        supplier = runtime.qualified_name(
+                            project, name, module_name=provider
+                        )
+            case _:
+                pass
         if supplier is not None and runtime.py_class(native := supplier.get_object()):
             return native
         return None

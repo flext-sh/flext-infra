@@ -71,6 +71,15 @@ class FlextInfraModelsCodegenLazyInit:
                 ),
             ),
         ]
+        runtime_names: Annotated[
+            frozenset[str],
+            m.Field(
+                description=(
+                    "Local names bound by from-imports at module scope outside "
+                    "type-checking guards"
+                ),
+            ),
+        ]
 
     class PythonModuleFactsDraft(m.ArbitraryTypesModel):
         """Facts of one module accumulated statement by statement, then frozen."""

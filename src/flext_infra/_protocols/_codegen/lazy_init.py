@@ -87,6 +87,15 @@ class FlextInfraProtocolsCodegenLazyInit:
             """
             ...
 
+        @property
+        def runtime_names(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Local names bound by from-imports at module scope outside type-checking
+            guards.
+            """
+            ...
+
     @runtime_checkable
     class PythonModuleFactsDraft(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

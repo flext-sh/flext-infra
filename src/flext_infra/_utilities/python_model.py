@@ -144,6 +144,7 @@ class FlextInfraUtilitiesPythonModel:
             class_members=draft.class_members,
             values=draft.values,
             runtime_imports=cls._python_model_runtime_imports(tree.body),
+            runtime_names=cls._python_model_runtime_names(tree.body),
         )
 
     @staticmethod
@@ -323,33 +324,63 @@ class FlextInfraUtilitiesPythonModel:
         return tuple(bound)
 
     @classmethod
-    def _python_model_runtime_imports(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
-        """Return the absolute top-level packages a scope imports at runtime.
+    def _python_model_runtime_import_nodes(
+        cls, body: Sequence[ast.stmt]
+    ) -> Iterator[ast.Import | ast.ImportFrom]:
+        """Yield the import statements a scope executes at module import.
 
         A type-checking guard's body never executes; its ``else`` branch does.
         Function and class bodies are separate scopes and are not entered.
+
+        Yields:
+            Each runtime import statement.
+
+        """
+        guard = FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test
+        for statement in body:
+            match statement:
+                case ast.Import() | ast.ImportFrom():
+                    yield statement
+                case ast.If() if guard(statement.test):
+                    yield from cls._python_model_runtime_import_nodes(statement.orelse)
+                case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                    pass
+                case _:
+                    yield from cls._python_model_runtime_import_nodes(
+                        cls._python_model_nested_statements(statement)
+                    )
+
+    @classmethod
+    def _python_model_runtime_imports(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
+        """Return the absolute top-level packages a scope imports at runtime.
 
         Returns:
             The imported top-level package names.
 
         """
-        guard = FlextInfraUtilitiesRopeSourceBindingCollector.type_checking_test
         roots: set[str] = set()
-        for statement in body:
-            match statement:
-                case ast.Import():
-                    roots.update(alias.name.split(".")[0] for alias in statement.names)
-                case ast.ImportFrom(level=0, module=str() as module):
-                    roots.add(module.split(".")[0])
-                case ast.If() if guard(statement.test):
-                    roots |= cls._python_model_runtime_imports(statement.orelse)
-                case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
-                    pass
-                case _:
-                    roots |= cls._python_model_runtime_imports(
-                        cls._python_model_nested_statements(statement)
-                    )
+        for statement in cls._python_model_runtime_import_nodes(body):
+            if isinstance(statement, ast.Import):
+                roots.update(alias.name.split(".")[0] for alias in statement.names)
+            elif statement.level == 0 and statement.module:
+                roots.add(statement.module.split(".")[0])
         return frozenset(roots)
+
+    @classmethod
+    def _python_model_runtime_names(cls, body: Sequence[ast.stmt]) -> frozenset[str]:
+        """Return the local names a module binds by ``from`` imports at runtime.
+
+        Returns:
+            The bound names; their targets are the module's ``imports``.
+
+        """
+        return frozenset(
+            alias.asname or alias.name
+            for statement in cls._python_model_runtime_import_nodes(body)
+            if isinstance(statement, ast.ImportFrom)
+            for alias in statement.names
+            if alias.name != "*"
+        )
 
     @staticmethod
     def _python_model_nested_statements(node: ast.stmt) -> Sequence[ast.stmt]:
