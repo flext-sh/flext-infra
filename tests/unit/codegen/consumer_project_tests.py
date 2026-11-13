@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from flext_infra import config, infra
@@ -20,6 +21,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenMakeBootstrap,
     FlextInfraCodegenScaffolder,
 )
+from flext_infra.docs import FlextInfraDocGenerator
 from tests import c, m, p, t, tm, u
 
 
@@ -32,11 +34,11 @@ class TestsFlextInfraCodegenConsumerProject:
     )
 
     @staticmethod
-    def _declare(root: Path, name: str) -> Path:
-        """Create one consumer checkout: its declaration, docs and one test.
+    def _declare(root: Path, name: str, *, packaged: bool = False) -> Path:
+        """Create one checkout: its declaration, docs and one test.
 
         Returns:
-            The repository root.
+            The repository root, declared as a consumer unless ``packaged``.
 
         """
         root.mkdir(parents=True, exist_ok=True)
@@ -47,15 +49,30 @@ class TestsFlextInfraCodegenConsumerProject:
         )
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.write_project_beads_config(root, name)
-        project = u.Tests.project_spec(name).model_copy(
-            update={
-                "package_name": None,
-                "upstream": "dc_recon",
-                "runtime_dependency_overlay": (
-                    TestsFlextInfraCodegenConsumerProject.CONSUMED,
-                ),
-            }
+        return TestsFlextInfraCodegenConsumerProject._write_declaration(
+            root, name, packaged=packaged
         )
+
+    @staticmethod
+    def _write_declaration(root: Path, name: str, *, packaged: bool) -> Path:
+        """Write the declaration, docs and test of one checkout.
+
+        Returns:
+            The repository root.
+
+        """
+        integration = u.Tests.integration()
+        project = u.Tests.project_spec(name)
+        if not packaged:
+            project = project.model_copy(
+                update={
+                    "package_name": None,
+                    "upstream": "dc_recon",
+                    "runtime_dependency_overlay": (
+                        TestsFlextInfraCodegenConsumerProject.CONSUMED,
+                    ),
+                }
+            )
         declaration = m.Infra.RepositoryDeltaSpec.model_validate({
             "project": project,
             "integration": integration,
@@ -247,4 +264,132 @@ class TestsFlextInfraCodegenConsumerProject:
                 repository_root=root, apply_changes=True
             ).execute(),
             has="not a new scaffold",
+        )
+
+    @staticmethod
+    def _generate(root: Path) -> tuple[Path, ...]:
+        """Run the public generator over one checkout.
+
+        Returns:
+            The files the run wrote.
+
+        """
+        return tm.ok(
+            FlextInfraCodegenConform.Generate.execute_request(
+                u.Tests.conform_request(
+                    root,
+                    what=c.Infra.CodegenConformSurface.ALL,
+                    scope=c.Infra.CodegenConformScope.SELF,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+                execution_context=infra,
+            )
+        ).written_files
+
+    # The conversion generates one project three times: its stages exceed the
+    # slow budget, so its tests carry no slow marker and run unbudgeted.
+    @u.Tests.fixture(scope="class")
+    @staticmethod
+    def packaged(tmp_path_factory: t.Tests.TempPathFactory) -> Path:
+        """Bootstrap one packaged project, then commit it.
+
+        Returns:
+            The repository root holding the generated packaged project.
+
+        """
+        root = TestsFlextInfraCodegenConsumerProject._declare(
+            tmp_path_factory.mktemp("conversion") / "client-incident",
+            "client-incident",
+            packaged=True,
+        )
+        (root / c.Infra.DIR_TESTS / "test_consumed.py").unlink()
+        tm.ok(
+            FlextInfraCodegenMakeBootstrap(
+                repository_root=root, apply_changes=True
+            ).execute(),
+            eq=True,
+        )
+        u.Tests.commit_git_changes(root, "packaged project")
+        return root
+
+    @u.Tests.fixture(scope="class")
+    @staticmethod
+    def converted(packaged: Path) -> Path:
+        """Drop the package and its declaration, then generate once.
+
+        Returns:
+            The repository root after the first generation as a consumer.
+
+        """
+        cls = TestsFlextInfraCodegenConsumerProject
+        # The package and the test facades composing it leave together.
+        shutil.rmtree(packaged / c.Infra.DEFAULT_SRC_DIR)
+        shutil.rmtree(packaged / c.Infra.DIR_TESTS)
+        (packaged / c.Infra.DIR_TESTS).mkdir()
+        cls._write_declaration(packaged, "client-incident", packaged=False)
+        cls._generate(packaged)
+        return packaged
+
+    @staticmethod
+    def test_a_packaged_project_owns_its_package_and_build_targets(
+        packaged: Path,
+    ) -> None:
+        """The packaged baseline of the conversion has what a consumer drops."""
+        text = (packaged / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        tm.that(text, has="client_incident")
+        tm.that(
+            (packaged / c.Infra.DEFAULT_SRC_DIR / "client_incident").is_dir(), eq=True
+        )
+
+    @staticmethod
+    def test_a_converted_project_generates_the_consumer_manifest(
+        converted: Path,
+    ) -> None:
+        """Generation alone drops the package, its build targets and its self pin."""
+        text = (converted / c.PYPROJECT_FILENAME).read_text(encoding="utf-8")
+        document = tm.not_none(u.Cli.toml_parse_text(text))
+        tm.that(document.get("build-system"), none=True)
+        tool = u.Cli.toml_mapping_child(document, c.Infra.TOOL) or {}
+        tm.that((u.Cli.toml_mapping_child(tool, "uv") or {}).get("package"), eq=False)
+        tm.that((u.Cli.toml_mapping_child(tool, "hatch") or {}).get("build"), none=True)
+        tm.that(text, lacks="client_incident")
+        project = u.Cli.toml_mapping_child(document, "project") or {}
+        tm.that(project.get("scripts"), none=True)
+        tm.that(
+            project.get("dependencies"),
+            has=TestsFlextInfraCodegenConsumerProject.CONSUMED,
+        )
+
+    @staticmethod
+    def test_a_converted_project_reaches_a_fixed_point(converted: Path) -> None:
+        """The generation after the conversion publishes nothing."""
+        tm.that(TestsFlextInfraCodegenConsumerProject._generate(converted), eq=())
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    def test_docs_of_a_consumer_collect_no_package_api(generated: Path) -> None:
+        """A consumer's API pages hold no empty directive and no stray whitespace."""
+        tm.ok(
+            FlextInfraDocGenerator(
+                repository_root=generated, selected_projects=["."]
+            ).generate(
+                m.Infra.DocsGenerateRequest(repository_root=generated, projects=["."])
+            )
+        )
+        api = generated / "docs" / "api-reference" / "generated"
+        public = (api / "public-api.md").read_text(encoding="utf-8")
+        tm.that(public, lacks=":::")
+        tm.that(public, has="consumed distribution")
+        for page in api.rglob("*.md"):
+            text = page.read_text(encoding="utf-8")
+            tm.that(text, lacks=":::")
+            tm.that(
+                [line for line in text.splitlines() if line != line.rstrip()],
+                eq=[],
+            )
+        tm.that(
+            (generated / "docs" / "api-reference" / "README.md").read_text(
+                encoding="utf-8"
+            ),
+            lacks="src//",
         )
