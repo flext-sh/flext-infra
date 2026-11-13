@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import ast
 import hashlib
-from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import ClassVar, override
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -118,64 +118,6 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 sources[name] = (path, project.source_text(path))
         return sources
 
-    class BoundSources(MutableMapping[Path, str]):
-        """Python sources of one bound view, read on first access inside it.
-
-        A binding consumer that never reads the sources pays no discovery walk
-        and no read; a read after the view closed would observe another view,
-        so it fails loud instead.
-        """
-
-        def __init__(
-            self, project: p.Infra.RopeProject, scopes: tuple[Path, ...]
-        ) -> None:
-            self._project = project
-            self._scopes = scopes
-            self._sources: dict[Path, str] | None = None
-            self._open = True
-
-        def close(self) -> None:
-            """Close the binding; unread sources can no longer be read."""
-            self._open = False
-
-        def _loaded(self) -> dict[Path, str]:
-            if self._sources is None:
-                if not self._open:
-                    msg = "bound sources read after their source view closed"
-                    raise RuntimeError(msg)
-                self._sources = {
-                    path: self._project.source_text(path)
-                    for scope in self._scopes
-                    for path in (
-                        FlextInfraUtilitiesProjectDiscovery.discover_python_files(
-                            scope,
-                            workspace_excluded_top_dirs=frozenset(),
-                            source_project=self._project,
-                        )
-                    )
-                }
-            return self._sources
-
-        @override
-        def __getitem__(self, key: Path) -> str:
-            return self._loaded()[key]
-
-        @override
-        def __setitem__(self, key: Path, value: str) -> None:
-            self._loaded()[key] = value
-
-        @override
-        def __delitem__(self, key: Path) -> None:
-            del self._loaded()[key]
-
-        @override
-        def __iter__(self) -> Iterator[Path]:
-            return iter(self._loaded())
-
-        @override
-        def __len__(self) -> int:
-            return len(self._loaded())
-
     @staticmethod
     def snapshot_engine(
         snapshot: p.Infra.WorkspaceSnapshot | None,
@@ -266,11 +208,20 @@ class FlextInfraUtilitiesWorkspaceSnapshot:
                 )
             )
             project = bindings.enter_context(project_context)
-            sources = cls.BoundSources(project, project_roots or (root,))
-            try:
-                yield (project, sources)
-            finally:
-                sources.close()
+            yield (
+                project,
+                {
+                    path: project.source_text(path)
+                    for scope in project_roots or (root,)
+                    for path in (
+                        FlextInfraUtilitiesProjectDiscovery.discover_python_files(
+                            scope,
+                            workspace_excluded_top_dirs=frozenset(),
+                            source_project=project,
+                        )
+                    )
+                },
+            )
 
     @staticmethod
     def _workspace_planned_folders(
