@@ -204,10 +204,24 @@ retains the common lifecycle contract. Reuse existing public operations and thei
 typed owners, not raw tools, private-module execution or a second dispatcher.
 
 The only UV lock writer is generated `make upg`, which runs native
-`uv lock --upgrade` at the dependency composition root before any FLEXT Python.
-Its only FLEXT Python step runs last, from the isolated upgrade executor:
-`flext-infra deps repair-mise-platforms --repository-root <root>`, which writes
-only the Mise locks of tools missing a declared platform, without generation,
+`uv lock --upgrade` at the dependency composition root. Its FLEXT Python steps
+run from the isolated upgrade executor. Before resolution,
+`flext-infra deps cooldown-admission --repository-root <root>` asks native
+`uv pip compile`, under each project's own `[tool.uv] exclude-newer` cooldown
+(ADR-030 release eligibility), which registry requirement lines it refuses. A
+refused floor or pin that `[tool.flext.upg]` records as upg-owned is dropped,
+so the native `uv lock --upgrade` chooses the newest release the cooldown
+admits. Every other refused line (authored, or projected by a named SSOT key)
+and every dev-group pin of a FLEXT-managed tool of
+`Infra.codegen.scaffold.project.dev` is reported at once, with its owner and
+uv's own explanation (cutoff and newest admitted release), before any lock is
+written. After resolution,
+`flext-infra deps upg-bounds --repository-root <root>` writes each upg-owned
+floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
+`uv.lock`, so an owned bound is always inside the window, and the locks record
+it without upgrading. Last,
+`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
+the Mise locks of tools missing a declared platform, without generation,
 installation or another resolver.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
@@ -252,7 +266,12 @@ that result with the caller's pre-execution path. UV owns creation of `.venv`.
 The shared native environment boundary removes an inherited
 `MISE_PYTHON_UV_VENV_AUTO` request so executable discovery cannot start a second
 environment creator. Acquisition passes only options supported by the official
-installer; its native temporary-file defaults remain tool-owned.
+installer, which places Mise at its default `~/.local/bin/mise`
+(`~\.local\bin\mise.exe` on Windows): one executable shared by every checkout,
+installed with the pinned `MISE_VERSION` only when absent. The rendered
+`.mise.toml` declares `min_version` as the pinned release, so Mise itself refuses
+an older acquisition executable, and execution resolves the pinned self-managed
+release through `mise which mise`. No checkout keeps its own Mise copy.
 
 Native executable discovery uses `mise which <binary>` in the authenticated
 configuration root with locked mode retained. Each lookup sets its discovery
@@ -336,8 +355,11 @@ toolchain nor a corrupt lock stops it:
 4. The locked `mise install` of the declared toolchain, from that lock, so a
    missing, bumped or newly declared tool (Python and uv included) is the one
    the UV stage uses.
-5. `_upg_lifecycle`: native `uv lock --upgrade` with that Python, then the setup
-   installation of exactly that lock.
+5. `_upg_lifecycle`: the executor formed from the committed lock (a project
+   without one forms it first through native `uv lock`) runs
+   `deps cooldown-admission`; then native `uv lock --upgrade` with that Python,
+   `deps upg-bounds` and a native `uv lock` that records the written bounds,
+   then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
    `deps repair-mise-platforms`, which locks the tools missing a platform that
@@ -347,6 +369,13 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
+7. The verb that installs new packages removes the cache entries it
+   superseded: native `uv cache prune` deletes dangling entries under uv's own
+   in-use rule. Mise tool versions are not pruned by a project verb:
+   `mise prune` decides from every configuration tracked on the host, and it
+   reads a tracked file without that file's own `[vars]` (jdx/mise#15101), so
+   from another project's directory it either fails on a foreign configuration
+   or counts that project's tools as unused.
 
 Declared prerequisites of stage 6, open until they close:
 
@@ -357,41 +386,33 @@ Declared prerequisites of stage 6, open until they close:
   generation from the installed distribution's metadata, never listed) also
   installs its own locked non-editable build, because it supplies part of the
   executor; every other project adds `--no-install-project`, so the executor
-  never imports its source. Every lock is already written before the executor
-  runs. The executor of flext-cli and flext-core imports, but stays open until
-  their locks run their own source: at the pinned `0.12.0-dev` versions their
-  CLI fails at import time (flext-cli: pydantic cannot build a schema for
-  `os.stat_result`; flext-core: `FlextCliTypes` has no `StrDict`), a defect at the
-  lock owner.
+  never imports its source. Before resolution it is formed from the committed
+  lock; after resolution, from the written locks. The executor of flext-cli and
+  flext-core imports, but stays open until their locks run their own source: at
+  the pinned `0.12.0-dev` versions their CLI fails at import time (flext-cli:
+  pydantic cannot build a schema for `os.stat_result`; flext-core:
+  `FlextCliTypes` has no `StrDict`), a defect at the lock owner.
 - **Publication.** A consumer's executor runs the flext-infra version its lock
-  pins, so `deps repair-mise-platforms` exists there only after the release
-  that carries it is published and the consumer's `make upg` locks it.
+  pins, so `deps repair-mise-platforms`, `deps cooldown-admission` and
+  `deps upg-bounds` exist there only after the release that carries them is
+  published and the consumer's `make upg` locks it. A consumer whose earlier
+  lock pins a release without them and whose requirements fall outside the
+  cooldown runs the admission once from a FLEXT checkout,
+  `flext-infra deps cooldown-admission --repository-root <consumer>`, to get the
+  complete report and release the owned bounds before that `make upg`.
 
 A project source that no longer imports still has every lock written and
-installed. Setup first asks native uv whether the published environment already
-satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
-when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
-rewrites the editable receipt and applies the same Python/console verification
-as a publication, so a repeated setup costs a check, not a reinstall. The check's
-exit status is its whole result; its native report is held, not printed, so a
-rebuild that then succeeds never shows an `error:` line, while a real failure
-recurs in the unfiltered rebuild sync. Any other
-state, and every executor installation, prepares an invocation-owned native
-relocatable environment under the runtime's existing ignored state directory,
-installed with uv's clone link mode; bytecode follows uv's native default
-(compiled by Python on first import). Matching creator identities do not permit
-synchronizing the serving environment: a sync can remove dependencies before
-their replacements are ready. Frozen installation, editable binding, its
-environment-owned receipt and real Python/console validation precede one atomic
-exchange with the published environment, guarded by its recorded identity: a
-concurrent publication fails the later setup loudly instead of being serialized
-by a private lock. The exchanged previous environment is then removed with its
-stage; an interrupted preparation removes only its own stage.
-Unsupported publication capabilities fail before installation effects. No sync
-targets a directory without its native environment marker or a Mise base
-interpreter. This contract supersedes both in-place ``uv venv --clear`` and the
-matching-identity sync path. Native ``--refresh`` retains its interpreter-cache
-contract. Full native setup, interruption, relocation and cross-platform
+installed. Setup runs `uv sync --frozen` in place on the physical `.venv`, and
+the upgrade executor likewise on its own environment (operator decision
+`operator-decision-2026-11-13-venv-sync-in-place`): uv creates or updates the
+environment from the shared uv cache with clone link mode, and a sync that already
+satisfies the lock changes nothing, so no run stages, copies or exchanges a second
+environment. Bytecode follows uv's native default (compiled by Python on first
+import). The editable binding, its environment-owned receipt and the real
+Python/console validation follow the sync. No sync targets a directory without its
+native environment marker or a Mise base interpreter. This contract supersedes the
+staged environment and atomic exchange. Native ``--refresh`` retains its
+interpreter-cache contract. Full native setup, interruption and cross-platform
 acceptance remain open until the original command proves them. Direnv
 exports no `UV_PROJECT` or `UV_PROJECT_ENVIRONMENT`. Each governed repository
 renders its own `.mise.toml` and commits its own `mise.lock`, and Mise resolves a
@@ -1969,6 +1990,9 @@ The project composes the native resource/module/layout interface through MRO;
 its authenticated source epoch remains the public consumer boundary. Native
 initialization uses the exact upstream class descriptor through the consumed
 initializer protocol, including Rope's documented `ropefolder=None` contract.
+The project owner fixes that folder to `None` for every opening, so Rope data
+files such as the autoimport `globalnames` pickle and its `.json` twin are never
+written into a repository root; a missing-imports run indexes in memory.
 The physical root and injected filesystem identity are checked after initialization;
 the protocol alone is not evidence of the vendor's signature or runtime behavior.
 
@@ -2725,7 +2749,7 @@ candidate remains invalid. Both routes use the same marker scanner.
 `workspace check`, `workspace tests`, `workspace tests-full`, `codegen generate` and
 `refactor mod` admit themselves into one per-host FIFO queue before any work
 ([ADR-032](https://github.com/flext-sh/flext/blob/0.12.0-dev/docs/architecture/adr/032-host-wide-heavy-gate-admission.md)).
-`u.Infra.gate_admitted` and `u.Infra.gate_admitted_budget` own the queue; the routes
+`u.Infra.gate_admitted` owns the queue; the routes
 enter it in their own process, and the generated Make recipes carry no `timeout`
 prefix for these verbs.
 
@@ -2740,14 +2764,17 @@ prefix for these verbs.
   keep the deadline of the pytest runner.
 - A waiter prints its position and the current holders on stderr each time they
   change, and is admitted only when a slot is free and no live ticket is ahead of it.
-- The budget is armed after admission, so time in the queue never counts. At
-  `budget_seconds - grace_seconds` the route receives SIGTERM, the process supervisor
-  stops its owned children, and the route exits 124. A route still alive at
-  `budget_seconds` is killed.
+- The budget is armed after admission through the flext-cli process deadline
+  (`u.Cli.process_deadline_scope`), so time in the queue never counts. At
+  `budget_seconds - grace_seconds` the kernel one-shot timer fires, the process
+  supervisor stops the owned children, and the route exits 124. Tests keep the
+  deadline of their native pytest runner and arm no route budget.
 - A gate started inside an admitted gate inherits `FLEXT_GATE_ADMISSION_TICKET` and
   neither queues nor arms a second budget.
 - A dead holder frees its slot when the next waiter looks at the queue. A holder
-  whose heartbeat is older than the TTL is reclaimed and receives SIGTERM.
+  whose heartbeat is older than the TTL is reclaimed; when its heartbeat finds the
+  ticket gone, it expires its own deadline (`u.Cli.process_deadline_expire`) and
+  stops the same way.
 - A full-weight run that succeeded in a checkout is refused before it queues while
   its repeat window in `Infra.gate_admission.repeat` is open: a complete `make check`,
   `make tests-full`, `make mod` without `LAWS`/`RULES`, and `make mod` repeating the

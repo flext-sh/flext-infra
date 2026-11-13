@@ -1476,7 +1476,7 @@ class FlextInfraUtilitiesModelsProtocol:
             if family:
                 nested = model_facade.get_attributes().get(family)
                 if nested is not None and self._source_model_facade_namespace(
-                    self.facade_published_object(nested)
+                    nested.get_object()
                 ) == (family,):
                     public_roots.append(self._source_class(nested))
             identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
@@ -3666,7 +3666,7 @@ class FlextInfraUtilitiesModelsProtocol:
                     path = (*parents, node.name)
                     owner = module
                     for part in path[:-1]:
-                        owner = self.facade_published_object(owner.get_attribute(part))
+                        owner = owner.get_attribute(part).get_object()
                     try:
                         source = self._source_class(owner.get_attribute(path[-1]))
                     except TypeError as exc:
@@ -9580,7 +9580,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If the model has no authenticated native source class.
 
             """
-            value = self.facade_published_object(binding)
+            value = binding.get_object()
             if not self.py_class(value):
                 message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)
