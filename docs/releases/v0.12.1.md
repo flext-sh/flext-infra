@@ -12,7 +12,11 @@
 
 ## Pull requests since last release
 
+perf(lazy): the flext-infra facades import no declared distribution; config loads rules
+only (flext-df0b6) (#2311)
+merge: adopt 0.12.0-dev into the lazy facades lane
 style(tests): format the fixture tooling helper (#2309)
+merge: adopt 0.12.0-dev into the lazy facades lane
 fix: first group of 0.12.0-dev test failures fixed at their root cause (#2302)
 Merge branch '0.12.0-dev' into fix/infra-tests-green-20261112
 chore(lock): pin FLEXT upstreams to their 0.12.0-dev tips (#2304)
