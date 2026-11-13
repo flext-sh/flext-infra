@@ -209,7 +209,7 @@ class FlextInfraRefactorRoutes:
                 repeat.mod_selection if selection else repeat.mod_full,
                 selection,
             )
-        with u.Infra.gate_admitted_budget(
+        with u.Infra.gate_admitted(
             c.Infra.GATE_ADMISSION_MODIFICATION,
             request.repository_root,
             config.Infra.gate_admission.modification,
