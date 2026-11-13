@@ -12,6 +12,10 @@
 
 ## Pull requests since last release
 
+- fix(codemod): the semantic planning graph carries the injected envelope checker
+  (#2316)
+- fix(release): notes GitHub cannot publish fail before the release exists (#2324)
+- fix(codegen): facades publish family classes only through MRO composition (#2323)
 - fix(codegen): a generated facade stops re-exporting a class moved out of its family
   (#2321)
 - fix(release): notes list integration PRs; the PR body is their summary (#2322)
