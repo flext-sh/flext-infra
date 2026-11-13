@@ -97,16 +97,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     before that isolation is preserved, so hermetic Git fixtures can read the
     provisioned objects.
 
-    Root cause (flext-eles2): dependency-floor rewrite tests exercised the
-    public ``--rewrite-constraints`` entry point through workspaces that never
-    declared their own governed SSOT, so the floor writer fell back to the
-    packaged/installed ``flext_infra`` config directory — this very checkout
-    in an editable install — and silently flipped floors in the real tracked
-    file. The floor writer now resolves its target from the modernizer's own
-    ``repository_root`` and every workspace fixture declares its own isolated
-    ``config/codegen.yaml``; the session snapshot lets
-    ``pytest_sessionfinish`` prove the real file stays untouched by the whole
-    suite, current and future.
+    The session snapshot of the tracked codegen config lets
+    ``pytest_sessionfinish`` prove no test writes the real file
+    (flext-eles2).
     """
     spec = config.Infra.codegen.make.mypy_cache
     uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()

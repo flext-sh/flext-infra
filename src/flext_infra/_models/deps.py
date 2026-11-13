@@ -577,6 +577,23 @@ class FlextInfraModelsDeps(
             validate_default=True,
         )
 
+    class UpgBounds(m.ExternalContractModel):
+        """The ``[tool.flext.upg]`` record of the bounds ``make upg`` owns.
+
+        ``make upg`` writes each named requirement's floor (``>=``) or pin
+        (``==``) from its cooldown-respecting resolution; every other
+        requirement line is authored and only reported.
+        """
+
+        floors: Annotated[
+            Sequence[t.NonEmptyStr],
+            m.Field(description="Distributions whose >= floor upg writes"),
+        ] = ()
+        pins: Annotated[
+            Sequence[t.NonEmptyStr],
+            m.Field(description="Distributions whose == pin upg writes"),
+        ] = ()
+
     class ToolingContextRequest(m.ArbitraryTypesModel):
         """Declared inputs the modernizer resolves into a runtime context."""
 

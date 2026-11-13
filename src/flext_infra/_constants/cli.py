@@ -38,7 +38,6 @@ class FlextInfraConstantsCli:
         "--skip-check",
         "--skip-comments",
         "--audit",
-        "--rewrite-constraints",
     )
     _SHARED_VALUE_FLAG_VALUES: ClassVar[tuple[str, ...]] = (
         "--checks",
