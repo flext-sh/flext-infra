@@ -116,14 +116,6 @@ package_name = {{ package_name | tojson }}
 forced files into editable wheels, installing a stale namespace portion beside
 the editable source. Package config ships through only-include; the producer
 declaration ships as wheel extra-metadata under <dist>.dist-info/. -#}
-{% if make_profile == "workspace" and not package and project_declaration_resource %}
-
-[tool.hatch.build.targets.wheel.extra-metadata]
-{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[1] | tojson }}
-
-[tool.hatch.build.targets.sdist.force-include]
-{{ project_declaration_resource[0] | tojson }} = {{ project_declaration_resource[0] | tojson }}
-{% endif %}
 {% if package %}
 {% if hatch_build_hook_path %}
 
