@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, settings, u
+from flext_infra import c, config, m, p, u
 from flext_infra.gates import FlextInfraGates
 
 
@@ -204,10 +204,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
 
         """
         _found, failures, raw_output = sinks
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="check-codemod-", dir=settings.work_dir
-        ) as directory:
+        with tempfile.TemporaryDirectory(prefix="check-codemod-") as directory:
             for index, (project, project_targets) in enumerate(
                 u.Infra.project_targets(plan, targets)
             ):
