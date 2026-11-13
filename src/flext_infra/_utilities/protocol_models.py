@@ -7334,144 +7334,47 @@ class FlextInfraUtilitiesModelsProtocol:
             )
             return ast.get_source_segment(generated_source, emitted)
 
-        class _ReadOnlyContractCanonical(ast.NodeTransformer):
-            """Name concrete containers by the read-only contract they implement."""
+        def _source_widened_signature(
+            self,
+            annotation: ast.expr,
+            tree: ast.Module,
+            holder: ast.ClassDef,
+            destination: Path,
+        ) -> str:
+            """Compare an authored annotation widened exactly as the projection widens.
 
-            read_only: ClassVar[Mapping[str, str]] = {
-                "builtins::list": "collections.abc::Sequence",
-                "collections.abc::MutableSequence": "collections.abc::Sequence",
-                "typing::List": "collections.abc::Sequence",
-                "builtins::tuple": "collections.abc::Sequence",
-                "typing::Tuple": "collections.abc::Sequence",
-                "builtins::dict": "collections.abc::Mapping",
-                "collections.abc::MutableMapping": "collections.abc::Mapping",
-                "typing::Dict": "collections.abc::Mapping",
-                "builtins::set": "collections.abc::Set",
-                "collections.abc::MutableSet": "collections.abc::Set",
-                "collections.abc::Set": "collections.abc::Set",
-                "typing::Set": "collections.abc::Set",
-                "typing::AbstractSet": "collections.abc::Set",
-                "builtins::frozenset": "collections.abc::Set",
-            }
-            names: ClassVar[Mapping[str, str]] = {
-                "list": "collections.abc::Sequence",
-                "List": "collections.abc::Sequence",
-                "tuple": "collections.abc::Sequence",
-                "Tuple": "collections.abc::Sequence",
-                "Sequence": "collections.abc::Sequence",
-                "dict": "collections.abc::Mapping",
-                "Dict": "collections.abc::Mapping",
-                "Mapping": "collections.abc::Mapping",
-                "set": "collections.abc::Set",
-                "Set": "collections.abc::Set",
-                "frozenset": "collections.abc::Set",
-                "FrozenSet": "collections.abc::Set",
-                "AbstractSet": "collections.abc::Set",
-            }
-            variadic: ClassVar[frozenset[str]] = frozenset({
-                "builtins::tuple",
-                "typing::Tuple",
-                "tuple",
-                "Tuple",
-            })
-
-            @override
-            def visit_Constant(self, node: ast.Constant) -> ast.expr:
-                target = (
-                    self.read_only.get(node.value)
-                    if isinstance(node.value, str)
-                    else None
-                )
-                return self._named(node, target)
-
-            @override
-            def visit_Name(self, node: ast.Name) -> ast.expr:
-                return self._named(node, self.names.get(node.id))
-
-            @override
-            def visit_Attribute(self, node: ast.Attribute) -> ast.expr:
-                spelling = ast.unparse(node)
-                target = (
-                    self.names.get(spelling.rpartition(".")[2])
-                    if spelling.startswith(("builtins.", "typing.", "collections.abc."))
-                    else None
-                )
-                return self._named(node, target)
-
-            @override
-            def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
-                spelling = self._spelling(node.value)
-                # ``generic_visit`` rewrites the children in place and returns
-                # ``node`` itself, so the visited subscript is ``node``.
-                self.generic_visit(node)
-                element = (
-                    self._variadic_element(node.slice)
-                    if spelling in self.variadic
-                    else None
-                )
-                if element is None:
-                    return node
-                return ast.copy_location(
-                    ast.Subscript(value=node.value, slice=element, ctx=node.ctx),
-                    node,
-                )
-
-            @staticmethod
-            def _named(node: ast.expr, target: str | None) -> ast.expr:
-                if target is None:
-                    return node
-                return ast.copy_location(ast.Constant(value=target), node)
-
-            @staticmethod
-            def _spelling(value: ast.expr) -> str | None:
-                if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                    return value.value
-                if isinstance(value, ast.Name):
-                    return value.id
-                if isinstance(value, ast.Attribute):
-                    return ast.unparse(value)
-                return None
-
-            @staticmethod
-            def _variadic_element(element: ast.expr) -> ast.expr | None:
-                if not isinstance(element, ast.Tuple) or not element.elts:
-                    return None
-                last = element.elts[-1]
-                if not isinstance(last, ast.Constant) or last.value is not Ellipsis:
-                    return None
-                elements = element.elts[:-1]
-                return (
-                    elements[0]
-                    if len(elements) == 1
-                    else ast.Tuple(elts=list(elements), ctx=ast.Load())
-                )
-
-        def _source_contract_canonical(self, annotation: str) -> str:
-            """Name every concrete container by the read-only contract it implements.
-
-            An authored protocol may declare the concrete container its model
-            uses while the projection widens the same member to the read-only
-            ABC a covariant protocol needs. ``list`` and ``tuple`` implement
-            ``Sequence``, ``dict`` implements ``Mapping`` and ``set`` implements
-            ``Set``, so both spellings name one compatible contract.
+            Every container the single owner ``_source_read_only_container``
+            maps is exposed through its read-only ABC by the same
+            ``_source_read_only_rewrite`` the projection uses, so an authored
+            concrete container matches only the widening the projection
+            performs, never the reverse.
 
             Returns:
-                The annotation with each container named by its read-only ABC.
+                The identity-normalized signature of the widened annotation.
 
             """
-            canonical = self._ReadOnlyContractCanonical()
-            return ast.unparse(canonical.visit(ast.parse(annotation, mode="eval").body))
+            scope = self.project.get_module(
+                self.module_name_for(destination.relative_to(self.repository_root))
+            ).get_scope()
+            owner = self
 
-        def _source_contract_compatible(self, authored: str, projected: str) -> bool:
-            """Whether an authored contract implements the projected read-only one.
+            class Widen(ast.NodeTransformer):
+                @override
+                def visit_Subscript(self, node: ast.Subscript) -> ast.AST:
+                    container = (
+                        owner._source_read_only_container(node.value, scope)
+                        if scope is not None
+                        else None
+                    )
+                    self.generic_visit(node)
+                    if container is None:
+                        return node
+                    return owner._source_read_only_rewrite(container, node)
 
-            Returns:
-                True when both annotations name one compatible contract.
-
-            """
-            return self._source_contract_canonical(
-                authored
-            ) == self._source_contract_canonical(projected)
+            # Only subscripts are rewritten, and only into subscripts, so the
+            # visited annotation remains an expression.
+            widened = cast(ast.expr, Widen().visit(copy.deepcopy(annotation)))
+            return self._source_protocol_signature(widened, tree, holder, destination)
 
         def _source_authored_contract_update(
             self,
@@ -7511,11 +7414,16 @@ class FlextInfraUtilitiesModelsProtocol:
                 in c.Infra.DocumentationText.MODEL_PROTOCOL_CONTRACT.value
             )
             conflicts = [
-                (name, annotation, expected[name])
-                for name, annotation in actual.items()
-                if name in expected
-                and annotation != expected[name]
-                and not self._source_contract_compatible(annotation, expected[name])
+                (field.target.id, actual[field.target.id], expected[field.target.id])
+                for field in present.body
+                if isinstance(field, ast.AnnAssign)
+                and isinstance(field.target, ast.Name)
+                and field.target.id in expected
+                and actual[field.target.id] != expected[field.target.id]
+                and self._source_widened_signature(
+                    field.annotation, tree, holder, destination
+                )
+                != expected[field.target.id]
             ]
             if conflicts and not projected:
                 message = (

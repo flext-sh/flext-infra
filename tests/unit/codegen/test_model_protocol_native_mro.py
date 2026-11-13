@@ -584,6 +584,54 @@ class TestsModelProtocolNativeMro:
         tm.ok(f"def mapping(self) -> Mapping[str, {owner}.Target]:" in rendered)
 
     @staticmethod
+    def test_authored_read_only_abc_never_matches_a_kept_concrete_container(
+        tmp_path: Path,
+    ) -> None:
+        """Only the projection's widening is accepted, never its reverse."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        destination = package / "_protocols" / "payload.py"
+        owner = u.derive_class_stem(package.name.replace("_", "-"))
+        owner += "ProtocolsPayload"
+        authored = (
+            "from __future__ import annotations\n"
+            "from collections.abc import Sequence\n"
+            "from typing import Protocol, runtime_checkable\n"
+            f"class {owner}:\n"
+            "    @runtime_checkable\n"
+            "    class Request(Protocol):\n"
+            "        names: Sequence[str]\n"
+            f"__all__ = ['{owner}']\n"
+        )
+        sources = {
+            package / "models.py": (
+                f"from {package.name}._models.payload import FlextInfraModelsPayload\n"
+                "class Models(FlextInfraModelsPayload): pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    class Infra:\n        pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+            package / "_models" / "payload.py": (
+                "from __future__ import annotations\n"
+                "from pydantic import BaseModel\n"
+                "class FlextInfraModelsPayload:\n"
+                "    class Request(BaseModel):\n"
+                "        names: list[str]\n"
+            ),
+            destination: authored,
+        }
+        for path, source in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, source))
+        with (
+            infra.rope_workspace(root) as workspace,
+            u.Tests.raises(ValueError, match="incompatible authored protocol contract"),
+        ):
+            tm.ok(u.Infra.protocol_model_sources(workspace))
+        tm.that(destination.read_text(), eq=authored)
+
+    @staticmethod
     def test_model_projection_owns_existing_structural_contract(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
