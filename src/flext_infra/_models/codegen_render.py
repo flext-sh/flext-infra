@@ -601,17 +601,10 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 "Template indentation; native refactors supply their project policy."
             ),
         )
-        body_source: tuple[str | tuple[str, str], ...] | None = m.Field(
+        body_source: str | None = m.Field(
             default=None,
             description=(
-                "Ordered authored source and native class-publication"
-                " slots, retaining declaration order and trivia."
-            ),
-        )
-        publications: Mapping[str, str] = m.Field(
-            default_factory=dict[str, str],
-            description=(
-                "Native class-publication targets and their authenticated expressions."
+                "Authored class body source, retaining declaration order and trivia."
             ),
         )
         exports: tuple[str, ...] | None = m.Field(

@@ -118,7 +118,11 @@ Generated facade bases are narrowed through the native class predicate before
 class-name queries; unresolved or non-class generated bases retain their existing
 reprojection treatment, and authored binding failures remain explicit.
 Provider classification composes native types in every family and structural
-protocols only in the protocol family; other declarations publish nominally.
+protocols only in the protocol family. A module-level family class (a model
+declared beside its part class) fails generation with the part class it must
+move into: facades publish classes only through MRO composition, and a stale
+generated `Name = Name` publication retires with its import once the name is
+reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
 assuming every MRO entry exposes a class name and a non-null module.
 
