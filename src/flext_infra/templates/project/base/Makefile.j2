@@ -453,12 +453,17 @@ PUBLISH_ENVIRONMENT = $(VERIFY_ENVIRONMENT); \
 # publication applies. Only a differing environment (or a local FLEXT editable
 # selection) is rebuilt and atomically exchanged, so a repeated setup costs a
 # check, not a full reinstall and deletion.
+# The check's exit status is its whole result: a non-zero status only selects
+# the rebuild, so uv's native "environment is outdated" report is held in
+# probe_report instead of surfacing as an error on a successful setup. A real
+# failure recurs in the rebuild's own `uv sync --frozen`, which runs unfiltered
+# and fails loud with uv's native output.
 INSTALL_RUNTIME_RECIPE = set -eu; \
 	$(REQUIRE_WORKSPACE_ENVIRONMENT); \
 	$(RESOLVE_DESIRED_PYTHON); \
 	$(call TARGET_ENVIRONMENT,$(RUNTIME_VENV)); \
 	sync_args="$(SETUP_SYNC_ARGS)"; \
-	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_target" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args; then \
+	if [ -z "$(strip $(FLEXT))" ] && [ -d "$$install_target" ] && probe_report="$$(env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_target" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --check --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads $$sync_args 2>&1)"; then \
 		install_environment="$$install_target"; \
 		install_python="$$install_environment/$(patsubst $(RUNTIME_VENV)/%,%,$(RUNTIME_PYTHON))"; \
 		env -u MYPYPATH{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} $(INSTALL_FLEXT_INFRA) {{ workspace_cli_group }} flext-editable --repository-root "$(RUNTIME_ROOT)" --candidate-environment "$$install_environment"; \

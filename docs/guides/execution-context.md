@@ -368,7 +368,10 @@ installed. Setup first asks native uv whether the published environment already
 satisfies the frozen lock (`uv sync --frozen --check` with the same arguments);
 when it does, and no `FLEXT=` editable selection is requested, setup keeps it,
 rewrites the editable receipt and applies the same Python/console verification
-as a publication, so a repeated setup costs a check, not a reinstall. Any other
+as a publication, so a repeated setup costs a check, not a reinstall. The check's
+exit status is its whole result; its native report is held, not printed, so a
+rebuild that then succeeds never shows an `error:` line, while a real failure
+recurs in the unfiltered rebuild sync. Any other
 state, and every executor installation, prepares an invocation-owned native
 relocatable environment under the runtime's existing ignored state directory,
 installed with uv's clone link mode and native `--compile-bytecode`, so imports
