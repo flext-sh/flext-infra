@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import shutil
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -553,7 +552,7 @@ def mod_workspace(
     """
     template, wheel = mod_workspace_artifact
     workspace = installed_dependency_path.parent / template.name
-    shutil.copytree(template, workspace)
+    u.Tests.reflink_copy_tree(template, workspace)
     tm.ok(
         u.Cli.run_checked(
             (

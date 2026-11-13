@@ -392,17 +392,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             u.Infra.codemod_rule_filter(ruleset.rule_ids),
             "--json=compact",
         ]
-        threads = getattr(
-            getattr(getattr(config.Infra, "tooling", None), "mod", None),
-            "scan_threads",
-            getattr(
-                getattr(getattr(config.Infra, "codegen", None), "make", None),
-                "scan_threads",
-                4,
-            ),
-        )
-        if threads and threads > 0:
-            cmd.extend([c.Infra.SG_THREADS_FLAG, str(threads)])
+        cmd.extend([c.Infra.SG_THREADS_FLAG, str(u.Infra.ast_grep_scan_threads())])
         for glob in globs:
             cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
         cmd.extend(targets)

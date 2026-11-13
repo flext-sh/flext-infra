@@ -761,6 +761,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                     "environment_path_prepends": (
                         codegen.toolchain.environment_path_prepends
                     ),
+                    "bootstrap_bin_dir": codegen.make.bootstrap_bin_dir,
                 }),
             )
         return None

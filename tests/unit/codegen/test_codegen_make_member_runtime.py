@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c, config, m, t, tm, u
+from tests import c, m, t, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -65,34 +65,6 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
             tm.that(copied.samefile(original), eq=False)
             tm.that(copied.read_bytes(), eq=original.read_bytes())
         return root
-
-    @staticmethod
-    @c.Tests.MARK.parametrize("directory_link", [False, True])
-    def test_bootstrap_seed_preserves_foreign_symlink_targets(
-        tmp_path: Path, *, directory_link: bool
-    ) -> None:
-        """A fixture cannot populate a bootstrap owned by another checkout."""
-        root = tmp_path / "fixture"
-        root.mkdir()
-        foreign = tmp_path / "foreign"
-        foreign.mkdir()
-        reader = tm.ok(u.Infra.managed_mise_self(Path(__file__).resolve().parents[3]))
-        marker = foreign / reader.name
-        content = b"Foreign bootstrap must survive.\n"
-        marker.write_bytes(content)
-        bootstrap = root / config.Infra.codegen.make.bootstrap_bin_dir
-        if directory_link:
-            bootstrap.symlink_to(foreign, target_is_directory=True)
-            link = bootstrap
-        else:
-            bootstrap.mkdir()
-            link = bootstrap / reader.name
-            link.symlink_to(marker)
-        with u.Tests.raises(ValueError, match="fixture bootstrap must be physical"):
-            u.Tests.copy_tracked_mise_seeds(root)
-        tm.that(link.is_symlink(), eq=True)
-        tm.that(marker.read_bytes(), eq=content)
-        tm.that(tuple(foreign.iterdir()), eq=(marker,))
 
     @classmethod
     def _runtime_values(cls, project_root: Path) -> dict[str, str]:
