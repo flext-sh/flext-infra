@@ -513,7 +513,7 @@ class TestsFlextInfraRopeCandidateViews:
                 path=source,
                 before=before,
                 desired_content=None,
-                desired_mode=before.mode,
+                desired_mode=None,
             )
             with u.Infra.facade_source_project(
                 root, declared_files=(retirement,), source_project=project

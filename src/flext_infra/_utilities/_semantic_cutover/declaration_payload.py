@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -120,11 +121,62 @@ class FlextInfraUtilitiesDeclarationPayload(
         )
         classvar = cls.qualified_name(project, "ClassVar", module_name="typing")
         final = cls.qualified_name(project, "Final", module_name="typing")
+        annotated = cls.qualified_name(project, "Annotated", module_name="typing")
+        qualifiers = tuple(
+            (
+                cls._annotated_qualifier(owner, region)
+                if cls.same_name(annotated, qualifier)
+                else qualifier,
+                initialized,
+            )
+            for region, qualifier, initialized in layout.annotated_bindings
+        )
         return not layout.decorators and all(
             cls.same_name(classvar, qualifier)
             or (initialized and cls.same_name(final, qualifier))
-            for _region, qualifier, initialized in layout.annotated_bindings
+            for qualifier, initialized in qualifiers
         )
+
+    @classmethod
+    def _annotated_qualifier(
+        cls, owner: p.Infra.RopeSourceClass, region: tuple[int, int]
+    ) -> p.Infra.RopePyName | None:
+        """Resolve the qualifier a PEP 593 ``Annotated[...]`` storage wraps.
+
+        ``Annotated[ClassVar, marker]`` and ``Annotated[ClassVar[T], marker]``
+        qualify their binding exactly as the bare ``ClassVar`` does (the typing
+        specification admits a qualifier inside ``Annotated``); a compat marker
+        rides on that form. The class's native AST locates the first
+        ``Annotated`` argument and Rope resolves the name it reads.
+
+        Returns:
+            The native name of the wrapped qualifier, or ``None`` when the
+            binding at ``region`` annotates no ``Annotated`` subscript.
+
+        """
+        module = owner.get_module()
+        line = module.lines.get_line_number(region[0])
+        annotation = next(
+            (
+                node.annotation
+                for node in owner.get_ast().body
+                if isinstance(node, ast.AnnAssign) and node.lineno == line
+            ),
+            None,
+        )
+        if not isinstance(annotation, ast.Subscript) or not isinstance(
+            annotation.slice, ast.Tuple
+        ):
+            return None
+        inner = annotation.slice.elts[0]
+        name = inner.value if isinstance(inner, ast.Subscript) else inner
+        start = module.lines.get_line_start(name.lineno)
+        text = module.source_code[start : module.lines.get_line_end(name.lineno)]
+        offset = start + len(text.encode()[: name.col_offset].decode())
+        resolved = cls.runtime_callable("rope.base.evaluate", "eval_location")(
+            module, offset
+        )
+        return resolved if isinstance(resolved, p.Infra.RopePyName) else None
 
     @classmethod
     def _header_argument_span(
