@@ -775,10 +775,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 (base for base in profiles if base.module == project.upstream),
                 None,
             )
-            if profile is None and project.package_name is None:
-                # A consumer names its consumed distribution in its own overlay.
-                return result_type.ok((project.runtime_dependency_overlay, ()))
-            if profile is None:
+            # A consumer names its consumed distribution in its own overlay and
+            # needs no dependency profile for its upstream.
+            if profile is None and project.package_name is not None:
                 return result_type.fail(
                     f"upstream has no declared dependency profile: {project.upstream}"
                 )
@@ -786,7 +785,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 tuple(
                     dict.fromkeys((
                         *project.runtime_dependency_overlay,
-                        profile.distribution,
+                        *(() if profile is None else (profile.distribution,)),
                     ))
                 ),
                 (),

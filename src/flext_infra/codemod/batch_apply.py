@@ -865,11 +865,11 @@ class FlextInfraCodemodBatchApply(s[t.Cli.ResultValue]):
         seed = filtered_seed.value
         current = self._without_quarantined_report(root, current)
         with FlextInfraCodemodSemanticApply.planning_workspace(
-            root,
-            seed,
-            self._candidate_sources(seed.candidate),
-            model_envelope_checker=self.rope.model_envelope_checker,
+            root, seed, self._candidate_sources(seed.candidate)
         ) as graph:
+            # Contract normalization admits model envelopes through the
+            # composition-owned checker, which the planning graph must carry.
+            graph.model_envelope_checker = self.rope.model_envelope_checker
             prepared = self._prepare_phase_seed(
                 root,
                 current,
