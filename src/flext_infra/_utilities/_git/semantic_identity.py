@@ -186,8 +186,11 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             The authenticated Git directory, or the causal topology failure.
 
         """
+        opened = cls._open_repo(requested)
+        if opened.failure:
+            return r[Path].from_failure(opened)
         try:
-            with cls._repo(requested) as repo:
+            with opened.value as repo:
                 return cls._exact_worktree_control(repo, requested)
         except (GitCommandError, GitCommandNotFound, OSError, ValueError) as exc:
             return r[Path].fail(
