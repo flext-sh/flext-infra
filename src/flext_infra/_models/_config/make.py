@@ -967,6 +967,91 @@ class FlextInfraModelsConfigMake(
             m.Field(description="External project-keyed native Ruff cache policy"),
         ]
 
+    class MakeAdmissionOverrideSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Explicit per-verb exception to the admission limits; unset keeps defaults."""
+
+        max_load5: Annotated[
+            t.PositiveFloat | None,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
+        ] = None
+        memory_limit_gb: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ] = None
+        max_processes: Annotated[
+            t.PositiveInt | None,
+            m.Field(description="CPU limit of each verb recipe"),
+        ] = None
+
+    class MakeAdmissionLimitsSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Resolved admission and run limits of one public Make verb."""
+
+        max_load5: Annotated[
+            t.PositiveFloat,
+            m.Field(description="Highest 5-minute load average that admits the verb"),
+        ]
+        memory_limit_gb: Annotated[
+            t.PositiveInt,
+            m.Field(description="Memory limit of each verb recipe, in GiB"),
+        ]
+        max_processes: Annotated[
+            t.PositiveInt,
+            m.Field(description="CPU limit of each verb recipe"),
+        ]
+
+        @m.computed_field
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Memory limit in bytes, the unit MemoryMax accepts."""
+            return self.memory_limit_gb * c.Infra.BYTES_PER_GIB
+
+    class MakeAdmissionSpec(MakeAdmissionLimitsSpec):
+        """Host admission and run limits of every public Make verb.
+
+        ADR-032: on the shared host every verb refuses to start above
+        ``max_load5`` and runs bounded by ``memory_limit_gb`` and
+        ``max_processes``; ``overrides`` declares explicit verb exceptions.
+        """
+
+        overrides: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec,
+            ],
+            m.Field(description="Explicit per-verb exceptions to the defaults"),
+        ] = m.Field(default_factory=dict)
+        refusal_guidance: Annotated[
+            tuple[
+                Annotated[
+                    str,
+                    m.StringConstraints(min_length=1, pattern=r"^[^$#\n]+$"),
+                ],
+                ...,
+            ],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Lighter-route guidance printed with every refusal; plain "
+                    "Make text without '$', '#' or newlines"
+                ),
+            ),
+        ]
+
+        @m.computed_field
+        @property
+        def verb_limits(
+            self,
+        ) -> Mapping[str, FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec]:
+            """Each overridden verb's limits merged over the defaults."""
+            return {
+                verb: FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec(
+                    max_load5=override.max_load5 or self.max_load5,
+                    memory_limit_gb=override.memory_limit_gb or self.memory_limit_gb,
+                    max_processes=override.max_processes or self.max_processes,
+                )
+                for verb, override in self.overrides.items()
+            }
+
     class MakeVerbCatalogSpec(MakeHarnessSpec):
         """Public verb catalog, CLI routing and lifecycle policies of Make."""
 
@@ -1096,6 +1181,29 @@ class FlextInfraModelsConfigMake(
                 description=("Bounded thread budget for ast-grep scan execution"),
             ),
         ] = 4
+        admission: Annotated[
+            FlextInfraModelsConfigMake.MakeAdmissionSpec,
+            m.Field(description="Host admission and run limits of every public verb"),
+        ]
+
+        @m.model_validator(mode="after")
+        def _validate_admission_overrides(self) -> Self:
+            """Admission overrides name declared public verbs only.
+
+            Returns:
+                The resulting ``Self``.
+
+            Raises:
+                ValueError: If an override names an undeclared verb.
+
+            """
+            unknown = sorted(
+                set(self.admission.overrides) - {verb.name for verb in self.verbs},
+            )
+            if unknown:
+                msg = f"make.admission.overrides name undeclared verbs: {unknown}"
+                raise ValueError(msg)
+            return self
 
         @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
