@@ -12,6 +12,18 @@
 
 ## Pull requests since last release
 
+fix(release): the lane merge takes the base's generated projections (#2320)
+Merge branch '0.12.0-dev' of github.com:flext-sh/flext-infra into
+fix/release-projection-merge-20261113
+fix(docs): workspace links resolve in standalone checkouts (#2319)
+fix(codemod): key the ast-grep scan cache on source content, not path names (#2317)
+Merge remote-tracking branch 'origin/0.12.0-dev' into
+fix/release-projection-merge-20261113
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/docs-audit-20261113
+fix(deps): resolve the soupsieve advisory inside the cooldown (#2318)
+feat(codegen): consumer project kind for repositories without code, make lock, README
+marker fix (#2315)
+Merge remote-tracking branch 'origin/0.12.0-dev' into fix/consumer-project-kind-20261112
 feat(codegen): apply the dependency cooldown to uv resolution (#2313)
 fix: new projects depend on their upstream; artifact scope tests follow the documented
 contracts (#2312)
