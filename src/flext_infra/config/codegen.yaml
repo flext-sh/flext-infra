@@ -685,6 +685,23 @@ Infra:
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
       scan_threads: 4
+      # Host admission and run limits of every public verb (operator order
+      # 2026-11-13; ADR-032 immediate rule, its FIFO queue is bead flext-mcjop).
+      # A verb refuses to start while the 5-minute load average exceeds
+      # max_load5, and every process it starts runs on max_processes CPUs
+      # with at most memory_limit_gb of address space. overrides declares an
+      # explicit exception per public verb.
+      admission:
+        max_load5: 20
+        memory_limit_gb: 5
+        max_processes: 2
+        overrides: {}
+        refusal_guidance:
+        - Wait until the 5-minute load drops to the limit, then run one heavy verb at a time.
+        - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
+        - Prefer a narrow make mod RULES=<rule ids> over a full make mod, and make check CHECK_PHASE=primary over the full check.
+        - Use at most 2 workers and never run heavy verbs in parallel across lanes.
+        - A verb exception is a declared make.admission.overrides entry in the config SSOT, never a local edit or an environment bypass.
       common_arguments: [ HELP, OPTIONS ]
       examples_timeout_seconds: 120
       # Setup clones absent gitlinks submodule_jobs at a time and gives each

@@ -311,6 +311,24 @@ class FlextInfraUtilitiesBase:
         return None
 
     @staticmethod
+    def ast_grep_scan_threads() -> int:
+        """Declared ast-grep scan threads, bounded by the CPUs this process may use.
+
+        The Make admission prelude pins every verb to its declared CPUs, so the
+        process CPU count carries that limit (operator order 2026-11-13).
+
+        Returns:
+            ``min(declared scan_threads, os.process_cpu_count())``.
+
+        """
+        declared = getattr(
+            getattr(getattr(config.Infra, "tooling", None), "mod", None),
+            "scan_threads",
+            config.Infra.codegen.make.scan_threads,
+        )
+        return min(declared, os.process_cpu_count() or declared)
+
+    @staticmethod
     def ast_grep_scan_command(
         rule_path: Path,
         *,
@@ -350,17 +368,10 @@ class FlextInfraUtilitiesBase:
             c.Infra.SG_CONFIG_FLAG,
             str(config_path),
         ]
-        threads = getattr(
-            getattr(getattr(config.Infra, "tooling", None), "mod", None),
-            "scan_threads",
-            getattr(
-                getattr(getattr(config.Infra, "codegen", None), "make", None),
-                "scan_threads",
-                4,
-            ),
-        )
-        if threads is not None and threads > 0:
-            command.extend([c.Infra.SG_THREADS_FLAG, str(threads)])
+        command.extend([
+            c.Infra.SG_THREADS_FLAG,
+            str(FlextInfraUtilitiesBase.ast_grep_scan_threads()),
+        ])
         selected_rule_ids = (
             tuple(rule_ids)
             if rule_ids

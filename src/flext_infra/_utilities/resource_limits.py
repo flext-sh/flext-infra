@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import platform
+import resource
 import shutil
 import signal
 import sys
@@ -76,6 +77,9 @@ class FlextInfraUtilitiesResourceLimits:
     def mypy_resource_limit() -> p.Infra.MypyResourceLimit:
         """Validate the external Mypy memory and time settings exactly once.
 
+        The memory limit never exceeds the inherited address-space hard limit
+        the Make admission prelude sets, so the verb's limit stays the one knob.
+
         The wall-time budget is ``tools.mypy.timeout_seconds`` in the
         ``tooling.yaml`` SSOT; no environment variable can change it.
 
@@ -83,11 +87,17 @@ class FlextInfraUtilitiesResourceLimits:
             The resulting ``m.Infra.MypyResourceLimit``.
 
         """
+        declared_mb = FlextInfraUtilitiesResourceLimits._environment_integer(
+            u.Cli.process_env(),
+            c.Infra.MYPY_MEMORY_LIMIT_MB_ENV,
+            c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+        )
+        inherited_bytes = resource.getrlimit(resource.RLIMIT_AS)[1]
         return m.Infra.MypyResourceLimit(
-            memory_limit_mb=FlextInfraUtilitiesResourceLimits._environment_integer(
-                u.Cli.process_env(),
-                c.Infra.MYPY_MEMORY_LIMIT_MB_ENV,
-                c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+            memory_limit_mb=(
+                declared_mb
+                if inherited_bytes == resource.RLIM_INFINITY
+                else min(declared_mb, inherited_bytes // c.Infra.BYTES_PER_MIB)
             ),
             timeout_seconds=config.Infra.tooling.tools.mypy.timeout_seconds,
         )
