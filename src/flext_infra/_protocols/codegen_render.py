@@ -565,6 +565,7 @@ class FlextInfraProtocolsCodegenRender:
         class_indent: str
         indentation: str
         body_source: str | None
+        publications: Mapping[str, str]
         exports: tuple[str, ...] | None
         managed_header: str | None
 
