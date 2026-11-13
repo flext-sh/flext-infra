@@ -312,7 +312,6 @@ class FlextInfraConstantsRefactor:
 
         RESTRUCTURE = "restructure"
         MATERIALIZE_DELEGATIONS = "materialize-delegations"
-        RETIRE_GENERIC_TYPING_WRAPPERS = "retire-generic-typing-wrappers"
         NORMALIZE_EXHAUSTIVE_ENUM = "normalize-exhaustive-enum"
         NORMALIZE_MODEL_ENVELOPES = "normalize-model-envelopes"
         NORMALIZE_OPAQUE_MUTABLE_PORTS = "normalize-opaque-mutable-ports"

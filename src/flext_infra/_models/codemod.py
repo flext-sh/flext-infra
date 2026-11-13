@@ -358,11 +358,6 @@ class FlextInfraModelsCodemod:
             default=c.Infra.RopeContractOperation.RESTRUCTURE,
             description="Native contract operation executed in the shared source epoch",
         )
-        source_revision: t.NonEmptyStr | None = m.Field(
-            default=None,
-            description="Explicit Git revision authenticating retired provider "
-            "declarations",
-        )
         scope: FlextInfraModelsCodemod.RopeContractScope | None = m.Field(
             default=None,
             description=(
