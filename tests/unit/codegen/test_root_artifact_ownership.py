@@ -145,9 +145,7 @@ class TestsFlextInfraRootArtifactOwnership:
         }
         before = conform_support.TestsFlextInfraConformSupport.project_tree(root)
 
-        plan = tm.ok(
-            u.Tests.conform_plan_result(root, request)
-        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request))
         governed = tuple(file for file in plan.files if file.policy is not None)
         tm.that(
             {file.path: file.policy for file in governed},

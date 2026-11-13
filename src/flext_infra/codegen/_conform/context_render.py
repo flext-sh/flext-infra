@@ -562,7 +562,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
 
         """
         result_type = r[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]
-        declared = self._declared_dependency_facts(repository_root, project)
+        declared = self._declared_dependency_facts(
+            repository_root, project, profiles=codegen.scaffold.project.config_bases
+        )
         if declared.failure:
             return result_type.from_failure(declared)
         project_dependencies, declared_dev = declared.value
@@ -737,17 +739,20 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         repository_root: Path,
         project: p.Infra.ProjectSpec,
         *,
+        profiles: Sequence[p.Infra.ScaffoldConfigBaseSpec],
         manifest_source: str | None = None,
     ) -> p.Result[tuple[tuple[t.NonEmptyStr, ...], tuple[t.NonEmptyStr, ...]]]:
         """Read the declared dependency facts of one render project.
 
         An existing ``pyproject.toml`` owns the declared runtime dependencies
-        and development extras. The repository overlay extends those runtime
-        requirements for existing projects as well as new scaffolds.
+        and development extras. A new project depends at runtime on its
+        declared upstream, whose distribution its dependency profile names;
+        the repository overlay comes ahead of that profile's runtime set.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
             project: Resolved render project used before the pyproject exists.
+            profiles: Dependency profiles naming each upstream's distribution.
             manifest_source: Original captured TOML; when provided, no file is read.
 
         Returns:
@@ -760,7 +765,23 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             manifest_source is None
             and not (repository_root / c.PYPROJECT_FILENAME).is_file()
         ):
-            return result_type.ok((project.runtime_dependency_overlay, ()))
+            profile = next(
+                (base for base in profiles if base.module == project.upstream),
+                None,
+            )
+            if profile is None:
+                return result_type.fail(
+                    f"upstream has no declared dependency profile: {project.upstream}"
+                )
+            return result_type.ok((
+                tuple(
+                    dict.fromkeys((
+                        *project.runtime_dependency_overlay,
+                        profile.distribution,
+                    ))
+                ),
+                (),
+            ))
         declared = FlextInfraCodegenConformContextRender._declared_runtime_requirements(
             repository_root, manifest_source=manifest_source
         )

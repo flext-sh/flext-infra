@@ -169,11 +169,14 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_source_scan_is_exact_projection(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Derive ignored source names from their owner flags."""
+        """Derive ignored source names from their owner flag only.
+
+        Generated sources are owned Python and stay in native discovery.
+        """
         expected = tuple(
             artifact.name
             for artifact in codegen.artifacts
-            if artifact.source_scan_ignore or artifact.generated_source
+            if artifact.source_scan_ignore
         )
         tm.that(codegen.source_scan_ignored, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))
@@ -204,16 +207,14 @@ class TestsFlextInfraCodegenArtifactSsot:
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
-    def test_generated_source_is_tracked_and_excluded_from_analysis(
+    def test_generated_source_is_tracked_and_analyzed(
         codegen: p.Infra.CodegenConfigSpec,
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """One generated_source key keeps a tree tracked yet outside analysis.
+        """One generated_source key keeps a tree tracked and inside analysis.
 
-        Premise (flext-gknfx): a generated tree that ``.ignore`` hides while
-        Git tracks it loses every module a regeneration adds, and analyzers
-        that ignore ``.ignore`` still check it. The key must therefore keep
-        the tree trackable while every scan and analyzer exclusion derives it.
+        The flag owns tracked generation and the package initializer only;
+        owned generated Python stays in native discovery and analysis.
         """
         name = "wire_contracts"
         declared = codegen.model_copy(
@@ -233,7 +234,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         )
 
         tm.that(declared.generated_sources, has=name)
-        tm.that(declared.source_scan_ignored, has=name)
+        tm.that(declared.source_scan_ignored, lacks=name)
         tm.that(declared.generated_source_globs, has=f"**/{name}/**")
         tm.that(declared.gitignore_artifact_patterns, lacks=f"{name}/")
         tm.that(
@@ -343,37 +344,21 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Both hooks run incremental tests; pre-push adds full local checks."""
+        """The commit hook provisions then checks; pre-push adds the tests.
+
+        Operator order 2026-11-12: the commit hook is (setup, check), so a fresh
+        lane commits against its own locked toolchain; tests run on push.
+        """
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
-        tm.ok(bool(pre_commit))
-        tm.ok(bool(pre_push))
-        commit_verbs = {step.verb for step in pre_commit}
+        commit_verbs = tuple(step.verb for step in pre_commit)
         push_verbs = {step.verb for step in pre_push}
-        tm.ok(bool(commit_verbs & push_verbs))
-        tm.ok(commit_verbs < push_verbs)
-        tm.ok(c.Infra.VERB_TEST in commit_verbs)
-        tm.ok("test" in push_verbs)
-        shared_steps = tuple(
-            step
-            for step in workflow
-            if {"pre_commit", "pre_push"}.issubset(step.contexts)
-        )
-
-        # `apply` carries the declared mutation token, which every effecting
-        # verb requires — `check` and `test` publish reports and require it too.
-        # It is therefore not a classification of source rewriting, and a shared
-        # step legitimately carries it. What the partition must prove is that
-        # each hook owns work the other does not, and that both reach the same
-        # validation verb.
-        tm.ok(bool(shared_steps))
-        tm.that(
-            {step.verb for step in shared_steps}.issubset(commit_verbs & push_verbs),
-            eq=True,
-        )
-        tm.ok(bool(push_verbs - commit_verbs))
+        tm.that(commit_verbs, eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK))
+        tm.ok(c.Infra.VERB_CHECK in push_verbs)
+        tm.ok(c.Infra.VERB_TEST in push_verbs)
+        tm.ok(c.Infra.VERB_TEST not in commit_verbs)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}),
             eq=True,

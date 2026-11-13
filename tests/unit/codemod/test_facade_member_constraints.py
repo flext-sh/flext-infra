@@ -353,7 +353,8 @@ class TestsFlextInfraFacadeMemberConstraints:
                     c.Infra.FacadeMemberKind.CONSTANT
                 ],
             )
-        tm.that(sys.modules[module_name] is None, eq=True)
+        # The import block (a None entry) is still in place: nothing loaded it.
+        tm.that(sys.modules.get(module_name, sys), none=True)
 
     @staticmethod
     @c.Tests.MARK.parametrize("annotation_module", ["typing", "typing_extensions"])

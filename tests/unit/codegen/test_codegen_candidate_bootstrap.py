@@ -225,7 +225,8 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         )
         command = m.Infra.CandidateBootstrapCommand(repository_root=root)
         tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(
+            u.Tests.conform_plan_result(
+                root,
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.PYPROJECT,

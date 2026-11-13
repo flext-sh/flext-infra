@@ -936,7 +936,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         """
         result_type = r[str]
         dependencies = self._declared_dependency_facts(
-            root, project, manifest_source=original_source
+            root, project, profiles=(), manifest_source=original_source
         )
         if dependencies.failure:
             return result_type.from_failure(dependencies)

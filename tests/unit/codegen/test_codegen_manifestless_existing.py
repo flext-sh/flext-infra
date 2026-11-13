@@ -10,7 +10,6 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from flext_infra import config, infra
-from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from tests import c, e, p, t, tm, u
 
@@ -170,7 +169,7 @@ class TestsFlextInfraCodegenManifestlessExisting:
         )
         tm.ok(infra.codegen_conform(request))
         initial_plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
+            u.Tests.conform_plan_result(root, request),
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -206,7 +205,8 @@ class TestsFlextInfraCodegenManifestlessExisting:
         tm.ok((root / "README.md").is_file())
         for required in ("Makefile", ".mise.toml", ".python-version", ".ignore"):
             tm.ok((root / required).is_file())
-        fixed_point = FlextInfraCodegenConform.Generate(repository_root=root).plan(
+        fixed_point = u.Tests.conform_plan_result(
+            root,
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK}),
         )
         verified = tm.ok(fixed_point)
@@ -288,7 +288,8 @@ class TestsFlextInfraCodegenManifestlessExisting:
             The conform plan result.
 
         """
-        return FlextInfraCodegenConform.Generate(repository_root=root).plan(
+        return u.Tests.conform_plan_result(
+            root,
             u.Tests.conform_request(
                 root,
                 what=what,

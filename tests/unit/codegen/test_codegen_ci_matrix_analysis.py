@@ -47,7 +47,6 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
             properties["sonar.exclusions"].split(","),
             eq=[
                 *codegen.sonarcloud.exclusions,
-                *codegen.generated_source_globs,
                 f"{tests_dir}/**",
             ],
         )
@@ -79,6 +78,31 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
         )
         tm.ok((root / c.Infra.DIR_TESTS).is_dir())
         self._assert_sonarcloud_scope(rendered)
+
+    @staticmethod
+    def test_new_project_depends_on_its_declared_upstream(
+        rendered_project: Path,
+    ) -> None:
+        """A new project's first render lists its upstream's profile distribution."""
+        inputs = tm.ok(u.Infra.load_codegen_inputs(rendered_project))
+        project = tm.not_none(inputs.spec.repository.project)
+        profile = next(
+            base
+            for base in config.Infra.codegen.scaffold.project.config_bases
+            if base.module == project.upstream
+        )
+        dependencies = u.Tests.toml_strings_at(
+            (rendered_project / c.PYPROJECT_FILENAME).read_text(
+                encoding=c.DEFAULT_ENCODING
+            ),
+            "project",
+            "dependencies",
+        )
+        tm.that(
+            [item.split(" @ ", 1)[0] for item in dependencies],
+            has=profile.distribution,
+        )
+        tm.that(inputs.kind, eq=c.Infra.ProjectKind.INTERNAL_FLEXT)
 
     @staticmethod
     def test_qlty_excludes_the_generated_family_facades(
