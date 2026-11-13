@@ -159,6 +159,7 @@ install_lazy_exports(
             "_new_project",
             "import_project_roots",
             "binding_projects",
+            "workspace_overlay_project",
             "open_import_project",
             "open_project",
             "apply_reducing_loop",

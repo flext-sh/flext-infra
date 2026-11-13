@@ -19,6 +19,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesFacadeComponents
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeRuntime,
@@ -26,7 +27,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover.declaration_relocation import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
-from flext_infra._utilities.facade_components import FlextInfraUtilitiesFacadeComponents
 from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.workspace_snapshot import (
@@ -220,6 +220,8 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                         supplier = runtime.qualified_name(
                             project, name, module_name=provider
                         )
+            case _:
+                pass
         if supplier is not None and runtime.py_class(native := supplier.get_object()):
             return native
         return None

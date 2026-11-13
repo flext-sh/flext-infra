@@ -23,6 +23,19 @@ from flext_infra.codegen._conform.scaffold_plan import (
 class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
     """Conformance planning across scaffold and existing repositories."""
 
+    _planning_topology: (
+        tuple[
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
+        ]
+        | None
+    ) = m.PrivateAttr(default=None)
+    (
+        "The invocation's authenticated topology, loaded once from Git and its "
+        "declarations; every planning phase of this invocation reuses it."
+    )
+
     def plan(
         self,
         request: p.Infra.CodegenGenerateRequest,
@@ -45,9 +58,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The resulting ``p.Result[p.Infra.CodegenPlan]``.
 
         """
-        inputs = u.Infra.load_codegen_inputs(request.root.expanduser().resolve())
+        root = request.root.expanduser().resolve()
+        inputs = u.Infra.load_codegen_inputs(root)
         if inputs.failure:
-            return r[p.Infra.CodegenPlan].from_failure(inputs)
+            # The first planning failure escapes with its original exception.
+            u.Infra.codegen_raise_failure(root, inputs)
         return self._plan_repositories(request, inputs.value)
 
     def _plan_single_surface(
@@ -490,6 +505,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 m.Infra.RepositoryRef,
             ]
         ]
+        cached = self._planning_topology
+        if cached is not None:
+            return result_type.ok(cached)
         workspace = self.state.initial_workspace
         if workspace is None:
             workspace_result = (
@@ -551,7 +569,9 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 "gascity_enabled": workspace.gascity_enabled,
                 "external_dependency_paths": workspace.external_dependency_paths,
             })
-        return result_type.ok((workspace, current_target, current_repository))
+        topology = (workspace, current_target, current_repository)
+        self._planning_topology = topology
+        return result_type.ok(topology)
 
     @staticmethod
     def _planning_report_evidence(
@@ -1305,8 +1325,11 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         ]
         is_current_repository = repository.name == current_target.repository.name
         if is_current_repository:
+            rendered = self._rendered_members(repository_root, workspace)
+            if rendered.failure:
+                return result_type.from_failure(rendered)
             return result_type.ok(
-                (repository_root, current_target, workspace),
+                (repository_root, current_target, rendered.value),
             )
         local = self._member_local_workspace(
             workspace,
@@ -1328,8 +1351,44 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             update={"toolchain_root": current_target.toolchain_root},
         )
         if repository.path != Path():
-            target = target.model_copy(update={"repository": repository})
+            # Only the parent-relative path differs; participation stays rendered.
+            target = target.model_copy(
+                update={
+                    "repository": target.repository.model_copy(
+                        update={"path": repository.path},
+                    ),
+                },
+            )
         return result_type.ok((repository_root, target, local_workspace))
+
+    @staticmethod
+    def _rendered_members(
+        root: Path,
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
+        """Give root projections each member's rendered package participation.
+
+        The same generation writes every member's ``[build-system]``, so root
+        projections that filter members on ``package`` read the rendered value,
+        never the pre-render one.
+
+        Returns:
+            The render workspace whose members carry rendered participation.
+
+        """
+        result_type = r[m.Infra.WorkspaceSpec]
+        detector = workspace_services.FlextInfraWorkspaceDetector
+        members: list[p.Infra.RepositoryRef] = []
+        for member in workspace.subprojects:
+            rendered = detector.conform_repository(root / member.path, member)
+            if rendered.failure:
+                return result_type.from_failure(rendered)
+            members.append(rendered.value)
+        return result_type.ok(
+            m.Infra.WorkspaceSpec.model_validate(workspace).model_copy(
+                update={"subprojects": tuple(members)},
+            ),
+        )
 
     def _resolved_repository_root(
         self,

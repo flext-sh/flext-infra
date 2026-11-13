@@ -29,6 +29,7 @@ Infra:
       - rope
       - pytest
       - mkdocs
+      - mypy
       publishes_release: true
       extra_verbs:
       - name: mod-snapshots

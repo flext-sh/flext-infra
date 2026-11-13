@@ -278,6 +278,21 @@ class FlextInfraProtocolsConfigTemplates:
             """Expose each catalog key's declared artifact dependencies."""
             ...
 
+        @cached_property
+        def artifact_order(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Order every artifact dependencies-first, proving the graph acyclic.
+            """
+            ...
+
+        def artifact_closure(self, destinations: frozenset[str]) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Return the destinations with every artifact they transitively require.
+            """
+            ...
+
         @property
         def bootstrap_entry(
             self,

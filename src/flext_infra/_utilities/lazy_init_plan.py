@@ -436,12 +436,14 @@ class FlextInfraUtilitiesLazyInitPlan:
     def _lazy_init_deferrals(
         cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
     ) -> Mapping[Path, FlextInfraModelsCodegenLazyInit.LazyInitPlan]:
-        """Give each facade-composed class export of a heavy module its stand-in.
+        """Give each heavy-module class export the facade import reaches a stand-in.
 
-        A stand-in is valid only for a class composed by MRO into a facade
-        surface, so selection waits until every package is planned: the
-        facade's bases resolve through the packages that publish them. Every
-        other class export of a heavy module stays a plain lazy export.
+        A class is reached when a facade composes it by MRO, or when a module
+        that importing the facades loads binds it by a runtime import. Either
+        reach would load its heavy module, so it gets a stand-in. Selection
+        waits until every package is planned, because both reaches resolve
+        through the packages that publish them. Every other class export of a
+        heavy module stays a plain lazy export.
 
         Returns:
             Each plan that gained stand-ins, by package directory.
@@ -459,7 +461,9 @@ class FlextInfraUtilitiesLazyInitPlan:
             if not heavy:
                 continue
             if composed is None:
-                composed = cls._lazy_init_facade_composed(run)
+                composed = cls._lazy_init_import_reached(
+                    run, cls._lazy_init_facade_composed(run), heavy
+                )
             deferred: dict[str, Sequence[str]] = {}
             for name, (module, attr) in sorted(plan.lazy_map.items()):
                 facts = python.python_model_module(run.model, module)
@@ -509,6 +513,55 @@ class FlextInfraUtilitiesLazyInitPlan:
                 if owner is not None:
                     roots[module.module_name, owner[1]] = plan
         return roots
+
+    @classmethod
+    def _lazy_init_import_reached(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        composed: frozenset[tuple[str, str]],
+        heavy: frozenset[str],
+    ) -> frozenset[tuple[str, str]]:
+        """Return every in-package class importing the facades reaches.
+
+        The modules of the composed classes load with the facades unless the
+        class itself imports a declared distribution, and every class such a
+        loaded module binds by a runtime import is reached too; a reached
+        class of a light module loads that module in turn.
+
+        Returns:
+            The composed classes and every class their loaded modules import.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        plans = {plan.context.current_pkg: plan for plan in run.plans.values()}
+
+        def light(module: str) -> bool:
+            facts = python.python_model_module(run.model, module)
+            return facts is not None and not (facts.runtime_imports & heavy)
+
+        reached = set(composed)
+        pending = sorted({module for module, _ in composed if light(module)})
+        loaded = set(pending)
+        while pending:
+            module = pending.pop()
+            facts = python.python_model_module(run.model, module)
+            plan = plans.get(module.rpartition(".")[0])
+            if facts is None or plan is None:
+                continue
+            for name in sorted(facts.runtime_names):
+                target = cls._lazy_init_base_target(
+                    run, (plan.context, plan.lazy_map), facts.imports.get(name)
+                )
+                if target is None:
+                    continue
+                target_facts = python.python_model_module(run.model, target[0])
+                if target_facts is None or target[1] not in target_facts.classes:
+                    continue
+                reached.add(target)
+                if target[0] not in loaded and light(target[0]):
+                    loaded.add(target[0])
+                    pending.append(target[0])
+        return frozenset(reached)
 
     @classmethod
     def _lazy_init_facade_composed(

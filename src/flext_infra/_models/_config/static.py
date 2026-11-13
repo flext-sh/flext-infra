@@ -10,7 +10,7 @@ from typing import Annotated
 
 from flext_cli import m
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models._config import FlextInfraModelsConfigContract
 
 
@@ -18,9 +18,9 @@ class FlextInfraModelsConfigStatic:
     """Source discovery specification models."""
 
     class RopePreferencesSpec(FlextInfraModelsConfigContract.ConfigContract):
-        """Native source-engine policy validated by the SDK's own vocabulary."""
+        """Native source-engine policy in the engine's own vocabulary."""
 
-        preferred_import_style: t.Infra.RopeNativeImportStyle = m.Field(
+        preferred_import_style: c.Infra.RopeImportStyle = m.Field(
             description="Native import form used by identity-preserving refactors"
         )
 

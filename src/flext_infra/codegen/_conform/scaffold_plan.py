@@ -167,9 +167,7 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
         selected_destinations = (
             None
             if contract.destinations is None
-            else u.Cli.dag_closure(
-                codegen.templates.artifact_requirements, contract.destinations
-            ).unwrap()
+            else codegen.templates.artifact_closure(contract.destinations)
         )
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.

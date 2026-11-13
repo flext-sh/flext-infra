@@ -546,7 +546,7 @@ class FlextInfraModelsDepsToolConfig(
             FlextInfraModelsDuplication.JscpdSemantic,
             m.Field(description="Embedding pass host (--semantic)."),
         ]
-        ignore_patterns: t.StrTuple = m.Field(
+        ignore_patterns: Sequence[str] = m.Field(
             alias="ignore-patterns",
             description=(
                 "Operator-authorized code-level regexes jscpd skips (--ignore-pattern)."
@@ -566,7 +566,7 @@ class FlextInfraModelsDepsToolConfig(
     class BanditToolConfig(m.ArbitraryTypesModel):
         """Bandit test ids the security gate skips (``--skip``)."""
 
-        skips: t.StrTuple = m.Field(
+        skips: Sequence[str] = m.Field(
             description="Bandit test ids the security gate does not report.",
         )
 

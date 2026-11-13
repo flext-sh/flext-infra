@@ -465,6 +465,36 @@ class FlextInfraModelsConfigTemplates:
                 for destination, declaration in self.catalog.items()
             }
 
+        @cached_property
+        def artifact_order(self) -> tuple[str, ...]:
+            """Order every artifact dependencies-first, proving the graph acyclic.
+
+            The graph engine loads on the first graph query, never while the
+            configuration validates, and its verdict is kept for this catalog.
+
+            Returns:
+                Every catalog key, dependencies first.
+
+            Raises:
+                ValueError: If the declared dependencies form a cycle.
+
+            """
+            ordered = u.Cli.dag_order(self.artifact_requirements)
+            if ordered.failure:
+                msg = f"artifact dependencies are invalid: {ordered.error}"
+                raise ValueError(msg)
+            return tuple(ordered.value)
+
+        def artifact_closure(self, destinations: frozenset[str]) -> frozenset[str]:
+            """Return the destinations with every artifact they transitively require.
+
+            Returns:
+                The closed destination set of the acyclic artifact graph.
+
+            """
+            _ = self.artifact_order
+            return u.Cli.dag_closure(self.artifact_requirements, destinations).unwrap()
+
         @property
         def bootstrap_entry(self) -> p.Infra.TemplateEntrySpec:
             """Require the single declared executor bootstrap artifact.
@@ -504,9 +534,17 @@ class FlextInfraModelsConfigTemplates:
             if len(set(paths)) != len(paths):
                 msg = "artifact destinations must have exactly one declaration"
                 raise ValueError(msg)
-            waves = u.Cli.dag_waves(self.artifact_requirements)
-            if waves.failure:
-                msg = f"artifact dependencies are invalid: {waves.error}"
+            unknown = sorted({
+                dependency
+                for declaration in self.catalog.values()
+                for dependency in declaration.requires_artifacts
+                if dependency not in self.catalog
+            })
+            if unknown:
+                msg = (
+                    "artifact dependencies are invalid: dependency graph "
+                    f"references names outside the graph: {', '.join(unknown)}"
+                )
                 raise ValueError(msg)
             for declaration in self.catalog.values():
                 for dependency in declaration.requires_artifacts:

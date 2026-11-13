@@ -108,22 +108,36 @@ class TestsFlextInfraUtilitiesConform:
 
         """
         request = TestsFlextInfraUtilitiesConform.conform_request(root, what=what)
-        return (
-            codegen.FlextInfraCodegenConform
-            .Generate(
-                repository_root=root if executor_root is None else executor_root,
-                state=m.Infra.CodegenConformState(
-                    repository_root=root if executor_root is None else executor_root,
-                    request=request,
-                    initial_workspace=workspace,
-                    ports=infra.codegen_conform_collaborators(),
-                ),
-                runtime_settings=infra.settings,
-                initial_context=infra.context,
-            )
-            .plan(request)
-            .unwrap()
-        )
+        return TestsFlextInfraUtilitiesConform.conform_plan_result(
+            root if executor_root is None else executor_root,
+            request,
+            workspace=workspace,
+        ).unwrap()
+
+    @staticmethod
+    def conform_plan_result(
+        root: Path,
+        request: p.Infra.CodegenGenerateRequest,
+        *,
+        workspace: p.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[p.Infra.CodegenPlan]:
+        """Plan through a planner bound to the public conform collaborators.
+
+        Returns:
+            The planning result exactly as the public conform boundary binds it.
+
+        """
+        return codegen.FlextInfraCodegenConform.Generate(
+            repository_root=root,
+            state=m.Infra.CodegenConformState(
+                repository_root=root,
+                request=request,
+                initial_workspace=workspace,
+                ports=infra.codegen_conform_collaborators(),
+            ),
+            runtime_settings=infra.settings,
+            initial_context=infra.context,
+        ).plan(request)
 
     @staticmethod
     def conform_makefile_text(root: Path, workspace: p.Infra.WorkspaceSpec) -> str:

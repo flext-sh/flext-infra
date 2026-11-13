@@ -483,15 +483,14 @@ class FlextInfraUtilitiesProjectManagedArtifacts(FlextInfraUtilitiesNativeToolin
         )
 
     @staticmethod
-    @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
     def _copied_config_content(content: bytes) -> t.JsonMapping:
-        """Memoize the read-only copy exposed to configuration consumers.
+        """Copy the memoized parse into a document the caller owns.
 
-        The parsed document is shared, so the expensive copy is made once per
-        exact immutable source bytes instead of once per applicability check.
+        The parse is memoized per exact immutable source bytes; each caller
+        receives a fresh copy, so no consumer can alter another's view.
 
         Returns:
-            The read-only configuration document owned by this content memo.
+            A configuration document owned by this caller.
 
         """
         return deepcopy(

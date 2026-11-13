@@ -489,6 +489,24 @@ class FlextInfraProtocolsCodegenRender:
             ...
 
         @property
+        def cooldown_days(self) -> int:
+            """Structural member projected from the owning model.
+
+            Fleet supply-chain cooldown rendered as the relative exclude-newer span
+            every uv resolution honours.
+            """
+            ...
+
+        @property
+        def cooldown_exceptions(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Declared CVE or critical-fix packages exempt from the cooldown; empty
+            removes exclude-newer-package.
+            """
+            ...
+
+        @property
         def constraint_dependencies(self) -> tuple[str, ...]:
             """Declared constraints, projected as declared."""
             ...

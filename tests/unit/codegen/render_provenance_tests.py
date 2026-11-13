@@ -61,7 +61,7 @@ class TestsFlextInfraRenderProvenance:
         custom = project / c.Infra.CUSTOM_MAKE_FILENAME
         original = custom.read_bytes()
         probe = (
-            "import pathlib,flext_infra; "
+            "import importlib.metadata,pathlib,flext_infra; "
             "from importlib.resources import files; "
             "from flext_infra import FlextInfraConfig,c,u; "
             "p=pathlib.Path(flext_infra.__file__).resolve(); "
@@ -75,7 +75,10 @@ class TestsFlextInfraRenderProvenance:
             "inputs=u.Infra.load_codegen_inputs(root).unwrap(); "
             "assert inputs.sources[0].content==resource.read_bytes(); "
             "print('packaged-config-owned=True'); "
-            "elected=u.Infra.declared_package_dir(flext_infra.__name__); "
+            "installed=importlib.metadata.distribution("
+            f"{config.Infra.name!r}).locate_file(''); "
+            "elected=u.Infra.declared_package_dir(flext_infra.__name__,"
+            "search_paths=(str(installed),)); "
             "assert p.is_relative_to(elected); "
             "print('controller-root='+str(elected))"
         )

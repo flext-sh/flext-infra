@@ -124,6 +124,7 @@ class TestsFlextInfraUvNativeResolution:
                 required_dev_dependencies=(),
                 uv_resolution=m.Infra.UvResolutionSpec(
                     link_mode=toolchain.uv_link_mode,
+                    cooldown_days=toolchain.dependency_cooldown_days,
                     constraint_dependencies=tuple(toolchain.uv_constraint_dependencies),
                     environments=tuple(toolchain.uv_environments),
                 ),

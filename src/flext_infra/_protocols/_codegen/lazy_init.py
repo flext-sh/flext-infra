@@ -8,14 +8,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from flext_cli import FlextCliProtocols
 
 from flext_infra._protocols import FlextInfraProtocolsMixins
-from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
+from flext_infra._typings import FlextInfraTypesBase
 
 if TYPE_CHECKING:
     from flext_infra import c, t
@@ -87,6 +87,15 @@ class FlextInfraProtocolsCodegenLazyInit:
             """
             ...
 
+        @property
+        def runtime_names(self) -> frozenset[str]:
+            """Structural member projected from the owning model.
+
+            Local names bound by from-imports at module scope outside type-checking
+            guards.
+            """
+            ...
+
     @runtime_checkable
     class PythonModuleFactsDraft(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
@@ -109,8 +118,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         source_project: FlextInfraProtocolsWorkspaceSnapshot.RopeProject
         module_files: Mapping[str, Path]
         modules: MutableMapping[
-            FlextInfraTypesRopeNative.RopeNativeParsedModule,
-            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
+            Hashable, FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts
         ]
         project_notices: dict[
             Path, tuple[FlextInfraTypesBase.DocumentationLanguage, str]

@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, tm, u
+from tests import c, m, p, t, tm, u
 
 
 class TestsFlextInfraCodegenArtifactSsot:
@@ -34,19 +35,15 @@ class TestsFlextInfraCodegenArtifactSsot:
         return config.Infra.codegen
 
     @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("dependencies", "error"),
-        [
-            u.Tests.param("cycle", "cyclic dependency graph:", id="cycle"),
-            u.Tests.param("unknown", "outside the graph:", id="unknown"),
-        ],
-    )
-    def test_template_artifact_dependencies_form_a_closed_dag(
-        codegen: p.Infra.CodegenConfigSpec,
-        dependencies: str,
-        error: str,
-    ) -> None:
-        """A cyclic or undeclared artifact dependency rejects the catalog."""
+    def _linked_catalog(
+        codegen: p.Infra.CodegenConfigSpec, *, cycle: bool
+    ) -> t.JsonDict:
+        """Link the first two production entries into a cycle or a dangling edge.
+
+        Returns:
+            The production catalog payload with the two linked entries.
+
+        """
         payload = u.json_dict_adapter().validate_python(
             codegen.templates.model_dump(
                 mode="json", by_alias=True, exclude_computed_fields=True
@@ -58,13 +55,71 @@ class TestsFlextInfraCodegenArtifactSsot:
         second_entry = u.json_dict_adapter().validate_python(entries[second])
         first_entry["requires_artifacts"] = [second]
         second_entry["requires_artifacts"] = (
-            [first] if dependencies == "cycle" else [f"{second}.undeclared"]
+            [first] if cycle else [f"{second}.undeclared"]
         )
         entries[first] = first_entry
         entries[second] = second_entry
         payload["entries"] = entries
-        with u.Tests.raises(c.ValidationError, match=error):
-            m.Infra.TemplatesSpec.model_validate(payload)
+        return payload
+
+    @classmethod
+    def test_undeclared_artifact_dependency_rejects_the_catalog(
+        cls, codegen: p.Infra.CodegenConfigSpec
+    ) -> None:
+        """A dependency on an undeclared artifact fails while the catalog validates."""
+        with u.Tests.raises(c.ValidationError, match="outside the graph:"):
+            m.Infra.TemplatesSpec.model_validate(
+                cls._linked_catalog(codegen, cycle=False)
+            )
+
+    @classmethod
+    def test_cyclic_artifact_dependencies_fail_every_graph_query(
+        cls, codegen: p.Infra.CodegenConfigSpec
+    ) -> None:
+        """A cycle fails the first order or closure query that generation runs."""
+        catalog = m.Infra.TemplatesSpec.model_validate(
+            cls._linked_catalog(codegen, cycle=True)
+        )
+        first = min(catalog.catalog)
+        with u.Tests.raises(ValueError, match="cyclic dependency graph:"):
+            _ = catalog.artifact_order
+        with u.Tests.raises(ValueError, match="cyclic dependency graph:"):
+            catalog.artifact_closure(frozenset({first}))
+
+    @staticmethod
+    def test_configuration_load_never_starts_the_graph_engine() -> None:
+        """A fresh process validates the whole configuration without NetworkX."""
+        loaded = tm.ok(
+            u.Cli.capture([
+                sys.executable,
+                "-I",
+                "-c",
+                (
+                    "import sys\n"
+                    "from flext_infra import config\n"
+                    "config.Infra.codegen.templates.entries\n"
+                    "print('networkx' in sys.modules)"
+                ),
+            ])
+        )
+        tm.that(loaded, eq="False")
+
+    @staticmethod
+    def test_artifact_order_puts_every_dependency_first(
+        codegen: p.Infra.CodegenConfigSpec,
+    ) -> None:
+        """Each artifact follows everything it requires, and closures stay closed."""
+        templates = codegen.templates
+        position = {name: index for index, name in enumerate(templates.artifact_order)}
+        tm.that(set(position), eq=set(templates.catalog))
+        for name, requirements in templates.artifact_requirements.items():
+            tm.ok(
+                all(
+                    position[dependency] < position[name] for dependency in requirements
+                )
+            )
+            closure = templates.artifact_closure(frozenset({name}))
+            tm.ok(set(requirements) <= closure)
 
     @staticmethod
     def test_artifact_names_are_unique(codegen: p.Infra.CodegenConfigSpec) -> None:
@@ -114,11 +169,14 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_source_scan_is_exact_projection(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Derive ignored source names from their owner flags."""
+        """Derive ignored source names from their owner flag only.
+
+        Generated sources are owned Python and stay in native discovery.
+        """
         expected = tuple(
             artifact.name
             for artifact in codegen.artifacts
-            if artifact.source_scan_ignore or artifact.generated_source
+            if artifact.source_scan_ignore
         )
         tm.that(codegen.source_scan_ignored, eq=expected)
         tm.that(len(expected), eq=len(set(expected)))
@@ -149,16 +207,14 @@ class TestsFlextInfraCodegenArtifactSsot:
         "profile",
         [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE],
     )
-    def test_generated_source_is_tracked_and_excluded_from_analysis(
+    def test_generated_source_is_tracked_and_analyzed(
         codegen: p.Infra.CodegenConfigSpec,
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """One generated_source key keeps a tree tracked yet outside analysis.
+        """One generated_source key keeps a tree tracked and inside analysis.
 
-        Premise (flext-gknfx): a generated tree that ``.ignore`` hides while
-        Git tracks it loses every module a regeneration adds, and analyzers
-        that ignore ``.ignore`` still check it. The key must therefore keep
-        the tree trackable while every scan and analyzer exclusion derives it.
+        The flag owns tracked generation and the package initializer only;
+        owned generated Python stays in native discovery and analysis.
         """
         name = "wire_contracts"
         declared = codegen.model_copy(
@@ -178,7 +234,7 @@ class TestsFlextInfraCodegenArtifactSsot:
         )
 
         tm.that(declared.generated_sources, has=name)
-        tm.that(declared.source_scan_ignored, has=name)
+        tm.that(declared.source_scan_ignored, lacks=name)
         tm.that(declared.generated_source_globs, has=f"**/{name}/**")
         tm.that(declared.gitignore_artifact_patterns, lacks=f"{name}/")
         tm.that(
@@ -288,37 +344,21 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """Both hooks run incremental tests; pre-push adds full local checks."""
+        """The commit hook provisions then checks; pre-push adds the tests.
+
+        Operator order 2026-11-12: the commit hook is (setup, check), so a fresh
+        lane commits against its own locked toolchain; tests run on push.
+        """
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
-        tm.ok(bool(pre_commit))
-        tm.ok(bool(pre_push))
-        commit_verbs = {step.verb for step in pre_commit}
+        commit_verbs = tuple(step.verb for step in pre_commit)
         push_verbs = {step.verb for step in pre_push}
-        tm.ok(bool(commit_verbs & push_verbs))
-        tm.ok(commit_verbs < push_verbs)
-        tm.ok(c.Infra.VERB_TEST in commit_verbs)
-        tm.ok("test" in push_verbs)
-        shared_steps = tuple(
-            step
-            for step in workflow
-            if {"pre_commit", "pre_push"}.issubset(step.contexts)
-        )
-
-        # `apply` carries the declared mutation token, which every effecting
-        # verb requires — `check` and `test` publish reports and require it too.
-        # It is therefore not a classification of source rewriting, and a shared
-        # step legitimately carries it. What the partition must prove is that
-        # each hook owns work the other does not, and that both reach the same
-        # validation verb.
-        tm.ok(bool(shared_steps))
-        tm.that(
-            {step.verb for step in shared_steps}.issubset(commit_verbs & push_verbs),
-            eq=True,
-        )
-        tm.ok(bool(push_verbs - commit_verbs))
+        tm.that(commit_verbs, eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK))
+        tm.ok(c.Infra.VERB_CHECK in push_verbs)
+        tm.ok(c.Infra.VERB_TEST in push_verbs)
+        tm.ok(c.Infra.VERB_TEST not in commit_verbs)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}),
             eq=True,

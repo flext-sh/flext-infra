@@ -937,8 +937,9 @@ generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
 only the fully composed candidate enters the physical runtime. Preparation and
 default staged checks consume that same group before its journal publishes. The
-existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
-target-only AST and semantic planning before that group's publication. Ordinary
+existing CLI `mod --rename-plan=<artifact>` composes the artifact with
+target-only AST and semantic planning before that group's publication; it writes
+unless `--check` or `--dry-run` is given, and accepts no `--apply` option. Ordinary
 `mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
 the same captured read scope without a manual rename catalog. The request root
 remains the syntax/declaration target; elected consumers are reference readers
@@ -1813,6 +1814,14 @@ that does not exist yet; missing or invalid values fail the service's validation
 Make transports their literal values through the environment, preserving spaces
 without evaluating the values as shell code.
 
+A new project depends at runtime on its declared `UPSTREAM`: the first render
+writes that upstream's distribution, named by its `scaffold.project.config_bases`
+dependency profile, into `[project].dependencies` after the repository's own
+`runtime_dependency_overlay`, and the FLEXT line pins it like every other FLEXT
+requirement. An upstream without a declared profile fails the render. Governance
+kind is then detected natively from that dependency; configuration never
+declares it.
+
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
 `make gen`, `make check`, `make tests`, and `make build`. Its physical environment
@@ -2416,8 +2425,19 @@ When declarations change, explicitly generate their projections, resolve their
 locks and install the frozen resolution through their respective verbs. A missing
 generation input fails its prerequisite instead of triggering corrective generation
 inside upgrade. The declared lock platforms and release cooldown remain owned by
-the typed toolchain. Consumer convergence and runtime acceptance are tracked
-separately in `algar-723.1`; this contract is not a publication receipt.
+the typed toolchain. The cooldown binds every resolver (operator decision
+2026-11-13): `codegen.toolchain.dependency_cooldown_days` renders the Mise
+`minimum_release_age`, every Dependabot cooldown and the relative `[tool.uv]`
+`exclude-newer` span that pyproject conformance projects into each project, so a
+plain `uv lock` honours it and `uv.lock` records the span rather than a date.
+uv applies the span to registry distributions only; FLEXT members and `-dc` forks
+resolve through git, URL or path sources at their pinned revisions. Registry
+packages that must resolve inside the window for a CVE or critical fix are declared
+once in `dependency_cooldown_exceptions` (package to advisory or reason), extended
+by a repository's own `config/codegen.yaml` overlay, and rendered as
+`exclude-newer-package` exemptions and Dependabot pip cooldown exclusions. Consumer
+convergence and runtime acceptance are tracked separately in `algar-723.1`; this
+contract is not a publication receipt.
 
 ### Development Groups, Typing Policy, and Git Requirement Lines
 
@@ -3986,10 +4006,11 @@ local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
 one warm cache across every checkout, linked worktree and `.venv` of a repository
 (`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
 inside it and Python implementation and version, never by a checkout or
-virtualenv path). The commit hook
-passes `make.ci.pre_commit_value` and runs only the fast commit-stage gates
-(`make.pre_commit_check_gates`: lint, format and Markdown); it runs no tests and no
-other validator. Staged Python files run the lint and format gates on those files; a
+virtualenv path). The commit hook first provisions the checkout with `make setup`,
+then passes `make.ci.pre_commit_value` to the check, which runs only the fast
+commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
+through the engine that setup provisioned; it runs no tests and no other
+validator. Staged Python files run the lint and format gates on those files; a
 staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
@@ -4090,37 +4111,27 @@ The explicit single-file operation runs incremental selection followed by comple
 execution of that file, including its declared slow tests, on the same database.
 No empty marker phase is invoked or converted to success. Zero execution is accepted
 only as an integrity-checked cache hit with complete inventory/deselection accounting.
-Actions restores only that project database. Keys separate project, operating system,
-architecture, Python runtime and branch; generation IDs remain immutable. Restore first
-prefers matching lock/config inputs, then earlier generations in the branch, then the
-PR base or repository default branch seed within GitHub's cache visibility rules.
-Testmon revalidates restored inputs rather than discarding history on every lock change.
-Branch pushes and same-origin PRs may save with a fresh completed-run
-path/digest/saveability receipt. Fork PRs and other events remain restore-only. The
-SQLite owner checkpoints and checks integrity before the runner releases its lease
-and exports the receipt. Cancelled, corrupt or incomplete runs cannot publish;
-a completed failing test run may save without changing its failing status, including
-when a later step fails. Publication never depends on a branch-name allowlist.
+The SQLite owner checkpoints and checks integrity before the runner releases its
+lease.
 
-Toolchain caches retain a separate immutable generation for each Actions run and
-attempt. Restore prefers the current lock and manifest inputs, then an earlier
-OS/Python generation within GitHub's repository and ref visibility rules. Save
-consumes the restore action's primary key and remains eligible after a completed
-failure or warm restore. Branch pushes, explicit dispatch and same-origin PRs may
-request publication; fork requests and cancelled runs do not. The native cache
+Toolchain caches hold one immutable entry per lock state: the key is the OS,
+Python runtime and content hash of `uv.lock`, `mise.lock`, `pyproject.toml` and
+`.mise.toml`, and only that exact key restores, so a lock change installs cold and
+never carries superseded installs forward. Save consumes the restore action's
+primary key, runs only on a miss, and remains eligible after a completed failure.
+Only branch pushes and explicit dispatch publish; every pull request restores only,
+because a PR-scoped entry is visible to no other ref and would duplicate the same
+lock state once per PR against the repository cache quota. The native cache
 action's effective access mode still governs whether upload occurs. A successful
-save step alone proves no generation was stored: acceptance requires the actual
-saved key or cache record, including when a reserve collision was reported.
-Each workflow declares whether the shared save fragment may emit PR payload
-accesses. Docs accepts push and dispatch only, so its save conditions contain no
-PR payload references. The dispatch-only matrix groups runs by workflow, event
-and ref without accessing a PR number.
+save step alone proves no entry was stored: acceptance requires the actual saved
+key or cache record, including when a reserve collision was reported. The
+dispatch-only matrix groups runs by workflow, event and ref without accessing a PR
+number.
 
 CI uploads the reports that the original operations produced on every job outcome,
 including successful checks, completed failures and interrupted runs. The upload also
 runs when no test workflow row is selected, preserving the check reports independently.
-Its allowlist includes structured check summaries, coverage and JUnit artifacts,
-original
+Its allowlist includes structured check summaries, original
 suite/selection/inventory process outcomes, selection manifests, run context and
 accounting, cache integrity decisions and Markdown reconciliation. Raw process and test
 logs remain outside that artifact. Generation publication receipts include the latest

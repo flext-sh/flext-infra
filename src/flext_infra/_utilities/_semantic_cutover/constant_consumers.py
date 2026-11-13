@@ -28,10 +28,8 @@ from flext_infra._utilities import (
 )
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,

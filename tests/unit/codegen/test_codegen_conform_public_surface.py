@@ -57,7 +57,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
             scope=c.Infra.CodegenConformScope.SELF,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform.Generate(repository_root=root).plan(request),
+            u.Tests.conform_plan_result(root, request),
         )
         projected = next(file for file in plan.files if file.path == initializer)
         tm.that(projected.before, eq=before)
