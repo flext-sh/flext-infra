@@ -1084,91 +1084,181 @@ class FlextInfraModGateEngine:
             The resulting ``p.Result[p.Infra.ModScanReport]``.
 
         """
-        targets, context = selection
+        context = selection[1]
         ruleset_files = {
             rule_id: rules_by_id[rule_id].resource for rule_id in ruleset.rule_ids
         }
-        threads = u.Infra.ast_grep_scan_threads()
-        cache_key = FlextInfraCodemodScanCache.compute_key(
-            config_path=ruleset.config,
-            rules=ruleset_files,
-            targets=targets,
-            sources=tuple(context.inventory.values()),
-            options=(
-                "ruleset",
-                threads,
-                u.Infra.managed_mise_binary(c.Infra.SG, root).unwrap(),
-            ),
+        fragments = cls._ruleset_fragments(
+            root, ruleset, selection, artifact_root=artifact_root
         )
-        cached_file = FlextInfraCodemodScanCache.lookup(cache_key)
-        if cached_file is not None:
-            sys.stderr.write(f"mod: ast-grep cache hit key={cache_key[:12]}\n")
-            sys.stderr.flush()
-            artifact = u.Infra.publish_mod_native_artifact(artifact_root, cached_file)
-            report = cls._parse_findings(
-                artifact.path,
-                root,
-                (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
-                context,
-                artifact,
-            ).unwrap()
-            return r[p.Infra.ModScanReport].ok(
-                cls.recounted(report.entries, native_artifacts=(artifact,))
+        if fragments.failure:
+            return r[p.Infra.ModScanReport].from_failure(fragments)
+        artifact, scanned, stderr, finding_exit = fragments.value
+        report = cls._parse_findings(
+            artifact.path,
+            root,
+            (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
+            context,
+            artifact,
+        ).unwrap()
+        sys.stderr.write(f"mod: native findings={report.findings}\n")
+        sys.stderr.flush()
+        if stderr is None:
+            return r[p.Infra.ModScanReport].ok(report)
+        if finding_exit:
+            error_findings = sum(
+                entry.severity == "error"
+                and u.Infra.codemod_source_path(root, entry.file) in scanned
+                for entry in report.entries
             )
-
-        scan_command = u.Infra.ast_grep_scan_command(
-            ruleset.config,
-            rule_ids=ruleset.rule_ids,
-            targets=targets,
-            json_stream=True,
-        )
-        with tempfile.TemporaryDirectory(prefix="mod-native-") as directory:
-            stdout_file, stderr_file = (
-                Path(directory) / "stdout",
-                Path(directory) / "stderr",
-            )
-            run = cls._run_tool(
-                root,
-                scan_command,
-                streams=(stdout_file, stderr_file),
-                artifact_root=artifact_root,
-                finding_exit_code=1,
-            )
-            if run.failure:
-                return r[p.Infra.ModScanReport].from_failure(run)
-            sys.stderr.write(f"mod: parse native JSONL file={stdout_file}\n")
-            sys.stderr.flush()
-            FlextInfraCodemodScanCache.store(cache_key, stdout_file)
-            artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
-            report = cls._parse_findings(
-                artifact.path,
-                root,
-                (ruleset_files, frozenset(ruleset.fixable_rule_ids)),
-                context,
-                artifact,
-            ).unwrap()
-            sys.stderr.write(f"mod: native findings={report.findings}\n")
-            sys.stderr.flush()
-            stderr = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
-            if run.value.raw_return_code != 0:
-                error_findings = sum(
-                    entry.severity == "error" for entry in report.entries
+            if not error_findings:
+                return r[p.Infra.ModScanReport].fail(
+                    "ast-grep finding exit has no error-severity occurrence"
                 )
-                if not error_findings:
-                    return r[p.Infra.ModScanReport].fail(
-                        "ast-grep finding exit has no error-severity occurrence"
-                    )
-                cls._validate_finding_receipt(stderr, error_findings).unwrap()
-            report = cls.recounted(
+            cls._validate_finding_receipt(stderr, error_findings).unwrap()
+        return r[p.Infra.ModScanReport].ok(
+            cls.recounted(
                 report.entries,
-                native_artifacts=tuple(
-                    {
-                        receipt.path: receipt
-                        for receipt in (*report.native_artifacts, stderr)
-                    }.values()
-                ),
+                native_artifacts=(*report.native_artifacts, stderr),
             )
-        return r[p.Infra.ModScanReport].ok(report)
+        )
+
+    @classmethod
+    def _ruleset_fragments(
+        cls,
+        root: Path,
+        ruleset: p.Infra.CodemodRuleset,
+        selection: tuple[Sequence[str], p.Infra.ModScanSourceContext],
+        *,
+        artifact_root: Path,
+    ) -> p.Result[
+        tuple[
+            p.Cli.AtomicFileReceipt,
+            frozenset[Path],
+            p.Cli.AtomicFileReceipt | None,
+            bool,
+        ]
+    ]:
+        """Publish one ruleset's native records from per-source fragments.
+
+        Each source's records come from its cached fragment; ast-grep scans
+        only the sources whose fragment is absent, in one invocation, and
+        stores each of their fragments before the records are published.
+
+        Returns:
+            The published records, the freshly scanned sources, the native
+            stderr receipt of that scan (None without one) and whether it
+            exited with error findings.
+
+        """
+        result_type = r[
+            tuple[
+                p.Cli.AtomicFileReceipt,
+                frozenset[Path],
+                p.Cli.AtomicFileReceipt | None,
+                bool,
+            ]
+        ]
+        targets, context = selection
+        digest = FlextInfraCodemodScanCache.ruleset_digest(
+            ruleset.config, u.Infra.managed_mise_binary(c.Infra.SG, root).unwrap()
+        )
+        keys = {
+            path: FlextInfraCodemodScanCache.source_key(
+                digest, path.relative_to(root), context.inventory[path]
+            )
+            for path in sorted(cls._scan_source_paths(root, targets))
+            if path.suffix != ".pyi"
+        }
+        fragments = {
+            path: FlextInfraCodemodScanCache.lookup(key) for path, key in keys.items()
+        }
+        missing = frozenset(
+            path for path, fragment in fragments.items() if fragment is None
+        )
+        sys.stderr.write(
+            f"mod: ast-grep cache hit={len(keys) - len(missing)} miss={len(missing)}\n"
+        )
+        sys.stderr.flush()
+        stderr: p.Cli.AtomicFileReceipt | None = None
+        finding_exit = False
+        with tempfile.TemporaryDirectory(prefix="mod-native-") as directory:
+            stdout_file, stderr_file, scanned_file = (
+                Path(directory) / name for name in ("stdout", "stderr", "scanned")
+            )
+            if missing:
+                run = cls._run_tool(
+                    root,
+                    u.Infra.ast_grep_scan_command(
+                        ruleset.config,
+                        rule_ids=ruleset.rule_ids,
+                        targets=tuple(
+                            path.relative_to(root).as_posix()
+                            for path in sorted(missing)
+                        ),
+                        json_stream=True,
+                    ),
+                    streams=(scanned_file, stderr_file),
+                    artifact_root=artifact_root,
+                    finding_exit_code=1,
+                )
+                if run.failure:
+                    return result_type.from_failure(run)
+                finding_exit = run.value.raw_return_code != 0
+                records = cls._source_records(scanned_file, root, missing)
+                if records.failure:
+                    return result_type.from_failure(records)
+                for path in missing:
+                    fragments[path] = FlextInfraCodemodScanCache.store(
+                        keys[path], records.value.get(path, "")
+                    )
+                stderr = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
+            u.Cli.atomic_write_text_file(
+                stdout_file,
+                "".join(
+                    fragment.read_text(encoding=c.DEFAULT_ENCODING)
+                    for fragment in fragments.values()
+                    if fragment is not None
+                ),
+            ).unwrap()
+            artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
+        return result_type.ok((artifact, missing, stderr, finding_exit))
+
+    @classmethod
+    def _source_records(
+        cls, stdout: Path, root: Path, scanned: frozenset[Path]
+    ) -> p.Result[Mapping[Path, str]]:
+        """Group one scan's native records by the scanned source they name.
+
+        Returns:
+            Each scanned source's exact JSONL records, or the first record
+            that is malformed or names a source outside the scan.
+
+        """
+        grouped: MutableMapping[Path, list[str]] = {}
+        with closing(cls._native_records(stdout)) as lines:
+            for _offset, raw_line in lines:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                parsed = u.Cli.json_loads(line)
+                if parsed.failure:
+                    return r[Mapping[Path, str]].from_failure(parsed)
+                if not isinstance(parsed.value, Mapping) or not isinstance(
+                    file := parsed.value.get("file"), str
+                ):
+                    return r[Mapping[Path, str]].fail(
+                        f"ast-grep JSONL record names no file: {line!r}"
+                    )
+                source = u.Infra.codemod_source_path(root, Path(file))
+                if source not in scanned:
+                    return r[Mapping[Path, str]].fail(
+                        f"ast-grep JSONL record names an unscanned source: {file}"
+                    )
+                grouped.setdefault(source, []).append(line.decode("utf-8") + "\n")
+        return r[Mapping[Path, str]].ok({
+            source: "".join(records) for source, records in grouped.items()
+        })
 
     @staticmethod
     def _scan_source_paths(root: Path, targets: Sequence[str]) -> frozenset[Path]:
@@ -1443,30 +1533,15 @@ class FlextInfraModGateEngine:
             return cls._scan_focused(root, plan, fix=fix)
         rules_by_id = {rule.id: rule for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root, source_files=source_files)
-        context = m.Infra.ModScanSourceContext(
-            inventory={
-                path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-                for path in sorted(cls._scan_source_paths(root, targets))
-            },
-            repository_roots=tuple(
-                sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
-            ),
-        )
         sys.stderr.write(
             f"mod: ast-grep {'apply' if fix else 'scan'} "
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n",
         )
         sys.stderr.flush()
-        scanned = cls._native_scan_report(root, plan, targets, context)
+        scanned = cls.native_findings(root, plan, targets)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
-        complete_report = cls._elected(
-            root,
-            scanned.value,
-            rules_by_id,
-            plan.project_rule_ids,
-        )
-        complete_report = complete_report.model_copy(
+        complete_report = scanned.value.model_copy(
             update={
                 "repository_root": root.resolve(),
                 "source_files": (
@@ -1492,6 +1567,45 @@ class FlextInfraModGateEngine:
                 rule_ids=tuple(rules_by_id),
             ),
             exact_replacements=False,
+        )
+
+    @classmethod
+    def native_findings(
+        cls,
+        root: Path,
+        plan: p.Infra.CodemodRulePlan,
+        targets: Sequence[str],
+    ) -> p.Result[p.Infra.ModScanReport]:
+        """Scan targets with every elected ruleset; check and mod share this route.
+
+        Args:
+            root: The governed repository root of the scan.
+            plan: The composed rule plan electing each project's rules.
+            targets: The governed scan targets of ``root``.
+
+        Returns:
+            Every elected native and owned-path finding, or the first failure.
+
+        """
+        context = m.Infra.ModScanSourceContext(
+            inventory={
+                path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                for path in sorted(cls._scan_source_paths(root, targets))
+            },
+            repository_roots=tuple(
+                sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
+            ),
+        )
+        scanned = cls._native_scan_report(root, plan, targets, context)
+        if scanned.failure:
+            return r[p.Infra.ModScanReport].from_failure(scanned)
+        return r[p.Infra.ModScanReport].ok(
+            cls._elected(
+                root,
+                scanned.value,
+                {rule.id: rule for rule in plan.rules},
+                plan.project_rule_ids,
+            )
         )
 
     @staticmethod

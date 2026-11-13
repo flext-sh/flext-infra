@@ -89,9 +89,55 @@ class TestsFlextInfraCodemodGate:
             execution.finding_count,
             eq=len(execution.issues),
         )
-        if severity == "error":
-            tm.that(execution.raw_output, has="exit=1")
-            tm.that(execution.raw_output, has="error(s) found in code")
+        tm.that(execution.raw_output, has="1 policy findings")
+
+    def test_changed_utility_invalidates_every_cached_finding(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> None:
+        """A rule matching through a utility follows the utility's new bytes."""
+        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        catalog = (project / c.Infra.CODEMOD_CONFIG_RELPATH).parent
+        utility = catalog / "utils" / "callee.yml"
+        tm.ok(u.Cli.ensure_dir(utility.parent))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                catalog / c.Infra.CODEMOD_CONFIG_FILENAME,
+                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
+                f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n"
+                "utilDirs:\n  - utils\ntestConfigs: []\n",
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                catalog / c.Cli.RULES_DIR_NAME / "second.yml",
+                "id: contract-second\nlanguage: Python\nseverity: error\n"
+                "message: Observed second\nrule:\n  matches: callee\n",
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                utility,
+                "id: callee\nlanguage: Python\nrule:\n  pattern: second($VALUE)\n",
+            )
+        )
+        (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
+        matched = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
+        tm.that(
+            [issue.code for issue in matched.issues],
+            eq=["contract-second"],
+            msg=matched.raw_output,
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                utility,
+                "id: callee\nlanguage: Python\nrule:\n  pattern: third($VALUE)\n",
+            )
+        )
+        cleared = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
+        tm.that(cleared.issues, empty=True, msg=cleared.raw_output)
 
     def test_clean_native_scan_has_no_findings(
         self,
@@ -107,7 +153,7 @@ class TestsFlextInfraCodemodGate:
 
         tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
-        tm.that(execution.raw_output, has="exit=0")
+        tm.that(execution.raw_output, has="0 policy findings")
 
     @staticmethod
     def _rule_files(

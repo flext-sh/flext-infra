@@ -1,8 +1,8 @@
 """Codemod enforcement quality gate.
 
-Runs ``ast-grep scan`` with the codemod rules discovered via
-``importlib.resources`` cascade (ADR-014). Policy findings block the final
-check; incomplete scans and native machinery failures remain distinct errors.
+Reports the findings of the same native scan route ``make mod`` rewrites
+from (ADR-028 Decision 18), including its per-source scan cache. Policy
+findings block the final check; native machinery failures remain distinct.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,14 +10,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tempfile
 import time
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, u
+from flext_infra import c, m, p, u
+from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates import FlextInfraGates
 
 
@@ -91,23 +91,16 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         targets: Sequence[str],
         started: float,
     ) -> p.Infra.GateExecution:
-        """Keep whole-project and file-scoped scans on the same native contract.
-
-        A whole-project scan excludes the repository's nonparticipant paths; a
-        literal file selection scans exactly the selected files.
+        """Report the findings of the scan route ``make mod`` rewrites from.
 
         Returns:
             The resulting ``m.Infra.GateExecution``.
 
         Raises:
-            RuntimeError: If codemod rule planning failed without a diagnostic.
+            RuntimeError: If codemod rule planning or the native scan failed
+                without a diagnostic.
 
         """
-        nonparticipants = (
-            frozenset()
-            if ctx.selected_files
-            else u.Infra.repository_nonparticipant_paths(project_dir)
-        )
         with u.Infra.codemod_workspace_snapshot(project_dir) as snapshot:
             planned = u.Infra.codemod_rule_plan(snapshot)
         if planned.failure:
@@ -116,34 +109,17 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 failure = "codemod rule planning failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
-
-        native_targets = tuple(
-            target for target in targets if Path(target).suffix != ".pyi"
+        scanned = FlextInfraModGateEngine.native_findings(
+            project_dir, planned.value, targets
         )
-        binary = u.Infra.managed_mise_binary(c.Infra.SG, self._repository_root)
-        if binary.failure:
-            failure = binary.error
+        if scanned.failure:
+            failure = scanned.error
             if not failure:
-                failure = "managed scanner resolution failed without a diagnostic"
+                failure = "codemod native scan failed without a diagnostic"
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
-        failures: list[p.Infra.Issue] = []
-        raw_output: list[str] = []
-        found: list[p.Infra.AstGrepDiagnostic] = list(
-            u.Infra.codemod_path_findings(
-                project_dir,
-                tuple((project_dir / target).absolute() for target in targets),
-                planned.value.rules,
-            )
-        )
-        self._scan_projects(
-            (project_dir, ctx, binary.value, nonparticipants),
-            planned.value,
-            native_targets,
-            (found, failures, raw_output),
-        )
         findings = (
-            *self._policy_issues(found),
+            *self._policy_issues(scanned.value.entries),
             *u.Infra.codemod_import_cycle_issues(project_dir),
         )
 
@@ -154,130 +130,29 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             **{rule.id: rule.partition_of or rule.id for rule in planned.value.rules},
         }
         counts = Counter(origins[issue.code] for issue in findings)
-
-        # A completed scan still blocks when elected policy rules find code.
-        # Native scanner failures retain their distinct failure diagnostics.
-        issues = (*failures, *findings)
         return self._build_gate_execution(
             m.Infra.GateExecutionParams.model_validate({
-                "project_dir": (project_dir),
-                "verdict": (not issues),
-                "issues": (issues),
-                "started": (started),
+                "project_dir": project_dir,
+                "verdict": not findings,
+                "issues": findings,
+                "started": started,
                 "outcome": (
-                    c.Infra.ToolOutcome.ERROR
-                    if failures
-                    else c.Infra.ToolOutcome.FINDINGS
+                    c.Infra.ToolOutcome.FINDINGS
                     if findings
                     else c.Infra.ToolOutcome.CLEAN
                 ),
-                "raw_output": (
-                    "\n".join((
-                        (
-                            f"{len(findings)} policy findings; {len(failures)} native "
-                            f"failures"
-                        ),
-                        *(
-                            f"  {rule_id}: {count}"
-                            for rule_id, count in sorted(
-                                counts.items(), key=lambda item: (-item[1], item[0])
-                            )
-                        ),
-                        *raw_output,
-                    ))
-                ),
+                "raw_output": "\n".join((
+                    f"{len(findings)} policy findings",
+                    *(
+                        f"  {rule_id}: {count}"
+                        for rule_id, count in sorted(
+                            counts.items(), key=lambda item: (-item[1], item[0])
+                        )
+                    ),
+                )),
             }),
             ctx=ctx,
         )
-
-    def _scan_projects(
-        self,
-        scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
-        plan: p.Infra.CodemodRulePlan,
-        targets: Sequence[str],
-        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
-    ) -> None:
-        """Stage and scan each governed project's ruleset until one fails natively.
-
-        Staging runs ast-grep over the projected ruleset; its refusal is a
-        native failure of this gate, recorded like a failed scan, not a crash.
-
-        """
-        _found, failures, raw_output = sinks
-        with tempfile.TemporaryDirectory(prefix="check-codemod-") as directory:
-            for index, (project, project_targets) in enumerate(
-                u.Infra.project_targets(plan, targets)
-            ):
-                stage = Path(directory) / str(index)
-                try:
-                    ruleset = u.Infra.codemod_stage_scan_ruleset(
-                        u.Infra.project_plan(plan, project), stage
-                    )
-                except ValueError as exc:
-                    failures.append(
-                        m.Infra.Issue(
-                            file=str(stage / c.Infra.CODEMOD_CONFIG_FILENAME),
-                            line=1,
-                            column=1,
-                            code=c.Infra.ToolOutcome.ERROR.value,
-                            message=str(exc),
-                            severity="ERROR",
-                        )
-                    )
-                    raw_output.append(str(exc))
-                    return
-                if not self._scan_ruleset(scope, ruleset, project_targets, sinks):
-                    return
-
-    def _scan_ruleset(
-        self,
-        scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
-        ruleset: p.Infra.CodemodRuleset,
-        targets: Sequence[str],
-        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
-    ) -> bool:
-        """Scan one project's staged ruleset and collect its native report.
-
-        Returns:
-            Whether the scan completed; a native failure stops the gate.
-
-        """
-        project_dir, ctx, binary, nonparticipants = scope
-        found, failures, raw_output = sinks
-        scan = self._run(
-            self._scan_command(ruleset, targets, binary, nonparticipants),
-            project_dir,
-            ctx,
-        )
-        outcome = scan.outcome
-        raw_output.extend((
-            (
-                f"{ruleset.provider}: exit={outcome.raw_return_code}, "
-                f"timed_out={outcome.timed_out}, signal={outcome.forwarded_signal}"
-            ),
-            self._raw_output(scan),
-        ))
-        failure = self._command_error_issue(scan, c.Infra.SG, str(ruleset.config))
-        if (
-            outcome.timed_out
-            or outcome.forwarded_signal is not None
-            or outcome.raw_return_code not in {0, 1}
-            or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
-        ):
-            failures.append(failure)
-            return False
-        # DiagnosticError (exit 1) requires a valid RuleMatch array,
-        # matching error count and the exact terminal diagnostic below.
-        # Additional native diagnostics make that scan incomplete.
-        report, expected_stderr = self._validated_scan_report(scan, ruleset)
-        if scan.stderr.strip() != expected_stderr:
-            # ast-grep can continue after a traversal error and still return
-            # DiagnosticError because another file has an error match.
-            # Only the complete terminal diagnostic proves a clean walk.
-            failures.append(failure)
-            return False
-        found.extend(report.root)
-        return True
 
     def _failure_gate_execution(
         self,
@@ -313,91 +188,8 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         )
 
     @staticmethod
-    def _validated_scan_report(
-        scan: p.Cli.CommandOutput,
-        ruleset: p.Infra.CodemodRuleset,
-    ) -> tuple[p.Infra.AstGrepReport, str]:
-        """Validate findings and derive their exact native terminal diagnostic.
-
-        Returns:
-            The resulting ``tuple[p.Infra.AstGrepReport, str]``.
-
-        Raises:
-            ValueError: If ``(scan.outcome.raw_return_code == 1) != bool(error_count)``;
-                or if ``any((finding.rule_id not in ruleset.rule_ids for finding in
-                report.root))``.
-
-        """
-        report = m.Infra.AstGrepReport.model_validate_json(scan.stdout)
-        error_count = sum(finding.severity == "error" for finding in report.root)
-        if (scan.outcome.raw_return_code == 1) != bool(error_count):
-            msg = (
-                f"{ruleset.provider}: ast-grep exit {scan.outcome.raw_return_code} "
-                "disagrees with the native diagnostic severities"
-            )
-            raise ValueError(msg)
-        if any(finding.rule_id not in ruleset.rule_ids for finding in report.root):
-            msg = f"{ruleset.provider}: ast-grep reported an unelected rule"
-            raise ValueError(msg)
-        expected_stderr = (
-            "\n".join((
-                c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=error_count),
-                c.Infra.AST_GREP_ERROR_FINDING_HELP,
-            ))
-            if error_count
-            else ""
-        )
-        return report, expected_stderr
-
-    @staticmethod
-    def _scan_command(
-        ruleset: p.Infra.CodemodRuleset,
-        targets: Sequence[str],
-        binary: Path,
-        nonparticipants: frozenset[str] = frozenset(),
-    ) -> Sequence[str]:
-        """Canonical ast-grep invocation for one composed provider ruleset.
-
-        Returns:
-            The resulting ``Sequence[str]``.
-
-        """
-        # The gate scans the same inventory `make mod` rewrites: trees the
-        # codegen artifact SSOT explicitly ignores for source scans stay outside
-        # it. Generation ownership alone does not exclude a source tree.
-        globs: Sequence[str] = tuple(
-            f"!{dir_name}/"
-            for dir_name in sorted({
-                *config.Infra.codegen.check_excluded_dirs,
-                *config.Infra.codegen.source_scan_ignored,
-            })
-        )
-        globs = (
-            *globs,
-            *(
-                glob
-                for path in sorted(nonparticipants)
-                for glob in (f"!/{path}", f"!/{path}/**")
-            ),
-        )
-        cmd: list[str] = [
-            str(binary),
-            c.Infra.SCAN,
-            "--config",
-            str(ruleset.config),
-            "--filter",
-            u.Infra.codemod_rule_filter(ruleset.rule_ids),
-            "--json=compact",
-        ]
-        cmd.extend([c.Infra.SG_THREADS_FLAG, str(u.Infra.ast_grep_scan_threads())])
-        for glob in globs:
-            cmd.extend([c.Infra.SG_GLOBS_FLAG, glob])
-        cmd.extend(targets)
-        return tuple(cmd)
-
-    @staticmethod
     def _policy_issues(
-        found: Sequence[p.Infra.AstGrepDiagnostic],
+        found: Sequence[p.Infra.ModScanFinding],
     ) -> Sequence[p.Infra.Issue]:
         """Report every native finding: ast-grep alone decides the match.
 
@@ -407,11 +199,11 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         """
         return [
             m.Infra.Issue(
-                file=finding.file,
-                line=finding.line + 1,
-                column=finding.column + 1,
+                file=str(finding.file),
+                line=(start := u.Infra.codemod_finding_start(finding))[0] + 1,
+                column=start[1] + 1,
                 code=finding.rule_id,
-                message=finding.message,
+                message=finding.message or "",
                 severity=finding.severity,
             )
             for finding in found

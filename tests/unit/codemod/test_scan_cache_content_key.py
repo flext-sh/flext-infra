@@ -8,19 +8,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, tm, u
-
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
+
+from flext_infra.codemod import FlextInfraModGateEngine
+from tests import c, tm, u
 
 
 class TestsFlextInfraCodemodScanCacheContentKey:
     """The scan cache key authenticates the content of every scanned source."""
 
     @staticmethod
-    def test_rescan_after_repair_reports_no_stale_finding(tmp_path: Path) -> None:
-        """A repaired source scanned again at the same path reports nothing."""
+    def _project(tmp_path: Path) -> tuple[Path, Path, tuple[str, ...]]:
+        """Build a scannable project and elect its deep-import rule partition.
+
+        Returns:
+            The project root, its consumer test module and the elected rules.
+
+        """
         root = u.Tests.mk_project(
             tmp_path,
             "scan-cache",
@@ -49,6 +56,12 @@ class TestsFlextInfraCodemodScanCacheContentKey:
             for rule in plan.rules
             if rule.partition_of == "rewire-deep-import-to-package"
         )
+        return root, consumer, selection
+
+    @classmethod
+    def test_rescan_after_repair_reports_no_stale_finding(cls, tmp_path: Path) -> None:
+        """A repaired source scanned again at the same path reports nothing."""
+        root, consumer, selection = cls._project(tmp_path)
         before = tm.ok(
             FlextInfraModGateEngine.scan(
                 root, fix=False, selection=selection, source_files=(consumer,)
@@ -69,6 +82,36 @@ class TestsFlextInfraCodemodScanCacheContentKey:
             )
         )
         tm.that(len(after.entries), eq=0)
+
+    @classmethod
+    def test_unchanged_rescan_hits_and_one_change_rescans_one_source(
+        cls, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An unchanged rescan is served whole; one edit rescans one source."""
+        root, consumer, selection = cls._project(tmp_path)
+        package = root / c.Infra.DEFAULT_SRC_DIR / "scan_cache"
+        first = tm.ok(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=selection)
+        )
+        capsys.readouterr()
+        second = tm.ok(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=selection)
+        )
+        tm.that(capsys.readouterr().err, has=" miss=0\n")
+        tm.that(len(second.entries), eq=len(first.entries))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                package / "client.py", "class Client:\n    value = 1\n"
+            )
+        )
+        third = tm.ok(
+            FlextInfraModGateEngine.scan(root, fix=False, selection=selection)
+        )
+        tm.that(capsys.readouterr().err, has=" miss=1\n")
+        tm.that(
+            {u.Infra.codemod_source_path(root, row.file) for row in third.entries},
+            eq={consumer.resolve()},
+        )
 
 
 __all__: list[str] = ["TestsFlextInfraCodemodScanCacheContentKey"]
