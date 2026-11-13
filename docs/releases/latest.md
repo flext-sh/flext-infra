@@ -12,6 +12,7 @@
 
 ## Pull requests since last release
 
+- fix(codegen): a facade never publishes a private generic member class (#2367)
 - test(codemod): compare a new published module with its admitted normalized bytes
   (#2366)
 - fix(pytest): stop a distributed suite at its instant without a flushed batch (#2365)
