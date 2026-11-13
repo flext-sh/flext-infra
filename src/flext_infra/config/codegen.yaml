@@ -279,7 +279,8 @@ Infra:
       # dependabot pip cooldown (security updates bypass it natively). A
       # repository adds its own cases through its config/codegen.yaml overlay
       # (mappings merge). Remove an entry once its fix ages past the cooldown.
-      dependency_cooldown_exceptions: {}
+      dependency_cooldown_exceptions:
+        soupsieve: GHSA-mmhr-3c5m-f64f
       # Native uv default on Linux/macOS: copy-on-write clone from the uv cache.
       # The cache (~/.cache/uv) and the checkouts share one btrfs filesystem
       # here, so `copy` duplicated about 1 GB per environment, twice per upg,
@@ -299,6 +300,7 @@ Infra:
       # the key from all projections.
       uv_constraint_dependencies:
       - pillow>=13.0.0
+      - soupsieve>=4.0.0
       - certifi>=2026.10.19
       - setuptools>=84.1.0
       - virtualenv>=21.14.13
