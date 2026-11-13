@@ -199,6 +199,31 @@ class FlextInfraUtilitiesCodemodNative:
         }
 
     @classmethod
+    def codemod_runtime_distributions(cls, root: Path) -> Mapping[str, t.StrTuple]:
+        """Map import packages to the distributions of the project's own runtime.
+
+        Installed metadata is a fact of the TARGET repository's runtime, the
+        same observation its runtime closure reads; the invoking interpreter
+        is never read. A project declaring no runtime requirement installs no
+        distribution of its own, so nothing is observed.
+
+        Returns:
+            The import packages and the distributions providing each.
+
+        """
+        del cls
+        if not (root / c.PYPROJECT_FILENAME).is_file():
+            return MappingProxyType({})
+        if not FlextInfraUtilitiesCodemodRules.project_requirements(root).unwrap()[1]:
+            return MappingProxyType({})
+        return (
+            FlextInfraUtilitiesCodemodRules
+            .codemod_target_environment(root.resolve())
+            .unwrap()
+            .package_distributions
+        )
+
+    @classmethod
     def codemod_runtime_modules(cls, root: Path) -> frozenset[str]:
         """Top-level import names provided by the project's runtime closure.
 
