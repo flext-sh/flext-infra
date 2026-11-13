@@ -136,24 +136,12 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 planned.value.rules,
             )
         )
-        u.Cli.ensure_dir(settings.work_dir).unwrap()
-        with tempfile.TemporaryDirectory(
-            prefix="check-codemod-", dir=settings.work_dir
-        ) as directory:
-            for index, (project, project_targets) in enumerate(
-                u.Infra.project_targets(planned.value, native_targets)
-            ):
-                ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.project_plan(planned.value, project),
-                    Path(directory) / str(index),
-                )
-                if not self._scan_ruleset(
-                    (project_dir, ctx, binary.value, nonparticipants),
-                    ruleset,
-                    project_targets,
-                    (found, failures, raw_output),
-                ):
-                    break
+        self._scan_projects(
+            (project_dir, ctx, binary.value, nonparticipants),
+            planned.value,
+            native_targets,
+            (found, failures, raw_output),
+        )
         findings = (
             *self._policy_issues(found),
             *u.Infra.codemod_import_cycle_issues(project_dir),
@@ -201,6 +189,48 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             }),
             ctx=ctx,
         )
+
+    def _scan_projects(
+        self,
+        scope: tuple[Path, p.Infra.GateContext, Path, frozenset[str]],
+        plan: p.Infra.CodemodRulePlan,
+        targets: Sequence[str],
+        sinks: tuple[list[p.Infra.AstGrepDiagnostic], list[p.Infra.Issue], list[str]],
+    ) -> None:
+        """Stage and scan each governed project's ruleset until one fails natively.
+
+        Staging runs ast-grep over the projected ruleset; its refusal is a
+        native failure of this gate, recorded like a failed scan, not a crash.
+
+        """
+        _found, failures, raw_output = sinks
+        u.Cli.ensure_dir(settings.work_dir).unwrap()
+        with tempfile.TemporaryDirectory(
+            prefix="check-codemod-", dir=settings.work_dir
+        ) as directory:
+            for index, (project, project_targets) in enumerate(
+                u.Infra.project_targets(plan, targets)
+            ):
+                stage = Path(directory) / str(index)
+                try:
+                    ruleset = u.Infra.codemod_stage_scan_ruleset(
+                        u.Infra.project_plan(plan, project), stage
+                    )
+                except ValueError as exc:
+                    failures.append(
+                        m.Infra.Issue(
+                            file=str(stage / c.Infra.CODEMOD_CONFIG_FILENAME),
+                            line=1,
+                            column=1,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=str(exc),
+                            severity="ERROR",
+                        )
+                    )
+                    raw_output.append(str(exc))
+                    return
+                if not self._scan_ruleset(scope, ruleset, project_targets, sinks):
+                    return
 
     def _scan_ruleset(
         self,

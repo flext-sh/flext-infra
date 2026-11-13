@@ -629,10 +629,13 @@ class TestsFlextInfraCodemodGate:
             any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
             eq=True,
         )
-        # The native ast-grep diagnostic names the rule file it cannot parse;
-        # its wording for the bad field is the tool's, not this contract's.
+        # Authored catalogs are composed into one staged native provider
+        # (docs/guides/codemod-rules.md): the native ast-grep diagnostic names
+        # the staged bundle and quotes the refused rule document; its wording
+        # for the bad field is the tool's, not this contract's.
         tm.that(execution.raw_output, has="Cannot parse rule")
-        tm.that(execution.raw_output, has="second.yml")
+        tm.that(execution.raw_output, has=c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME)
+        tm.that(execution.raw_output, has="contract-second")
 
     def test_native_traversal_error_cannot_be_hidden_by_a_policy_finding(
         self,
