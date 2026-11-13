@@ -593,5 +593,19 @@ class FlextInfraProtocolsDeps:
         runtime_dependency_overlay: Sequence[str]
         declared_project_dependencies: Sequence[str]
 
+    @runtime_checkable
+    class UpgBounds(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def floors(self) -> Sequence[t.NonEmptyStr]:
+            """Distributions whose >= floor upg writes."""
+            ...
+
+        @property
+        def pins(self) -> Sequence[t.NonEmptyStr]:
+            """Distributions whose == pin upg writes."""
+            ...
+
 
 __all__: list[str] = ["FlextInfraProtocolsDeps"]
