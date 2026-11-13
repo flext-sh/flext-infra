@@ -195,12 +195,29 @@ class FlextInfraRefactorRoutes:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
+        selection = (
+            request.laws
+            or request.rule_ids
+            or ((request.rule_id,) if request.rule_id else ())
+        )
+        writes = not (request.check or request.dry_run_mode)
+        repeat = config.Infra.gate_admission.repeat
+        if writes:
+            u.Infra.gate_repeat_refuse(
+                c.Infra.GATE_ADMISSION_MODIFICATION,
+                request.repository_root,
+                repeat.mod_selection if selection else repeat.mod_full,
+                selection,
+            )
         with u.Infra.gate_admitted_budget(
             c.Infra.GATE_ADMISSION_MODIFICATION,
             request.repository_root,
             config.Infra.gate_admission.modification,
-        ):
-            return infra.mod(request, FlextInfraCliModProgress())
+        ) as ticket:
+            result = infra.mod(request, FlextInfraCliModProgress())
+        if writes and result.success:
+            u.Infra.gate_repeat_record(ticket, selection)
+        return result
 
     @staticmethod
     def execute_mod_text(

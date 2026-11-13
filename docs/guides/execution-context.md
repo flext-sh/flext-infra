@@ -2748,11 +2748,21 @@ prefix for these verbs.
   neither queues nor arms a second budget.
 - A dead holder frees its slot when the next waiter looks at the queue. A holder
   whose heartbeat is older than the TTL is reclaimed and receives SIGTERM.
+- A full-weight run that succeeded in a checkout is refused before it queues while
+  its repeat window in `Infra.gate_admission.repeat` is open: a complete `make check`,
+  `make tests-full`, `make mod` without `LAWS`/`RULES`, and `make mod` repeating the
+  same selection. `u.Infra.gate_repeat_refuse` exits 75 and names the earlier run,
+  the time left and the declared lighter form. `u.Infra.gate_repeat_record` keeps the
+  latest success per gate and selection in `history/<checkout digest>.jsonl` under
+  the queue lock. A failed, refused, timed-out or killed run records nothing, so it
+  never opens a window. The declared CI token, a remote runner, and prek's pre-push
+  stage (`PREK_HOOK_STAGE=pre-push`) are not limited. `CHECK_PHASE=primary`,
+  `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
+  slot.
 
-The repeat limit for full-weight runs and the fail-early phase order of ADR-032 are
-not implemented yet (beads filed under `flext-mcjop`). The per-verb load, processor and
-memory limits are owned by the Make admission prelude (`make.admission` in
-`config/codegen.yaml`), not by this queue.
+The fail-early phase order of ADR-032 is not implemented yet (bead `flext-mcjop`).
+The per-verb load, processor and memory limits are owned by the Make admission
+prelude (`make.admission` in `config/codegen.yaml`), not by this queue.
 
 ### Check engine contract
 

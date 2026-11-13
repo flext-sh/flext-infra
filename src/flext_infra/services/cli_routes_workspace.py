@@ -13,6 +13,7 @@ from flext_infra import (
     FlextInfraGitService,
     c,
     check,
+    config,
     docs,
     infra,
     m,
@@ -88,17 +89,22 @@ class FlextInfraWorkspaceRoutes:
             The successful native test result or its unchanged failure.
 
         """
-        with u.Infra.gate_admitted(
-            c.Infra.VERB_TEST_FULL
-            if execution_mode is c.Infra.PytestExecutionMode.FULL
-            else c.Infra.VERB_TEST,
-            params.repository_root,
-        ):
+        full = execution_mode is c.Infra.PytestExecutionMode.FULL
+        gate = c.Infra.VERB_TEST_FULL if full else c.Infra.VERB_TEST
+        if full:
+            u.Infra.gate_repeat_refuse(
+                gate,
+                params.repository_root,
+                config.Infra.gate_admission.repeat.tests_full,
+            )
+        with u.Infra.gate_admitted(gate, params.repository_root) as ticket:
             completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
             u.Cli.framework_exit(completed.value)
+        if full:
+            u.Infra.gate_repeat_record(ticket)
         return completed
 
     @classmethod
@@ -163,7 +169,9 @@ class FlextInfraWorkspaceRoutes:
         condition. The commit hook token selects only commit-stage gates. The
         first failure stops the verb with its original status or cause. The
         verb joins the host queue first and arms the largest declared gate
-        budget only once admitted (ADR-032).
+        budget only once admitted; a complete check that succeeded in this
+        checkout inside its repeat window is refused before it queues
+        (ADR-032).
 
         Returns:
             True once every validation passed, or the first failure.
@@ -189,8 +197,19 @@ class FlextInfraWorkspaceRoutes:
             + 2 * grace,
             grace_seconds=grace,
         )
-        with u.Infra.gate_admitted_budget(c.Infra.VERB_CHECK, root, budget):
-            return cls._check_admitted(params, root, inputs)
+        complete = (
+            params.phase == c.Infra.CheckPhase.COMPLETE
+            and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
+        )
+        if complete:
+            u.Infra.gate_repeat_refuse(
+                c.Infra.VERB_CHECK, root, config.Infra.gate_admission.repeat.check
+            )
+        with u.Infra.gate_admitted_budget(c.Infra.VERB_CHECK, root, budget) as ticket:
+            result = cls._check_admitted(params, root, inputs)
+        if complete and result.success:
+            u.Infra.gate_repeat_record(ticket)
+        return result
 
     @classmethod
     def _check_admitted(

@@ -38,6 +38,26 @@ class FlextInfraModelsGateAdmission:
             t.AwareDatetime, m.Field(description="Last liveness refresh by the owner")
         ]
 
+    class GateRunRecord(m.ContractModel):
+        """Latest successful full-weight run of one gate and selection."""
+
+        gate: Annotated[
+            t.NonEmptyStr, m.Field(description="Full-weight gate that succeeded")
+        ]
+        selection: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="LAWS/RULES selection; empty when unselected"),
+        ] = ()
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="Checkout root the run acted on")
+        ]
+        admitted_at: Annotated[
+            t.AwareDatetime, m.Field(description="Admission time of the run")
+        ]
+        finished_at: Annotated[
+            t.AwareDatetime, m.Field(description="Time the run succeeded")
+        ]
+
     class HostPressureSnapshot(m.ExternalContractModel):
         """Host-pressure level published by the host-budget owner."""
 

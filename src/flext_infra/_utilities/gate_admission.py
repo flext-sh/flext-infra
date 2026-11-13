@@ -5,6 +5,8 @@ A ticket's owner holds an exclusive liveness lock for its whole life, so a
 dead owner frees its slot the moment any waiter looks; a live owner whose
 heartbeat is older than the TTL is reclaimed. Admission is strict FIFO and
 capacity follows the host-pressure level the host-budget owner publishes.
+A full-weight run that succeeded in a checkout is refused before it queues
+while its declared repeat window is open.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -13,12 +15,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import os
 import signal
 import sys
 import threading
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -94,7 +97,7 @@ class FlextInfraUtilitiesGateAdmission:
         repository: Path,
         *,
         wait_seconds: float | None = None,
-    ) -> Generator[Path]:
+    ) -> Generator[p.Infra.GateTicket]:
         """Hold one admitted slot for the duration of the block.
 
         A process started inside an admitted gate inherits its ancestor's
@@ -104,7 +107,7 @@ class FlextInfraUtilitiesGateAdmission:
         route exits non-zero.
 
         Yields:
-            The admitted ticket path, exported to every child process.
+            The admitted ticket; its path is exported to every child process.
 
         Raises:
             RuntimeError: If the queue reclaimed the ticket.
@@ -142,9 +145,9 @@ class FlextInfraUtilitiesGateAdmission:
         )
         heartbeat.start()
         try:
-            cls._await_admission(root, ticket, reclaimed, wait_seconds)
+            admitted = cls._await_admission(root, ticket, reclaimed, wait_seconds)
             os.environ[c.Infra.GATE_ADMISSION_TICKET_ENV] = str(ticket)
-            yield ticket
+            yield admitted
         except TimeoutError as exc:
             if reclaimed.is_set():
                 msg = f"gate admission ticket {ticket.name} was reclaimed"
@@ -169,7 +172,7 @@ class FlextInfraUtilitiesGateAdmission:
         gate: str,
         repository: Path,
         budget: p.Infra.RouteBudgetSpec,
-    ) -> Generator[None]:
+    ) -> Generator[p.Infra.GateTicket]:
         """Admit one heavy route, then bound it by its budget from admission on.
 
         The queue wait never counts against the budget. An inherited admission
@@ -181,17 +184,18 @@ class FlextInfraUtilitiesGateAdmission:
         still alive when the budget ends is killed.
 
         Yields:
-            Nothing; the slot and the budget hold until the block exits.
+            The admitted ticket; the slot and the budget hold until the block
+            exits.
 
         Raises:
             SystemExit: With the timeout status once the budget expired.
 
         """
         if u.Cli.process_env().get(c.Infra.GATE_ADMISSION_TICKET_ENV) is not None:
-            with cls.gate_admitted(gate, repository):
-                yield
+            with cls.gate_admitted(gate, repository) as inherited:
+                yield inherited
             return
-        with cls.gate_admitted(gate, repository):
+        with cls.gate_admitted(gate, repository) as admitted:
             expired = threading.Event()
 
             def expire() -> None:
@@ -217,7 +221,7 @@ class FlextInfraUtilitiesGateAdmission:
                 timer.daemon = True
                 timer.start()
             try:
-                yield
+                yield admitted
             finally:
                 for timer in timers:
                     timer.cancel()
@@ -226,11 +230,138 @@ class FlextInfraUtilitiesGateAdmission:
                     raise SystemExit(c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
 
     @classmethod
-    def _inherited_ticket(cls, ticket: Path) -> Path:
+    def gate_repeat_refuse(
+        cls,
+        gate: str,
+        repository: Path,
+        window: p.Infra.GateRepeatWindow,
+        selection: Sequence[str] = (),
+    ) -> None:
+        """Refuse a full-weight run that already succeeded inside its window.
+
+        Runs before the gate queues. CI runners and the pre-push hook are not
+        limited, and only successes are recorded, so a failed run never opens
+        a window.
+
+        Raises:
+            SystemExit: With the refusal status while the window is open; a
+                refusal is a failure, never a pass.
+
+        """
+        if cls._repeat_exempt():
+            return
+        root = cls.gate_admission_root()
+        root.mkdir(parents=True, exist_ok=True)
+        with cls._queue_lock(root):
+            earlier = [
+                record
+                for record in cls._ledger(root, repository)
+                if record.gate == gate and record.selection == tuple(selection)
+            ]
+        if not earlier:
+            return
+        elapsed = (datetime.now(UTC) - earlier[-1].finished_at).total_seconds()
+        if elapsed >= window.window_seconds:
+            return
+        scope = "".join(f" {item}" for item in selection)
+        sys.stderr.write(
+            f"gate admission: refused {gate}{scope} in {repository}: the same "
+            f"full-weight run succeeded at "
+            f"{earlier[-1].finished_at.isoformat(timespec='seconds')} "
+            f"({elapsed:.0f}s ago); its repeat window is "
+            f"{window.window_seconds}s, {window.window_seconds - elapsed:.0f}s "
+            f"left.\nRun the lighter form instead: {window.lighter}\n"
+            "This refusal is a failure, never a pass (FLEXT ADR-032).\n"
+        )
+        raise SystemExit(c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE)
+
+    @classmethod
+    def gate_repeat_record(
+        cls,
+        ticket: p.Infra.GateTicket,
+        selection: Sequence[str] = (),
+    ) -> None:
+        """Record one successful full-weight run in its checkout's ledger.
+
+        The ledger keeps the latest success per gate and selection, written
+        under the queue lock. CI runners and the pre-push hook record nothing.
+
+        """
+        if cls._repeat_exempt() or ticket.admitted_at is None:
+            return
+        root = cls.gate_admission_root()
+        repository = Path(ticket.repository)
+        record = m.Infra.GateRunRecord(
+            gate=ticket.gate,
+            selection=tuple(selection),
+            repository=ticket.repository,
+            admitted_at=ticket.admitted_at,
+            finished_at=datetime.now(UTC),
+        )
+        ledger = cls._ledger_path(root, repository)
+        with cls._queue_lock(root):
+            kept = [
+                earlier
+                for earlier in cls._ledger(root, repository)
+                if (earlier.gate, earlier.selection) != (record.gate, record.selection)
+            ]
+            ledger.parent.mkdir(exist_ok=True)
+            u.Cli.atomic_write_text_file(
+                ledger,
+                "".join(f"{entry.model_dump_json()}\n" for entry in (*kept, record)),
+                durability=c.Cli.WriteDurability.SCRATCH,
+            ).unwrap()
+
+    @staticmethod
+    def _repeat_exempt() -> bool:
+        """Report whether a CI runner or the pre-push hook runs this gate.
+
+        Returns:
+            ``True`` for the declared CI token, a remote runner, or prek's
+            pre-push stage.
+
+        """
+        env = u.Cli.process_env()
+        ci = config.Infra.codegen.make.ci
+        return (
+            env.get(ci.variable) == ci.value
+            or env.get(ci.remote_variable) == ci.remote_value
+            or env.get(c.Infra.GATE_REPEAT_HOOK_STAGE_ENV)
+            == c.Infra.GATE_REPEAT_EXEMPT_HOOK_STAGE
+        )
+
+    @staticmethod
+    def _ledger_path(root: Path, repository: Path) -> Path:
+        digest = hashlib.sha256(str(repository.resolve()).encode()).hexdigest()
+        return (
+            root
+            / c.Infra.GATE_ADMISSION_HISTORY_DIR
+            / f"{digest[:16]}{c.Infra.GATE_ADMISSION_HISTORY_SUFFIX}"
+        )
+
+    @classmethod
+    def _ledger(cls, root: Path, repository: Path) -> list[m.Infra.GateRunRecord]:
+        """Read a checkout's repeat ledger; must run under the queue lock.
+
+        Returns:
+            The recorded successes, oldest first.
+
+        """
+        ledger = cls._ledger_path(root, repository)
+        if not ledger.is_file():
+            return []
+        return [
+            m.Infra.GateRunRecord.model_validate_json(line)
+            for line in ledger.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
+            if line.strip()
+        ]
+
+    @classmethod
+    def _inherited_ticket(cls, ticket: Path) -> m.Infra.GateTicket:
         """Accept an ancestor's ticket only while it is admitted and alive.
 
         Returns:
-            The inherited ticket path.
+            The inherited ticket.
 
         Raises:
             RuntimeError: If the ticket is missing, waiting or dead.
@@ -244,7 +375,7 @@ class FlextInfraUtilitiesGateAdmission:
             if record.admitted_at is None or not cls._alive(ticket):
                 msg = f"inherited gate admission ticket is not admitted: {ticket}"
                 raise RuntimeError(msg)
-        return ticket
+        return record
 
     @classmethod
     def _enqueue(cls, root: Path, gate: str, repository: Path) -> tuple[Path, int]:
@@ -291,8 +422,11 @@ class FlextInfraUtilitiesGateAdmission:
         ticket: Path,
         reclaimed: threading.Event,
         wait_seconds: float | None,
-    ) -> None:
+    ) -> m.Infra.GateTicket:
         """Wait in FIFO order until a slot is free for this ticket.
+
+        Returns:
+            The admitted ticket.
 
         Raises:
             TimeoutError: If ``wait_seconds`` expires first.
@@ -317,15 +451,13 @@ class FlextInfraUtilitiesGateAdmission:
                 mine = cls._read(ticket)
                 if waiting[0].sequence == mine.sequence and len(holders) < capacity:
                     now = datetime.now(UTC)
-                    cls._write(
-                        ticket,
-                        mine.model_copy(
-                            update={"admitted_at": now, "heartbeat_at": now}
-                        ),
+                    admitted = mine.model_copy(
+                        update={"admitted_at": now, "heartbeat_at": now}
                     )
+                    cls._write(ticket, admitted)
                     if reported:
                         sys.stderr.write(f"gate admission: {mine.gate} admitted\n")
-                    return
+                    return admitted
                 position = [record.sequence for record in waiting].index(mine.sequence)
             state = (
                 f"gate admission: {mine.gate} waiting, position {position + 1}, "

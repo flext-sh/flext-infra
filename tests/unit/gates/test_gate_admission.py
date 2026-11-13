@@ -24,7 +24,7 @@ _WAIT_SECONDS = 180.0
 
 
 class TestsFlextInfraGateAdmission:
-    """Prove FIFO admission, capacity, liveness, TTL and nesting."""
+    """Prove FIFO admission, capacity, liveness, TTL, nesting and repeat limit."""
 
     @staticmethod
     def _environment(tmp_path: Path, level: str | None) -> dict[str, str]:
@@ -50,13 +50,18 @@ class TestsFlextInfraGateAdmission:
         mode: str = TestsFlextInfraGateAdmissionHolder.Mode.HOLD,
         *,
         budget_seconds: int = 3600,
+        repeat: bool = False,
     ) -> p.Cli.ManagedProcess:
         """Start one holder that admits itself, records its run and waits for release.
+
+        The runner's own CI and hook-stage markers never leak into a holder:
+        only ``environment`` decides whether the repeat limit applies.
 
         Returns:
             The running holder process.
 
         """
+        ci = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
         return tm.ok(
             u.Cli.process_start(
                 [
@@ -67,9 +72,21 @@ class TestsFlextInfraGateAdmission:
                     str(Path(environment["XDG_STATE_HOME"]).parent),
                     mode,
                     str(budget_seconds),
+                    *(("repeat",) if repeat else ()),
                 ],
                 cwd=Path.cwd(),
-                options=m.Cli.ProcessOptions(env=environment),
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=[
+                        key
+                        for key in (
+                            ci.variable,
+                            ci.remote_variable,
+                            c.Infra.GATE_REPEAT_HOOK_STAGE_ENV,
+                        )
+                        if key not in environment
+                    ],
+                ),
             )
         )
 
@@ -141,7 +158,6 @@ class TestsFlextInfraGateAdmission:
         """An admitted route leaves with its own status."""
         environment = cls._environment(tmp_path, None)
         gate = cls._gate(
-            tmp_path,
             environment,
             "failing",
             TestsFlextInfraGateAdmissionHolder.Mode.FAIL,
@@ -243,7 +259,6 @@ class TestsFlextInfraGateAdmission:
         """A gate started inside an admitted gate never queues behind itself."""
         environment = cls._environment(tmp_path, "high")
         gate = cls._gate(
-            tmp_path,
             environment,
             "outer",
             TestsFlextInfraGateAdmissionHolder.Mode.NESTED,
@@ -269,3 +284,65 @@ class TestsFlextInfraGateAdmission:
         tm.that(tm.ok(gate.wait(timeout=_WAIT_SECONDS)) != 0, eq=True)
         tm.that((tmp_path / "refused.started").exists(), eq=False)
         tm.that("host pressure snapshot" in gate.stderr, eq=True)
+
+    @classmethod
+    def _succeed(cls, tmp_path: Path, environment: dict[str, str]) -> None:
+        """Run one full-weight gate to success, opening its repeat window."""
+        (tmp_path / "check.started").unlink(missing_ok=True)
+        gate = cls._gate(environment, "check", repeat=True)
+        cls._await(tmp_path / "check.started")
+        tm.that(cls._release(tmp_path, "check", gate), eq=0)
+        (tmp_path / "check.release").unlink()
+
+    @classmethod
+    def test_success_refuses_its_repeat_inside_the_window(cls, tmp_path: Path) -> None:
+        """A second full-weight run inside the window fails before it queues."""
+        environment = cls._environment(tmp_path, None)
+        cls._succeed(tmp_path, environment)
+        (tmp_path / "check.started").unlink()
+        repeated = cls._gate(environment, "check", repeat=True)
+        tm.that(
+            tm.ok(repeated.wait(timeout=_WAIT_SECONDS)),
+            eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
+        )
+        tm.that((tmp_path / "check.started").exists(), eq=False)
+        window = FlextInfraConfig.fetch_global().Infra.gate_admission.repeat.check
+        tm.that(window.lighter in repeated.stderr, eq=True)
+        tm.that("never a pass" in repeated.stderr, eq=True)
+
+    @classmethod
+    def test_failed_run_never_opens_a_repeat_window(cls, tmp_path: Path) -> None:
+        """Only a success is recorded; the corrected run is always admitted."""
+        environment = cls._environment(tmp_path, None)
+        failing = cls._gate(
+            environment,
+            "check",
+            TestsFlextInfraGateAdmissionHolder.Mode.FAIL,
+            repeat=True,
+        )
+        cls._await(tmp_path / "check.started")
+        tm.that(
+            cls._release(tmp_path, "check", failing),
+            eq=TestsFlextInfraGateAdmissionHolder.FAILURE_STATUS,
+        )
+        (tmp_path / "check.release").unlink()
+        cls._succeed(tmp_path, environment)
+
+    @classmethod
+    def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(
+        cls, tmp_path: Path
+    ) -> None:
+        """The CI token and prek's pre-push stage run inside an open window."""
+        environment = cls._environment(tmp_path, None)
+        cls._succeed(tmp_path, environment)
+        ci = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        cls._succeed(tmp_path, {**environment, ci.variable: ci.value})
+        cls._succeed(
+            tmp_path,
+            {
+                **environment,
+                c.Infra.GATE_REPEAT_HOOK_STAGE_ENV: (
+                    c.Infra.GATE_REPEAT_EXEMPT_HOOK_STAGE
+                ),
+            },
+        )

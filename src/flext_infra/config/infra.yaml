@@ -76,6 +76,22 @@ Infra:
     modification:
       budget_seconds: 120
       grace_seconds: 10
+    # A full-weight run that succeeded in a checkout is refused before it
+    # queues while its window is open (exit 75, naming the lighter form).
+    # Failures never count; CI runners and the pre-push hook are not limited.
+    repeat:
+      check:
+        window_seconds: 1800
+        lighter: CHECK_PHASE=primary make check
+      tests_full:
+        window_seconds: 3600
+        lighter: make tests (incremental Testmon selection)
+      mod_full:
+        window_seconds: 7200
+        lighter: make mod LAWS=<law ids> or make mod RULES=<rule ids>
+      mod_selection:
+        window_seconds: 300
+        lighter: make mod with a different LAWS or RULES selection
   source_scan:
     # tests/ and examples/ are first-class code under the same gates as src/;
     # leaving them out of the scan blinds every analyzer to half the

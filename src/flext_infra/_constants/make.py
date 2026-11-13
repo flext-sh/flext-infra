@@ -111,6 +111,13 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     GATE_ADMISSION_PRESSURE_FILE_ENV: ClassVar[str] = (
         "FLEXT_GATE_ADMISSION_PRESSURE_FILE"
     )
+    GATE_ADMISSION_HISTORY_DIR: ClassVar[str] = "history"
+    GATE_ADMISSION_HISTORY_SUFFIX: ClassVar[str] = ".jsonl"
+    GATE_ADMISSION_REFUSED_EXIT_CODE: ClassVar[int] = 75
+    # prek exports the running hook stage; the pre-push hook runs the full
+    # matrix once per push by contract and is never repeat-limited.
+    GATE_REPEAT_HOOK_STAGE_ENV: ClassVar[str] = "PREK_HOOK_STAGE"
+    GATE_REPEAT_EXEMPT_HOOK_STAGE: ClassVar[str] = "pre-push"
 
     MYPY_MEMORY_LIMIT_MB_ENV: ClassVar[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: ClassVar[int] = 6144

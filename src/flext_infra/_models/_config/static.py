@@ -68,6 +68,42 @@ class FlextInfraModelsConfigStatic:
                 raise ValueError(msg)
             return self
 
+    class GateRepeatWindow(FlextInfraModelsConfigContract.ConfigContract):
+        """Repeat window of one full-weight heavy-gate form (FLEXT ADR-032)."""
+
+        window_seconds: Annotated[
+            t.PositiveInt,
+            m.Field(
+                description="Time after a success during which the form is refused"
+            ),
+        ]
+        lighter: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Lighter command a refusal names"),
+        ]
+
+    class GateRepeatSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Repeat windows of the full-weight heavy-gate forms per checkout."""
+
+        check: Annotated[
+            FlextInfraModelsConfigStatic.GateRepeatWindow,
+            m.Field(description="Window of a complete make check"),
+        ]
+        tests_full: Annotated[
+            FlextInfraModelsConfigStatic.GateRepeatWindow,
+            m.Field(description="Window of make tests-full"),
+        ]
+        mod_full: Annotated[
+            FlextInfraModelsConfigStatic.GateRepeatWindow,
+            m.Field(description="Window of make mod without LAWS or RULES"),
+        ]
+        mod_selection: Annotated[
+            FlextInfraModelsConfigStatic.GateRepeatWindow,
+            m.Field(
+                description="Window of make mod repeating one LAWS/RULES selection"
+            ),
+        ]
+
     class GateAdmissionSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Host-wide FIFO admission for heavy gates (FLEXT ADR-032)."""
 
@@ -98,6 +134,10 @@ class FlextInfraModelsConfigStatic:
         modification: Annotated[
             FlextInfraModelsConfigStatic.RouteBudgetSpec,
             m.Field(description="Budget of refactor mod after admission"),
+        ]
+        repeat: Annotated[
+            FlextInfraModelsConfigStatic.GateRepeatSpec,
+            m.Field(description="Repeat limit of the full-weight forms"),
         ]
 
         @m.model_validator(mode="after")

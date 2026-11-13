@@ -63,6 +63,44 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
+    class GateRepeatWindow(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def window_seconds(self) -> t.PositiveInt:
+            """Time after a success during which the form is refused."""
+            ...
+
+        @property
+        def lighter(self) -> t.NonEmptyStr:
+            """Lighter command a refusal names."""
+            ...
+
+    @runtime_checkable
+    class GateRepeatSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def check(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of a complete make check."""
+            ...
+
+        @property
+        def tests_full(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make tests-full."""
+            ...
+
+        @property
+        def mod_full(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make mod without LAWS or RULES."""
+            ...
+
+        @property
+        def mod_selection(self) -> FlextInfraProtocolsConfigStatic.GateRepeatWindow:
+            """Window of make mod repeating one LAWS/RULES selection."""
+            ...
+
+    @runtime_checkable
     class GateAdmissionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -99,6 +137,11 @@ class FlextInfraProtocolsConfigStatic:
         @property
         def modification(self) -> FlextInfraProtocolsConfigStatic.RouteBudgetSpec:
             """Budget of refactor mod after admission."""
+            ...
+
+        @property
+        def repeat(self) -> FlextInfraProtocolsConfigStatic.GateRepeatSpec:
+            """Repeat limit of the full-weight forms."""
             ...
 
     @runtime_checkable
