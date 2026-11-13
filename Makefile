@@ -438,8 +438,8 @@ export FLEXT_INFRA_PYTHON UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH RUNTIME_ROOT
 TOOL_BOOTSTRAP_LIFECYCLE := _setup_native_prepare
 .PHONY: _bootstrap_setup_tools
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 _bootstrap_setup_tools:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="$(PROJECT_ROOT)/.reports/setup-operations/tool-bootstrap.json"; \

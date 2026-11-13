@@ -282,14 +282,6 @@ class FlextInfraProtocolsCodemod:
             ...
 
         @property
-        def source_revision(self) -> t.NonEmptyStr | None:
-            """Structural member projected from the owning model.
-
-            Explicit Git revision authenticating retired provider declarations.
-            """
-            ...
-
-        @property
         def scope(self) -> FlextInfraProtocolsCodemod.RopeContractScope | None:
             """Structural member projected from the owning model.
 

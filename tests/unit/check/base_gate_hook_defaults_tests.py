@@ -455,7 +455,7 @@ class TestsFlextInfraGateHookDefaults:
     @staticmethod
     def test_production_gates_keep_their_declared_defaults() -> None:
         """Pyright and Pyrefly keep the deadlines and removals they declared."""
-        tm.that(gates.FlextInfraGatesPyright.check_timeout, eq=c.Infra.TIMEOUT_LONG)
+        tm.that(gates.FlextInfraGatesPyright.check_timeout, eq=c.Infra.TIMEOUT_UMBRELLA)
         tm.that(
             tuple(gates.FlextInfraGatesPyrefly.check_remove_env_keys),
             eq=(
