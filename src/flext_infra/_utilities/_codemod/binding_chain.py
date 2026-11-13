@@ -19,10 +19,8 @@ from flext_infra import c, p
 from flext_infra._utilities._codemod import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeRuntime,
-    FlextInfraUtilitiesRopeStructure,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeStructure,
 )
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,

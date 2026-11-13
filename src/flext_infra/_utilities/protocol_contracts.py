@@ -19,6 +19,7 @@ from pathlib import Path
 from flext_cli import u
 
 from flext_infra import c, m, p, t
+from flext_infra._utilities import FlextInfraUtilitiesFacadeComponents
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAnalysis,
     FlextInfraUtilitiesRopeRuntime,
@@ -26,7 +27,6 @@ from flext_infra._utilities._rope import (
 from flext_infra._utilities._semantic_cutover.declaration_relocation import (
     FlextInfraUtilitiesSemanticDeclarationRelocation,
 )
-from flext_infra._utilities.facade_components import FlextInfraUtilitiesFacadeComponents
 from flext_infra._utilities.lint_recipes import FlextInfraUtilitiesLintRecipes
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.workspace_snapshot import (
@@ -204,22 +204,22 @@ class FlextInfraUtilitiesModelsProtocolContracts:
     ) -> p.Infra.RopeSourceClass | None:
         runtime = FlextInfraUtilitiesRopeRuntime
         supplier = runtime.annotation_origin(project, operand, scope)
-        match operand:
-            case ast.Call(args=[provider_node, name_node]):
-                expected = runtime.qualified_name(
-                    project,
-                    "FlextInfraUtilitiesRopeRuntimeBase.runtime_type",
-                    module_name="flext_infra._utilities._rope.runtime_base",
-                )
-                if runtime.same_name(
-                    expected, runtime.expression_name(scope, ast.unparse(operand.func))
-                ):
-                    provider = cls._native_guard_string(provider_node, scope)
-                    name = cls._native_guard_string(name_node, scope)
-                    if provider is not None and name is not None:
-                        supplier = runtime.qualified_name(
-                            project, name, module_name=provider
-                        )
+        if isinstance(operand, ast.Call) and len(operand.args) == 2:
+            provider_node, name_node = operand.args
+            expected = runtime.qualified_name(
+                project,
+                "FlextInfraUtilitiesRopeRuntimeBase.runtime_type",
+                module_name="flext_infra._utilities._rope.runtime_base",
+            )
+            if runtime.same_name(
+                expected, runtime.expression_name(scope, ast.unparse(operand.func))
+            ):
+                provider = cls._native_guard_string(provider_node, scope)
+                name = cls._native_guard_string(name_node, scope)
+                if provider is not None and name is not None:
+                    supplier = runtime.qualified_name(
+                        project, name, module_name=provider
+                    )
         if supplier is not None and runtime.py_class(native := supplier.get_object()):
             return native
         return None

@@ -34,8 +34,6 @@ from flext_infra._utilities._pyproject import FlextInfraUtilitiesPyprojectConfor
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (

@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from flext_cli import p
 
     from flext_infra._protocols import FlextInfraProtocolsRefactorAstGrep
@@ -366,10 +368,7 @@ class FlextInfraProtocolsWorkspaceSnapshot(Protocol):
         @property
         def python_module_facts(
             self,
-        ) -> dict[
-            t.Infra.RopeNativeParsedModule,
-            FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
-        ]:
+        ) -> dict[Hashable, FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts]:
             """Shared static facts keyed by the original engine parse."""
             ...
 

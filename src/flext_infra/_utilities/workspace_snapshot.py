@@ -31,7 +31,7 @@ from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 from flext_infra._utilities._rope.source_bases_runtime import (

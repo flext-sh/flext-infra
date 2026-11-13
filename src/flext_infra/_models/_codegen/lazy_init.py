@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
@@ -16,7 +16,7 @@ from flext_infra import c
 from flext_infra._models import FlextInfraModelsMixins
 from flext_infra._protocols import FlextInfraProtocolsWorkspaceSnapshot
 from flext_infra._protocols._codegen import FlextInfraProtocolsCodegenLazyInit
-from flext_infra._typings import FlextInfraTypesBase, FlextInfraTypesRopeNative
+from flext_infra._typings import FlextInfraTypesBase
 
 
 class FlextInfraModelsCodegenLazyInit:
@@ -121,7 +121,8 @@ class FlextInfraModelsCodegenLazyInit:
         modules: Annotated[
             t.Port[
                 MutableMapping[
-                    FlextInfraTypesRopeNative.RopeNativeParsedModule,
+                    # The engine's parsed module is only this cache's identity key.
+                    Hashable,
                     FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
                 ]
             ],

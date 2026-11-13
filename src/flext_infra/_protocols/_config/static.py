@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import c, t
 
 
 class FlextInfraProtocolsConfigStatic:
@@ -26,7 +26,7 @@ class FlextInfraProtocolsConfigStatic:
         """Structural data contract projected from the owning model."""
 
         @property
-        def preferred_import_style(self) -> t.Infra.RopeNativeImportStyle:
+        def preferred_import_style(self) -> c.Infra.RopeImportStyle:
             """Native import form used by identity-preserving refactors."""
             ...
 

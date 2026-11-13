@@ -21,9 +21,7 @@ from flext_cli import u
 
 from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentity,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
 
 
 class FlextInfraUtilitiesResourceLimits:

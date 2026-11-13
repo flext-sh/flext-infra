@@ -27,10 +27,8 @@ from flext_infra._utilities._import_law import FlextInfraUtilitiesImportLawPolic
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeImports,
-    FlextInfraUtilitiesRopeSourceBasesAliases,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeSourceBasesAliases,
 )
 
 

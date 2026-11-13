@@ -13,16 +13,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Hashable, Iterator, Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeSourceBindingCollector,
-)
-from flext_infra._utilities._rope.runtime_modules import (
     FlextInfraUtilitiesRopeRuntimeModules,
+    FlextInfraUtilitiesRopeSourceBindingCollector,
 )
 
 
@@ -34,10 +32,7 @@ class FlextInfraUtilitiesPythonModel:
         source_project: p.Infra.RopeProject,
         module_files: Mapping[str, Path],
         *,
-        module_facts: MutableMapping[
-            t.Infra.RopeNativeParsedModule, p.Infra.PythonModuleFacts
-        ]
-        | None = None,
+        module_facts: MutableMapping[Hashable, p.Infra.PythonModuleFacts] | None = None,
     ) -> p.Infra.PythonModelRun:
         """Open one static model run with empty fact caches.
 
