@@ -807,7 +807,9 @@ class FlextInfraUtilitiesCodemodRules(
 
         Returns:
             The plan with its rules, rulesets, provider order and project
-            elections restricted to ``rule_ids``.
+            elections restricted to ``rule_ids``. The generated provider's
+            ruleset always stays: its utilities and file scopes back the
+            authored rules a selection keeps.
 
         """
         rulesets = tuple(
@@ -822,7 +824,8 @@ class FlextInfraUtilitiesCodemodRules(
                 }
             )
             for ruleset in plan.rulesets
-            if any(rule_id in rule_ids for rule_id in ruleset.rule_ids)
+            if ruleset.provider == c.Infra.CODEMOD_GENERATED_PROVIDER
+            or any(rule_id in rule_ids for rule_id in ruleset.rule_ids)
         )
         return plan.model_copy(
             update={
