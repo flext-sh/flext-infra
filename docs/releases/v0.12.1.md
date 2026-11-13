@@ -12,6 +12,9 @@
 
 ## Pull requests since last release
 
+- chore(tests): declare the measured dc-finan pytest worker ceiling (#2332)
+- perf(workspace): one superproject index read for member attachment; session workspace
+  map in fixtures (#2331)
 - fix(codegen): consumer kind converges from a packaged project; consumer docs build;
   empty src is absent (#2329)
 - test(check): read native diagnostics from the receipt and invocation report (#2327)
