@@ -420,7 +420,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.1"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#1f4280a21b5dfa775551a4f115fb1fce82b905f0" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#bcf5dd3c5872e545fcb21caaa8cfdc58cce3abea" }
 dependencies = [
     { name = "click" },
     { name = "defusedxml" },
