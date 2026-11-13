@@ -382,6 +382,7 @@ install_lazy_exports(
             "class_ancestry",
             "utility_behavior_provider",
             "utility_namespace_declaration",
+            "_annotated_qualifier",
             "_header_argument_span",
             "direct_bases",
             "_worder",

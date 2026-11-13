@@ -507,17 +507,20 @@ class TestsModelProtocolNativeMro:
         )
         sources = {
             package / "models.py": (
-                "class Models:\n    pass\nm = Models\n__all__ = ['Models', 'm']\n"
+                "class FlextTestProjectModels:\n    pass\n"
+                "m = FlextTestProjectModels\n"
+                "__all__ = ['FlextTestProjectModels', 'm']\n"
             ),
             package / "protocols.py": (
-                "class Protocols:\n    pass\np = Protocols\n"
-                "__all__ = ['Protocols', 'p']\n"
+                "class FlextTestProjectProtocols:\n    pass\n"
+                "p = FlextTestProjectProtocols\n"
+                "__all__ = ['FlextTestProjectProtocols', 'p']\n"
             ),
             package / "_models" / "payload.py": (
                 "from pydantic import BaseModel\n"
-                "class ModelsPayload:\n"
+                "class FlextTestProjectModelsPayload:\n"
                 "    class Request(BaseModel):\n        title: str\n"
-                "__all__ = ['ModelsPayload']\n"
+                "__all__ = ['FlextTestProjectModelsPayload']\n"
             ),
             destination: authored,
         }
@@ -722,11 +725,15 @@ class TestsModelProtocolNativeMro:
             f"__all__ = ['{owner}']\n"
         )
         sources = {
-            package / "models.py": "class Models: pass\nm = Models\n",
-            package / "protocols.py": "class Protocols: pass\np = Protocols\n",
+            package / "models.py": (
+                "class FlextTestProjectModels: pass\nm = FlextTestProjectModels\n"
+            ),
+            package / "protocols.py": (
+                "class FlextTestProjectProtocols: pass\np = FlextTestProjectProtocols\n"
+            ),
             package / "_models" / "payload.py": (
                 "from pydantic import BaseModel\n"
-                "class ModelsPayload:\n"
+                "class FlextTestProjectModelsPayload:\n"
                 "    class Request(BaseModel):\n"
                 "        title: str\n"
             ),

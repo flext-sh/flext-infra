@@ -7254,10 +7254,22 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                     False,
                 )
-            if not any(
+            # The authored contract is reconciled with its model whether or not
+            # it is already runtime-checkable: a missing decorator never skips
+            # the signature comparison or the duplicate-accessor replacement.
+            update = self._source_authored_contract_update(
+                (node, present),
+                classes,
+                expected,
+                ((tree, holder, destination), owner),
+                (generated_source, offsets),
+            )
+            if any(
                 "runtime_checkable" in ast.unparse(decorator)
                 for decorator in present.decorator_list
             ):
+                return update, False
+            if update is None:
                 return (
                     (
                         offsets[present.lineno - 1],
@@ -7266,16 +7278,15 @@ class FlextInfraUtilitiesModelsProtocol:
                     ),
                     True,
                 )
+            # The replacement starts at the class keyword; the decorator and
+            # the class keep the authored indentation from the line start.
+            indent = " " * present.col_offset
+            _start, end, replacement = update
             return (
-                self._source_authored_contract_update(
-                    (node, present),
-                    classes,
-                    expected,
-                    ((tree, holder, destination), owner),
-                    (generated_source, offsets),
-                ),
-                False,
-            )
+                offsets[present.lineno - 1],
+                end,
+                f"{indent}@runtime_checkable\n{indent}{replacement}",
+            ), True
 
         @staticmethod
         def _source_authored_holder(
