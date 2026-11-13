@@ -369,10 +369,13 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
-7. The verb that installs new versions removes the ones it superseded: native
-   `mise prune --yes` deletes versions no tracked configuration still selects,
-   and `uv cache prune` deletes dangling cache entries, both under the tools'
-   own in-use rules.
+7. The verb that installs new packages removes the cache entries it
+   superseded: native `uv cache prune` deletes dangling entries under uv's own
+   in-use rule. Mise tool versions are not pruned by a project verb:
+   `mise prune` decides from every configuration tracked on the host, and it
+   reads a tracked file without that file's own `[vars]` (jdx/mise#15101), so
+   from another project's directory it either fails on a foreign configuration
+   or counts that project's tools as unused.
 
 Declared prerequisites of stage 6, open until they close:
 
