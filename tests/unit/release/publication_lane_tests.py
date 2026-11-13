@@ -132,6 +132,26 @@ class TestsFlextInfraReleasePublicationLane:
             )
             tm.that(gh_log.exists(), eq=True)
 
+    def test_body_beyond_github_ceiling_fails_before_publication(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A body GitHub would reject fails loud: nothing pushed, no ``gh`` call."""
+        with self._lane(tmp_path) as (repo, request, gh_log):
+            request.body_file.write_text(
+                "x" * (c.Infra.GH_PULL_REQUEST_BODY_MAX_CHARS + 1),
+                encoding="utf-8",
+            )
+
+            result = u.Infra.git_publish_lane(
+                request, self._produce(repo / "produced.txt")
+            )
+
+            tm.fail(result)
+            tm.that(result.error or "", has=str(request.body_file))
+            tm.that(self._published(tmp_path), eq="")
+            tm.fail(gh_log.exists())
+
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
         """A lane never absorbs changes it did not produce."""
         with self._lane(tmp_path) as (repo, request, gh_log):
