@@ -110,6 +110,36 @@ class TestsFlextInfraAuditorCodeblocks:
         tm.that(issues[0].issue_type, eq="python_codeblock")
 
     @staticmethod
+    def test_docs_python_codeblock_issues_isolate_fences(
+        tmp_path: Path,
+    ) -> None:
+        """A name used by a later fence never satisfies an earlier fence."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "isolation.md").write_text(
+            "```python\n"
+            "import json\n"
+            "```\n\n"
+            "```python\n"
+            "import json\n"
+            "\n"
+            "print(json.dumps({}))\n"
+            "```\n",
+            encoding="utf-8",
+        )
+        scope = m.Infra.DocScope(
+            name="test",
+            path=tmp_path,
+            report_dir=tmp_path / "reports",
+        )
+
+        issues = u.Infra.docs_python_codeblock_issues(scope)
+
+        tm.that(len(issues), eq=1)
+        tm.that(issues[0].file, eq="docs/isolation.md")
+        tm.that(issues[0].message, has="block #0")
+
+    @staticmethod
     def test_docs_python_codeblock_issues_report_invalid_python(
         tmp_path: Path,
     ) -> None:
