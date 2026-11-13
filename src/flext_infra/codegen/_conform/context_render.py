@@ -752,7 +752,8 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         An existing ``pyproject.toml`` owns the declared runtime dependencies
         and development extras. A new project depends at runtime on its
         declared upstream, whose distribution its dependency profile names;
-        the repository overlay comes ahead of that profile's runtime set.
+        the repository overlay comes ahead of that profile's runtime set. A
+        consumer needs no profile: its overlay names the consumed distribution.
 
         Args:
             repository_root: Project root whose pyproject declares the facts.
@@ -774,6 +775,9 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 (base for base in profiles if base.module == project.upstream),
                 None,
             )
+            if profile is None and project.package_name is None:
+                # A consumer names its consumed distribution in its own overlay.
+                return result_type.ok((project.runtime_dependency_overlay, ()))
             if profile is None:
                 return result_type.fail(
                     f"upstream has no declared dependency profile: {project.upstream}"

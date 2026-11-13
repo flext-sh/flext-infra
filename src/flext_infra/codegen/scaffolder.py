@@ -199,10 +199,7 @@ class FlextInfraCodegenScaffolder(FlextInfraCodegenExecution[str]):
             return r[Sequence[p.Infra.ScaffoldResult]].from_failure(inputs)
         repository = inputs.value.spec.repository
         project = repository.project
-        if (
-            repository.effective_kind is not c.Infra.ProjectKind.CONSUMER
-            or project is None
-        ):
+        if project is None or project.package_name is not None:
             return r[Sequence[p.Infra.ScaffoldResult]].ok(())
         created: MutableSequence[str] = []
         for seed in self.plan_stems(root, project, inputs.value.spec.scaffold, ()):

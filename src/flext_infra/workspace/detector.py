@@ -275,8 +275,8 @@ class FlextInfraWorkspaceDetector(
                 round_trip=True,
             ),
         )
-        values["kind"] = declaration.effective_kind
-        if declaration.effective_kind is c.Infra.ProjectKind.CONSUMER:
+        values["kind"] = declaration.governing_kind(observed.kind)
+        if values["kind"] is c.Infra.ProjectKind.CONSUMER:
             # A consumer owns no package, whatever the metadata shows.
             values["package"] = False
         validated = u.validate_value(m.Infra.RepositoryRef, values)

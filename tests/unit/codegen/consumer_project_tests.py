@@ -105,7 +105,6 @@ class TestsFlextInfraCodegenConsumerProject:
     @staticmethod
     def _declaration(
         project: p.Infra.ProjectSpec,
-        kind: c.Infra.ProjectKind | None = None,
     ) -> p.Result[m.Infra.RepositoryDeltaSpec]:
         """Validate one repository declaration through its public model.
 
@@ -114,43 +113,23 @@ class TestsFlextInfraCodegenConsumerProject:
 
         """
         payload: t.JsonDict = {"project": project.model_dump(mode="json")}
-        if kind is not None:
-            payload["kind"] = kind.value
         return u.validate_value(m.Infra.RepositoryDeltaSpec, payload)
 
     @staticmethod
     def test_a_project_without_a_package_is_a_consumer() -> None:
-        """The omitted package derives the kind; a declared kind must agree."""
+        """The omitted package elects the consumer kind; shipped code is refused."""
         declare = TestsFlextInfraCodegenConsumerProject._declaration
         project = u.Tests.project_spec("client-incident")
         consumer = project.model_copy(update={"package_name": None})
+        detected = c.Infra.ProjectKind.INTERNAL_FLEXT
         tm.that(
-            tm.ok(declare(consumer)).effective_kind,
+            tm.ok(declare(consumer)).governing_kind(detected),
             eq=c.Infra.ProjectKind.CONSUMER,
         )
-        tm.that(
-            tm.ok(declare(project)).effective_kind,
-            eq=c.Infra.ProjectKind.INTERNAL_FLEXT,
-        )
-        tm.ok(declare(consumer, c.Infra.ProjectKind.CONSUMER))
-        tm.fail(
-            declare(consumer, c.Infra.ProjectKind.INTERNAL_FLEXT),
-            has="declares no package_name",
-        )
-        tm.fail(
-            declare(project, c.Infra.ProjectKind.CONSUMER),
-            has="declares no package_name",
-        )
+        tm.that(tm.ok(declare(project)).governing_kind(detected), eq=detected)
         tm.fail(
             declare(consumer.model_copy(update={"root_modules": ("x",)})),
             has="ships no package",
-        )
-        tm.fail(
-            u.validate_value(
-                m.Infra.RepositoryDeltaSpec,
-                {"kind": c.Infra.ProjectKind.CONSUMER.value},
-            ),
-            has="must declare its project",
         )
 
     @staticmethod

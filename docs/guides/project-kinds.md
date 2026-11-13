@@ -71,7 +71,6 @@ Infra:
 
 The declaration is validated once: a consumer declares its `project`, and ships no
 package, module, data or console script. Every other kind declares its `package_name`.
-A `kind` written beside the project must agree with that fact.
 
 ### What is generated
 
