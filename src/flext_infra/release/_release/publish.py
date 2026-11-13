@@ -183,6 +183,9 @@ class FlextInfraReleaseReleasePublish(FlextInfraReleaseReleaseBuild):
         identity = release.value
         if identity is None:
             notes = root / c.Infra.DIR_DOCS / "releases" / f"{ctx.tag}.md"
+            admitted = u.Infra.release_body_admitted(notes)
+            if admitted.failure:
+                return admitted
             created = forge.release_forge_create_draft(
                 root,
                 ctx.tag,
