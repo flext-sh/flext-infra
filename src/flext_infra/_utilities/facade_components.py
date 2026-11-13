@@ -2206,7 +2206,7 @@ class FlextInfraUtilitiesFacadeComponents:
         mypy binds ``C.attr`` only from C's own names (python/mypy#22457), so
         an inherited generic member class is not subscriptable through the
         namespace; ``Name: TypeAlias = Part.Name`` keeps the class itself and
-        makes it subscriptable. Non-generic members stay pure MRO.
+        makes it subscriptable. Non-generic and private members stay pure MRO.
 
         Returns:
             Each published name with its ``Part.Name`` expression.
@@ -2242,8 +2242,10 @@ class FlextInfraUtilitiesFacadeComponents:
                     continue
                 name = member.get_name()
                 published = f"{expression}.{name}"
-                if index.class_layout(scope).type_parameters and (
-                    name not in defined or bound.get(name) == published
+                if (
+                    not name.startswith("_")
+                    and index.class_layout(scope).type_parameters
+                    and (name not in defined or bound.get(name) == published)
                 ):
                     publications.setdefault(name, published)
         return publications
