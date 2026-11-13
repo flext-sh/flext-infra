@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import c, infra, m, p, r, t, u
+from flext_infra import c, config, infra, m, p, r, t, u
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeMissingImports
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
@@ -195,7 +195,29 @@ class FlextInfraRefactorRoutes:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        return infra.mod(request, FlextInfraCliModProgress())
+        selection = (
+            request.laws
+            or request.rule_ids
+            or ((request.rule_id,) if request.rule_id else ())
+        )
+        writes = not (request.check or request.dry_run_mode)
+        repeat = config.Infra.gate_admission.repeat
+        if writes:
+            u.Infra.gate_repeat_refuse(
+                c.Infra.GATE_ADMISSION_MODIFICATION,
+                request.repository_root,
+                repeat.mod_selection if selection else repeat.mod_full,
+                selection,
+            )
+        with u.Infra.gate_admitted_budget(
+            c.Infra.GATE_ADMISSION_MODIFICATION,
+            request.repository_root,
+            config.Infra.gate_admission.modification,
+        ) as ticket:
+            result = infra.mod(request, FlextInfraCliModProgress())
+        if writes and result.success:
+            u.Infra.gate_repeat_record(ticket, selection)
+        return result
 
     @staticmethod
     def execute_mod_text(
