@@ -98,5 +98,69 @@ class TestsFlextInfraFacadeForeignPublication:
         tm.that("FlextSampleClient" in rendered, eq=False)
         tm.that(rendered, has="FlextSampleUtilitiesKept")
 
+    @staticmethod
+    def test_moved_base_leaves_the_regenerated_facade(tmp_path: Path) -> None:
+        """A facade stops composing a class moved out of its family.
+
+        Premise: ``refactor move-module`` moved ``_utilities/runtime.py`` to
+        the package root and rewired the generated facade's import. The facade
+        still lists ``FlextSampleRuntime`` as a base; regeneration drops that
+        base and its import, so ``u`` never imports an orchestrator.
+        """
+        root, package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-sample",
+            package_name="flext_sample",
+        )
+        family = u.Infra.facade_family_declared_by(c.Infra.UTILITIES_PY)
+        directory = package / family.directory
+        directory.mkdir(parents=True, exist_ok=True)
+        (package / c.Infra.INIT_PY).write_text("", encoding=c.DEFAULT_ENCODING)
+        (directory / "kept.py").write_text(
+            '"""Provider that stays."""\n\n'
+            "class FlextSampleUtilitiesKept:\n"
+            "    KEPT = 'kept'\n\n"
+            "__all__ = ['FlextSampleUtilitiesKept']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (directory / c.Infra.INIT_PY).write_text(
+            "from flext_sample._utilities.kept import FlextSampleUtilitiesKept\n\n"
+            "__all__ = ['FlextSampleUtilitiesKept']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "runtime.py").write_text(
+            '"""Orchestrator moved out of the family."""\n\n'
+            "class FlextSampleRuntime:\n"
+            "    NAME = 'runtime'\n\n"
+            "__all__ = ['FlextSampleRuntime']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        facade = package / c.Infra.UTILITIES_PY
+        facade.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            '"""Previous facade projection."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from flext_sample._utilities import FlextSampleUtilitiesKept\n"
+            "from flext_sample.runtime import FlextSampleRuntime\n\n\n"
+            "class FlextSampleUtilities(\n"
+            "    FlextSampleUtilitiesKept, FlextSampleRuntime\n"
+            "):\n"
+            "    pass\n\n\n"
+            "u = FlextSampleUtilities\n"
+            "__all__ = ['FlextSampleUtilities', 'u']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with FlextInfraRopeWorkspace.open_workspace(root) as rope:
+            rendered = tm.ok(
+                u.Infra.facade_component_source(
+                    rope.rope_project,
+                    facade,
+                    directory,
+                    family=c.Infra.FacadeFamily.U,
+                )
+            )
+        ast.parse(rendered)
+        tm.that("FlextSampleRuntime" in rendered, eq=False, msg=rendered)
+
 
 __all__: list[str] = ["TestsFlextInfraFacadeForeignPublication"]

@@ -804,43 +804,71 @@ class FlextInfraUtilitiesFacadeComponents:
         module = FlextInfraUtilitiesRopeRuntimeTypes.require_source_module(
             project.get_pymodule(resource)
         )
-        if (
-            not module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
-            or directory.parent != Path(resource.real_path).parent
-        ):
-            return None
-        own = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-            module, source_project=project
-        )
-        parent = own.rpartition(".")[0]
-        family = f"{parent}.{directory.name}"
         exports = FlextInfraUtilitiesRopeAnalysisExports.public_export_names_source(
             module
         )
         names = module.get_scope().get_names()
-        foreign: set[str] = set()
-        for name in exports:
-            binding = names.get(name)
-            target = binding.get_object() if binding is not None else None
-            if target is None or not FlextInfraUtilitiesRopeRuntimeTypes.py_class(
-                target
-            ):
-                continue
-            origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
-                target.get_module(), source_project=project
+        foreign = {
+            name
+            for name in exports
+            if (binding := names.get(name)) is not None
+            and cls._facade_foreign_class(
+                project, module, directory, binding.get_object()
             )
-            if (
-                origin.startswith(f"{own.partition('.')[0]}.")
-                and origin not in {own, family}
-                and not origin.startswith(f"{family}.")
-            ):
-                foreign.add(name)
+        }
         if not foreign:
             return None
         retired = FlextInfraUtilitiesRopeModulePatch.rewrite_all_declaration(
             module, names=[name for name in exports if name not in foreign]
         )
         return cls._facade_prune_dropped_imports(retired, frozenset(foreign), "")
+
+    @staticmethod
+    def _facade_foreign_class(
+        project: p.Infra.RopeProject,
+        module: p.Infra.RopeSourceModule,
+        directory: Path,
+        target: p.Infra.RopePyObject,
+    ) -> bool:
+        """Whether a generated family facade names an own class from outside it.
+
+        Its family package, the facade module itself, every other distribution
+        and every class named with the family suffix (a family part kept in a
+        sibling module, such as ``tests/utilities_codegen.py``) stay
+        admissible. Only another own-package class declared outside the family
+        package is foreign to it: an orchestrator, or a class moved out of
+        the family.
+
+        Returns:
+            Whether ``target`` is such a class of the generated facade ``module``.
+
+        """
+        resource = module.get_resource()
+        if not (
+            module.source_code.startswith(c.Infra.AUTOGEN_HEADER)
+            and resource is not None
+            and Path(resource.real_path).parent == directory.parent
+            and FlextInfraUtilitiesRopeRuntimeTypes.py_class(target)
+        ):
+            return False
+        namespace = FlextInfraUtilitiesCodegenNamespace
+        letter = namespace.facade_family_of_directory(directory.name)
+        if letter is None or namespace.facade_families()[letter].suffix in (
+            target.get_name()
+        ):
+            return False
+        own = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            module, source_project=project
+        )
+        family = f"{own.rpartition('.')[0]}.{directory.name}"
+        origin = FlextInfraUtilitiesProjectDiscovery.module_name_for_provider(
+            target.get_module(), source_project=project
+        )
+        return (
+            origin.startswith(f"{own.partition('.')[0]}.")
+            and origin not in {own, family}
+            and not origin.startswith(f"{family}.")
+        )
 
     @staticmethod
     def _facade_settled_initializers(
@@ -1083,6 +1111,7 @@ class FlextInfraUtilitiesFacadeComponents:
             (expression, base)
             for expression, base in bases
             if base not in wrappers
+            and not cls._facade_foreign_class(project, module, directory, base)
             and not any(
                 base in provider.get_mro()[1:]
                 for _origin, provider in resolved.value[2]
