@@ -408,14 +408,26 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         protocol is its only writer, so conform reads it and never syncs it.
         A tree that has no pyproject yet is being created: it starts at the
         typed initial version and the protocol owns every change after that.
+        The version is read through the same managed-conflict recovery as the
+        pyproject it renders, so a conflicted projection can be regenerated.
 
         Returns:
             The resulting ``p.Result[str]``.
 
         """
-        if (repository_root / c.PYPROJECT_FILENAME).is_file():
-            return u.Infra.current_workspace_version(repository_root)
-        return r[str].ok(config.Infra.initial_project_version)
+        state = u.Cli.atomic_read_binary_file_state(
+            repository_root / c.PYPROJECT_FILENAME
+        )
+        if state.failure:
+            return r[str].from_failure(state)
+        if state.value.content is None:
+            return r[str].ok(config.Infra.initial_project_version)
+        return (
+            u.Infra
+            .recover_live_pyproject_text(state.value.content.decode(c.DEFAULT_ENCODING))
+            .flat_map(u.Infra.pyproject_regeneration_source)
+            .flat_map(u.Infra.project_version_from_text)
+        )
 
     def _resolved_render_project(
         self,

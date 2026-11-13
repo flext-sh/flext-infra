@@ -23,7 +23,7 @@ overrides = [
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
     { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
     { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
-    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=41b960329bb0c189be872f24ebe81bbeabfe5a66" },
+    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=bc2b0450c2a05f955ad5eaa52e8571b17614c9a8" },
 ]
 excludes = [
     { package = { name = "flext-cli" }, dependencies = ["flext-infra"] },
@@ -554,7 +554,7 @@ requires-dist = [
     { name = "pymdown-extensions", specifier = ">=11.0.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
-    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=41b960329bb0c189be872f24ebe81bbeabfe5a66" },
+    { name = "rope", git = "https://github.com/marlon-costa-dc/rope.git?rev=bc2b0450c2a05f955ad5eaa52e8571b17614c9a8" },
     { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 
@@ -1775,7 +1775,7 @@ wheels = [
 [[package]]
 name = "rope"
 version = "1.15.2+dc.6"
-source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=41b960329bb0c189be872f24ebe81bbeabfe5a66#41b960329bb0c189be872f24ebe81bbeabfe5a66" }
+source = { git = "https://github.com/marlon-costa-dc/rope.git?rev=bc2b0450c2a05f955ad5eaa52e8571b17614c9a8#bc2b0450c2a05f955ad5eaa52e8571b17614c9a8" }
 dependencies = [
     { name = "pytoolconfig", extra = ["global"] },
 ]
