@@ -481,13 +481,6 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
-        def pytest_scratch(
-            self,
-        ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecPytestScratchSpec:
-            """Scratch root declared by every pytest verb."""
-            ...
-
-        @property
         def executor_environment(
             self,
         ) -> FlextInfraProtocolsConfigMake.MakeHarnessSpecExecutorEnvironmentSpec:
@@ -666,34 +659,6 @@ class FlextInfraProtocolsConfigMake:
         @property
         def dependency_group(self) -> t.NonEmptyStr:
             """Dependency group whose frozen closure pins flext-infra."""
-            ...
-
-    @runtime_checkable
-    class MakeHarnessSpecPytestScratchSpec(
-        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def user_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.PytestCacheEnvironment:
-            """User home variable anchoring the scratch root."""
-            ...
-
-        @property
-        def home_relative_directory(self) -> t.NonEmptyStr:
-            """Home-relative scratch base directory."""
-            ...
-
-        @property
-        def state_directory_name(self) -> t.NonEmptyStr:
-            """Runtime-state directory name under the base."""
-            ...
-
-        @property
-        def namespace(self) -> t.NonEmptyStr:
-            """Scratch namespace below the checkout path."""
             ...
 
     @runtime_checkable
