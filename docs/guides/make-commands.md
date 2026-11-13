@@ -254,7 +254,7 @@ to repair authored declarations.
 | `tests-full` | Run the complete selected inventory once without Testmon.                                                                                                                                                   | —                         |
 | `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
 | `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
-| `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
+| `clean`      | Remove only declared disposable resources owned by the workspace root and each declared member, under each repository's own lock.                                                                           | —                         |
 
 ### Profiling and Semantic Publication Boundaries
 
