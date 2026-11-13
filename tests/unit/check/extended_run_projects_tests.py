@@ -67,6 +67,28 @@ class TestsFlextInfraRunProjects:
         tm.fail(result, has="selected no projects")
 
     @staticmethod
+    def _member(tmp_path: Path, name: str) -> Path:
+        """Create one governed member attached to the workspace checkout.
+
+        The check elects its runtime from Git, so the workspace is a checkout
+        and each member a registered submodule, as in a real workspace.
+
+        Returns:
+            The member project directory.
+
+        """
+        u.Tests.initialize_git_repo(tmp_path)
+        member = u.Tests.mk_project(tmp_path, name, with_src=True)
+        u.Tests.initialize_git_repo(
+            member,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(name),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            tmp_path, member, distribution=name, relative_path=name
+        )
+        return member
+
+    @staticmethod
     @c.Tests.MARK.parametrize(
         "report_name",
         [c.Infra.CHECK_REPORT_MARKDOWN_FILENAME, c.Infra.CHECK_REPORT_SARIF_FILENAME],
@@ -77,7 +99,7 @@ class TestsFlextInfraRunProjects:
     ) -> None:
         """Test run projects creates reports."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = TestsFlextInfraRunProjects._member(tmp_path, "p1")
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
 
         result = checker.run_projects(
@@ -98,7 +120,7 @@ class TestsFlextInfraRunProjects:
         """Test fail fast stops after first failed project."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         for name in ("p1", "p2", "p3"):
-            project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
+            project_dir = TestsFlextInfraRunProjects._member(tmp_path, name)
             (project_dir / "src" / "test.py").write_text(
                 "import os\nimport os\n",
                 encoding="utf-8",
@@ -117,7 +139,7 @@ class TestsFlextInfraRunProjects:
         """Test run projects reports mixed project errors."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         for name in ("p1", "p2"):
-            project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
+            project_dir = TestsFlextInfraRunProjects._member(tmp_path, name)
             (project_dir / "src" / "test.py").write_text(
                 "value = 1\n",
                 encoding="utf-8",
@@ -139,7 +161,7 @@ class TestsFlextInfraRunProjects:
     def test_run_project_returns_single_project_result(tmp_path: Path) -> None:
         """Test run project returns single project result."""
         checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
-        project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
+        project_dir = TestsFlextInfraRunProjects._member(tmp_path, "p1")
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
 
         result = checker.run_project("p1", ["lint"])
