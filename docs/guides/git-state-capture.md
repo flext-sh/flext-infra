@@ -125,6 +125,11 @@ conflicted path carries both attributes, the merge concludes with the base's
 rendering and the producing step regenerates it from the merged sources; any other
 conflict keeps the merge state and fails with the original error.
 
+The lane then refreshes its pull request, resolved by head, base and `open` state.
+A merged or closed pull request on the same head, such as the previous release, is
+history and is never edited: with none open, the lane opens a new one. Several open
+pull requests on one lane fail loud.
+
 This boundary does not claim verified runtime stability, PR approval, authorized
 retirement, or enforcement over arbitrary external Git commands. Checkpoint capture,
 publication, and merge-forward remain available to consolidate existing work without

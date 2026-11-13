@@ -300,9 +300,11 @@ class FlextInfraUtilitiesGitSemanticLane:
 
     @classmethod
     def _git_open_pull_request(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
-        """Push the lane, then open its pull request or refresh the open one.
+        """Push the lane, then refresh its open pull request or open a new one.
 
-        A body beyond GitHub's ceiling fails before the push and the call.
+        The pull request is resolved by head, base and ``open`` state: once the
+        previous one merged, the lane opens a new one. Several open pull
+        requests on one lane, or a body beyond GitHub's ceiling, fail loud.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -322,13 +324,36 @@ class FlextInfraUtilitiesGitSemanticLane:
         )
         if pushed.failure:
             return r[bool].from_failure(pushed)
-        exists = u.Cli.capture(
-            [c.Infra.GH, "pr", "view", branch, "--json", "number"],
+        # Only an open pull request is the lane's: a merged or closed one on
+        # the same head (the previous release) is history and never edited.
+        listed = u.Cli.capture(
+            [
+                c.Infra.GH,
+                "pr",
+                "list",
+                "--head",
+                branch,
+                "--base",
+                request.base,
+                "--state",
+                "open",
+                "--json",
+                "number",
+                "--jq",
+                ".[].number",
+            ],
             cwd=root,
         )
+        if listed.failure:
+            return r[bool].from_failure(listed)
+        numbers = listed.value.split()
+        if len(numbers) > 1:
+            return r[bool].fail(
+                f"lane {branch} has several open pull requests: {', '.join(numbers)}",
+            )
         command = (
-            [c.Infra.GH, "pr", "edit", branch]
-            if exists.success
+            [c.Infra.GH, "pr", "edit", numbers[0]]
+            if numbers
             else [c.Infra.GH, "pr", "create", "--base", request.base, "--head", branch]
         )
         return u.Cli.run_checked(
