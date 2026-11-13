@@ -19,6 +19,8 @@ class TestsFlextInfraExtendedCliEntry:
     def _workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
+        # The check elects its runtime from Git: the workspace is a checkout.
+        u.Tests.initialize_git_repo(workspace)
         _ = u.Tests.mk_project(
             workspace,
             "p1",
