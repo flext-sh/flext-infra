@@ -117,6 +117,16 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     GATE_REPEAT_HOOK_STAGE_ENV: ClassVar[str] = "PREK_HOOK_STAGE"
     GATE_REPEAT_EXEMPT_HOOK_STAGE: ClassVar[str] = "pre-push"
 
+    # A Node tool sizes its heap from this share of the recipe's cgroup memory
+    # bound; the rest stays for Node's own non-heap memory.
+    NODE_OPTIONS_ENV: ClassVar[str] = "NODE_OPTIONS"
+    NODE_HEAP_OPTION: ClassVar[str] = "--max-old-space-size={megabytes}"
+    NODE_HEAP_SHARE_PERCENT: ClassVar[int] = 80
+    CGROUP_MEMBERSHIP_FILE: ClassVar[str] = "/proc/self/cgroup"
+    CGROUP_ROOT: ClassVar[str] = "/sys/fs/cgroup"
+    CGROUP_MEMORY_BOUND_FILE: ClassVar[str] = "memory.max"
+    CGROUP_UNBOUNDED: ClassVar[str] = "max"
+
     MYPY_MEMORY_LIMIT_MB_ENV: ClassVar[str] = "MYPY_MEMORY_LIMIT_MB"
     MYPY_MEMORY_LIMIT_MB_DEFAULT: ClassVar[int] = 6144
     MYPY_PROFILE_OUTPUT_ENV: ClassVar[str] = "FLEXT_MYPY_PROFILE_OUTPUT"
