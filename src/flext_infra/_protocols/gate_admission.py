@@ -59,6 +59,35 @@ class FlextInfraProtocolsGateAdmission:
             ...
 
     @runtime_checkable
+    class GateRunRecord(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def gate(self) -> t.NonEmptyStr:
+            """Full-weight gate that succeeded."""
+            ...
+
+        @property
+        def selection(self) -> tuple[t.NonEmptyStr, ...]:
+            """LAWS/RULES selection; empty when unselected."""
+            ...
+
+        @property
+        def repository(self) -> t.NonEmptyStr:
+            """Checkout root the run acted on."""
+            ...
+
+        @property
+        def admitted_at(self) -> t.AwareDatetime:
+            """Admission time of the run."""
+            ...
+
+        @property
+        def finished_at(self) -> t.AwareDatetime:
+            """Time the run succeeded."""
+            ...
+
+    @runtime_checkable
     class HostPressureSnapshot(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 

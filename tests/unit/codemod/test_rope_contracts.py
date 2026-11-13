@@ -868,6 +868,11 @@ class TestsFlextInfraRopeConstructorContracts:
         tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-adapter-construction"),
+        indirect=True,
+    )
     def test_aliased_adapter_preserves_validation_and_failure_modes(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -892,6 +897,11 @@ class TestsFlextInfraRopeTypePositionContracts:
     """Distinguish quoted type references from Literal and Annotated payload data."""
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-empty-factory"),
+        indirect=True,
+    )
     @c.Tests.MARK.parametrize("alias", [False, True])
     def test_quoted_type_positions_require_explicit_declaring_source_repair(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],

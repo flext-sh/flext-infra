@@ -697,6 +697,82 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
+    class MakeAdmissionOverrideSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def max_load5(self) -> t.PositiveFloat | None:
+            """Highest 5-minute load average that admits the verb."""
+            ...
+
+        @property
+        def memory_limit_gb(self) -> t.PositiveInt | None:
+            """Memory limit of each verb recipe, in GiB."""
+            ...
+
+        @property
+        def max_processes(self) -> t.PositiveInt | None:
+            """CPU limit of each verb recipe."""
+            ...
+
+    @runtime_checkable
+    class MakeAdmissionLimitsSpec(
+        FlextInfraProtocolsConfigContract.ConfigContract, Protocol
+    ):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def max_load5(self) -> t.PositiveFloat:
+            """Highest 5-minute load average that admits the verb."""
+            ...
+
+        @property
+        def memory_limit_gb(self) -> t.PositiveInt:
+            """Memory limit of each verb recipe, in GiB."""
+            ...
+
+        @property
+        def max_processes(self) -> t.PositiveInt:
+            """CPU limit of each verb recipe."""
+            ...
+
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Memory limit in bytes, the unit MemoryMax accepts."""
+            ...
+
+    @runtime_checkable
+    class MakeAdmissionSpec(MakeAdmissionLimitsSpec, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def overrides(
+            self,
+        ) -> Mapping[
+            t.NonEmptyStr, FlextInfraProtocolsConfigMake.MakeAdmissionOverrideSpec
+        ]:
+            """Explicit per-verb exceptions to the defaults."""
+            ...
+
+        @property
+        def refusal_guidance(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Lighter-route guidance printed with every refusal; plain Make text
+            without '$', '#' or newlines.
+            """
+            ...
+
+        @property
+        def verb_limits(
+            self,
+        ) -> Mapping[str, FlextInfraProtocolsConfigMake.MakeAdmissionLimitsSpec]:
+            """Each overridden verb's limits merged over the defaults."""
+            ...
+
+    @runtime_checkable
     class MakeVerbCatalogSpec(MakeHarnessSpec, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -817,6 +893,11 @@ class FlextInfraProtocolsConfigMake:
         @property
         def scan_threads(self) -> t.PositiveInt:
             """Bounded thread budget for ast-grep scan execution."""
+            ...
+
+        @property
+        def admission(self) -> FlextInfraProtocolsConfigMake.MakeAdmissionSpec:
+            """Host admission and run limits of every public verb."""
             ...
 
         @property
