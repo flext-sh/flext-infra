@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+perf(tests): resolve selection and inventory in one collection pass (#2306)
+Merge branch '0.12.0-dev' into perf/test-single-collection-20261112
 fix(codegen): close the verified review findings of #2262/#2264/#2266 (#2300)
 perf(mod): focused make mod within budget; reuse import facts; fix rendering cache key
 (#2305)
