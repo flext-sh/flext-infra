@@ -143,10 +143,26 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             for index, (project, project_targets) in enumerate(
                 u.Infra.project_targets(planned.value, native_targets)
             ):
-                ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.project_plan(planned.value, project),
-                    Path(directory) / str(index),
-                )
+                stage = Path(directory) / str(index)
+                try:
+                    ruleset = u.Infra.codemod_stage_scan_ruleset(
+                        u.Infra.project_plan(planned.value, project), stage
+                    )
+                except ValueError as exc:
+                    # Staging runs ast-grep over the projected ruleset; its
+                    # refusal is a native failure of this gate, not a crash.
+                    failures.append(
+                        m.Infra.Issue(
+                            file=str(stage / c.Infra.CODEMOD_CONFIG_FILENAME),
+                            line=1,
+                            column=1,
+                            code=c.Infra.ToolOutcome.ERROR.value,
+                            message=str(exc),
+                            severity="ERROR",
+                        )
+                    )
+                    raw_output.append(str(exc))
+                    break
                 if not self._scan_ruleset(
                     (project_dir, ctx, binary.value, nonparticipants),
                     ruleset,
