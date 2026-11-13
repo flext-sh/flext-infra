@@ -841,6 +841,13 @@ class FlextInfraUtilitiesModelsProtocol:
             self.source_method_cache: dict[
                 str, tuple[ast.FunctionDef | ast.AsyncFunctionDef, ...]
             ] = {}
+            # Invocation-local identity memos: one annotation compare resolves
+            # the same declared route and native expression repeatedly.
+            self.source_qualified_names: dict[tuple[str, str], p.Infra.RopePyName] = {}
+            self.source_denotations: dict[tuple[int, str, str, str], bool] = {}
+            # Keep each compared scope alive so its id cannot be reused by a
+            # different scope while a memo entry is still addressable.
+            self.source_denotation_scopes: list[p.Infra.RopeScope] = []
 
         @property
         def workspace(self) -> p.Infra.RopeWorkspaceDsl:
@@ -2723,7 +2730,7 @@ class FlextInfraUtilitiesModelsProtocol:
             owner, namespaced = resolved
             if namespaced:
                 accumulators[3].append(owner)
-            expected = self._source_expected_members(model, classes)
+            expected: set[str] | None = None
             for (
                 source_path,
                 holder_name,
@@ -2732,9 +2739,15 @@ class FlextInfraUtilitiesModelsProtocol:
             ) in self._source_displaced_candidates(
                 owner, member_name, destination, (protocols_root, protocol_base)
             ):
+                # A stale generated holder retires with no member check; every
+                # other candidate needs the model's projected members. Deriving
+                # them only on that branch keeps the retirement pass off the
+                # field/method projection for the common already-generated tree.
+                if not stale and expected is None:
+                    expected = self._source_expected_members(model, classes)
                 self._source_require_retirable(
                     protocol,
-                    expected,
+                    expected if expected is not None else set[str](),
                     protocols_root,
                     (source_path, holder_name, member_name, public_model),
                     stale=stale,
@@ -4453,6 +4466,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     )
                 )
             ]
+            # A mirrored base keeps the model's subscript arguments
+            # (``RootModel[Mapping[str, X]]``), and those evaluate at class
+            # creation even when the inherited root field no longer writes the
+            # annotation that used to bind them. Their names need the same
+            # provider binding as any other annotation root.
+            annotations.extend(
+                base.slice
+                for node, _path, _tree in classes
+                for base in node.bases
+                if isinstance(base, ast.Subscript)
+            )
             annotations.extend(
                 parameter
                 for node, _path, _tree in classes
@@ -9407,12 +9431,24 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> bool:
             if scope is None:
                 return False
-            return self.same_name(
-                self.qualified_name(self.project, name, module_name=module),
-                FlextInfraUtilitiesRopeRuntime.expression_name(
-                    scope, ast.unparse(node)
-                ),
+            expression = ast.unparse(node)
+            key = (id(scope), expression, module, name)
+            cached = self.source_denotations.get(key)
+            if cached is not None:
+                return cached
+            if not any(item is scope for item in self.source_denotation_scopes):
+                self.source_denotation_scopes.append(scope)
+            identity_key = (module, name)
+            identity = self.source_qualified_names.get(identity_key)
+            if identity is None:
+                identity = self.qualified_name(self.project, name, module_name=module)
+                self.source_qualified_names[identity_key] = identity
+            denoted = self.same_name(
+                identity,
+                FlextInfraUtilitiesRopeRuntime.expression_name(scope, expression),
             )
+            self.source_denotations[key] = denoted
+            return denoted
 
         def _member(
             self, binding: p.Infra.RopePyName, route: str

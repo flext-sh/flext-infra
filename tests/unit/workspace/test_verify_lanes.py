@@ -216,6 +216,22 @@ class TestsVerifyLanes:
         tm.that(text, lacks="merged but alive ref: refs/heads/wip-slice")
 
     @classmethod
+    def test_cli_locked_worktree_lane_is_active(
+        cls,
+        tmp_path: Path,
+        capsys: t.Tests.CaptureFixture[str],
+    ) -> None:
+        """An owner-locked merged lane is live WIP, never merged-but-alive."""
+        request = cls._repository(tmp_path, "release/alpha", 5.0)
+        lane = u.Tests.git_linked_lane(tmp_path, request.repo_root, "locked-slice")
+        u.Tests.git_run(request.repo_root, "worktree", "lock", str(lane))
+        tm.that(FlextInfraCli.infra_main(cls._argv(request)), eq=0)
+        output = capsys.readouterr()
+        text = output.out + output.err
+        tm.that(text, lacks="merged but alive")
+        tm.that(text, lacks="merged clean worktree")
+
+    @classmethod
     def test_cli_stash_preserves_index_refs_and_wip(
         cls,
         tmp_path: Path,

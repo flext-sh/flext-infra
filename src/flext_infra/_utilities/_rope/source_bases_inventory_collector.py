@@ -20,12 +20,10 @@ from rope.base.pynames import ImportedModule
 from rope.base.pyobjectsdef import PyModule, PyPackage
 
 from flext_infra import c, m, p
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 from flext_infra._utilities._rope.runtime_module_queries import (
     FlextInfraUtilitiesRopeRuntimeModuleQueries,
-)
-from flext_infra._utilities._rope.runtime_modules import (
-    FlextInfraUtilitiesRopeRuntimeModules,
 )
 from flext_infra._utilities._rope.runtime_types import (
     FlextInfraUtilitiesRopeRuntimeTypes,

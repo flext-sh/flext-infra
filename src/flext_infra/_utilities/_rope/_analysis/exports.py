@@ -10,7 +10,7 @@ from collections.abc import MutableSequence, Sequence
 
 from flext_infra import c, m, p, t
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities._rope._analysis.sourcescan import (
+from flext_infra._utilities._rope._analysis import (
     FlextInfraUtilitiesRopeAnalysisSourceScan,
 )
 

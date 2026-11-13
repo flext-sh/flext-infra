@@ -937,8 +937,9 @@ generated exports form one declared dependency group. Projection planning reads
 the original authenticated native overlay, including proposed module retirement;
 only the fully composed candidate enters the physical runtime. Preparation and
 default staged checks consume that same group before its journal publishes. The
-existing CLI `mod --rename-plan=<artifact> --apply` composes the artifact with
-target-only AST and semantic planning before that group's publication. Ordinary
+existing CLI `mod --rename-plan=<artifact>` composes the artifact with
+target-only AST and semantic planning before that group's publication; it writes
+unless `--check` or `--dry-run` is given, and accepts no `--apply` option. Ordinary
 `mod` accepts repeated `--consumer-roots <absolute-checkout>` options and builds
 the same captured read scope without a manual rename catalog. The request root
 remains the syntax/declaration target; elected consumers are reference readers

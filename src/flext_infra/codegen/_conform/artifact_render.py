@@ -131,10 +131,9 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 continue
             missing = {
                 root / destination
-                for destination in u.Cli.dag_closure(
-                    codegen.templates.artifact_requirements,
+                for destination in codegen.templates.artifact_closure(
                     frozenset({entry.destination}),
-                ).unwrap()
+                )
             }.difference(paths)
             if missing:
                 return result_type.fail(
