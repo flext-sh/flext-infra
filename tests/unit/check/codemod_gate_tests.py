@@ -32,6 +32,11 @@ class TestsFlextInfraCodemodGate:
         tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
         project = installed_dependency_path / "scanner_contract"
         u.Tests.write_native_resolution_project(project, "scanner-contract")
+        # The scanned package itself is clean: only each case's own source may
+        # produce findings.
+        (project / "src" / "scanner_contract" / c.Infra.INIT_PY).write_text(
+            "", encoding=c.DEFAULT_ENCODING
+        )
         u.Tests.declare_rules(
             project,
             {
