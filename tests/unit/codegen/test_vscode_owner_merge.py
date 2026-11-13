@@ -22,6 +22,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "standalone"
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)
+        # Environment binding resolves the checkout's runtime through Git.
+        u.Tests.initialize_git_repo(root)
         baseline = tm.ok(FlextInfraCodegenConform.Generate.load_vscode_spec(root))
         inherited = tm.ok(
             FlextInfraCodegenConform.Generate.render_vscode_settings(
@@ -195,6 +197,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         replacement: t.JsonValue,
     ) -> None:
         """A setting pair replaces an array completely, including its empty value."""
+        # Environment binding resolves the checkout's runtime through Git.
+        u.Tests.initialize_git_repo(tmp_path)
         key = "extension.scopes"
         spec = m.Infra.CodegenVscodeSpec.model_validate({
             **config.Infra.codegen.vscode.model_dump(),
@@ -283,6 +287,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         root = tmp_path / "project"
         directory = root / c.CONFIG_DIR_NAME
         directory.mkdir(parents=True)
+        # Environment binding resolves the checkout's runtime through Git.
+        u.Tests.initialize_git_repo(root)
         key = "extension.scopes"
         project = directory / c.Infra.CODEGEN_CONFIG_FILENAME
         local = project.with_name(f"{project.stem}.local.yaml")
@@ -345,6 +351,8 @@ class TestsFlextInfraVscodeOwnerMerge:
         tmp_path: Path,
     ) -> None:
         """Portable deltas preserve unfamiliar JSON values, including explicit null."""
+        # Environment binding resolves the checkout's runtime through Git.
+        u.Tests.initialize_git_repo(tmp_path)
         values: t.JsonMapping = {
             "operator.empty": None,
             "operator.payload": {
@@ -374,6 +382,23 @@ class TestsFlextInfraVscodeOwnerMerge:
 
 class TestsFlextInfraVscodeOwnerMergePublication:
     """Prove the vscode owner merge publishes through generation and Git."""
+
+    @staticmethod
+    def _bound_declaration(root: Path, value: t.JsonValue) -> t.JsonValue:
+        """Bind the declared runtime token to the checkout's runtime environment.
+
+        Returns:
+            The declared value as the checkout's editor projection carries it.
+
+        """
+        environment = u.Infra.runtime_environment_dir(root).relative_to(
+            root.resolve(), walk_up=True
+        )
+        token = tm.not_none(config.Infra.codegen.vscode.runtime_environment_token)
+        text = tm.ok(u.Cli.json_dumps(value)).replace(
+            token, f"${{workspaceFolder}}/{environment.as_posix()}"
+        )
+        return u.Cli.JSON_VALUE_ADAPTER.validate_json(text)
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -484,19 +509,16 @@ class TestsFlextInfraVscodeOwnerMergePublication:
                 },
             ),
         )
-        rejected = infra.codegen_conform(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.ALL,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-        )
-        tm.fail(rejected)
-        tm.that(rejected.exception, is_=ValueError, msg=rejected.error)
-        with u.Tests.raises(ValueError, match="settings") as raised:
-            rejected.unwrap()
-        tm.ok(raised.value is rejected.exception)
+        # Conformance exceptions propagate unchanged from the public handler.
+        with u.Tests.raises(ValueError, match="settings"):
+            infra.codegen_conform(
+                m.Infra.CodegenConformRequest(
+                    root=root,
+                    what=c.Infra.CodegenConformSurface.MAKEFILE,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=c.Infra.CodegenConformMode.APPLY,
+                ),
+            )
         tm.that(settings_path.read_text(encoding=c.DEFAULT_ENCODING), eq=rendered)
         tm.ok(local.is_file())
 
@@ -559,15 +581,16 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         root.mkdir()
         tm.ok(u.Infra.git_init(m.Infra.GitRepoRequest(repo_root=root)))
         path = Path("generated") / "runtime.json"
-        artifact = m.Infra.ManagedFileSpec(
-            path=path,
-            owner=c.Infra.CODEGEN_OWNER_VSCODE,
-            policy="merge",
-            tracking="runtime-local",
-        )
-        codegen = config.Infra.codegen.model_copy(
-            update={"managed_files": (artifact,)},
-        )
+        # Managed views derive from the template catalog's ownership; the
+        # arbitrary runtime-local declaration is one more owned entry.
+        declared = config.Infra.codegen.model_dump(exclude_computed_fields=True)
+        entries = declared["templates"]["entries"]
+        seed = next(entry for entry in entries.values() if entry.get("ownership"))
+        entries[path.as_posix()] = {
+            **{key: value for key, value in seed.items() if key != "destination"},
+            "ownership": {**seed["ownership"], "tracking": "runtime-local"},
+        }
+        codegen = m.Infra.CodegenConfigSpec.model_validate(declared)
         rendered = tm.ok(
             u.Infra.render_project_gitignore(
                 codegen,
@@ -590,6 +613,8 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         root = tmp_path / "project"
         path = root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         path.parent.mkdir(parents=True)
+        # Environment binding resolves the checkout's runtime through Git.
+        u.Tests.initialize_git_repo(root)
         original = '{"workbench.colorTheme": "operator-theme"}\n'
         path.write_text(original, encoding=c.DEFAULT_ENCODING)
         spec = config.Infra.codegen.vscode.model_copy(
@@ -646,7 +671,12 @@ class TestsFlextInfraVscodeOwnerMergePublication:
                     eq=u.Infra.runtime_python(root).parent,
                 )
             else:
-                tm.that(doc[key], eq=expected_value)
+                tm.that(
+                    doc[key],
+                    eq=TestsFlextInfraVscodeOwnerMergePublication._bound_declaration(
+                        root, expected_value
+                    ),
+                )
         for stripped in config.Infra.codegen.vscode.stripped_keys:
             tm.fail(stripped in doc)
         search_paths_key = c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
@@ -775,7 +805,12 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         ).items():
             if key in config.Infra.codegen.vscode.stripped_keys:
                 continue
-            tm.that(doc[key], eq=expected)
+            tm.that(
+                doc[key],
+                eq=TestsFlextInfraVscodeOwnerMergePublication._bound_declaration(
+                    member, expected
+                ),
+            )
         tm.that(
             doc["operator.note"],
             eq="${workspaceFolder}/.venv-is-not-the-environment",
@@ -795,6 +830,7 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         standalone = tmp_path / "standalone"
         config_dir = standalone / c.CONFIG_DIR_NAME
         config_dir.mkdir(parents=True)
+        u.Tests.initialize_git_repo(standalone)
         tm.ok(
             u.Cli.yaml_dump(
                 config_dir / c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -809,15 +845,21 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         standalone_doc = u.Cli.JSON_MAPPING_ADAPTER.validate_json(standalone_rendered)
         tm.that(
             standalone_doc["terminal.integrated.env.linux"],
-            eq=FlextInfraCodegenConform.Generate.vscode_settings(
-                config.Infra.codegen.vscode
-            )["terminal.integrated.env.linux"],
+            eq=TestsFlextInfraVscodeOwnerMergePublication._bound_declaration(
+                standalone,
+                FlextInfraCodegenConform.Generate.vscode_settings(
+                    config.Infra.codegen.vscode
+                )["terminal.integrated.env.linux"],
+            ),
         )
         tm.that(
             standalone_doc["ruff.interpreter"],
-            eq=FlextInfraCodegenConform.Generate.vscode_settings(
-                config.Infra.codegen.vscode
-            )["ruff.interpreter"],
+            eq=TestsFlextInfraVscodeOwnerMergePublication._bound_declaration(
+                standalone,
+                FlextInfraCodegenConform.Generate.vscode_settings(
+                    config.Infra.codegen.vscode
+                )["ruff.interpreter"],
+            ),
         )
         tm.that(standalone_doc["operator.note"], eq=doc["operator.note"])
         tm.that(
