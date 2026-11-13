@@ -125,8 +125,8 @@ if [ "$$("{{ mise }}" -C {{ lock_root }} lock --bump --dry-run --json)" = "[]" ]
 {% set mise_selector = toolchain.mise_selector -%}
 .PHONY: {{ target }}
 
+# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 {{ target }}:
-	# The lifecycle invokes recursive make through mise, so preserve jobserver FDs.
 	+@set -eu; \
 	bootstrap_stage=source-identity; bootstrap_completed=false; bootstrap_sha=null; bootstrap_git_status=null; mise_stage=; \
 	bootstrap_report="{{ project_root }}/{{ report_relative_path }}"; \
