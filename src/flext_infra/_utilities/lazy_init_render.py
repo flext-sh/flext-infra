@@ -298,7 +298,8 @@ class FlextInfraUtilitiesLazyInitRender:
     ) -> Mapping[str, Sequence[tuple[str, str]]]:
         """Group public targets by the module their static import names.
 
-        Preserve the elected origin used by the runtime lazy mapping.
+        Preserve the elected origin used by the runtime lazy mapping. A module
+        object export (no attribute) is imported from its parent package.
 
         Returns:
             The ``(export, imported)`` pairs per importing module.
@@ -307,6 +308,8 @@ class FlextInfraUtilitiesLazyInitRender:
         groups: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
         for name in sorted(public):
             module, attr = public[name]
+            if not attr:
+                module, _, attr = module.rpartition(".")
             groups[module].append((name, attr))
         return groups
 
