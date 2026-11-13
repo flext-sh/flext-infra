@@ -114,6 +114,7 @@ class FlextInfraUtilitiesDocsGenerateRoot(
                         scope.path,
                         scope.package_name,
                     ),
+                    metadata_projection=scope.metadata_projection,
                 )
             )
             scope_modules[scope.name] = (
