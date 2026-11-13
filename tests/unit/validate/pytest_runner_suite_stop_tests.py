@@ -207,15 +207,16 @@ class TestsFlextInfraPytestRunnerSuiteStop:
             else 1
         )
         batch_size = self._testmon_batch_size()
+        # A distributed stop flushes every worker through the xdist shutdown
+        # marker, so its suite stays far below one testmon batch per worker:
+        # the stop must never wait for a batch-size flush. A single process
+        # stops only on a flushed batch, so it needs one batch plus one.
+        count = workers * 4 + 1 if distributed else batch_size + 1
+        tm.that(count < batch_size, eq=distributed)
         target = config.Infra.codegen.make.testmon_cache.target_directory
         (cached_runner_project / target / "test_budget.py").write_text(
             self._slow_module(
-                tuple(
-                    f"test_budget_{index}"
-                    for index in range(
-                        batch_size * workers * (2 if distributed else 1) + 1,
-                    )
-                ),
+                tuple(f"test_budget_{index}" for index in range(count)),
             ),
             encoding="utf-8",
         )

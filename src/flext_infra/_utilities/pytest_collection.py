@@ -647,7 +647,11 @@ class FlextInfraUtilitiesPytestCollection:
         The controller stops dispatch through the same path as max-failures:
         xdist queues the shutdown marker, so each worker's final item runs
         with no successor and pytest-testmon flushes every batched result.
-        A process-deadline SIGTERM instead discards the unflushed batches.
+        A distributed stop therefore never waits for a flushed batch: a worker
+        flushes only at its batch size or its last item, so waiting for one
+        lets the run reach the process deadline, whose SIGTERM discards every
+        unflushed batch. A single-process session has no shutdown marker, so
+        it stops only on a teardown that already carries a flushed batch.
 
         When every collected item has already completed, nothing is left to
         stop and the stop request would only recolor a finished green suite
@@ -687,15 +691,15 @@ class FlextInfraUtilitiesPytestCollection:
             total_items = len(session.items)
             if total_items and len(self.completed_items) >= total_items:
                 return
-            # Testmon writes an in-flight coverage batch only when it attaches
-            # nodes_files_lines to a teardown report. Stopping earlier leaves
-            # selected rows without durable execution data on the next run.
-            if not getattr(report, "nodes_files_lines", None):
-                return
             reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
             controller = session.config.pluginmanager.getplugin("dsession")
             if controller is None:
-                if not session.shouldstop:
+                # Single-process testmon writes its in-flight batch only on a
+                # teardown report carrying nodes_files_lines; stopping earlier
+                # leaves executed rows without durable data for the next run.
+                if getattr(report, "nodes_files_lines", None) and not (
+                    session.shouldstop
+                ):
                     session.shouldstop = reason
                 return
             if not isinstance(controller, p.Infra.PytestStopController):
