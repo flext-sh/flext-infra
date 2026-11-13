@@ -11,7 +11,7 @@ from typing import ClassVar
 
 from flext_cli import cli
 
-from flext_infra import c, infra, m, p, r, t, u
+from flext_infra import c, config, infra, m, p, r, t, u
 from flext_infra._utilities._rope import FlextInfraUtilitiesRopeMissingImports
 from flext_infra.codemod import (
     FlextInfraCodemodAstScan,
@@ -195,7 +195,12 @@ class FlextInfraRefactorRoutes:
             The resulting ``p.Result[t.Cli.ResultValue]``.
 
         """
-        return infra.mod(request, FlextInfraCliModProgress())
+        with u.Infra.gate_admitted_budget(
+            c.Infra.GATE_ADMISSION_MODIFICATION,
+            request.repository_root,
+            config.Infra.gate_admission.modification,
+        ):
+            return infra.mod(request, FlextInfraCliModProgress())
 
     @staticmethod
     def execute_mod_text(

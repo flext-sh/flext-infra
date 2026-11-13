@@ -88,7 +88,13 @@ class FlextInfraWorkspaceRoutes:
             The successful native test result or its unchanged failure.
 
         """
-        completed = infra.workspace_tests(params, execution_mode=execution_mode)
+        with u.Infra.gate_admitted(
+            c.Infra.VERB_TEST_FULL
+            if execution_mode is c.Infra.PytestExecutionMode.FULL
+            else c.Infra.VERB_TEST,
+            params.repository_root,
+        ):
+            completed = infra.workspace_tests(params, execution_mode=execution_mode)
         if completed.failure:
             return r[int].from_failure(completed)
         if completed.value:
@@ -155,7 +161,9 @@ class FlextInfraWorkspaceRoutes:
         other gates. The projection verdict, lane census (outside CI), and
         documentation follow; a dirty or changing tree is never a check
         condition. The commit hook token selects only commit-stage gates. The
-        first failure stops the verb with its original status or cause.
+        first failure stops the verb with its original status or cause. The
+        verb joins the host queue first and arms the largest declared gate
+        budget only once admitted (ADR-032).
 
         Returns:
             True once every validation passed, or the first failure.
@@ -163,6 +171,40 @@ class FlextInfraWorkspaceRoutes:
         """
         root = params.repository_root.expanduser().resolve()
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
+        make = inputs.spec.make
+        members = (
+            workspace.FlextInfraWorkspaceDetector
+            .load_workspace_spec(root, inputs=inputs)
+            .unwrap()
+            .subprojects
+        )
+        grace = c.Infra.TIMEOUT_KILL_AFTER_SECONDS
+        budget = m.Infra.RouteBudgetSpec(
+            budget_seconds=check.FlextInfraGateRegistry(
+                project_gates=make.project_check_gates
+            ).check_budget_seconds(
+                make.check_gates_default,
+                (root, *(root / member.path for member in members)),
+            )
+            + 2 * grace,
+            grace_seconds=grace,
+        )
+        with u.Infra.gate_admitted_budget(c.Infra.VERB_CHECK, root, budget):
+            return cls._check_admitted(params, root, inputs)
+
+    @classmethod
+    def _check_admitted(
+        cls,
+        params: p.Infra.GateCaptureRequest,
+        root: Path,
+        inputs: p.Infra.CodegenInputs,
+    ) -> p.Cli.ErasedCommandResult:
+        """Run the admitted check validations under the armed budget.
+
+        Returns:
+            True once every validation passed, or the first failure.
+
+        """
         make = inputs.spec.make
         token = u.Infra.env_value(make.ci.variable)
         complete = (

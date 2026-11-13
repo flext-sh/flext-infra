@@ -66,6 +66,11 @@ class FlextInfraProtocolsConfigRoot:
             ...
 
         @property
+        def gate_admission(self) -> FlextInfraProtocolsConfigStatic.GateAdmissionSpec:
+            """Host-wide FIFO admission for heavy gates."""
+            ...
+
+        @property
         def release(self) -> FlextInfraProtocolsConfigRelease.ReleasePolicySpec:
             """Release protocol policy."""
             ...

@@ -49,6 +49,59 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
+    class RouteBudgetSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def budget_seconds(self) -> t.PositiveInt:
+            """Wall time from admission to forced termination."""
+            ...
+
+        @property
+        def grace_seconds(self) -> t.PositiveInt:
+            """Graceful termination reserve inside the budget."""
+            ...
+
+    @runtime_checkable
+    class GateAdmissionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def capacity_normal(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted at normal pressure."""
+            ...
+
+        @property
+        def capacity_high(self) -> t.PositiveInt:
+            """Concurrent heavy gates admitted under host pressure."""
+            ...
+
+        @property
+        def heartbeat_seconds(self) -> t.PositiveInt:
+            """Interval at which a live ticket refreshes itself."""
+            ...
+
+        @property
+        def ttl_seconds(self) -> t.PositiveInt:
+            """Heartbeat age after which a held ticket is reclaimed."""
+            ...
+
+        @property
+        def poll_seconds(self) -> t.PositiveInt:
+            """Interval between admission decisions of a waiter."""
+            ...
+
+        @property
+        def generation(self) -> FlextInfraProtocolsConfigStatic.RouteBudgetSpec:
+            """Budget of codegen generate after admission."""
+            ...
+
+        @property
+        def modification(self) -> FlextInfraProtocolsConfigStatic.RouteBudgetSpec:
+            """Budget of refactor mod after admission."""
+            ...
+
+    @runtime_checkable
     class ConsolidationOutcome(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
     ):
