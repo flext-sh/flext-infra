@@ -1937,6 +1937,13 @@ declared once in the pyproject ownership `conflict_sections`. Generation and the
 modernizer read that same declaration and replace both tables from the packaging
 declarations, so a retired or authored entry leaves on the next `make gen` or
 `deps modernize`.
+uv rebuilds a local project only when one of its cache keys changes, and its
+defaults cover `pyproject.toml`, `setup.py` and `setup.cfg` alone. A package
+project therefore declares every input of its wheel as a key: those defaults,
+`src/**`, each packaged data file, each packaged data directory and repository
+namespace as `<path>/**`, and the declared Hatch hook. Without them a non-editable
+install, such as the `upg` executor, keeps a wheel built from older sources. A
+non-package project declares none.
 Migration validates these inputs before publishing its declaration. A legacy
 manifest explicitly selected as distribution data retains its original bytes;
 retaining that resource does not make it a runtime configuration source again.
