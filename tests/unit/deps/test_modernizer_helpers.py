@@ -10,8 +10,6 @@ from collections.abc import Mapping, Sequence
 from typing import ClassVar
 
 import pytest
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.version import Version
 
 from tests import c, t, tm, u
 
@@ -255,90 +253,47 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(result, has="flext-tests")
 
     @staticmethod
-    def test_resolved_dependency_versions_excludes_editable_distribution() -> None:
-        """Registry versions exclude editable source distributions."""
-        versions = u.Infra.resolved_dependency_versions()
-        tm.ok(bool(versions))
-        tm.fail("flext-infra" in versions)
-
-    @staticmethod
-    def test_rewrite_requirement_constraint_preserves_extras_and_markers() -> None:
-        """Verify rewrite requirement constraint preserves extras and markers."""
-        locked_version = c.Tests.RELEASE_VERSION_TARGET
-        rewritten = tm.not_none(
-            u.Infra.rewrite_requirement_constraint(
-                "httpx[socks]>=0.1; python_version < '3.14'",
-                resolved_versions={"httpx": locked_version},
+    @c.Tests.MARK.parametrize(
+        ("requirement", "operator", "version", "expected"),
+        [
+            (
+                "httpx[socks]>=0.1,<1; python_version < '3.14'",
+                c.Infra.UPG_FLOOR_OPERATOR,
+                "0.2",
+                'httpx[socks]>=0.2,<1; python_version < "3.14"',
             ),
+            ("pikepdf==10.18.0", c.Infra.UPG_PIN_OPERATOR, "0.2", "pikepdf==0.2"),
+            ("pikepdf>=10.18,<11", c.Infra.UPG_PIN_OPERATOR, "0.2", "pikepdf==0.2"),
+            ("pikepdf>=10.18,<11", c.Infra.UPG_FLOOR_OPERATOR, None, "pikepdf<11"),
+            ("pikepdf==10.18.0", c.Infra.UPG_PIN_OPERATOR, None, "pikepdf"),
+        ],
+    )
+    def test_bounded_requirement_rewrites_only_the_owned_bound(
+        requirement: str,
+        operator: str,
+        version: str | None,
+        expected: str,
+    ) -> None:
+        """A floor keeps authored clauses; a pin owns the specifier; None drops it."""
+        tm.that(
+            u.Infra.bounded_requirement(requirement, operator, version), eq=expected
         )
-        parsed = Requirement(rewritten)
-        original = Requirement("httpx[socks]>=0.1; python_version < '3.14'")
-        tm.that(parsed.extras, eq=original.extras)
-        tm.ok(parsed.marker == original.marker)
-        tm.that(str(parsed.specifier), eq=f">={locked_version}")
 
     @staticmethod
     @c.Tests.MARK.parametrize(
-        "constraint",
+        ("requirement", "expected"),
         [
-            "",
-            ">=1",
-            "~=1.4.5",
-            "~=1.4",
-            "==1.4.*",
-            "==1.4.7",
-            "===1.4.7",
-            ">1.4.6,<2,!=1.5",
-            ">=1,<=1.6,!=1.5.*",
+            ("Pike_PDF>=1", "pike-pdf"),
+            ("flext-core>=0.12", None),
+            ("example @ https://example.org/example.whl", None),
         ],
     )
-    def test_rewrite_intersects_original_domain_with_floor(constraint: str) -> None:
-        """Raising a floor never admits a version the declared policy excluded."""
-        original = Requirement(f"example[feature]{constraint}; os_name == 'posix'")
-        floor = "1.4.7"
-        versions = {"example": floor}
-        rewritten = tm.not_none(
-            u.Infra.rewrite_requirement_constraint(
-                str(original), resolved_versions=versions
-            )
-        )
-        parsed = Requirement(rewritten)
-        tm.that(parsed.name, eq=original.name)
-        tm.that(parsed.extras, eq=original.extras)
-        tm.ok(parsed.marker == original.marker)
-        for candidate in ("1.4.4", "1.4.6", floor, "1.4.8", "1.5", "1.6", "2"):
-            tm.that(
-                parsed.specifier.contains(candidate),
-                eq=(
-                    original.specifier.contains(candidate)
-                    and Version(candidate) >= Version(floor)
-                ),
-            )
+    def test_registry_requirement_name_skips_sourced_and_direct(
+        requirement: str,
+        expected: str | None,
+    ) -> None:
+        """Only index-resolved requirements fall under the cooldown."""
         tm.that(
-            u.Infra.rewrite_requirement_constraint(
-                rewritten, resolved_versions=versions
-            ),
-            none=True,
+            u.Infra.registry_requirement_name(requirement, frozenset({"flext-core"})),
+            eq=expected,
         )
-
-    @staticmethod
-    @c.Tests.MARK.parametrize("separator", ["@", " @ ", "\t@\t"])
-    def test_rewrite_preserves_direct_reference(separator: str) -> None:
-        """PEP 508 direct references remain source-owned regardless of whitespace."""
-        requirement = (
-            f"example[feature]{separator}https://example.org/example.whl"
-            " ; os_name == 'posix'"
-        )
-        tm.that(
-            u.Infra.rewrite_requirement_constraint(
-                requirement, resolved_versions={"example": "1.4.7"}
-            ),
-            none=True,
-        )
-
-    @staticmethod
-    @c.Tests.MARK.parametrize("requirement", ["example>=broken", "example; broken", ""])
-    def test_rewrite_rejects_invalid_requirement(requirement: str) -> None:
-        """Unresolved invalid declarations retain the native parser diagnostic."""
-        with u.Tests.raises(InvalidRequirement):
-            u.Infra.rewrite_requirement_constraint(requirement, resolved_versions={})

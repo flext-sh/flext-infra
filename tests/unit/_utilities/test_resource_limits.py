@@ -19,6 +19,33 @@ class TestsFlextInfraUtilitiesResourceLimits:
     """Behavior tests for the canonical Mypy resource-limit command."""
 
     @staticmethod
+    def test_node_heap_follows_the_recipe_memory_bound(tmp_path: Path) -> None:
+        """A bounded cgroup scope sizes the heap; an unbounded one sizes none.
+
+        Premise: inside the 5 GiB scope of a verb recipe Pyright aborted with
+        "heap out of memory" near 2 GiB; with the heap sized from the bound it
+        completes in the same scope.
+        """
+        membership = tmp_path / "cgroup"
+        root = tmp_path / "fs"
+        scope = root / "user.slice" / "run-1.scope"
+        scope.mkdir(parents=True)
+        membership.write_text(
+            "0::/user.slice/run-1.scope\n", encoding=c.DEFAULT_ENCODING
+        )
+        bound = scope / c.Infra.CGROUP_MEMORY_BOUND_FILE
+
+        tm.that(u.Infra.node_heap_megabytes(membership, root), none=True)
+        bound.write_text(f"{5 * c.Infra.BYTES_PER_GIB}\n", encoding=c.DEFAULT_ENCODING)
+        tm.that(u.Infra.node_heap_megabytes(membership, root), eq=4096)
+        bound.write_text(f"{c.Infra.CGROUP_UNBOUNDED}\n", encoding=c.DEFAULT_ENCODING)
+        tm.that(u.Infra.node_heap_megabytes(membership, root), none=True)
+        tm.that(
+            u.Infra.node_heap_megabytes(tmp_path / "absent", root),
+            none=True,
+        )
+
+    @staticmethod
     def test_candidate_mypy_keeps_persistent_cache_outside_sources(
         tmp_path: Path,
     ) -> None:

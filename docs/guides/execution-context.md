@@ -204,10 +204,24 @@ retains the common lifecycle contract. Reuse existing public operations and thei
 typed owners, not raw tools, private-module execution or a second dispatcher.
 
 The only UV lock writer is generated `make upg`, which runs native
-`uv lock --upgrade` at the dependency composition root before any FLEXT Python.
-Its only FLEXT Python step runs last, from the isolated upgrade executor:
-`flext-infra deps repair-mise-platforms --repository-root <root>`, which writes
-only the Mise locks of tools missing a declared platform, without generation,
+`uv lock --upgrade` at the dependency composition root. Its FLEXT Python steps
+run from the isolated upgrade executor. Before resolution,
+`flext-infra deps cooldown-admission --repository-root <root>` asks native
+`uv pip compile`, under each project's own `[tool.uv] exclude-newer` cooldown
+(ADR-030 release eligibility), which registry requirement lines it refuses. A
+refused floor or pin that `[tool.flext.upg]` records as upg-owned is dropped,
+so the native `uv lock --upgrade` chooses the newest release the cooldown
+admits. Every other refused line (authored, or projected by a named SSOT key)
+and every dev-group pin of a FLEXT-managed tool of
+`Infra.codegen.scaffold.project.dev` is reported at once, with its owner and
+uv's own explanation (cutoff and newest admitted release), before any lock is
+written. After resolution,
+`flext-infra deps upg-bounds --repository-root <root>` writes each upg-owned
+floor (`floors = [...]`) or pin (`pins = [...]`) from the project's own
+`uv.lock`, so an owned bound is always inside the window, and the locks record
+it without upgrading. Last,
+`flext-infra deps repair-mise-platforms --repository-root <root>` writes only
+the Mise locks of tools missing a declared platform, without generation,
 installation or another resolver.
 Installed `workspace verify-lock` delegates freshness and closure checks to native
 `uv lock --check`, not an Infra marker evaluator or graph walker. These commands remove
@@ -341,8 +355,11 @@ toolchain nor a corrupt lock stops it:
 4. The locked `mise install` of the declared toolchain, from that lock, so a
    missing, bumped or newly declared tool (Python and uv included) is the one
    the UV stage uses.
-5. `_upg_lifecycle`: native `uv lock --upgrade` with that Python, then the setup
-   installation of exactly that lock.
+5. `_upg_lifecycle`: the executor formed from the committed lock (a project
+   without one forms it first through native `uv lock`) runs
+   `deps cooldown-admission`; then native `uv lock --upgrade` with that Python,
+   `deps upg-bounds` and a native `uv lock` that records the written bounds,
+   then the setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
    `deps repair-mise-platforms`, which locks the tools missing a platform that
@@ -352,6 +369,10 @@ toolchain nor a corrupt lock stops it:
    editable installs, and runs it with `python -I`, so the step never imports
    the project's source. Bytecode follows uv's native default: Python compiles
    it on first import.
+7. The verb that installs new versions removes the ones it superseded: native
+   `mise prune --yes` deletes versions no tracked configuration still selects,
+   and `uv cache prune` deletes dangling cache entries, both under the tools'
+   own in-use rules.
 
 Declared prerequisites of stage 6, open until they close:
 
@@ -362,15 +383,20 @@ Declared prerequisites of stage 6, open until they close:
   generation from the installed distribution's metadata, never listed) also
   installs its own locked non-editable build, because it supplies part of the
   executor; every other project adds `--no-install-project`, so the executor
-  never imports its source. Every lock is already written before the executor
-  runs. The executor of flext-cli and flext-core imports, but stays open until
-  their locks run their own source: at the pinned `0.12.0-dev` versions their
-  CLI fails at import time (flext-cli: pydantic cannot build a schema for
-  `os.stat_result`; flext-core: `FlextCliTypes` has no `StrDict`), a defect at the
-  lock owner.
+  never imports its source. Before resolution it is formed from the committed
+  lock; after resolution, from the written locks. The executor of flext-cli and
+  flext-core imports, but stays open until their locks run their own source: at
+  the pinned `0.12.0-dev` versions their CLI fails at import time (flext-cli:
+  pydantic cannot build a schema for `os.stat_result`; flext-core:
+  `FlextCliTypes` has no `StrDict`), a defect at the lock owner.
 - **Publication.** A consumer's executor runs the flext-infra version its lock
-  pins, so `deps repair-mise-platforms` exists there only after the release
-  that carries it is published and the consumer's `make upg` locks it.
+  pins, so `deps repair-mise-platforms`, `deps cooldown-admission` and
+  `deps upg-bounds` exist there only after the release that carries them is
+  published and the consumer's `make upg` locks it. A consumer whose earlier
+  lock pins a release without them and whose requirements fall outside the
+  cooldown runs the admission once from a FLEXT checkout,
+  `flext-infra deps cooldown-admission --repository-root <consumer>`, to get the
+  complete report and release the owned bounds before that `make upg`.
 
 A project source that no longer imports still has every lock written and
 installed. Setup runs `uv sync --frozen` in place on the physical `.venv`, and

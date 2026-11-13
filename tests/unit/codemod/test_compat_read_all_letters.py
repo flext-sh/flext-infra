@@ -142,5 +142,23 @@ class TestsFlextInfraCodemodCompatReadAllLetters:
             eq=f"from {package_name} import m, u\n\nBOX = (m, m.Box)\n",
         )
 
+    @staticmethod
+    def test_marker_read_skips_a_class_without_annotation_source() -> None:
+        """A C-implemented class in an ancestry carries no compat marker.
+
+        Premise: a facade namespace that exposes a metaclass puts ``type`` in
+        the walked ancestry; ``vars(type)["__annotations__"]`` is a descriptor,
+        and the marker read crashed the codemod gate of the consuming project.
+        """
+
+        class Meta(type):
+            """Metaclass whose ancestry reaches ``type``."""
+
+        tm.that(u.Infra.codemod_compat_marker(type, "mro"), none=True)
+        tm.that(
+            [u.Infra.codemod_compat_marker(klass, "mro") for klass in Meta.__mro__],
+            eq=[None, None, None],
+        )
+
 
 __all__: list[str] = ["TestsFlextInfraCodemodCompatReadAllLetters"]

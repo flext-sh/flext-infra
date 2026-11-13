@@ -307,7 +307,7 @@ class TestsLiveEditableProvenance:
                 root / c.Infra.FLEXT_EDITABLE_SELECTION_RELATIVE_PATH,
             )
         )
-        shutil.copytree(metadata.parent, duplicate)
+        u.Tests.reflink_copy_tree(metadata.parent, duplicate)
         try:
             tm.that(
                 len(u.installed_distributions(name=members[0].name, path=paths)),

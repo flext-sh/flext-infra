@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, p, u
@@ -67,6 +67,31 @@ class FlextInfraGatesPyright(FlextInfraGates):
             *check_dirs,
             *ctx.pyright_args,
             "--outputjson",
+        )
+
+    @override
+    def _check_env(
+        self,
+        project_dir: Path,
+        ctx: p.Infra.GateContext,
+    ) -> Mapping[str, str] | None:
+        """Give Pyright the heap the recipe's memory bound admits.
+
+        Returns:
+            The process environment with the Node heap size, or ``None`` to
+            inherit it when the recipe has no memory bound.
+
+        """
+        del project_dir, ctx
+        megabytes = u.Infra.node_heap_megabytes()
+        if megabytes is None:
+            return None
+        return u.Cli.process_env(
+            overrides={
+                c.Infra.NODE_OPTIONS_ENV: c.Infra.NODE_HEAP_OPTION.format(
+                    megabytes=megabytes
+                ),
+            },
         )
 
     @staticmethod
