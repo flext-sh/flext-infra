@@ -244,7 +244,7 @@ class FlextInfraUtilitiesCodemodProject(
                 "ruleId": rule.id,
                 "severity": c.Infra.NativeRuleSeverity.ERROR,
                 "message": rule.message,
-                "origin": "owned-path",
+                "origin": c.Infra.ModFindingOrigin.OWNED_PATH,
                 "text": "",
                 "lines": "",
                 "range": {
