@@ -434,7 +434,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         staged = u.Infra.codegen_compose_file_plans(
             (*staged, *facades.value), ordered=True
         )
-        initializers = self._projected_exports(root, staged, selection=selection)
+        # A facade pass that changed no byte leaves the seed's candidate
+        # exactly as planned: replaying the initializer election there would
+        # compute the same projection a second time on unchanged source.
+        unchanged = selection is None and not any(
+            u.Infra.codegen_file_requires_effect(plan) for plan in facades.value
+        )
+        initializers = (
+            r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(exported.value))
+            if unchanged
+            else self._projected_exports(root, staged, selection=selection)
+        )
         if initializers.failure:
             return result_type.from_failure(initializers)
         return result_type.ok((
@@ -492,6 +502,13 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
     ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
         """Reuse the complete lazy plan only while its candidate is unchanged.
 
+        The fleet map already planned every governed initializer for the run.
+        Re-planning must happen only when this repository's own projected
+        sources (facades or protocol mirrors) changed after that plan, because
+        those change the interfaces the initializer publishes. Another
+        repository's pending effects never invalidate this repository's
+        exports.
+
         Returns:
             Initial exports over the admitted source cohort.
 
@@ -503,16 +520,18 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             and all(plan.project == root for plan in cohort)
         ):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(cohort)
+        provided = self._provided_lazy_sources(root)
         if (
             selection is None
-            and self.state.provider_plans is not None
+            and provided
             and not any(
-                (plan.project != root or plan.path.name != c.Infra.INIT_PY)
+                plan.project == root
+                and plan.path.name != c.Infra.INIT_PY
                 and u.Infra.codegen_file_requires_effect(plan)
                 for plan in cohort
             )
         ):
-            return self._existing_lazy_sources(root).map(tuple)
+            return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(provided)
         return self._projected_exports(root, cohort, selection=selection)
 
     def _custom_candidate_sources(
@@ -607,21 +626,41 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             root, declared_files=declared_files, snapshot=active, selection=selection
         )
 
+    def _provided_lazy_sources(
+        self,
+        root: Path,
+    ) -> tuple[p.Infra.CodegenFilePlan, ...]:
+        """Return this run's provided initializer plans for one repository.
+
+        The provider cohort carries the fleet map's initializers together with
+        metadata and control seeds consumed by unrelated native readers. Only
+        the initializer plans of this repository are export publication, so
+        callers reuse exactly those and never replay the lazy-init election.
+
+        Returns:
+            The repository's provided initializer plans, empty when absent.
+
+        """
+        return tuple(
+            plan
+            for plan in self.state.provider_plans or ()
+            if plan.project == root and plan.path.name == c.Infra.INIT_PY
+        )
+
     def _existing_lazy_sources(
         self,
         root: Path,
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
-        """Elect the repository's planned or provided initializers.
+        """Reuse the repository's provided initializers, otherwise plan them.
 
         Returns:
-            Planned initializers of the repository.
+            Provided or freshly planned initializers of the repository.
 
         """
-        if self.state.provider_plans is None:
-            return self._planned_lazy_init_files(root)
-        return r[Sequence[p.Infra.CodegenFilePlan]].ok(
-            tuple(plan for plan in self.state.provider_plans if plan.project == root)
-        )
+        provided = self._provided_lazy_sources(root)
+        if provided:
+            return r[Sequence[p.Infra.CodegenFilePlan]].ok(provided)
+        return self._planned_lazy_init_files(root)
 
     def _render_existing_managed(
         self,
