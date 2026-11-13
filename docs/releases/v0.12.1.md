@@ -12,6 +12,8 @@
 
 ## Pull requests since last release
 
+- feat(lazy-init): defer declared configuration roots to their first read (#2356)
+- chore(sonar): add python:S6794 to the generic facade publication axiom (#2359)
 - fix(codemod): end the xdist worker crash in semantic publication tests (#2355)
 - test(fixtures): share content-keyed dependency wheels across xdist workers (#2354)
 - fix(codegen): one resolver reads a facade publication as the class it names (#2353)
