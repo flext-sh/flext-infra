@@ -7337,7 +7337,7 @@ class FlextInfraUtilitiesModelsProtocol:
         class _ReadOnlyContractCanonical(ast.NodeTransformer):
             """Name concrete containers by the read-only contract they implement."""
 
-            read_only: ClassVar[dict[str, str]] = {
+            read_only: ClassVar[Mapping[str, str]] = {
                 "builtins::list": "collections.abc::Sequence",
                 "collections.abc::MutableSequence": "collections.abc::Sequence",
                 "typing::List": "collections.abc::Sequence",
@@ -7353,7 +7353,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 "typing::AbstractSet": "collections.abc::Set",
                 "builtins::frozenset": "collections.abc::Set",
             }
-            names: ClassVar[dict[str, str]] = {
+            names: ClassVar[Mapping[str, str]] = {
                 "list": "collections.abc::Sequence",
                 "List": "collections.abc::Sequence",
                 "tuple": "collections.abc::Sequence",
@@ -7401,19 +7401,20 @@ class FlextInfraUtilitiesModelsProtocol:
             @override
             def visit_Subscript(self, node: ast.Subscript) -> ast.expr:
                 spelling = self._spelling(node.value)
-                visited = self.generic_visit(node)
-                if spelling in self.variadic and isinstance(visited, ast.Subscript):
-                    element = self._variadic_element(visited.slice)
-                    if element is not None:
-                        return ast.copy_location(
-                            ast.Subscript(
-                                value=visited.value,
-                                slice=element,
-                                ctx=visited.ctx,
-                            ),
-                            visited,
-                        )
-                return visited
+                # ``generic_visit`` rewrites the children in place and returns
+                # ``node`` itself, so the visited subscript is ``node``.
+                self.generic_visit(node)
+                element = (
+                    self._variadic_element(node.slice)
+                    if spelling in self.variadic
+                    else None
+                )
+                if element is None:
+                    return node
+                return ast.copy_location(
+                    ast.Subscript(value=node.value, slice=element, ctx=node.ctx),
+                    node,
+                )
 
             @staticmethod
             def _named(node: ast.expr, target: str | None) -> ast.expr:
