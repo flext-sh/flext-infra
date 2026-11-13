@@ -1814,6 +1814,14 @@ that does not exist yet; missing or invalid values fail the service's validation
 Make transports their literal values through the environment, preserving spaces
 without evaluating the values as shell code.
 
+A new project depends at runtime on its declared `UPSTREAM`: the first render
+writes that upstream's distribution, named by its `scaffold.project.config_bases`
+dependency profile, into `[project].dependencies` after the repository's own
+`runtime_dependency_overlay`, and the FLEXT line pins it like every other FLEXT
+requirement. An upstream without a declared profile fails the render. Governance
+kind is then detected natively from that dependency; configuration never
+declares it.
+
 The generated project owns its declaration, Makefile, CI workflows, package,
 examples, and tests. Provision and validate it through its own `make setup`,
 `make gen`, `make check`, `make tests`, and `make build`. Its physical environment
