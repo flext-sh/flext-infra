@@ -108,7 +108,9 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         part's own members and resolves the rest from the real class.
         """
         root = deferred_capability_project
-        fixture_tree("lazy-deferred-capability-lazy-distribution-base", destination=root)
+        fixture_tree(
+            "lazy-deferred-capability-lazy-distribution-base", destination=root
+        )
         tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         initializer = TestsFlextInfraCodegenLazyInitDeferredCapability._initializer(

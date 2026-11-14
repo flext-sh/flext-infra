@@ -587,7 +587,6 @@ class FlextInfraUtilitiesLazyInitPlan:
         shared: list[tuple[str, str]] = []
         shared_names: set[str] = set()
         flattened: set[str] = set()
-        current = scope[0].current_pkg
         for base in facts.classes[name]:
             dotted = facts.imports.get(base)
             target = (
@@ -609,7 +608,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 members.update(dict.fromkeys(inherited))
                 continue
             package, attr = export
-            shared.append(("." if package == current else package, attr))
+            shared.append(("." if package == scope[0].current_pkg else package, attr))
             shared_names.update(inherited)
         clash = sorted((flattened & shared_names) - set(facts.class_members[name]))
         if clash:
