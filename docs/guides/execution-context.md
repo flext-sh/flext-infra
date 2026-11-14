@@ -3723,9 +3723,8 @@ joint candidate planning, publication, catalog and import-cycle verdicts). A
 focused selection whose scan has no actionable finding, claims no semantic phase
 and declares no rename has nothing to plan: it goes straight to the fixed-point
 verdict, and an empty publication is never rescanned. The runtime import graph
-keeps one persistent fact per module under `settings.work_dir`, bound to the
-module's exact source digest, its name and the deriving code; only modules whose
-bytes changed are parsed again. The generated-rule rendering cache digests the
+is read from the run's Rope model and kept in memory for that run only; no
+persistent fact store backs it. The generated-rule rendering cache digests the
 project's own sources together with its FLEXT dependencies, so a source edit
 renders the generated rules again.
 
@@ -4098,7 +4097,8 @@ one warm cache across every checkout, linked worktree and `.venv` of a repositor
 inside it and Python implementation and version, never by a checkout or
 virtualenv path). Ruff uses one shared external cache
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
-package root inside it; FLEXT adds no namespace of its own. The commit hook first provisions the checkout with `make setup`,
+package root inside it; FLEXT adds no namespace of its own. The commit hook
+first provisions the checkout with `make setup`,
 then passes `make.ci.pre_commit_value` to the check, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other

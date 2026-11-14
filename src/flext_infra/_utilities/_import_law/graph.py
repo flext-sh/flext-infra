@@ -10,15 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import hashlib
-import inspect
-import tempfile
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, e, m, p, settings, t
+from flext_infra import c, e, m, p, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
@@ -82,7 +79,7 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             previous, current, modules
         ):
             return previous.dependencies
-        graph, _names = cls.persistent_import_graph(project, resources)
+        graph, _names = cls.snapshot_import_graph(project, resources=resources)
         if not namespace or namespace not in graph:
             return frozenset()
         dependencies = u.Cli.dag_closure(graph, frozenset({namespace})).unwrap() - {
@@ -123,69 +120,15 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         )
 
     @classmethod
-    def persistent_import_graph(
-        cls,
-        project: p.Infra.RopeProject,
-        resources: Sequence[t.Infra.RopeFile],
-    ) -> tuple[Mapping[str, frozenset[str]], Mapping[Path, str]]:
-        """Read a live project's runtime graph, reusing unchanged module facts.
-
-        Each module's facts are bound to its exact source bytes and the code
-        that derives them, so only modules whose bytes changed are parsed
-        again; the store is replaced atomically and never read partially.
-
-        Returns:
-            The same graph and module names as ``snapshot_import_graph``.
-
-        """
-        digest = hashlib.sha256(project.root.real_path.encode(c.DEFAULT_ENCODING))
-        for module in (
-            Path(__file__),
-            Path(inspect.getfile(FlextInfraUtilitiesRopeImports)),
-            Path(inspect.getfile(FlextInfraUtilitiesRopeSourceBasesAliases)),
-        ):
-            digest.update(module.read_bytes())
-        digest.update(
-            str(m.Infra.ImportGraphFacts.model_json_schema()).encode(c.DEFAULT_ENCODING)
-        )
-        store = settings.work_dir / "import-graphs" / f"{digest.hexdigest()}.json"
-        stored: Mapping[str, p.Infra.ImportGraphModuleFacts] = (
-            m.Infra.ImportGraphFacts.model_validate_json(store.read_bytes()).modules
-            if store.is_file()
-            else {}
-        )
-        known: dict[str, p.Infra.ImportGraphModuleFacts] = dict(stored)
-        result = cls.snapshot_import_graph(
-            project, resources=resources, module_facts=known
-        )
-        if known != stored:
-            store.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                "wb", dir=store.parent, suffix=".tmp", delete=False
-            ) as temporary:
-                temporary.write(
-                    m.Infra.ImportGraphFacts
-                    .model_validate({"modules": known})
-                    .model_dump_json()
-                    .encode(c.DEFAULT_ENCODING)
-                )
-            Path(temporary.name).replace(store)
-        return result
-
-    @classmethod
     def snapshot_import_graph(
         cls,
         project: p.Infra.RopeProject,
         *,
         resources: Sequence[t.Infra.RopeFile] | None = None,
-        module_facts: MutableMapping[str, p.Infra.ImportGraphModuleFacts] | None = None,
     ) -> tuple[Mapping[str, frozenset[str]], Mapping[Path, str]]:
         """Read runtime imports from an immutable proposed-source Rope graph.
 
-        A live caller supplies governed resources and may pass
-        ``module_facts``: a module whose name and source digest match its entry
-        reuses it without a parse, and every recomputed entry replaces it.
-        An authenticated candidate
+        A live caller supplies governed resources. An authenticated candidate
         elects its complete native Python source scope before constructing
         resources; provider receipts do not enlarge that scope. An immutable
         snapshot keeps its captured inventory, including proposed virtual modules.
@@ -215,7 +158,6 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
             )
             path = Path(resource.real_path).resolve()
             root = Path(project.root.real_path)
-            source = resource.read()
             pymodule = (
                 None
                 if path.is_relative_to(root)
@@ -234,14 +176,7 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                     msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}
                 )
             modules[path] = name
-            digest = u.Cli.sha256_bytes(source.encode(c.DEFAULT_ENCODING))
-            facts = None if module_facts is None else module_facts.get(str(path))
-            if facts is None or (facts.name, facts.digest) != (name, digest):
-                facts = cls._module_import_facts(
-                    project, resource, (name, digest, source)
-                )
-                if module_facts is not None:
-                    module_facts[str(path)] = facts
+            facts = cls._module_import_facts(project, resource, name)
             raw[name] = set(facts.imports)
             aliases.update({
                 f"{name}.{export}": provider
@@ -269,23 +204,22 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
     def _module_import_facts(
         project: p.Infra.RopeProject,
         resource: t.Infra.RopeFile,
-        module: tuple[str, str, str],
+        name: str,
     ) -> p.Infra.ImportGraphModuleFacts:
         """Parse one module's runtime imports and lazy export providers.
 
         Returns:
-            The facts bound to the module's name and source digest.
+            The module's import facts.
 
         """
-        name, digest, source = module
         path = Path(resource.real_path).resolve()
+        source = resource.read()
         package = name if path.name == c.Infra.INIT_PY else name.rpartition(".")[0]
         pymodule = FlextInfraUtilitiesRopeCore.resolve_pymodule(project, resource)
         # Requesting a lazy export loads its elected provider module. Merely
         # installing the map does not load every provider in the package.
         return m.Infra.ImportGraphModuleFacts(
             name=name,
-            digest=digest,
             imports=tuple(
                 sorted(
                     FlextInfraUtilitiesRopeImports.imported_module_paths(
