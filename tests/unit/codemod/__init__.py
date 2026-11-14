@@ -48,6 +48,9 @@ if TYPE_CHECKING:
     from tests.unit.codemod.test_promoted_header_migration import (
         TestsFlextInfraPromotedHeaderMigration,
     )
+    from tests.unit.codemod.test_scan_cache_batch_progress import (
+        TestsFlextInfraCodemodScanCacheBatchProgress,
+    )
     from tests.unit.codemod.test_scan_cache_content_key import (
         TestsFlextInfraCodemodScanCacheContentKey,
     )
@@ -61,6 +64,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodemodModuleMemberImportHeader",
     "TestsFlextInfraCodemodOwnPackageRoles",
     "TestsFlextInfraCodemodOwnPackageScans",
+    "TestsFlextInfraCodemodScanCacheBatchProgress",
     "TestsFlextInfraCodemodScanCacheContentKey",
     "TestsFlextInfraConcreteMixinShells",
     "TestsFlextInfraModSelectionPreflight",
@@ -86,6 +90,9 @@ install_lazy_exports(
         ),
         "TestsFlextInfraCodemodOwnPackageRoles": ".test_codemod_own_package_roles",
         "TestsFlextInfraCodemodOwnPackageScans": ".test_codemod_own_package_scans",
+        "TestsFlextInfraCodemodScanCacheBatchProgress": (
+            ".test_scan_cache_batch_progress"
+        ),
         "TestsFlextInfraCodemodScanCacheContentKey": ".test_scan_cache_content_key",
         "TestsFlextInfraConcreteMixinShells": ".test_concrete_mixin_shells",
         "TestsFlextInfraModSelectionPreflight": ".test_mod_selection_preflight",
