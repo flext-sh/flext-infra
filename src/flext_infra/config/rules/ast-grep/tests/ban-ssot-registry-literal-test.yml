@@ -19,7 +19,7 @@ valid:
 invalid:
   # A transcribed registry in a service module.
   - |
-    OWNERS_REGISTRY = {"algar": "oud", "flext": "infra"}
+    OWNERS_REGISTRY = {"acme": "app", "flext": "infra"}
   - |
     class FlextInfraServiceRoutes:
         ROLE_ROSTER = {"a": 1, "b": 2}

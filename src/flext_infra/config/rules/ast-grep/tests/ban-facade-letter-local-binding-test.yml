@@ -6,7 +6,7 @@ valid:
     for subject in subjects:
         emit(subject)
   - |
-    p = AlgarOudMigProtocols
+    p = AcmeAppProtocols
   - |
     ordered = sorted(items, key=lambda item: order[item])
   - |

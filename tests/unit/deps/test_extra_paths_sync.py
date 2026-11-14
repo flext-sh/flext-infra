@@ -230,7 +230,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         (tmp_path / "src").mkdir()
         manager = self._manager(tmp_path)
         expected_extra = manager.pyright_extra_paths()
-        # mypy derives independently of pyrefly since cosmos-45hiv: mypy must
+        # mypy derives independently of pyrefly: mypy must
         # not receive the project root (it enumerates roots and aborts on the
         # same file resolving under two module names).
         expected_mypy = manager.mypy_search_paths(project_dir=tmp_path)

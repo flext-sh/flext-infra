@@ -4,7 +4,7 @@
 # rule owns the OWN-package variant inside test tiers, which couples the test
 # to the module's internal layout just as completely:
 #
-#   from algar_pkg.services._clean_search import AlgarOudMigCleanSearchMixin
+#   from acme_pkg.services._clean_search import AcmeAppCleanSearchMixin
 #
 # The `_segment` anywhere in the imported module path is the private marker
 # (the layout law: every additional class lives in its own module, private

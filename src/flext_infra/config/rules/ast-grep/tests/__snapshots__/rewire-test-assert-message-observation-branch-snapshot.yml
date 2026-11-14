@@ -1,0 +1,43 @@
+id: rewire-test-assert-message-observation-branch
+snapshots:
+  "assert result.success, result.error":
+    fixed: |-
+      if not (result.success):
+          tm.reject(result.error)
+    labels:
+    - source: assert result.success, result.error
+      style: primary
+      start: 0
+      end: 35
+  "from tests import tm\nassert ready, \"not ready\"\n":
+    fixed: |
+      from tests import tm
+      if not (ready):
+          tm.reject("not ready")
+    labels:
+    - source: assert ready, "not ready"
+      style: primary
+      start: 21
+      end: 46
+  "from tests import tm\nassert run() or retry(), \"neither attempt ran\"\n":
+    fixed: |
+      from tests import tm
+      if not (run() or retry()):
+          tm.reject("neither attempt ran")
+    labels:
+    - source: assert run() or retry(), "neither attempt ran"
+      style: primary
+      start: 21
+      end: 67
+  "from tests import tm\nif not (started.success):\n    raise AssertionError(started.error)\n":
+    fixed: |
+      from tests import tm
+      if not (started.success):
+          tm.reject(started.error)
+    labels:
+    - source: |-
+        if not (started.success):
+            raise AssertionError(started.error)
+      style: primary
+      start: 21
+      end: 86

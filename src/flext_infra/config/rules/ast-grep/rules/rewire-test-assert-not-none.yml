@@ -56,7 +56,9 @@ fix: |-
       tm.reject($MSG)
 message: Preserve non-None narrowing and lazy assertion arguments through tm.reject.
 ---
-# Message-bearing observations keep native conditional and message evaluation.
+# A message-bearing observation is one tm.that native-truth expression that
+# carries the original message, evaluated before the truth check; a narrowing
+# or short-circuit condition keeps one branch and its lazy message.
 id: rewire-test-assert-message-observation
 language: Python
 severity: error
@@ -70,25 +72,50 @@ rule:
         - pattern: |-
             if not ($COND):
                 raise AssertionError($MSG)
-    - not:
-        any:
-          - has:
-              pattern: "$VALUE is None"
-              stopBy: end
-          - has:
-              pattern: "$VALUE is not None"
-              stopBy: end
-          - has:
-              pattern: "isinstance($VALUE, $TYPE)"
-              stopBy: end
-    - not:
-        inside:
-          kind: except_clause
-          stopBy: end
-    - matches: tm-binding-admissible
+    - matches: assert-narrowing-free
+constraints:
+  COND:
+    not:
+      any:
+        - kind: identifier
+        - kind: attribute
+        - kind: boolean_operator
+        - kind: conditional_expression
+        - kind: parenthesized_expression
+          has:
+            any:
+              - kind: boolean_operator
+              - kind: conditional_expression
+fix: "tm.that($COND, truth=True, assertion_message=$MSG)"
+message: Assert native truth with the original message through one tm.that expression.
+---
+id: rewire-test-assert-message-observation-branch
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $COND, $MSG"
+        - pattern: |-
+            if not ($COND):
+                raise AssertionError($MSG)
+    - matches: assert-narrowing-free
+constraints:
+  COND:
+    any:
+      - kind: identifier
+      - kind: attribute
+      - kind: boolean_operator
+      - kind: conditional_expression
+      - kind: parenthesized_expression
+        has:
+          any:
+            - kind: boolean_operator
+            - kind: conditional_expression
 fix: |-
-  if $COND:
-      pass
-  else:
+  if not ($COND):
       tm.reject($MSG)
-message: Preserve conditional evaluation and lazy assertion arguments through tm.reject.
+message: Preserve narrowing, short-circuit truth, and the lazy message through tm.reject.

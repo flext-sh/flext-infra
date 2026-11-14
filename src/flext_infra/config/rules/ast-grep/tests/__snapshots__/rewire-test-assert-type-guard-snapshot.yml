@@ -2,9 +2,7 @@ id: rewire-test-assert-type-guard
 snapshots:
   "assert isinstance(self.value, Entry)":
     fixed: |-
-      if isinstance(self.value, Entry):
-          pass
-      else:
+      if not (isinstance(self.value, Entry)):
           tm.reject()
     labels:
     - source: assert isinstance(self.value, Entry)
@@ -18,9 +16,7 @@ snapshots:
   "from flext_tests import tm\nassert isinstance(self.value, Entry)\n":
     fixed: |
       from flext_tests import tm
-      if isinstance(self.value, Entry):
-          pass
-      else:
+      if not (isinstance(self.value, Entry)):
           tm.reject()
     labels:
     - source: assert isinstance(self.value, Entry)
@@ -34,9 +30,7 @@ snapshots:
   "from flext_tests import tm\nassert isinstance(value, (Entry, Schema))\n":
     fixed: |
       from flext_tests import tm
-      if isinstance(value, (Entry, Schema)):
-          pass
-      else:
+      if not (isinstance(value, (Entry, Schema))):
           tm.reject()
     labels:
     - source: assert isinstance(value, (Entry, Schema))
@@ -50,9 +44,7 @@ snapshots:
   "from tests import tm\nif not (isinstance(self.value, Entry)):\n    raise AssertionError\n":
     fixed: |
       from tests import tm
-      if isinstance(self.value, Entry):
-          pass
-      else:
+      if not (isinstance(self.value, Entry)):
           tm.reject()
     labels:
     - source: |-
@@ -68,9 +60,7 @@ snapshots:
   "from tests import tm\nif not (isinstance(value, (Entry, Schema))):\n    raise AssertionError\n":
     fixed: |
       from tests import tm
-      if isinstance(value, (Entry, Schema)):
-          pass
-      else:
+      if not (isinstance(value, (Entry, Schema))):
           tm.reject()
     labels:
     - source: |-

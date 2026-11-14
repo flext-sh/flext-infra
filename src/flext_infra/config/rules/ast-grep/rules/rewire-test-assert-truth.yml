@@ -1,5 +1,7 @@
-# Keep conditions in Python's conditional context. Materializing their values
-# before matching can repeat truth conversion in short-circuit expressions.
+# A plain condition is one tm.that native-truth expression: it adds no branch to
+# the enclosing test. A bare name or attribute narrows Optional types by
+# truthiness, and an and/or or conditional expression converts truth once only
+# inside a branch, so those keep one conditional branch before tm.reject.
 id: rewire-test-assert-truth
 language: Python
 severity: error
@@ -12,6 +14,7 @@ rule:
     - not:
         has:
           nthChild: 2
+    - matches: assert-narrowing-free
     # One binary comparison is rewire-test-assert-compare.yml's single expression.
     - not:
         any:
@@ -27,24 +30,51 @@ rule:
         has:
           kind: not_operator
           nthChild: 1
+constraints:
+  COND:
+    not:
+      any:
+        - kind: identifier
+        - kind: attribute
+        - kind: boolean_operator
+        - kind: conditional_expression
+        - kind: parenthesized_expression
+          has:
+            any:
+              - kind: boolean_operator
+              - kind: conditional_expression
+fix: "tm.that($COND, truth=True)"
+message: Assert native truth through one tm.that expression.
+---
+id: rewire-test-assert-truth-branch
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert $COND"
     - not:
         has:
-          stopBy: end
+          nthChild: 2
+    - matches: assert-narrowing-free
+constraints:
+  COND:
+    any:
+      - kind: identifier
+      - kind: attribute
+      - kind: boolean_operator
+      - kind: conditional_expression
+      - kind: parenthesized_expression
+        has:
           any:
-            - pattern: "$VALUE is None"
-            - pattern: "$VALUE is not None"
-            - pattern: "isinstance($VALUE, $TYPE)"
-    - not:
-        inside:
-          kind: except_clause
-          stopBy: end
-    - matches: tm-binding-admissible
+            - kind: boolean_operator
+            - kind: conditional_expression
 fix: |-
-  if $COND:
-      pass
-  else:
+  if not ($COND):
       tm.reject()
-message: Preserve native conditional evaluation and fail through tm.reject.
+message: Preserve narrowing and short-circuit truth through one branch before tm.reject.
 ---
 id: rewire-test-assert-falsity
 language: Python
@@ -58,19 +88,49 @@ rule:
     - not:
         has:
           nthChild: 2
+    - matches: assert-narrowing-free
+constraints:
+  COND:
+    not:
+      any:
+        - kind: identifier
+        - kind: attribute
+        - kind: boolean_operator
+        - kind: conditional_expression
+        - kind: parenthesized_expression
+          has:
+            any:
+              - kind: boolean_operator
+              - kind: conditional_expression
+fix: "tm.that($COND, truth=False)"
+message: Assert native falsity through one tm.that expression.
+---
+id: rewire-test-assert-falsity-branch
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: "assert not $COND"
     - not:
         has:
-          stopBy: end
+          nthChild: 2
+    - matches: assert-narrowing-free
+constraints:
+  COND:
+    any:
+      - kind: identifier
+      - kind: attribute
+      - kind: boolean_operator
+      - kind: conditional_expression
+      - kind: parenthesized_expression
+        has:
           any:
-            - pattern: "$VALUE is None"
-            - pattern: "$VALUE is not None"
-            - pattern: "isinstance($VALUE, $TYPE)"
-    - not:
-        inside:
-          kind: except_clause
-          stopBy: end
-    - matches: tm-binding-admissible
+            - kind: boolean_operator
+            - kind: conditional_expression
 fix: |-
   if $COND:
       tm.reject()
-message: Preserve native falsity evaluation and fail through tm.reject.
+message: Preserve narrowing and short-circuit falsity through one branch before tm.reject.

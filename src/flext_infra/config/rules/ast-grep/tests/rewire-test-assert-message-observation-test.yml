@@ -2,22 +2,28 @@ id: rewire-test-assert-message-observation
 valid:
 - |
   from other_library import tm
-  assert result.success, result.error
+  assert run(), "run failed"
 - |
   def check(tm: object, result: object) -> None:
-      assert result.success, result.error
+      assert result.exit_code == 0, result.output
 - |
   from tests import tm
   assert isinstance(value, Entry), "An entry is required"
 - |
   from tests import tm
   assert value is None, "No value is expected"
-invalid:
-- assert result.success, result.error
 - |
   from tests import tm
   assert result.success, result.error
 - |
   from tests import tm
-  if not (started.success):
+  assert run() or retry(), "neither attempt ran"
+invalid:
+- assert result.exit_code == 0, result.stdout + result.stderr
+- |
+  from tests import tm
+  assert count() > 0, "nothing counted"
+- |
+  from tests import tm
+  if not (started.exit_code == 0):
       raise AssertionError(started.error)

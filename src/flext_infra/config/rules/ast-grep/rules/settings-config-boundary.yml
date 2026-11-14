@@ -21,8 +21,7 @@
 # A family base composes its family's parts; the classes it shares with the
 # sibling families it reaches through the package's public family compose
 # modules (`<own-package>.{constants,models,protocols,typings,utilities}` —
-# the generated compose-module utility, the family-shape amendment
-# cosmos-h5y3o): the
+# the generated compose-module utility, the family-shape amendment): the
 # compose classes are the only form the type checkers resolve, and the lazy
 # root keeps re-exporting them for runtime. Every other own-module import
 # stays banned, and the import-layer law (ban-reverse-runtime-import) still

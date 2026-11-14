@@ -2345,7 +2345,6 @@ def plan_protocol_facades(
     holder_exports = _aggregate_protocol_holders(
         protocol_root, holders, sources=sources
     )
-    exports = ",\n    ".join(f'"{holder}"' for holder in exports_by_name)
     mapping_entries = "\n".join(
         itertools.starmap(_render_lazy_export_mapping_entry, exports_by_name.items())
     )
@@ -2375,20 +2374,17 @@ def plan_protocol_facades(
             if type_imports
             else ""
         )
-        + (
-            f"__all__: tuple[str, ...] = (\n    {exports},\n)\n\n"
-            if exports
-            else "__all__: tuple[str, ...] = ()\n\n"
-        )
         + "# fmt: off\n"
+        "_LAZY_IMPORTS = MappingProxyType(\n"
+        "    {\n"
+        f"{mapping_entries}"
+        "    }\n"
+        ")\n"
+        "__all__ = tuple(_LAZY_IMPORTS)\n\n"
         "install_lazy_exports(\n"
         "    __name__,\n"
         "    globals(),\n"
-        "    MappingProxyType(\n"
-        "        {\n"
-        f"{mapping_entries}"
-        "        }\n"
-        "    ),\n"
+        "    _LAZY_IMPORTS,\n"
         "    public_exports=__all__,\n"
         ")\n"
         "# fmt: on\n"
@@ -2478,14 +2474,6 @@ def _render_family_init(
             + "    )"
         )
     exported = sorted(owners, key=_family_export_key)
-    inner = ", ".join(f'"{name}"' for name in exported)
-    compact_all = f"({inner},)" if len(exported) == 1 else f"({inner})"
-    exports = (
-        compact_all
-        if len("__all__: tuple[str, ...] = ") + len(compact_all)
-        <= _MAX_IMPORT_LINE_LENGTH
-        else "(\n" + "".join(f'    "{name}",\n' for name in exported) + ")"
-    )
     entries: list[str] = []
     for name in exported:
         line = f'        "{name}": ".{owners[name]}",'
@@ -2503,13 +2491,14 @@ def _render_family_init(
         "from typing import TYPE_CHECKING\n\n"
         "from flext_core.lazy import install_lazy_exports\n\n"
         + (f"if TYPE_CHECKING:\n{chr(10).join(imports)}\n\n\n" if imports else "")
-        + f"__all__: tuple[str, ...] = {exports}\n\n"
+        + "_LAZY_IMPORTS = MappingProxyType({\n"
+        f"{mapping}\n"
+        "})\n"
+        "__all__ = tuple(_LAZY_IMPORTS)\n\n"
         "install_lazy_exports(\n"
         "    __name__,\n"
         "    globals(),\n"
-        "    MappingProxyType({\n"
-        f"{mapping}\n"
-        "    }),\n"
+        "    _LAZY_IMPORTS,\n"
         "    public_exports=__all__,\n"
         ")\n"
     )

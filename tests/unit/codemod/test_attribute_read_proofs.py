@@ -33,7 +33,7 @@ class TestsFlextInfraAttributeReadProofs:
         )
         (provider / "models.py").write_text(
             "class Models:\n"
-            "    class DcRecon:\n"
+            "    class DemoApp:\n"
             "        class ResyncInput:\n"
             "            pass\n"
             "m = Models\n",
@@ -45,7 +45,7 @@ class TestsFlextInfraAttributeReadProofs:
         consumer.write_text(
             "from flext_test_project.provider import h, m\n"
             "class Legacy:\n"
-            "    @h.handler(command=m.DcRecon.ResyncInput)\n"
+            "    @h.handler(command=m.DemoApp.ResyncInput)\n"
             "    def execute(self, request):\n"
             "        return request\n",
             encoding=c.DEFAULT_ENCODING,
@@ -127,7 +127,7 @@ class TestsFlextInfraAttributeReadProofs:
             "'<module>' else str\n"
             "        return super().__getattribute__(name)\n"
             "class Models(metaclass=DynamicMeta):\n"
-            "    class DcRecon:\n"
+            "    class DemoApp:\n"
             "        class ResyncInput:\n"
             "            pass\n"
             "m = Models\n",

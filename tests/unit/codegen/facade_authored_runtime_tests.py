@@ -542,7 +542,7 @@ class TestsFlextInfraGeneratedRuntime:
         the checkout-local environment. Those states entered the planned-source
         map, so the facade planner treated the installed dependency as a
         project package and republished its facade inside the environment
-        (cosmos-charts lost an importable flext_cli this way).
+        (a consumer lost an importable flext_cli this way).
         """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         installed = (

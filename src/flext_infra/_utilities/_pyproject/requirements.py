@@ -172,6 +172,31 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
 
     @classmethod
+    def unique_group_entries(
+        cls,
+        entries: Sequence[str | p.Infra.DependencyGroupInclude],
+    ) -> tuple[str | p.Infra.DependencyGroupInclude, ...]:
+        """Keep the first occurrence of each requirement or included group.
+
+        Returns:
+            The canonical unique dependency-group entries in authored order.
+
+        """
+        seen: set[Requirement | str] = set()
+        unique: list[str | p.Infra.DependencyGroupInclude] = []
+        for entry in entries:
+            key: Requirement | str = (
+                Requirement(entry)
+                if isinstance(entry, str)
+                else canonicalize_name(entry.include_group)
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(entry)
+        return tuple(unique)
+
+    @classmethod
     def merge_dependency_group_entries(
         cls,
         generated: Sequence[str | p.Infra.DependencyGroupInclude],
@@ -191,9 +216,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 tuple(entry for entry in custom if isinstance(entry, str)),
             ),
         )
-        authored = tuple(
+        authored = cls.unique_group_entries([
             entry for entry in custom if not isinstance(entry, str) or entry in active
-        )
+        ])
         requirements = {
             Requirement(entry) for entry in authored if isinstance(entry, str)
         }
@@ -331,7 +356,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             u.Cli.toml_sync_value(
                 section,
                 group_name,
-                cls.dependency_group_wire(values),
+                cls.dependency_group_wire(cls.unique_group_entries(values)),
             )
         return r[bool].ok(value=True)
 
