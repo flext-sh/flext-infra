@@ -110,11 +110,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
         # The governed tree above the workspace carries the committed Mise
         # declaration and lock that activate its locked tools.
         u.Tests.copy_tracked_mise_seeds(tmp_path)
-        external = tmp_path / "gruponos-data"
-        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external = tmp_path / "external-data"
+        (external / "src" / "external_data").mkdir(parents=True)
         external_pyproject = external / c.PYPROJECT_FILENAME
         external_pyproject.write_text(
-            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            "[project]\nname='external-data'\ndependencies=['flext-core']\n",
             encoding="utf-8",
         )
 

@@ -25,7 +25,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         self,
         variant: str,
     ) -> None:
-        """Authored occurrences and distinct policy obligations survive composition."""
+        """Distinct authored obligations survive and exact duplicates collapse."""
         own = self._workspace(c.Infra.MakeProfile.STANDALONE).repository.distribution
         floor = "composition-floor>=1.0,<3.0"
         parsed = Requirement(floor)
@@ -55,9 +55,9 @@ class TestsFlextInfraPyprojectDependencyGroups:
             declared=declared,
         )
 
-        tm.that(composed[: len(declared)], eq=declared)
+        tm.that(composed[:2], eq=(authored, f"{own}[feature]"))
         tm.that(
-            composed[len(declared) :],
+            composed[2:],
             eq=() if Requirement(authored) == Requirement(floor) else (floor,),
         )
         source = self._source(
@@ -80,7 +80,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         )
         actual_requirements = set(actual_entries)
         tm.ok(Requirement(authored) in actual_requirements)
-        tm.that(actual_entries.count(Requirement(authored)), eq=2)
+        tm.that(actual_entries.count(Requirement(authored)), eq=1)
         tm.ok(Requirement(floor) in actual_requirements)
         tm.ok(Requirement(f"{own}[feature]") in actual_requirements)
         tm.that(groups["examples"], eq=[{"include-group": "dev"}])
@@ -151,7 +151,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         self,
         role: c.Infra.MakeProfile,
     ) -> None:
-        """Native tables retain position, repeated occurrences and Git provenance."""
+        """Native tables retain position, authored order and Git provenance."""
         development = u.Tests.flext_source("flext-tests")
         codegen = u.Tests.flext_source("flext-infra")
         marked = "group-only[feature]>=1.0,<2.0; python_version >= '3.13'"
@@ -159,7 +159,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         groups = (
             f"dev = [{tm.ok(u.Cli.json_dumps(development))}, "
             '{include-group = "codegen"}, '
-            f"{tm.ok(u.Cli.json_dumps(marked))}, {tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(marked))}]\n"
             f"codegen = [{tm.ok(u.Cli.json_dumps(codegen))}]\n"
             'examples = ["example-only>=1.0", {include-group = "dev"}, '
             '"example-tail<3.0"]\n'
@@ -320,8 +320,8 @@ class TestsFlextInfraPyprojectDependencyGroups:
             f"{authored_name} = [{tm.ok(u.Cli.json_dumps(authored_bound))}, "
             f"{tm.ok(u.Cli.json_dumps(marked))}, "
             '{include-group = "base"}, '
-            f"{tm.ok(u.Cli.json_dumps(extra))}, {tm.ok(u.Cli.json_dumps(direct))}, "
-            f"{tm.ok(u.Cli.json_dumps(marked))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(extra))}, "
+            f"{tm.ok(u.Cli.json_dumps(direct))}]\n"
             f"{codegen} = []\n"
             "base = []\n"
             f'examples = [{{include-group = "{authored_name}"}}]',
@@ -353,7 +353,6 @@ class TestsFlextInfraPyprojectDependencyGroups:
             {"include-group": "base"},
             extra,
             direct,
-            marked,
         ]
         tm.that(
             u.Tests.toml_list(groups[authored_name]),

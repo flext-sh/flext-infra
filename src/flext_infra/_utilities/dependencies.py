@@ -426,8 +426,14 @@ class FlextInfraUtilitiesDependencies(
 
         """
         own = canonicalize_name(distribution)
-        authored = tuple(declared)
-        retained = {Requirement(item) for item in authored}
+        authored: list[str] = []
+        retained: set[Requirement] = set()
+        for item in declared:
+            parsed = Requirement(item)
+            if parsed in retained:
+                continue
+            retained.add(parsed)
+            authored.append(item)
         policy = (
             *scaffold.dev,
             *(

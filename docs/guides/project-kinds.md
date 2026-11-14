@@ -62,14 +62,14 @@ Infra:
         namespace_attribute: incident
         alias: incident
         environment_prefix: CLIENT_INCIDENT_
-        description: Client incident repository over the dc-recon engine
+        description: Client incident repository over an upstream engine
         license: MIT
         author_name: Author Name
         author_email: author@example.com
-        upstream: dc_recon
+        upstream: example_engine
         flext_source: flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
         runtime_dependency_overlay:
-        - dc-recon @ git+ssh://git@github.com/example/cosmos-recon.git@<commit-sha>
+        - example-engine @ git+ssh://git@github.com/example/example-engine.git@<commit-sha>
         namespace_scan_dirs: []
         homepage: https://github.com/example/client-incident
         documentation: https://github.com/example/client-incident/blob/main/README.md

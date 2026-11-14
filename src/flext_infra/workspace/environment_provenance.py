@@ -220,7 +220,7 @@ class FlextInfraWorkspaceEnvironmentProvenance(
             packages=tuple(
                 # The binding probe resolves through importlib (module names:
                 # dash-free), while the pyproject declares the distribution
-                # name — "dc-recon" imports as "dc_recon".
+                # name — "example-engine" imports as "example_engine".
                 u.Infra.project_package_name(root / repository.path).replace("-", "_")
                 for repository in repositories
             ),

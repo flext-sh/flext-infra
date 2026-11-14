@@ -1,19 +1,19 @@
 id: ban-ssot-registry-literal
 snapshots:
-  "OWNERS_REGISTRY = {\"algar\": \"oud\", \"flext\": \"infra\"}\n":
+  "OWNERS_REGISTRY = {\"acme\": \"app\", \"flext\": \"infra\"}\n":
     labels:
-    - source: "OWNERS_REGISTRY = {\"algar\": \"oud\", \"flext\": \"infra\"}"
+    - source: "OWNERS_REGISTRY = {\"acme\": \"app\", \"flext\": \"infra\"}"
       style: primary
       start: 0
-      end: 52
+      end: 51
     - source: OWNERS_REGISTRY
       style: secondary
       start: 0
       end: 15
-    - source: "{\"algar\": \"oud\", \"flext\": \"infra\"}"
+    - source: "{\"acme\": \"app\", \"flext\": \"infra\"}"
       style: secondary
       start: 18
-      end: 52
+      end: 51
   "class FlextInfraServiceGuard:\n    def check(self) -> None:\n        command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}\n":
     labels:
     - source: "command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}"

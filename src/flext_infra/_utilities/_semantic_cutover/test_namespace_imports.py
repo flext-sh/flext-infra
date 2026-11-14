@@ -19,6 +19,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, p, t
+from flext_infra._utilities import FlextInfraUtilitiesProjectManagedArtifacts
 from flext_infra._utilities._semantic_cutover.edits import (
     FlextInfraUtilitiesSemanticCutoverEdits,
 )
@@ -32,8 +33,13 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
 ):
     """Rewrite test imports to the generated ``tests`` namespace."""
 
-    FIRST_PARTY_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(?:flext_[a-z0-9_]+|ai_hub|algar_oud_mig|dc_recon|scripts|examples|tools|infra|config)(?:\.|$)",
+    FIRST_PARTY_TIERS: ClassVar[t.StrTuple] = (
+        r"flext_[a-z0-9_]+",
+        "scripts",
+        "examples",
+        "tools",
+        "infra",
+        "config",
     )
     FROM_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"^from\s+(?P<module>\.+|\.*[A-Za-z_][\w.]*)\s+import\s+(?P<names>.+)$",
@@ -56,6 +62,8 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         root: Path,
         sources: Mapping[Path, str],
         findings: Sequence[p.Infra.ModOccurrence],
+        *,
+        project: p.Infra.RopeProject,
     ) -> p.Result[tuple[p.Infra.SemanticMigrationEdit, ...]]:
         """Plan import rewrites for every finding in the selected phase.
 
@@ -78,10 +86,43 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
             for path in paths
             if path in sources and not path.is_relative_to(meta_root)
         )
+        first_party = cls._first_party(root, project)
         return cls._semantic_edits(
             items,
-            lambda path, source: cls.rewrite_test_namespace_imports(root, path, source),
+            lambda path, source: cls.rewrite_test_namespace_imports(
+                root, path, source, first_party
+            ),
         )
+
+    @classmethod
+    def _first_party(cls, root: Path, project: p.Infra.RopeProject) -> re.Pattern[str]:
+        """First-party modules: the FLEXT tiers plus the repository's own facts.
+
+        The declared package and the distribution a package-less repository
+        consumes come from the repository declaration, so no consumer is
+        named here.
+
+        Returns:
+            The compiled top-level module pattern.
+
+        """
+        declaration = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_repository_declaration_inputs(root, source_project=project)
+            .unwrap()
+            .spec.project
+        )
+        declared = (
+            ()
+            if declaration is None
+            else tuple(
+                re.escape(name)
+                for name in (declaration.package_name, declaration.upstream)
+                if name
+            )
+        )
+        alternatives = "|".join((*cls.FIRST_PARTY_TIERS, *declared))
+        return re.compile(rf"^(?:{alternatives})(?:\.|$)")
 
     @classmethod
     def rewrite_test_namespace_imports(
@@ -89,6 +130,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         root: Path,
         file_path: Path,
         source: str,
+        first_party: re.Pattern[str],
     ) -> t.Infra.TransformResult:
         """Rewrite one module's imports and canonical aliases.
 
@@ -103,6 +145,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
             root,
             file_path,
             groups,
+            first_party,
         )
         if not collected:
             return source, ()
@@ -118,6 +161,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         root: Path,
         file_path: Path,
         groups: Sequence[tuple[int, int, str]],
+        first_party: re.Pattern[str],
     ) -> tuple[list[str], dict[str, str], set[int]]:
         """Collect canonical names, alias renames and targeted groups.
 
@@ -134,15 +178,13 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
                 continue
             module, names = parsed
             if not module:
-                cls._collect_plain_import(
-                    start,
-                    names,
-                    collected,
-                    renames,
-                    targeted,
-                )
+                for target, bound in cls._plain_import_targets(names, first_party):
+                    targeted.add(start)
+                    collected.append(target)
+                    if bound != target:
+                        renames[bound] = target
                 continue
-            target = cls._target_module(root, file_path, module)
+            target = cls._target_module(root, file_path, module, first_party)
             if target is None:
                 continue
             targeted.add(start)
@@ -311,6 +353,7 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
         root: Path,
         file_path: Path,
         module: str,
+        first_party: re.Pattern[str],
     ) -> str | None:
         """Return the canonical test namespace target for a module.
 
@@ -327,36 +370,37 @@ class FlextInfraUtilitiesSemanticCutoverTestNamespaceImports(
             f"{cls.TESTS_NAMESPACE}."
         ):
             return cls.TESTS_NAMESPACE
-        if cls.FIRST_PARTY_PATTERN.match(module):
+        if first_party.match(module):
             return cls.TESTS_NAMESPACE
         return None
 
     @classmethod
-    def _collect_plain_import(
+    def _plain_import_targets(
         cls,
-        start: int,
         names: Sequence[tuple[str, str | None]],
-        collected: list[str],
-        renames: dict[str, str],
-        targeted: set[int],
-    ) -> None:
-        """Collect first-party plain imports as canonical tests aliases."""
+        first_party: re.Pattern[str],
+    ) -> tuple[tuple[str, str], ...]:
+        """First-party plain imports as canonical tests aliases.
+
+        Returns:
+            Each ``(target, bound)`` pair: the canonical alias and the name
+            the import bound.
+
+        """
+        pairs: list[tuple[str, str]] = []
         for dotted, alias in names:
             root = dotted.split(".", 1)[0]
             if root == cls.TESTS_NAMESPACE:
                 continue
-            if not cls.FIRST_PARTY_PATTERN.match(dotted):
+            if not first_party.match(dotted):
                 continue
             target = (
                 cls.FLEXT_TESTS_ALIAS
                 if root == cls.FLEXT_TESTS_PACKAGE
                 else root.removeprefix(cls.FLEXT_PREFIX)
             )
-            targeted.add(start)
-            collected.append(target)
-            bound = alias or root
-            if bound != target:
-                renames[bound] = target
+            pairs.append((target, alias or root))
+        return tuple(pairs)
 
     @staticmethod
     def _resolve_relative(

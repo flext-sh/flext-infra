@@ -17,7 +17,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     """A managed render that produced no content must fail loud, never publish.
 
     A workflow fragment gated on an undeclared capability layer (the
-    ``private_dependency_auth`` incident, bead cosmos-dxtk7) rendered 0 bytes
+    ``private_dependency_auth`` incident) rendered 0 bytes
     and was emitted verbatim: consumers inspected the directory, saw the
     artifact present, and concluded the capability was delivered while every
     step it owns was silently absent. The render funnel owns the refusal:

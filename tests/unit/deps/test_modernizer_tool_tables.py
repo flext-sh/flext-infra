@@ -80,6 +80,42 @@ class TestsFlextInfraDepsModernizerToolTables:
             tm.that(exclude.match(f"{root}/module.py"), none=True)
         tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
 
+    def test_mypy_suspension_set_is_the_operator_authorized_set(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Render exactly the operator-authorized mypy suspensions, no drift.
+
+        Operator ruling 2026-10-05 authorizes call-arg and prop-decorator;
+        operator order 2026-11-14 ("o que vale são as 12 entradas de
+        suspensão") authorizes the other twelve. Adding or removing a code in
+        tooling.yaml fails here until the operator records the change.
+        """
+        payload, _ = self._applied(tmp_path)
+        rendered = list(
+            u.Tests.toml_strings(self._table(payload, "mypy")["disable_error_code"])
+        )
+        tm.that(len(rendered), eq=len(set(rendered)))
+        tm.that(
+            sorted(rendered),
+            eq=[
+                "arg-type",
+                "assignment",
+                "attr-defined",
+                "call-arg",
+                "has-type",
+                "list-item",
+                "misc",
+                "name-defined",
+                "no-any-return",
+                "override",
+                "prop-decorator",
+                "unreachable",
+                "valid-type",
+                "var-annotated",
+            ],
+        )
+
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
         """Render toolchain Python plus config-owned plugins and overrides."""
         mypy_policy = config.Infra.tooling.tools.mypy
@@ -512,15 +548,15 @@ class TestsFlextInfraDepsModernizerToolTables:
     ) -> None:
         """A distribution name must not invent an importable package."""
         project_dir = tmp_path / "project"
-        package_dir = project_dir / "src" / "dc_backup"
+        package_dir = project_dir / "src" / "demo_app"
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text('"""Package."""\n', encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "datacosmos-backup"\n',
+            '[project]\nname = "demo-distribution"\n',
             encoding="utf-8",
         )
         namespaces = FlextInfraToolTablesPhase.first_party_namespaces(path=project_dir)
-        tm.that(namespaces, has="dc_backup", lacks="datacosmos_backup")
+        tm.that(namespaces, has="demo_app", lacks="demo_distribution")
 
     def test_tables_are_idempotent(self, tmp_path: Path) -> None:
         """A second application over the converged payload changes nothing."""

@@ -296,9 +296,20 @@ class FlextInfraUtilitiesRelease:
 
         """
         lines = FlextInfraUtilitiesRelease._notes_header(tag, version, project_list)
+        # Only Conventional Commits subjects are listed: as in ``plan_bump``,
+        # any other merge subject (an automated lane title such as a
+        # branch-sync pull request) carries no release information, and
+        # listing it would publish the lane's branch name.
+        listed = "\n".join(
+            raw
+            for raw in changes.splitlines()
+            if c.Infra.CONVENTIONAL_SUBJECT_RE.match(
+                " ".join(raw.split()).removeprefix("- "),
+            )
+        )
         lines.append(
             FlextInfraUtilitiesRelease._markdown_changelog(
-                changes or "Initial tagged release",
+                listed if changes else "Initial tagged release",
             ),
         )
         written = FlextInfraUtilitiesRelease._write_document(output_path, lines)

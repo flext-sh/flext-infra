@@ -169,6 +169,25 @@ class TestsFlextInfraGateAdmission:
         )
 
     @classmethod
+    def test_unresolvable_tool_fails_before_the_route_queues(
+        cls, tmp_path: Path
+    ) -> None:
+        """Preflight refuses a route whose declared tools cannot resolve.
+
+        With no Mise on the PATH no declared tool resolves, so the route ends
+        before it writes a ticket: the queue never holds a slot for it.
+        """
+        environment = {**cls._environment(tmp_path, None), "PATH": str(tmp_path)}
+        gate = cls._gate(environment, "preflight")
+        tm.that(tm.ok(gate.wait(timeout=_WAIT_SECONDS)), ne=0)
+        tm.fail((tmp_path / "preflight.started").exists())
+        queue = tmp_path / "state" / Path(*c.Infra.GATE_ADMISSION_STATE_PARTS)
+        tm.that(
+            [path.name for path in queue.glob("*.json")] if queue.is_dir() else [],
+            empty=True,
+        )
+
+    @classmethod
     def test_budget_armed_at_admission_ends_the_route_with_the_timeout_status(
         cls, tmp_path: Path
     ) -> None:

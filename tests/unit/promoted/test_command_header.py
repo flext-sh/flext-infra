@@ -16,7 +16,7 @@ from tests import c, config, p, tm, u
 class TestsFlextInfraPromotedCommandHeader:
     """Read and render the ``[tool.flext.command]`` table of a script block.
 
-    The scenario tree holds verbatim copies of real cosmos-charts commands
+    The scenario tree holds consumer-shaped commands
     whose headers still use the retired ``flext-command`` block, so every
     expectation is derived from what those consumers declared.
     """

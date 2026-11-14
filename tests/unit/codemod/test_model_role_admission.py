@@ -46,7 +46,7 @@ class TestsFlextInfraModelRoleAdmission:
             "flext-ldif",
             "flext-infra",
             "flext-tests",
-            "algar-oud-mig",
+            "acme-app",
         ],
     )
     @c.Tests.MARK.parametrize("surface", ["src", "namespace"])

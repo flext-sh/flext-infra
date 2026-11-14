@@ -1001,6 +1001,10 @@ class TestsProtocolSourceBootstrap:
             )
             consolidate_protocol_owners(root, {workspace.relative_to(root): projected})
             planned = plan_protocol_facades(root)
+            init_source = planned[protocol_root / "__init__.py"]
+            tm.that(init_source, has="_LAZY_IMPORTS = MappingProxyType(")
+            tm.that(init_source, has="__all__ = tuple(_LAZY_IMPORTS)")
+            tm.that(init_source, lacks="__all__: tuple[str, ...] = (")
 
             tm.that(base.read_text(encoding="utf-8"), lacks="class ProjectInfo")
             facade = planned[package / "protocols.py"]

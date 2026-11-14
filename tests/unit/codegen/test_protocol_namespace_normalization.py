@@ -18,16 +18,16 @@ def test_project_model_annotations_become_protocols_idempotently() -> None:
     source = (
         "from __future__ import annotations\n"
         "from typing import Protocol\n"
-        "class DcFinanProtocolsSettings:\n"
+        "class DemoAppProtocolsSettings:\n"
         "    class Settings(Protocol):\n"
-        "        DcFinan: m.DcFinan.SettingsNamespace\n"
+        "        DemoApp: m.DemoApp.SettingsNamespace\n"
         "        external: m.Foreign.Record\n"
     )
-    result = normalize_protocol_source(source, package_name="dc_finan")
-    tm.that(result, has="DcFinan: p.DcFinan.SettingsNamespace")
-    tm.that(result, has="from dc_finan import p")
+    result = normalize_protocol_source(source, package_name="demo_app")
+    tm.that(result, has="DemoApp: p.DemoApp.SettingsNamespace")
+    tm.that(result, has="from demo_app import p")
     tm.that(result, has="external: m.Foreign.Record")
-    tm.that(normalize_protocol_source(result, package_name="dc_finan"), eq=result)
+    tm.that(normalize_protocol_source(result, package_name="demo_app"), eq=result)
 
 
 def test_projected_protocol_keeps_pydantic_annotation_import(
@@ -75,38 +75,38 @@ def test_authored_protocol_projection_is_stable_on_first_publication(
 ) -> None:
     """A newly projected sibling and its authored consumer converge in one pass."""
     root, package = u.Tests.create_lazy_init_workspace(
-        tmp_path, project_name="dc-finan", package_name="dc_finan"
+        tmp_path, project_name="demo-app", package_name="demo_app"
     )
     files = {
         package / "models.py": (
-            "from dc_finan._models.config import DcFinanConfigModels\n"
-            "class DcFinanModels:\n"
-            "    class DcFinan(DcFinanConfigModels): pass\n"
-            "m = DcFinanModels\n__all__ = ['DcFinanModels', 'm']\n"
+            "from demo_app._models.config import DemoAppConfigModels\n"
+            "class DemoAppModels:\n"
+            "    class DemoApp(DemoAppConfigModels): pass\n"
+            "m = DemoAppModels\n__all__ = ['DemoAppModels', 'm']\n"
         ),
         package / "protocols.py": (
-            "from dc_finan._protocols.config import DcFinanProtocolsConfig\n"
-            "class DcFinanProtocols:\n"
-            "    class DcFinan(DcFinanProtocolsConfig): pass\n"
-            "p = DcFinanProtocols\n__all__ = ['DcFinanProtocols', 'p']\n"
+            "from demo_app._protocols.config import DemoAppProtocolsConfig\n"
+            "class DemoAppProtocols:\n"
+            "    class DemoApp(DemoAppProtocolsConfig): pass\n"
+            "p = DemoAppProtocols\n__all__ = ['DemoAppProtocols', 'p']\n"
         ),
         package / "_models/config.py": (
             "from pydantic import BaseModel, StrictStr\n"
-            "class DcFinanConfigModels:\n"
+            "class DemoAppConfigModels:\n"
             "    class ConfigNamespace(BaseModel):\n"
             "        name: StrictStr\n"
         ),
         package / "_protocols/config.py": (
             "from __future__ import annotations\n"
             "from typing import Protocol\n"
-            "class DcFinanProtocolsConfig:\n"
+            "class DemoAppProtocolsConfig:\n"
             "    class Config(Protocol):\n"
-            "        DcFinan: m.DcFinan.ConfigNamespace\n"
-            "__all__ = ['DcFinanProtocolsConfig']\n"
+            "        DemoApp: m.DemoApp.ConfigNamespace\n"
+            "__all__ = ['DemoAppProtocolsConfig']\n"
         ),
         package / "_protocols/__init__.py": (
-            "from .config import DcFinanProtocolsConfig\n"
-            "__all__ = ['DcFinanProtocolsConfig']\n"
+            "from .config import DemoAppProtocolsConfig\n"
+            "__all__ = ['DemoAppProtocolsConfig']\n"
         ),
     }
     for path, content in files.items():

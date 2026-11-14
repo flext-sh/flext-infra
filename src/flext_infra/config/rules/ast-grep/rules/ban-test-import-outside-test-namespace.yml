@@ -34,9 +34,23 @@ rule:
     - kind: import_from_statement
       has:
         field: module_name
-        regex: '^(?:flext_[a-z0-9_]+|ai_hub|algar_oud_mig|dc_recon|scripts|examples|tools|infra|config)(?:\.|$)'
+        matches: first-party-module
     - kind: import_statement
-      regex: '^import\s+(?:flext_[a-z0-9_]+|ai_hub|algar_oud_mig|dc_recon|scripts|examples|tools|infra|config)(?:\.|\s|,|$)'
+      has:
+        stopBy: end
+        kind: dotted_name
+        matches: first-party-module
+utils:
+  # First party: the project's own and reached facade packages (the generated
+  # `facade-package` utility, rendered from each project's own facts) plus the
+  # fixed FLEXT tiers; the generated `tests` namespace is the allowed surface.
+  first-party-module:
+    all:
+      - not:
+          regex: '^tests(?:[.\s]|$)'
+      - any:
+          - matches: facade-package
+          - regex: '^(?:flext_[a-z0-9_]+|scripts|examples|tools|infra|config)(?:[.\s]|$)'
 message: >-
   Authored test imports a first-party namespace directly. Import the public
   name from the generated `tests` namespace instead; `tests/_<base>/*.py`

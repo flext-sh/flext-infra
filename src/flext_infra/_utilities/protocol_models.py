@@ -2174,7 +2174,7 @@ class FlextInfraUtilitiesModelsProtocol:
             """Nest tier protocols in the namespace the facade inherits.
 
             An internal tier nests its holders in the namespace it inherits
-            (``m.AlgarOudMig``); its protocols mirror that nesting instead of
+            (``m.AcmeApp``); its protocols mirror that nesting instead of
             composing the holders on the facade.
 
             Returns:

@@ -984,14 +984,21 @@ class FlextInfraUtilitiesRefactor:
         store = reports / "native"
         if not store.is_dir():
             return
-        referenced = {
-            artifact.path
-            for relative in c.Infra.MOD_SCAN_EVIDENCE_RELATIVE_PATHS
-            if (root / relative).is_file()
-            for artifact in m.Infra.ModScanEvidence.model_validate_json(
-                (root / relative).read_bytes()
-            ).native_artifacts
-        }
+        referenced: set[Path] = set()
+        for relative in c.Infra.MOD_SCAN_EVIDENCE_RELATIVE_PATHS:
+            evidence = root / relative
+            if not evidence.is_file():
+                continue
+            document = u.Cli.json_as_mapping(
+                u.Cli.json_loads(evidence.read_bytes()).unwrap()
+            )
+            referenced.update(
+                Path(raw)
+                for artifact in u.Cli.json_deep_mapping_list(
+                    document, "native_artifacts"
+                )
+                if (raw := u.Cli.json_pick_str(artifact, "path"))
+            )
         horizon = (
             time.time() - config.Infra.mod_evidence.native_artifact_retention_seconds
         )

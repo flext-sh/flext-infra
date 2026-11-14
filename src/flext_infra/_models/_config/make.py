@@ -1115,6 +1115,16 @@ class FlextInfraModelsConfigMake(
                 description=("Bounded thread budget for ast-grep scan execution"),
             ),
         ] = 4
+        scan_batch_files: Annotated[
+            t.PositiveInt,
+            m.Field(
+                default=64,
+                description=(
+                    "Sources per ast-grep scan invocation; each completed batch "
+                    "persists its cache fragments before the next starts"
+                ),
+            ),
+        ] = 64
         admission: Annotated[
             FlextInfraModelsConfigMake.MakeAdmissionSpec,
             m.Field(description="Host admission and run limits of every public verb"),

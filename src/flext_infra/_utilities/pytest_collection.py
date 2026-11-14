@@ -647,11 +647,13 @@ class FlextInfraUtilitiesPytestCollection:
         The controller stops dispatch through the same path as max-failures:
         xdist queues the shutdown marker, so each worker's final item runs
         with no successor and pytest-testmon flushes every batched result.
-        A distributed stop therefore never waits for a flushed batch: a worker
-        flushes only at its batch size or its last item, so waiting for one
+        A stop therefore never waits for a flushed batch: testmon flushes only
+        at its batch size or on an item with no successor, so waiting for one
         lets the run reach the process deadline, whose SIGTERM discards every
-        unflushed batch. A single-process session has no shutdown marker, so
-        it stops only on a teardown that already carries a flushed batch.
+        unflushed batch and every later run restarts from the same prefix. A
+        single-process session has no shutdown marker: the item after the
+        instant becomes the session's last item, testmon flushes on its
+        teardown, and the stop is requested there.
 
         When every collected item has already completed, nothing is left to
         stop and the stop request would only recolor a finished green suite
@@ -662,10 +664,16 @@ class FlextInfraUtilitiesPytestCollection:
             self.stop_at_monotonic = stop_at_monotonic
             self.session: t.Infra.Pytest.Session | None = None
             self.completed_items: set[str] = set()
+            self.selected_count = 0
 
         def pytest_sessionstart(self, session: t.Infra.Pytest.Session) -> None:
             """Bind the controller session that owns the stop decision."""
             self.session = session
+
+        @FlextInfraUtilitiesPytest.Pytest.hookimpl(trylast=True)
+        def pytest_collection_finish(self, session: t.Infra.Pytest.Session) -> None:
+            """Record the selected population before any stop shortens it."""
+            self.selected_count = len(session.items)
 
         def pytest_runtest_logreport(self, report: t.Infra.Pytest.TestReport) -> None:
             """Request the stop once a completed item crosses the instant.
@@ -688,18 +696,23 @@ class FlextInfraUtilitiesPytestCollection:
             # not actually passed on this process's own monotonic clock.
             if time.monotonic() < self.stop_at_monotonic:
                 return
-            total_items = len(session.items)
+            total_items = self.selected_count or len(session.items)
             if total_items and len(self.completed_items) >= total_items:
                 return
             reason = f"suite stop instant {self.stop_at_monotonic:.3f} reached"
             controller = session.config.pluginmanager.getplugin("dsession")
             if controller is None:
-                # Single-process testmon writes its in-flight batch only on a
-                # teardown report carrying nodes_files_lines; stopping earlier
-                # leaves executed rows without durable data for the next run.
-                if getattr(report, "nodes_files_lines", None) and not (
-                    session.shouldstop
-                ):
+                # pytest's loop reads ``session.items`` for each successor, so
+                # the next item runs with none and testmon flushes on its
+                # teardown; the stop is requested on that final teardown.
+                position = next(
+                    index
+                    for index, item in enumerate(session.items)
+                    if item.nodeid == report.nodeid
+                )
+                if position + 2 < len(session.items):
+                    del session.items[position + 2 :]
+                elif position + 1 == len(session.items) and not session.shouldstop:
                     session.shouldstop = reason
                 return
             if not isinstance(controller, p.Infra.PytestStopController):

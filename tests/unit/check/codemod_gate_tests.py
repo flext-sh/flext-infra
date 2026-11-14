@@ -66,7 +66,7 @@ class TestsFlextInfraCodemodGate:
             execution.finding_count,
             eq=len(execution.issues),
         )
-        tm.that(execution.raw_output, has="1 policy findings")
+        tm.that(execution.raw_output, has="contract-second: 1")
 
     def test_clean_native_scan_has_no_findings(
         self,

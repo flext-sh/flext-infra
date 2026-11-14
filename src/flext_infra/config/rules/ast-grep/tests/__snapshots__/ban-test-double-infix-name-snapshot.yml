@@ -1,17 +1,17 @@
 id: ban-test-double-infix-name
 snapshots:
-  "class AlgarOudMigFakeLdapClient:\n    pass\n":
+  "class AcmeAppFakeLdapClient:\n    pass\n":
     labels:
     - source: |-
-        class AlgarOudMigFakeLdapClient:
+        class AcmeAppFakeLdapClient:
             pass
       style: primary
       start: 0
-      end: 41
-    - source: AlgarOudMigFakeLdapClient
+      end: 37
+    - source: AcmeAppFakeLdapClient
       style: secondary
       start: 6
-      end: 31
+      end: 27
   "class OudSpy:\n    pass\n":
     labels:
     - source: |-

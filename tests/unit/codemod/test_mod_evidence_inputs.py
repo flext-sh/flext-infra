@@ -638,6 +638,34 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})
 
     @staticmethod
+    def test_evidence_with_findings_round_trips_json(mod_workspace: Path) -> None:
+        """Published evidence with native records is valid JSON on re-entry."""
+        source = mod_workspace / "consumer.py"
+        source.write_text(
+            "def wrapper(value):\n    return value\n",
+            encoding="utf-8",
+        )
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
+            )
+        )
+        tm.that(report.findings > 0, truth=True)
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        tm.ok(receipt.path.is_file())
+
+    @staticmethod
     def test_publication_removes_only_stale_unreferenced_artifacts(
         mod_workspace: Path,
     ) -> None:
