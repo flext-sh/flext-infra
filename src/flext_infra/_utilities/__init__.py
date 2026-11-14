@@ -645,6 +645,7 @@ install_lazy_exports(
             "gate_admission_root",
             "gate_admission_capacity",
             "gate_admitted",
+            "_preflight_toolchain",
             "gate_repeat_refuse",
             "gate_repeat_record",
             "_repeat_exempt",
