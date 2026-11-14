@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
+from importlib.util import find_spec
 from keyword import iskeyword
 from pathlib import Path
 from typing import cast
@@ -567,7 +568,9 @@ class FlextInfraUtilitiesLazyInitPlan:
 
         A base that an initializer defers is shared through that export, in
         the real base order, so C3 reproduces the real MRO. A base no
-        initializer defers is flattened into the members.
+        initializer defers is flattened into the members. A base imported from
+        another generated lazy distribution is neither: ``FlextLazyStandIn``
+        resolves its members from the real class's MRO on first read.
 
         Returns:
             The member names and the ``(package, export)`` of each base.
@@ -586,11 +589,14 @@ class FlextInfraUtilitiesLazyInitPlan:
         flattened: set[str] = set()
         current = scope[0].current_pkg
         for base in facts.classes[name]:
+            dotted = facts.imports.get(base)
             target = (
                 (module, base)
                 if base in facts.classes
-                else cls._lazy_init_base_target(run, scope, facts.imports.get(base))
+                else cls._lazy_init_base_target(run, scope, dotted)
             )
+            if target is None and cls._lazy_init_external(scope, dotted):
+                continue
             if target is None:
                 msg = (
                     f"deferred export {module}.{name} has an unresolvable base: {base}"
@@ -613,6 +619,37 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             raise ValueError(msg)
         return tuple(members), tuple(shared)
+
+    @staticmethod
+    def _lazy_init_external(
+        scope: tuple[
+            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
+        ],
+        dotted: str | None,
+    ) -> bool:
+        """Return whether an imported base is a lazy facade of another distribution.
+
+        The base's top-level package is not the stand-in's own surface and its
+        installed initializer is this generator's projection, so the package
+        loads lazily and ``FlextLazyStandIn`` resolves the base's members from
+        the real class on first read. A third-party base stays unresolvable.
+        The spec is found without importing the package.
+
+        Returns:
+            ``True`` for a base from another generated lazy distribution.
+
+        """
+        if dotted is None:
+            return False
+        top = dotted.split(".", 1)[0]
+        if top == scope[0].surface:
+            return False
+        spec = find_spec(top)
+        return (
+            spec is not None
+            and spec.origin is not None
+            and FlextInfraUtilitiesCodegenFilePlan.generated_source(Path(spec.origin))
+        )
 
     @staticmethod
     def _lazy_init_body_members(

@@ -2,7 +2,8 @@
 
 The generated initializer gives a stand-in to each facade-composed part with
 its in-package members. A class no facade composes stays a plain lazy export,
-and a composed part whose base is a third-party type fails generation by name.
+a composed part whose base is a third-party type fails generation by name, and
+a base from another generated lazy distribution resolves from the real class.
 A facade of one tier root (``examples``) that another tier's facade composes
 stays real, like a public ``src`` facade.
 
@@ -93,6 +94,28 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         fixture_tree("lazy-deferred-capability-foreign-base", destination=root)
         with u.Tests.raises(ValueError, match="not a class of its package"):
             u.Tests.create_lazy_init_service(root).plan_files()
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    def test_composed_part_with_lazy_distribution_base_is_deferred(
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """A part based on another generated lazy distribution's facade is deferred.
+
+        Its base is neither shared nor flattened: the stand-in lists only the
+        part's own members and resolves the rest from the real class.
+        """
+        root = deferred_capability_project
+        fixture_tree("lazy-deferred-capability-lazy-distribution-base", destination=root)
+        tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        initializer = TestsFlextInfraCodegenLazyInitDeferredCapability._initializer(
+            root
+        )
+        tm.that(initializer, has='"FlextDemoCapabilityCoreBased": ("DEMO_LIMIT",)')
+        tm.that(initializer, lacks="FlextConstants")
 
     @staticmethod
     @c.Tests.MARK.slow
