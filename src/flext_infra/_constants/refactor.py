@@ -491,6 +491,12 @@ class FlextInfraConstantsRefactor:
     # Generated rule shape that inserts the canonical package import of names
     # a module uses bare without binding them: 'import-header--<package>'.
     CODEMOD_IMPORT_HEADER_SHAPE: ClassVar[str] = "import-header"
+    # Nodes whose bodies open a scope of their own: a binding search of an
+    # enclosing scope stops at them (generated import-header receivers).
+    CODEMOD_OWN_SCOPE_BOUNDARY_KINDS: ClassVar[t.StrTuple] = (
+        "function_definition",
+        "class_definition",
+    )
     # Generated rule shape that reaches a member through its package import
     # instead of a module object: 'module-member--<package>'.
     CODEMOD_MODULE_MEMBER_SHAPE: ClassVar[str] = "module-member"
