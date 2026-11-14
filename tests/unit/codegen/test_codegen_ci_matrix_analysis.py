@@ -122,6 +122,27 @@ class TestsFlextInfraCodegenCiMatrixAnalysis(TestsFlextInfraCodegenCiMatrixSuppo
         for family in u.Infra.facade_families().values():
             tm.that(rendered, has=f'"**/{family.module}.py"')
 
+    @staticmethod
+    def test_qlty_ignores_mandated_command_metadata_in_duplication(
+        rendered_project: Path,
+    ) -> None:
+        """PEP 723 command metadata is data, never duplicated code.
+
+        Every promoted script carries the same mandated ``# /// script`` block;
+        qlty's similar-code smell reported those comment lines as duplication.
+        The operator authorized the axiom with the narrowest scope: comments
+        are excluded from duplication while the built-in import filter stays.
+        """
+        rendered = (
+            rendered_project
+            / c.Infra.QLTY_CONFIG_DIRNAME
+            / c.Infra.QLTY_CONFIG_FILENAME
+        ).read_text(encoding="utf-8")
+        tm.that(
+            rendered,
+            has='filter_patterns = ["(import_statement _)", "(comment)"]',
+        )
+
     def test_sonarcloud_tests_root_is_always_materialized_by_conform(
         self,
         infra_git_repo: Path,
