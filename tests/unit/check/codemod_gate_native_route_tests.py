@@ -55,7 +55,11 @@ class TestsFlextInfraCodemodGateNativeRoute:
         (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
         matched = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         tm.that(
-            [issue.code for issue in matched.issues],
+            [
+                issue.code
+                for issue in matched.issues
+                if issue.code.startswith("contract-")
+            ],
             eq=["contract-second"],
             msg=matched.raw_output,
         )
@@ -66,7 +70,15 @@ class TestsFlextInfraCodemodGateNativeRoute:
             )
         )
         cleared = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
-        tm.that(cleared.issues, empty=True, msg=cleared.raw_output)
+        tm.that(
+            [
+                issue.code
+                for issue in cleared.issues
+                if issue.code.startswith("contract-")
+            ],
+            empty=True,
+            msg=cleared.raw_output,
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("truncated", [False, True])

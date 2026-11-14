@@ -560,8 +560,13 @@ class FlextInfraModGateEngine:
                 and outcome.forwarded_signal is None
             ):
                 return r[p.Cli.ProcessOutcome].ok(outcome)
+            # Publish copies: the caller still reads the complete records a
+            # stopped scanner left in its own stdout file.
             stream_receipts = tuple(
-                u.Infra.publish_mod_native_artifact(artifact_root, path)
+                u.Infra.publish_mod_native_artifact(
+                    artifact_root,
+                    Path(shutil.copy2(path, path.with_name(f"{path.name}.receipt"))),
+                )
                 for path in (stdout_file, stderr_file)
             )
             detail = "\n".join(
