@@ -197,10 +197,10 @@ class TestsFlextInfraCodemodGate:
         )
         tm.that(
             published,
-            eq=[
+            eq=(
                 ("contract-first", "src/first.py"),
                 ("contract-second", "src/second.py"),
-            ],
+            ),
         )
         tm.that(execution.raw_output, has="2 policy findings; 1 native failures")
         tm.that(
@@ -209,9 +209,7 @@ class TestsFlextInfraCodemodGate:
                 for issue in execution.issues
                 if issue.code == c.Infra.ToolOutcome.ERROR.value
             ),
-            eq=[
-                ("ast-grep exited with code -2: timed_out=True; forwarded_signal=None")
-            ],
+            eq=("ast-grep exited with code -2: timed_out=True; forwarded_signal=None",),
         )
         tm.ok(execution.raw_receipt is not None)
 
