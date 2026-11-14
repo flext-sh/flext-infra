@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import venv
 from collections.abc import Mapping, Sequence
+from functools import cache
 from pathlib import Path
 
 from flext_infra import config, u
@@ -158,6 +159,7 @@ class TestsFlextInfraUtilitiesGit:
         bootstrap(repository_root, ("config", "--local", "user.name", "Flext Tests"))
 
     @staticmethod
+    @cache
     def isolated_git_keys() -> Sequence[str]:
         """Return the repository-local Git variables a fixture must not inherit.
 
@@ -165,7 +167,8 @@ class TestsFlextInfraUtilitiesGit:
         hooks. A fixture that inherits them silently operates on the calling
         repository instead of its own tmp_path, so repository construction
         must never inherit them. The set is whatever the installed Git
-        declares, never a hardcoded list.
+        declares, never a hardcoded list. The installed Git is fixed for the
+        session, so the declaration is read once instead of once per command.
 
         Returns:
             The repository-local Git variables a fixture must not inherit.
