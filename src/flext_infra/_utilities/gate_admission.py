@@ -26,7 +26,11 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p
+from flext_infra import c, config, m, p, settings
+from flext_infra._utilities import (
+    FlextInfraUtilitiesMiseBinary,
+    FlextInfraUtilitiesProjectDiscovery,
+)
 
 
 class FlextInfraUtilitiesGateAdmission:
@@ -116,6 +120,7 @@ class FlextInfraUtilitiesGateAdmission:
         if inherited is not None:
             yield cls._inherited_ticket(Path(inherited))
             return
+        cls._preflight_toolchain()
         root = cls.gate_admission_root()
         root.mkdir(parents=True, exist_ok=True)
         ticket, liveness = cls._enqueue(root, gate, repository)
@@ -165,6 +170,35 @@ class FlextInfraUtilitiesGateAdmission:
                 ticket.unlink(missing_ok=True)
             cls._liveness_path(ticket).unlink(missing_ok=True)
             os.close(liveness)
+
+    @staticmethod
+    def _preflight_toolchain() -> None:
+        """Fail before queueing when a declared tool cannot be resolved.
+
+        ADR-032 "Fail early": a heavy route validates what it can decide
+        without running a tool before it takes a slot. Every executable a
+        route runs is declared by the toolchain owner and resolved from the
+        invocation's tool-owning runtime, the same root the native runners
+        use, so each declared tool must resolve to its pinned install first.
+
+        Raises:
+            FileNotFoundError: At the first declared tool that does not resolve.
+
+        """
+        owner_root = FlextInfraUtilitiesProjectDiscovery.runtime_environment_dir(
+            Path.cwd(),
+            runtime_root=type(settings).fetch_global().Infra.runtime_root,
+        ).parent
+        for tool in config.Infra.codegen.toolchain.tools:
+            resolved = FlextInfraUtilitiesMiseBinary.managed_mise_binary(
+                tool.name, owner_root
+            )
+            if resolved.failure:
+                msg = (
+                    f"preflight: declared tool {tool.name} does not resolve "
+                    f"before queueing: {resolved.error}"
+                )
+                raise FileNotFoundError(msg)
 
     @classmethod
     def gate_repeat_refuse(
