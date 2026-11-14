@@ -191,6 +191,15 @@ class FlextInfraModelsConfigMake(
                 ),
             ),
         ] = True
+        admission: Annotated[
+            FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec | None,
+            m.Field(
+                description=(
+                    "Explicit admission exception of a repository-owned verb "
+                    "(ADR-032); fleet verbs declare theirs in make.admission"
+                ),
+            ),
+        ] = None
         profiles: Annotated[
             tuple[FlextInfraConstantsConfig.MakeProfile, ...],
             m.Field(
@@ -974,18 +983,30 @@ class FlextInfraModelsConfigMake(
             ),
         ]
 
+        def limits_for(
+            self,
+            override: FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec,
+        ) -> FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec:
+            """Merge one verb's exception over the defaults.
+
+            Returns:
+                The verb's resolved admission and run limits.
+
+            """
+            return FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec(
+                max_load5=override.max_load5 or self.max_load5,
+                memory_limit_gb=override.memory_limit_gb or self.memory_limit_gb,
+                max_processes=override.max_processes or self.max_processes,
+            )
+
         @m.computed_field
         @property
         def verb_limits(
             self,
         ) -> Mapping[str, FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec]:
-            """Each overridden verb's limits merged over the defaults."""
+            """Each overridden fleet verb's limits merged over the defaults."""
             return {
-                verb: FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec(
-                    max_load5=override.max_load5 or self.max_load5,
-                    memory_limit_gb=override.memory_limit_gb or self.memory_limit_gb,
-                    max_processes=override.max_processes or self.max_processes,
-                )
+                verb: self.limits_for(override)
                 for verb, override in self.overrides.items()
             }
 

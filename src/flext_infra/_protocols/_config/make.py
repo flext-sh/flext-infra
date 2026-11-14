@@ -162,6 +162,17 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def admission(
+            self,
+        ) -> FlextInfraProtocolsConfigMake.MakeAdmissionOverrideSpec | None:
+            """Structural member projected from the owning model.
+
+            Explicit admission exception of a repository-owned verb (ADR-032); fleet
+            verbs declare theirs in make.admission.
+            """
+            ...
+
+        @property
         def profiles(self) -> tuple[FlextInfraConstantsConfig.MakeProfile, ...]:
             """Structural member projected from the owning model.
 
@@ -734,7 +745,13 @@ class FlextInfraProtocolsConfigMake:
         def verb_limits(
             self,
         ) -> Mapping[str, FlextInfraProtocolsConfigMake.MakeAdmissionLimitsSpec]:
-            """Each overridden verb's limits merged over the defaults."""
+            """Each overridden fleet verb's limits merged over the defaults."""
+            ...
+
+        def limits_for(
+            self, override: FlextInfraProtocolsConfigMake.MakeAdmissionOverrideSpec
+        ) -> FlextInfraProtocolsConfigMake.MakeAdmissionLimitsSpec:
+            """Merge one verb's exception over the defaults."""
             ...
 
     @runtime_checkable

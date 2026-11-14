@@ -71,6 +71,14 @@ override ADMISSION_MEMORY_LIMIT_BYTES := {{ limits.memory_limit_bytes }}
 override ADMISSION_MAX_PROCESSES := {{ limits.max_processes }}
 endif
 {%- endfor %}
+{%- for verb in extra_verbs if verb.admission %}
+{%- set limits = make.admission.limits_for(verb.admission) %}
+ifeq ($(ADMISSION_VERB),{{ verb.name }})
+override ADMISSION_MAX_LOAD5 := {{ limits.max_load5 }}
+override ADMISSION_MEMORY_LIMIT_BYTES := {{ limits.memory_limit_bytes }}
+override ADMISSION_MAX_PROCESSES := {{ limits.max_processes }}
+endif
+{%- endfor %}
 override ADMISSION_LOAD5 := $(shell awk -v limit=$(ADMISSION_MAX_LOAD5) '$$2 > limit { print $$2 }' /proc/loadavg)
 ifneq ($(.SHELLSTATUS),0)
 $(error Cannot read the 5-minute load average from /proc/loadavg)
@@ -79,7 +87,7 @@ ifneq ($(ADMISSION_LOAD5),)
 {%- for line in make.admission.refusal_guidance %}
 $(info {{ line }})
 {%- endfor %}
-$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in flext-infra src/flext_infra/config/codegen.yaml)
+$(error Refused: 5-minute load average $(ADMISSION_LOAD5) exceeds the admission limit $(ADMISSION_MAX_LOAD5) of '$(or $(ADMISSION_VERB),$(MAKECMDGOALS))'; run its lighter form now, or declare make.admission.overrides.<verb>.max_load5 in flext-infra src/flext_infra/config/codegen.yaml (fleet verbs) or admission.max_load5 on the repository.extra_verbs entry (project verbs))
 endif
 override ADMISSION_SYSTEMD_RUN := $(shell command -v systemd-run)
 ifeq ($(ADMISSION_SYSTEMD_RUN),)

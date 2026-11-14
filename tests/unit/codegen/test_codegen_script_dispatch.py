@@ -162,6 +162,41 @@ class TestsFlextInfraScriptDispatchMakefile:
         # Script dispatch roots are recorded for operator visibility.
         tm.ok("apps/demo-app/scripts" in rendered)
 
+    def test_extra_verb_admission_exception_is_rendered_for_that_verb(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A repository verb's declared admission limit gates only that verb.
+
+        Project verbs cannot be named in the fleet ``make.admission.overrides``
+        (only built-in verbs are declared there), so the exception travels on
+        the verb's own declaration and merges over the fleet defaults.
+        """
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec.model_validate({
+                    "name": "deploy",
+                    "description": "Publish the runtime.",
+                    "admission": {"max_load5": 80},
+                }),
+                m.Infra.MakeVerbSpec(name="status", description="Report status."),
+            ),
+            script_dispatch=None,
+        )
+        admission = config.Infra.codegen.make.admission
+        limits = admission.limits_for(
+            m.Infra.MakeAdmissionOverrideSpec(max_load5=80),
+        )
+        tm.ok(
+            "ifeq ($(ADMISSION_VERB),deploy)\n"
+            f"override ADMISSION_MAX_LOAD5 := {limits.max_load5}\n"
+            f"override ADMISSION_MEMORY_LIMIT_BYTES := {limits.memory_limit_bytes}\n"
+            f"override ADMISSION_MAX_PROCESSES := {limits.max_processes}\n"
+            "endif" in rendered,
+        )
+        tm.that("ifeq ($(ADMISSION_VERB),status)" in rendered, eq=False)
+
     def test_extra_verb_dispatch_target_is_emitted_exactly_once(
         self,
         tmp_path: Path,
