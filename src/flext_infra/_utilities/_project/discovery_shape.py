@@ -104,6 +104,11 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
             )
         )
         with context as project:
+            if source_project is None:
+                # An imports-only probe: Rope's own option treats a module it
+                # cannot parse as declaring nothing, while the lint gate
+                # reports that syntax error as a finding of the checked tree.
+                project.get_prefs().set("ignore_syntax_errors", value=True)
             for resource in project.get_python_files():
                 if not Path(resource.real_path).is_relative_to(root):
                     continue

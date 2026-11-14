@@ -26,9 +26,16 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         '        "FlextDemoCapabilityHeavy": (\n'
         '            "TIMEOUT_ERROR",\n'
         '            "heavy_value",\n'
-        '            "base_value",\n'
         "        ),\n"
         "    },\n"
+    )
+    _BASES_CALL = (
+        "defer_lazy_bases(\n"
+        "    __name__,\n"
+        "    {\n"
+        '        "FlextDemoCapabilityHeavy": ((".", "FlextDemoCapabilityBase"),),\n'
+        "    },\n"
+        ")\n"
     )
 
     @staticmethod
@@ -57,7 +64,9 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         root = deferred_capability_project
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
-        tm.that(self._initializer(root), has=self._DEFERRED_BLOCK)
+        initializer = self._initializer(root)
+        tm.that(initializer, has=self._DEFERRED_BLOCK)
+        tm.that(initializer, has=self._BASES_CALL)
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote

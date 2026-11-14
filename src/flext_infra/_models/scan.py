@@ -232,6 +232,15 @@ class FlextInfraModelsScan:
             MutableMapping[Path, str],
             m.Field(description="One ownership election per file"),
         ] = m.Field(default_factory=dict[Path, str])
+        runner: Annotated[
+            t.Port[p.Cli.CommandRunner] | None,
+            m.Field(
+                description=(
+                    "Command runner port of the native scanner; absent selects the "
+                    "engine's default runner"
+                )
+            ),
+        ] = None
 
     class ModScanFindingReference(ModScanFinding):
         """Serialized occurrence referencing the report's authenticated inventory."""
@@ -327,6 +336,13 @@ class FlextInfraModelsScan:
         )
         native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
             description="Complete authenticated native output inventory"
+        )
+        native_failures: tuple[str, ...] = m.Field(
+            default=(),
+            description=(
+                "Blocking failures of scanners that stopped early; entries then "
+                "hold only the complete records those scanners had published"
+            ),
         )
 
         @m.model_validator(mode="after")

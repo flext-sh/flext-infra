@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.maintenance import FlextInfraMaintenanceClean
-from tests import c, tm
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,3 +34,20 @@ class TestsFlextInfraCleanService:
 
         tm.ok(result.success)
         tm.fail(broken.is_symlink())
+
+    @staticmethod
+    def test_apply_removes_member_disposables(tmp_path: Path) -> None:
+        """The selector-free verb covers every declared member, not only the root."""
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(tmp_path)
+        cache = config.Infra.codegen.make.clean.cache_dirs[0]
+        (tmp_path / cache).mkdir()
+        (member / cache).mkdir()
+
+        result = FlextInfraMaintenanceClean(
+            repository_root=tmp_path,
+            apply_changes=True,
+        ).execute()
+
+        tm.ok(result.success)
+        tm.fail((tmp_path / cache).exists())
+        tm.fail((member / cache).exists())

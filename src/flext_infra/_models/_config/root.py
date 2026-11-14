@@ -50,6 +50,10 @@ class FlextInfraModelsConfigRoot:
             FlextInfraModelsConfigStatic.GateAdmissionSpec,
             m.Field(description="Host-wide FIFO admission for heavy gates"),
         ]
+        mod_evidence: Annotated[
+            FlextInfraModelsConfigStatic.ModEvidenceSpec,
+            m.Field(description="Native scan artifact retention for mod evidence"),
+        ]
         release: Annotated[
             FlextInfraModelsConfigRelease.ReleasePolicySpec,
             m.Field(description="Release protocol policy"),
