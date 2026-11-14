@@ -203,7 +203,7 @@ url_api = "https://api.github.com/repos/kucherenko/jscpd/releases/assets/6598195
 provenance = "github-attestations"
 
 [[tools."github:microsoft/waza"]]
-version = "0.39.1"
+version = "0.40.0"
 backend = "github:microsoft/waza"
 specifiers = ["latest"]
 
@@ -211,24 +211,24 @@ specifiers = ["latest"]
 version_prefix = "v"
 
 [tools."github:microsoft/waza"."platforms.linux-x64"]
-checksum = "sha256:43fedb4405851021663d75309bd2b6f5df317239859c8c6e741da20565b55fc1"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305573"
+checksum = "sha256:d09117a3c631f44a00a6c362462c951aed83c87751e8c25f39916a77d1013802"
+url = "https://github.com/microsoft/waza/releases/download/v0.40.0/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/709356784"
 
 [tools."github:microsoft/waza"."platforms.linux-x64-musl"]
-checksum = "sha256:43fedb4405851021663d75309bd2b6f5df317239859c8c6e741da20565b55fc1"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-linux-amd64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305573"
+checksum = "sha256:d09117a3c631f44a00a6c362462c951aed83c87751e8c25f39916a77d1013802"
+url = "https://github.com/microsoft/waza/releases/download/v0.40.0/waza-linux-amd64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/709356784"
 
 [tools."github:microsoft/waza"."platforms.macos-arm64"]
-checksum = "sha256:1f8407ee7c6d27fc042ee72c7d6e9c7c1babe6baf0d61e7403ad6ebbdc85eaa5"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-darwin-arm64"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305578"
+checksum = "sha256:a0ccef914ed41a19394e7a01b60578cfd37d3cce0ef3aa785735ac39fa8872bc"
+url = "https://github.com/microsoft/waza/releases/download/v0.40.0/waza-darwin-arm64"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/709356799"
 
 [tools."github:microsoft/waza"."platforms.windows-x64"]
-checksum = "sha256:719794d0986730c61fa0fbeedc01743d3c0973d953640db55c9d239a9be8c5bf"
-url = "https://github.com/microsoft/waza/releases/download/v0.39.1/waza-windows-amd64.exe"
-url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/679305622"
+checksum = "sha256:a388f5577ecbf10d4edd775a5e2c37a7a5cbdd0758e66d8718992942687dd2e4"
+url = "https://github.com/microsoft/waza/releases/download/v0.40.0/waza-windows-amd64.exe"
+url_api = "https://api.github.com/repos/microsoft/waza/releases/assets/709356835"
 
 [[tools."github:qltysh/qlty"]]
 version = "0.667.0"
