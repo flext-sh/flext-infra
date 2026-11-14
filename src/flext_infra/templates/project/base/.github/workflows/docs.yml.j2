@@ -57,6 +57,7 @@ jobs:
       # Why: save on every outcome — including a failing gate — so the next run
       # starts warm. Only written when the restore missed.
 {%- include "_fragments/toolchain_cache_save.j2" %}
+{%- include "_fragments/custom_steps.j2" %}
 
       - name: Generate documentation
         run: make gen
@@ -123,6 +124,7 @@ jobs:
         run: make setup
 
 {%- include "_fragments/toolchain_cache_save.j2" %}
+{%- include "_fragments/custom_steps.j2" %}
 
       - name: Generate documentation
         run: make gen
