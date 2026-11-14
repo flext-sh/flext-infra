@@ -663,16 +663,21 @@ class TestsFlextInfraPytestRunner:
         *,
         ci_context: bool,
     ) -> None:
-        """An external-token gate is deselected, never a KeyError, and reported.
+        """A harness gate is deselected, never a KeyError, and reported.
 
-        gate-budget/engineering-core: incremental verification records external
-        gates as not executed; the full verb owns their execution. Under the Make
-        CI token the same deselection holds, so CI reports them as not executed
-        instead of skipping them at setup. The marker set is the SSOT
-        ``external-gate-markers``; every expectation derives from it.
+        gate-budget/engineering-core: ``make tests`` records external gates as
+        not executed; the full verb owns their execution. Under the Make CI
+        token every external gate is deselected; locally the harness gates are,
+        so a suite whose inputs only its harness provides never runs under the
+        plain verb. The marker sets are the SSOT ``external-gate-markers`` and
+        ``harness-gate-markers``; every expectation derives from them.
         """
         pytest_policy = config.Infra.tooling.tools.pytest
-        markers = pytest_policy.external_gate_markers
+        markers = (
+            pytest_policy.external_gate_markers
+            if ci_context
+            else pytest_policy.harness_gate_markers
+        )
         cache = config.Infra.codegen.make.testmon_cache
         marker_lines = "".join(
             f'  "{marker}",\n' for marker in pytest_policy.standard_markers
@@ -687,7 +692,7 @@ class TestsFlextInfraPytestRunner:
             cached_runner_project / cache.target_directory / "test_external.py"
         ).write_text(
             "import os\n\nimport pytest\n\n\n"
-            f"@pytest.mark.{markers[0]}\n"
+            f"@pytest.mark.{pytest_policy.harness_gate_markers[0]}\n"
             "def test_needs_external_environment() -> None:\n"
             '    os.environ["RUNNER_SAMPLE_EXTERNAL_TOKEN"]\n',
             encoding="utf-8",

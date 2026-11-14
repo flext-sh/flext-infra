@@ -101,6 +101,29 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
+    def test_no_generated_verb_prunes_host_wide_mise_tools(
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """A project verb never retires Mise tool installs of the whole host.
+
+        ``mise prune`` decides from every configuration tracked on the host, so
+        a project ``make upg`` deleted the ccs and otelcol-contrib installs that
+        running host units executed (flext-tprlj; ai-hub aihub-kdrjg.2.2). Host
+        tool retirement belongs to the host-runtime owner that knows its units.
+        """
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        mise_lines = [
+            line
+            for line in makefile.splitlines()
+            if "mise_bin" in line or "MISE)" in line
+        ]
+        tm.that(mise_lines, empty=False)
+        tm.that([line for line in mise_lines if " prune" in line], empty=True)
+
+    @staticmethod
     def test_environment_prerequisites_resolve_without_running_recipes(
         generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:

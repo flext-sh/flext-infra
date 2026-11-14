@@ -142,6 +142,10 @@ requirements. Connectivity prerequisite skips follow root `AGENTS.md`; they neve
 prove the omitted service works. Marker applicability belongs to typed configuration,
 and the runner records every excluded item. An exclusion is never a passed test. A
 runner that violates this contract is repaired at its owner and rerun through Make.
+`make tests` deselects `harness-gate-markers` (`remote`) locally exactly as CI
+does and reports them as `not_executed_external_gates`: their suites run only
+under the harness that provides their inputs, which names the suite. Other
+external gates (`docker`) stay local; `make tests-full` selects every marker.
 
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.
