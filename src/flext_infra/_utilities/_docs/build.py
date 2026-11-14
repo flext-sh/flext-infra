@@ -8,17 +8,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import mkdocs.commands.serve
 from flext_cli import u
 
 from flext_infra import c, m, p
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsBase
-
-if TYPE_CHECKING:
-    from types import ModuleType
-
 
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
@@ -98,7 +92,7 @@ class FlextInfraUtilitiesDocsBuild:
     ) -> p.Infra.DocsPhaseReport:
         """Build one MkDocs config file into a site directory.
 
-        MkDocs owns strict warning accounting; its first failure escapes.
+        ProperDocs owns strict warning accounting; its first failure escapes.
 
         Returns:
             The resulting ``m.Infra.DocsPhaseReport``.
@@ -122,13 +116,13 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def _run_mkapi(settings: Path, site_dir: Path) -> None:
-        """Run MkDocs' complete native build lifecycle in the current runtime."""
+        """Run the docs engine's native strict build as a child process."""
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         u.Cli.run_checked(
             (
                 sys.executable,
                 "-m",
-                "mkdocs",
+                c.Infra.DOCS_ENGINE_MODULE,
                 "build",
                 "--strict",
                 "--clean",
@@ -148,7 +142,7 @@ class FlextInfraUtilitiesDocsBuild:
         livereload: bool,
         strict: bool,
     ) -> p.Infra.DocsPhaseReport:
-        """Serve one scope through the MkDocs Python serve API (blocking).
+        """Serve one scope through the docs engine's dev server (blocking).
 
         Returns:
             The resulting ``m.Infra.DocsPhaseReport``.
@@ -164,12 +158,21 @@ class FlextInfraUtilitiesDocsBuild:
                 site_dir="",
                 passed=False,
             )
-        FlextInfraUtilitiesDocsBuild._serve_sdk(mkdocs.commands.serve).serve(
-            config_file=str(settings),
-            livereload=livereload,
-            dev_addr=dev_addr,
-            strict=strict,
-        )
+        _ = u.Cli.run_live(
+            (
+                sys.executable,
+                "-m",
+                c.Infra.DOCS_ENGINE_MODULE,
+                "serve",
+                "--config-file",
+                str(settings.resolve()),
+                "--dev-addr",
+                dev_addr,
+                "--strict" if strict else "--no-strict",
+                *(() if livereload else ("--no-livereload",)),
+            ),
+            cwd=settings.resolve().parent,
+        ).unwrap()
         return m.Infra.DocsPhaseReport(
             phase="serve",
             scope=scope.name,
@@ -200,22 +203,6 @@ class FlextInfraUtilitiesDocsBuild:
                 f"Site dir: {report.site_dir}",
             ],
         ).unwrap()
-
-    @staticmethod
-    def _serve_sdk(module: ModuleType) -> p.Infra.MkDocsServeModule:
-        """Validate the native SDK serve dependency before effects.
-
-        Returns:
-            The native module through its required serve port.
-
-        Raises:
-            TypeError: If the dependency lacks its declared operation.
-
-        """
-        if isinstance(module, p.Infra.MkDocsServeModule):
-            return module
-        message = "MkDocs serve module does not satisfy its public contract"
-        raise TypeError(message)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsBuild"]

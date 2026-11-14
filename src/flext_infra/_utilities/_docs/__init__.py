@@ -206,7 +206,6 @@ install_lazy_exports(
             "_run_mkapi",
             "docs_serve_mkdocs",
             "docs_write_build_reports",
-            "_serve_sdk",
         ),
         "FlextInfraUtilitiesDocsCollection": (
             "_CollectionState",
