@@ -1689,6 +1689,9 @@ Infra:
         patterns:
         - "!scripts/"
         - "scripts/*.py"
+        # The generated package initializer is tracked: without it a checker
+        # names scripts/hooks/* as hooks.* and `import scripts.hooks` fails.
+        - "!scripts/__init__.py"
         - "scripts/*.sh"
         - "scripts/*.md"
         - "scripts/maintenance/"

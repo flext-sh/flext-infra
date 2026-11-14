@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import overload
 
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._utilities._rope import (
     FlextInfraUtilitiesRopeAst,
     FlextInfraUtilitiesRopeRuntimeBase,
@@ -161,6 +161,38 @@ class FlextInfraUtilitiesRopeCorePyModule:
             msg = "rope file resource returned a non-source module"
             raise TypeError(msg)
         return pymodule
+
+    @classmethod
+    def package_initializer(
+        cls,
+        rope_project: t.Infra.RopeProject,
+        package: str,
+    ) -> t.Infra.RopeSourceModule | None:
+        """Elect a package's source initializer without executing it.
+
+        The project's module finder elects the package folder, searching the
+        project's source folders before its python path, and the initializer
+        is parsed through the project's own view.
+
+        Returns:
+            The source initializer, or ``None`` when ``package`` is not a
+            package with an initializer on the project's search path.
+
+        """
+        resource = rope_project.find_module(package)
+        if resource is None or FlextInfraUtilitiesRopeRuntimeTypes.file_resource(
+            resource
+        ):
+            return None
+        initializer = Path(resource.real_path) / c.Infra.INIT_PY
+        if not initializer.is_file():
+            return None
+        return cls.resolve_pymodule(
+            rope_project,
+            FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(
+                rope_project, initializer
+            ),
+        )
 
     @staticmethod
     def resolve_module_imports(

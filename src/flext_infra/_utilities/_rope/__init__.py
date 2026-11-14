@@ -229,6 +229,7 @@ install_lazy_exports(
             "find_identifier_offset_in_lines",
             "resolvable_module_resource",
             "resolve_pymodule",
+            "package_initializer",
             "resolve_module_imports",
         ),
         "FlextInfraUtilitiesRopeCoreResources": (

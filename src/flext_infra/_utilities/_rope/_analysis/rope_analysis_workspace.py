@@ -254,6 +254,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             modules_by_path[str(resolved_file_path)] = entry
             modules_by_dir.setdefault(package_dir, []).append(entry)
             package_dirs.add(package_dir)
+            # A package is importable only through its ancestors: every
+            # directory its dotted name spans is a package too, even when it
+            # holds no module of its own.
+            package_dirs.update(
+                package_dir.parents[: package_name.count(".")]
+                if project_root is not None
+                else ()
+            )
             if package_name:
                 package_dir_by_name[package_name] = package_dir
                 if (
@@ -327,24 +335,46 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
         init_path = package_dir / c.Infra.INIT_PY
         init_entry = modules_by_path.get(str(init_path))
-        project_root = (
-            init_entry.project_root
-            if init_entry is not None
-            else next(
-                (
-                    entry.project_root
-                    for entry in dir_modules
-                    if entry.project_root is not None
-                ),
-                None,
+        if init_entry is not None:
+            return (
+                dir_modules,
+                init_path,
+                init_entry.project_root,
+                init_entry.package_name,
             )
+        if dir_modules:
+            return (
+                dir_modules,
+                init_path,
+                next(
+                    (
+                        entry.project_root
+                        for entry in dir_modules
+                        if entry.project_root is not None
+                    ),
+                    None,
+                ),
+                dir_modules[0].package_name,
+            )
+        # A module-less ancestor takes its identity from the nearest package
+        # below it: the same owner, and that package's name minus the levels
+        # between them.
+        below = min(
+            (
+                entry
+                for module_dir, entries in modules_by_dir.items()
+                if module_dir.is_relative_to(package_dir)
+                for entry in entries[:1]
+            ),
+            key=lambda entry: (len(entry.package_dir.parts), entry.package_dir),
         )
-        package_name = (
-            init_entry.package_name
-            if init_entry is not None
-            else next((entry.package_name for entry in dir_modules), "")
+        levels = len(below.package_dir.relative_to(package_dir).parts)
+        return (
+            dir_modules,
+            init_path,
+            below.project_root,
+            ".".join(below.package_name.split(".")[:-levels]),
         )
-        return dir_modules, init_path, project_root, package_name
 
     @staticmethod
     def _register_package_identity(
