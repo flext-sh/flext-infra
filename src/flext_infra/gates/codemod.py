@@ -264,6 +264,11 @@ class FlextInfraGatesCodemod(FlextInfraGates):
             or outcome.raw_return_code not in {0, 1}
             or (outcome.raw_return_code == 0 and bool(scan.stderr.strip()))
         ):
+            # A scanner that stops early still publishes the matches it emitted
+            # to stdout. Measure that payload so the gate reports the true
+            # finding total and each rule/file instead of collapsing the whole
+            # native report into this one failure.
+            found.extend(self._published_scan_findings(scan, ruleset))
             failures.append(failure)
             return False
         # DiagnosticError (exit 1) requires a valid RuleMatch array,

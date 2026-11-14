@@ -742,7 +742,10 @@ class FlextInfraUtilitiesLazyInitPlan:
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and name
             and "." not in name
-        ) or (name == c.Infra.DIR_TESTS and context.pkg_dir.name == c.Infra.DIR_TESTS)
+        ) or (
+            name in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES, c.Infra.DIR_SCRIPTS}
+            and context.pkg_dir.name == name
+        )
 
     @staticmethod
     def _lazy_init_shadows_stdlib(
