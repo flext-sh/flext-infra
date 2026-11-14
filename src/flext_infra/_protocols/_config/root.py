@@ -66,6 +66,11 @@ class FlextInfraProtocolsConfigRoot:
             ...
 
         @property
+        def mod_evidence(self) -> FlextInfraProtocolsConfigStatic.ModEvidenceSpec:
+            """Native scan artifact retention for mod evidence."""
+            ...
+
+        @property
         def release(self) -> FlextInfraProtocolsConfigRelease.ReleasePolicySpec:
             """Release protocol policy."""
             ...
