@@ -110,45 +110,12 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @staticmethod
     @cache
-    def package_exports(package: str) -> tuple[Path, Mapping[str, str]] | None:
-        """Read a package's directory and published lazy map from source.
-
-        The top-level package is located through its import spec and a
-        sub-package is its directory below it. The exports are read statically
-        from the generated initializer, never through the package module object.
-
-        Returns:
-            The package directory and each published name's target module, or
-            ``None`` when the package is not importable or has no initializer.
-
-        Raises:
-            ValueError: The package declares its lazy map indirectly.
-
-        """
-        top, _, rest = package.partition(".")
-        spec = find_spec(top)
-        locations = None if spec is None else spec.submodule_search_locations
-        if not locations:
-            return None
-        directory = Path(next(iter(locations))).joinpath(*filter(None, rest.split(".")))
-        initializer = directory / c.Infra.INIT_PY
-        if not initializer.is_file():
-            return None
-        targets, references = (
-            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                initializer.read_text(encoding=c.DEFAULT_ENCODING)
-            )
-        )
-        if references:
-            msg = f"{directory}: lazy map is declared through {', '.join(references)}"
-            raise ValueError(msg)
-        return directory, MappingProxyType({
-            name: module for module, names in targets for name in names
-        })
-
-    @staticmethod
     def core_package_exports() -> tuple[Path, Mapping[str, str]]:
         """Read the core package directory and its published lazy map from source.
+
+        The core package is located through its import spec and its exports are
+        read statically from its generated initializer, never through the
+        package module object.
 
         Returns:
             The core package directory and each published name's target module.
@@ -158,13 +125,23 @@ class FlextInfraUtilitiesCodegenNamespace:
                 map indirectly.
 
         """
-        exports = FlextInfraUtilitiesCodegenNamespace.package_exports(
-            c.Infra.PKG_CORE_UNDERSCORE
-        )
-        if exports is None:
+        spec = find_spec(c.Infra.PKG_CORE_UNDERSCORE)
+        locations = None if spec is None else spec.submodule_search_locations
+        if not locations:
             msg = f"{c.Infra.PKG_CORE_UNDERSCORE} is not an importable package"
             raise ValueError(msg)
-        return exports
+        core_dir = Path(next(iter(locations)))
+        targets, references = (
+            FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
+                (core_dir / c.Infra.INIT_PY).read_text(encoding=c.DEFAULT_ENCODING)
+            )
+        )
+        if references:
+            msg = f"{core_dir}: lazy map is declared through {', '.join(references)}"
+            raise ValueError(msg)
+        return core_dir, MappingProxyType({
+            name: module for module, names in targets for name in names
+        })
 
     @staticmethod
     @cache

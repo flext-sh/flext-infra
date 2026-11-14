@@ -3976,13 +3976,17 @@ bindings in authored declaration owners remain errors, not optional exports.
 A deferred facade part follows the root ADR-018 stand-in composition law. A base
 that another package's generated initializer publishes is shared as
 `(package, export)` exactly as the source imports it, whether the source names the
-class or its published letter. The route comes from that package's plan in the same
-run, or from its installed initializer source, so workspace, standalone and
-consumer runs render the same initializer. A builtin or third-party base fails
-generation, and so does an in-package base flattened around such a route, because
-the flattened order could differ from the real MRO. A module-less ancestor
-directory receives its initializer unless the project declares it a repository
-namespace.
+class or its published letter. The route comes from that package's generator-owned
+plan in the same run, or else from the generated initializer that the project's
+module finder elects, searching the project's source folders before its python
+path, read without import. The facade walk stops at such a base, because the
+publishing package's own plan decides its stand-ins, so workspace, standalone and
+consumer runs select the same parts and render the same initializer. A base that is
+neither a class of its package nor published by a generated FLEXT initializer, such
+as a builtin or third-party class, fails generation by name. So does an in-package
+base flattened after such a route or derived from one, because the flattened order
+could differ from the real MRO. A module-less ancestor directory receives its
+initializer unless the project declares it a repository namespace.
 
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:

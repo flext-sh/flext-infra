@@ -1,4 +1,4 @@
-"""Examples utilities facade composing a part based on an ancestor letter.
+"""Examples utilities facade composing the capability part of each scenario.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,7 +10,7 @@ from examples._capability import ExamplesFlextDemoCapabilityExtra
 
 
 class ExamplesFlextDemoUtilities(ExamplesFlextDemoCapabilityExtra):
-    """Facade whose part extends a letter another package publishes."""
+    """Facade whose part each scenario bases on another package's export."""
 
 
 u = ExamplesFlextDemoUtilities
