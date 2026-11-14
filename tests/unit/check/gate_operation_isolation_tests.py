@@ -25,6 +25,8 @@ class TestsFlextInfraGateOperationIsolation:
     ) -> None:
         """The final status stays red and independent effects follow explicit policy."""
         project = u.Tests.mk_project(tmp_path, "native-fixture", with_src=True)
+        # The check elects the project's runtime from its Git checkout.
+        u.Tests.initialize_git_repo(project)
         broken = project / "src" / "broken.py"
         broken.write_text("def broken(:\n", encoding="utf-8")
         before = broken.read_bytes()
