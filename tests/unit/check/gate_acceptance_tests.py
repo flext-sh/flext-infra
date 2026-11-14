@@ -286,6 +286,8 @@ class TestsFlextInfraGateAcceptance:
             pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
             with_src=True,
         )
+        # The check elects the project's runtime from its Git checkout.
+        u.Tests.initialize_git_repo(project)
         (project / "src" / "broken.py").write_text(
             "missing_name( 1 )\n",
             encoding="utf-8",

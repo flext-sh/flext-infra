@@ -211,17 +211,29 @@ class TestsFlextInfraBanditAndMarkdownGates:
 
     @staticmethod
     def test_bandit_scans_large_tree_with_sanitized_path(tmp_path: Path) -> None:
-        """The workspace interpreter runs Bandit without any PATH-provided tool."""
+        """The workspace interpreter runs Bandit; no PATH-provided Bandit can run.
+
+        Raises:
+            FileNotFoundError: If the host PATH has no git for the discovery.
+
+        """
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         for index in range(51):
             (project_dir / c.Infra.DEFAULT_SRC_DIR / f"module_{index}.py").write_text(
                 "def identity(value):\n    return value\n",
                 encoding="utf-8",
             )
-        empty_path = tmp_path / "empty-path"
-        empty_path.mkdir()
+        # The PATH holds only Git, the one host prerequisite of the source
+        # discovery, so a PATH-provided Bandit can never be what runs.
+        git_only_path = tmp_path / "git-only-path"
+        git_only_path.mkdir()
+        git = shutil.which("git")
+        if git is None:
+            msg = "the source discovery requires git on the host PATH"
+            raise FileNotFoundError(msg)
+        (git_only_path / "git").symlink_to(git)
 
-        with tm.scope(env={"PATH": str(empty_path)}):
+        with tm.scope(env={"PATH": str(git_only_path)}):
             result = u.Tests.run_gate_check(
                 FlextInfraGatesBandit, tmp_path, project_dir
             )
