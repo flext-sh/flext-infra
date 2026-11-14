@@ -9,6 +9,7 @@ from __future__ import annotations
 import pathlib as pl
 from typing import ClassVar
 
+from flext_infra import t
 from flext_infra.gates import FlextInfraDuplicationReport
 from tests import tm
 
@@ -51,7 +52,7 @@ class TestsDuplicationGeneratedSources(FlextInfraDuplicationReport):
         other = tmp_path / "other.py"
         other.write_text("value = 1\n", encoding="utf-8")
 
-        generated_clone = {
+        generated_clone: t.JsonMapping = {
             "firstFile": {
                 "name": str(generated),
                 "startLoc": {"line": 1, "column": 0},
@@ -64,7 +65,7 @@ class TestsDuplicationGeneratedSources(FlextInfraDuplicationReport):
             },
             "lines": 2,
         }
-        authored_clone = {
+        authored_clone: t.JsonMapping = {
             "firstFile": {
                 "name": str(authored),
                 "startLoc": {"line": 1, "column": 0},

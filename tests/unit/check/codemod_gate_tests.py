@@ -11,8 +11,7 @@ from pathlib import Path
 from re import escape
 from typing import ClassVar, override
 
-from flext_infra import FlextInfraCli, config, r
-from flext_infra import u as infra_u
+from flext_infra import FlextInfraCli, config, r, u as infra_u
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates import FlextInfraGatesCodemod
@@ -181,8 +180,10 @@ class TestsFlextInfraCodemodGate:
                 if issue.code == c.Infra.ToolOutcome.ERROR.value
             ),
             eq=[
-                "ast-grep exited with code -2: timed_out=True; "
-                "forwarded_signal=None"
+                (
+                    "ast-grep exited with code -2: timed_out=True; "
+                    "forwarded_signal=None"
+                )
             ],
         )
         tm.ok(execution.raw_receipt is not None)
@@ -759,6 +760,10 @@ class TestsFlextInfraCodemodGate:
                 u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         finally:
             blocked.chmod(original_mode)
+
+
+class TestsFlextInfraCodemodNativeContract:
+    """Native scanner contract values validate strictly."""
 
     @staticmethod
     @c.Tests.MARK.parametrize("payload", ["", "[", "{}", "[{}]", "[null]"])
