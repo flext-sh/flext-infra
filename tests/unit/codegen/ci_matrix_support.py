@@ -17,7 +17,9 @@ class TestsFlextInfraCodegenCiMatrixSupport:
     """Render one fresh internal_flext project for CI matrix contract classes."""
 
     @staticmethod
-    def render_project(root: Path) -> Path:
+    def render_project(
+        root: Path, *, codegen_inputs: t.JsonMapping | None = None
+    ) -> Path:
         """Render one fresh internal_flext project into root and return it.
 
         Returns:
@@ -43,12 +45,14 @@ class TestsFlextInfraCodegenCiMatrixSupport:
                 ),
                 "integration": integration,
             })
+            # The case's own codegen inputs and the repository share one dump.
             tm.ok(
                 u.Cli.yaml_dump(
                     root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
                     {
                         "Infra": {
                             "codegen": {
+                                **(codegen_inputs or {}),
                                 "repository": declaration.model_dump(
                                     mode="json", exclude_unset=True
                                 ),
