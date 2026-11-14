@@ -96,6 +96,19 @@ class FlextInfraModelsConfigStatic:
             ),
         ]
 
+    class ModEvidenceSpec(FlextInfraModelsConfigContract.ConfigContract):
+        """Retention of the native scan artifacts that mod evidence references."""
+
+        native_artifact_retention_seconds: Annotated[
+            t.PositiveInt,
+            m.Field(
+                description=(
+                    "Age after which an artifact no published evidence references "
+                    "is removed; longer than any route that can still publish it"
+                ),
+            ),
+        ]
+
     class GateAdmissionSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Host-wide FIFO admission for heavy gates (FLEXT ADR-032)."""
 

@@ -85,6 +85,11 @@ class FlextInfraConstantsRefactor:
         / "violations-sweep.json"
     )
     "Canonical single-file receipt for the latest violations sweep."
+    MOD_SCAN_EVIDENCE_RELATIVE_PATHS: ClassVar[tuple[Path, ...]] = (
+        MOD_SCAN_REPORT_RELATIVE_PATH,
+        VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH,
+    )
+    "Every published evidence report whose entries reference the native store."
     VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured violations-sweep report schema version."
     LINT_REPORT_COUNT_LINE: ClassVar[t.RegexPattern] = re.compile(

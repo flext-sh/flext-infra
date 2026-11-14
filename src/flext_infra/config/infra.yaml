@@ -85,6 +85,13 @@ Infra:
       mod_selection:
         window_seconds: 300
         lighter: make mod with a different LAWS or RULES selection
+  # Mod evidence references exact native scan bytes kept in
+  # .reports/refactor/native/<sha256>. After each evidence publication, an
+  # artifact that no published evidence references and that is older than
+  # this retention is removed: no live route outlasts it, so no in-flight
+  # scan loses bytes it has not published yet.
+  mod_evidence:
+    native_artifact_retention_seconds: 86400
   source_scan:
     # tests/ and examples/ are first-class code under the same gates as src/;
     # leaving them out of the scan blinds every analyzer to half the

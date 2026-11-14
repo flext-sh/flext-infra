@@ -409,6 +409,11 @@ under bead `flext-brr3y`:
 - **Executed rules are a gate metric.** The number of rules a `make mod` run
   executes per project is reported from `mod-findings.json` (`totals_by_rule`).
   Its budget is a typed configuration key, never a number in code.
+- **Evidence keeps only the bytes it references.** The native scan bytes behind
+  the evidence live in `.reports/refactor/native/<sha256>`. Each evidence
+  publication removes the artifacts that no declared evidence report references
+  and that are older than `mod_evidence.native_artifact_retention_seconds`, so
+  an in-flight scan never loses bytes it has not yet published.
 
 These laws are authored rules over computed facts, each with fixtures (epic
 `flext-lqfqo`):
