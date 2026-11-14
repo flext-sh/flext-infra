@@ -731,7 +731,11 @@ class FlextInfraUtilitiesLazyInitPlan:
     def lazy_init_is_facade_root(
         context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
     ) -> bool:
-        """Return whether a package is a public ``src`` root or the tests root.
+        """Return whether a package is a public ``src`` root or a tier root.
+
+        ``tests``, ``examples`` and ``scripts`` follow the ``src`` rules, so the
+        root package of each publishes its own facades; a facade of one tier
+        composed by another tier's facade stays real and is never a part.
 
         Returns:
             Whether the package owns a root facade surface.
@@ -742,7 +746,10 @@ class FlextInfraUtilitiesLazyInitPlan:
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
             and name
             and "." not in name
-        ) or (name == c.Infra.DIR_TESTS and context.pkg_dir.name == c.Infra.DIR_TESTS)
+        ) or (
+            name in {c.Infra.DIR_TESTS, c.Infra.DIR_EXAMPLES, c.Infra.DIR_SCRIPTS}
+            and context.pkg_dir.name == name
+        )
 
     @staticmethod
     def _lazy_init_shadows_stdlib(
