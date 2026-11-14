@@ -1274,11 +1274,19 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return result_type.from_failure(topology)
         subprojects, external, pending = topology.value
+        # An attached checkout (a superproject gitlink) renders the workspace
+        # profile from its own root too, exactly as its parent renders it.
+        identity = u.Infra.git_identity(
+            m.Infra.GitRepoRequest(repo_root=resolved_root),
+            include_status=False,
+        )
+        if identity.failure:
+            return result_type.from_failure(identity)
         observed_repository = repository.value.model_copy(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects or pending
+                    if subprojects or pending or identity.value.is_submodule
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },
