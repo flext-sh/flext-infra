@@ -150,14 +150,10 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
                 c.Infra.CodegenConformScope.SELF,
             )
         )
-        mise = next(
-            item for item in plan.files if item.path == root / ".mise.toml"
-        )
+        mise = next(item for item in plan.files if item.path == root / ".mise.toml")
         tm.that(u.Tests.codegen_file_text(mise), has='"terraform" = "1.9.8"')
 
-    def test_conflicting_member_tool_version_fails_loud(
-        self, tmp_path: Path
-    ) -> None:
+    def test_conflicting_member_tool_version_fails_loud(self, tmp_path: Path) -> None:
         """Two effective versions of one tool name both declarations."""
         root, member = self._attached_workspace(tmp_path)
         self._declare_tool(root, "terraform", "1.9.7")
