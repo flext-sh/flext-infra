@@ -582,6 +582,11 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         module, name = owner
         facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, module)
+        if facts is not None and name not in facts.classes:
+            name = (
+                FlextInfraUtilitiesPythonModel.python_model_class_alias(facts, name)
+                or name
+            )
         if facts is None or name not in facts.classes:
             return cls._lazy_init_class_members(run, scope, owner), ()
         members = dict.fromkeys(cls._lazy_init_body_members(facts, name))
@@ -783,6 +788,12 @@ class FlextInfraUtilitiesLazyInitPlan:
                 continue
             visited.add((module, name))
             facts = python.python_model_module(run.model, module)
+            # A published letter (``p = FlextLdifProtocols``) names its class.
+            name = (
+                python.python_model_class_alias(facts, name) or name
+                if facts is not None and name not in facts.classes
+                else name
+            )
             if (
                 facts is None
                 or name not in facts.classes
