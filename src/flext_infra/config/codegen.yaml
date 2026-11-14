@@ -1547,7 +1547,9 @@ Infra:
         - bandit>=1.9.4
         # Floors let uv select released tools without a cap or downgrade path.
         # Every diagnostic from the resolved release remains blocking.
-        - mkdocs
+        # ProperDocs is the docs engine (FLEXT ADR-009); the MkDocs plugins and
+        # theme below load through its mkdocs entry points.
+        - properdocs>=1.6.7
         - mkdocs-autorefs
         - mkdocs-exclude>=1.0.2
         - mkdocs-git-revision-date-localized-plugin>=1.5.4
@@ -1601,7 +1603,10 @@ Infra:
         - vulture>=2.16
         - yamlfix>=1.19.1
         # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
+        # ProperDocs replaced the unmaintained MkDocs engine (FLEXT ADR-009);
+        # mkdocs stays only as the Material theme's own transitive dependency.
         retired_dev:
+        - mkdocs
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]

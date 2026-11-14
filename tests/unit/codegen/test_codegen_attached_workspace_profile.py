@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, m, p, t, tm, u
+from tests import c, e, m, p, t, tm, u
 
 pytestmark = c.Tests.MARK.slow
 
@@ -21,10 +21,11 @@ pytestmark = c.Tests.MARK.slow
 class TestsFlextInfraCodegenAttachedWorkspaceProfile:
     """Root-scope and member-scope generation agree on an attached member."""
 
+    # Surfaces both scopes can plan; SELF-only surfaces (c.Infra.SELF_SCOPE_SURFACES,
+    # such as gitignore) are rejected for the declared scope at the request.
     SURFACES = (
         c.Infra.CodegenConformSurface.MAKEFILE,
         c.Infra.CodegenConformSurface.PYPROJECT,
-        c.Infra.CodegenConformSurface.GITIGNORE,
     )
 
     @staticmethod
@@ -54,13 +55,21 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
         return root, member
 
     @staticmethod
-    def _declare_tool(project: Path, name: str, version: str) -> None:
+    def _declare_tool(project: Path, name: str, declared: str) -> None:
         """Layer one toolchain tool over the project's codegen declaration."""
         path = project / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME
         document = u.Cli.yaml_load_mapping(path) if path.exists() else {}
         infra = u.Cli.json_as_mapping(document.get("Infra", {}))
         codegen = u.Cli.json_as_mapping(infra.get("codegen", {}))
-        tool: t.JsonDict = {"name": name, "version": version}
+        tool: t.JsonDict = {
+            "name": name,
+            "version": declared,
+            "version_probe": {
+                "binary": name,
+                "arguments": ["version"],
+                "pattern": "{version}",
+            },
+        }
         tm.ok(
             u.Cli.yaml_dump(
                 path,
@@ -137,18 +146,50 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
         tm.that(set(from_root), has=Path(c.Infra.MAKEFILE_FILENAME))
         tm.that(from_member, eq=from_root)
 
-    def test_linked_worktree_of_attached_member_renders_standalone(
+    def test_linked_worktree_of_attached_member_keeps_its_own_profile(
         self, tmp_path: Path
     ) -> None:
-        """A linked worktree of an attached member is no gitlink of its own."""
+        """A linked worktree outside the superproject is not attached to it."""
         _, member = self._attached_workspace(tmp_path)
-        lane = u.Tests.git_linked_lane(tmp_path / "lanes", member, "lane")
-        makefile = self._member_files(lane, lane, c.Infra.CodegenConformScope.SELF)[
-            Path(c.Infra.MAKEFILE_FILENAME)
-        ]
+        lane = tmp_path / "lane"
+        tm.ok(
+            u.Cli.run_checked((
+                "git",
+                "-C",
+                str(member),
+                "worktree",
+                "add",
+                "-b",
+                "lane",
+                str(lane),
+            ))
+        )
+        attached = tm.ok(
+            self._plan(
+                member,
+                c.Infra.CodegenConformSurface.MAKEFILE,
+                c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        linked = tm.ok(
+            self._plan(
+                lane,
+                c.Infra.CodegenConformSurface.MAKEFILE,
+                c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        makefile = Path(c.Infra.MAKEFILE_FILENAME)
         tm.that(
-            makefile,
-            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
+            u.Tests.codegen_file_text(
+                next(item for item in attached.files if item.path == member / makefile)
+            ),
+            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.WORKSPACE}",
+        )
+        tm.that(
+            u.Tests.codegen_file_text(
+                next(item for item in linked.files if item.path == lane / makefile)
+            ),
+            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE}",
         )
 
     def test_workspace_runtime_provides_attached_member_tools(
@@ -172,11 +213,11 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
         root, member = self._attached_workspace(tmp_path)
         self._declare_tool(root, "terraform", "1.9.7")
         self._declare_tool(member, "terraform", "1.9.8")
-        tm.fail(
+        with u.Tests.raises(
+            e.OperationError, match="workspace toolchain conflict for terraform"
+        ):
             self._plan(
                 root,
                 c.Infra.CodegenConformSurface.MISE_CONFIG,
                 c.Infra.CodegenConformScope.SELF,
-            ),
-            has="workspace toolchain conflict for terraform",
-        )
+            )

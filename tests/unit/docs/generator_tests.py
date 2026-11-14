@@ -487,6 +487,7 @@ class TestsFlextInfraDocsGenerator:
         )
         (workspace / "mkdocs.yml").write_text(
             "site_name: Documentation contract\ndocs_dir: docs\n"
+            "theme:\n  name: material\n"
             "exclude_docs: |\n  README.md\nplugins:\n  - autorefs\n"
             "  - mkdocstrings:\n      handlers:\n        python:\n"
             "          paths: [src]\n",
