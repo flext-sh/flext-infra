@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import tempfile
 import time
 from collections import Counter
 from collections.abc import Sequence
