@@ -985,7 +985,7 @@ class FlextInfraModelsConfigMake(
 
         def limits_for(
             self,
-            override: FlextInfraModelsConfigMake.MakeAdmissionOverrideSpec,
+            override: p.Infra.MakeAdmissionOverrideSpec,
         ) -> FlextInfraModelsConfigMake.MakeAdmissionLimitsSpec:
             """Merge one verb's exception over the defaults.
 
