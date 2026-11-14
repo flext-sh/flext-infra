@@ -505,18 +505,131 @@ class FlextInfraUtilitiesLazyInitPlan:
             cls._lazy_init_facade_composed(run)
             - cls._lazy_init_facade_roots(run).keys()
         )
+        exporters = cls._lazy_init_part_exporters(run, parts)
         for package_dir, plan in tuple(run.plans.items()):
             scope = (plan.context, plan.lazy_map)
-            deferred = {
-                name: cls._lazy_init_class_members(run, scope, owner)
+            index = {
+                name: cls._lazy_init_class_index(run, scope, owner, exporters)
                 for name, owner in sorted(plan.lazy_map.items())
                 if owner in parts
             }
-            if deferred:
+            if index:
                 updated[package_dir] = plan.model_copy(
-                    update={"deferred_members": deferred}
+                    update={
+                        "deferred_members": {
+                            name: members for name, (members, _) in index.items()
+                        },
+                        "deferred_bases": {
+                            name: bases for name, (_, bases) in index.items() if bases
+                        },
+                    }
                 )
         return updated
+
+    @staticmethod
+    def _lazy_init_part_exporters(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        parts: frozenset[tuple[str, str]],
+    ) -> Mapping[tuple[str, str], tuple[str, str]]:
+        """Return the nearest initializer export of every deferred part.
+
+        The nearest initializer is the one of the part module's own package;
+        every initializer exporting a part defers it, so its export is the
+        stand-in a deriving stand-in shares as a base.
+
+        Returns:
+            The ``(package, export)`` of each part some initializer exports.
+
+        """
+        exporters: dict[tuple[str, str], tuple[str, str]] = {}
+        for plan in run.plans.values():
+            package = plan.context.current_pkg
+            for name, owner in plan.lazy_map.items():
+                if owner not in parts:
+                    continue
+                known = exporters.get(owner)
+                nearest = owner[0].rpartition(".")[0] == package
+                if known is None or nearest:
+                    exporters[owner] = (package, name)
+        return exporters
+
+    @classmethod
+    def _lazy_init_class_index(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        scope: tuple[
+            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
+        ],
+        owner: tuple[str, str],
+        exporters: Mapping[tuple[str, str], tuple[str, str]],
+    ) -> tuple[Sequence[str], Sequence[tuple[str, str]]]:
+        """Return a stand-in's own members and the exports of its base stand-ins.
+
+        A base that an initializer defers is shared through that export, in
+        the real base order, so C3 reproduces the real MRO. A base no
+        initializer defers is flattened into the members.
+
+        Returns:
+            The member names and the ``(package, export)`` of each base.
+
+        Raises:
+            ValueError: If a flattened base binds a name a shared base binds.
+
+        """
+        module, name = owner
+        facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, module)
+        if facts is None or name not in facts.classes:
+            return cls._lazy_init_class_members(run, scope, owner), ()
+        members = dict.fromkeys(cls._lazy_init_body_members(facts, name))
+        shared: list[tuple[str, str]] = []
+        shared_names: set[str] = set()
+        flattened: set[str] = set()
+        current = scope[0].current_pkg
+        for base in facts.classes[name]:
+            target = (
+                (module, base)
+                if base in facts.classes
+                else cls._lazy_init_base_target(run, scope, facts.imports.get(base))
+            )
+            if target is None:
+                msg = (
+                    f"deferred export {module}.{name} has an unresolvable base: {base}"
+                )
+                raise ValueError(msg)
+            inherited = cls._lazy_init_class_members(run, scope, target)
+            export = exporters.get(target)
+            if export is None:
+                flattened.update(inherited)
+                members.update(dict.fromkeys(inherited))
+                continue
+            package, attr = export
+            shared.append(("." if package == current else package, attr))
+            shared_names.update(inherited)
+        clash = sorted((flattened & shared_names) - set(facts.class_members[name]))
+        if clash:
+            msg = (
+                f"deferred export {module}.{name} flattens a base that binds "
+                f"names a shared base also binds: {clash}"
+            )
+            raise ValueError(msg)
+        return tuple(members), tuple(shared)
+
+    @staticmethod
+    def _lazy_init_body_members(
+        facts: FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts, name: str
+    ) -> Sequence[str]:
+        """Return the non-dunder names one class body binds, mangled as stored.
+
+        Returns:
+            The member names in declaration order.
+
+        """
+        return tuple(
+            # A class-private name lives in the class namespace mangled.
+            f"_{name.lstrip('_')}{member}" if member.startswith("__") else member
+            for member in facts.class_members[name]
+            if not (member.startswith("__") and member.endswith("__"))
+        )
 
     @classmethod
     def _lazy_init_facade_roots(

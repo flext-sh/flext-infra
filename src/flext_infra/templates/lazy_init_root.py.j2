@@ -20,6 +20,10 @@ install_lazy_exports(
 {{ lazy_export_mapping }}
     public_exports=__all__,{{ deferred_members_mapping }}
 )
+{%- if deferred_bases_call %}
+
+{{ deferred_bases_call }}
+{%- endif %}
 {%- if deferred_instances_call %}
 
 {{ deferred_instances_call }}

@@ -217,8 +217,15 @@ class FlextInfraModelsCodegenLazyInit:
         deferred_members: Mapping[str, Sequence[str]] = m.Field(
             default_factory=dict,
             description=(
-                "Member names of each class export whose module imports a "
-                "declared deferred distribution; it loads on first member use."
+                "Own member names of each facade-composed class export; it "
+                "loads on first member use."
+            ),
+        )
+        deferred_bases: Mapping[str, Sequence[tuple[str, str]]] = m.Field(
+            default_factory=dict,
+            description=(
+                "``(package, export)`` of the base stand-ins each deferred "
+                "export shares, in the real class's base order."
             ),
         )
         deferred_instances: Sequence[str] = m.Field(
@@ -479,6 +486,13 @@ class FlextInfraModelsCodegenLazyInit:
             description=(
                 "Line-prefixed ``deferred_members`` installer argument; empty "
                 "when the package defers no export."
+            ),
+        )
+        deferred_bases_call: str = m.Field(
+            default_factory=str,
+            description=(
+                "``defer_lazy_bases`` call bound after the installer; empty "
+                "when no deferred export shares a base stand-in."
             ),
         )
         deferred_instances_call: str = m.Field(

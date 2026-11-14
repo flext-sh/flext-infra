@@ -98,7 +98,9 @@ class FlextInfraUtilitiesLazyInitRender:
                 autogen_header=c.Infra.AUTOGEN_HEADER,
                 docstring=cls._lazy_init_docstring(plan, project_root, model),
                 runtime_import_lines=cls._lazy_init_runtime_imports(
-                    helpers, deferring=bool(plan.deferred_instances)
+                    helpers,
+                    deferring=bool(plan.deferred_instances),
+                    sharing=bool(plan.deferred_bases),
                 ),
                 type_checking_lines="\n".join(
                     cls._lazy_init_type_checking(public, first_party)
@@ -109,6 +111,7 @@ class FlextInfraUtilitiesLazyInitRender:
                 deferred_members_mapping=cls._lazy_init_deferred_mapping(
                     plan.deferred_members
                 ),
+                deferred_bases_call=cls._lazy_init_bases_call(plan.deferred_bases),
                 deferred_instances_call=cls._lazy_init_instances_call({
                     name: entries[name] for name in plan.deferred_instances
                 }),
@@ -224,7 +227,7 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @classmethod
     def _lazy_init_runtime_imports(
-        cls, helpers: Sequence[str], *, deferring: bool
+        cls, helpers: Sequence[str], *, deferring: bool, sharing: bool
     ) -> str:
         """Render the lazy-helper import, the only pre-installer runtime import.
 
@@ -235,10 +238,41 @@ class FlextInfraUtilitiesLazyInitRender:
         names = sorted({
             *(helpers or ("install_lazy_exports",)),
             *(("defer_lazy_instances",) if deferring else ()),
+            *(("defer_lazy_bases",) if sharing else ()),
         })
         return "\n".join(
             cls.source_import_lines("", c.Infra.LAZY_BOOTSTRAP_MODULE, names)
         )
+
+    @classmethod
+    def _lazy_init_bases_call(
+        cls, bases: Mapping[str, Sequence[tuple[str, str]]]
+    ) -> str:
+        """Render the ``defer_lazy_bases`` call in Ruff's fixed point.
+
+        Every bracket ends with a magic trailing comma, so Ruff keeps the
+        mapping and each multi-base tuple exploded; a one-base entry stays on
+        its line when that line fits.
+
+        Returns:
+            The call source, empty when no deferred export shares a base.
+
+        """
+        if not bases:
+            return ""
+        lines = ["defer_lazy_bases(", "    __name__,", "    {"]
+        indent = "        "
+        for name in sorted(bases, key=cls.lazy_init_export_key):
+            refs = [f'("{package}", "{attr}")' for package, attr in bases[name]]
+            single = f'{indent}"{name}": ({refs[0]},),'
+            if len(refs) == 1 and len(single) <= cls.lazy_init_width():
+                lines.append(single)
+                continue
+            lines.append(f'{indent}"{name}": (')
+            lines.extend(f"{indent}    {ref}," for ref in refs)
+            lines.append(f"{indent}),")
+        lines.extend(("    },", ")"))
+        return "\n".join(lines)
 
     @classmethod
     def _lazy_init_instances_call(cls, entries: t.LazyAliasMap) -> str:
