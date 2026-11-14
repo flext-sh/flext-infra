@@ -536,7 +536,9 @@ class TestsFlextInfraBanditAndMarkdownGates:
         `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
         blocked on findings while `make fmt` and `make fix` both exited 0
         without repairing any of them. The gate uses the tool's formatter so a
-        successful repair exits zero and leaves the file clean for `check`.
+        successful repair exits zero and leaves the file clean for `check`. A
+        finding the linter cannot repair (a broken link, MD057) stays for
+        `check` to block on.
         """
         project_dir = u.Tests.mk_project(
             tmp_path, "markdown-fix-project", markdown_config=""
@@ -558,13 +560,14 @@ class TestsFlextInfraBanditAndMarkdownGates:
         tm.ok(result.result.passed)
         tm.that(readme.read_text(encoding="utf-8"), eq="# Title\n")
         tm.that(draft.read_text(encoding="utf-8").splitlines()[0], eq="# Draft")
-        _ = u.Tests.check_gate_asserting(
+        after = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdown,
             tmp_path,
             project_dir,
-            passed=True,
-            issues_len=0,
+            passed=False,
+            issues_len=1,
         )
+        tm.that(after.issues[0].code, eq="MD057")
 
     # The rtk writer's own marker protocol (an external contract, not a
     # FLEXT-owned value); its inner lines carry findings only rtk may repair.
