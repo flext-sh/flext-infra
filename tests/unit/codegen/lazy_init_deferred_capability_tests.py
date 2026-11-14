@@ -104,14 +104,13 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         """A facade-composed part that cannot be deferred fails generation."""
         root = deferred_capability_project
         fixture_tree(fixture, destination=root)
-        with u.Tests.raises(
-            ValueError,
-            match=(
+        tm.fail(
+            u.Tests.create_lazy_init_service(root).plan_files(),
+            has=(
                 f"the base {base}, which is neither a class of its package nor "
                 "published by a generated FLEXT initializer"
             ),
-        ):
-            u.Tests.create_lazy_init_service(root).plan_files()
+        )
 
     @staticmethod
     @c.Tests.MARK.slow
@@ -133,14 +132,13 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         root = deferred_capability_project
         fixture_tree("lazy-deferred-capability-examples-facade", destination=root)
         fixture_tree(fixture, destination=root)
-        with u.Tests.raises(
-            ValueError,
-            match=(
+        tm.fail(
+            u.Tests.create_lazy_init_service(root).plan_files(),
+            has=(
                 "flattens the base ExamplesFlextDemoCapabilityMixin, which "
                 f"{relation} a base another package publishes"
             ),
-        ):
-            u.Tests.create_lazy_init_service(root).plan_files()
+        )
 
     @staticmethod
     @c.Tests.MARK.slow
