@@ -14,6 +14,7 @@ from flext_cli import u
 from flext_infra import c, m, p
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsBase
 
+
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 

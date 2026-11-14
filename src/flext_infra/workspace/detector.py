@@ -1288,9 +1288,7 @@ class FlextInfraWorkspaceDetector(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects
-                    or pending
-                    or identity.value.is_attached_submodule
+                    if subprojects or pending or identity.value.is_attached_submodule
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },
