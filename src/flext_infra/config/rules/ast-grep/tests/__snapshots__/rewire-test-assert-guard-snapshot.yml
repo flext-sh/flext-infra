@@ -2,9 +2,7 @@ id: rewire-test-assert-guard
 snapshots:
   assert self.value is not None:
     fixed: |-
-      if self.value is not None:
-          pass
-      else:
+      if not (self.value is not None):
           tm.reject()
     labels:
     - source: assert self.value is not None
@@ -18,9 +16,7 @@ snapshots:
   "from flext_tests import tm\nassert self.value is not None\n":
     fixed: |
       from flext_tests import tm
-      if self.value is not None:
-          pass
-      else:
+      if not (self.value is not None):
           tm.reject()
     labels:
     - source: assert self.value is not None
@@ -34,9 +30,7 @@ snapshots:
   "from tests import tm\nassert value is None\n":
     fixed: |
       from tests import tm
-      if value is None:
-          pass
-      else:
+      if not (value is None):
           tm.reject()
     labels:
     - source: assert value is None

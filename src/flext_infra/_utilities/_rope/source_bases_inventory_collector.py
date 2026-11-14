@@ -197,6 +197,26 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 qualified_base=target,
             )
 
+    @staticmethod
+    def _classless_unpacking_value(
+        spec: p.Infra.SourceBindingCollectorSpec, value: ast.expr | None
+    ) -> bool:
+        """Return whether unpacking this value can never bind a class identity.
+
+        Returns:
+            Whether the value is computed, conditionally admitted, or a display
+            of constants.
+
+        """
+        return (
+            spec.allow_conditional
+            or isinstance(value, ast.Call)
+            or (
+                isinstance(value, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
+                and all(isinstance(item, ast.Constant) for item in value.elts)
+            )
+        )
+
     @classmethod
     def _assign(
         cls,
@@ -207,7 +227,7 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
         """Classify targets before publishing one captured value reference."""
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
         if (
-            (spec.allow_conditional or isinstance(node.value, ast.Call))
+            cls._classless_unpacking_value(spec, node.value)
             and targets
             and all(
                 isinstance(target, c.Infra.AST_SEQUENCE_DISPLAY_TYPES)
@@ -221,8 +241,9 @@ class FlextInfraUtilitiesRopeSourceBindingCollector:
                 for part in ast.walk(target)
             )
         ):
-            # Unpacking a computed iterable binds its elements, not the iterable's
-            # class identity. Never retain an earlier class under those names.
+            # Unpacking a computed iterable or a display of constants binds its
+            # elements, not a class identity. Never retain an earlier class under
+            # those names.
             for target in targets:
                 for part in ast.walk(target):
                     if isinstance(part, ast.Name):

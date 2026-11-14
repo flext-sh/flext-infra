@@ -885,7 +885,9 @@ Infra:
         # Every other native rule of the elected catalog.
         - name: catalog
           kind: native
-        # Last: prune the imports the rewrites left unused and order them.
+        # Last: prune the imports the rewrites left unused, order them, and
+        # let Ruff fold a negated identity or membership test (`not (x is
+        # None)`) that a negated rewrite produced.
         - name: import-fix
           kind: ruff
-          select: [ F401, I001 ]
+          select: [ F401, I001, E713, E714 ]

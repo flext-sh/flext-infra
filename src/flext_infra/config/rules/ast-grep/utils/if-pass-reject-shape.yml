@@ -1,0 +1,22 @@
+# The empty-branch shape the former assert rewrite emitted: `if COND: pass`
+# with an `else` holding only tm.reject, each branch exactly one statement.
+id: if-pass-reject-shape
+language: Python
+rule:
+  all:
+    - kind: if_statement
+    - has:
+        field: consequence
+        all:
+          - has:
+              kind: pass_statement
+          - not:
+              has:
+                nthChild: 2
+    - has:
+        field: alternative
+        has:
+          kind: block
+          not:
+            has:
+              nthChild: 2

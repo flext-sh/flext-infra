@@ -1,0 +1,24 @@
+id: rewire-test-reject-pass-branch-message
+valid:
+- |
+  if result.success:
+      pass
+  else:
+      tm.reject(result.error)
+- |
+  if path.is_file():
+      pass
+  else:
+      tm.reject()
+invalid:
+- |
+  def check(result):
+      if result.exit_code == 0:
+          pass
+      else:
+          tm.reject(result.stdout + result.stderr)
+- |
+  if (code, error) == (0, ""):
+      pass
+  else:
+      tm.reject(error)

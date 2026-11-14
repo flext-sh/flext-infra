@@ -26,9 +26,7 @@ rule:
           pattern: "isinstance($VALUE, $TYPE)"
           stopBy: end
 fix: |-
-  if $COND:
-      pass
-  else:
+  if not ($COND):
       tm.reject($MSG)
 message: Preserve lazy assertion arguments and narrowing through tm.reject.
 ---
@@ -55,9 +53,7 @@ rule:
           pattern: "isinstance($VALUE, $TYPE)"
           stopBy: end
 fix: |-
-  if $COND:
-      pass
-  else:
+  if not ($COND):
       tm.reject()
 message: Preserve native guard narrowing through tm.reject.
 ---
@@ -87,8 +83,6 @@ rule:
     - not:
         regex: "^(assert |if not \\()isinstance\\([A-Za-z_][A-Za-z0-9_]*, [^(]"
 fix: |-
-  if $COND:
-      pass
-  else:
+  if not ($COND):
       tm.reject()
 message: Preserve type-guard narrowing and native assertion failure through tm.reject.

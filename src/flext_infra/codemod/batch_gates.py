@@ -698,23 +698,28 @@ class FlextInfraModGateEngine:
     ) -> p.Infra.ModScanReport:
         """Return the scan report of exactly these findings, classes recounted.
 
+        Native artifacts live in a content-addressed store, so identical scanner
+        bytes from different projects or streams share one path; the report
+        carries each path once, in first-seen order.
+
         Returns:
             The scan report of exactly these findings, classes recounted.
 
         """
+        artifacts = (
+            tuple(
+                entry.native_receipt
+                for entry in entries
+                if entry.native_receipt is not None
+            )
+            if native_artifacts is None
+            else native_artifacts
+        )
         return m.Infra.ModScanReport(
             files=frozenset(entry.file for entry in entries),
             entries=entries,
-            native_artifacts=(
-                tuple(
-                    {
-                        entry.native_receipt.path: entry.native_receipt
-                        for entry in entries
-                        if entry.native_receipt is not None
-                    }.values()
-                )
-                if native_artifacts is None
-                else native_artifacts
+            native_artifacts=tuple(
+                {artifact.path: artifact for artifact in artifacts}.values()
             ),
         )
 

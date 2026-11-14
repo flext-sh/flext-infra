@@ -1,0 +1,34 @@
+id: rewire-test-reject-pass-branch-truth
+valid:
+- |
+  if ready() or loaded():
+      pass
+  else:
+      tm.reject()
+- |
+  if ready:
+      pass
+  else:
+      tm.reject()
+- |
+  if path.is_file():
+      pass
+  else:
+      tm.reject("missing")
+- |
+  if path.is_file():
+      pass
+  else:
+      tm.reject()
+      cleanup()
+invalid:
+- |
+  if path.is_file():
+      pass
+  else:
+      tm.reject()
+- |
+  if 0 < count < limit:
+      pass
+  else:
+      tm.reject()

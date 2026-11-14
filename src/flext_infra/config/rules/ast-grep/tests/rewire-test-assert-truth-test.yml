@@ -29,12 +29,15 @@ valid:
   assert (
       left in right
   )
+- |
+  from tests import tm
+  assert verdict() or unexpected()
 invalid:
 - assert path.is_file()
 - |
   from flext_tests import tm
   def check():
-      assert verdict() or unexpected()
+      assert verdict()
 - |
   from tests import tm
   assert path.is_file()
