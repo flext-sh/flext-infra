@@ -145,7 +145,9 @@ runner that violates this contract is repaired at its owner and rerun through Ma
 `make tests` deselects `harness-gate-markers` (`remote`) locally exactly as CI
 does and reports them as `not_executed_external_gates`: their suites run only
 under the harness that provides their inputs, which names the suite. Other
-external gates (`docker`) stay local; `make tests-full` selects every marker.
+external gates (`docker`) stay local and run only when the untracked `.env`
+names `DOCKER_HOST`; without it they are skipped as an unmet prerequisite
+(operator decision 2026-11-14). `make tests-full` selects every marker.
 
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.

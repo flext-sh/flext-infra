@@ -703,6 +703,11 @@ Infra:
         # `make test-full` runs locally only and executes every marker once,
         # without testmon and without any time limit. Existing external tests
         # retain their declared environment and authentication requirements.
+        # Locally, `docker` tests run only when the untracked `.env` names
+        # DOCKER_HOST; otherwise flext-tests' applicability owner skips them
+        # as an unmet prerequisite before fixtures run (operator decision
+        # 2026-11-14, operator-decision-2026-11-14-docker-tests-require-env,
+        # superseding the unconditional local run of 2026-11-05).
         external-gate-markers: [ remote, docker ]
         # Harness gates run only under the harness that provides their inputs
         # (ai-hub `make runtime-acceptance` names its remote suite). Local
