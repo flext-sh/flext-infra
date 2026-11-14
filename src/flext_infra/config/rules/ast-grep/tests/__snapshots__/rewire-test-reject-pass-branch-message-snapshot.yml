@@ -1,0 +1,27 @@
+id: rewire-test-reject-pass-branch-message
+snapshots:
+  "def check(result):\n    if result.exit_code == 0:\n        pass\n    else:\n        tm.reject(result.stdout + result.stderr)\n":
+    fixed: |
+      def check(result):
+          tm.that(result.exit_code == 0, truth=True, assertion_message=result.stdout + result.stderr)
+    labels:
+    - source: |-
+        if result.exit_code == 0:
+                pass
+            else:
+                tm.reject(result.stdout + result.stderr)
+      style: primary
+      start: 23
+      end: 120
+  "if (code, error) == (0, \"\"):\n    pass\nelse:\n    tm.reject(error)\n":
+    fixed: |
+      tm.that((code, error) == (0, ""), truth=True, assertion_message=error)
+    labels:
+    - source: |-
+        if (code, error) == (0, ""):
+            pass
+        else:
+            tm.reject(error)
+      style: primary
+      start: 0
+      end: 64

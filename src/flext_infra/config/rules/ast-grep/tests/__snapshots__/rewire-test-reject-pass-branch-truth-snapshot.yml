@@ -1,0 +1,26 @@
+id: rewire-test-reject-pass-branch-truth
+snapshots:
+  "if 0 < count < limit:\n    pass\nelse:\n    tm.reject()\n":
+    fixed: |
+      tm.that(0 < count < limit, truth=True)
+    labels:
+    - source: |-
+        if 0 < count < limit:
+            pass
+        else:
+            tm.reject()
+      style: primary
+      start: 0
+      end: 52
+  "if path.is_file():\n    pass\nelse:\n    tm.reject()\n":
+    fixed: |
+      tm.that(path.is_file(), truth=True)
+    labels:
+    - source: |-
+        if path.is_file():
+            pass
+        else:
+            tm.reject()
+      style: primary
+      start: 0
+      end: 49

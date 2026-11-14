@@ -1,0 +1,19 @@
+# Shared guard of the assert rewrites that emit a tm.that expression or a
+# message-bearing tm.reject: no None or isinstance narrowing inside (those have
+# their own rules), outside an except clause, with an admissible tm binding.
+id: assert-narrowing-free
+language: Python
+rule:
+  all:
+    - not:
+        has:
+          stopBy: end
+          any:
+            - pattern: "$VALUE is None"
+            - pattern: "$VALUE is not None"
+            - pattern: "isinstance($VALUE, $TYPE)"
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - matches: tm-binding-admissible

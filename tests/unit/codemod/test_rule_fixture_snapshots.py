@@ -238,6 +238,7 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         "rule_id",
         [
             "rewire-test-assert-truth",
+            "rewire-test-assert-truth-branch",
             "rewire-test-assert-falsity",
             "rewire-test-assert-not-none-message",
             "rewire-test-assert-instance-message",
@@ -434,7 +435,11 @@ class TestsFlextInfraModRuleFixtureSnapshots:
         *,
         verdict: bool,
     ) -> None:
-        """Native apply preserves non-complementary operators and lazy messages."""
+        """Native apply preserves the operator, one truth check, and the message.
+
+        The rewrite is one tm.that expression, so the message is evaluated once,
+        before the truth check, and reaches the AssertionError unchanged.
+        """
         u.Tests.WorktreeFixture.write_python_project(tmp_path, "assertion-fixture")
         self._owner(tmp_path)
         u.Tests.provision_checkout(tmp_path)
@@ -465,10 +470,10 @@ class TestsFlextInfraModRuleFixtureSnapshots:
             ),
         )
         fixed = sample.read_text(encoding=c.DEFAULT_ENCODING)
-        expected_events = ["left", "right", operator, "truth"]
-        if not verdict:
-            expected_events.append("message")
-        for candidate in (original, fixed):
+        tm.that(fixed, lacks="assert ")
+        lazy = ["left", "right", operator, "truth"] + ([] if verdict else ["message"])
+        eager = ["left", "right", operator, "message", "truth"]
+        for candidate, expected_events in ((original, lazy), (fixed, eager)):
             source = (
                 "try:\n"
                 + "".join(f"    {line}\n" for line in candidate.splitlines())

@@ -1,0 +1,20 @@
+id: rewire-test-assert-message-observation-branch
+valid:
+- |
+  from other_library import tm
+  assert result.success, result.error
+- |
+  from tests import tm
+  assert result.exit_code == 0, result.output
+invalid:
+- assert result.success, result.error
+- |
+  from tests import tm
+  assert ready, "not ready"
+- |
+  from tests import tm
+  if not (started.success):
+      raise AssertionError(started.error)
+- |
+  from tests import tm
+  assert run() or retry(), "neither attempt ran"
