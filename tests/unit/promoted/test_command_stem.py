@@ -19,7 +19,7 @@ class TestsFlextInfraPromotedCommandStem:
 
     A Python command is a module the fleet's Ruff policy names like any other
     (N999), so ``what = "krr-sizing"`` lives in ``krr_sizing.py``; a shell
-    command keeps the WHAT exactly. The scenario mirrors the cosmos-main
+    command keeps the WHAT exactly. The scenario mirrors a consumer's
     ``scripts/finops`` directory, where both kinds share one verb.
     """
 

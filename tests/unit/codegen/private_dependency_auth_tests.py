@@ -21,7 +21,7 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
     The generated network bootstrap refuses a credential-bearing global
     ``url.<base>.insteadOf`` rewrite, because it shadows the fleet SSH route.
     A workflow that wrote one before ``make setup`` stopped every consumer CI
-    job at setup (cosmos-gitops run 42397901984). The step consuming the
+    job at setup. The step consuming the
     minted App token must therefore leave global Git configuration untouched
     and hand Git that token only for the declared repositories.
     """
@@ -311,8 +311,8 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
         """The minted token reaches declared repositories, never global config.
 
         An attached member checks out its private superproject with that
-        token, so the token is minted before the checkout (cosmos-gitops CI:
-        ``repository 'https://github.com/datacosmos-br/cosmos-main/' not found``).
+        token, so the token is minted before the checkout (otherwise Git
+        reports ``repository '<private superproject URL>' not found``).
         """
         jobs = self._setup_jobs(template, attached=attached)
         tm.that(jobs, empty=False)
@@ -381,7 +381,7 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
         The authenticated superproject checkout skips submodules, so the
         member tree does not exist and Git holds no credential until the
         token is handed over and the submodules are initialized
-        (cosmos-gitops run 43427385814: ``could not read Username``).
+        (Git otherwise reports ``could not read Username``).
         """
         pinned = 0
         for job in self._jobs(template, attached=True):

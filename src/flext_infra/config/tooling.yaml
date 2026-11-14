@@ -735,8 +735,8 @@ Infra:
         similarity: 0.8
         # Embedding model of the pass: bge-m3, by the name jscpd's own catalog
         # calibrates, so its thresholds come from jscpd and are not restated
-        # here. Measured 2026-11-05 on gruponos-merges (jscpd 5.4.2, two
-        # snapshots; tracker dc_recon-26p): jina-embeddings-v2-base-code
+        # here. Measured 2026-11-05 on a consumer repository (jscpd 5.4.2, two
+        # snapshots): jina-embeddings-v2-base-code
         # reported 19 pairs, most of them related rather than duplicated code;
         # bge-m3 reported 6, 5 of them real duplication, stable across runs;
         # CodeRankEmbed took about 6 minutes, over the gate budget.
