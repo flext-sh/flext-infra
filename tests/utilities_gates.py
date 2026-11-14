@@ -117,10 +117,11 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.GateExecution``.
 
         """
-        gate = gate_class(tmp_path)
-        result = gate.check(
+        result = TestsFlextInfraUtilitiesGates.run_gate_check(
+            gate_class,
+            tmp_path,
             project_dir,
-            TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
+            ctx=TestsFlextInfraUtilitiesGates.gate_context(tmp_path),
         )
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
@@ -238,6 +239,9 @@ class TestsFlextInfraUtilitiesGates:
             The resulting ``m.Infra.GateExecution``.
 
         """
+        # Gates read a checkout's tracked files: the case's authored files join it.
+        if (project_dir / c.Infra.GIT_DIR).exists():
+            TestsFlextInfraUtilitiesGit.git_bootstrap(project_dir, ("add", "-A"))
         gate = gate_class(repository_root)
         return gate.check(
             project_dir,

@@ -285,8 +285,6 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
         if markdown_text:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
-            # The gate lints the checkout's tracked documents only.
-            u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         result = u.Tests.check_gate_asserting(
             FlextInfraGatesMarkdown,
             tmp_path,
