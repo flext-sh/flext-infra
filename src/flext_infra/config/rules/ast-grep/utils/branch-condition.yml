@@ -1,0 +1,26 @@
+# An `if` condition that needs its branch: a type checker narrows on a bare
+# name or attribute (truthiness) or on a None or isinstance test, and an and/or
+# or conditional expression converts truth once only inside a branch.
+id: branch-condition
+language: Python
+rule:
+  any:
+    - has:
+        field: condition
+        any:
+          - kind: identifier
+          - kind: attribute
+          - kind: boolean_operator
+          - kind: conditional_expression
+          - kind: parenthesized_expression
+            has:
+              any:
+                - kind: boolean_operator
+                - kind: conditional_expression
+    - has:
+        field: condition
+        stopBy: end
+        any:
+          - pattern: "$VALUE is None"
+          - pattern: "$VALUE is not None"
+          - pattern: "isinstance($VALUE, $TYPE)"

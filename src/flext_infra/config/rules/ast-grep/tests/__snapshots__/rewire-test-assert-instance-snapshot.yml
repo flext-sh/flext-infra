@@ -2,9 +2,7 @@ id: rewire-test-assert-instance
 snapshots:
   "assert isinstance(value, Entry)":
     fixed: |-
-      if isinstance(value, Entry):
-          pass
-      else:
+      if not isinstance(value, Entry):
           tm.reject()
     labels:
     - source: assert isinstance(value, Entry)
@@ -14,9 +12,7 @@ snapshots:
   "from tests import tm\nassert isinstance(value, Entry)\n":
     fixed: |
       from tests import tm
-      if isinstance(value, Entry):
-          pass
-      else:
+      if not isinstance(value, Entry):
           tm.reject()
     labels:
     - source: assert isinstance(value, Entry)
@@ -26,9 +22,7 @@ snapshots:
   "from tests import tm\nif not (isinstance(cfg, m.AiHub.McpConfig)):\n    raise AssertionError\n":
     fixed: |
       from tests import tm
-      if isinstance(cfg, m.AiHub.McpConfig):
-          pass
-      else:
+      if not isinstance(cfg, m.AiHub.McpConfig):
           tm.reject()
     labels:
     - source: |-
