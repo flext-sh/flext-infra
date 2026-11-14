@@ -516,7 +516,11 @@ class TestsFlextInfraModEvidenceInputs:
         )
         tm.that(report.findings, eq=occurrences)
         snapshot = m.Infra.CodemodBindingSnapshot(
-            states=(tm.not_none(report.entries[0].source_state),)
+            states=(
+                m.Cli.AtomicFileState.model_validate(
+                    tm.not_none(report.entries[0].source_state)
+                ),
+            )
         )
         return report, snapshot, source
 
@@ -596,8 +600,10 @@ class TestsFlextInfraModEvidenceInputs:
         with u.Tests.raises(m.ValidationError):
             m.Infra.CodemodBindingSnapshot(
                 states=(
-                    snapshot.states[0],
-                    snapshot.states[0].model_copy(update={"content": b"changed"}),
+                    m.Cli.AtomicFileState.model_validate(snapshot.states[0]),
+                    m.Cli.AtomicFileState.model_validate(
+                        snapshot.states[0].model_copy(update={"content": b"changed"})
+                    ),
                 )
             )
 
@@ -672,3 +678,75 @@ class TestsFlextInfraModEvidenceInputs:
         tm.fail(stale.exists())
         tm.ok(recent.exists())
         tm.ok(all(artifact.path.exists() for artifact in restored.native_artifacts))
+
+    @staticmethod
+    def test_published_evidence_revalidates_from_its_own_json() -> None:
+        """Persisted evidence declares concrete models and round-trips as JSON."""
+        digest = "0" * 64
+        evidence = m.Infra.ModScanEvidence.model_validate({
+            "schema_version": c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
+            "inputs": {
+                "states": (
+                    {
+                        "path": "/workspace/source.py",
+                        "parent_device": 1,
+                        "parent_inode": 2,
+                        "mode": 0o600,
+                        "device": 1,
+                        "inode": 3,
+                        "link_count": 1,
+                        "content": b"value = 1\n",
+                    },
+                ),
+            },
+            "native_artifacts": (
+                {
+                    "path": "/workspace/native/records.jsonl",
+                    "parent_device": 1,
+                    "parent_inode": 2,
+                    "mode": 0o600,
+                    "device": 1,
+                    "inode": 4,
+                    "link_count": 1,
+                    "size": 32,
+                    "sha256": digest,
+                    "version_key": [0],
+                },
+            ),
+            "command": c.Infra.ModScanCommand.SCAN,
+            "root": Path("/workspace"),
+            "scope": ("source.py",),
+            "entries": (
+                {
+                    "rule_file": "/workspace/rules/example.yml",
+                    "rule_id": "example-rule",
+                    "repository": "workspace",
+                    "file": Path("source.py"),
+                    "range": {"byteOffset": {"start": 0, "end": 9}},
+                    "text": "value = 1",
+                    "severity": "error",
+                    "classification": c.Infra.ModScanFindingClass.ACTIONABLE,
+                    "actionable": True,
+                    "native_record": m.Infra.ModNativeRecord(
+                        offset=0, length=9, sha256=digest
+                    ),
+                    "source_path": Path("/workspace/source.py"),
+                    "native_artifact": 0,
+                },
+            ),
+            "totals_by_class": {
+                classification: 1
+                if classification is c.Infra.ModScanFindingClass.ACTIONABLE
+                else 0
+                for classification in c.Infra.MOD_SCAN_CLASS_COUNT_FIELDS
+            },
+            "totals_by_repository": {"workspace": 1},
+            "totals_by_rule": {"example-rule": 1},
+        })
+        published = evidence.model_dump_json(
+            exclude=set(getattr(type(evidence), "model_computed_fields", ()))
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(published)
+        tm.that(restored, eq=evidence)
+        tm.that(restored.native_artifacts[0].sha256, eq=digest)
+        tm.that(restored.inputs.states[0].path, eq=Path("/workspace/source.py"))
