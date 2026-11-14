@@ -503,9 +503,9 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             namespace), the real module wins: an absolute import elsewhere in
             the tree refers to the real module — a facade re-exporting a
             subpackage named like the project package must not shadow it
-            (cosmos-docgen tests/unit re-exports a `dcdoc` subpackage; class
-            bases declared as `from dcdoc import DcdocServiceBase` mean the
-            project one).
+            (a consumer's tests/unit re-exporting a `demo_app` subpackage;
+            class bases declared as `from demo_app import DemoAppServiceBase`
+            mean the project one).
 
             Consumed provider files are not a complete package inventory.
             Membership comes from the injected project's complete native source

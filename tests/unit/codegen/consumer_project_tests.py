@@ -28,7 +28,7 @@ class TestsFlextInfraCodegenConsumerProject:
     """The consumer kind generates a project without a package of its own."""
 
     CONSUMED = (
-        "dc-recon @ git+ssh://git@github.com/datacosmos-br/cosmos-recon.git"
+        "example-engine @ git+ssh://git@github.com/example/example-engine.git"
         "@a0032c04d32af7c189f1943c2897c075bc8f3ab1"
     )
 
@@ -62,7 +62,7 @@ class TestsFlextInfraCodegenConsumerProject:
         project = u.Tests.project_spec(name).model_copy(
             update={
                 "package_name": None,
-                "upstream": "dc_recon",
+                "upstream": "example_engine",
                 "runtime_dependency_overlay": (
                     TestsFlextInfraCodegenConsumerProject.CONSUMED,
                 ),
@@ -215,7 +215,7 @@ class TestsFlextInfraCodegenConsumerProject:
         """Seeds name the upstream's facades and no package of the repository."""
         (tmp_path / c.Infra.DIR_TESTS).mkdir()
         project = u.Tests.project_spec("client-incident").model_copy(
-            update={"package_name": None, "upstream": "dc_recon"}
+            update={"package_name": None, "upstream": "example_engine"}
         )
         seeds = FlextInfraCodegenScaffolder.plan_stems(
             tmp_path, project, config.Infra.codegen.scaffold, ()
@@ -230,7 +230,7 @@ class TestsFlextInfraCodegenConsumerProject:
         )
         tm.that(
             tm.not_none(constants.desired_content).decode("utf-8"),
-            has="from dc_recon import c as source_c",
+            has="from example_engine import c as source_c",
         )
 
     @staticmethod
@@ -288,12 +288,12 @@ requires = ["hatchling"]
 [project]
 dependencies = ["sqlmodel>=0.0.27", "typing-extensions>=4.16.0"]
 description = "A packaged project"
-name = "dc-recon"
+name = "example-engine"
 requires-python = ">=3.13,<3.14"
 version = "0.1.0"
 
 [project.scripts]
-dc-recon = "client_incident.cli:main"
+example-engine = "client_incident.cli:main"
 
 [tool.flext.docs]
 package_name = "client_incident"

@@ -727,7 +727,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             "\n"
             "from __future__ import annotations\n"
             "\n"
-            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            "from example_engine import c, e, h, m, p, r, t, u\n"
             "\n" + self._PYTHON_BEHAVIOR_BLOCK
         )
         (package / "first.py").write_text(module, encoding="utf-8")

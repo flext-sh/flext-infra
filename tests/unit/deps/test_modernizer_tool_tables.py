@@ -512,15 +512,15 @@ class TestsFlextInfraDepsModernizerToolTables:
     ) -> None:
         """A distribution name must not invent an importable package."""
         project_dir = tmp_path / "project"
-        package_dir = project_dir / "src" / "dc_backup"
+        package_dir = project_dir / "src" / "demo_app"
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text('"""Package."""\n', encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "datacosmos-backup"\n',
+            '[project]\nname = "demo-distribution"\n',
             encoding="utf-8",
         )
         namespaces = FlextInfraToolTablesPhase.first_party_namespaces(path=project_dir)
-        tm.that(namespaces, has="dc_backup", lacks="datacosmos_backup")
+        tm.that(namespaces, has="demo_app", lacks="demo_distribution")
 
     def test_tables_are_idempotent(self, tmp_path: Path) -> None:
         """A second application over the converged payload changes nothing."""

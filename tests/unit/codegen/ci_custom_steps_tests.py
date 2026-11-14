@@ -7,7 +7,7 @@ counterpart of ``custom.mk``.
 
 Premise (regression of 39982c92ef): the renderer kept reading the block into
 ``custom_steps`` while the merge dropped its injection from ``ci.yml.j2``, so
-cosmos-charts lost its declared GitOps checkout and its CI tests failed with
+a consumer lost its declared GitOps checkout and its CI tests failed with
 "no GitOps values directory declared". The contract is therefore asserted on
 the rendered workflow, never on the render model.
 

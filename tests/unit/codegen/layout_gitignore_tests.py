@@ -143,7 +143,7 @@ class TestsFlextInfraCodegenLayoutGitignore:
         tm.ok(rendered)
         (tmp_path / ".ignore").write_text(rendered.value, encoding="utf-8")
         tm.ok(u.Cli.capture([c.Infra.GIT, "init"], cwd=tmp_path))
-        source = tmp_path / "src" / "dc_backup" / "workspace_backup_request.py"
+        source = tmp_path / "src" / "demo_app" / "workspace_backup_request.py"
         source.parent.mkdir(parents=True)
         source.write_text("pass\n", encoding="utf-8")
         tracked = u.Cli.capture(

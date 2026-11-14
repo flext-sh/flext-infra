@@ -175,7 +175,7 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         A mention counts only when the excluded root appears as a path
         reference: the token followed by a path separator. Bare prose uses
         of the token (an English word, a brand name, an identifier suffix
-        like ``datacosmos-br``) are not directory references and never
+        like ``example-org``) are not directory references and never
         were.
 
         Returns:
