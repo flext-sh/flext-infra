@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._project.discovery_candidates import (
@@ -38,11 +38,6 @@ install_lazy_exports(
             "repository_operation_targets",
             "discover_project_candidates",
             "repository_nonparticipant_paths",
-            "detected_project_kind",
-            "_uses_flext_imports",
-            "_is_nonparticipant",
-            "_looks_like_project",
-            "nearest_project_root",
         ),
         "FlextInfraUtilitiesProjectDiscoveryShape": (
             "detected_project_kind",
@@ -50,6 +45,15 @@ install_lazy_exports(
             "_is_nonparticipant",
             "_looks_like_project",
             "nearest_project_root",
+        ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "FlextInfraUtilitiesProjectDiscoveryCandidates": (
+            (".", "FlextInfraUtilitiesProjectDiscoveryShape"),
         ),
     },
 )
