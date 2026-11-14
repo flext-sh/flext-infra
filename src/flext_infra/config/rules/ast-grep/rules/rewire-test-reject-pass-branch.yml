@@ -1,0 +1,61 @@
+# The former assert rewrite emitted an empty `if` branch before tm.reject. A
+# condition that needs its branch (branch-condition) keeps one negated branch,
+# since tm.reject returns Never; any other condition becomes the tm.that
+# native-truth expression the assert rules now emit.
+id: rewire-test-reject-pass-branch
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: |-
+        if $COND:
+            pass
+        else:
+            tm.reject($$$ARGS)
+    - matches: if-pass-reject-shape
+    - matches: branch-condition
+fix: |-
+  if not ($COND):
+      tm.reject($$$ARGS)
+message: Fail a branch condition through one negated branch before tm.reject.
+---
+id: rewire-test-reject-pass-branch-truth
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: |-
+        if $COND:
+            pass
+        else:
+            tm.reject()
+    - matches: if-pass-reject-shape
+    - not:
+        matches: branch-condition
+fix: "tm.that($COND, truth=True)"
+message: Assert native truth through one tm.that expression.
+---
+id: rewire-test-reject-pass-branch-message
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - pattern: |-
+        if $COND:
+            pass
+        else:
+            tm.reject($MSG)
+    - matches: if-pass-reject-shape
+    - not:
+        matches: branch-condition
+fix: "tm.that($COND, truth=True, assertion_message=$MSG)"
+message: Assert native truth with the original message through one tm.that expression.

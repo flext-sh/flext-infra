@@ -1,0 +1,43 @@
+id: rewire-test-assert-truth-branch
+snapshots:
+  "from flext_tests import tm\ndef check():\n    assert verdict() or unexpected()\n":
+    fixed: |
+      from flext_tests import tm
+      def check():
+          if not (verdict() or unexpected()):
+              tm.reject()
+    labels:
+    - source: assert verdict() or unexpected()
+      style: primary
+      start: 44
+      end: 76
+  "from tests import tm\nassert ready\n":
+    fixed: |
+      from tests import tm
+      if not (ready):
+          tm.reject()
+    labels:
+    - source: assert ready
+      style: primary
+      start: 21
+      end: 33
+  "from tests import tm\nassert ready if strict else loaded\n":
+    fixed: |
+      from tests import tm
+      if not (ready if strict else loaded):
+          tm.reject()
+    labels:
+    - source: assert ready if strict else loaded
+      style: primary
+      start: 21
+      end: 55
+  "from tests import tm\nassert result.success\n":
+    fixed: |
+      from tests import tm
+      if not (result.success):
+          tm.reject()
+    labels:
+    - source: assert result.success
+      style: primary
+      start: 21
+      end: 42

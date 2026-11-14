@@ -1,0 +1,22 @@
+id: rewire-test-assert-falsity-branch
+snapshots:
+  "from tests import tm\nassert not dirty\n":
+    fixed: |
+      from tests import tm
+      if dirty:
+          tm.reject()
+    labels:
+    - source: assert not dirty
+      style: primary
+      start: 21
+      end: 37
+  "from tests import tm\nassert not result.failed\n":
+    fixed: |
+      from tests import tm
+      if result.failed:
+          tm.reject()
+    labels:
+    - source: assert not result.failed
+      style: primary
+      start: 21
+      end: 45

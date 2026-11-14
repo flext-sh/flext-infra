@@ -1,0 +1,15 @@
+id: rewire-test-assert-falsity-branch
+valid:
+- |
+  from tests import tm
+  assert not path.exists()
+- |
+  from other_library import tm
+  assert not dirty
+invalid:
+- |
+  from tests import tm
+  assert not dirty
+- |
+  from tests import tm
+  assert not result.failed

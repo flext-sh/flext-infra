@@ -1,39 +1,31 @@
 id: rewire-test-assert-message-observation
 snapshots:
-  "assert result.success, result.error":
-    fixed: |-
-      if result.success:
-          pass
-      else:
-          tm.reject(result.error)
+  "assert result.exit_code == 0, result.stdout + result.stderr":
+    fixed: >-
+      tm.that(result.exit_code == 0, truth=True, assertion_message=result.stdout +
+      result.stderr)
     labels:
-    - source: assert result.success, result.error
+    - source: assert result.exit_code == 0, result.stdout + result.stderr
       style: primary
       start: 0
-      end: 35
-  "from tests import tm\nassert result.success, result.error\n":
+      end: 59
+  "from tests import tm\nassert count() > 0, \"nothing counted\"\n":
     fixed: |
       from tests import tm
-      if result.success:
-          pass
-      else:
-          tm.reject(result.error)
+      tm.that(count() > 0, truth=True, assertion_message="nothing counted")
     labels:
-    - source: assert result.success, result.error
+    - source: assert count() > 0, "nothing counted"
       style: primary
       start: 21
-      end: 56
-  "from tests import tm\nif not (started.success):\n    raise AssertionError(started.error)\n":
+      end: 58
+  "from tests import tm\nif not (started.exit_code == 0):\n    raise AssertionError(started.error)\n":
     fixed: |
       from tests import tm
-      if started.success:
-          pass
-      else:
-          tm.reject(started.error)
+      tm.that(started.exit_code == 0, truth=True, assertion_message=started.error)
     labels:
     - source: |-
-        if not (started.success):
+        if not (started.exit_code == 0):
             raise AssertionError(started.error)
       style: primary
       start: 21
-      end: 86
+      end: 93
