@@ -6,10 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
-
-from mkdocs.exceptions import Abort, ConfigurationError
 
 from flext_infra.docs import (
     FlextInfraDocAuditor,
@@ -18,7 +15,7 @@ from flext_infra.docs import (
     FlextInfraDocGenerator,
     FlextInfraDocValidator,
 )
-from tests import c, m, t, tm, u
+from tests import c, m, tm, u
 
 
 class TestsFlextInfraDocsMainCommands:
@@ -26,13 +23,12 @@ class TestsFlextInfraDocsMainCommands:
 
     @staticmethod
     @c.Tests.MARK.parametrize("invalid_navigation", [False, True])
-    def test_native_mkdocs_strict_build_preserves_its_warning_failure(
+    def test_native_strict_build_preserves_its_warning_failure(
         tmp_path: Path,
-        capsys: t.Tests.CaptureFixture[str],
         *,
         invalid_navigation: bool,
     ) -> None:
-        """The SDK exposes warnings and restores logger state after either outcome."""
+        """The ProperDocs strict child build publishes a site or escapes its warning."""
         content = tmp_path / "content"
         content.mkdir()
         (content / "index.md").write_text(
@@ -47,7 +43,7 @@ class TestsFlextInfraDocsMainCommands:
                     "nav": [
                         {"Home": "missing.md" if invalid_navigation else "index.md"},
                     ],
-                    "theme": {"name": "mkdocs"},
+                    "theme": {"name": "material"},
                 },
             ),
         )
@@ -56,15 +52,12 @@ class TestsFlextInfraDocsMainCommands:
             path=tmp_path,
             report_dir=tmp_path / "reports",
         )
-        logger = logging.getLogger("mkdocs")
-        previous_handlers = tuple(logger.handlers)
-        previous_level = logger.level
-        previous_propagate = logger.propagate
         if invalid_navigation:
-            with u.Tests.raises(Abort, match="strict mode") as caught:
+            with u.Tests.raises(
+                RuntimeError, match="-m properdocs build --strict"
+            ) as caught:
                 u.Infra.docs_run_mkdocs(scope)
-            tm.ok(caught.value.__traceback__ is not None)
-            tm.that(capsys.readouterr().err, has="missing.md")
+            tm.that(str(caught.value), has="missing.md")
         else:
             report = u.Infra.docs_run_mkdocs(scope)
             tm.ok(report.passed)
@@ -73,9 +66,6 @@ class TestsFlextInfraDocsMainCommands:
             tm.that(
                 html.read_text(encoding=c.DEFAULT_ENCODING), has="Public build proof"
             )
-        tm.that(tuple(logger.handlers), eq=previous_handlers)
-        tm.that(logger.level, eq=previous_level)
-        tm.that(logger.propagate, eq=previous_propagate)
 
     @staticmethod
     def test_auditor_execute_fails_on_finding(tmp_path: Path) -> None:
@@ -175,16 +165,17 @@ class TestsFlextInfraDocsMainCommands:
     def test_builder_execute_fails_with_invalid_mkdocs_config(
         tmp_path: Path,
     ) -> None:
-        """An invalid scope config escapes with the MkDocs failure itself.
-
-        The builder loads the scope's own ``mkdocs.yml`` and never translates
-        a MkDocs failure into a result: the exception and traceback escape.
-        """
+        """An invalid scope config fails with the ProperDocs parse error itself."""
         workspace = u.Tests.create_docs_workspace(tmp_path)
         (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
 
-        with u.Tests.raises(ConfigurationError, match="parsing the configuration"):
-            FlextInfraDocBuilder(repository_root=workspace).execute()
+        result = FlextInfraDocBuilder(repository_root=workspace).execute()
+
+        tm.fail(result)
+        tm.that(
+            result.error,
+            has="ProperDocs encountered an error parsing the configuration file",
+        )
 
     @staticmethod
     def test_generate_fix_cycle_is_byte_identical_on_second_run(

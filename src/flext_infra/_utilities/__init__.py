@@ -375,6 +375,7 @@ install_lazy_exports(
             "result_routes",
         ),
         "FlextInfraUtilitiesCodegen": (
+            "workspace_runtime_codegen",
             "codegen_raise_failure",
             "envrc_render_spec",
             "generate_test_module_skeleton",
