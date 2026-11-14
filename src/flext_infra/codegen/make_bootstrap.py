@@ -84,20 +84,19 @@ class FlextInfraCodegenMakeBootstrap(
                     .flat_map(lambda executor: executor.check_managed(request))
                     .map(lambda _: True)
                 )
-            # The first generation publishes the project; the second documents
-            # the published project, so one bootstrap reaches the fixed point.
-            conformed = FlextInfraCodegenConform.Generate.execute_request(
-                request, execution_context=self
-            ).flat_map(
-                lambda _: FlextInfraCodegenConform.Generate.execute_request(
+            # Each generation documents the tree the previous one published;
+            # bootstrap repeats until a pass writes nothing (its fixed point).
+            for _ in range(c.Infra.BOOTSTRAP_GENERATION_PASSES_MAX):
+                generated = FlextInfraCodegenConform.Generate.execute_request(
                     request, execution_context=self
                 )
+                if generated.failure or not generated.value.written_files:
+                    return generated.map(lambda _: True)
+            return r[bool].fail(
+                f"bootstrap of {requested} did not reach a generation fixed point "
+                f"within {c.Infra.BOOTSTRAP_GENERATION_PASSES_MAX} passes"
             )
-        else:
-            conformed = self._conform_existing_target(requested)
-            if self.effective_dry_run:
-                return conformed.map(lambda _: True)
-        return conformed.map(lambda _: True)
+        return self._conform_existing_target(requested).map(lambda _: True)
 
 
 __all__: list[str] = ["FlextInfraCodegenMakeBootstrap"]

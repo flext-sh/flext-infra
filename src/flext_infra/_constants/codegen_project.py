@@ -211,6 +211,8 @@ class FlextInfraConstantsCodegenProject(FlextInfraConstantsConfig):
         FlextInfraConstantsSharedInfra.MAKEFILE_FILENAME,
     })
     "The Makefile surface: the generated Makefile alone."
+    BOOTSTRAP_GENERATION_PASSES_MAX: ClassVar[int] = 4
+    "Generation passes a new project's bootstrap may take to reach its fixed point."
     MISE_LOCK_ANNOTATION: ClassVar[str] = "~"
     "Lockfile cache-key fragment (``<version>~<hash>``); never a selector."
     MISE_MOVING_SELECTOR: ClassVar[str] = "latest"

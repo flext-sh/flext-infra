@@ -116,27 +116,19 @@ class TestsFlextInfraRuntimeModuleOwners:
     ) -> None:
         """Real scaffold output keeps one destination and singleton identity."""
         root = tmp_path / "consumer"
-        if override:
-            directory = root / "config"
-            directory.mkdir(parents=True)
-            tm.ok(
-                u.Cli.yaml_dump(
-                    directory / "codegen.yaml",
-                    {
-                        "Infra": {
-                            "codegen": {
-                                "runtime_module_overrides": {
-                                    "flext-demo": {
-                                        "config": "configuration",
-                                        "settings": "runtime_settings",
-                                    },
-                                }
-                            }
-                        },
+        TestsFlextInfraCodegenCiMatrix.render_project(
+            root,
+            codegen_inputs={
+                "runtime_module_overrides": {
+                    "flext-demo": {
+                        "config": "configuration",
+                        "settings": "runtime_settings",
                     },
-                )
-            )
-        TestsFlextInfraCodegenCiMatrix.render_project(root)
+                },
+            }
+            if override
+            else None,
+        )
         declared = tm.ok(u.Infra.load_codegen_inputs(root)).spec
         names = u.Infra.runtime_module_names(
             project_name="flext-demo", codegen=declared
