@@ -161,7 +161,6 @@ install_lazy_exports(
             "codemod_package_export_facts",
             "codemod_workspace_export_facts",
             "_codemod_provider_candidates",
-            "_codemod_installed_initializer",
             "codemod_provider_aliases",
             "_codemod_installed_package_exports",
             "codemod_package_export_utilities",
