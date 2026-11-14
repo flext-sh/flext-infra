@@ -975,6 +975,26 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             return path
 
         @classmethod
+        def register_checker_workspace(cls, root: Path, *projects: Path) -> None:
+            """Make ``root`` a checkout and each project a registered submodule.
+
+            The checker elects every project's runtime from Git, as in a real
+            workspace, so plain project directories under a non-Git root fail.
+            """
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
+            for project in projects:
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(
+                    project,
+                    origin_url=cls.governed_repository_url(project.name),
+                )
+                cls.attach_submodule(
+                    root,
+                    project,
+                    distribution=project.name,
+                    relative_path=project.relative_to(root).as_posix(),
+                )
+
+        @classmethod
         def attach_submodule(
             cls,
             parent: Path,

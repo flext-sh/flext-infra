@@ -1,9 +1,10 @@
 """Every class a family facade composes by MRO is a lazy stand-in.
 
 The generated initializer gives a stand-in to each facade-composed part with
-its own members, and shares each deferred in-package base through
-``defer_lazy_bases``. A class no facade composes stays a plain lazy export, and
-a composed part whose base is a third-party type fails generation by name.
+its in-package members. A class no facade composes stays a plain lazy export,
+and a composed part whose base is a third-party type fails generation by name.
+A facade of one tier root (``examples``) that another tier's facade composes
+stays real, like a public ``src`` facade.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -92,3 +93,21 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         fixture_tree("lazy-deferred-capability-foreign-base", destination=root)
         with u.Tests.raises(ValueError, match="not a class of its package"):
             u.Tests.create_lazy_init_service(root).plan_files()
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    def test_tier_root_facade_composed_by_another_tier_stays_real(
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """An examples facade the tests facade composes is a root, not a part."""
+        root = deferred_capability_project
+        fixture_tree("lazy-deferred-capability-tier-roots", destination=root)
+        tm.ok(u.Tests.create_lazy_init_service(root).plan_files())
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        initializer = (root / c.Infra.DIR_EXAMPLES / c.Infra.INIT_PY).read_text(
+            encoding=c.DEFAULT_ENCODING
+        )
+        tm.that(initializer, has="ExamplesFlextDemoUtilities")
+        tm.that(initializer, lacks='"ExamplesFlextDemoUtilities": (')
