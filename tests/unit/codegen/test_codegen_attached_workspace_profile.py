@@ -137,6 +137,20 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
         tm.that(set(from_root), has=Path(c.Infra.MAKEFILE_FILENAME))
         tm.that(from_member, eq=from_root)
 
+    def test_linked_worktree_of_attached_member_renders_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """A linked worktree of an attached member is no gitlink of its own."""
+        _, member = self._attached_workspace(tmp_path)
+        lane = u.Tests.git_linked_lane(tmp_path / "lanes", member, "lane")
+        makefile = self._member_files(lane, lane, c.Infra.CodegenConformScope.SELF)[
+            Path(c.Infra.MAKEFILE_FILENAME)
+        ]
+        tm.that(
+            makefile,
+            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
+        )
+
     def test_workspace_runtime_provides_attached_member_tools(
         self, tmp_path: Path
     ) -> None:
