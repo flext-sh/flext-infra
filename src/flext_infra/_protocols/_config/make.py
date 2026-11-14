@@ -857,6 +857,11 @@ class FlextInfraProtocolsConfigMake:
             ...
 
         @property
+        def scan_batch_files(self) -> t.PositiveInt:
+            """Sources per ast-grep scan invocation, each batch cached on completion."""
+            ...
+
+        @property
         def admission(self) -> FlextInfraProtocolsConfigMake.MakeAdmissionSpec:
             """Host admission and run limits of every public verb."""
             ...
