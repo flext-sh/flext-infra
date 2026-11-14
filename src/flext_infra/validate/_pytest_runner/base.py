@@ -362,10 +362,20 @@ class FlextInfraPytestRunnerBase(s[int]):
     ) -> int | p.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
 
+        The project's own ``[tool.flext.project.tests] parallel-workers``
+        declaration wins, so a consumer owns its measured ceiling without the
+        fleet config naming it; the fleet overrides map covers FLEXT members.
+
         Returns:
             The resulting ``int | m.Infra.PytestWorkerCeiling``.
 
         """
+        project = u.Infra.tool_flext_meta(self.repository_root).get("project")
+        tests = project.get("tests") if isinstance(project, dict) else None
+        if isinstance(tests, dict) and "parallel-workers" in tests:
+            return m.Infra.PytestWorkerCeiling.model_validate(
+                tests["parallel-workers"],
+            )
         if not policy.parallel_worker_overrides:
             return policy.parallel_workers
         name = self._declared_project_name()

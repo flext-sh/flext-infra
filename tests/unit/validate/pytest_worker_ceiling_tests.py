@@ -125,3 +125,22 @@ class TestsFlextInfraPytestWorkerCeiling:
         command = runner.build_command(report)
         workers = command[command.index("-n") + 1]
         tm.that(workers, eq=str(budget) if budget > 1 else "0")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("workers", (1, 3))
+    def test_project_owned_declaration_wins_over_the_fleet_map(
+        cached_runner_project: Path,
+        workers: int,
+    ) -> None:
+        """A project's own tests.parallel-workers is its ceiling, unnamed by flext."""
+        pyproject = cached_runner_project / c.PYPROJECT_FILENAME
+        pyproject.write_text(
+            pyproject.read_text(encoding=c.DEFAULT_ENCODING)
+            + "\n[tool.flext.project.tests.parallel-workers]\n"
+            + f"workers = {workers}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        capacity = u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb)
+        tm.that(runner.parallel_worker_budget(policy), eq=min(workers, capacity))
