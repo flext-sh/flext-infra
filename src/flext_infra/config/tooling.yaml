@@ -487,8 +487,11 @@ Infra:
         # prop-decorator stay suspended until the fleet facade-alias family
         # is cured; pydantic.mypy remains mandatory. Operator order 2026-11-13
         # restores the 2026-11-08 suspension set that 387febe2ec reduced to two
-        # codes without authorization. Mutating these codes is a regression to
-        # revert.
+        # codes without authorization. Operator order 2026-11-14, verbatim: "o
+        # que vale são as 12 entradas de suspensão" — these fourteen are the
+        # whole set in every project, with no drift either way. Only the
+        # operator changes them; tests/unit/deps/test_modernizer_tool_tables.py
+        # fails on any addition or removal until that authorization is recorded.
         ruling-disable-error-codes: [ call-arg, prop-decorator, arg-type, assignment, attr-defined, has-type, list-item, misc, name-defined, no-any-return, override, unreachable, valid-type, var-annotated ]
         overrides:
         - modules: [ rope.* ]
