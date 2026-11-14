@@ -109,6 +109,7 @@ class TestsFlextInfraCodemodGateNativeRoute:
             """The real native scan, reported as stopped at its deadline."""
 
             cut: ClassVar[bool] = False
+            kept: ClassVar[int] = 0
 
             @classmethod
             @override
@@ -126,9 +127,14 @@ class TestsFlextInfraCodemodGateNativeRoute:
                         cmd, output_file, cwd, timeout, options=options
                     )
                 )
+                records = Path(output_file).read_text(encoding="utf-8").splitlines()
+                cls.kept = len(records) - 1 if cls.cut else len(records)
                 if cls.cut:
-                    records = Path(output_file).read_text(encoding="utf-8")
-                    Path(output_file).write_text(records[:-20], encoding="utf-8")
+                    Path(output_file).write_text(
+                        "".join(f"{record}\n" for record in records[:-1])
+                        + records[-1][: len(records[-1]) // 2],
+                        encoding="utf-8",
+                    )
                 return r[p.Cli.ProcessOutcome].ok(
                     m.Cli.ProcessOutcome(
                         raw_return_code=-2, timed_out=True, forwarded_signal=None
@@ -141,26 +147,29 @@ class TestsFlextInfraCodemodGateNativeRoute:
         )
 
         tm.fail(execution.result.passed)
-        published = sorted(
-            (issue.code, Path(issue.file).name)
-            for issue in execution.issues
-            if issue.code.startswith("contract-")
-        )
         tm.that(
-            published,
-            eq=[("contract-first", "first.py")]
-            if truncated
-            else [("contract-first", "first.py"), ("contract-second", "second.py")],
-            msg=execution.raw_output,
+            execution.raw_output,
+            has=f"{_TimedOutScan.kept} policy findings; 1 native failures",
         )
-        tm.that(execution.raw_output, has="1 native failures")
+        if not truncated:
+            tm.that(
+                sorted(
+                    (issue.code, Path(issue.file).name)
+                    for issue in execution.issues
+                    if issue.code.startswith("contract-")
+                ),
+                eq=[("contract-first", "first.py"), ("contract-second", "second.py")],
+                msg=execution.raw_output,
+            )
         tm.that(
             tuple(
                 issue.message
                 for issue in execution.issues
                 if issue.code == c.Infra.ToolOutcome.ERROR.value
             ),
-            eq=["sg exited with code -2 timed_out=True forwarded_signal=None"],
+            eq=[
+                f"{c.Infra.SG} exited with code -2 timed_out=True forwarded_signal=None"
+            ],
         )
 
 
