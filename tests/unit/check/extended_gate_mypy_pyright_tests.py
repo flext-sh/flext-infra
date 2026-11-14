@@ -187,6 +187,8 @@ class TestsFlextInfraTypeGates:
         sibling = source_root / "unselected_file.py"
         sibling.write_text("def :\n", encoding="utf-8")
         reports = checker_context.reports_dir / "literal-file"
+        # The public route elects the project's own managed runtime from Git.
+        u.Tests.provision_checkout(project)
         code = FlextInfraCli.infra_main([
             "check",
             "run",
