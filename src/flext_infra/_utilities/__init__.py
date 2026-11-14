@@ -1792,6 +1792,7 @@ install_lazy_exports(
             "project_import_graph",
             "composes_family_package",
             "declared_class_scopes",
+            "codemod_finding_start",
             "codemod_source_path",
             "codemod_path_findings",
             "codemod_ambient_environ_rules",
