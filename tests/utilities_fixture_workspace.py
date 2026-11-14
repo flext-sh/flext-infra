@@ -127,6 +127,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
+        # A real project is a Git checkout; the checker elects its runtime
+        # from Git and refuses a plain directory.
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
         return project_dir
 
     @staticmethod
@@ -981,12 +984,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             The checker elects every project's runtime from Git, as in a real
             workspace, so plain project directories under a non-Git root fail.
             """
-            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
             for project in projects:
                 TestsFlextInfraUtilitiesGit.initialize_git_repo(
                     project,
                     origin_url=cls.governed_repository_url(project.name),
                 )
+            # The root is initialized after its members, so it records them
+            # as gitlinks rather than as tracked files.
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
+            for project in projects:
                 cls.attach_submodule(
                     root,
                     project,
