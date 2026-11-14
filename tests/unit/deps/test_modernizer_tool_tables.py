@@ -80,6 +80,42 @@ class TestsFlextInfraDepsModernizerToolTables:
             tm.that(exclude.match(f"{root}/module.py"), none=True)
         tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
 
+    def test_mypy_suspension_set_is_the_operator_authorized_set(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Render exactly the operator-authorized mypy suspensions, no drift.
+
+        Operator ruling 2026-10-05 authorizes call-arg and prop-decorator;
+        operator order 2026-11-14 ("o que vale são as 12 entradas de
+        suspensão") authorizes the other twelve. Adding or removing a code in
+        tooling.yaml fails here until the operator records the change.
+        """
+        payload, _ = self._applied(tmp_path)
+        rendered = list(
+            u.Tests.toml_strings(self._table(payload, "mypy")["disable_error_code"])
+        )
+        tm.that(len(rendered), eq=len(set(rendered)))
+        tm.that(
+            sorted(rendered),
+            eq=[
+                "arg-type",
+                "assignment",
+                "attr-defined",
+                "call-arg",
+                "has-type",
+                "list-item",
+                "misc",
+                "name-defined",
+                "no-any-return",
+                "override",
+                "prop-decorator",
+                "unreachable",
+                "valid-type",
+                "var-annotated",
+            ],
+        )
+
     def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
         """Render toolchain Python plus config-owned plugins and overrides."""
         mypy_policy = config.Infra.tooling.tools.mypy
