@@ -480,7 +480,7 @@ reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 useLibraryCodeForTypes = true
 venv = ".venv"
-venvPath = ".."
+venvPath = "."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src", "."]
@@ -705,6 +705,9 @@ exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
   "rope @ git+https://github.com/marlon-costa-dc/rope.git@4cb40a6fe564c6761dcb2f4e6c79d7fb7304f96f",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
 ]
 [[tool.uv.cache-keys]]
 file = "pyproject.toml"
@@ -717,6 +720,24 @@ file = "setup.cfg"
 
 [[tool.uv.cache-keys]]
 file = "src/**"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-cli"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-core"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
 
 [tool.uv.exclude-newer-package]
 soupsieve = false

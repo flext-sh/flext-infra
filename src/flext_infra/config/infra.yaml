@@ -67,7 +67,10 @@ Infra:
       budget_seconds: 900
       grace_seconds: 30
     modification:
-      budget_seconds: 120
+      # The mod census scans the complete catalog over every first-class root;
+      # a full 686-rule scan costs roughly 200 s before fixes begin, so the
+      # budget must exceed the census or every run ends in timeout(1) exit 124.
+      budget_seconds: 900
       grace_seconds: 10
     # A full-weight run that succeeded in a checkout is refused before it
     # queues while its window is open (exit 75, naming the lighter form).

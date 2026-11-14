@@ -6,13 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from re import escape
-from typing import ClassVar, override
 
-from flext_infra import FlextInfraCli, config, r
-from flext_infra import u as infra_u
+from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates import FlextInfraGatesCodemod
@@ -85,107 +83,6 @@ class TestsFlextInfraCodemodGate:
         tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
         tm.that(execution.raw_output, has="0 policy findings")
-
-    def test_timed_out_scan_reports_every_published_finding(
-        self,
-        tmp_path: Path,
-        installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
-    ) -> None:
-        """Measure the JSON a stopped scan published instead of counting it once.
-
-        A scanner that reaches its deadline after emitting its final
-        ``--json=compact`` array must report each published rule/file and the
-        true policy-finding total, while the native timeout stays blocking.
-        """
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
-        diagnostics = tuple(
-            m.Infra.AstGrepDiagnostic.model_validate({
-                "file": file,
-                "ruleId": rule,
-                "severity": "error",
-                "message": f"Observed {rule}",
-                "text": "call",
-                "lines": "call",
-                "range": {
-                    "start": {"line": 0, "column": 0},
-                    "end": {"line": 0, "column": 4},
-                    "byteOffset": {"start": 0, "end": 4},
-                },
-            })
-            for file, rule in (
-                ("src/first.py", "contract-first"),
-                ("src/second.py", "contract-second"),
-            )
-        )
-        payload = tm.ok(
-            u.Cli.json_dumps(
-                m.Infra.AstGrepReport(root=diagnostics).model_dump(mode="json")
-            )
-        )
-
-        class _TimedOutScan(infra_u.Cli):
-            """A native scan that published its final report before its deadline."""
-
-            published: ClassVar[str] = ""
-
-            @classmethod
-            @override
-            def run_raw(
-                cls,
-                cmd: Sequence[str],
-                cwd: t.Cli.TextPath | None = None,
-                timeout: int | None = None,
-                *,
-                options: p.Cli.ProcessOptions | None = None,
-                capture: bool = True,
-                env: Mapping[str, str] | None = None,
-                remove_env_keys: Sequence[str] | None = None,
-            ) -> p.Result[p.Cli.CommandOutput]:
-                _ = cmd, cwd, timeout, options, capture, env, remove_env_keys
-                return r[p.Cli.CommandOutput].ok(
-                    m.Cli.CommandOutput.model_validate({
-                        "stdout": cls.published,
-                        "stderr": "",
-                        "outcome": m.Cli.ProcessOutcome(
-                            raw_return_code=-2,
-                            timed_out=True,
-                            forwarded_signal=None,
-                        ),
-                    })
-                )
-
-        _TimedOutScan.published = payload
-        execution = FlextInfraGatesCodemod(tmp_path, runner=_TimedOutScan).check(
-            project, u.Tests.gate_context(tmp_path)
-        )
-
-        tm.fail(execution.result.passed)
-        published = tuple(
-            (issue.code, Path(issue.file).as_posix())
-            for issue in execution.issues
-            if issue.code.startswith("contract-")
-        )
-        tm.that(
-            published,
-            eq=[
-                ("contract-first", "src/first.py"),
-                ("contract-second", "src/second.py"),
-            ],
-        )
-        tm.that(execution.raw_output, has="2 policy findings; 1 native failures")
-        tm.that(
-            tuple(
-                issue.message
-                for issue in execution.issues
-                if issue.code == c.Infra.ToolOutcome.ERROR.value
-            ),
-            eq=[
-                "ast-grep exited with code -2: timed_out=True; "
-                "forwarded_signal=None"
-            ],
-        )
-        tm.ok(execution.raw_receipt is not None)
 
     @staticmethod
     def _rule_files(

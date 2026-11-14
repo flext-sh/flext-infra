@@ -43,6 +43,41 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(notes, has=c.Tests.RELEASE_NOTES_CHANGE_LINE)
 
         @staticmethod
+        def test_generate_notes_collapses_untrusted_whitespace(
+            tmp_path: Path,
+        ) -> None:
+            """A commit subject with repeated spaces cannot fail the markdown gate."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
+            subject = (
+                "Recovery/p0 20260927/fleet closure lanes  core regen  flext core "
+                "(#515)"
+            )
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [project],
+                subject,
+                notes_path,
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(
+                notes,
+                has=(
+                    "- Recovery/p0 20260927/fleet closure lanes core regen "
+                    "flext core (#515)"
+                ),
+            )
+            tm.fail(
+                any(
+                    "  " in line for line in notes.splitlines() if line.startswith("- ")
+                ),
+            )
+
+        @staticmethod
         def test_generate_notes_is_formatter_stable(tmp_path: Path) -> None:
             """The canonical formatter leaves generated notes byte-identical."""
             notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME

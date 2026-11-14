@@ -369,7 +369,10 @@ class FlextInfraUtilitiesRelease:
         """
         rendered: MutableSequence[str] = []
         for raw in changes.splitlines():
-            line = raw.strip()
+            # Why: a GitHub merge subject is untrusted whitespace. Repeated
+            # spaces (a lane name plus a generated suffix) reach the release
+            # document and the markdown gate rejects them (MD064/markdown-format).
+            line = " ".join(raw.split())
             if not line:
                 continue
             escaped = c.Infra.MARKDOWN_INLINE_ESCAPE_RE.sub(
