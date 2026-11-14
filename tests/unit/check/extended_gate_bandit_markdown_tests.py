@@ -433,9 +433,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         # Source discovery needs Git; the Markdown linter remains unavailable on PATH.
         (empty_path / "git").symlink_to(tm.not_none(shutil.which("git")))
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = FlextInfraGatesMarkdown(tmp_path).check(
+            result = u.Tests.run_gate_check(
+                FlextInfraGatesMarkdown,
+                tmp_path,
                 project_dir,
-                u.Tests.gate_context(tmp_path),
+                ctx=u.Tests.gate_context(tmp_path),
             )
 
         tm.ok(result.result.passed)
@@ -458,9 +460,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         )
         (target_dir / "overview.md").write_text("# Overview\n", encoding="utf-8")
 
-        result = FlextInfraGatesMarkdown(tmp_path).check(
+        result = u.Tests.run_gate_check(
+            FlextInfraGatesMarkdown,
+            tmp_path,
             project_dir,
-            u.Tests.gate_context(tmp_path),
+            ctx=u.Tests.gate_context(tmp_path),
         )
 
         tm.ok(result.result.passed)
@@ -486,9 +490,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
             encoding="utf-8",
         )
 
-        result = FlextInfraGatesMarkdown(tmp_path).check(
+        result = u.Tests.run_gate_check(
+            FlextInfraGatesMarkdown,
+            tmp_path,
             project_dir,
-            u.Tests.gate_context(tmp_path),
+            ctx=u.Tests.gate_context(tmp_path),
         )
 
         tm.fail(result.result.passed)
@@ -511,8 +517,11 @@ class TestsFlextInfraBanditAndMarkdownGates:
         target.write_text("# Target\n", encoding="utf-8")
         gate = FlextInfraGatesMarkdown(tmp_path)
 
+        # Gates read a checkout's tracked files: each state joins the index.
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         first = gate.check(project_dir, u.Tests.gate_context(tmp_path))
         target.unlink()
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         second = gate.check(project_dir, u.Tests.gate_context(tmp_path))
 
         tm.ok(first.result.passed)
