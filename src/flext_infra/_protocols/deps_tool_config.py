@@ -122,6 +122,7 @@ class FlextInfraProtocolsDepsToolConfig:
         profile_process_directory: t.NonEmptyStr
         standard_markers: Sequence[str]
         external_gate_markers: tuple[str, ...]
+        harness_gate_markers: tuple[str, ...]
         ci_excluded_markers: tuple[str, ...]
         ci_excluded_fixtures: tuple[str, ...]
 
