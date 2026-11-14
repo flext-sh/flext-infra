@@ -1,0 +1,20 @@
+id: rewire-test-assert-contains-sequence
+snapshots:
+  "from tests import tm\nassert (\"2026-04-01\", \"saldo\") in rows\n":
+    fixed: |
+      from tests import tm
+      tm.that(rows, has=[("2026-04-01", "saldo")])
+    labels:
+    - source: assert ("2026-04-01", "saldo") in rows
+      style: primary
+      start: 21
+      end: 59
+  "from tests import tm\nassert [1, 2] in rows\n":
+    fixed: |
+      from tests import tm
+      tm.that(rows, has=[[1, 2]])
+    labels:
+    - source: assert [1, 2] in rows
+      style: primary
+      start: 21
+      end: 42
