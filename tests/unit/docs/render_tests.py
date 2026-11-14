@@ -9,11 +9,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-import mkdocs.config
+import properdocs.config
 import pytest
-from mkdocs.config.defaults import MkDocsConfig
-from mkdocs.structure.files import get_files
-from mkdocs.structure.nav import get_navigation
+from properdocs.config.defaults import ProperDocsConfig
+from properdocs.structure.files import get_files
+from properdocs.structure.nav import get_navigation
 
 from tests import c, m, t, tm, u
 
@@ -22,25 +22,25 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class MkDocsProjectLoader(Protocol):
-    """Native MkDocs loader port for one project configuration file."""
+class ProperDocsProjectLoader(Protocol):
+    """Native ProperDocs loader port for one project configuration file."""
 
     def __call__(
         self,
         config_file: str,
         *,
         plugins: list[object],
-    ) -> MkDocsConfig:
+    ) -> ProperDocsConfig:
         """Load one project configuration, overriding declared plugins."""
         ...
 
 
 @runtime_checkable
-class MkDocsConfigModulePort(Protocol):
-    """Native ``mkdocs.config`` module port exposing its loader."""
+class ProperDocsConfigModulePort(Protocol):
+    """Native ``properdocs.config`` module port exposing its loader."""
 
     @property
-    def load_config(self) -> MkDocsProjectLoader:
+    def load_config(self) -> ProperDocsProjectLoader:
         """The native loader bound to this configuration module."""
         ...
 
@@ -48,18 +48,18 @@ class MkDocsConfigModulePort(Protocol):
 def mkdocs_project_config(
     module: object,
     config_file: str,
-) -> MkDocsConfig:
+) -> ProperDocsConfig:
     """Load one project ``mkdocs.yml`` with plugin overrides disabled.
 
     Returns:
-        The loaded native MkDocs configuration.
+        The loaded native ProperDocs configuration.
 
     Raises:
         TypeError: If the native module does not satisfy its loader port.
 
     """
-    if not isinstance(module, MkDocsConfigModulePort):
-        msg = "mkdocs.config does not satisfy its loader port"
+    if not isinstance(module, ProperDocsConfigModulePort):
+        msg = "properdocs.config does not satisfy its loader port"
         raise TypeError(msg)
     return module.load_config(config_file, plugins=[])
 
@@ -77,7 +77,7 @@ class TestsFlextInfraDocsRender:
     def test_project_navigation_discovers_maintained_pages(
         tmp_path: Path,
     ) -> None:
-        """The real MkDocs navigation has manual guides beyond generated indexes."""
+        """The real ProperDocs navigation has manual guides beyond generated indexes."""
         scope = m.Infra.DocScope(
             name="flext-demo",
             path=tmp_path,
@@ -92,7 +92,7 @@ class TestsFlextInfraDocsRender:
             u.Infra.docs_project_mkdocs(scope, {}),
             encoding="utf-8",
         )
-        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
+        configuration = mkdocs_project_config(properdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
         tm.that(
@@ -144,7 +144,7 @@ class TestsFlextInfraDocsRender:
             ),
             encoding="utf-8",
         )
-        configuration = mkdocs_project_config(mkdocs.config, str(config_file))
+        configuration = mkdocs_project_config(properdocs.config, str(config_file))
         files = get_files(configuration)
         navigation = get_navigation(files, configuration)
 

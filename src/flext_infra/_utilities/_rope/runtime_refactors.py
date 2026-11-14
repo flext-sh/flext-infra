@@ -1013,6 +1013,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         transfer: p.Infra.RopeMethodTransfer,
         paths: Sequence[Path],
         resolver: p.Infra.RopeSourceMemberResolver,
+        *,
+        match_filter: Callable[[p.Infra.RopeOccurrence], bool] | None = None,
     ) -> p.Infra.RopeChangeSet | None:
         """Delegate existing-class method ownership to the native SDK batch.
 
@@ -1096,6 +1098,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
                 destination_resource,
                 destination_offset,
                 **arguments,
+                **({"match_filter": match_filter} if match_filter is not None else {}),
             )
         if not isinstance(changes, p.Infra.RopeChangeSet):
             message = "Rope MoveMethod returned an invalid change set"
@@ -1303,7 +1306,14 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeMatc
         if not isinstance(source_binding, p.Infra.RopePyName):
             message = "native move source has no declaration binding"
             raise TypeError(message)
-        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(source_binding.get_object()):
+        source = source_binding.get_object()
+        if FlextInfraUtilitiesRopeRuntimeTypes.py_class(source) and (
+            options.destination_offset is not None
+            or (
+                (owner := source.get_scope().parent) is not None
+                and owner.get_kind() == "Class"
+            )
+        ):
             mover = cls.runtime_callable("rope.refactor.move", "MoveClass")(
                 project, origin, origin_offset
             )

@@ -206,11 +206,12 @@ class FlextInfraToolTablesPhase:
             self._codegen.toolchain.python_version
         )
         payload["mypy_path"] = list(mypy_search_paths)
+        # PEP 420 packages (first- or third-party) resolve only with namespace
+        # packages on (operator-ruling-2026-11-14-mypy-namespace-packages).
+        payload["namespace_packages"] = True
         # A declared repository namespace has no __init__.py: mypy names its
         # modules from explicit package bases, never from the file's directory.
-        implicit_namespaces = bool(repository_namespace_packages)
-        payload["namespace_packages"] = implicit_namespaces
-        payload["explicit_package_bases"] = implicit_namespaces
+        payload["explicit_package_bases"] = bool(repository_namespace_packages)
         # One exclusion owner: the codegen artifact registry, as Mypy's regex.
         payload["exclude"] = FlextInfraUtilitiesNativeTooling.native_exclude_regex(
             self._codegen.analyzer_exclude_globs

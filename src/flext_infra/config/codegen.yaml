@@ -318,7 +318,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@4cb40a6fe564c6761dcb2f4e6c79d7fb7304f96f
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@394d91c0d9669a6de02b8b54f081d014f784fd52
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -702,14 +702,16 @@ Infra:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
+        # Operator 2026-11-14: host load from other actors sits at 85-113,
+        # so the provisioning path (setup, gen, check) admits to 160.
         overrides:
-          setup: {max_load5: 80}
+          setup: {max_load5: 160}
           upg: {max_load5: 80}
-          gen: {max_load5: 80}
+          gen: {max_load5: 160}
           mod: {max_load5: 80}
           fix: {max_load5: 80}
           fmt: {max_load5: 80}
-          check: {max_load5: 80}
+          check: {max_load5: 160}
           tests: {max_load5: 80}
           help: {max_load5: 80}
           build: {max_load5: 80}
@@ -1547,7 +1549,9 @@ Infra:
         - bandit>=1.9.4
         # Floors let uv select released tools without a cap or downgrade path.
         # Every diagnostic from the resolved release remains blocking.
-        - mkdocs
+        # ProperDocs is the docs engine (FLEXT ADR-009); the MkDocs plugins and
+        # theme below load through its mkdocs entry points.
+        - properdocs>=1.6.7
         - mkdocs-autorefs
         - mkdocs-exclude>=1.0.2
         - mkdocs-git-revision-date-localized-plugin>=1.5.4
@@ -1601,7 +1605,10 @@ Infra:
         - vulture>=2.16
         - yamlfix>=1.19.1
         # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
+        # ProperDocs replaced the unmaintained MkDocs engine (FLEXT ADR-009);
+        # mkdocs stays only as the Material theme's own transitive dependency.
         retired_dev:
+        - mkdocs
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]

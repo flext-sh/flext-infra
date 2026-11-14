@@ -689,7 +689,7 @@ fails without creating directories or searching alternate roots.
 The public `FlextInfraDocGenerator.prepare_bundle()` and `plan_files(bundle)`
 surfaces expose the captured render and destination plans before publication.
 Inspect the entire inventory: `docs generate` also plans documentation indexes,
-guides, MkDocs configuration, presentation metadata and stale generated API removal;
+guides, site configuration, presentation metadata and stale generated API removal;
 `--output-dir` is not a README destination filter. A README-only authorization does
 not admit that complete bundle. If the declared public operation cannot isolate
 the authorized destinations, leave projections unchanged and return the planned

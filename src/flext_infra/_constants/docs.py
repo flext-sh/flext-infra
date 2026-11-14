@@ -300,6 +300,8 @@ class FlextInfraConstantsDocs:
             """
             return self.value[1 if language == "pt-BR" else 0]
 
+    DOCS_ENGINE_MODULE: ClassVar[str] = "properdocs"
+    "Docs engine run as ``python -m``; its CLI installs the MkDocs plugin alias."
     DEFAULT_DOCS_OUTPUT_DIR: ClassVar[str] = ".reports/docs"
     "Rooted exclusions: the project README mirror and the curated API mirror."
     # Registered docs CLI action names; make.docs.actions must stay inside this
@@ -457,7 +459,7 @@ class FlextInfraConstantsDocs:
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
-        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
+        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|properdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )

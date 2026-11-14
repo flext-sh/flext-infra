@@ -1,0 +1,114 @@
+"""A project admission override may name the project's own public verbs.
+
+Every scenario writes a real ``config/codegen.yaml`` project layer, loads it
+through the public codegen boundary and, when admitted, renders the generated
+Makefile through the conform owner.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from flext_infra import config
+from tests import c, m, t, tm, u
+
+pytestmark = c.Tests.MARK.slow
+
+
+class TestsFlextInfraCodegenProjectVerbAdmission:
+    """Admission overrides validate against canonical plus project verbs."""
+
+    PROJECT = "fixture-project"
+
+    @staticmethod
+    def _declare(
+        tmp_path: Path,
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
+        overrides: t.JsonMapping,
+    ) -> Path:
+        """Write one project layer declaring verbs and admission overrides.
+
+        Returns:
+            The generated fixture repository root.
+
+        """
+        name = TestsFlextInfraCodegenProjectVerbAdmission.PROJECT
+        root = tmp_path / name
+        u.Tests.WorktreeFixture.write_python_project(root, name)
+        u.Tests.initialize_git_repo(root, origin_url=u.Tests.repository_ref(name).url)
+        declaration = m.Infra.RepositoryDeltaSpec.model_validate({
+            "project": u.Tests.project_spec(name),
+            "integration": u.Tests.integration(),
+            "extra_verbs": extra_verbs,
+        })
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / c.CONFIG_DIR_NAME / c.Infra.CODEGEN_CONFIG_FILENAME,
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": declaration.model_dump(
+                                mode="json", exclude_unset=True
+                            ),
+                            "make": {"admission": {"overrides": dict(overrides)}},
+                        },
+                    },
+                },
+            )
+        )
+        return root
+
+    @staticmethod
+    def test_canonical_verb_override_merges_over_library_overrides(
+        tmp_path: Path,
+    ) -> None:
+        """A project override of a canonical verb keeps the library overrides."""
+        root = TestsFlextInfraCodegenProjectVerbAdmission._declare(
+            tmp_path, (), {c.Infra.VERB_CHECK: {"max_load5": 97}}
+        )
+        limits = tm.ok(u.Infra.load_codegen_inputs(root)).spec.make.admission
+        tm.that(limits.verb_limits[c.Infra.VERB_CHECK].max_load5, eq=97)
+        library = config.Infra.codegen.make.admission
+        tm.that(set(library.overrides) <= set(limits.overrides), eq=True)
+        tm.that(limits.max_load5, eq=library.max_load5)
+
+    @staticmethod
+    def test_project_verb_override_renders_its_admission_block(
+        tmp_path: Path,
+    ) -> None:
+        """An override naming a project extra verb renders its admission limit."""
+        root = TestsFlextInfraCodegenProjectVerbAdmission._declare(
+            tmp_path,
+            (m.Infra.MakeVerbSpec(name="deploy", description="Deploy the project."),),
+            {"deploy": {"max_load5": 160}},
+        )
+        inputs = tm.ok(u.Infra.load_codegen_inputs(root))
+        tm.that(inputs.spec.make.admission.verb_limits["deploy"].max_load5, eq=160)
+        repository = u.Tests.repository_ref(
+            TestsFlextInfraCodegenProjectVerbAdmission.PROJECT,
+            role=c.Infra.MakeProfile.STANDALONE,
+        ).model_copy(update={"extra_verbs": inputs.spec.repository.extra_verbs})
+        rendered = u.Tests.conform_makefile_text(
+            root, u.Tests.workspace_spec(repository)
+        )
+        tm.that(
+            rendered,
+            has=(
+                "ifeq ($(ADMISSION_VERB),deploy)\n"
+                "override ADMISSION_MAX_LOAD5 := 160.0\n"
+            ),
+        )
+
+    @staticmethod
+    def test_unknown_verb_override_fails_loud(tmp_path: Path) -> None:
+        """An override naming no canonical or project verb is refused."""
+        root = TestsFlextInfraCodegenProjectVerbAdmission._declare(
+            tmp_path, (), {"undeclared-verb": {"max_load5": 160}}
+        )
+        tm.fail(
+            u.Infra.load_codegen_inputs(root),
+            has="make.admission.overrides name undeclared verbs: ['undeclared-verb']",
+        )
