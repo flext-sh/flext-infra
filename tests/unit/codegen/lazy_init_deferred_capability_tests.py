@@ -2,8 +2,8 @@
 
 The generated initializer gives a stand-in to each facade-composed part with
 its in-package members. A class no facade composes stays a plain lazy export,
-and a composed part whose base is a third-party type fails generation by name.
-A facade of one tier root (``examples``) that another tier's facade composes
+and a composed part whose base is a third-party or builtin type fails generation
+by name. A facade of one tier root (``examples``) that another tier's facade composes
 stays real, like a public ``src`` facade.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
@@ -84,26 +84,47 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
-    def test_composed_part_with_third_party_base_fails(
+    @c.Tests.MARK.parametrize(
+        ("fixture", "reason"),
+        [
+            ("lazy-deferred-capability-foreign-base", "not a class of its package"),
+            ("lazy-deferred-capability-builtin-base", "unresolvable base: type"),
+        ],
+    )
+    def test_composed_part_with_third_party_or_builtin_base_fails(
         deferred_capability_project: Path,
         fixture_tree: p.Tests.FixtureTree,
+        fixture: str,
+        reason: str,
     ) -> None:
         """A facade-composed part that cannot be deferred fails generation."""
         root = deferred_capability_project
-        fixture_tree("lazy-deferred-capability-foreign-base", destination=root)
-        with u.Tests.raises(ValueError, match="not a class of its package"):
+        fixture_tree(fixture, destination=root)
+        with u.Tests.raises(ValueError, match=reason):
             u.Tests.create_lazy_init_service(root).plan_files()
 
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
+    @c.Tests.MARK.parametrize(
+        ("fixture", "export"),
+        [
+            ("lazy-deferred-capability-ancestor-base", "FlextDemoUtilities"),
+            ("lazy-deferred-capability-ancestor-letter", "u"),
+        ],
+    )
     def test_ancestor_package_base_is_shared_by_its_import_route(
         deferred_capability_project: Path,
         fixture_tree: p.Tests.FixtureTree,
+        fixture: str,
+        export: str,
     ) -> None:
-        """A base another package publishes is shared as the source imports it."""
+        """A base another package publishes is shared as the source imports it.
+
+        The source reads it by class name or through the published letter.
+        """
         root = deferred_capability_project
-        fixture_tree("lazy-deferred-capability-ancestor-base", destination=root)
+        fixture_tree(fixture, destination=root)
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
         initializer = (
@@ -115,10 +136,7 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         )
         tm.that(
             initializer,
-            has=(
-                '"ExamplesFlextDemoCapabilityExtra": '
-                '(("flext_demo", "FlextDemoUtilities"),),'
-            ),
+            has=f'"ExamplesFlextDemoCapabilityExtra": (("flext_demo", "{export}"),),',
         )
 
     @staticmethod

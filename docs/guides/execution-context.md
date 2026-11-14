@@ -3973,6 +3973,17 @@ that package's previous generated initializer would reintroduce retired exports.
 Other packages still inherit from this root through its completed plan. Missing
 bindings in authored declaration owners remain errors, not optional exports.
 
+A deferred facade part follows the root ADR-018 stand-in composition law. A base
+that another package's generated initializer publishes is shared as
+`(package, export)` exactly as the source imports it, whether the source names the
+class or its published letter. The route comes from that package's plan in the same
+run, or from its installed initializer source, so workspace, standalone and
+consumer runs render the same initializer. A builtin or third-party base fails
+generation, and so does an in-package base flattened around such a route, because
+the flattened order could differ from the real MRO. A module-less ancestor
+directory receives its initializer unless the project declares it a repository
+namespace.
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public
