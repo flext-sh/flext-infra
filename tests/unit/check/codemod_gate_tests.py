@@ -28,32 +28,9 @@ class TestsFlextInfraCodemodGate:
         *,
         severity: str = "error",
     ) -> Path:
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
-        tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
-        project = installed_dependency_path / "scanner_contract"
-        u.Tests.write_native_resolution_project(project, "scanner-contract")
-        # The scanned package itself is clean: only each case's own source may
-        # produce findings.
-        (project / "src" / "scanner_contract" / c.Infra.INIT_PY).write_text(
-            "", encoding=c.DEFAULT_ENCODING
+        return u.Tests.scanner_contract_project(
+            tmp_path, installed_dependency_path, session_runtime, severity=severity
         )
-        u.Tests.declare_rules(
-            project,
-            {
-                name: (
-                    f"id: contract-{name}\nlanguage: Python\nseverity: {severity}\n"
-                    f"message: Observed {name}\nrule:\n  pattern: {name}($VALUE)\n"
-                )
-                for name in ("first", "second")
-            },
-        )
-        # The rule plan reads the target checkout's own runtime, never the
-        # invoking interpreter, so the scanned project owns a provisioned one.
-        u.Tests.initialize_git_repo(project)
-        tm.ok(
-            u.Tests.provision_scan_workspace(project, session_runtime=session_runtime)
-        )
-        return project
 
     @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_policy_findings_block_at_every_severity(
@@ -89,9 +66,7 @@ class TestsFlextInfraCodemodGate:
             execution.finding_count,
             eq=len(execution.issues),
         )
-        if severity == "error":
-            tm.that(execution.raw_output, has="exit=1")
-            tm.that(execution.raw_output, has="error(s) found in code")
+        tm.that(execution.raw_output, has="1 policy findings")
 
     def test_clean_native_scan_has_no_findings(
         self,
@@ -107,7 +82,7 @@ class TestsFlextInfraCodemodGate:
 
         tm.that(execution.result.passed, eq=True, msg=execution.raw_output)
         tm.that(execution.issues, empty=True)
-        tm.that(execution.raw_output, has="exit=0")
+        tm.that(execution.raw_output, has="0 policy findings")
 
     @staticmethod
     def _rule_files(
@@ -605,6 +580,29 @@ class TestsFlextInfraCodemodGate:
         )
         tm.that(len(observed), eq=1)
         tm.that(observed[0].message, has="Observed second")
+
+    def test_failed_prerequisite_ends_check_before_later_phases(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> None:
+        """A prerequisite finding ends the verb; later gates are not executed."""
+        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        (project / "src" / "subject.py").write_text(
+            "import os\nsecond(1)\n", encoding="utf-8"
+        )
+
+        results = tm.ok(
+            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+                [project.relative_to(tmp_path).as_posix()],
+                ["lint", "codemod"],
+                u.Tests.gate_context(tmp_path, tmp_path / "reports"),
+            ),
+        )
+
+        tm.fail(results[0].passed)
+        tm.that(set(results[0].gates), eq={"lint"})
 
     def test_invalid_rule_is_a_native_failure(
         self,

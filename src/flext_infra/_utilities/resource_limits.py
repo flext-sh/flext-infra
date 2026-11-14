@@ -263,44 +263,18 @@ class FlextInfraUtilitiesResourceLimits:
         )
 
     @staticmethod
-    def ruff_cache_directory(project_dir: Path) -> Path:
-        """Resolve persistent Ruff storage while preserving native invalidation.
+    def ruff_cache_directory() -> Path:
+        """Resolve the one Ruff cache every checkout shares.
 
-        Args:
-            project_dir: The path to the project whose Ruff cache is being resolved.
-
-        Returns:
-            The resulting ``Path``.
-
-        """
-        return FlextInfraUtilitiesResourceLimits.project_cache_directory(
-            project_dir,
-            FlextInfraUtilitiesResourceLimits.external_cache_directory(
-                config.Infra.codegen.make.ruff_cache,
-            ),
-        )
-
-    @staticmethod
-    def project_cache_directory(project_dir: Path, cache_root: Path) -> Path:
-        """Namespace one declared cache by its physical project root.
-
-        Analyzer storage must not parse package metadata before the native tool
-        can diagnose its inputs. Physical roots also separate checkouts declaring
-        the same distribution name.
-
-        Args:
-            project_dir: The path to the project whose cache is being namespaced.
-            cache_root: The root directory under which the project's cache will be
-                stored.
+        Ruff keys its own entries by version and package root inside the
+        directory, so no FLEXT namespace is added on top of it.
 
         Returns:
-            The resulting ``Path``.
+            The declared external Ruff cache directory.
 
         """
-        physical = project_dir.resolve(strict=True)
-        return (
-            cache_root
-            / hashlib.sha256(str(physical).encode(c.DEFAULT_ENCODING)).hexdigest()
+        return FlextInfraUtilitiesResourceLimits.external_cache_directory(
+            config.Infra.codegen.make.ruff_cache,
         )
 
     @staticmethod

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import re
 import sys
-from collections.abc import MutableSequence, Sequence
+import tempfile
+from collections.abc import MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 
 from flext_cli import u
@@ -223,12 +224,16 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         candidates: MutableSequence[Path] = (
             sorted(api_reference.rglob("*.md")) if api_reference.exists() else []
         )
-        for path in candidates:
+        relative_paths = tuple(
+            path.relative_to(scope.path / c.Infra.DIR_DOCS) for path in candidates
+        )
+        excluded = FlextInfraUtilitiesDocsScope.excluded_doc_paths(
+            scope.path,
+            relative_paths,
+        )
+        for path, relative_path in zip(candidates, relative_paths, strict=True):
             rel = path.relative_to(scope.path).as_posix()
-            if FlextInfraUtilitiesDocsScope.excluded_doc_path(
-                scope.path,
-                path.relative_to(scope.path / c.Infra.DIR_DOCS),
-            ):
+            if relative_path in excluded:
                 continue
             if rel == "docs/api-reference/README.md" or rel.startswith(
                 "docs/api-reference/generated/",
@@ -295,15 +300,18 @@ class FlextInfraUtilitiesDocsAuditDetectors:
         """Lint embedded ``python`` fenced blocks under one docs scope.
 
         Captures every ``python`` fenced block via ``u.Infra.docs_is_python_fence``
-        and gates each block through ``ruff check --stdin-filename`` (piped
-        body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
-        records flowing through the standard audit report pipeline.
+        and gates the complete capture in one native ``ruff check`` invocation
+        over one temporary file per fence. Every fence keeps its own file, so a
+        symbol defined in one block never satisfies another block, while the
+        scope pays one interpreter and project-config load instead of one per
+        fence. Failures land as ``m.Infra.AuditIssue`` records flowing through
+        the standard audit report pipeline.
 
         Returns:
             The resulting ``Sequence[p.Infra.AuditIssue]``.
 
         """
-        issues: MutableSequence[p.Infra.AuditIssue] = []
+        documents: MutableSequence[tuple[str, int, bytes]] = []
         for md_file in FlextInfraUtilitiesDocsBase.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(encoding=c.DEFAULT_ENCODING)
@@ -312,55 +320,117 @@ class FlextInfraUtilitiesDocsAuditDetectors:
                 # workspace source; re-linting the copy under the member's
                 # import order only reports the projection context.
                 continue
-            for index, fence in enumerate(
-                filter(
-                    FlextInfraUtilitiesDocsBase.docs_is_python_fence,
-                    u.Cli.markdown_fences(content),
-                ),
-            ):
-                # Ruff via running interpreter (venv SSOT);
-                # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
-                outcome = u.Cli.run_raw(
-                    [
-                        sys.executable,
-                        "-m",
-                        c.Infra.RUFF,
-                        c.Infra.VERB_CHECK,
-                        *config.Infra.codegen.make.ruff.lint_check,
-                        "--extend-ignore",
-                        ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
-                        "--stdin-filename",
-                        f"{rel}#block{index}.py",
-                        "-",
-                    ],
-                    cwd=scope.path,
-                    options=m.Cli.ProcessOptions(
-                        input_data=fence.code.encode(),
+            documents.extend(
+                (rel, index, fence.code.encode())
+                for index, fence in enumerate(
+                    filter(
+                        FlextInfraUtilitiesDocsBase.docs_is_python_fence,
+                        u.Cli.markdown_fences(content),
                     ),
                 )
-                if outcome.failure:
-                    detail = outcome.error
-                elif (
-                    u.Cli.process_succeeded(outcome.value.outcome)
-                    and not outcome.value.stderr
-                ):
-                    continue
-                else:
-                    # Ruff reports parse errors on stderr
-                    # only; indexing an empty stdout crashes with IndexError.
-                    detail = (
-                        f"{outcome.value.stdout}\n{outcome.value.stderr}".strip()
-                        or f"ruff exit {outcome.value.outcome.raw_return_code}"
+            )
+        if not documents:
+            return []
+        return FlextInfraUtilitiesDocsAuditDetectors._python_codeblock_issues(
+            scope,
+            documents,
+        )
+
+    @staticmethod
+    def _python_codeblock_issues(
+        scope: p.Infra.DocScope,
+        documents: Sequence[tuple[str, int, bytes]],
+    ) -> Sequence[p.Infra.AuditIssue]:
+        """Check every captured fence in one native ruff process.
+
+        Returns:
+            The resulting ``Sequence[p.Infra.AuditIssue]``.
+
+        """
+        with tempfile.TemporaryDirectory(prefix="flext-docs-codeblocks-") as scratch:
+            targets: MutableMapping[str, tuple[str, int]] = {}
+            for position, (rel, index, code) in enumerate(documents):
+                filename = f"block_{position:04d}.py"
+                (Path(scratch) / filename).write_bytes(code)
+                targets[filename] = (rel, index)
+            # Ruff via running interpreter (venv SSOT);
+            # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
+            command: MutableSequence[str] = [
+                sys.executable,
+                "-m",
+                c.Infra.RUFF,
+                c.Infra.VERB_CHECK,
+                *config.Infra.codegen.make.ruff.lint_check,
+                "--extend-ignore",
+                ",".join(c.Infra.PYTHON_FENCE_RUFF_EXTEND_IGNORE),
+                "--no-cache",
+                "--output-format",
+                "concise",
+            ]
+            manifest = scope.path / c.PYPROJECT_FILENAME
+            if manifest.is_file():
+                command.extend(("--config", manifest.as_posix()))
+            command.append(scratch)
+            outcome = u.Cli.run_raw(command, cwd=scope.path)
+            if outcome.failure:
+                return FlextInfraUtilitiesDocsAuditDetectors._codeblock_failure(
+                    documents,
+                    outcome.error or "ruff process failed",
+                )
+            grouped: MutableMapping[tuple[str, int], MutableSequence[str]] = {}
+            for line in outcome.value.stdout.splitlines():
+                prefix, separator, _ = line.partition(":")
+                target = targets.get(Path(prefix).name)
+                if separator and target is not None:
+                    grouped.setdefault(target, []).append(line)
+            found: MutableSequence[p.Infra.AuditIssue] = []
+            for rel, index, _ in documents:
+                lines = grouped.get((rel, index))
+                if lines:
+                    found.append(
+                        m.Infra.AuditIssue(
+                            file=rel,
+                            issue_type="python_codeblock",
+                            severity="medium",
+                            message=f"block #{index}: " + "\n".join(lines),
+                        ),
                     )
-                issues.append(
-                    m.Infra.AuditIssue(
-                        file=rel,
-                        issue_type="python_codeblock",
-                        severity="medium",
-                        message=f"block #{index}: {detail}",
-                    ),
+            if outcome.value.stderr and not found:
+                return FlextInfraUtilitiesDocsAuditDetectors._codeblock_failure(
+                    documents,
+                    outcome.value.stderr.strip(),
                 )
-        return issues
+            if (
+                not found
+                and not u.Cli.process_succeeded(outcome.value.outcome)
+                and not outcome.value.stderr
+            ):
+                return FlextInfraUtilitiesDocsAuditDetectors._codeblock_failure(
+                    documents,
+                    f"ruff exit {outcome.value.outcome.raw_return_code}",
+                )
+            return found
+
+    @staticmethod
+    def _codeblock_failure(
+        documents: Sequence[tuple[str, int, bytes]],
+        detail: str,
+    ) -> Sequence[p.Infra.AuditIssue]:
+        """Report one native invocation failure against every captured fence.
+
+        Returns:
+            The resulting ``Sequence[p.Infra.AuditIssue]``.
+
+        """
+        return [
+            m.Infra.AuditIssue(
+                file=rel,
+                issue_type="python_codeblock",
+                severity="medium",
+                message=f"block #{index}: {detail}",
+            )
+            for rel, index, _ in documents
+        ]
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsAuditDetectors"]

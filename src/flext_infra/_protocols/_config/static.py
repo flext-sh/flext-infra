@@ -92,6 +92,19 @@ class FlextInfraProtocolsConfigStatic:
             ...
 
     @runtime_checkable
+    class ModEvidenceSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def native_artifact_retention_seconds(self) -> t.PositiveInt:
+            """Structural member projected from the owning model.
+
+            Age after which an artifact no published evidence references is removed;
+            longer than any route that can still publish it.
+            """
+            ...
+
+    @runtime_checkable
     class GateAdmissionSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 

@@ -41,20 +41,36 @@ class FlextInfraEnsurePackagingPhase:
         return (c.PYPROJECT_FILENAME, c.PYPROJECT_FILENAME) if package else None
 
     @staticmethod
-    def uv_cache_key_files(hatch_build_hook_path: Path | None) -> Sequence[str]:
-        """Derive the uv editable-build cache keys from the declared build hook.
+    def uv_cache_key_files(
+        *,
+        package: bool,
+        data: p.Infra.PackagedDataSelection,
+        namespaces: Sequence[str],
+        hatch_build_hook_path: Path | None,
+    ) -> Sequence[str]:
+        """Derive the uv build cache keys from every input of the built wheel.
 
-        Editable installs read package sources and config live, so only a
-        declared Hatch hook changes the built artifact beyond uv's ordinary
-        project inputs.
+        uv rebuilds a local project only when a cache key changes, and its
+        defaults cover the project manifests alone, so a non-editable install
+        (the ``upg`` executor) would keep a wheel built from older sources.
 
         Returns:
-            The ordered cache-key files, empty without a declared hook.
+            The ordered cache-key files, empty for a non-package project.
 
         """
-        if hatch_build_hook_path is None:
+        if not package:
             return ()
-        return (*c.Infra.UV_PROJECT_CACHE_KEY_FILES, hatch_build_hook_path.as_posix())
+        return (
+            *c.Infra.UV_PROJECT_CACHE_KEY_FILES,
+            f"{c.Infra.DEFAULT_SRC_DIR}/**",
+            *data.files,
+            *(f"{path}/**" for path in (*data.directories, *namespaces)),
+            *(
+                ()
+                if hatch_build_hook_path is None
+                else (hatch_build_hook_path.as_posix(),)
+            ),
+        )
 
     @staticmethod
     def _validate_data_tree(
@@ -536,7 +552,12 @@ class FlextInfraEnsurePackagingPhase:
         # The pyproject ownership SSOT decides which packaging tables the
         # generator owns; this phase replaces exactly those, like make gen.
         owned = frozenset(u.Infra.pyproject_managed_file().unwrap().managed_tool_tables)
-        cache_keys = self.uv_cache_key_files(topology.hatch_build_hook_path)
+        cache_keys = self.uv_cache_key_files(
+            package=True,
+            data=data_paths,
+            namespaces=topology.repository_namespace_packages,
+            hatch_build_hook_path=topology.hatch_build_hook_path,
+        )
         toml = m.Infra.DepsToml
         return u.Infra.apply_toml_phases(
             payload,

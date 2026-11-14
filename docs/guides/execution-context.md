@@ -124,8 +124,11 @@ declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
 `Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`), and that
-publication retires when the member stops being generic or moves. A stale
+(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
+through MRO and importing the facade loads no part (ADR-018, every facade part
+is deferred). That publication retires when the member stops being generic or
+moves. A stale
 generated `Name = Name` publication retires with its import once the name is
 reached through a retained base or no longer binds a class.
 Metaclass ancestry uses the SDK's native `BuiltinType` identity instead of
@@ -1934,6 +1937,13 @@ declared once in the pyproject ownership `conflict_sections`. Generation and the
 modernizer read that same declaration and replace both tables from the packaging
 declarations, so a retired or authored entry leaves on the next `make gen` or
 `deps modernize`.
+uv rebuilds a local project only when one of its cache keys changes, and its
+defaults cover `pyproject.toml`, `setup.py` and `setup.cfg` alone. A package
+project therefore declares every input of its wheel as a key: those defaults,
+`src/**`, each packaged data file, each packaged data directory and repository
+namespace as `<path>/**`, and the declared Hatch hook. Without them a non-editable
+install, such as the `upg` executor, keeps a wheel built from older sources. A
+non-package project declares none.
 Migration validates these inputs before publishing its declaration. A legacy
 manifest explicitly selected as distribution data retains its original bytes;
 retaining that resource does not make it a runtime configuration source again.
@@ -3713,9 +3723,8 @@ joint candidate planning, publication, catalog and import-cycle verdicts). A
 focused selection whose scan has no actionable finding, claims no semantic phase
 and declares no rename has nothing to plan: it goes straight to the fixed-point
 verdict, and an empty publication is never rescanned. The runtime import graph
-keeps one persistent fact per module under `settings.work_dir`, bound to the
-module's exact source digest, its name and the deriving code; only modules whose
-bytes changed are parsed again. The generated-rule rendering cache digests the
+is read from the run's Rope model and kept in memory for that run only; no
+persistent fact store backs it. The generated-rule rendering cache digests the
 project's own sources together with its FLEXT dependencies, so a source edit
 renders the generated rules again.
 
@@ -4086,7 +4095,10 @@ local-stage gate (`GateStage.LOCAL`): no remote runner executes it, not even the
 one warm cache across every checkout, linked worktree and `.venv` of a repository
 (`u.Infra.mypy_cache_directory`, keyed by repository identity, project path
 inside it and Python implementation and version, never by a checkout or
-virtualenv path). The commit hook first provisions the checkout with `make setup`,
+virtualenv path). Ruff uses one shared external cache
+(`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
+package root inside it; FLEXT adds no namespace of its own. The commit hook
+first provisions the checkout with `make setup`,
 then passes `make.ci.pre_commit_value` to the check, which runs only the fast
 commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
 through the engine that setup provisioned; it runs no tests and no other

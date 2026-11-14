@@ -545,7 +545,7 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def ruff_cache(self) -> FlextInfraProtocolsConfigMake.RuffCacheSpec:
-            """External project-keyed native Ruff cache policy."""
+            """Shared external Ruff cache; Ruff keys its own entries."""
             ...
 
     @runtime_checkable

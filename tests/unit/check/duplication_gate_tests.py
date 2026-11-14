@@ -662,6 +662,15 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         )
         package = root / "src" / "fixture_preamble_clone"
         package.mkdir(parents=True, exist_ok=True)
+        # The per-package import list stays scanned (only the mandated
+        # boilerplate lines are ignore patterns), so it is sized from the
+        # typed floors: jscpd skips a span below them and never reports it.
+        imports = "".join(
+            f"from fixture_dependency_{index} import name_{index}\n"
+            for index in range(
+                max(c.Infra.JSCPD_MIN_LINES, c.Infra.JSCPD_MIN_TOKENS // 4) + 2
+            )
+        )
         preamble = (
             '"""Module contract line.\n'
             "\n"
@@ -673,9 +682,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             "\n"
             "from typing import TYPE_CHECKING\n"
             "\n"
-            "from sqlalchemy import text\n"
-            "\n"
-            "from dc_recon import c, e, h, m, p, r, t, u\n"
+            f"{imports}"
             "\n"
             "if TYPE_CHECKING:\n"
             "    from sqlalchemy.engine import Connection as SaConnection\n"

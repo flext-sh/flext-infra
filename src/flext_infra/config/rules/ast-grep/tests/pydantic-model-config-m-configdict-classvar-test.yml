@@ -6,6 +6,12 @@ valid:
   - |
     class Settings:
         model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
+  - |
+    class Base:
+        model_config: ClassVar[t.ConfigDict] = FlextModelsPydantic.ConfigDict()
+  - |
+    class Model:
+        model_config = other.ConfigDict()
 invalid:
   - |
     class Model:
@@ -16,3 +22,6 @@ invalid:
   - |
     class Settings:
         model_config = m.SettingsConfigDict(env_prefix='APP_')
+  - |
+    class Base:
+        model_config = FlextModelsPydantic.ConfigDict(frozen=True)

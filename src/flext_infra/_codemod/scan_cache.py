@@ -1,4 +1,4 @@
-"""Persistent hierarchical scan cache for ast-grep.
+"""Persistent per-source scan cache for ast-grep.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,18 +7,24 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from flext_infra import c, p, settings, u
+from flext_infra import p, settings, u
 
 
 class FlextInfraCodemodScanCache:
-    """Persistent content-addressed cache for ast-grep scan results."""
+    """Content-addressed native findings of one source under one staged ruleset.
+
+    A fragment holds the exact JSONL records ast-grep emitted for one source,
+    empty when the source has no finding. Its key authenticates the scanner
+    release, every byte of the staged ruleset (configuration, rule bundle and
+    utilities), the source's root-relative path and its content, so a change
+    to any of them rescans only the sources it affects.
+    """
 
     @classmethod
     def cache_directory(cls) -> Path:
-        """Return the directory where scan caches are stored.
+        """Return the directory where scan fragments are stored.
 
         Returns:
             The authenticated cache directory path.
@@ -29,92 +35,71 @@ class FlextInfraCodemodScanCache:
         return path
 
     @classmethod
-    def compute_key(
-        cls,
-        *,
-        config_path: Path,
-        rules: Mapping[str, Path],
-        targets: Sequence[str] = (),
-        sources: Sequence[p.Cli.AtomicFileState] = (),
-        options: tuple[str, int | None, Path],
-    ) -> str:
-        """Compute a deterministic SHA256 cache key from scan inputs.
+    def ruleset_digest(cls, ruleset_config: Path, scanner: Path) -> str:
+        """Digest the scanner release and every staged ruleset document.
 
-        The key covers the resolved scanner executable (its pinned release),
-        the configuration, every elected rule id with its rule document's
-        content, the targets and every scanned source's content, so a changed
-        rule or scanner release never reuses an earlier scan.
+        Args:
+            ruleset_config: The staged native configuration; its directory
+                holds the complete projected ruleset.
+            scanner: The resolved managed scanner executable.
 
         Returns:
-            The hex digest representing this exact scan state.
-
-        Raises:
-            ValueError: If an atomic file state carries no content.
+            The hex digest of this exact scanner and ruleset.
 
         """
-        prefix, threads, scanner = options
-        hasher = hashlib.sha256()
-        hasher.update(prefix.encode())
-        hasher.update(b"\x00")
-        hasher.update(str(scanner.resolve()).encode())
-        hasher.update(b"\x00")
-        hasher.update(str(threads or 0).encode())
-        hasher.update(b"\x00")
-
-        if config_path.is_file():
-            hasher.update(config_path.read_bytes())
-        else:
-            hasher.update(str(config_path).encode())
-        hasher.update(b"\x00")
-
-        for rule_id, resource in sorted(rules.items()):
-            hasher.update(rule_id.encode())
+        root = ruleset_config.parent
+        hasher = hashlib.sha256(str(scanner.resolve()).encode())
+        for document in sorted(path for path in root.rglob("*") if path.is_file()):
+            hasher.update(b"\x00")
+            hasher.update(document.relative_to(root).as_posix().encode())
             hasher.update(b"=")
-            hasher.update(hashlib.sha256(resource.read_bytes()).hexdigest().encode())
-            hasher.update(b",")
+            hasher.update(hashlib.sha256(document.read_bytes()).digest())
+        return hasher.hexdigest()
+
+    @classmethod
+    def source_key(
+        cls, ruleset_digest: str, relative: Path, source: p.Cli.AtomicFileState
+    ) -> str:
+        """Key one source's findings under one ruleset digest.
+
+        Returns:
+            The hex digest of this ruleset, path and content.
+
+        Raises:
+            ValueError: If the atomic file state carries no content.
+
+        """
+        if source.content is None:
+            msg = f"atomic file state has no content: {source.path}"
+            raise ValueError(msg)
+        hasher = hashlib.sha256(ruleset_digest.encode())
         hasher.update(b"\x00")
-
-        for target in sorted(targets):
-            hasher.update(target.encode())
-            hasher.update(b",")
+        hasher.update(relative.as_posix().encode())
         hasher.update(b"\x00")
-
-        for source in sorted(sources, key=lambda item: str(item.path)):
-            hasher.update(str(source.path).encode())
-            if source.content is None:
-                msg = "atomic file state has no content"
-                raise ValueError(msg)
-            hasher.update(hashlib.sha256(source.content).hexdigest().encode())
-            hasher.update(b";")
-
+        hasher.update(hashlib.sha256(source.content).digest())
         return hasher.hexdigest()
 
     @classmethod
     def lookup(cls, cache_key: str) -> Path | None:
-        """Look up cached scan output JSONL if it exists and is valid.
+        """Return the stored fragment, empty when the source has no finding.
 
         Returns:
-            The existing cached JSONL file path, or None on cache miss.
+            The fragment path, or None when this key was never scanned.
 
         """
         target = cls.cache_directory() / f"{cache_key}.jsonl"
-        if target.is_file() and target.stat().st_size > 0:
-            return target
-        return None
+        return target if target.is_file() else None
 
     @classmethod
-    def store(cls, cache_key: str, stdout_file: Path) -> Path:
-        """Store scan output JSONL atomically in the cache.
+    def store(cls, cache_key: str, records: str) -> Path:
+        """Store one source's native records atomically.
 
         Returns:
-            The stored cache file path.
+            The stored fragment path.
 
         """
         target = cls.cache_directory() / f"{cache_key}.jsonl"
-        u.Cli.atomic_write_text_file(
-            target,
-            stdout_file.read_text(encoding=c.DEFAULT_ENCODING),
-        ).unwrap()
+        u.Cli.atomic_write_text_file(target, records).unwrap()
         return target
 
 

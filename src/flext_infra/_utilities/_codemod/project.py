@@ -42,7 +42,7 @@ from flext_infra._utilities._rope.runtime_types import (
 
 
 class FlextInfraUtilitiesCodemodProject(
-    FlextInfraUtilitiesCodemodBindingChain.FlextInfraUtilitiesCodemodBindingChain,
+    FlextInfraUtilitiesCodemodBindingChain,
     FlextInfraUtilitiesCodemodNative,
     FlextInfraUtilitiesCodemodNativePackage,
     FlextInfraUtilitiesCodemodNativeCascade,
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesCodemodProject(
                 )
                 if path.suffix == c.Infra.EXT_PYTHON
             )
-            return cls.persistent_import_graph(project, resources)
+            return cls.snapshot_import_graph(project, resources=resources)
 
     @classmethod
     def composes_family_package(
@@ -209,6 +209,25 @@ class FlextInfraUtilitiesCodemodProject(
             if value is child.pyobject:
                 selected.append(child)
         return tuple(selected)
+
+    @staticmethod
+    def codemod_finding_start(finding: p.Infra.ModScanFinding) -> tuple[int, int]:
+        """Return the zero-based start line and column of one native finding.
+
+        Returns:
+            The finding's zero-based ``(line, column)`` start.
+
+        Raises:
+            TypeError: If the native range carries no integer start position.
+
+        """
+        start = finding.range.get("start")
+        line = start.get("line") if isinstance(start, Mapping) else None
+        column = start.get("column") if isinstance(start, Mapping) else None
+        if not isinstance(line, int) or not isinstance(column, int):
+            msg = f"ast-grep finding without a start position: {finding.rule_id}"
+            raise TypeError(msg)
+        return line, column
 
     @staticmethod
     def codemod_source_path(root: Path, file_path: Path) -> Path:
