@@ -321,7 +321,9 @@ class FlextInfraUtilitiesSemanticCutoverBase(
                 )
             ),
             c.Infra.SemanticCutoverPhase.TEST_NAMESPACE_IMPORT: lambda: (
-                cls._plan_test_namespace_imports(root, sources, selected)
+                cls._plan_test_namespace_imports(
+                    root, sources, selected, project=rope_workspace.rope_project
+                )
             ),
             c.Infra.SemanticCutoverPhase.TEST_ASSERT_TO_MATCHER: lambda: (
                 cls._plan_test_assertions(root, sources, selected)
