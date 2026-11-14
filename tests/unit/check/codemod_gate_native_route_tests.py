@@ -167,9 +167,12 @@ class TestsFlextInfraCodemodGateNativeRoute:
                 for issue in execution.issues
                 if issue.code == c.Infra.ToolOutcome.ERROR.value
             ),
-            eq=[
-                f"{c.Infra.SG} exited with code -2 timed_out=True forwarded_signal=None"
-            ],
+            eq=(
+                (
+                    f"{c.Infra.SG} exited with code -2 "
+                    "timed_out=True forwarded_signal=None"
+                ),
+            ),
         )
 
 

@@ -2026,6 +2026,7 @@ install_lazy_exports(
             "codemod_environment_distributions",
             "_environment_metadata_paths",
             "codemod_target_environment",
+            "_observed_environment",
             "codemod_target_import_paths",
             "codemod_target_distributions",
             "_indexed_provider_configs",
