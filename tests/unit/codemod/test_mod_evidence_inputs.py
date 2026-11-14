@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from flext_infra import FlextInfraCli, infra
+from flext_infra import FlextInfraCli, config, infra
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, m, p, t, tm, u
 
@@ -629,3 +630,45 @@ class TestsFlextInfraModEvidenceInputs:
         tm.that(restored.entries, eq=())
         tm.that(restored.totals_by_repository, eq={mod_workspace.name: 0})
         tm.that(restored.totals_by_rule, eq={"ban-pass-through-wrapper": 0})
+
+    @staticmethod
+    def test_publication_removes_only_stale_unreferenced_artifacts(
+        mod_workspace: Path,
+    ) -> None:
+        """Evidence keeps its own bytes and recent ones; older unreferenced go."""
+        source = mod_workspace / "consumer.py"
+        source.write_text("value = 1\n", encoding="utf-8")
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                mod_workspace, fix=False, selection=("ban-pass-through-wrapper",)
+            )
+        )
+        store = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent / "native"
+        store.mkdir(parents=True, exist_ok=True)
+        stale, recent = store / "stale-unreferenced", store / "recent-unreferenced"
+        stale.write_bytes(b"stale")
+        recent.write_bytes(b"recent")
+        past = (
+            stale.stat().st_mtime
+            - config.Infra.mod_evidence.native_artifact_retention_seconds
+            - 1
+        )
+        os.utime(stale, (past, past))
+        receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                mod_workspace,
+                report,
+                publication=m.Infra.ModScanPublication(
+                    command=c.Infra.ModScanCommand.SCAN,
+                    scope=(str(source),),
+                    repositories=(mod_workspace.name,),
+                    rule_ids=("ban-pass-through-wrapper",),
+                ),
+            )
+        )
+        restored = m.Infra.ModScanEvidence.model_validate_json(
+            receipt.path.read_bytes()
+        )
+        tm.fail(stale.exists())
+        tm.ok(recent.exists())
+        tm.ok(all(artifact.path.exists() for artifact in restored.native_artifacts))
