@@ -398,6 +398,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 indent(dedent(getsource(method)), "    ")
                 for method in (
                     FlextInfraValidateFreshImport.require_complete_models,
+                    FlextInfraValidateFreshImport.require_complete_standin,
                     FlextInfraValidateFreshImport._require_schema_fields,
                 )
             )
@@ -436,6 +437,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 continue
             seen.add(klass)
             resolve_lazy_members(klass)
+            FlextInfraValidateFreshImport.require_complete_standin(klass)
             if vars(klass).get("__pydantic_complete__") is False:
                 incomplete.append(klass)
             pending.extend(
@@ -455,6 +457,42 @@ class FlextInfraValidateFreshImport(s[bool]):
         FlextInfraValidateFreshImport._require_schema_fields(package, seen)
         for klass in owned:
             u.type_adapter(klass).rebuild(raise_errors=True)
+
+    @staticmethod
+    def require_complete_standin(klass: type) -> None:
+        """Fail when a stand-in does not list the runtime namespace of its class.
+
+        A stand-in carries its real class's module and qualified name. Every
+        non-dunder name the real class exposes at runtime, including names
+        bound by unpacking, decorators or ``setattr``, must be exposed by the
+        stand-in, and nothing else (root ADR-018 stand-in composition law,
+        rule 2). A real class is its own counterpart and passes unchanged.
+
+        Raises:
+            AttributeError: If the two runtime namespaces differ.
+
+        """
+        real = sys.modules[klass.__module__]
+        for part in klass.__qualname__.split("."):
+            real = getattr(real, part)
+        if real is klass:
+            return
+        standin_names, real_names = (
+            {
+                name
+                for name in dir(target)
+                if not (name.startswith("__") and name.endswith("__"))
+            }
+            for target in (klass, real)
+        )
+        if standin_names != real_names:
+            msg = (
+                f"stand-in {klass.__module__}.{klass.__qualname__} differs from "
+                f"its real class: missing {sorted(real_names - standin_names)}, "
+                f"extra {sorted(standin_names - real_names)}; fix: run make gen "
+                "(ADR-018 stand-in composition law, rule 2)"
+            )
+            raise AttributeError(msg)
 
     @staticmethod
     def _require_schema_fields(package: str, classes: Iterable[type]) -> None:

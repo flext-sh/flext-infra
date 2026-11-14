@@ -3988,6 +3988,17 @@ base flattened after such a route or derived from one, because the flattened ord
 could differ from the real MRO. A module-less ancestor directory receives its
 initializer unless the project declares it a repository namespace.
 
+A part a stand-in cannot represent also fails generation by name (rule 5): one
+that defines a dunder or `__slots__`, an annotated attribute a model would collect
+as a field (class constants are `ClassVar`), a `field_validator`,
+`model_validator` or `computed_field`, a zero-argument `super()` or an
+`isinstance` against its own class in a method, a `Protocol` base, or a metaclass
+other than `type`. The facts come from the run's one parse of each module. The
+fresh-import admission then checks every exported stand-in against its real
+class: the non-dunder names each exposes at runtime, including names bound by
+unpacking, decorators or `setattr`, must be equal, or the stale initializer fails
+with a `make gen` fix (rule 2).
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public

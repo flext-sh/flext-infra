@@ -145,6 +145,14 @@ class FlextInfraConstantsCodegenLazy:
     "Package name whose modules are governed fixture publication owners."
     LAZY_INIT_CONSTANTS_MARKER: ClassVar[str] = "Constants"
     "Class-name marker of the facade class whose bases declare facade parents."
+    LAZY_INIT_STANDIN_FIELD_DECORATORS: ClassVar[frozenset[str]] = frozenset({
+        "field_validator",
+        "model_validator",
+        "computed_field",
+    })
+    "Pydantic decorators whose effect a stand-in of a facade part would lose."
+    LAZY_INIT_STANDIN_CLASS_ANNOTATION: ClassVar[str] = "ClassVar"
+    "Annotation head that keeps a class attribute out of a model's fields."
 
     @unique
     class LazyInitScore(IntEnum):

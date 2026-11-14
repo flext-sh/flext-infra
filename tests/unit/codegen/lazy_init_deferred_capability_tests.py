@@ -5,8 +5,9 @@ its in-package members. A base another package's generated initializer publishes
 is shared by its import route (root ADR-018 stand-in composition law, rule 4), the
 same in a scoped and an unscoped run, and the fresh stand-in's MRO names the real
 class's base objects. A class no facade composes stays a plain lazy export, and a
-composed part whose base is a third-party or builtin type, or that flattens a base
-around a routed one, fails generation by name. A facade of one tier root
+composed part whose base is a third-party or builtin type, that flattens a base
+around a routed one, or that a stand-in cannot represent (rule 5), fails
+generation by name. A facade of one tier root
 (``examples``) that another tier's facade composes stays real, like a public
 ``src`` facade.
 
@@ -74,6 +75,22 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
+    def test_part_binding_no_member_is_not_deferred(
+        self,
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """A composed class that binds no member stays a plain lazy export."""
+        root = deferred_capability_project
+        fixture_tree("lazy-deferred-capability-empty-part", destination=root)
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        initializer = self._initializer(root)
+        tm.that(initializer, has="FlextDemoCapabilityNamespace")
+        tm.that(initializer, lacks='"FlextDemoCapabilityNamespace": (')
+        tm.that(initializer, has=self._DEFERRED_BLOCK)
+
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_class_outside_every_facade_stays_a_plain_lazy_export(
         self,
         deferred_capability_project: Path,
@@ -109,6 +126,41 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
             has=(
                 f"the base {base}, which is neither a class of its package nor "
                 "published by a generated FLEXT initializer"
+            ),
+        )
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    @c.Tests.MARK.parametrize(
+        ("kind", "defect"),
+        [
+            ("dunder", "dunder __repr__"),
+            ("slots", "dunder __slots__"),
+            ("field", "field-like annotated attribute base_limit"),
+            ("decorator", "decorator computed_field on base_total"),
+            ("super", "zero-argument super() in base_name"),
+            ("isinstance", "isinstance(..., FlextDemoCapabilityBase) in base_is_self"),
+            ("protocol", "base Protocol makes it a Protocol namespace"),
+            ("metaclass", "metaclass ABCMeta"),
+        ],
+    )
+    def test_part_a_stand_in_cannot_represent_fails(
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+        kind: str,
+        defect: str,
+    ) -> None:
+        """A part whose construct a stand-in would lose fails generation by name."""
+        root = deferred_capability_project
+        fixture_tree(
+            f"lazy-deferred-capability-unrepresentable-{kind}", destination=root
+        )
+        tm.fail(
+            u.Tests.create_lazy_init_service(root).plan_files(),
+            has=(
+                "facade part flext_demo._capability.base.FlextDemoCapabilityBase "
+                f"cannot be a stand-in: {defect}; fix:"
             ),
         )
 

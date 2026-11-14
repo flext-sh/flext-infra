@@ -74,6 +74,15 @@ class FlextInfraProtocolsCodegenLazyInit:
             ...
 
         @property
+        def class_standin_defects(self) -> Mapping[str, Sequence[str]]:
+            """Structural member projected from the owning model.
+
+            Constructs of each defined class body a stand-in cannot represent
+            (ADR-018 stand-in composition law, rule 5).
+            """
+            ...
+
+        @property
         def values(self) -> Mapping[str, str]:
             """Source text of each assigned top-level value."""
             ...
@@ -108,6 +117,7 @@ class FlextInfraProtocolsCodegenLazyInit:
         classes: dict[str, Sequence[str]]
         class_exports: dict[str, Sequence[str] | None]
         class_members: dict[str, Sequence[str]]
+        class_standin_defects: dict[str, Sequence[str]]
         values: dict[str, str]
         exports: list[str | None] | None
 
