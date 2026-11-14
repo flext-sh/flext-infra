@@ -615,7 +615,9 @@ Infra:
         # declares its ceiling here, inside the fleet cycle, instead of
         # patching projections. With workers > 1 maxfail still stops the
         # invocation; in-flight cases may report after the stop, which the
-        # declaring consumer accepts by declaring.
+        # declaring consumer accepts by declaring. Any other project declares
+        # its own parallel-workers in its config/tooling.yaml overlay (same
+        # nesting as this file), so this map never has to name it.
         parallel-worker-overrides:
           merges:
             workers: 4
@@ -756,9 +758,7 @@ Infra:
         # TYPE_CHECKING / install_lazy_exports scaffolding), so they are
         # mandated boilerplate, not clones to repair. Per-package import
         # lists and every non-mandated line stay scanned.
-        # Member extension 2026-11-05 (algar-oud-mig workspace top; clone
-        # infra/ansible/__init__.py L4-19 vs plugins/action/__init__.py
-        # L4-19): fleet members carry their own license holder and SPDX tag
+        # Member extension 2026-11-05: fleet members carry their own license holder and SPDX tag
         # by the same "license header repeats in every module" contract, so
         # the two header patterns cover any holder and identifier instead of
         # only the family's. Remaining generated-package body stays under

@@ -125,3 +125,22 @@ class TestsFlextInfraPytestWorkerCeiling:
         command = runner.build_command(report)
         workers = command[command.index("-n") + 1]
         tm.that(workers, eq=str(budget) if budget > 1 else "0")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("workers", (1, 3))
+    def test_project_overlay_declares_its_own_ceiling(
+        cached_runner_project: Path,
+        workers: int,
+    ) -> None:
+        """A project's tooling overlay sets its ceiling without flext naming it."""
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        parallel-workers: {workers}\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        policy = config.Infra.tooling.tools.pytest
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        capacity = u.Infra.machine_worker_capacity(policy.parallel_worker_memory_gb)
+        tm.that(runner.parallel_worker_budget(policy), eq=min(workers, capacity))

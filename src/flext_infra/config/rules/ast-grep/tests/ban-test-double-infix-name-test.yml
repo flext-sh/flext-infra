@@ -3,7 +3,7 @@
 id: ban-test-double-infix-name
 valid:
   - |
-    class AlgarOudMigLdapClient:
+    class AcmeAppLdapClient:
         pass
   - |
     class FakeClient:
@@ -19,7 +19,7 @@ valid:
         pass
 invalid:
   - |
-    class AlgarOudMigFakeLdapClient:
+    class AcmeAppFakeLdapClient:
         pass
   - |
     class ProjectStubWriter:

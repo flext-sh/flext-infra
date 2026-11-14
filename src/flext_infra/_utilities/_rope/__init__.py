@@ -592,6 +592,7 @@ install_lazy_exports(
             "_class_def",
             "_import_from",
             "_import",
+            "_classless_unpacking_value",
             "_assign",
             "_non_name_assignment",
             "_foreign_attribute_mutation",

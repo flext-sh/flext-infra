@@ -17,7 +17,7 @@ invalid:
 - |
   from flext_ldap import m
   from typing import ClassVar
-  from algar_sample import c
+  from acme_sample import c
   class C:
       model_config: ClassVar[c.ConfigDict] = c.ConfigDict(extra="forbid", frozen=True)
 - |
