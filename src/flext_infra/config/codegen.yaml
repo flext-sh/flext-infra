@@ -687,6 +687,9 @@ Infra:
       check_prerequisite_gates: [ lint, pyrefly ]
       check_prerequisite_pyrefly_workers: 4
       scan_threads: 4
+      # Each scan batch persists its cache fragments on completion, so a run
+      # killed by its budget keeps its finished batches for the next run.
+      scan_batch_files: 64
       # Host admission and run limits of every public verb (ADR-032): on the
       # shared host a verb refuses to start while the 5-minute load average
       # exceeds max_load5, and each recipe runs in a cgroup scope bounded by
