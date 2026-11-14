@@ -6,13 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import config
+from flext_infra import config, r, u as infra_u
 from flext_infra.codemod import FlextInfraModGateEngine
-from tests import c, r, tm, u
+from tests import c, p, t, tm, u
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
     import pytest
@@ -21,23 +22,28 @@ if TYPE_CHECKING:
 class TestsFlextInfraCodemodScanCacheBatchProgress:
     """A scan stopped mid-way leaves its finished batches for the next run."""
 
-    class _StopAfter:
-        """Run the native scanner for the first calls, then stop like a timeout."""
+    class _StopAfterTwo(infra_u.Cli):
+        """The real native scan for two batches, then stopped like a timeout."""
 
-        def __init__(self, completed: int) -> None:
-            self.remaining = completed
+        remaining: ClassVar[int] = 2
 
-        def run_to_file(self, *args: object, **kwargs: object) -> object:
-            """Delegate while budget remains; then fail like a killed scanner.
-
-            Returns:
-                The delegated outcome, or a stopped-scanner failure.
-
-            """
-            if self.remaining == 0:
-                return r[object].fail("scanner stopped by its budget")
-            self.remaining -= 1
-            return u.Cli.run_to_file(*args, **kwargs)
+        @classmethod
+        @override
+        def run_to_file(
+            cls,
+            cmd: Sequence[str],
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            *,
+            options: p.Cli.ProcessOptions | None = None,
+        ) -> p.Result[p.Cli.ProcessOutcome]:
+            if cls.remaining == 0:
+                return r[p.Cli.ProcessOutcome].fail("scanner stopped by its budget")
+            cls.remaining -= 1
+            return infra_u.Cli.run_to_file(
+                cmd, output_file, cwd, timeout, options=options
+            )
 
     @staticmethod
     def _project(tmp_path: Path) -> Path:
@@ -80,7 +86,7 @@ class TestsFlextInfraCodemodScanCacheBatchProgress:
         targets = u.Infra.ast_grep_scan_targets(root)
         stopped = tm.ok(
             FlextInfraModGateEngine.native_findings(
-                root, plan, targets, runner=cls._StopAfter(2)
+                root, plan, targets, runner=cls._StopAfterTwo
             )
         )
         tm.that(len(stopped.native_failures), eq=1)
