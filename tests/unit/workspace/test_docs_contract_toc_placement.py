@@ -23,7 +23,7 @@ class TestsFlextInfraDocsContractTocPlacement:
         content = (
             "<!-- AUTO-GENERATED - DO NOT EDIT MANUALLY -->\n"
             "\n"
-            "# cosmos_charts.constants\n"
+            "# demo_app.constants\n"
             "\n"
             "## Usage\n"
         )
@@ -33,7 +33,7 @@ class TestsFlextInfraDocsContractTocPlacement:
         first_meaningful = next(line for line in updated.splitlines() if line.strip())
         tm.ok(first_meaningful.startswith("<!-- AUTO-GENERATED"))
         tm.that(
-            updated.index("# cosmos_charts.constants")
+            updated.index("# demo_app.constants")
             < updated.index("<!-- TOC START -->"),
             eq=True,
         )

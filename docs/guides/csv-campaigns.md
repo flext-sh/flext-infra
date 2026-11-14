@@ -53,8 +53,8 @@ that the group exists and rejects a different captured value before publishing
 any rewrite in the batch.
 Sed rules may declare `distributions: [flext-infra]` to select consumers by
 their validated `[project].name`. An omitted or empty selector applies to every
-consumer. The packaged catalogue scopes both Infra and Cosmos Docgen rules to
-their owning distributions, so external projects can compose their own rules
+consumer. The packaged catalogue scopes its Infra rules to their owning
+distribution, so external projects can compose their own rules
 without inheriting another project's file requirements. A selected Markdown
 include still fails if its source is absent; a missing project identity is an
 error rather than an implicit match.

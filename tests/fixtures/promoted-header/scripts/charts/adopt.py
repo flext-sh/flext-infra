@@ -6,8 +6,8 @@
 # domain = "charts"
 # mutates = true
 # aliases = []
-# example = "make chart-adopt DEP=cosmos-common TO=0.7.128 CHARTS=cosmos-platform"
-# rules = ["mutador: executa a acao; OPTIONS=Y mostra o contrato", "ADR-136 selective pins", "delega para cosmos-charts release adopt"]
+# example = "make chart-adopt DEP=common-lib TO=0.7.128 CHARTS=platform-app"
+# rules = ["mutador: executa a acao; OPTIONS=Y mostra o contrato", "ADR-136 selective pins", "delega para demo-charts release adopt"]
 # params = [
 #   { name = "WHAT", help = "acao de charts", required = false, default = "adopt", choices = ["adopt"] },
 #   { name = "DEP", help = "nome da dependencia interna", required = true },
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from flext_infra import u
 
-from cosmos_charts.promoted.charts_command import CosmosChartsChartsCommand
+from demo_charts.promoted.charts_command import DemoChartsChartsCommand
 
 
 def adopt_pins() -> int:
@@ -45,7 +45,7 @@ def adopt_pins() -> int:
     ]
     for chart in charts:
         argv.extend(["--charts", chart])
-    return CosmosChartsChartsCommand.run_chart_release(*argv)
+    return DemoChartsChartsCommand.run_chart_release(*argv)
 
 
 if __name__ == "__main__":

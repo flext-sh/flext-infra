@@ -200,7 +200,7 @@ class TestsFlextInfraGitIdentitySubmodules:
     ) -> None:
         """Nested checkout with a real .git directory still reports is_submodule.
 
-        Why (flext-infra-c3h): operator trees like cosmos-charts under cosmos-main
+        Why (flext-infra-c3h): operator trees like a nested chart repository
         keep a full .git directory (not a gitfile) while the superproject index
         holds a gitlink. Git still reports --show-superproject-working-tree;
         ``git_identity.is_submodule`` must follow that signal.

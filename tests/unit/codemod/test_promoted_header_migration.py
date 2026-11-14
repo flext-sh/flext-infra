@@ -17,7 +17,7 @@ class TestsFlextInfraPromotedHeaderMigration:
     """Drive the packaged text rule through ``refactor mod --rule-ids``.
 
     That route is what ``make mod RULES=<id>`` invokes. The scenario tree
-    holds verbatim copies of real cosmos-charts commands, one Python and one
+    holds consumer-shaped commands, one Python and one
     shell, so the rule meets the headers consumers actually carry.
     """
 
