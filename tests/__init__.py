@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_tests import td, tf, tk, tm
@@ -296,12 +296,6 @@ install_lazy_exports(
             "lazy_init_scenario",
             "extract_lazy_init_exports",
             "consolidate_codegen",
-            "family_public_module",
-            "ruff_policy_toml",
-            "conform_request",
-            "conform_plan",
-            "conform_plan_result",
-            "conform_makefile_text",
         ),
         "TestsFlextInfraUtilitiesConform": (
             "family_public_module",
@@ -473,5 +467,12 @@ install_lazy_exports(
             "create_scaffolder_test_project",
             "WorktreeFixture",
         ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "TestsFlextInfraUtilitiesCodegen": ((".", "TestsFlextInfraUtilitiesConform"),),
     },
 )

@@ -219,8 +219,17 @@ class FlextInfraProtocolsCodegenLazyInit:
         def deferred_members(self) -> Mapping[str, Sequence[str]]:
             """Structural member projected from the owning model.
 
-            Member names of each class export whose module imports a declared
-            deferred distribution; it loads on first member use.
+            Own member names of each facade-composed class export; it loads on first
+            member use.
+            """
+            ...
+
+        @property
+        def deferred_bases(self) -> Mapping[str, Sequence[tuple[str, str]]]:
+            """Structural member projected from the owning model.
+
+            ``(package, export)`` of the base stand-ins each deferred export shares,
+            in the real class's base order.
             """
             ...
 
@@ -492,6 +501,15 @@ class FlextInfraProtocolsCodegenLazyInit:
 
             Line-prefixed ``deferred_members`` installer argument; empty when the
             package defers no export.
+            """
+            ...
+
+        @property
+        def deferred_bases_call(self) -> str:
+            """Structural member projected from the owning model.
+
+            ``defer_lazy_bases`` call bound after the installer; empty when no
+            deferred export shares a base stand-in.
             """
             ...
 

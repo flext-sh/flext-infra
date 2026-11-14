@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._promoted.commands import (
@@ -61,28 +61,8 @@ install_lazy_exports(
             "promoted_load_command",
             "_promoted_text",
             "_promoted_texts",
-            "promoted_fail",
-            "promoted_find_owner_root",
-            "promoted_workspace_spec",
-            "promoted_discovered_workspace_spec",
-            "promoted_ensure_local_python",
-            "promoted_main",
-            "script_metadata_blocks",
-            "script_metadata_toml",
         ),
-        "FlextInfraUtilitiesPromotedExecution": (
-            "promoted_run",
-            "promoted_validate_invocation",
-            "promoted_validate_command_contract",
-            "promoted_validate_all_choices",
-            "promoted_param_value",
-            "promoted_fail",
-            "promoted_find_owner_root",
-            "promoted_workspace_spec",
-            "promoted_discovered_workspace_spec",
-            "promoted_ensure_local_python",
-            "promoted_main",
-        ),
+        "FlextInfraUtilitiesPromotedExecution": ("promoted_run",),
         "FlextInfraUtilitiesPromotedHeader": (
             "promoted_render_header",
             "_promoted_header_body",
@@ -100,12 +80,6 @@ install_lazy_exports(
             "promoted_validate_command_contract",
             "promoted_validate_all_choices",
             "promoted_param_value",
-            "promoted_fail",
-            "promoted_find_owner_root",
-            "promoted_workspace_spec",
-            "promoted_discovered_workspace_spec",
-            "promoted_ensure_local_python",
-            "promoted_main",
         ),
         "FlextInfraUtilitiesPromotedRendering": (
             "promoted_renders_verb_help",
@@ -123,6 +97,22 @@ install_lazy_exports(
             "promoted_discovered_workspace_spec",
             "promoted_ensure_local_python",
             "promoted_main",
+        ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "FlextInfraUtilitiesPromotedCommands": (
+            (".", "FlextInfraUtilitiesPromotedWorkspace"),
+            ("flext_infra._utilities", "FlextInfraUtilitiesScriptMetadata"),
+        ),
+        "FlextInfraUtilitiesPromotedExecution": (
+            (".", "FlextInfraUtilitiesPromotedInvocation"),
+        ),
+        "FlextInfraUtilitiesPromotedInvocation": (
+            (".", "FlextInfraUtilitiesPromotedWorkspace"),
         ),
     },
 )
