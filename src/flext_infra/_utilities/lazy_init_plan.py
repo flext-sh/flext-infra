@@ -389,7 +389,11 @@ class FlextInfraUtilitiesLazyInitPlan:
             if context.generated_init
             else c.Infra.LazyInitAction.SKIP
         )
-        if not context.importable or cls._lazy_init_shadows_stdlib(context):
+        if (
+            not context.importable
+            or cls._lazy_init_shadows_stdlib(context)
+            or cls._lazy_init_is_repository_namespace(run, context)
+        ):
             return cls._lazy_init_empty_plan(context, residue)
         lazy_map = cls._lazy_init_package_exports(run, context)
         children = cls._lazy_init_child_packages(run, context)
@@ -592,6 +596,10 @@ class FlextInfraUtilitiesLazyInitPlan:
                 else cls._lazy_init_base_target(run, scope, facts.imports.get(base))
             )
             if target is None:
+                if cls._lazy_init_base_is_foreign(run, facts.imports.get(base)):
+                    # A builtin or another distribution's class binds no name an
+                    # in-package stand-in shares; the real MRO resolves it.
+                    continue
                 msg = (
                     f"deferred export {module}.{name} has an unresolvable base: {base}"
                 )
@@ -613,6 +621,37 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             raise ValueError(msg)
         return tuple(members), tuple(shared)
+
+    @staticmethod
+    def _lazy_init_is_repository_namespace(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        context: FlextInfraModelsCodegenLazyInit.LazyInitPackageContext,
+    ) -> bool:
+        """Tell whether the project declares this directory an implicit namespace.
+
+        A declared repository namespace (PEP 420) ships without an initializer;
+        its imports resolve through the derived type-checker search paths.
+
+        Returns:
+            Whether the directory is a declared repository namespace root.
+
+        """
+        entry = run.index.packages_by_dir.get(str(context.pkg_dir))
+        project = None if entry is None else entry.project_root
+        if project is None or context.pkg_dir.parent != project:
+            return False
+        declaration = (
+            FlextInfraUtilitiesProjectManagedArtifacts
+            .load_repository_declaration_inputs(
+                project, source_project=run.model.source_project
+            )
+            .unwrap()
+            .spec.project
+        )
+        return (
+            declaration is not None
+            and context.pkg_dir.name in declaration.repository_namespace_packages
+        )
 
     @staticmethod
     def _lazy_init_body_members(
@@ -770,6 +809,10 @@ class FlextInfraUtilitiesLazyInitPlan:
                     if base in facts.classes
                     else cls._lazy_init_base_target(run, scope, facts.imports.get(base))
                 )
+                if target is None and cls._lazy_init_base_is_foreign(
+                    run, facts.imports.get(base)
+                ):
+                    continue
                 if target is None:
                     msg = (
                         f"deferred export {owner[0]}.{owner[1]} has an "
@@ -778,6 +821,24 @@ class FlextInfraUtilitiesLazyInitPlan:
                     raise ValueError(msg)
                 pending.append(target)
         return tuple(members)
+
+    @staticmethod
+    def _lazy_init_base_is_foreign(
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun, dotted: str | None
+    ) -> bool:
+        """Tell whether a base comes from outside every planned package.
+
+        Returns:
+            Whether the base is a builtin or belongs to another distribution.
+
+        """
+        if dotted is None:
+            return True
+        root = dotted.split(".", maxsplit=1)[0]
+        return all(
+            plan.context.current_pkg.split(".", maxsplit=1)[0] != root
+            for plan in run.plans.values()
+        )
 
     @staticmethod
     def _lazy_init_base_target(

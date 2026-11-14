@@ -266,6 +266,41 @@ class TestsFlextInfraInfraRopeService:
             tm.that(outer.direct_child_dirs, has=nested)
 
     @staticmethod
+    def test_declared_namespace_stays_implicit_and_undeclared_gets_initializer(
+        tmp_path: Path,
+    ) -> None:
+        """Only an undeclared module-less ancestor receives an initializer."""
+        repository_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        namespace = "infra"
+        declaration = u.Tests.project_spec("flext-test-project").model_copy(
+            update={"repository_namespace_packages": (namespace,)}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                repository_root / "config" / "codegen.yaml",
+                {
+                    "Infra": {
+                        "codegen": {
+                            "repository": {
+                                "project": declaration.model_dump(mode="json"),
+                            }
+                        }
+                    }
+                },
+            )
+        )
+        source = 'class Owner:\n    pass\n\n\n__all__ = ["Owner"]\n'
+        for root in (namespace, "support"):
+            nested = repository_root / root / "contracts"
+            nested.mkdir(parents=True)
+            (nested / "owner.py").write_text(source, encoding=c.DEFAULT_ENCODING)
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+
+        tm.that((repository_root / "support" / c.Infra.INIT_PY).is_file(), eq=True)
+        tm.that((repository_root / namespace / c.Infra.INIT_PY).exists(), eq=False)
+
+    @staticmethod
     def test_script_guard_bindings_are_not_exports(tmp_path: Path) -> None:
         """A name bound under ``if __name__ == "__main__":`` is not a module export.
 
