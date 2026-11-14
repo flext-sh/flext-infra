@@ -688,26 +688,9 @@ class FlextInfraWorkspaceChecker(
                 fail_fast=effective_ctx.fail_fast,
             )
         )
-        if (
-            pending_gates
-            and (not outcome.failed or not effective_ctx.fail_fast)
-            and len(outcome.results) == len(targets)
-            and not any(
-                execution.interrupted
-                for project in outcome.results
-                for execution in project.gates.values()
-            )
-        ):
-            targets = self._targets_for_gates(targets, gates, effective_ctx)
-            admission_gates = pending_gates
-            pending_gates = ()
-            outcome = self._run_project_phase(
-                targets,
-                admission_gates,
-                effective_ctx,
-                fail_fast=effective_ctx.fail_fast,
-                previous=outcome,
-            )
+        outcome, targets, pending_gates = self._run_cost_phases(
+            targets, (gates, pending_gates), effective_ctx, outcome
+        )
         global_targets: tuple[p.Infra.CheckProjectTarget, ...] | None = None
         if not pending_gates and unfiltered:
             global_plan = self.plan_global_targets(gates, effective_ctx)
@@ -729,6 +712,62 @@ class FlextInfraWorkspaceChecker(
             publish_summary(summary)
         self._print_summary(effective_ctx.reports_dir, outcome, summary)
         return r[p.Infra.CheckReportSummary].ok(summary)
+
+    def _run_cost_phases(
+        self,
+        targets: tuple[p.Infra.CheckProjectTarget, ...],
+        selection: tuple[Sequence[str], tuple[str, ...]],
+        ctx: p.Infra.GateContext,
+        outcome: p.Infra.LoopOutcome,
+    ) -> tuple[
+        p.Infra.LoopOutcome, tuple[p.Infra.CheckProjectTarget, ...], tuple[str, ...]
+    ]:
+        """Run the pending gates in phases ordered by declared check budget.
+
+        Cheapest evidence first (ADR-032 "Fail early"): gates sharing one
+        declared budget form a phase, phases run from the smallest budget up,
+        so the long gates start only after every faster gate passed. A failed,
+        incomplete or interrupted phase ends the verb before the next one,
+        and the gates it never reached stay pending.
+
+        Returns:
+            The last outcome, the elected targets and the gates not executed.
+
+        """
+        gates, pending_gates = selection
+        projects = tuple(target.path for target in targets)
+        budgets = {
+            gate: self._registry.check_budget_seconds((gate,), projects)
+            for gate in pending_gates
+        }
+        phases = tuple(
+            tuple(gate for gate in pending_gates if budgets[gate] == budget)
+            for budget in sorted(set(budgets.values()))
+        )
+        if phases:
+            targets = self._targets_for_gates(targets, gates, ctx)
+        for phase_gates in phases:
+            if (
+                outcome.failed
+                or len(outcome.results) != len(targets)
+                or any(
+                    execution.interrupted
+                    for project in outcome.results
+                    for execution in project.gates.values()
+                )
+            ):
+                break
+            pending_gates = tuple(
+                gate for gate in pending_gates if gate not in phase_gates
+            )
+            outcome = self._run_project_phase(
+                targets,
+                phase_gates,
+                ctx,
+                fail_fast=ctx.fail_fast,
+                previous=outcome,
+            )
+        return outcome, targets, pending_gates
 
     @staticmethod
     def _prepare_report_invocation(

@@ -30,8 +30,30 @@ class FlextInfraMaintenanceClean(s[int]):
             The resulting ``p.Result[int]``.
 
         """
-        root = self.repository_root.expanduser().absolute()
-        u.Infra.exact_worktree_root(root).unwrap()
+        workspace = self.repository_root.expanduser().absolute()
+        u.Infra.exact_worktree_root(workspace).unwrap()
+        members = tuple(
+            workspace / member.path
+            for member in u.Infra.git_submodule_declarations(workspace).unwrap()
+        )
+        removed = sum(
+            self._clean_repository(root)
+            for root in (workspace, *members)
+            if (root / c.Infra.GIT_DIR).exists()
+        )
+        u.Cli.info(
+            f"clean: {'removed' if self.apply_changes else 'selected'} "
+            f"{removed} owned disposable resource(s)",
+        )
+        return r[int].ok(0)
+
+    def _clean_repository(self, root: Path) -> int:
+        """Remove one repository's owned disposables under its own mutation lock.
+
+        Returns:
+            The number of selected or removed resources.
+
+        """
         inputs = u.Infra.load_codegen_inputs(root).unwrap()
         codegen = inputs.spec
         with u.Cli.file_changes_lock(u.Infra.mutation_lock_path(root).unwrap()):
@@ -52,11 +74,7 @@ class FlextInfraMaintenanceClean(s[int]):
                     u.Cli.atomic_delete_binary_file_guarded(file).unwrap()
                 else:
                     u.Cli.info(f"clean: {file.path.relative_to(root)}")
-        u.Cli.info(
-            f"clean: {'removed' if self.apply_changes else 'selected'} "
-            f"{len(directories) + len(files)} owned disposable resource(s)",
-        )
-        return r[int].ok(0)
+        return len(directories) + len(files)
 
     @classmethod
     def _targets(

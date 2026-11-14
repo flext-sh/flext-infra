@@ -121,6 +121,15 @@ until no byte changes. Rendering emits the final import order; no Ruff stage dec
 or repairs imports. Each stage's staged `sgconfig.yml` lives under
 `.reports/codemod/native/<stage>`, so `ast-grep scan -c` reproduces the stage by hand.
 
+The `make check` codemod gate and `make mod` read findings through one native scan
+route, `FlextInfraModGateEngine.native_findings` (ADR-028 Decision 18). Each
+source's native records are a fragment of the ast-grep scan cache in the Infra work
+directory. A fragment's key authenticates the scanner release, every byte of the
+staged ruleset (configuration, rule bundle and utilities), the source's path and its
+content. An unchanged rescan therefore starts no scanner, and an edit rescans only
+the edited sources, in one invocation; the run logs `cache hit=<n> miss=<n>` for
+each ruleset.
+
 Machine-only native configurations use JSON-form YAML documents, serialized by
 the existing typed JSON owner. Elected scan rules share one multi-document YAML
 file; global utilities retain one document per file as ast-grep requires.
@@ -409,6 +418,11 @@ under bead `flext-brr3y`:
 - **Executed rules are a gate metric.** The number of rules a `make mod` run
   executes per project is reported from `mod-findings.json` (`totals_by_rule`).
   Its budget is a typed configuration key, never a number in code.
+- **Evidence keeps only the bytes it references.** The native scan bytes behind
+  the evidence live in `.reports/refactor/native/<sha256>`. Each evidence
+  publication removes the artifacts that no declared evidence report references
+  and that are older than `mod_evidence.native_artifact_retention_seconds`, so
+  an in-flight scan never loses bytes it has not yet published.
 
 These laws are authored rules over computed facts, each with fixtures (epic
 `flext-lqfqo`):

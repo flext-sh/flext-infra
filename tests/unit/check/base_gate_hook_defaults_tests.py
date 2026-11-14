@@ -212,9 +212,15 @@ class TestsFlextInfraGateHookDefaults:
             )
 
     class _ShortTimeout(_Probe):
-        """Cut a long sleep off with the replaced timeout."""
+        """Cut a long sleep off with the replaced timeout.
 
-        check_timeout: ClassVar[int] = 1
+        A plain timeout keeps a tenth of itself as the TERM, KILL and drain
+        reserve inside the deadline; five seconds leaves half a second for
+        that, which a contended host still meets, where one second left a
+        tenth of a second and the reaping itself overran the deadline.
+        """
+
+        check_timeout: ClassVar[int] = 5
 
         @override
         def _build_check_command(
@@ -223,7 +229,7 @@ class TestsFlextInfraGateHookDefaults:
             ctx: p.Infra.GateContext,
             check_dirs: Sequence[str],
         ) -> Sequence[str]:
-            """Sleep far past the replaced one-second deadline.
+            """Sleep far past the replaced five-second deadline.
 
             Returns:
                 The resulting ``Sequence[str]``.
@@ -236,7 +242,7 @@ class TestsFlextInfraGateHookDefaults:
                 # The marker is assembled at runtime: an interrupted command's
                 # traceback echoes its own source line, so a literal marker in
                 # the code would appear in the output without ever printing.
-                "import time; time.sleep(30); print('FIN' + 'ISHED')",
+                "import time; time.sleep(120); print('FIN' + 'ISHED')",
             )
 
     @staticmethod
@@ -381,7 +387,7 @@ class TestsFlextInfraGateHookDefaults:
             self._context(project, reports),
         )
         tm.that(execution.raw_output, lacks="FINISHED")
-        tm.that(execution.result.duration, lt=10)
+        tm.that(execution.result.duration, lt=30)
 
     @c.Tests.MARK.parametrize(
         c.ContextScope.OPERATION, ["check", "skip", "fix", "failed-fix"]

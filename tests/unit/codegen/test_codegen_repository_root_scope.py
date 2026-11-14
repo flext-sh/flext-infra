@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import check, config
+from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
@@ -320,11 +320,11 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             tm.that(output, has=local_body)
             tm.that(output, lacks="--verb")
 
-    def test_repository_root_check_projects_profiled_total_timeout(
+    def test_repository_root_check_owns_its_route_deadline(
         self,
         tmp_path: Path,
     ) -> None:
-        """Project the typed check deadline, profiling, and child-stop grace once."""
+        """The route owns its deadline; no outer timeout truncates a complete run."""
         repository_root = self._render_root_makefile(tmp_path)
         execution = tm.ok(
             u.Cli.run_raw(
@@ -335,17 +335,17 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         tm.ok(u.Cli.process_succeeded(execution.outcome))
         make = config.Infra.codegen.make
-        gate_budget = check.FlextInfraGateRegistry(
-            project_gates=make.project_check_gates,
-        ).check_budget_seconds(make.check_gates_default, (repository_root,))
-        expected = (
-            "FLEXT_INFRA_PROFILE=1 "
-            f'FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{make.check_profile_path}" '
-            f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM "
-            f"--kill-after={c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s "
-            f"{gate_budget + c.Infra.TIMEOUT_KILL_AFTER_SECONDS}s"
+        output = execution.stdout + execution.stderr
+        tm.that(
+            output,
+            has=(
+                "FLEXT_INFRA_PROFILE_OUTPUT="
+                f'"$(PROJECT_ROOT)/{make.check_profile_path}" '
+                f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} "
+                '--repository-root "$(PROJECT_ROOT)"'
+            ),
         )
-        tm.that(execution.stdout + execution.stderr, has=expected)
+        tm.that(output, lacks=f"{c.Infra.TIMEOUT_COMMAND} --signal=TERM")
 
     def test_repository_root_declares_member_propagation(self, tmp_path: Path) -> None:
         """The workspace profile declares propagate through the workspace CLI."""

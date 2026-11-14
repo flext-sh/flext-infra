@@ -105,7 +105,7 @@ class TestsFlextInfraTypeGates:
     @u.Tests.fixture
     @staticmethod
     def checker_context(
-        tmp_path: Path,
+        real_python_package: Path,
     ) -> p.Infra.GateContext:
         """Configure the existing real package for native checker execution.
 
@@ -113,17 +113,17 @@ class TestsFlextInfraTypeGates:
             The resulting ``m.Infra.GateContext``.
 
         """
-        pyproject = tmp_path / c.PYPROJECT_FILENAME
+        pyproject = real_python_package / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")
             + '\n[tool.mypy]\n[tool.pyright]\ninclude = ["src"]\n'
             + '[tool.pyrefly]\nproject-includes = ["src"]\n',
             encoding="utf-8",
         )
-        reports = tmp_path / ".reports"
+        reports = real_python_package / ".reports"
         reports.mkdir()
         return m.Infra.GateContext(
-            repository_root=tmp_path,
+            repository_root=real_python_package,
             reports_dir=reports,
         )
 
