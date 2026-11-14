@@ -520,6 +520,7 @@ install_lazy_exports(
             "MISE_LOCK_NEW_FILENAME",
             "MISE_LOCK_OLD_FILENAME",
             "MAKEFILE_BOOTSTRAP_DESTINATIONS",
+            "BOOTSTRAP_GENERATION_PASSES_MAX",
             "MISE_LOCK_ANNOTATION",
             "MISE_MOVING_SELECTOR",
             "MISE_VERSION_PLACEHOLDER",
