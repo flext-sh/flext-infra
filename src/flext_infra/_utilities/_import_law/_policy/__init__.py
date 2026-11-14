@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._utilities._import_law._policy.namespace import (
@@ -73,22 +73,15 @@ install_lazy_exports(
             "_family_provider_admitted",
             "_family_owner_spelling",
             "import_contract_bindings",
-            "_module_bindings",
-            "_declared_binding",
-            "snapshot_import_namespace",
-            "import_namespace",
-            "_layer_alias_modules",
-            "module_import_layer",
-            "pytest_plugin_modules",
-            "import_module_role",
-            "import_source_role",
-            "import_direct_module",
-            "import_lazy_exports",
-            "import_package_dir",
-            "import_bootstrap_dependency",
-            "import_facade_dependencies",
-            "_declared_binding_source",
-            "resolve_declared_binding",
+        ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "FlextInfraUtilitiesImportLawPolicyPublication": (
+            (".", "FlextInfraUtilitiesImportLawPolicyNamespace"),
         ),
     },
 )

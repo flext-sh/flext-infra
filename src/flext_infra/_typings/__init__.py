@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._typings.adapters import FlextInfraTypesAdapters
@@ -186,16 +186,6 @@ install_lazy_exports(
             "RopeOccurrenceFilter",
             "RopeTransformFn",
             "RopeMatchFilter",
-            "RopeNativeCore",
-            "RopeNativeObject",
-            "RopeNativeProject",
-            "RopeNativeImportStyle",
-            "RopeNativeImportPrefs",
-            "RopeNativeSourceModule",
-            "RopeNativeParsedModule",
-            "RopeNativeSemanticModule",
-            "RopeNativeResource",
-            "RopeNativeMatch",
         ),
         "FlextInfraTypesRopeNative": (
             "RopeNativeCore",
@@ -209,5 +199,12 @@ install_lazy_exports(
             "RopeNativeResource",
             "RopeNativeMatch",
         ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "FlextInfraTypesRope": ((".", "FlextInfraTypesRopeNative"),),
     },
 )

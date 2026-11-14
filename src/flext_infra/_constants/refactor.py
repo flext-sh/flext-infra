@@ -85,6 +85,11 @@ class FlextInfraConstantsRefactor:
         / "violations-sweep.json"
     )
     "Canonical single-file receipt for the latest violations sweep."
+    MOD_SCAN_EVIDENCE_RELATIVE_PATHS: ClassVar[tuple[Path, ...]] = (
+        MOD_SCAN_REPORT_RELATIVE_PATH,
+        VIOLATIONS_SWEEP_REPORT_RELATIVE_PATH,
+    )
+    "Every published evidence report whose entries reference the native store."
     VIOLATIONS_SWEEP_REPORT_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
     "Exact structured violations-sweep report schema version."
     LINT_REPORT_COUNT_LINE: ClassVar[t.RegexPattern] = re.compile(
@@ -92,8 +97,6 @@ class FlextInfraConstantsRefactor:
         re.MULTILINE,
     )
     """The check report's generated lint line; its count is the repo's lint column."""
-    AST_GREP_JSON_ARRAY_OPEN: ClassVar[str] = "["
-    """First byte of ``ast-grep scan --json=compact`` stdout."""
     AST_GREP_ERROR_FINDING_RECEIPT: ClassVar[str] = (
         "Error: {count} error(s) found in code."
     )

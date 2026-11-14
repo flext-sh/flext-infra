@@ -371,6 +371,14 @@ class FlextInfraModelsDepsToolConfig(
                 " reported as NOT EXECUTED; each must be declared in standard-markers."
             ),
         )
+        harness_gate_markers: tuple[str, ...] = m.Field(
+            alias="harness-gate-markers",
+            strict=False,
+            description=(
+                "External gate markers whose suites run only under their own harness:"
+                " every incremental scope deselects them, local or CI."
+            ),
+        )
 
         @property
         def external_gate_deselection(self) -> str:
@@ -492,6 +500,9 @@ class FlextInfraModelsDepsToolConfig(
                     "pytest external-gate-markers must be a non-empty subset of"
                     f" standard-markers; undeclared: {undeclared}"
                 )
+                raise ValueError(msg)
+            if not set(self.harness_gate_markers) <= set(self.external_gate_markers):
+                msg = "pytest harness-gate-markers must be external-gate-markers"
                 raise ValueError(msg)
             runner_owned_prefixes = (
                 "-k",

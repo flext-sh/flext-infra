@@ -242,6 +242,7 @@ install_lazy_exports(
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",
+            "ModEvidenceSpec",
             "GateAdmissionSpec",
             "ConsolidationOutcome",
         ),

@@ -211,6 +211,25 @@ class FlextInfraUtilitiesCodemodProject(
         return tuple(selected)
 
     @staticmethod
+    def codemod_finding_start(finding: p.Infra.ModScanFinding) -> tuple[int, int]:
+        """Return the zero-based start line and column of one native finding.
+
+        Returns:
+            The finding's zero-based ``(line, column)`` start.
+
+        Raises:
+            TypeError: If the native range carries no integer start position.
+
+        """
+        start = finding.range.get("start")
+        line = start.get("line") if isinstance(start, Mapping) else None
+        column = start.get("column") if isinstance(start, Mapping) else None
+        if not isinstance(line, int) or not isinstance(column, int):
+            msg = f"ast-grep finding without a start position: {finding.rule_id}"
+            raise TypeError(msg)
+        return line, column
+
+    @staticmethod
     def codemod_source_path(root: Path, file_path: Path) -> Path:
         """Resolve one finding file path against its project root.
 

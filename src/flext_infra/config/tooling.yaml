@@ -699,6 +699,11 @@ Infra:
         # without testmon and without any time limit. Existing external tests
         # retain their declared environment and authentication requirements.
         external-gate-markers: [ remote, docker ]
+        # Harness gates run only under the harness that provides their inputs
+        # (ai-hub `make runtime-acceptance` names its remote suite). Local
+        # `make tests` deselects them exactly as CI does and reports them NOT
+        # EXECUTED; `make test-full` and a named file still select them.
+        harness-gate-markers: [ remote ]
         # CI and pre-commit share make.ci.value;
         # local and pre-push execution retain slow tests. `make test-full`
         # includes these markers in every context.

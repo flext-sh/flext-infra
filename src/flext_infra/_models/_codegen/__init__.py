@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core.lazy import install_lazy_exports
+from flext_core.lazy import defer_lazy_bases, install_lazy_exports
 
 if TYPE_CHECKING:
     from flext_infra._models._codegen.base import FlextInfraCodegen
@@ -44,66 +44,7 @@ install_lazy_exports(
     },
     public_exports=__all__,
     deferred_members={
-        "FlextInfraCodegen": (
-            "MiseToolchainProjectLayout",
-            "CodegenFileParticipant",
-            "MiseToolchainWorkspaceLayout",
-            "MiseToolchainConfigState",
-            "MiseToolchainProjectState",
-            "MiseToolchainWorkspacePlan",
-            "ModelProtocolRenderContext",
-            "GithubWorkflowProjectRenderSpec",
-            "GithubWorkflowRenderSpec",
-            "MakeWorkflowRenderSpec",
-            "GitHookRenderSpec",
-            "DistroDockerRenderSpec",
-            "EnvrcRenderSpec",
-            "SonarcloudRenderSpec",
-            "UvResolutionSpec",
-            "MarkdownRenderSpec",
-            "QltyRenderSpec",
-            "ModuleSkeletonRenderContext",
-            "TestModuleSkeletonRenderContext",
-            "MkdocsRenderContext",
-            "MkdocsProjectRenderContext",
-            "CodegenFilePlan",
-            "StageSourceOptions",
-            "StageSourcePlan",
-            "SemanticSourcePlan",
-            "CensusViolation",
-            "CensusReport",
-            "ScaffoldResult",
-            "ScaffoldDirRequest",
-            "AutoFixResult",
-            "ConsolidatorFileResult",
-            "ConsolidatorReport",
-            "FacadeFamily",
-            "NamespaceModulePolicy",
-            "FixContext",
-            "ViolationKey",
-            "PythonModuleFacts",
-            "PythonModuleFactsDraft",
-            "PythonModelRun",
-            "LazyInitPackageContext",
-            "LazyInitPlan",
-            "RopeModuleIndexEntry",
-            "RopePackageIndexEntry",
-            "RopeWorkspaceIndex",
-            "LazyInitRun",
-            "RopeProjectLayout",
-            "LazyInitRootRender",
-            "QualityGateCheck",
-            "QualityGateProjectFinding",
-            "CodegenCommand",
-            "CodegenAutoFixCommand",
-            "CandidateBootstrapCommand",
-            "CodegenRootSelection",
-            "CodegenRepositoryPlanOutcome",
-            "CodegenPlan",
-            "CodegenResult",
-            "CodegenConformPorts",
-            "CodegenConformState",
-        ),
+        "FlextInfraCodegen": (),
         "FlextInfraModelsCodegenFix": (
             "AutoFixResult",
             "ConsolidatorFileResult",
@@ -150,6 +91,21 @@ install_lazy_exports(
             "StageSourceOptions",
             "StageSourcePlan",
             "SemanticSourcePlan",
+        ),
+    },
+)
+
+defer_lazy_bases(
+    __name__,
+    {
+        "FlextInfraCodegen": (
+            ("flext_infra._models", "FlextInfraModelsCodegenToolchain"),
+            ("flext_infra._models", "FlextInfraModelsCodegenRender"),
+            (".", "FlextInfraModelsCodegenTransaction"),
+            (".", "FlextInfraModelsCodegenScaffold"),
+            (".", "FlextInfraModelsCodegenFix"),
+            (".", "FlextInfraModelsCodegenLazyInit"),
+            (".", "FlextInfraModelsCodegenPipeline"),
         ),
     },
 )

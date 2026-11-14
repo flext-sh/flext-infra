@@ -199,19 +199,28 @@ class FlextInfraWorkspaceRoutes:
             return r[bool].from_failure(spec)
         members = spec.value.subprojects
         grace = c.Infra.TIMEOUT_KILL_AFTER_SECONDS
-        budget = m.Infra.RouteBudgetSpec(
-            budget_seconds=check.FlextInfraGateRegistry(
-                project_gates=make.project_check_gates
-            ).check_budget_seconds(
-                make.check_gates_default,
-                (root, *(root / member.path for member in members)),
-            )
-            + 2 * grace,
-            grace_seconds=grace,
-        )
         complete = (
             params.phase == c.Infra.CheckPhase.COMPLETE
             and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
+        )
+        # The gate registry bounds the captured gate phase, gate by gate. A
+        # complete run then composes conform, lane and documentation phases
+        # whose owners carry their own native limits, so the route must not
+        # inherit the largest single-gate budget as a total deadline: doing so
+        # truncates a healthy complete run after the gates already passed.
+        budget = (
+            None
+            if complete
+            else m.Infra.RouteBudgetSpec(
+                budget_seconds=check.FlextInfraGateRegistry(
+                    project_gates=make.project_check_gates
+                ).check_budget_seconds(
+                    make.check_gates_default,
+                    (root, *(root / member.path for member in members)),
+                )
+                + 2 * grace,
+                grace_seconds=grace,
+            )
         )
         if complete:
             u.Infra.gate_repeat_refuse(

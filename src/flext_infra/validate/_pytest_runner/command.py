@@ -114,16 +114,21 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         Offline scopes never run them. Under the Make CI token the incremental
         global scope deselects them too: CI provides neither Docker nor remote
         services, so those cases are reported as not executed instead of being
-        skipped at setup. FULL keeps every marker; it runs only locally.
+        skipped at setup. Locally the incremental global scope deselects the
+        harness gates: their suites run only under the harness that provides
+        their inputs. FULL keeps every marker; it runs only locally.
 
         Returns:
             The external gate markers deselected by this run.
 
         """
+        pytest = config.Infra.tooling.tools.pytest
         if not execution_mode.is_global or (
             self.ci_context and execution_mode.is_incremental
         ):
-            return config.Infra.tooling.tools.pytest.external_gate_markers
+            return pytest.external_gate_markers
+        if execution_mode.is_incremental:
+            return pytest.harness_gate_markers
         return ()
 
     def testmon_environment(self, execution_mode: c.Infra.PytestExecutionMode) -> str:

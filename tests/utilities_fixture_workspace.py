@@ -127,6 +127,9 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             project_dir,
             name,
         )
+        # A real project is a Git checkout; the checker elects its runtime
+        # from Git and refuses a plain directory.
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
         return project_dir
 
     @staticmethod
@@ -973,6 +976,29 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 payload["custom_issue_types"] = [*custom_issue_types]
             tm.ok(u.Cli.yaml_dump(path, payload))
             return path
+
+        @classmethod
+        def register_checker_workspace(cls, root: Path, *projects: Path) -> None:
+            """Make ``root`` a checkout and each project a registered submodule.
+
+            The checker elects every project's runtime from Git, as in a real
+            workspace, so plain project directories under a non-Git root fail.
+            """
+            for project in projects:
+                TestsFlextInfraUtilitiesGit.initialize_git_repo(
+                    project,
+                    origin_url=cls.governed_repository_url(project.name),
+                )
+            # The root is initialized after its members, so it records them
+            # as gitlinks rather than as tracked files.
+            TestsFlextInfraUtilitiesGit.initialize_git_repo(root)
+            for project in projects:
+                cls.attach_submodule(
+                    root,
+                    project,
+                    distribution=project.name,
+                    relative_path=project.relative_to(root).as_posix(),
+                )
 
         @classmethod
         def attach_submodule(
