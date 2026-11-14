@@ -710,6 +710,29 @@ class TestsFlextInfraCodemodGate:
         tm.that(len(observed), eq=1)
         tm.that(observed[0].message, has="Observed second")
 
+    def test_failed_prerequisite_ends_check_before_later_phases(
+        self,
+        tmp_path: Path,
+        installed_dependency_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
+    ) -> None:
+        """A prerequisite finding ends the verb; later gates are not executed."""
+        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        (project / "src" / "subject.py").write_text(
+            "import os\nsecond(1)\n", encoding="utf-8"
+        )
+
+        results = tm.ok(
+            FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
+                [project.relative_to(tmp_path).as_posix()],
+                ["lint", "codemod"],
+                u.Tests.gate_context(tmp_path, tmp_path / "reports"),
+            ),
+        )
+
+        tm.fail(results[0].passed)
+        tm.that(set(results[0].gates), eq={"lint"})
+
     def test_invalid_rule_is_a_native_failure(
         self,
         tmp_path: Path,
