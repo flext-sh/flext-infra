@@ -510,7 +510,7 @@ The former owner-name regex would accept that captured diagnostic, but the actua
 `run_live` boundary preserves the failed exit without capturing diagnostic text;
 the exception branch was unreachable there. Removing it preserves the unchanged
 native failure and eliminates an unsupported text-based exception. Read-only checks
-of the actual Algar consumer and executor environments passed with 261 and 220
+of an actual consumer and the executor environments passed with 261 and 220
 installed distributions respectively; direct URLs and selected editables receive
 no requirement-text exception.
 Workspace source and installation captures admit their runtime-checkable atomic
@@ -668,7 +668,7 @@ named inputs. General help and builtin `OPTIONS=Y`/`HELP=Y` views project those 
 without invoking the operation. Profiling and reports belong to their existing
 operation engines, not additional public lifecycle aliases. Domain selectors remain
 supported only where explicitly declared by the domain command registry.
-The catalog/help cutover is tracked in `algar-723.1.3`; runtime and gate receipts,
+The catalog/help cutover is tracked by the consumer; runtime and gate receipts,
 not this required contract, establish which generated consumers have adopted it.
 
 Generated README quality guidance is owned by `DocumentationText.QUALITY_BODY`
@@ -1092,7 +1092,7 @@ Ownership cutover uses the same native method batch and captured consumer closur
 and its operation declaration is retired only after the resulting ownership and
 public runtime are qualified.
 
-The Algar acceptance run exposed a same-module transfer that initially failed in
+A consumer acceptance run exposed a same-module transfer that initially failed in
 Rope before publication: moving
 `FlextTestsUtilitiesHandlerHelpers.create_handler_config`
 to its enclosing `FlextTestsUtilitiesFlextHandler` reported a conflicting import of
@@ -2479,7 +2479,7 @@ packages that must resolve inside the window for a CVE or critical fix are decla
 once in `dependency_cooldown_exceptions` (package to advisory or reason), extended
 by a repository's own `config/codegen.yaml` overlay, and rendered as
 `exclude-newer-package` exemptions and Dependabot pip cooldown exclusions. Consumer
-convergence and runtime acceptance are tracked separately in `algar-723.1`; this
+convergence and runtime acceptance are tracked separately by each consumer; this
 contract is not a publication receipt.
 
 ### Development Groups, Typing Policy, and Git Requirement Lines
@@ -3559,7 +3559,7 @@ same-effects consumer retains its existing election and source-folder preference
 The orchestrator injects this authority; it does not copy a source inventory or
 merge a parallel path/text map. Final candidate planning, source-publication
 verification and physical CAS remain required. This is the derivation acceptance
-contract for the OUD generation repair tracked in `algar-723.1`, not evidence that
+contract for the OUD generation repair, not evidence that
 the current API or generation already satisfies it.
 
 ### cProfile Thread Isolation and Performance Diagnosis
@@ -4846,7 +4846,7 @@ annotation does not replace an existing facade binding. Mypy's module-specific
 projections. See the
 [Mypy option contract](https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports).
 
-The pytest deadline correction tracked by `algar-723.1` applies the same absolute
+The pytest deadline correction applies the same absolute
 entrypoint clock to complete, incremental, file, coverage and profiled operations.
 Selection mode cannot disable that clock. The typed tooling policy bounds the
 operation, including lock waits, collection and execution, within the 120-second
