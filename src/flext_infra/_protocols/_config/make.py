@@ -858,7 +858,11 @@ class FlextInfraProtocolsConfigMake:
 
         @property
         def scan_batch_files(self) -> t.PositiveInt:
-            """Sources per ast-grep scan invocation, each batch cached on completion."""
+            """Structural member projected from the owning model.
+
+            Sources per ast-grep scan invocation; each completed batch persists its
+            cache fragments before the next starts.
+            """
             ...
 
         @property

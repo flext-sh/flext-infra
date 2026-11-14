@@ -123,6 +123,7 @@ install_lazy_exports(
             "_dependency_group_comments",
             "dependency_group_entries",
             "read_dependency_group",
+            "unique_group_entries",
             "merge_dependency_group_entries",
             "_development_requirement_identity",
             "requirement_group_fields",
