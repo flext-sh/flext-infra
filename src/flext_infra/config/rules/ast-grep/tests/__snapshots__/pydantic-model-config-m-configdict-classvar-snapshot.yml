@@ -1,5 +1,24 @@
 id: pydantic-model-config-m-configdict-classvar
 snapshots:
+  "class Base:\n    model_config = FlextModelsPydantic.ConfigDict(frozen=True)\n":
+    fixed: |
+      class Base:
+          model_config: ClassVar[t.ConfigDict] = FlextModelsPydantic.ConfigDict(frozen=True)
+    labels:
+    - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: primary
+      start: 16
+      end: 74
+    - source: |-
+        class Base:
+            model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: secondary
+      start: 0
+      end: 74
+    - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: secondary
+      start: 16
+      end: 74
   "class Model:\n    model_config = m.ConfigDict()\n":
     fixed: |
       class Model:
