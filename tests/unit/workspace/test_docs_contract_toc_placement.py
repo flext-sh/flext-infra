@@ -33,8 +33,7 @@ class TestsFlextInfraDocsContractTocPlacement:
         first_meaningful = next(line for line in updated.splitlines() if line.strip())
         tm.ok(first_meaningful.startswith("<!-- AUTO-GENERATED"))
         tm.that(
-            updated.index("# demo_app.constants")
-            < updated.index("<!-- TOC START -->"),
+            updated.index("# demo_app.constants") < updated.index("<!-- TOC START -->"),
             eq=True,
         )
         tm.that(changed, eq=1)
