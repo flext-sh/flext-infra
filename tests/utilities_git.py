@@ -253,15 +253,15 @@ class TestsFlextInfraUtilitiesGit:
             repo_root,
             c.Infra.GIT_ORIGIN,
         )
-        if existing_origin == declared_origin:
-            return
-        if existing_origin:
+        if existing_origin and existing_origin != declared_origin:
             bootstrap(
                 repo_root,
                 ("remote", "set-url", c.Infra.GIT_ORIGIN, declared_origin),
             )
-        else:
+        elif not existing_origin:
             bootstrap(repo_root, ("remote", "add", c.Infra.GIT_ORIGIN, declared_origin))
+        # Every call commits the current tree: content a fixture writes after an
+        # earlier initialization is tracked, as the gates read tracked files only.
         bootstrap(repo_root, ("add", "-A"))
         bootstrap(repo_root, ("commit", "--allow-empty", "-m", "init"))
         bootstrap(
