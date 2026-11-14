@@ -544,6 +544,25 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             eq=module.read_text(encoding="utf-8"),
         )
 
+    @classmethod
+    def test_constant_display_unpacking_binds_no_class(cls, tmp_path: Path) -> None:
+        """Unpacking a display of constants beside a class normalizes unchanged."""
+        project, package = cls._project(tmp_path)
+        module = package / "constants.py"
+        source = (
+            "from __future__ import annotations\n"
+            "ALFA, BETA = ('1', '2')\n"
+            "class Caso:\n"
+            "    valor: str = ALFA\n"
+        )
+        module.write_text(source, encoding=c.DEFAULT_ENCODING)
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=module, source=source
+            ),
+            eq=source,
+        )
+
 
 class TestsFlextInfraInheritedFacadeImportNormalization(
     TestsFlextInfraRefactorImportNormalizationSupport,
