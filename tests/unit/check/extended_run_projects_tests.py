@@ -67,6 +67,28 @@ class TestsFlextInfraRunProjects:
         tm.fail(result, has="selected no projects")
 
     @staticmethod
+    def _member(tmp_path: Path, name: str) -> Path:
+        """Create one governed member attached to the workspace checkout.
+
+        The check elects its runtime from Git, so the workspace is a checkout
+        and each member a registered submodule, as in a real workspace.
+
+        Returns:
+            The member project directory.
+
+        """
+        u.Tests.initialize_git_repo(tmp_path)
+        member = u.Tests.mk_project(tmp_path, name, with_src=True)
+        u.Tests.initialize_git_repo(
+            member,
+            origin_url=u.Tests.WorktreeFixture.governed_repository_url(name),
+        )
+        u.Tests.WorktreeFixture.attach_submodule(
+            tmp_path, member, distribution=name, relative_path=name
+        )
+        return member
+
+    @staticmethod
     @c.Tests.MARK.parametrize(
         "report_name",
         [c.Infra.CHECK_REPORT_MARKDOWN_FILENAME, c.Infra.CHECK_REPORT_SARIF_FILENAME],

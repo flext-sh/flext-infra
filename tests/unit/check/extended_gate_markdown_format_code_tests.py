@@ -215,6 +215,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             docs = project / "docs"
             docs.mkdir()
             (docs / "api.md").write_text(self.MKDOCS_MARKDOWN, encoding="utf-8")
+        u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, *projects)
         combined = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             [project.name for project in projects],
             [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT],

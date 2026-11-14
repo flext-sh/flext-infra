@@ -86,8 +86,11 @@ class TestsFlextInfraRealGateRunners:
         gate = FlextInfraGatesRuffLint(tmp_path)
 
         def run(path: Path) -> int:
+            # A file selection runs through check_files, as the workspace
+            # checker routes it; check() is the whole-project route.
             return len(
-                gate.check(
+                gate.check_files(
+                    (path,),
                     project_dir,
                     m.Infra.GateContext(
                         repository_root=tmp_path,
