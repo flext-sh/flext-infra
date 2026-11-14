@@ -1508,7 +1508,11 @@ class FlextInfraCodemodSemanticApply(
                 tuple[p.Infra.SemanticSourcePlan, tuple[tuple[Path, Path], ...]]
             ].from_failure(captured_sources)
         baseline = captured_sources.value
-        captured = m.Infra.CodemodBindingSnapshot(states=baseline.inputs)
+        captured = m.Infra.CodemodBindingSnapshot(
+            states=tuple(
+                m.Cli.AtomicFileState.model_validate(state) for state in baseline.inputs
+            )
+        )
         original = u.Infra.candidate_python_sources(baseline, captured.states)
         with ExitStack() as stack:
             # One native project per repository; a module elects in its owner only.
@@ -1633,7 +1637,12 @@ class FlextInfraCodemodSemanticApply(
         if any(state.content is not None for state in destinations):
             return result_type.fail("native module destination appeared before staging")
         return result_type.ok(
-            m.Infra.CodemodBindingSnapshot(states=(*base_states, *destinations)).states
+            m.Infra.CodemodBindingSnapshot(
+                states=tuple(
+                    m.Cli.AtomicFileState.model_validate(state)
+                    for state in (*base_states, *destinations)
+                )
+            ).states
         )
 
     @classmethod

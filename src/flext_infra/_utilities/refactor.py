@@ -815,7 +815,7 @@ class FlextInfraUtilitiesRefactor:
         """
         return m.Infra.CodemodBindingSnapshot(
             states=tuple(
-                entry.source_state
+                m.Cli.AtomicFileState.model_validate(entry.source_state)
                 for entry in report.entries
                 if entry.source_state is not None
             )
