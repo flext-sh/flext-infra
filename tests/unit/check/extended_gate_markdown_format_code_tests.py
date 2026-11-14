@@ -215,22 +215,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             docs = project / "docs"
             docs.mkdir()
             (docs / "api.md").write_text(self.MKDOCS_MARKDOWN, encoding="utf-8")
-        # The check elects its runtime from Git: the root is a checkout and each
-        # project a registered submodule, as in a real workspace.
-        u.Tests.initialize_git_repo(tmp_path)
-        for project in projects:
-            u.Tests.initialize_git_repo(
-                project,
-                origin_url=u.Tests.WorktreeFixture.governed_repository_url(
-                    project.name
-                ),
-            )
-            u.Tests.WorktreeFixture.attach_submodule(
-                tmp_path,
-                project,
-                distribution=project.name,
-                relative_path=project.name,
-            )
+        u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, *projects)
         combined = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             [project.name for project in projects],
             [c.Infra.MARKDOWN, c.Infra.MARKDOWN_FORMAT],

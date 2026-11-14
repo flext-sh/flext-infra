@@ -290,6 +290,7 @@ class TestsFlextInfraGateAcceptance:
             "missing_name( 1 )\n",
             encoding="utf-8",
         )
+        u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, project)
         requested = (c.Infra.LINT, c.Infra.FORMAT)
         results = tm.ok(
             check.FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(

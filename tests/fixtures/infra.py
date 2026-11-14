@@ -337,19 +337,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (project_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
     )
-    # The check elects a project's runtime from Git: the parent is a checkout
-    # and the package a registered submodule, as in a real workspace.
-    u.Tests.initialize_git_repo(tmp_path)
-    u.Tests.initialize_git_repo(
-        project_root,
-        origin_url=u.Tests.WorktreeFixture.governed_repository_url(project_root.name),
-    )
-    u.Tests.WorktreeFixture.attach_submodule(
-        tmp_path,
-        project_root,
-        distribution=project_root.name,
-        relative_path=project_root.name,
-    )
+    u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, project_root)
     return project_root
 
 
