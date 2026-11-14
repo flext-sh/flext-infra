@@ -1,0 +1,12 @@
+id: rewire-test-assert-contains-sequence
+valid:
+- |
+  from tests import tm
+  assert key in rows
+invalid:
+- |
+  from tests import tm
+  assert ("2026-04-01", "saldo") in rows
+- |
+  from tests import tm
+  assert [1, 2] in rows

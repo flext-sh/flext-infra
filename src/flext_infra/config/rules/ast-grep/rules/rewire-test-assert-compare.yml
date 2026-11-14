@@ -24,8 +24,41 @@ rule:
           kind: except_clause
           stopBy: end
     - matches: tm-binding-admissible
+constraints:
+  A:
+    not:
+      any:
+        - kind: tuple
+        - kind: list
 fix: "tm.that($B, has=$A)"
 message: Assert the contained operand through tm.that.
+---
+id: rewire-test-assert-contains-sequence
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $A in $B"
+        - pattern: "assert ($A in $B)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - matches: tm-binding-admissible
+constraints:
+  A:
+    any:
+      - kind: tuple
+      - kind: list
+fix: "tm.that($B, has=[$A])"
+message: "A sequence operand is one element: wrap it so tm.that reads it whole."
 ---
 id: rewire-test-assert-excludes
 language: Python
@@ -46,8 +79,41 @@ rule:
           kind: except_clause
           stopBy: end
     - matches: tm-binding-admissible
+constraints:
+  A:
+    not:
+      any:
+        - kind: tuple
+        - kind: list
 fix: "tm.that($B, lacks=$A)"
 message: Assert the excluded operand through tm.that.
+---
+id: rewire-test-assert-excludes-sequence
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+  - "**/conftest.py"
+rule:
+  all:
+    - any:
+        - pattern: "assert $A not in $B"
+        - pattern: "assert ($A not in $B)"
+    - not:
+        has:
+          nthChild: 2
+    - not:
+        inside:
+          kind: except_clause
+          stopBy: end
+    - matches: tm-binding-admissible
+constraints:
+  A:
+    any:
+      - kind: tuple
+      - kind: list
+fix: "tm.that($B, lacks=[$A])"
+message: "A sequence operand is one element: wrap it so tm.that reads it whole."
 ---
 id: rewire-test-assert-equal
 language: Python
