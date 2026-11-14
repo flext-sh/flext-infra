@@ -134,6 +134,10 @@ class TestsFlextInfraDepsModernizerToolTables:
             eq=config.Infra.codegen.toolchain.python_version,
         )
         tm.that(mypy, lacks="strict_concatenate")
+        # PEP 420 packages always resolve; package bases follow declared
+        # repository namespaces, and this fixture declares none.
+        tm.that(mypy["namespace_packages"], eq=True)
+        tm.that(mypy["explicit_package_bases"], eq=False)
         tm.that(
             list(u.Tests.toml_strings(mypy["plugins"])),
             eq=native_options["plugins"],
