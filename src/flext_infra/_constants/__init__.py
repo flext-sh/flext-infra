@@ -598,6 +598,7 @@ install_lazy_exports(
         ),
         "FlextInfraConstantsDocs": (
             "DocumentationText",
+            "DOCS_ENGINE_MODULE",
             "DEFAULT_DOCS_OUTPUT_DIR",
             "DOCS_ACTION_IDS",
             "DOCS_CONFIG_FILENAME",

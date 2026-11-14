@@ -84,7 +84,7 @@ _check "EVT-BASEMODEL" \
 # 3. No setattr hacks for message_type (prod AND test code)
 _log "Checking: setattr hacks for message_type (prod + tests)"
 matches=$(cd "${REPOSITORY_ROOT}" && grep -rn 'setattr.*message_type' --include="*.py" --exclude-dir="__pycache__" ./*/src/ ./*/tests/ 2>/dev/null || true)
-matches=$(echo "${matches}" | grep -v '^flext-ldif/' | grep -v '^examples/' || true)
+matches=$(echo "${matches}" | grep -v '^\./flext-ldif/' | grep -v '^\./examples/' || true)
 if [[ -n "${matches}" ]]; then
 	while IFS= read -r match; do
 		file=$(echo "${match}" | cut -d: -f1)
@@ -99,7 +99,7 @@ fi
 # 4. No direct FlextDispatcher() instantiation (except container registration)
 _log "Checking: Direct FlextDispatcher() instantiation"
 matches=$(cd "${REPOSITORY_ROOT}" && grep -rn '= FlextDispatcher()' --include="*.py" --exclude-dir="__pycache__" ./*/src/ 2>/dev/null || true)
-matches=$(echo "${matches}" | grep -v '^flext-ldif/' | grep -v '^examples/' | grep -v 'container\|register' || true)
+matches=$(echo "${matches}" | grep -v '^\./flext-ldif/' | grep -v '^\./examples/' | grep -v 'container\|register' || true)
 if [[ -n "${matches}" ]]; then
 	while IFS= read -r match; do
 		file=$(echo "${match}" | cut -d: -f1)

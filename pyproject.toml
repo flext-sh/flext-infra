@@ -29,9 +29,9 @@ dependencies = [
   "jinja2>=3.1.6",
   "libcst>=1.9.0",
   "Markdown>=3.11.1",
-  "mkdocs>=1.6.1",
   "mypy>=2.3.1",
   "packaging>=26.3",
+  "properdocs>=1.6.7",
   "pydantic>=2.14.1,<3",
   "pydantic-settings>=2.15.0",
   "pymdown-extensions>=11.0.1",
@@ -72,6 +72,7 @@ Repository = "https://github.com/flext-sh/flext-infra"
 
 [dependency-groups]
 dev = [
+  "properdocs>=1.6.7",
   "types-networkx",
   "mkdocstrings-python>=2.0.9",
   "actionlint-py>=1.7.12.24",
@@ -80,7 +81,6 @@ dev = [
   "editables>=0.6",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis",
-  "mkdocs",
   "mkdocs-autorefs",
   "mkdocs-exclude>=1.0.2",
   "mkdocs-git-revision-date-localized-plugin>=1.5.4",
