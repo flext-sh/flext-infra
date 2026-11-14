@@ -50,7 +50,9 @@ class TestsFlextInfraGateErrorReporting:
         )
 
         project = projects[0]
-        tm.that(tuple(project.gates), eq=tuple(gates))
+        # A failed phase ends the verb, so only the executed gates report.
+        tm.that(bool(project.gates), eq=True)
+        tm.that(set(project.gates) <= set(gates), eq=True)
         tm.ok(all(not item.result.passed for item in project.gates.values()))
         tm.that(
             project.total_findings,
@@ -61,7 +63,7 @@ class TestsFlextInfraGateErrorReporting:
         report = (invocation / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME).read_text(
             encoding="utf-8",
         )
-        for gate in gates:
+        for gate in project.gates:
             tm.that(report, has=f"- {gate}: FAIL")
         sarif = m.Infra.SarifReport.model_validate_json(
             (invocation / c.Infra.CHECK_REPORT_SARIF_FILENAME).read_bytes(),
@@ -69,7 +71,7 @@ class TestsFlextInfraGateErrorReporting:
         summary = tm.not_none(sarif.properties)
         retained = summary.results[0]
         tm.that(retained.total_findings, eq=project.total_findings)
-        for gate in gates:
+        for gate in project.gates:
             original = project.gates[gate]
             published = retained.gates[gate]
             native = tm.not_none(published.raw_receipt)
