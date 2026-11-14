@@ -197,6 +197,10 @@ class TestsFlextInfraPortableRewireCohorts:
             f"def consume(value: "
             f"'Legacy.{scope}{'Contract' if homonymous else 'Diamond'}') -> "
             f"'contracts.Diamond{'.Contract' if homonymous else ''}':\n"
+            "    return value\n"
+            f"def already_current(value: 'contracts.Diamond"
+            f"{'.Contract' if homonymous else ''}') -> "
+            f"'contracts.Diamond{'.Contract' if homonymous else ''}':\n"
             "    return value\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -377,12 +381,14 @@ class TestsFlextInfraPortableRewireCohorts:
         for repeat in (False, True):
             with (
                 u.Infra.open_project(
-                    tmp_path := package.parent,
+                    receiver.parent,
                     project_roots=(receiver, producer),
                     consumer_root=receiver,
                 ) as project,
                 workspace_api.FlextInfraRopeWorkspace.open_workspace(
-                    receiver, rope_repository_root=tmp_path, source_project=project
+                    receiver,
+                    rope_repository_root=receiver.parent,
+                    source_project=project,
                 ) as workspace,
             ):
                 replayed = tm.ok(

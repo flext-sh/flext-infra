@@ -598,45 +598,47 @@ class FlextInfraCodemodSemanticApply(
     def _current_rewire_sites(
         cls,
         opened: AbstractContextManager[p.Infra.RopeProject],
-        intent: p.Infra.SemanticRewireIntent,
+        intents: Sequence[p.Infra.SemanticRewireIntent],
         consumers: tuple[Path, ...],
     ) -> frozenset[tuple[Path, int]]:
-        """Prove current-destination sites before restoring old supplier declarations.
+        """Prove current sites against every homonymous destination in the cohort.
 
         Returns:
             Exact native occurrence sites in the current consumer source epoch.
 
         """
         with opened as project:
-            binding = u.Infra.qualified_name(
-                project,
-                intent.destination_scope or intent.destination_module,
-                module_name=None
-                if intent.kind == "module"
-                else intent.destination_module,
-            )
-            finder = u.Infra.create_occurrence_finder(
-                project,
-                (intent.destination_scope or intent.destination_module).rsplit(".", 1)[
-                    -1
-                ],
-                binding,
-                imports=False,
-                in_hierarchy=False,
-            )
-            return frozenset(
-                (path, occurrence.offset)
-                for path in consumers
-                for occurrence in finder.find_occurrences(
-                    resource=u.Infra.file_resource_at(project, path)
+            sites = set[tuple[Path, int]]()
+            for intent in intents:
+                path = intent.destination_scope or intent.destination_module
+                binding = u.Infra.qualified_name(
+                    project,
+                    path,
+                    module_name=None
+                    if intent.kind == "module"
+                    else intent.destination_module,
                 )
-            )
+                finder = u.Infra.create_occurrence_finder(
+                    project,
+                    path.rsplit(".", 1)[-1],
+                    binding,
+                    imports=False,
+                    in_hierarchy=False,
+                )
+                sites.update(
+                    (consumer, occurrence.offset)
+                    for consumer in consumers
+                    for occurrence in finder.find_occurrences(
+                        resource=u.Infra.file_resource_at(project, consumer)
+                    )
+                )
+            return frozenset(sites)
 
     @classmethod
     def _module_rewire_plans(
         cls,
         project: p.Infra.RopeProject,
-        endpoints: tuple[Path, Path],
+        move: tuple[tuple[Path, Path], tuple[p.Infra.CodegenFilePlan, ...]],
         sources: Mapping[Path, str | None],
         originals: Mapping[Path, p.Cli.AtomicFileState],
     ) -> tuple[p.Infra.CodegenFilePlan, ...]:
@@ -646,7 +648,7 @@ class FlextInfraCodemodSemanticApply(
             The native module move plans.
 
         """
-        origin, target = endpoints
+        (origin, target), declared = move
         return u.Infra.plan_module_move(
             project,
             origin,
@@ -658,6 +660,7 @@ class FlextInfraCodemodSemanticApply(
                     if source is not None
                 },
                 tuple(originals.values()),
+                declared_files=declared,
             ),
         ).unwrap()
 
@@ -690,6 +693,7 @@ class FlextInfraCodemodSemanticApply(
                 ),
                 tuple(path for path, source in sources.items() if source is not None),
                 u.Infra.source_member_resolver(project, sources={}),
+                match_filter=selected,
             )
         return u.Infra.move_binding_changes(
             project,
@@ -794,8 +798,15 @@ class FlextInfraCodemodSemanticApply(
         sources: MutableMapping[Path, str | None],
         originals: Mapping[Path, p.Cli.AtomicFileState],
     ) -> None:
-        """Replay native binding transfers over the source/scaffold overlay only."""
-        consumers = tuple(path for path in sources if path.suffix == c.Infra.EXT_PYTHON)
+        """Replay old supplier sources while proving current destination sites."""
+        # The destination is resolved against the live supplier, so retain
+        # only consumer overlays when looking for already-current references.
+        consumers = tuple(
+            path
+            for path in sources
+            if path.suffix == c.Infra.EXT_PYTHON
+            and not any(path.is_relative_to(root) for root in roots.values())
+        )
         for intent in artifact.rewires:
             recorded = cls._rewire_import_root(
                 artifact.candidate.workspace
@@ -809,16 +820,24 @@ class FlextInfraCodemodSemanticApply(
             target = current / (original / intent.destination_path).relative_to(
                 recorded
             )
-            _plans, opened = planned(sources, None)
+            plans, opened = planned(sources, None)
             with opened as project:
                 if intent.kind == "module":
                     moved = cls._module_rewire_plans(
-                        project, (origin, target), sources, originals
+                        project, ((origin, target), plans), sources, originals
                     )
                     cls._absorb_module_plans(moved, sources)
                     continue
+                terminal = intent.destination_scope.rsplit(".", 1)[-1]
                 retained = cls._current_rewire_sites(
-                    planned(sources, consumers)[1], intent, consumers
+                    planned(sources, consumers)[1],
+                    tuple(
+                        other
+                        for other in artifact.rewires
+                        if other.kind != "module"
+                        and other.destination_scope.rsplit(".", 1)[-1] == terminal
+                    ),
+                    consumers,
                 )
                 public = u.Infra.preserved_receiver_reference_filter(
                     project, intent.public_routes
