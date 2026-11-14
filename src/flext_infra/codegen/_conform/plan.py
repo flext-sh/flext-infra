@@ -1257,6 +1257,12 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
 
         """
         repository_root, target, local_workspace = planned_inputs
+        runtime = u.Infra.workspace_runtime_codegen(
+            repository_root, local_workspace, inputs.spec
+        )
+        if runtime.failure:
+            u.Infra.codegen_raise_failure(repository_root, runtime)
+        inputs = inputs.model_copy(update={"spec": runtime.value})
         target = target.model_copy(
             update={
                 "vscode_spec": inputs.spec.vscode,
