@@ -186,7 +186,7 @@ class FlextInfraModelsScan:
             default=c.Infra.ModFindingOrigin.AST_GREP,
             description="Syntax scan or owned inventory admission",
         )
-        native_record: t.Port[p.Infra.ModNativeRecord] = m.Field(
+        native_record: FlextInfraModelsScan.ModNativeRecord = m.Field(
             description="Authenticated range and digest of the complete finding record"
         )
         native_receipt: Annotated[
@@ -525,7 +525,7 @@ class FlextInfraModelsScan:
             FlextInfraModelsCodemod.CodemodBindingSnapshot,
             m.Field(description="Single authenticated inventory for all occurrences"),
         ]
-        native_artifacts: tuple[t.Port[p.Cli.AtomicFileReceipt], ...] = m.Field(
+        native_artifacts: tuple[m.Cli.AtomicFileReceipt, ...] = m.Field(
             min_length=1,
             description=(
                 "Durable native artifacts stored once for all occurrence references"

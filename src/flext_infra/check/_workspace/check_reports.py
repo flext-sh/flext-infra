@@ -281,8 +281,7 @@ class FlextInfraCheckWorkspaceCheckReports:
             )
         if summary.pending_gates:
             u.Cli.info(
-                "NOT EXECUTED: "
-                + ", ".join(summary.pending_gates),
+                "NOT EXECUTED: " + ", ".join(summary.pending_gates),
             )
         u.Cli.info(f"Reports: {report_base / c.Infra.CHECK_REPORT_MARKDOWN_FILENAME}")
         u.Cli.info(f"         {report_base / c.Infra.CHECK_REPORT_SARIF_FILENAME}")

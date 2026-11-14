@@ -129,15 +129,15 @@ class FlextInfraModelsCodemod:
         """Closed descriptor-authenticated sources used by occurrence admission."""
 
         states: Annotated[
-            tuple[t.Port[p.Cli.AtomicFileState], ...],
+            tuple[m.Cli.AtomicFileState, ...],
             m.Field(description="Consumer and resolved Python import-owner inputs"),
         ]
 
         @m.field_validator("states")
         @classmethod
         def unique_inputs(
-            cls, states: tuple[t.Port[p.Cli.AtomicFileState], ...]
-        ) -> tuple[t.Port[p.Cli.AtomicFileState], ...]:
+            cls, states: tuple[m.Cli.AtomicFileState, ...]
+        ) -> tuple[m.Cli.AtomicFileState, ...]:
             """Store each authenticated input once; conflicting identities fail.
 
             Returns:
@@ -147,7 +147,7 @@ class FlextInfraModelsCodemod:
                 ValueError: If binding source snapshots disagree.
 
             """
-            indexed: MutableMapping[Path, p.Cli.AtomicFileState] = {}
+            indexed: MutableMapping[Path, m.Cli.AtomicFileState] = {}
             for state in states:
                 previous = indexed.setdefault(state.path, state)
                 if previous is not state and previous != state:
