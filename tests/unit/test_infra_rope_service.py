@@ -249,6 +249,23 @@ class TestsFlextInfraInfraRopeService:
             tm.that(exports, has="m")
 
     @staticmethod
+    def test_module_less_ancestor_is_an_indexed_package(tmp_path: Path) -> None:
+        """A directory holding only sub-packages is a package of its own."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        nested = package_root / "outer" / "inner"
+        nested.mkdir(parents=True)
+        module_path = nested / "owner.py"
+        module_path.write_text("class Owner:\n    pass\n", encoding=c.DEFAULT_ENCODING)
+
+        with infra.rope_workspace(repository_root) as rope:
+            inner = tm.not_none(rope.package(nested))
+            outer = tm.not_none(rope.package(nested.parent))
+            tm.that(rope.workspace_index.package_dirs, has=nested.parent)
+            tm.that(outer.project_root, eq=inner.project_root)
+            tm.that(f"{outer.package_name}.{nested.name}", eq=inner.package_name)
+            tm.that(outer.direct_child_dirs, has=nested)
+
+    @staticmethod
     def test_script_guard_bindings_are_not_exports(tmp_path: Path) -> None:
         """A name bound under ``if __name__ == "__main__":`` is not a module export.
 
