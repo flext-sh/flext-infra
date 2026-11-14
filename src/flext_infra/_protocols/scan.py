@@ -258,6 +258,7 @@ class FlextInfraProtocolsScan:
             ...
 
         repositories: MutableMapping[Path, str]
+        runner: p.Cli.CommandRunner | None
 
     @runtime_checkable
     class ModScanFindingReference(ModScanFinding, Protocol):
@@ -355,6 +356,15 @@ class FlextInfraProtocolsScan:
         @property
         def native_artifacts(self) -> tuple[p.Cli.AtomicFileReceipt, ...]:
             """Complete authenticated native output inventory."""
+            ...
+
+        @property
+        def native_failures(self) -> tuple[str, ...]:
+            """Structural member projected from the owning model.
+
+            Blocking failures of scanners that stopped early; entries then hold only
+            the complete records those scanners had published.
+            """
             ...
 
     @runtime_checkable

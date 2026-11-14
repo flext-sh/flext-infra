@@ -325,6 +325,7 @@ install_lazy_exports(
             "publish_docs_bundle",
         ),
         "TestsFlextInfraUtilitiesGates": (
+            "scanner_contract_project",
             "reject_inaccessible_config_project",
             "gate_context",
             "check_gate_asserting",

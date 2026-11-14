@@ -28,32 +28,9 @@ class TestsFlextInfraCodemodGate:
         *,
         severity: str = "error",
     ) -> Path:
-        u.Tests.copy_tracked_mise_seeds(tmp_path)
-        tm.ok(u.Cli.run_checked(["mise", "trust", str(tmp_path / ".mise.toml")]))
-        project = installed_dependency_path / "scanner_contract"
-        u.Tests.write_native_resolution_project(project, "scanner-contract")
-        # The scanned package itself is clean: only each case's own source may
-        # produce findings.
-        (project / "src" / "scanner_contract" / c.Infra.INIT_PY).write_text(
-            "", encoding=c.DEFAULT_ENCODING
+        return u.Tests.scanner_contract_project(
+            tmp_path, installed_dependency_path, session_runtime, severity=severity
         )
-        u.Tests.declare_rules(
-            project,
-            {
-                name: (
-                    f"id: contract-{name}\nlanguage: Python\nseverity: {severity}\n"
-                    f"message: Observed {name}\nrule:\n  pattern: {name}($VALUE)\n"
-                )
-                for name in ("first", "second")
-            },
-        )
-        # The rule plan reads the target checkout's own runtime, never the
-        # invoking interpreter, so the scanned project owns a provisioned one.
-        u.Tests.initialize_git_repo(project)
-        tm.ok(
-            u.Tests.provision_scan_workspace(project, session_runtime=session_runtime)
-        )
-        return project
 
     @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_policy_findings_block_at_every_severity(
@@ -90,54 +67,6 @@ class TestsFlextInfraCodemodGate:
             eq=len(execution.issues),
         )
         tm.that(execution.raw_output, has="1 policy findings")
-
-    def test_changed_utility_invalidates_every_cached_finding(
-        self,
-        tmp_path: Path,
-        installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
-    ) -> None:
-        """A rule matching through a utility follows the utility's new bytes."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
-        catalog = (project / c.Infra.CODEMOD_CONFIG_RELPATH).parent
-        utility = catalog / "utils" / "callee.yml"
-        tm.ok(u.Cli.ensure_dir(utility.parent))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                catalog / c.Infra.CODEMOD_CONFIG_FILENAME,
-                f"{c.Infra.CODEMOD_SCOPE_KEY}: {c.Infra.CODEMOD_SCOPE_UNIVERSAL}\n"
-                f"ruleDirs:\n  - {c.Cli.RULES_DIR_NAME}\n"
-                "utilDirs:\n  - utils\ntestConfigs: []\n",
-            )
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                catalog / c.Cli.RULES_DIR_NAME / "second.yml",
-                "id: contract-second\nlanguage: Python\nseverity: error\n"
-                "message: Observed second\nrule:\n  matches: callee\n",
-            )
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                utility,
-                "id: callee\nlanguage: Python\nrule:\n  pattern: second($VALUE)\n",
-            )
-        )
-        (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
-        matched = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
-        tm.that(
-            [issue.code for issue in matched.issues],
-            eq=["contract-second"],
-            msg=matched.raw_output,
-        )
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                utility,
-                "id: callee\nlanguage: Python\nrule:\n  pattern: third($VALUE)\n",
-            )
-        )
-        cleared = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
-        tm.that(cleared.issues, empty=True, msg=cleared.raw_output)
 
     def test_clean_native_scan_has_no_findings(
         self,

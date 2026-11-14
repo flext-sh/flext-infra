@@ -498,8 +498,11 @@ class FlextInfraModGateEngine:
                 c.Infra.SG_CONFIG_FLAG,
                 str(temp_root / c.Infra.CODEMOD_CONFIG_FILENAME),
             ),
-            streams=(temp_root.parent / "stdout", temp_root.parent / "stderr"),
-            artifact_root=artifact_root,
+            outputs=(
+                temp_root.parent / "stdout",
+                temp_root.parent / "stderr",
+                artifact_root,
+            ),
         )
 
     @staticmethod
@@ -507,9 +510,9 @@ class FlextInfraModGateEngine:
         root: Path,
         command: Sequence[str],
         *,
-        streams: tuple[Path, Path],
-        artifact_root: Path,
+        outputs: tuple[Path, Path, Path],
         finding_exit_code: int | None = None,
+        runner: p.Cli.CommandRunner = u.Cli,
     ) -> p.Result[p.Cli.ProcessOutcome]:
         """Run one AST tool and preserve its documented finding status.
 
@@ -521,7 +524,7 @@ class FlextInfraModGateEngine:
             The fully reaped outcome; streams remain in their caller-owned files.
 
         """
-        stdout_file, stderr_file = streams
+        stdout_file, stderr_file, artifact_root = outputs
         # Consumer scratch directories never own the invocation's runtime tools.
         owner_root = u.Infra.runtime_environment_dir(
             Path.cwd(),
@@ -535,7 +538,7 @@ class FlextInfraModGateEngine:
         )
         sys.stderr.flush()
         started = time.monotonic()
-        run = u.Cli.run_to_file(
+        run = runner.run_to_file(
             (str(binary.value), *command[1:]),
             stdout_file,
             cwd=root,
@@ -1080,6 +1083,9 @@ class FlextInfraModGateEngine:
     ) -> p.Result[p.Infra.ModScanReport]:
         """Collect one provider's complete native findings before shared admission.
 
+        A scanner that stops early still published its complete records; they
+        are reported with the blocking failure in ``native_failures``.
+
         Returns:
             The resulting ``p.Result[p.Infra.ModScanReport]``.
 
@@ -1093,7 +1099,7 @@ class FlextInfraModGateEngine:
         )
         if fragments.failure:
             return r[p.Infra.ModScanReport].from_failure(fragments)
-        artifact, scanned, stderr, finding_exit = fragments.value
+        artifact, scanned, run = fragments.value
         report = cls._parse_findings(
             artifact.path,
             root,
@@ -1103,9 +1109,14 @@ class FlextInfraModGateEngine:
         ).unwrap()
         sys.stderr.write(f"mod: native findings={report.findings}\n")
         sys.stderr.flush()
-        if stderr is None:
+        if run is None:
             return r[p.Infra.ModScanReport].ok(report)
-        if finding_exit:
+        stderr, outcome = run
+        if outcome.failure:
+            return r[p.Infra.ModScanReport].ok(
+                report.model_copy(update={"native_failures": (outcome.error or "",)})
+            )
+        if outcome.value.raw_return_code != 0:
             error_findings = sum(
                 entry.severity == "error"
                 and u.Infra.codemod_source_path(root, entry.file) in scanned
@@ -1135,28 +1146,26 @@ class FlextInfraModGateEngine:
         tuple[
             p.Cli.AtomicFileReceipt,
             frozenset[Path],
-            p.Cli.AtomicFileReceipt | None,
-            bool,
+            tuple[p.Cli.AtomicFileReceipt, p.Result[p.Cli.ProcessOutcome]] | None,
         ]
     ]:
         """Publish one ruleset's native records from per-source fragments.
 
         Each source's records come from its cached fragment; ast-grep scans
-        only the sources whose fragment is absent, in one invocation, and
-        stores each of their fragments before the records are published.
+        only the sources whose fragment is absent, in one invocation. A
+        completed scan stores each of their fragments; a scan that stopped
+        early stores none and contributes only its complete records.
 
         Returns:
-            The published records, the freshly scanned sources, the native
-            stderr receipt of that scan (None without one) and whether it
-            exited with error findings.
+            The published records, the freshly scanned sources and, when a
+            scan ran, its native stderr receipt and outcome.
 
         """
         result_type = r[
             tuple[
                 p.Cli.AtomicFileReceipt,
                 frozenset[Path],
-                p.Cli.AtomicFileReceipt | None,
-                bool,
+                tuple[p.Cli.AtomicFileReceipt, p.Result[p.Cli.ProcessOutcome]] | None,
             ]
         ]
         targets, context = selection
@@ -1170,7 +1179,7 @@ class FlextInfraModGateEngine:
             for path in sorted(cls._scan_source_paths(root, targets))
             if path.suffix != ".pyi"
         }
-        fragments = {
+        fragments: dict[Path, Path | str | None] = {
             path: FlextInfraCodemodScanCache.lookup(key) for path, key in keys.items()
         }
         missing = frozenset(
@@ -1180,14 +1189,15 @@ class FlextInfraModGateEngine:
             f"mod: ast-grep cache hit={len(keys) - len(missing)} miss={len(missing)}\n"
         )
         sys.stderr.flush()
-        stderr: p.Cli.AtomicFileReceipt | None = None
-        finding_exit = False
+        run: tuple[p.Cli.AtomicFileReceipt, p.Result[p.Cli.ProcessOutcome]] | None = (
+            None
+        )
         with tempfile.TemporaryDirectory(prefix="mod-native-") as directory:
             stdout_file, stderr_file, scanned_file = (
                 Path(directory) / name for name in ("stdout", "stderr", "scanned")
             )
             if missing:
-                run = cls._run_tool(
+                outcome = cls._run_tool(
                     root,
                     u.Infra.ast_grep_scan_command(
                         ruleset.config,
@@ -1198,41 +1208,58 @@ class FlextInfraModGateEngine:
                         ),
                         json_stream=True,
                     ),
-                    streams=(scanned_file, stderr_file),
-                    artifact_root=artifact_root,
+                    outputs=(scanned_file, stderr_file, artifact_root),
                     finding_exit_code=1,
+                    runner=u.Cli if context.runner is None else context.runner,
                 )
-                if run.failure:
-                    return result_type.from_failure(run)
-                finding_exit = run.value.raw_return_code != 0
-                records = cls._source_records(scanned_file, root, missing)
+                records = cls._source_records(
+                    scanned_file, root, missing, stopped=outcome.failure
+                )
                 if records.failure:
                     return result_type.from_failure(records)
                 for path in missing:
-                    fragments[path] = FlextInfraCodemodScanCache.store(
-                        keys[path], records.value.get(path, "")
+                    fragments[path] = (
+                        records.value.get(path, "")
+                        if outcome.failure
+                        else FlextInfraCodemodScanCache.store(
+                            keys[path], records.value.get(path, "")
+                        )
                     )
-                stderr = u.Infra.publish_mod_native_artifact(artifact_root, stderr_file)
+                run = (
+                    u.Infra.publish_mod_native_artifact(artifact_root, stderr_file),
+                    outcome,
+                )
             u.Cli.atomic_write_text_file(
                 stdout_file,
                 "".join(
-                    fragment.read_text(encoding=c.DEFAULT_ENCODING)
+                    fragment
+                    if isinstance(fragment, str)
+                    else fragment.read_text(encoding=c.DEFAULT_ENCODING)
                     for fragment in fragments.values()
                     if fragment is not None
                 ),
             ).unwrap()
             artifact = u.Infra.publish_mod_native_artifact(artifact_root, stdout_file)
-        return result_type.ok((artifact, missing, stderr, finding_exit))
+        return result_type.ok((artifact, missing, run))
 
     @classmethod
     def _source_records(
-        cls, stdout: Path, root: Path, scanned: frozenset[Path]
+        cls,
+        stdout: Path,
+        root: Path,
+        scanned: frozenset[Path],
+        *,
+        stopped: bool = False,
     ) -> p.Result[Mapping[Path, str]]:
         """Group one scan's native records by the scanned source they name.
 
+        A scanner that stopped early may leave its last record cut; the
+        complete records before that cut are its whole publication.
+
         Returns:
             Each scanned source's exact JSONL records, or the first record
-            that is malformed or names a source outside the scan.
+            that is malformed (of a completed scan) or names a source outside
+            the scan.
 
         """
         grouped: MutableMapping[Path, list[str]] = {}
@@ -1242,6 +1269,8 @@ class FlextInfraModGateEngine:
                 if not line:
                     continue
                 parsed = u.Cli.json_loads(line)
+                if parsed.failure and stopped:
+                    break
                 if parsed.failure:
                     return r[Mapping[Path, str]].from_failure(parsed)
                 if not isinstance(parsed.value, Mapping) or not isinstance(
@@ -1354,8 +1383,7 @@ class FlextInfraModGateEngine:
             target for target in targets if Path(target).suffix != ".pyi"
         )
         with tempfile.TemporaryDirectory(prefix="mod-native-catalog-") as directory:
-            entries: list[p.Infra.ModScanFinding] = []
-            artifacts: list[p.Cli.AtomicFileReceipt] = []
+            reports: list[p.Infra.ModScanReport] = []
             for project, project_targets in u.Infra.project_targets(
                 plan, native_targets
             ):
@@ -1369,7 +1397,7 @@ class FlextInfraModGateEngine:
                         f"native scan project escapes workspace root: "
                         f"{resolved_project}"
                     )
-                stage = Path(directory) / str(len(artifacts))
+                stage = Path(directory) / str(len(reports))
                 ruleset = u.Infra.codemod_stage_scan_ruleset(
                     u.Infra.project_plan(plan, project), stage
                 )
@@ -1387,10 +1415,19 @@ class FlextInfraModGateEngine:
                 )
                 if projected.failure:
                     return r[p.Infra.ModScanReport].from_failure(projected)
-                entries.extend(projected.value.entries)
-                artifacts.extend(projected.value.native_artifacts)
+                reports.append(projected.value)
+            failures = tuple(
+                failure for report in reports for failure in report.native_failures
+            )
             scanned = r[p.Infra.ModScanReport].ok(
-                cls.recounted(tuple(entries), native_artifacts=tuple(artifacts))
+                cls.recounted(
+                    tuple(entry for report in reports for entry in report.entries),
+                    native_artifacts=tuple(
+                        artifact
+                        for report in reports
+                        for artifact in report.native_artifacts
+                    ),
+                ).model_copy(update={"native_failures": failures})
             )
             path_findings = u.Infra.codemod_path_findings(
                 root, tuple(context.inventory), plan.rules
@@ -1416,7 +1453,7 @@ class FlextInfraModGateEngine:
                 cls.recounted(
                     (*scanned.value.entries, *admitted_paths.value.entries),
                     native_artifacts=(*scanned.value.native_artifacts, artifact),
-                )
+                ).model_copy(update={"native_failures": failures})
             )
 
     @classmethod
@@ -1538,7 +1575,7 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n",
         )
         sys.stderr.flush()
-        scanned = cls.native_findings(root, plan, targets)
+        scanned = cls.native_findings(root, plan, targets).flat_map(cls._completed_scan)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
         complete_report = scanned.value.model_copy(
@@ -1569,19 +1606,39 @@ class FlextInfraModGateEngine:
             exact_replacements=False,
         )
 
+    @staticmethod
+    def _completed_scan(
+        report: p.Infra.ModScanReport,
+    ) -> p.Result[p.Infra.ModScanReport]:
+        """Admit only a report whose scanners all completed; mod never applies a part.
+
+        Returns:
+            The report, or the stopped scanners' blocking failures.
+
+        """
+        if report.native_failures:
+            return r[p.Infra.ModScanReport].fail("\n".join(report.native_failures))
+        return r[p.Infra.ModScanReport].ok(report)
+
     @classmethod
     def native_findings(
         cls,
         root: Path,
         plan: p.Infra.CodemodRulePlan,
         targets: Sequence[str],
+        *,
+        runner: p.Cli.CommandRunner = u.Cli,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Scan targets with every elected ruleset; check and mod share this route.
+
+        A scanner that stopped early leaves its blocking failure in
+        ``native_failures`` beside the complete records it had published.
 
         Args:
             root: The governed repository root of the scan.
             plan: The composed rule plan electing each project's rules.
             targets: The governed scan targets of ``root``.
+            runner: The command runner port that executes the native scanner.
 
         Returns:
             Every elected native and owned-path finding, or the first failure.
@@ -1595,6 +1652,7 @@ class FlextInfraModGateEngine:
             repository_roots=tuple(
                 sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
             ),
+            runner=runner,
         )
         scanned = cls._native_scan_report(root, plan, targets, context)
         if scanned.failure:
@@ -1605,7 +1663,7 @@ class FlextInfraModGateEngine:
                 scanned.value,
                 {rule.id: rule for rule in plan.rules},
                 plan.project_rule_ids,
-            )
+            ).model_copy(update={"native_failures": scanned.value.native_failures})
         )
 
     @staticmethod
@@ -1729,7 +1787,7 @@ class FlextInfraModGateEngine:
             u.Infra.ast_grep_scan_targets(view_root),
             context,
             artifact_root=root,
-        )
+        ).flat_map(cls._completed_scan)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
         report = cls._elected(

@@ -64,26 +64,15 @@ class FlextInfraModelsWorkspaceSnapshot:
         ]
 
     class ImportGraphModuleFacts(m.ContractModel):
-        """Runtime import facts of one module, bound to its exact source bytes."""
+        """Runtime import facts of one module."""
 
         name: Annotated[str, m.Field(description="Dotted module name")]
-        digest: Annotated[
-            t.NonEmptyStr, m.Field(description="SHA-256 of the exact source bytes")
-        ]
         imports: Annotated[
             tuple[str, ...], m.Field(description="Module-level imported module paths")
         ]
         aliases: Annotated[
             Mapping[str, str],
             m.Field(description="Lazy export name to provider module"),
-        ]
-
-    class ImportGraphFacts(m.ContractModel):
-        """Per-module runtime import facts of one project, keyed by file path."""
-
-        modules: Annotated[
-            Mapping[str, FlextInfraModelsWorkspaceSnapshot.ImportGraphModuleFacts],
-            m.Field(description="Module facts keyed by resolved file path"),
         ]
 
     class WorkspaceSnapshot(m.ContractModel):

@@ -2,7 +2,8 @@
 
 Reports the findings of the same native scan route ``make mod`` rewrites
 from (ADR-028 Decision 18), including its per-source scan cache. Policy
-findings block the final check; native machinery failures remain distinct.
+findings block the final check; a scanner that stops early remains a blocking
+native failure while its published records are still measured.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -110,7 +111,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                 raise RuntimeError(failure)
             return self._failure_gate_execution(project_dir, ctx, failure, started)
         scanned = FlextInfraModGateEngine.native_findings(
-            project_dir, planned.value, targets
+            project_dir, planned.value, targets, runner=self._runner
         )
         if scanned.failure:
             failure = scanned.error
@@ -121,6 +122,19 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         findings = (
             *self._policy_issues(scanned.value.entries),
             *u.Infra.codemod_import_cycle_issues(project_dir),
+        )
+        # A scanner that stopped early stays a blocking native failure; the
+        # complete records it published are still measured as findings.
+        failures = tuple(
+            m.Infra.Issue(
+                file=c.PYPROJECT_FILENAME,
+                line=1,
+                column=1,
+                code=c.Infra.ToolOutcome.ERROR.value,
+                message=failure.split("\n", 1)[0],
+                severity="ERROR",
+            )
+            for failure in scanned.value.native_failures
         )
 
         # Each finding counts under its declared catalog rule: a partitioned
@@ -133,16 +147,18 @@ class FlextInfraGatesCodemod(FlextInfraGates):
         return self._build_gate_execution(
             m.Infra.GateExecutionParams.model_validate({
                 "project_dir": project_dir,
-                "verdict": not findings,
-                "issues": findings,
+                "verdict": not (failures or findings),
+                "issues": (*failures, *findings),
                 "started": started,
                 "outcome": (
-                    c.Infra.ToolOutcome.FINDINGS
+                    c.Infra.ToolOutcome.ERROR
+                    if failures
+                    else c.Infra.ToolOutcome.FINDINGS
                     if findings
                     else c.Infra.ToolOutcome.CLEAN
                 ),
                 "raw_output": "\n".join((
-                    f"{len(findings)} policy findings",
+                    f"{len(findings)} policy findings; {len(failures)} native failures",
                     *(
                         f"  {rule_id}: {count}"
                         for rule_id, count in sorted(
