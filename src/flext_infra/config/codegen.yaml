@@ -702,14 +702,16 @@ Infra:
         max_load5: 20
         memory_limit_gb: 5
         max_processes: 2
+        # Operator 2026-11-14: host load from other actors sits at 85-113,
+        # so the provisioning path (setup, gen, check) admits to 160.
         overrides:
-          setup: {max_load5: 80}
+          setup: {max_load5: 160}
           upg: {max_load5: 80}
-          gen: {max_load5: 80}
+          gen: {max_load5: 160}
           mod: {max_load5: 80}
           fix: {max_load5: 80}
           fmt: {max_load5: 80}
-          check: {max_load5: 80}
+          check: {max_load5: 160}
           tests: {max_load5: 80}
           help: {max_load5: 80}
           build: {max_load5: 80}
