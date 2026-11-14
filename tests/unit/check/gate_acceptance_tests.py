@@ -304,9 +304,18 @@ class TestsFlextInfraGateAcceptance:
         tm.that(len(results), eq=1)
         verdict = results[0]
         tm.fail(verdict.passed)
+        # ADR-032 "Fail early": gates sharing the failing gate's declared
+        # budget form its phase; a failed phase ends the verb either way.
+        registry = check.FlextInfraGateRegistry()
+        budget = registry.check_budget_seconds(requested[:1], (project,))
+        same_phase = tuple(
+            gate
+            for gate in requested
+            if registry.check_budget_seconds((gate,), (project,)) == budget
+        )
         tm.that(
             tuple(verdict.gates),
-            eq=requested[:1] if fail_fast else requested,
+            eq=requested[:1] if fail_fast else same_phase,
         )
         for execution in verdict.gates.values():
             tm.fail(execution.result.passed)
