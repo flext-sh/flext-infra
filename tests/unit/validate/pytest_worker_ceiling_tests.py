@@ -128,16 +128,16 @@ class TestsFlextInfraPytestWorkerCeiling:
 
     @staticmethod
     @c.Tests.MARK.parametrize("workers", (1, 3))
-    def test_project_owned_declaration_wins_over_the_fleet_map(
+    def test_project_overlay_declares_its_own_ceiling(
         cached_runner_project: Path,
         workers: int,
     ) -> None:
-        """A project's own tests.parallel-workers is its ceiling, unnamed by flext."""
-        pyproject = cached_runner_project / c.PYPROJECT_FILENAME
-        pyproject.write_text(
-            pyproject.read_text(encoding=c.DEFAULT_ENCODING)
-            + "\n[tool.flext.project.tests.parallel-workers]\n"
-            + f"workers = {workers}\n",
+        """A project's tooling overlay sets its ceiling without flext naming it."""
+        overlay = cached_runner_project / "config" / "tooling.yaml"
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            f"        parallel-workers: {workers}\n",
             encoding=c.DEFAULT_ENCODING,
         )
         policy = config.Infra.tooling.tools.pytest

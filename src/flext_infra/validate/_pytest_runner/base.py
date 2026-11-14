@@ -356,32 +356,32 @@ class FlextInfraPytestRunnerBase(s[int]):
             return None
         return u.Infra.project_name_from_payload(pyproject_path, payload)
 
-    def _declared_worker_ceiling(
-        self,
-        policy: p.Infra.PytestConfig,
-    ) -> int | p.Infra.PytestWorkerCeiling:
+    def _declared_worker_ceiling(self) -> int | p.Infra.PytestWorkerCeiling:
         """Resolve the declared project's ceiling over the fleet default.
 
-        The project's own ``[tool.flext.project.tests] parallel-workers``
-        declaration wins, so a consumer owns its measured ceiling without the
-        fleet config naming it; the fleet overrides map covers FLEXT members.
+        The ceiling is elected from the same governed YAML layers as the suite
+        deadline, so a project declares ``Infra.tooling.tools.pytest.
+        parallel-workers`` in its own ``config/tooling.yaml`` overlay and the
+        fleet config never has to name it.
 
         Returns:
             The resulting ``int | m.Infra.PytestWorkerCeiling``.
 
+        Raises:
+            ValueError: If the repository tooling election fails.
+
         """
-        project = u.Infra.tool_flext_meta(self.repository_root).get("project")
-        tests = project.get("tests") if isinstance(project, dict) else None
-        if isinstance(tests, dict) and "parallel-workers" in tests:
-            return m.Infra.PytestWorkerCeiling.model_validate(
-                tests["parallel-workers"],
-            )
-        if not policy.parallel_worker_overrides:
-            return policy.parallel_workers
+        tooling = FlextInfraUtilitiesProjectManagedArtifacts.load_tooling_inputs(
+            self.repository_root,
+        )
+        if tooling.failure:
+            msg = f"repository pytest tooling election failed: {tooling.error}"
+            raise ValueError(msg)
+        elected = tooling.value.document.tools.pytest
         name = self._declared_project_name()
         if name is None:
-            return policy.parallel_workers
-        return policy.parallel_worker_overrides.get(name, policy.parallel_workers)
+            return elected.parallel_workers
+        return elected.parallel_worker_overrides.get(name, elected.parallel_workers)
 
     @staticmethod
     def resolve_worker_ceiling(
@@ -409,9 +409,9 @@ class FlextInfraPytestRunnerBase(s[int]):
     def parallel_worker_budget(self, policy: p.Infra.PytestConfig) -> int:
         """Bound xdist by configuration, CPU, and physical memory.
 
-        The per-project override map (``[project].name`` → absolute workers or
-        CPU fraction) is where a consumer whose measured suite cannot fit the
-        single-worker process boundary declares its ceiling; the fleet-wide
+        A project declares its measured ceiling in its own tooling overlay
+        (``parallel-workers``); FLEXT members may sit in the fleet override map
+        (``[project].name`` → absolute workers or CPU fraction); the fleet-wide
         default stays one worker so ``max-failures: 1`` remains exact
         everywhere else. CPU capacity is the process-scoped count (the cgroup
         affinity the runner actually gets), not the host-wide count.
@@ -424,7 +424,7 @@ class FlextInfraPytestRunnerBase(s[int]):
                 support one pytest worker.
 
         """
-        ceiling = self._declared_worker_ceiling(policy)
+        ceiling = self._declared_worker_ceiling()
         cpu_count = os.process_cpu_count()
         if cpu_count <= 0:
             msg = "CPU capacity is unavailable"
