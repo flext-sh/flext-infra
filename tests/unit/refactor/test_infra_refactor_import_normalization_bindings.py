@@ -551,9 +551,9 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         module = package / "constants.py"
         source = (
             "from __future__ import annotations\n"
-            "ALFA, BETA = ('1', '2')\n"
-            "class Caso:\n"
-            "    valor: str = ALFA\n"
+            "ALPHA, BETA = ('1', '2')\n"
+            "class Case:\n"
+            "    value: str = ALPHA\n"
         )
         module.write_text(source, encoding=c.DEFAULT_ENCODING)
         tm.ok(
