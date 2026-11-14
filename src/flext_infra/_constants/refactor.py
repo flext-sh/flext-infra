@@ -92,6 +92,8 @@ class FlextInfraConstantsRefactor:
         re.MULTILINE,
     )
     """The check report's generated lint line; its count is the repo's lint column."""
+    AST_GREP_JSON_ARRAY_OPEN: ClassVar[str] = "["
+    """First byte of ``ast-grep scan --json=compact`` stdout."""
     AST_GREP_ERROR_FINDING_RECEIPT: ClassVar[str] = (
         "Error: {count} error(s) found in code."
     )

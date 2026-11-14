@@ -1115,7 +1115,6 @@ install_lazy_exports(
             "WorkspaceBootstrapDependencies",
             "WorkspaceSnapshot",
             "ImportGraphModuleFacts",
-            "ImportGraphFacts",
         ),
         "FlextInfraProtocolsScan": (
             "ModScanPublication",
@@ -1249,7 +1248,6 @@ install_lazy_exports(
             "WorkspaceBootstrapDependencies",
             "WorkspaceSnapshot",
             "ImportGraphModuleFacts",
-            "ImportGraphFacts",
         ),
         "FlextInfraProtocolsWorktree": (
             "LintSnapshot",
