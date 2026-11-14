@@ -49,10 +49,7 @@ class TestsFlextInfraReleaseHelpers:
             """A commit subject with repeated spaces cannot fail the markdown gate."""
             notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
             project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
-            subject = (
-                "Recovery/p0 20260927/fleet closure lanes  core regen  flext core "
-                "(#515)"
-            )
+            subject = "fix(release): fleet closure lanes  core regen  flext core (#515)"
 
             result = u.Infra.generate_notes(
                 c.Tests.RELEASE_VERSION_TARGET,
@@ -66,16 +63,35 @@ class TestsFlextInfraReleaseHelpers:
             tm.ok(result)
             tm.that(
                 notes,
-                has=(
-                    "- Recovery/p0 20260927/fleet closure lanes core regen "
-                    "flext core (#515)"
-                ),
+                has="- fix(release): fleet closure lanes core regen flext core (#515)",
             )
             tm.fail(
                 any(
                     "  " in line for line in notes.splitlines() if line.startswith("- ")
                 ),
             )
+
+        @staticmethod
+        def test_generate_notes_lists_only_conventional_subjects(
+            tmp_path: Path,
+        ) -> None:
+            """A merge subject without a Conventional title never reaches the notes."""
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
+            kept = "feat(cli): add a flag (#2)"
+            dropped = "Wip/sweep preserve/some-lane updated at 20261108 416ea732 (#1)"
+
+            result = u.Infra.generate_notes(
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                [],
+                f"{dropped}\n{kept}",
+                notes_path,
+            )
+
+            notes = notes_path.read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(notes, has=f"- {kept}")
+            tm.that(notes, lacks="some-lane")
 
         @staticmethod
         def test_generate_notes_is_formatter_stable(tmp_path: Path) -> None:
