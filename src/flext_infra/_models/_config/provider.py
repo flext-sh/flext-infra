@@ -222,6 +222,17 @@ class FlextInfraModelsConfigProvider:
             t.NonEmptyStr,
             m.Field(description="Member checkout path below the workspace root"),
         ]
+        submodules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Declared workspace member paths the authenticated "
+                    "checkout initializes; every other superproject submodule "
+                    "stays untouched"
+                ),
+            ),
+        ]
 
     class CiPrivateSubmodulesSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""

@@ -1041,11 +1041,24 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
         )
         if origin.failure:
             return result_type.from_failure(origin)
+        manifest = u.Infra.load_workspace_manifest(workspace_root)
+        if manifest.failure:
+            return result_type.from_failure(manifest)
+        relative = root.relative_to(workspace_root).as_posix()
+        declared = next(iter(manifest.value), None)
+        members = () if declared is None else declared.members
+        submodules = tuple(
+            dict.fromkeys((
+                *(member.path.as_posix() for member in members),
+                relative,
+            )),
+        )
         return result_type.create_from_callable(
             lambda: m.Infra.CiSuperprojectCheckoutSpec(
                 repository=u.Infra.git_remote_identity(origin.value.text),
                 ref=branch,
-                path=root.relative_to(workspace_root).as_posix(),
+                path=relative,
+                submodules=submodules,
             ),
         )
 

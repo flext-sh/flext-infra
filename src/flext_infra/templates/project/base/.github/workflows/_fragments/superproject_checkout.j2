@@ -25,11 +25,13 @@
 {%- if private_dependency_auth %}
 {%- include "_fragments/private_dependency_git_auth.j2" %}
 
-      # The authenticated checkout skips submodules; the member tree exists
-      # only after this init, which the declared credential authorizes.
-      - name: Initialize workspace submodules
+      # The authenticated checkout skips submodules; the declared workspace
+      # members are the only trees setup needs. Every other superproject
+      # submodule may be private to a credential this App does not hold, so an
+      # unscoped init would abort the job at its first unauthorized clone.
+      - name: Initialize declared workspace submodules
         working-directory: .
-        run: git submodule update --init --recursive
+        run: git submodule update --init --recursive -- {{ superproject.submodules | join(" ") }}
 {%- endif %}
       - name: Pin {{ dist }} at the tested commit
         working-directory: .
