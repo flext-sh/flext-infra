@@ -1275,7 +1275,9 @@ class FlextInfraWorkspaceDetector(
             return result_type.from_failure(topology)
         subprojects, external, pending = topology.value
         # An attached checkout (a superproject gitlink) renders the workspace
-        # profile from its own root too, exactly as its parent renders it.
+        # profile from its own root too, exactly as its parent renders it. A
+        # linked worktree of that repository is attached to no superproject
+        # and keeps the profile of its own topology.
         identity = u.Infra.git_identity(
             m.Infra.GitRepoRequest(repo_root=resolved_root),
             include_status=False,
@@ -1286,7 +1288,9 @@ class FlextInfraWorkspaceDetector(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
-                    if subprojects or pending or identity.value.is_submodule
+                    if subprojects
+                    or pending
+                    or identity.value.is_attached_submodule
                     else c.Infra.MakeProfile.STANDALONE
                 ),
             },
