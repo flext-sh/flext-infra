@@ -337,6 +337,7 @@ def real_python_package(tmp_path: Path) -> Path:
     (project_root / c.PYPROJECT_FILENAME).write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
     )
+    u.Tests.WorktreeFixture.register_checker_workspace(tmp_path, project_root)
     return project_root
 
 

@@ -546,6 +546,7 @@ install_lazy_exports(
             "RouteBudgetSpec",
             "GateRepeatWindow",
             "GateRepeatSpec",
+            "ModEvidenceSpec",
             "GateAdmissionSpec",
             "ConsolidationOutcome",
             "CodegenVscodeSpec",
@@ -1115,7 +1116,6 @@ install_lazy_exports(
             "WorkspaceBootstrapDependencies",
             "WorkspaceSnapshot",
             "ImportGraphModuleFacts",
-            "ImportGraphFacts",
         ),
         "FlextInfraProtocolsScan": (
             "ModScanPublication",
@@ -1249,7 +1249,6 @@ install_lazy_exports(
             "WorkspaceBootstrapDependencies",
             "WorkspaceSnapshot",
             "ImportGraphModuleFacts",
-            "ImportGraphFacts",
         ),
         "FlextInfraProtocolsWorktree": (
             "LintSnapshot",

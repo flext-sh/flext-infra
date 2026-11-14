@@ -34,16 +34,22 @@ class FlextInfraGatesLocCap(FlextInfraGates):
     ) -> Sequence[str]:
         """Run scc over the project's Python directories, emitting per-file JSON.
 
+        The cap governs authored modules: the tracked generator-owned trees
+        (``codegen.generated_sources``) stay in the analyzer scans but never
+        count against the cap, so scc skips those directory names.
+
         Returns:
             The resulting ``Sequence[str]``.
 
         """
         _ = project_dir, ctx
+        generated = config.Infra.codegen.generated_sources
         return [
             c.Infra.SCC_BINARY,
             "--format",
             "json",
             "--by-file",
+            *(("--exclude-dir", ",".join(generated)) if generated else ()),
             *check_dirs,
         ]
 

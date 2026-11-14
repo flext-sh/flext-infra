@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from contextlib import ExitStack, contextmanager
@@ -17,7 +18,7 @@ from typing import ClassVar
 
 from flext_cli import u
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import FlextInfraUtilitiesProtectedEditLinting
 from flext_infra._utilities._git import FlextInfraUtilitiesGitSemanticIdentity
 
@@ -962,6 +963,7 @@ class FlextInfraUtilitiesRefactor:
         )
         if published.failure:
             return r[p.Infra.ModScanEvidenceReceipt].from_failure(published)
+        FlextInfraUtilitiesRefactor._prune_mod_native_artifacts(root.resolve())
         return r[p.Infra.ModScanEvidenceReceipt].ok(
             m.Infra.ModScanEvidenceReceipt.model_validate({
                 "path": (report_path),
@@ -969,6 +971,33 @@ class FlextInfraUtilitiesRefactor:
                 "evidence": (evidence),
             }),
         )
+
+    @staticmethod
+    def _prune_mod_native_artifacts(root: Path) -> None:
+        """Remove native artifacts that no published evidence references.
+
+        The referenced set is the union over every declared evidence report.
+        Only artifacts older than the declared retention go:
+        no route that can still publish evidence for them outlives it.
+        """
+        reports = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH.parent
+        store = reports / "native"
+        if not store.is_dir():
+            return
+        referenced = {
+            artifact.path
+            for relative in c.Infra.MOD_SCAN_EVIDENCE_RELATIVE_PATHS
+            if (root / relative).is_file()
+            for artifact in m.Infra.ModScanEvidence.model_validate_json(
+                (root / relative).read_bytes()
+            ).native_artifacts
+        }
+        horizon = (
+            time.time() - config.Infra.mod_evidence.native_artifact_retention_seconds
+        )
+        for artifact in store.iterdir():
+            if artifact not in referenced and artifact.stat().st_mtime < horizon:
+                artifact.unlink(missing_ok=True)
 
     @staticmethod
     def _published_mod_scan_bytes(
