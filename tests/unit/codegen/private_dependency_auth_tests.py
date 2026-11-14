@@ -41,6 +41,7 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
         "repository": f"{_OWNER}/example-superproject",
         "ref": "develop",
         "path": "apps/example-workspace",
+        "submodules": ("apps/example-workspace", "apps/example-sibling"),
     })
 
     @classmethod
@@ -407,6 +408,13 @@ class TestsFlextInfraCodegenPrivateDependencyAuth:
                 if str(step.get("run", "")).startswith("git submodule update --init")
             )
             tm.that(init.get("working-directory"), eq=".")
+            tm.that(
+                init.get("run"),
+                eq=(
+                    "git submodule update --init --recursive -- "
+                    "apps/example-workspace apps/example-sibling"
+                ),
+            )
             tm.that(steps.index(handovers[0]) < steps.index(init))
             tm.that(steps.index(init) < steps.index(fetches[0]))
         tm.that(pinned > 0)

@@ -212,6 +212,15 @@ class FlextInfraProtocolsConfigProvider:
             """Member checkout path below the workspace root."""
             ...
 
+        @property
+        def submodules(self) -> tuple[t.NonEmptyStr, ...]:
+            """Structural member projected from the owning model.
+
+            Declared workspace member paths the authenticated checkout initializes;
+            every other superproject submodule stays untouched.
+            """
+            ...
+
     @runtime_checkable
     class CiPrivateSubmodulesSpec(
         FlextInfraProtocolsConfigContract.ConfigContract, Protocol
