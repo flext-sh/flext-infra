@@ -36,14 +36,20 @@ class TestsFlextInfraEnforcementCatalogGate:
         return provider
 
     @staticmethod
-    def _rule(rule_id: str, enforce: Sequence[str], severity: str) -> t.JsonMapping:
-        """Build one detection rule document claiming the given law ids.
+    def _rule(
+        rule_id: str,
+        enforce: Sequence[str],
+        severity: str,
+        fix: str | None = None,
+    ) -> t.JsonMapping:
+        """Build one rule document claiming the given law ids.
 
         Returns:
-            The rule document.
+            The rule document, fix-bearing when ``fix`` is given.
 
         """
         return {
+            **({} if fix is None else {"fix": fix}),
             "id": rule_id,
             "language": "python",
             "severity": severity,
@@ -126,6 +132,34 @@ class TestsFlextInfraEnforcementCatalogGate:
         error = tm.fail(u.Infra.enforcement_catalog(provider))
         tm.that(error, has="ENFORCE-902")
         tm.that(error, has="orphan")
+
+    @staticmethod
+    def test_fix_rule_without_a_law_fails_with_its_id(tmp_path: Path) -> None:
+        """A fix-bearing rule that claims no law exceeds the declared count."""
+        cls = TestsFlextInfraEnforcementCatalogGate
+        provider = cls._provider(
+            tmp_path,
+            [
+                cls._rule("fixture-active", ["ENFORCE-900"], "error"),
+                cls._rule("fixture-unclaimed-fix", [], "error", "pass"),
+            ],
+        )
+        error = tm.fail(u.Infra.enforcement_catalog(provider))
+        tm.that(error, has="fixture-unclaimed-fix")
+        tm.that(error, has="declares 0 fix-bearing rule(s)")
+        tm.that(error, has="catalog produced 1")
+
+    @staticmethod
+    def test_fix_rule_claiming_a_law_derives_the_catalog(tmp_path: Path) -> None:
+        """A fix-bearing rule that claims its law leaves nothing unclaimed."""
+        cls = TestsFlextInfraEnforcementCatalogGate
+        provider = cls._provider(
+            tmp_path,
+            [cls._rule("fixture-claimed-fix", ["ENFORCE-900"], "error", "pass")],
+        )
+        catalog = tm.ok(u.Infra.enforcement_catalog(provider))
+        owners = {claim.owner for claim in catalog.claims if claim.id == "ENFORCE-900"}
+        tm.that(owners, eq={"fixture-claimed-fix"})
 
     @staticmethod
     def test_accessor_prefix_util_projects_the_tooling_policy(
