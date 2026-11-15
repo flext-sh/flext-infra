@@ -150,7 +150,6 @@ install_lazy_exports(
             "MakeWorkflowRequirementSpec",
             "MakeWorkflowStepSpec",
             "TestmonCachePolicySpec",
-            "MypyCacheSpec",
             "MakeRuffSpec",
             "MakeExecutionSpec",
             "MakeHarnessSpec",

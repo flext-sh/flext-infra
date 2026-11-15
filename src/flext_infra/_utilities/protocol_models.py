@@ -5317,11 +5317,11 @@ class FlextInfraUtilitiesModelsProtocol:
             for decorator in method.decorator_list:
                 if self._denotes(decorator, scope, "functools", "cached_property"):
                     # The member keeps the source's own ``cached_property``
-                    # spelling: Pyright types a model's cached member as the
+                    # spelling: the model's cached member is typed as the
                     # ``cached_property[T]`` descriptor, which neither a plain
                     # ``property`` nor an attribute annotation accepts, while
-                    # Pyright, Pyrefly and Mypy all accept the same descriptor
-                    # declared on the Protocol. The source import that binds
+                    # Pyrefly accepts the same descriptor declared on the
+                    # Protocol. The source import that binds
                     # it is retained with the projected annotation providers.
                     decorators.append(copy.deepcopy(decorator))
                     continue

@@ -101,14 +101,14 @@ class FlextInfraModelsConfigMake(
         data_home_environment_variable: Annotated[
             str,
             m.Field(min_length=1, description="XDG persistent cache-home variable"),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME.value
+        ] = FlextInfraConstantsConfig.CacheHomeEnvironment.DATA_HOME.value
         user_home_environment_variable: Annotated[
             str,
             m.Field(
                 min_length=1,
                 description="User home variable for the XDG default",
             ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME.value
+        ] = FlextInfraConstantsConfig.CacheHomeEnvironment.USER_HOME.value
 
     class MakeCiSpec(FlextInfraModelsConfigContract.ConfigContract):
         """The only permitted environment delta between local and CI execution."""
@@ -140,7 +140,7 @@ class FlextInfraModelsConfigMake(
             m.Field(
                 description=(
                     "Variable every remote runner exports, whatever CI token the "
-                    "step passes; a remote check never runs a local-stage gate."
+                    "step passes."
                 ),
             ),
         ] = "GITHUB_ACTIONS"
@@ -419,66 +419,6 @@ class FlextInfraModelsConfigMake(
                     "warning < maintenance < block <= 100"
                 )
                 raise ValueError(msg)
-            return self
-
-    class MypyCacheSpec(
-        FlextInfraExternalCacheDirectorySpec.Directory[
-            FlextInfraConstantsConfig.MypyCacheEnvironment
-        ],
-        FlextInfraModelsConfigContract.ConfigContract,
-    ):
-        """Project-keyed shared Mypy cache, one analysis reused across relocks."""
-
-        cache_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="Mypy's cache-directory environment variable",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR
-        data_home_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="XDG persistent cache-home variable",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME
-        user_home_environment_variable: Annotated[
-            FlextInfraConstantsConfig.MypyCacheEnvironment,
-            m.Field(
-                description="User home variable for the XDG default",
-            ),
-        ] = FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME
-
-        @m.model_validator(mode="after")
-        def require_external_cache_contract(self) -> Self:
-            """Keep the official cache variable and the external path policy exact.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If mypy cache.
-
-            """
-            for name, actual, expected in (
-                (
-                    "cache_environment_variable",
-                    self.cache_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.CACHE_DIR,
-                ),
-                (
-                    "data_home_environment_variable",
-                    self.data_home_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.DATA_HOME,
-                ),
-                (
-                    "user_home_environment_variable",
-                    self.user_home_environment_variable,
-                    FlextInfraConstantsConfig.MypyCacheEnvironment.USER_HOME,
-                ),
-            ):
-                if actual != expected:
-                    msg = f"mypy cache {name} must be {expected.value}"
-                    raise ValueError(msg)
             return self
 
     class MakeRuffSpec(FlextInfraModelsConfigContract.ConfigContract):
@@ -889,12 +829,6 @@ class FlextInfraModelsConfigMake(
                     "Declarative save/budget/quota policy for the shared"
                     " testmon cache (#1001 delta)"
                 ),
-            ),
-        ]
-        mypy_cache: Annotated[
-            FlextInfraModelsConfigMake.MypyCacheSpec,
-            m.Field(
-                description="Project-keyed shared Mypy analysis cache policy",
             ),
         ]
         ruff_cache: Annotated[

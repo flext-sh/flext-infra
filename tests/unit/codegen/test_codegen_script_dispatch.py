@@ -560,9 +560,8 @@ class TestsFlextInfraScriptDispatchMakefile:
             if script_dispatch is None
             else (("scripts/sync/all.sh", self._command("sync", "all")),),
         )
-        env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
+        env_dirs = " ".join(config.Infra.tooling.tools.pyrefly.path_rules.env_dirs)
         tm.ok(f"for directory in {env_dirs}; do" in rendered)
-        tm.ok("MYPY_PATHS := $(RUFF_PATHS)" in rendered)
 
     def test_pytest_verbs_leave_basetemp_to_pytest(
         self,

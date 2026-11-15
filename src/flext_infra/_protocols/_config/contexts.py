@@ -258,7 +258,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def mypy_timeout_exit_code(self) -> int:
+        def timeout_exit_code(self) -> int:
             """Wall-time limiter timeout exit code."""
             ...
 
@@ -287,7 +287,7 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
-        def mypy_timeout_exit_code(self) -> int:
+        def timeout_exit_code(self) -> int:
             """Wall-time limiter timeout exit code."""
             ...
 

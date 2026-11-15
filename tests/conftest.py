@@ -38,10 +38,10 @@ _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
 def suite_cache_home(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
     """Scope the gates' persistent caches to pytest-owned session storage.
 
-    Gates resolve their native persistent caches (including Mypy) below
-    ``XDG_CACHE_HOME``; a unit test writes only inside session-owned storage,
-    so each worker's cache home is a directory of pytest's own basetemp, kept
-    under pytest's native retention. The native UV source cache selected
+    Gates resolve their native persistent caches below ``XDG_CACHE_HOME``; a
+    unit test writes only inside session-owned storage, so each worker's cache
+    home is a directory of pytest's own basetemp, kept under pytest's native
+    retention. The native UV source cache selected
     before that isolation is preserved, so hermetic Git fixtures can read the
     provisioned objects.
 
@@ -49,7 +49,7 @@ def suite_cache_home(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]
         The session's cache home.
 
     """
-    spec = config.Infra.codegen.make.mypy_cache
+    spec = config.Infra.codegen.make.ruff_cache
     uv_cache = u.Cli.capture([c.Infra.UV, "cache", "dir"]).unwrap().strip()
     cache_home = tmp_path_factory.mktemp("xdg-cache")
     with u.Tests.env_vars_context({

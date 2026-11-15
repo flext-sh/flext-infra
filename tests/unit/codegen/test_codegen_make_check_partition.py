@@ -107,37 +107,6 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
 
     @staticmethod
-    def test_remote_runner_never_executes_mypy_in_any_context() -> None:
-        """Mypy is local-only: no CI token on a remote runner selects it."""
-        make = config.Infra.codegen.make
-        ci = make.ci
-        tm.that(c.Infra.GATE_STAGES[c.Infra.MYPY], eq=c.Infra.GateStage.LOCAL)
-        tm.that(make.check_gates_ci, lacks=c.Infra.MYPY)
-        tm.that(make.pre_commit_check_gates, lacks=c.Infra.MYPY)
-        tm.that(make.check_gates_local, has=c.Infra.MYPY)
-        for token in (ci.value, ci.local_value, ci.pre_commit_value):
-            with u.Tests.env_vars_context(
-                env_vars={ci.variable: token, ci.remote_variable: ci.remote_value},
-            ):
-                tm.that(
-                    u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
-                    lacks=c.Infra.MYPY,
-                )
-                tm.that(
-                    u.Infra.not_executed_local_gates(make),
-                    eq=(c.Infra.MYPY,),
-                )
-        with u.Tests.env_vars_context(
-            env_vars={ci.variable: ci.local_value},
-            vars_to_clear=(ci.remote_variable,),
-        ):
-            tm.that(
-                u.Infra.selected_check_gates(make, c.Infra.CheckGateSet.CHECK),
-                has=c.Infra.MYPY,
-            )
-            tm.that(u.Infra.not_executed_local_gates(make), eq=())
-
-    @staticmethod
     def test_partitions_derive_from_each_gate_declared_stage() -> None:
         """Every context partition is the stage-admitted slice of the default set.
 

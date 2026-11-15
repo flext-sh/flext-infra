@@ -110,20 +110,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 True,
                 FlextInfraConstantsConfig.GateStage.CI,
             ),
-            "mypy": (
-                "Mypy",
-                "https://mypy.readthedocs.io/",
-                False,
-                True,
-                FlextInfraConstantsConfig.GateStage.LOCAL,
-            ),
-            "pyright": (
-                "Pyright",
-                "https://github.com/microsoft/pyright",
-                False,
-                True,
-                FlextInfraConstantsConfig.GateStage.PUSH,
-            ),
         }),
         FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
             RUNTIME_INTEGRITY: (
@@ -494,9 +480,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Extracted-source name (``MARKDOWN_CODE_SOURCE_FORMAT``) inside any ruff line."
     VALID_GATE_SEVERITIES: ClassVar[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    PYRIGHT_DIAGNOSTICS_KEY: ClassVar[str] = "generalDiagnostics"
-    PYRIGHT_PROJECT_ARG: ClassVar[str] = "--project"
-    PYRIGHT_PROJECT_CONFIG_TARGET: ClassVar[str] = "."
     BANDIT_RESULTS_KEY: ClassVar[str] = "results"
     PYREFLY_ERRORS_KEY: ClassVar[str] = "errors"
     PYREFLY_ZERO_ERRORS_RECEIPT: ClassVar[str] = "INFO 0 errors"
@@ -594,8 +577,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "ruff",
         "pytest",
         "pyrefly",
-        "mypy",
-        "pyright",
     })
     MANUAL_CMD_BLOCKED_GIT: ClassVar[frozenset[str]] = frozenset({
         "commit",

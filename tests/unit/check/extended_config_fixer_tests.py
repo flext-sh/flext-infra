@@ -109,8 +109,6 @@ class TestsFlextInfraExtendedConfigFixer:
             pyproject = tmp_path / c.PYPROJECT_FILENAME
             pyproject.write_text(
                 (
-                    "[tool.pyright]\n"
-                    "include = ['src']\n\n"
                     "[tool.pyrefly]\n"
                     "search-path = ['src']\n"
                     "project-includes = ['src/**/*.py*', 'tests/**/*.py*']\n"
@@ -153,9 +151,9 @@ class TestsFlextInfraExtendedConfigFixer:
                     "project-excludes = []\n\n"
                     "[tool.pyrefly.errors]\n"
                     'bad-return = "error"\n\n'
-                    "# [MANAGED] pyright\n"
-                    "[tool.pyright]\n"
-                    "include = ['src']\n"
+                    "# [MANAGED] vulture\n"
+                    "[tool.vulture]\n"
+                    "paths = ['src']\n"
                 ),
                 encoding="utf-8",
             )
@@ -169,7 +167,7 @@ class TestsFlextInfraExtendedConfigFixer:
             tm.that(updated, contains="# keep dependency context")
             tm.that(updated, contains="# keep dependency item comment")
             tm.that(updated, contains="line-length = 120")
-            tm.that(updated, contains="# [MANAGED] pyright")
+            tm.that(updated, contains="# [MANAGED] vulture")
             tm.that(result.value, has="synchronized search-path from YAML rules")
 
         @staticmethod

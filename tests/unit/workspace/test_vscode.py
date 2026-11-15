@@ -69,8 +69,8 @@ class TestsFlextInfraCodegenVscode:
             eq=declared["python.languageServer"],
         )
 
-    def test_strips_retired_keys_owning_pyright_config(self, tmp_path: Path) -> None:
-        """Strip keys owned by [tool.pyright] to avoid Pylance warnings."""
+    def test_strips_retired_keys_owned_by_analyzer_config(self, tmp_path: Path) -> None:
+        """Strip keys the analyzer configuration owns to avoid a second policy."""
         project_root = u.Tests.git_repository(tmp_path, "project")
         self._write_settings(
             project_root,

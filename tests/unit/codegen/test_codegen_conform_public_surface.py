@@ -428,7 +428,7 @@ class TestsFlextInfraCodegenConformPublicSurface:
         package = (
             root
             / member.path
-            / config.Infra.tooling.tools.pyright.path_rules.source_dir
+            / config.Infra.tooling.tools.pyrefly.path_rules.source_dir
             / tm.not_none(u.Tests.project_spec(member.distribution).package_name)
         )
         (package / c.Infra.INIT_PY).unlink()
