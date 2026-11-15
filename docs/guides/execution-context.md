@@ -2806,10 +2806,11 @@ prefix for these verbs.
   slot.
 
 Heavy routes resolve the declared toolchain before entering the queue. When
-`make gen ROOT=...` targets another checkout and needs a provisioned
-environment, generation rejects a missing target interpreter before admission.
-Run `make setup` and `make gen` in the target checkout so facade resolution
-uses that checkout's own dependencies.
+`make gen ROOT=...` or direct CLI generation needs a provisioned environment,
+the CLI compares its executing Python environment to the target's native
+runtime owner before admission. Run `make setup` and `make gen` in the
+target checkout when they differ. Declared bootstrap surfaces can still
+render before provisioning.
 The per-verb load, processor and memory limits are owned by the Make admission
 prelude (`make.admission` in `config/codegen.yaml`), not by this queue.
 
