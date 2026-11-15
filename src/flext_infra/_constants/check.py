@@ -9,12 +9,14 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import c
 
 from flext_infra._constants.config import FlextInfraConstantsConfig
+from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._pytest import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
@@ -405,6 +407,14 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     CHECK_PROFILE_FILENAME: ClassVar[str] = "check.pstats"
     "Optional native profile of the captured checker in its invocation directory."
+    CHECK_REPORT_RELATIVE_PATH: ClassVar[Path] = Path(CHECK_REPORT_SARIF_FILENAME)
+    "Repository-relative path to the latest check receipt."
+    TEST_REPORT_RELATIVE_PATH: ClassVar[Path] = Path("test-report.json")
+    "Repository-relative path to the latest test receipt."
+    WORKSPACE_RCA_CAPTURE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
+        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "rca-capture.json"
+    )
+    "Repository-relative path to the latest RCA capture receipt."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )
