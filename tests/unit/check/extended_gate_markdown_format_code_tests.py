@@ -436,6 +436,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         sources = tuple(
             FlextInfraMarkdownCodeSources.docstring_sources(project_dir, None)
         )
@@ -458,6 +459,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
