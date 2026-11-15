@@ -1540,7 +1540,9 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             if resource is None or Path(resource.real_path).is_relative_to(package):
                 continue
             published = module.get_attributes().get("p")
-            exposed = ancestor.get_attributes().get(port.get_name())
+            exposed = runtime.class_assignment_binding(
+                ancestor.get_attributes().get(port.get_name())
+            )
             if (
                 published is None
                 or published.get_object() is not ancestor
