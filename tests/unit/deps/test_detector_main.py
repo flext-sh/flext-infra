@@ -94,7 +94,6 @@ class TestsFlextInfraDepsDetectorMain:
                 '[project]\nname = "member"\nversion = "0.1.0"\n'
                 f'requires-python = "{python_required}"\n'
                 'dependencies = ["pyyaml"]\n'
-                "[tool.mypy]\n"
             ),
         )
         (member / "src/member/__init__.py").write_text(

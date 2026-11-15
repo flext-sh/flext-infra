@@ -76,6 +76,7 @@ class FlextInfraProtocolsDepsToolConfig:
     class PytestConfig(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
+        ordinary_timeout_seconds: int
         slow_timeout_seconds: int
         slow_marker: t.NonEmptyStr
         run_timeout_seconds: int
@@ -221,18 +222,6 @@ class FlextInfraProtocolsDepsToolConfig:
         @property
         def ruff(self) -> FlextInfraProtocolsDepsToolConfigLinters.RuffConfig:
             """Ruff settings."""
-            ...
-
-        @property
-        def mypy(self) -> FlextInfraProtocolsDepsToolConfigLinters.MypyConfig:
-            """Mypy settings."""
-            ...
-
-        @property
-        def pyright(
-            self,
-        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig:
-            """Pyright settings."""
             ...
 
         @property

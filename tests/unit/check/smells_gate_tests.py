@@ -311,7 +311,8 @@ class TestsFlextInfraSmellsGate:
             f"def wide({params}):\n    return p0\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (tmp_path / c.Infra.GITIGNORE).write_text(
+        # The project's own checkout owns its ignore policy.
+        (smells_project / c.Infra.GITIGNORE).write_text(
             "local_*.py\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -357,6 +358,14 @@ class TestsFlextInfraSmellsGate:
             self._comparison_config(tmp_path, variation),
             self._package(smells_project),
         )
+        # A workspace checks its members as registered submodules.
+        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.WorktreeFixture.attach_submodule(
+            tmp_path,
+            smells_project,
+            distribution=smells_project.name,
+            relative_path=smells_project.name,
+        )
         reports_dir = tmp_path / "reports"
         projects = tm.ok(
             FlextInfraWorkspaceChecker.model_validate({
@@ -369,8 +378,8 @@ class TestsFlextInfraSmellsGate:
         )
         execution = projects[0].gates[c.Infra.SMELLS]
         native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(execution.raw_output)))
-        raw_receipt = tm.not_none(execution.raw_receipt)
-        report_path = raw_receipt.parent.parent / c.Infra.CHECK_REPORT_SARIF_FILENAME
+        tm.not_none(execution.raw_receipt)
+        (report_path,) = reports_dir.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         report_text = report_path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )

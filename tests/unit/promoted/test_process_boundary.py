@@ -17,7 +17,7 @@ from typing import Final
 
 import pytest
 
-from tests import c, t, u
+from tests import c, t, tm, u
 
 
 @dataclasses.dataclass(frozen=True)
@@ -291,6 +291,20 @@ raise SystemExit(
                 # and the reap must succeed; an OS contradiction escapes loud.
                 os.killpg(pid, signal.SIGKILL)
                 os.waitpid(pid, 0)
+
+    def test_run_imports_the_owner_scripts_package(self, tmp_path: Path) -> None:
+        """A Python command runs as a module, so its scripts package resolves."""
+        command = self._write_command(
+            tmp_path,
+            "from scripts import EXIT\n"
+            "if __name__ == '__main__':\n"
+            "    raise SystemExit(EXIT)\n",
+        )
+        (tmp_path / "scripts" / "__init__.py").write_text(
+            "EXIT = 7\n", encoding="utf-8"
+        )
+        exit_code = self._wait_status(self._spawn_probe(command, env=self._probe_env()))
+        tm.that(exit_code, eq=7)
 
     def test_run_works_without_owner_venv_on_workspace_interpreter(
         self,

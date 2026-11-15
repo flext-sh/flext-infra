@@ -104,10 +104,6 @@ class FlextInfraModelsCore:
     ):
         """Structured typed-dependency analysis result for a project."""
 
-        mypy_hints: Annotated[
-            MutableSequence[str],
-            m.Field(description="Install-package hints extracted from mypy output"),
-        ] = m.Field(default_factory=list)
         internal_missing: Annotated[
             MutableSequence[str],
             m.Field(description="Missing internal imports"),

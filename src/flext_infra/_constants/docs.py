@@ -459,7 +459,7 @@ class FlextInfraConstantsDocs:
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
-        r"(?:(?:ruff|pyrefly|mypy|pyright|mkdocs|properdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
+        r"(?:(?:ruff|pyrefly|mkdocs|properdocs|uv|poetry|pdm|tox|nox|pre-commit)(?=\s|$)|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )

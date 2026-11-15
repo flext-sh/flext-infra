@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraConfig
-from flext_infra.codegen import FlextInfraCodegenConform
-from tests import c, e, m, p, tm, u
+from flext_infra import FlextInfraConfig, config
+from tests import c, e, m, p, t, tm, u
+from tests.unit.codegen.conform_support import TestsFlextInfraConformSupport
 
 
 class TestsFlextInfraArtifactRenderEmptyGuard:
@@ -25,35 +25,108 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
     destination, and the declaration cause.
     """
 
+    # The private-dependency workflow fragment: a real packaged template whose
+    # whole body is gated on the private-dependency capability layer.
+    GATED_FRAGMENT: Path = Path(
+        "base/.github/workflows/_fragments/private_dependency_auth.j2"
+    )
+    # A real packaged macro library: its body is macro definitions only, so a
+    # direct render keeps only the trailing newline the renderer preserves.
+    MACRO_LIBRARY: Path = Path(
+        "base/.github/workflows/_fragments/superproject_checkout.j2"
+    )
+    # A real packaged template with no template syntax: its render is its source.
+    STATIC_TEMPLATE: Path = Path("base/config/gitleaks-release.toml.j2")
+    SELECTED_WORKFLOW: str = ".github/workflows/selected-capability.yml"
+    SELECTED_FRAGMENT: str = "selected-capability.txt"
+
     @staticmethod
-    def _plan_render(
-        tmp_path: Path,
-        content: str,
-    ) -> tuple[
-        FlextInfraCodegenConform.Generate, p.Infra.CodegenGenerateRequest, Path, Path
-    ]:
-        """Declare a template through the target's repository-local config.
+    def _selection(destination: str, source: Path) -> t.JsonMapping:
+        """Repository codegen config that selects ``source`` at ``destination``.
 
         Returns:
-            The bound planner, its request, template source and destination path.
+            The repository-local configuration document.
+
+        """
+        return {
+            "Infra": {
+                "codegen": {
+                    "templates": {
+                        "entries": {
+                            destination: {
+                                "source": source.as_posix(),
+                                "profiles": [
+                                    profile.value for profile in c.Infra.MakeProfile
+                                ],
+                                "ownership": {"owner": "codegen", "policy": "full"},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+    @staticmethod
+    def _select_workflow(root: Path, source: Path) -> Path:
+        """Select one packaged template as a workflow through repository config.
+
+        The repository declares the artifact but never declares the data
+        layer its template is gated on.
+
+        Returns:
+            The selected destination path.
+
+        """
+        destination = TestsFlextInfraArtifactRenderEmptyGuard.SELECTED_WORKFLOW
+        TestsFlextInfraConformSupport.seed_infra_package_tree(root)
+        manifest_path = u.Tests.write_standalone_workspace_manifest(
+            root,
+            config.Infra.name,
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest_path.with_name(c.Infra.CODEGEN_CONFIG_FILENAME),
+                TestsFlextInfraArtifactRenderEmptyGuard._selection(destination, source),
+            ),
+        )
+        effective = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        tm.that(
+            {entry.destination for entry in effective.templates.entries},
+            has=destination,
+        )
+        return root / destination
+
+    @staticmethod
+    def _refusal(root: Path, source: Path) -> tuple[str, Path]:
+        """Plan the selected workflow through the public conform boundary.
+
+        Returns:
+            The planning refusal diagnostic and the unpublished destination.
+
+        """
+        destination = TestsFlextInfraArtifactRenderEmptyGuard._select_workflow(
+            root, source
+        )
+        request = u.Tests.conform_request(
+            root,
+            what=c.Infra.CodegenConformSurface.WORKFLOWS,
+        )
+        with u.Tests.raises(e.OperationError) as raised:
+            u.Tests.conform_plan_result(root, request)
+        return str(raised.value), destination
+
+    @staticmethod
+    def _scaffold_request(
+        tmp_path: Path, source: Path
+    ) -> tuple[Path, p.Infra.CodegenGenerateRequest, p.Infra.WorkspaceSpec]:
+        """Declare a new repository whose config selects one packaged template.
+
+        Returns:
+            The repository root, its scaffold request and its workspace.
 
         """
         root = tmp_path / "project"
         root.mkdir()
-        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        entry = next(
-            entry
-            for entry in codegen.templates.entries
-            if entry.destination == c.Infra.MAKEFILE_FILENAME
-        )
-        source = tm.not_none(entry.source)
-        templates = tmp_path / "templates"
-        u.Tests.reflink_copy_tree(u.Infra.codegen_templates_root(codegen), templates)
-        # A nonempty conditional source renders exactly the supplied test content.
-        (templates / source).write_text(
-            "{% if false %}undeclared capability{% endif %}" + content,
-            encoding="utf-8",
-        )
         _, _, local_config = FlextInfraConfig.config_layer_paths_for_repository(
             root,
             filename=c.Infra.CODEGEN_CONFIG_FILENAME,
@@ -62,11 +135,12 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.ok(
             u.Cli.yaml_dump(
                 local_config,
-                {"Infra": {"codegen": {"templates": {"root": str(templates)}}}},
+                TestsFlextInfraArtifactRenderEmptyGuard._selection(
+                    TestsFlextInfraArtifactRenderEmptyGuard.SELECTED_FRAGMENT,
+                    source,
+                ),
             ),
         )
-        effective = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        tm.that(u.Infra.codegen_templates_root(effective), eq=templates)
         u.Tests.copy_tracked_mise_seeds(root)
         u.Tests.initialize_git_repo(root)
         repository = u.Tests.repository_ref("fixture-project")
@@ -74,42 +148,19 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             repository,
             project=u.Tests.project_spec(repository.name),
         )
-        request = u.Tests.conform_request(
-            root,
-            what=c.Infra.CodegenConformSurface.MAKEFILE,
-        )
-        planner = FlextInfraCodegenConform.Generate(
-            repository_root=root,
-            state=m.Infra.CodegenConformState(
-                repository_root=root,
-                initial_workspace=workspace,
-                request=request,
-            ),
-        )
-        return planner, request, source, root / entry.destination
+        return root, u.Tests.conform_request(root), workspace
 
     @staticmethod
     def test_empty_render_fails_loud_naming_template_and_cause(
-        tmp_path: Path,
+        infra_git_repo: Path,
     ) -> None:
         """A 0-byte render raises a planning refusal naming template and cause."""
-        planner, request, source, destination = (
-            TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
-                tmp_path,
-                "",
-            )
+        source = TestsFlextInfraArtifactRenderEmptyGuard.GATED_FRAGMENT
+        diagnostic, destination = TestsFlextInfraArtifactRenderEmptyGuard._refusal(
+            infra_git_repo, source
         )
-        with u.Tests.raises(e.OperationError) as raised:
-            planner.plan(request)
-        diagnostic = str(raised.value)
-        tm.that(
-            diagnostic,
-            has=str(source),
-        )
-        tm.that(
-            diagnostic,
-            has=destination.name,
-        )
+        tm.that(diagnostic, has=str(source))
+        tm.that(diagnostic, has=destination.name)
         tm.that(diagnostic, has="render produced no content")
         tm.that(diagnostic, has="consumer declaration error")
         tm.fail(destination.exists())
@@ -119,35 +170,45 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tmp_path: Path,
     ) -> None:
         """A whitespace-only render is refused and carries the planner banner."""
-        planner, request, _, destination = (
-            TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
+        root, request, workspace = (
+            TestsFlextInfraArtifactRenderEmptyGuard._scaffold_request(
                 tmp_path,
-                "  \n\t\n",
+                TestsFlextInfraArtifactRenderEmptyGuard.MACRO_LIBRARY,
             )
         )
         with u.Tests.raises(e.OperationError) as raised:
-            planner.plan(request)
+            u.Tests.conform_plan_result(root, request, workspace=workspace)
         diagnostic = str(raised.value)
         tm.that(diagnostic, has="stage=templates ")
         tm.that(diagnostic, has="repository=")
         tm.that(diagnostic, has="publishing a 0-byte artifact is forbidden")
-        tm.fail(destination.exists())
+        tm.fail(
+            (root / TestsFlextInfraArtifactRenderEmptyGuard.SELECTED_FRAGMENT).exists()
+        )
 
     @staticmethod
     def test_rendered_content_passes_through_verbatim(
         tmp_path: Path,
     ) -> None:
         """A render with real content passes through byte-exact."""
-        content = "ready:\n\t@echo ready\n"
-        planner, request, _, destination = (
-            TestsFlextInfraArtifactRenderEmptyGuard._plan_render(
-                tmp_path,
-                content,
-            )
+        source = TestsFlextInfraArtifactRenderEmptyGuard.STATIC_TEMPLATE
+        root, request, workspace = (
+            TestsFlextInfraArtifactRenderEmptyGuard._scaffold_request(tmp_path, source)
         )
-        plan = tm.ok(planner.plan(request))
-        tm.that(u.Tests.planned_text(plan, destination.name), eq=content)
-        tm.fail(destination.exists())
+        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
+        content = (u.Infra.codegen_templates_root(codegen) / source).read_text(
+            encoding=c.DEFAULT_ENCODING,
+        )
+        plan = tm.ok(u.Tests.conform_plan_result(root, request, workspace=workspace))
+        tm.that(
+            u.Tests.planned_text(
+                plan, TestsFlextInfraArtifactRenderEmptyGuard.SELECTED_FRAGMENT
+            ),
+            eq=content,
+        )
+        tm.fail(
+            (root / TestsFlextInfraArtifactRenderEmptyGuard.SELECTED_FRAGMENT).exists()
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("publishes_contract", [False, True])
@@ -214,10 +275,12 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             "plan = staging.plan_sources(root, {target: 'value = 1\\n'}).unwrap()\n"
             "assert family.name in {layout.package_name for layout in plan.layouts}\n"
             "sealed = {state.path: state for state in plan.inputs}\n"
-            "for name in ('__init__.py', '__version__.py', 'marker.py'):\n"
+            # The census elects the family as a read-only closure root, so
+            # every family source contributes its exact original bytes.
+            "for name in ('__init__.py', '__version__.py', 'marker.py',"
+            " 'typing_only.py'):\n"
             "    path = family / name\n"
             "    assert sealed[path].content == path.read_bytes()\n"
-            "assert family / 'typing_only.py' not in sealed\n"
             "assert family_root / 'pyproject.toml' not in sealed\n"
             "assert not target.exists()\n",
             str(root),
@@ -243,7 +306,10 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         normalized = tm.ok(u.Infra.normalized_codegen_changes((plan,)))
         emitted = tm.not_none(normalized[0].desired_content)
-        tm.that(emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n")
+        # The destination's own Ruff policy decides the repair; the candidate
+        # changes and the formatter spaces its assignment.
+        tm.that(emitted, ne=b"values=dict(answer=42)\n")
+        tm.that(emitted, has=b"values = ")
         repeated = tm.ok(
             u.Infra.normalized_codegen_changes((
                 m.Infra.CodegenFilePlan(
@@ -310,14 +376,20 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         document = tm.not_none(
             u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
         )
-        document["tool"] = {"ruff": {"lint": {"select": ["UP040"]}}}
+        # Only the rule selection changes; the fleet target version stays, so
+        # UP040 applies to the declared Python line.
+        ruff = u.Cli.toml_mapping_ensure_table(
+            u.Cli.toml_mapping_ensure_table(document, "tool"), "ruff"
+        )
+        ruff["lint"] = {"select": ["UP040"]}
         metadata.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
         staged = tm.not_none(
             u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
         )
-        staged["tool"] = {
-            "ruff": {"lint": {"select": ["UP040"], "unfixable": ["UP040"]}}
-        }
+        staged_ruff = u.Cli.toml_mapping_ensure_table(
+            u.Cli.toml_mapping_ensure_table(staged, "tool"), "ruff"
+        )
+        staged_ruff["lint"] = {"select": ["UP040"], "unfixable": ["UP040"]}
         destination = package / "facade.py"
         candidate = (
             b"from typing import TypeAlias\n\n\n"

@@ -208,7 +208,6 @@ class FlextInfraWorkspaceChecker(
             check_only=params.check_only,
             fail_fast=params.fail_fast,
             ruff_args=tuple(self.parse_tool_args(params.ruff_args)),
-            pyright_args=tuple(self.parse_tool_args(params.pyright_args)),
             selected_files=selected_files,
             runtime_dependency_collector=FlextInfraRuntimeDependencyCollector(
                 python=u.Infra.runtime_python(
@@ -240,12 +239,6 @@ class FlextInfraWorkspaceChecker(
         """
         make = u.Infra.load_codegen_policy(params.repository_root).unwrap().make
         gates = u.Infra.selected_check_gates(make, params.gate_set, phase=phase)
-        if not params.gates:
-            for gate in u.Infra.not_executed_local_gates(make):
-                u.Cli.info(
-                    f"check: {gate} NOT EXECUTED: a local-only gate never runs "
-                    "on a remote runner"
-                )
         if phase == c.Infra.CheckPhase.PRIMARY:
             if any((
                 params.file is not None,
@@ -255,7 +248,6 @@ class FlextInfraWorkspaceChecker(
                 params.apply,
                 params.check_only,
                 params.ruff_args is not None,
-                params.pyright_args is not None,
             )):
                 return r[Sequence[str]].fail(
                     "primary check requires unfiltered read-only global check scope"
@@ -309,7 +301,6 @@ class FlextInfraWorkspaceChecker(
         if (
             params.apply
             or params.ruff_args is not None
-            or params.pyright_args is not None
             or (requested and tuple(requested) != (".",))
         ):
             return r[tuple[Path, ...]].fail(
@@ -606,7 +597,6 @@ class FlextInfraWorkspaceChecker(
         unfiltered = not any((
             effective_ctx.selected_files,
             effective_ctx.ruff_args,
-            effective_ctx.pyright_args,
             effective_ctx.apply_fixes,
             effective_ctx.check_only,
         ))

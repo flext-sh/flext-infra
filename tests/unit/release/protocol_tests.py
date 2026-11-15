@@ -29,6 +29,43 @@ if TYPE_CHECKING:
 class TestsFlextInfraReleaseProtocol:
     """Behavior contract for the release protocol."""
 
+    class TestsDefaultMergeMessage:
+        """A GitHub default merge message states its title in the body."""
+
+        @staticmethod
+        def test_default_merge_subject_takes_the_title_from_its_body(
+            tmp_path: Path,
+        ) -> None:
+            """GitHub's default merge message keeps the pull-request title in the body.
+
+            A repository left on GitHub's default (``Merge pull request #N from …``
+            as the subject, the title as the body) still states its release
+            information; the plan reads the title there instead of failing.
+            """
+            workspace = TestsFlextInfraReleaseProtocol._released_workspace(tmp_path)
+            base = u.Tests.git_capture(workspace, "branch", "--show-current").strip()
+            u.Tests.git_run(workspace, "switch", "--create", "lane/default-subject")
+            (workspace / "LANE.md").write_text("lane\n", encoding="utf-8")
+            u.Tests.commit_git_changes(workspace, "work: lane")
+            u.Tests.git_run(workspace, "switch", base)
+            u.Tests.git_run(
+                workspace,
+                "merge",
+                "--no-ff",
+                "-m",
+                "Merge pull request #7 from owner/lane/default-subject",
+                "-m",
+                "fix(core): title carried in the body",
+                "lane/default-subject",
+            )
+
+            result = u.Tests.run_release_main(workspace, "--phase", "plan")
+
+            plan = TestsFlextInfraReleaseProtocol._plan(workspace)
+            tm.that(result, eq=0)
+            tm.that(plan.bump, eq=c.Infra.VersionBump.PATCH)
+            tm.that(plan.merges, eq=("fix(core): title carried in the body",))
+
     class TestsMaintenanceFinalization:
         """Explicit maintenance decisions do not reinterpret historical subjects."""
 

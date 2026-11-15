@@ -5,7 +5,7 @@ name (``Routing = AcmeModelsRouting.Routing``) so the public facade reaches it
 through that family. Its Protocol mirror aliases the owning Protocol holder.
 Once the alias is published, the facade route resolves to the alias itself;
 electing it as the declaring owner emitted ``type Routing = <own>.Routing``, a
-cyclic alias that pyright and mypy reject (bead aihub-057kp).
+cyclic alias that type checkers reject (bead aihub-057kp).
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

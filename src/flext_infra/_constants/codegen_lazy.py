@@ -82,8 +82,6 @@ class FlextInfraConstantsCodegenLazy:
         # Ruff runs with NO --select override: the project's pyproject.toml
         # (select=ALL + narrow whitelist + preview) is the ONLY rule policy.
         ("ruff", ("ruff", "check", "{file}", "--no-fix")),
-        ("pyright", ("pyright", "{file}")),
-        ("mypy", ("mypy", "{file}", "--no-error-summary")),
         ("pyrefly", ("pyrefly", "check", "{file}")),
     )
     "Lint tool names and their CLI command templates for validation."

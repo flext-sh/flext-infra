@@ -1,4 +1,4 @@
-"""Authorized diagnostic path exceptions render both type checkers from one entry.
+"""Authorized diagnostic path exceptions render the Pyrefly sub-config of their root.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,10 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import config
-from flext_infra.deps.phases import (
-    FlextInfraEnsurePyreflyConfigPhase,
-    FlextInfraEnsurePyrightConfigPhase,
-)
+from flext_infra.deps.phases import FlextInfraEnsurePyreflyConfigPhase
 from tests import c, m, p, t, tm, u
 
 if TYPE_CHECKING:
@@ -20,11 +17,11 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraDepsDiagnosticPathExceptions:
-    """One SSOT entry scopes Pyright and Pyrefly rule levels to its root."""
+    """One SSOT entry scopes Pyrefly rule levels to its root."""
 
     @staticmethod
     def _entry(root: str) -> t.JsonDict:
-        """Declare one authorized exception changing rules of both checkers.
+        """Declare one authorized exception changing Pyrefly rules.
 
         Returns:
             The YAML-shaped declaration of the exception.
@@ -39,18 +36,6 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
                 "channel": "Claude Code chat",
             },
             "changes": [
-                {
-                    "checker": c.Infra.PYRIGHT,
-                    "rule": "reportAssignmentType",
-                    "old": "error",
-                    "new": "none",
-                },
-                {
-                    "checker": c.Infra.PYRIGHT,
-                    "rule": "reportIncompatibleVariableOverride",
-                    "old": "error",
-                    "new": "none",
-                },
                 {
                     "checker": c.Infra.PYREFLY,
                     "rule": "bad-override",
@@ -75,14 +60,14 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
             by_alias=True, exclude_computed_fields=True
         )
         tools = u.Tests.toml_mapping(payload["tools"])
-        pyright = u.Tests.toml_mapping(tools[c.Infra.PYRIGHT])
-        rules = u.Tests.toml_mapping(pyright["path-rules"])
+        pyrefly = u.Tests.toml_mapping(tools[c.Infra.PYREFLY])
+        rules = u.Tests.toml_mapping(pyrefly["path-rules"])
         return m.Infra.ToolConfigDocument.model_validate({
             **payload,
             "tools": {
                 **tools,
-                c.Infra.PYRIGHT: {
-                    **pyright,
+                c.Infra.PYREFLY: {
+                    **pyrefly,
                     "path-rules": {**rules, "diagnostic-path-exceptions": [entry]},
                 },
             },
@@ -142,49 +127,23 @@ class TestsFlextInfraDepsDiagnosticPathExceptions:
             tool_config_document, self._entry("src/flext_sample/absent.py")
         )
         context = m.Infra.PyprojectAnalyzerContext(is_root=False, project_dir=project)
-        for phase in (
-            FlextInfraEnsurePyrightConfigPhase(document, codegen=config.Infra.codegen),
-            FlextInfraEnsurePyreflyConfigPhase(document, codegen=config.Infra.codegen),
-        ):
-            payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-            with u.Tests.raises(FileNotFoundError, match="absent.py"):
-                phase.apply_payload(payload, context=context)
+        phase = FlextInfraEnsurePyreflyConfigPhase(
+            document, codegen=config.Infra.codegen
+        )
+        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
+        with u.Tests.raises(FileNotFoundError, match="absent.py"):
+            phase.apply_payload(payload, context=context)
 
-    def test_one_entry_renders_both_checkers(
+    def test_one_entry_renders_the_pyrefly_sub_config(
         self,
         tmp_path: Path,
         tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
-        """The same entry yields the Pyright environment and the Pyrefly sub-config."""
+        """The entry yields the Pyrefly sub-config scoped to its root."""
         root = "src/flext_sample/models.py"
         project = self._project(tmp_path, root)
         document = self._document(tool_config_document, self._entry(root))
-        rules = document.tools.pyright.path_rules
         context = m.Infra.PyprojectAnalyzerContext(is_root=False, project_dir=project)
-
-        pyright_payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-        FlextInfraEnsurePyrightConfigPhase(
-            document, codegen=config.Infra.codegen
-        ).apply_payload(pyright_payload, context=context)
-        environments = [
-            u.Tests.toml_mapping(item)
-            for item in u.Tests.toml_list(
-                self._tool_table(pyright_payload, c.Infra.PYRIGHT)[
-                    "executionEnvironments"
-                ]
-            )
-        ]
-        source = next(env for env in environments if env["root"] == rules.source_dir)
-        tm.that(
-            environments[0],
-            eq={
-                "root": root,
-                c.Infra.REPORT_PRIVATE_USAGE: rules.source_report_private_usage,
-                c.Infra.EXTRA_PATHS: source[c.Infra.EXTRA_PATHS],
-                "reportAssignmentType": "none",
-                "reportIncompatibleVariableOverride": "none",
-            },
-        )
 
         pyrefly_payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
         FlextInfraEnsurePyreflyConfigPhase(

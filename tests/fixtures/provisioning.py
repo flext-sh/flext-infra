@@ -79,7 +79,6 @@ def _consumer_pyproject_source(distribution: str) -> str:
         f'[dependency-groups]\ndev = [{development}, "pip", '
         f'"{infrastructure_source}"]\n'
         "[tool.hatch.metadata]\nallow-direct-references = true\n"
-        "[tool.mypy]\n"
         '[tool.deptry]\noptional_dependencies_dev_groups = ["dev"]\n'
     )
 

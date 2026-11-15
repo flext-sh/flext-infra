@@ -304,8 +304,17 @@ class TestsFlextInfraGateAcceptance:
         tm.that(len(results), eq=1)
         verdict = results[0]
         tm.fail(verdict.passed)
-        # ADR-032 "Fail early": gates sharing the failing gate's declared
-        # budget form its phase; a failed phase ends the verb either way.
+        # ADR-032 "Fail early": without fail-fast the declared prerequisite
+        # gates run first and a failed prerequisite ends the verb; otherwise
+        # gates sharing the failing gate's declared budget form its phase.
+        prerequisites = tuple(
+            gate
+            for gate in u.Infra
+            .load_codegen_policy(tmp_path)
+            .unwrap()
+            .make.check_prerequisite_gates
+            if gate in requested
+        )
         registry = check.FlextInfraGateRegistry()
         budget = registry.check_budget_seconds(requested[:1], (project,))
         same_phase = tuple(
@@ -315,7 +324,7 @@ class TestsFlextInfraGateAcceptance:
         )
         tm.that(
             tuple(verdict.gates),
-            eq=requested[:1] if fail_fast else same_phase,
+            eq=requested[:1] if fail_fast else prerequisites or same_phase,
         )
         for execution in verdict.gates.values():
             tm.fail(execution.result.passed)
@@ -367,10 +376,10 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
-    def test_native_fix_does_not_reject_already_fixed_diagnostics(
+    def test_native_fix_retains_the_requested_exit_and_check_accepts(
         tmp_path: Path,
     ) -> None:
-        """Ruff can report a findings exit even after every violation was fixed."""
+        """Repair runs once and keeps Ruff's exit; only an explicit check accepts."""
         project = u.Tests.mk_project(
             tmp_path,
             "repaired",
@@ -387,9 +396,7 @@ class TestsFlextInfraGateAcceptance:
             ruff_args=("--select", "F401", "--exit-non-zero-on-fix"),
         )
         execution = gate.fix(project, context)
-        tm.ok(execution.result.passed)
-        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
-        tm.that(execution.issues, empty=True)
+        tm.fail(execution.result.passed)
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
         tm.ok(gate.check(project, context).result.passed)
 

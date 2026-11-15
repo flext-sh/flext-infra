@@ -55,8 +55,8 @@ class FlextInfraModelsConfigTemplates:
             m.Field(
                 description=(
                     "VS Code keys actively stripped from the settings projection "
-                    "because they conflict with a pyrightconfig.json/pyproject.toml "
-                    "owner (Pylance settingsNotOverridable)."
+                    "because they conflict with their pyproject.toml or tool-file "
+                    "owner."
                 ),
             ),
         ] = ()

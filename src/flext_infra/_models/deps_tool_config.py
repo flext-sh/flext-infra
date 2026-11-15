@@ -229,9 +229,16 @@ class FlextInfraModelsDepsToolConfig(
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
+        ordinary_timeout_seconds: int = m.Field(
+            alias="ordinary-timeout-seconds",
+            gt=0,
+            le=2,
+            description="Hard maximum runtime for one ordinary item.",
+        )
         slow_timeout_seconds: int = m.Field(
             alias="slow-timeout-seconds",
             gt=0,
+            le=20,
             description="Hard maximum runtime for one explicitly slow item.",
         )
         slow_marker: t.NonEmptyStr = m.Field(
@@ -241,14 +248,8 @@ class FlextInfraModelsDepsToolConfig(
         run_timeout_seconds: int = m.Field(
             alias="run-timeout-seconds",
             gt=0,
-            le=1800,
-            description=(
-                "Fleet-default wall-clock maximum for one testmon runner operation. "
-                "Repositories whose session prepares a real local runtime (for example "
-                "the Docker OUD stack) may declare a higher budget; the previous 120s "
-                "fleet ceiling predates in-session real-runtime preparation and is "
-                "recorded in the fleet policy notes."
-            ),
+            le=240,
+            description="Aggregate wall-clock maximum for one pytest operation.",
         )
         termination_grace_seconds: int = m.Field(
             alias="termination-grace-seconds",
@@ -458,11 +459,12 @@ class FlextInfraModelsDepsToolConfig(
             if self.slow_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest slow timeout must be less than run timeout"
                 raise ValueError(msg)
-            # Only the slow phase has a bounded item drain. Ordinary items are
-            # stopped by the aggregate process wall, not a synthetic item cap.
             reserve = self.slow_suite_stop_reserve_seconds
             if self.run_timeout_seconds <= reserve:
                 msg = "pytest run timeout must exceed the suite stop reserve"
+                raise ValueError(msg)
+            if self.slow_marker in self.ci_excluded_markers:
+                msg = "pytest slow marker must not be excluded from CI"
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:
                 msg = "pytest progress args must expose verbose item progress"
@@ -699,12 +701,6 @@ class FlextInfraModelsDepsToolConfig(
         )
         ruff: FlextInfraModelsDepsToolConfigLinters.RuffConfig = m.Field(
             description="Ruff settings",
-        )
-        mypy: FlextInfraModelsDepsToolConfigLinters.MypyConfig = m.Field(
-            description="Mypy settings",
-        )
-        pyright: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig = m.Field(
-            description="Pyright settings",
         )
         pyrefly: FlextInfraModelsDepsToolConfigTypeCheckers.PyreflyConfig = m.Field(
             description="Pyrefly settings",
@@ -979,79 +975,6 @@ class FlextInfraModelsDepsToolConfig(
             return self
 
         @m.model_validator(mode="after")
-        def validate_mypy_overrides(self) -> Self:
-            """Keep native override pairs within the diagnostic policy.
-
-            Returns:
-                The unchanged declaration.
-
-            Raises:
-                ValueError: If an override hides diagnostics or changes owned keys.
-
-            """
-            for override in self.tools.mypy.overrides:
-                override_options = dict(override.settings)
-                ignored = override_options.get("ignore_errors")
-                if ignored is not None and ignored is not False:
-                    msg = "Mypy overrides cannot ignore diagnostics"
-                    raise ValueError(msg)
-                if override_options.keys() & set(self.derived_settings.get("mypy", ())):
-                    msg = "Mypy override cannot shadow policy-owned options"
-                    raise ValueError(msg)
-                if any(
-                    not key.isascii() or not key.isidentifier()
-                    for key in override_options
-                ):
-                    msg = "Mypy override requires plain option names"
-                    raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
-        def validate_mypy_options(self) -> Self:
-            """Preserve Mypy ownership and mandatory Pydantic integration.
-
-            Returns:
-                Native options without changing their values.
-
-            Raises:
-                ValueError: If an option bypasses its policy owner.
-
-            """
-            if "mypy" not in self.settings:
-                msg = "Native Mypy settings must be declared"
-                raise ValueError(msg)
-            options = dict(self.settings["mypy"])
-            if any(not key.isascii() or not key.isidentifier() for key in options):
-                msg = "Mypy policy requires plain option names, not TOML syntax"
-                raise ValueError(msg)
-            error_codes = options.get("enable_error_code")
-            if error_codes is not None and not (
-                isinstance(error_codes, str)
-                or (
-                    isinstance(error_codes, list)
-                    and all(isinstance(code, str) for code in error_codes)
-                )
-            ):
-                msg = "Mypy enabled error codes must be a string or string array"
-                raise ValueError(msg)
-            if (
-                options.get("ignore_errors") is not None
-                and options["ignore_errors"] is not False
-            ):
-                msg = "Mypy policy cannot ignore diagnostics"
-                raise ValueError(msg)
-            plugins = options.get("plugins")
-            if (
-                not isinstance(plugins, list)
-                or any(not isinstance(plugin, str) for plugin in plugins)
-                or "pydantic.mypy" not in plugins
-                or "pydantic.v1.mypy" in plugins
-            ):
-                msg = "Mypy requires pydantic.mypy and forbids pydantic.v1.mypy"
-                raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
         def validate_pytest_options(self) -> Self:
             """Keep runtime-derived pytest switches out of native addopts.
 
@@ -1148,11 +1071,6 @@ class FlextInfraModelsDepsToolConfig(
             pending: list[tuple[str, t.JsonValue]] = [
                 (key, value) for pairs in self.settings.values() for key, value in pairs
             ]
-            pending.extend(
-                (key, value)
-                for override in self.tools.mypy.overrides
-                for key, value in override.settings
-            )
             while pending:
                 key, value = pending.pop()
                 option = (
@@ -1165,22 +1083,6 @@ class FlextInfraModelsDepsToolConfig(
                     pending.extend(value.items())
                 elif isinstance(value, list):
                     pending.extend((key, item) for item in value)
-
-        @m.model_validator(mode="after")
-        def validate_pyright_options(self) -> Self:
-            """Require strict checking in the elected native configuration.
-
-            Returns:
-                The configuration with strict diagnostics preserved.
-
-            Raises:
-                ValueError: If the elected checking mode weakens diagnostics.
-
-            """
-            if dict(self.settings["pyright"]).get("typeCheckingMode") != "strict":
-                msg = "Pyright typeCheckingMode must remain strict"
-                raise ValueError(msg)
-            return self
 
         @m.model_validator(mode="after")
         def validate_pyrefly_options(self) -> Self:

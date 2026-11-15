@@ -165,6 +165,7 @@ class FlextInfraGatesCodemod(FlextInfraGates):
                             counts.items(), key=lambda item: (-item[1], item[0])
                         )
                     ),
+                    *scanned.value.native_failures,
                 )),
             }),
             ctx=ctx,

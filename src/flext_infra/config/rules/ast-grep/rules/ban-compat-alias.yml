@@ -45,7 +45,7 @@ message: >-
   no old+new coexistence.
 note: >-
   Migration: keep only the canonical name ($NEW), delete the alias, update
-  all importers of $NAME in the same change, and let pyrefly/mypy pinpoint
+  all importers of $NAME in the same change, and let pyrefly pinpoint
   any missed consumer. A name the module publishes in its __all__ is its
   declared facade alias, not a compatibility name.
 files:

@@ -300,7 +300,7 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 "pytest": (tooling.tools.pytest),
                 "release_verbs": (self._release_product_verbs(repository)),
                 "make": (codegen.make),
-                "mypy_timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
+                "timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
                 "timeout_command": (c.Infra.TIMEOUT_COMMAND),
                 "timeout_kill_after_seconds": (c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
                 "tooling_runtime": (tooling_runtime),

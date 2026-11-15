@@ -112,6 +112,34 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
+        ("field", "over_budget"),
+        [
+            ("ordinary-timeout-seconds", 3),
+            ("slow-timeout-seconds", 21),
+            ("run-timeout-seconds", 241),
+        ],
+    )
+    def test_deadlines_cannot_exceed_operator_caps(
+        field: str, over_budget: int
+    ) -> None:
+        """Reject policy values above the authorised deadline."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload[field] = over_budget
+        with u.Tests.raises(c.ValidationError, match="less than or equal"):
+            type(policy).model_validate(payload)
+
+    @staticmethod
+    def test_ci_must_not_exclude_slow_items() -> None:
+        """The slow marker increases the item budget without excluding the item."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload["ci-excluded-markers"] = [policy.slow_marker]
+        with u.Tests.raises(c.ValidationError, match="must not be excluded from CI"):
+            type(policy).model_validate(payload)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
         c.MergeStrategy.OVERRIDE,
         [
             "-o",
@@ -120,17 +148,18 @@ class TestsFlextInfraPytestTimeoutConfig:
             "--override-ini=addopts=",
             "--loadscope-reorder",
             "--no-loadscope-reorder",
+            "--timeout=0",
         ],
     )
     def test_pytest_ini_override_is_forbidden(override: str) -> None:
         """Test pytest ini override is forbidden."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["standard-addopts"] = [override]
+        payload["diagnostic-args"] = [override]
 
         with u.Tests.raises(
             c.ValidationError,
-            match="pytest runtime policy options are derived from typed fields",
+            match="pytest reporting args must not override runner-owned policy",
         ):
             type(policy).model_validate(payload)
 
@@ -163,7 +192,7 @@ class TestsFlextInfraPytestTimeoutConfig:
         """A slow budget outside the aggregate run wall is unrepresentable."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
-        payload["slow-timeout-seconds"] = policy.run_timeout_seconds
+        payload["run-timeout-seconds"] = policy.slow_timeout_seconds
 
         with u.Tests.raises(
             c.ValidationError, match="pytest slow timeout must be less than run timeout"

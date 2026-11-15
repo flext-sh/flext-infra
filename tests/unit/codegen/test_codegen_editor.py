@@ -75,9 +75,9 @@ class TestsFlextInfraCodegenEditor:
         full = manifest.read_text(encoding=c.DEFAULT_ENCODING)
         document = tm.not_none(u.Cli.toml_parse_text(full))
         stale = u.Cli.toml_ensure_table(
-            u.Cli.toml_ensure_table(document, c.Infra.TOOL), c.Infra.PYRIGHT
+            u.Cli.toml_ensure_table(document, c.Infra.TOOL), c.Infra.PYREFLY
         )
-        stale["venvPath"] = "../stale-checkout"
+        stale[c.Infra.SEARCH_PATH] = ["../stale-checkout"]
         manifest.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
         editor = u.Tests.conform_request(
             root,
