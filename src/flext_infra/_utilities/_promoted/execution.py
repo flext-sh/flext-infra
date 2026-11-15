@@ -31,7 +31,8 @@ class FlextInfraUtilitiesPromotedExecution(FlextInfraUtilitiesPromotedInvocation
 
         The single workspace venv is authoritative for every inherited command;
         the owner root is the working directory, and a Python command runs
-        there as a module of its scripts package (``python -m scripts.<path>``). The child is not
+        there as a module of its scripts package
+        (``python -m scripts.<path>``). The child is not
         captured, so output, Ctrl-C/SIGINT, and the exact exit code propagate.
 
         Returns:
