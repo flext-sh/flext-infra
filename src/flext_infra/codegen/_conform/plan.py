@@ -124,10 +124,31 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
         )
         if selected_result.failure:
             return r[p.Infra.CodegenPlan].from_failure(selected_result)
-        selected = selected_result.value
+        return self._plan_selected_repositories(
+            request, inputs, targets.value, selected_result.value
+        )
+
+    def _plan_selected_repositories(
+        self,
+        request: p.Infra.CodegenGenerateRequest,
+        inputs: p.Infra.CodegenInputs,
+        targets: tuple[
+            p.Infra.WorkspaceSpec,
+            p.Infra.RepositoryConformTarget,
+            p.Infra.RepositoryRef,
+        ],
+        selected: tuple[p.Infra.RepositoryRef, ...],
+    ) -> p.Result[p.Infra.CodegenPlan]:
+        """Plan only the repositories of the captured topology.
+
+        Returns:
+            The complete plan or its first planning failure.
+
+        """
+        root = request.root.expanduser().resolve()
         gathered = self._gathered_repository_plans(
             root,
-            targets.value,
+            targets,
             selected,
             request.what,
             inputs,
@@ -139,7 +160,7 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             m.Infra.CodegenPlan(
                 request=request,
                 repositories=selected,
-                workspace=workspace,
+                workspace=targets[0],
                 uv_environments=tuple(environments),
                 files=tuple(files),
                 outcomes=outcomes,

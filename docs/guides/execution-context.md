@@ -4139,10 +4139,10 @@ validator. Staged Python files run the lint and format gates on those files; a
 staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
-`make check` and `make fmt`. Codemod, smells and repository-owned validators
-carry the push stage, so they block locally and at pre-push. Every gate blocks in
-every context that runs it; there is no informative or advisory gate. The `check`
-pre-push hook drops the inherited `CI` to run every active gate.
+`make check` and `make fmt`. When enabled, the generated pre-push hook
+drops inherited `CI` and runs the workflow's primary check once. The local
+workflow retains the complete check and test steps. Every gate blocks in
+every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
 and the shared merge-control classifier. It reads literal source-link targets without
 following them. Every finding, including a native warning, blocks approval while its
