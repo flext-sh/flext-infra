@@ -1,0 +1,11 @@
+id: require-field-description-default
+snapshots:
+  "class Order(m.FrozenModel):\n    label: str = \"x\"\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          label: str = m.Field(default="x", description="Label.")
+    labels:
+    - source: "label: str = \"x\""
+      style: primary
+      start: 32
+      end: 48

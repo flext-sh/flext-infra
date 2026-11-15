@@ -1,4 +1,4 @@
-"""Fresh-import completeness: every exported pydantic class builds.
+"""Fresh-import completeness: exported models build and stand-ins are whole.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,13 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 import shutil
 from typing import TYPE_CHECKING
 
 import flext_cli
 
+import flext_infra
 from flext_infra.validate import FlextInfraValidateFreshImport
-from tests import m, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -116,3 +119,32 @@ class TestsFlextInfraFreshImportCompleteness:
             suite_runtime_root,
         )
         tm.that(violation, eq=None)
+
+    @staticmethod
+    def test_every_flext_infra_stand_in_lists_its_real_namespace() -> None:
+        """Each generated stand-in exposes exactly its real class's names."""
+        checked = 0
+        for package in pkgutil.walk_packages(
+            flext_infra.__path__, f"{flext_infra.__name__}."
+        ):
+            if not package.ispkg:
+                continue
+            module = importlib.import_module(package.name)
+            for name in getattr(module, "__all__", ()):
+                value = getattr(module, name)
+                if isinstance(value, type):
+                    FlextInfraValidateFreshImport.require_complete_standin(value)
+                    checked += 1
+        tm.that(checked, gt=0)
+
+    @staticmethod
+    def test_stale_stand_in_fails() -> None:
+        """A stand-in missing a name of its real class fails by name."""
+        real = c.Infra.LazyInitScore
+        stale = type(
+            real.__name__,
+            (),
+            {"__module__": real.__module__, "__qualname__": real.__qualname__},
+        )
+        with u.Tests.raises(AttributeError, match="differs from its real class"):
+            FlextInfraValidateFreshImport.require_complete_standin(stale)

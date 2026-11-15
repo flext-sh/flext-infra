@@ -96,6 +96,7 @@ class FlextInfraUtilitiesPythonModel:
             classes={},
             class_exports={},
             class_members={},
+            class_standin_defects={},
             values={},
         )
         for node, parent in cls._python_model_statements(tree):
@@ -112,6 +113,9 @@ class FlextInfraUtilitiesPythonModel:
                     )
                     draft.class_members[node.name] = cls._python_model_class_members(
                         node
+                    )
+                    draft.class_standin_defects[node.name] = (
+                        cls._python_model_standin_defects(node)
                     )
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
                     cls._python_model_bind(draft, node.name, "function")
@@ -142,6 +146,7 @@ class FlextInfraUtilitiesPythonModel:
             classes=draft.classes,
             class_exports=draft.class_exports,
             class_members=draft.class_members,
+            class_standin_defects=draft.class_standin_defects,
             values=draft.values,
             runtime_imports=cls._python_model_runtime_imports(tree.body),
             runtime_names=cls._python_model_runtime_names(tree.body),
@@ -158,6 +163,7 @@ class FlextInfraUtilitiesPythonModel:
         draft.classes.pop(member, None)
         draft.class_exports.pop(member, None)
         draft.class_members.pop(member, None)
+        draft.class_standin_defects.pop(member, None)
         draft.values.pop(member, None)
 
     @classmethod
@@ -322,6 +328,104 @@ class FlextInfraUtilitiesPythonModel:
             ):
                 bound.update(dict.fromkeys(cls._python_model_assigned(statement)))
         return tuple(bound)
+
+    @classmethod
+    def _python_model_standin_defects(cls, node: ast.ClassDef) -> Sequence[str]:
+        """Return each construct of one class a stand-in cannot represent.
+
+        A stand-in carries no dunder of its class and is not the real class in
+        the facade's MRO (root ADR-018 stand-in composition law, rule 5).
+
+        Returns:
+            One description per construct, in source order.
+
+        """
+        lazy = c.Infra
+        defects = [
+            f"base {ast.unparse(base)} makes it a Protocol namespace"
+            for base in node.bases
+            if cls._python_model_head(base) == "Protocol"
+        ]
+        defects.extend(
+            f"metaclass {ast.unparse(keyword.value)}"
+            for keyword in node.keywords
+            if keyword.arg == "metaclass"
+            and not (isinstance(keyword.value, ast.Name) and keyword.value.id == "type")
+        )
+        for statement, _ in cls._python_model_statements(node):
+            match statement:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    name = statement.name
+                    if name.startswith("__") and name.endswith("__"):
+                        defects.append(f"dunder {name}")
+                    decorators = map(cls._python_model_head, statement.decorator_list)
+                    defects.extend(
+                        f"decorator {decorator} on {name}"
+                        for decorator in decorators
+                        if decorator in lazy.LAZY_INIT_STANDIN_FIELD_DECORATORS
+                    )
+                    defects.extend(
+                        f"{call} in {name}"
+                        for call in cls._python_model_self_bound_calls(
+                            statement, node.name
+                        )
+                    )
+                case ast.AnnAssign(target=ast.Name(id=name)) if (
+                    not name.startswith("_")
+                    and cls._python_model_head(statement.annotation)
+                    != lazy.LAZY_INIT_STANDIN_CLASS_ANNOTATION
+                ):
+                    defects.append(f"field-like annotated attribute {name}")
+                case ast.Assign() | ast.AnnAssign() if "__slots__" in (
+                    cls._python_model_assigned(statement)
+                ):
+                    defects.append("dunder __slots__")
+                case _:
+                    pass
+        return tuple(defects)
+
+    @staticmethod
+    def _python_model_head(node: ast.expr) -> str:
+        """Return the last dotted name of an expression, through calls and subscripts.
+
+        Returns:
+            ``Protocol`` for ``typing.Protocol[T]``, ``computed_field`` for
+            ``computed_field(repr=False)``; empty for another expression.
+
+        """
+        while isinstance(node, (ast.Call, ast.Subscript)):
+            node = node.func if isinstance(node, ast.Call) else node.value
+        match node:
+            case ast.Name(id=name) | ast.Attribute(attr=name):
+                return name
+            case _:
+                return ""
+
+    @staticmethod
+    def _python_model_self_bound_calls(
+        method: ast.FunctionDef | ast.AsyncFunctionDef, owner: str
+    ) -> Sequence[str]:
+        """Return each call of one method that binds to the real part class.
+
+        A zero-argument ``super()`` and an ``isinstance`` against the part's own
+        class resolve against the class itself, never the facade composing it.
+
+        Returns:
+            ``super()`` or ``isinstance(..., <owner>)`` per offending call.
+
+        """
+        found: list[str] = []
+        for call in ast.walk(method):
+            match call:
+                case ast.Call(func=ast.Name(id="super"), args=[]):
+                    found.append("zero-argument super()")
+                case ast.Call(func=ast.Name(id="isinstance"), args=[_, kinds]):
+                    names = kinds.elts if isinstance(kinds, ast.Tuple) else [kinds]
+                    if any(isinstance(n, ast.Name) and n.id == owner for n in names):
+                        found.append(f"isinstance(..., {owner})")
+                case _:
+                    pass
+        return tuple(found)
 
     @classmethod
     def _python_model_runtime_import_nodes(

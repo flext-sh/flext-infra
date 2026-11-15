@@ -58,6 +58,15 @@ class FlextInfraModelsCodegenLazyInit:
             Mapping[str, Sequence[str]],
             m.Field(description="Names each defined class body binds, in order"),
         ]
+        class_standin_defects: Annotated[
+            Mapping[str, Sequence[str]],
+            m.Field(
+                description=(
+                    "Constructs of each defined class body a stand-in cannot "
+                    "represent (ADR-018 stand-in composition law, rule 5)"
+                ),
+            ),
+        ]
         values: Annotated[
             Mapping[str, str],
             m.Field(description="Source text of each assigned top-level value"),
@@ -106,6 +115,10 @@ class FlextInfraModelsCodegenLazyInit:
         class_members: Annotated[
             t.Port[dict[str, Sequence[str]]],
             m.Field(description="Class body bindings so far"),
+        ]
+        class_standin_defects: Annotated[
+            t.Port[dict[str, Sequence[str]]],
+            m.Field(description="Class body stand-in defects so far"),
         ]
         values: Annotated[
             t.Port[dict[str, str]],

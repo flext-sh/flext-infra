@@ -532,9 +532,15 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         updated = dict(cls._lazy_init_instance_deferrals(run))
         run.plans.update(updated)
-        parts = (
-            cls._lazy_init_facade_composed(run)
-            - cls._lazy_init_facade_roots(run).keys()
+        # A class that binds no member is not deferred (root ADR-018 stand-in
+        # composition law, rule 5): an empty stand-in is invalid.
+        parts = frozenset(
+            owner
+            for owner in (
+                cls._lazy_init_facade_composed(run)
+                - cls._lazy_init_facade_roots(run).keys()
+            )
+            if not cls._lazy_init_binds_nothing(run, owner)
         )
         exporters = cls._lazy_init_part_exporters(run, parts)
         for package_dir, plan in tuple(run.plans.items()):
@@ -556,6 +562,26 @@ class FlextInfraUtilitiesLazyInitPlan:
                     }
                 )
         return updated
+
+    @classmethod
+    def _lazy_init_binds_nothing(
+        cls,
+        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
+        owner: tuple[str, str],
+    ) -> bool:
+        """Return whether a class body binds no member and names no base.
+
+        Returns:
+            ``True`` when its stand-in would be empty.
+
+        """
+        facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, owner[0])
+        return (
+            facts is not None
+            and owner[1] in facts.classes
+            and not facts.classes[owner[1]]
+            and not cls._lazy_init_body_members(facts, owner[1])
+        )
 
     @staticmethod
     def _lazy_init_part_exporters(
@@ -618,6 +644,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         if facts is None or name not in facts.classes:
             msg = f"deferred export {module}.{name} is not a class of its package"
             raise ValueError(msg)
+        cls._lazy_init_require_representable(facts, owner)
         members = dict.fromkeys(cls._lazy_init_body_members(facts, name))
         shared: list[tuple[str, str]] = []
         shared_names: set[str] = set()
@@ -718,6 +745,31 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             raise ValueError(msg)
         return resolved
+
+    @staticmethod
+    def _lazy_init_require_representable(
+        facts: FlextInfraProtocolsCodegenLazyInit.PythonModuleFacts,
+        owner: tuple[str, str],
+    ) -> None:
+        """Reject a facade part whose class a stand-in cannot represent.
+
+        Raises:
+            ValueError: If the class body defines a dunder, a field-like
+                annotation, a Pydantic field decorator, a self-bound call, a
+                Protocol base or a non-``type`` metaclass (root ADR-018
+                stand-in composition law, rule 5).
+
+        """
+        defects = facts.class_standin_defects.get(owner[1], ())
+        if defects:
+            msg = (
+                f"facade part {owner[0]}.{owner[1]} cannot be a stand-in: "
+                f"{'; '.join(defects)}; fix: move each into a real class outside "
+                "the facade MRO, annotate class constants ClassVar, and pass the "
+                "class explicitly to super (ADR-018 stand-in composition law, "
+                "rule 5)"
+            )
+            raise ValueError(msg)
 
     @staticmethod
     def _lazy_init_body_members(
@@ -856,6 +908,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             if facts is None or name not in facts.classes:
                 msg = f"deferred base {module}.{name} is not a class of its package"
                 raise ValueError(msg)
+            cls._lazy_init_require_representable(facts, (module, name))
             members.update(dict.fromkeys(cls._lazy_init_body_members(facts, name)))
             for base in facts.classes[name]:
                 target, foreign = cls._lazy_init_required_base(

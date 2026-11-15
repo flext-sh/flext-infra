@@ -737,8 +737,6 @@ class FlextInfraConstantsRefactor:
         "FlextDbt",
     )
     "Class name prefixes that identify integration projects."
-    MIN_PATH_DEPTH: int = 2
-    "Minimum relative path depth for module prefix detection."
 
     TYPING_FACTORY_ASSIGN_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^(\w+)\s*=\s*(?:(?:\w+\.)*)?"

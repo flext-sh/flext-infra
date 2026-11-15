@@ -1,0 +1,11 @@
+id: require-field-description-annotated-default
+snapshots:
+  "class Order(m.FrozenModel):\n    label: Annotated[str, m.Field(min_length=1)] = \"x\"\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          label: Annotated[str, m.Field(min_length=1, description="Label.")] = "x"
+    labels:
+    - source: "label: Annotated[str, m.Field(min_length=1)] = \"x\""
+      style: primary
+      start: 32
+      end: 82
