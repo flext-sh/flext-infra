@@ -1,0 +1,11 @@
+id: rewire-test-assert-excludes-sequence
+snapshots:
+  "from tests import tm\nassert (\"a.docx\", \"a:valor\") not in exc\n":
+    fixed: |
+      from tests import tm
+      tm.that(exc, lacks=[("a.docx", "a:valor")])
+    labels:
+    - source: assert ("a.docx", "a:valor") not in exc
+      style: primary
+      start: 21
+      end: 60
