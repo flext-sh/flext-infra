@@ -1,0 +1,9 @@
+id: rewire-test-assert-excludes-sequence
+valid:
+- |
+  from tests import tm
+  assert key not in rows
+invalid:
+- |
+  from tests import tm
+  assert ("a.docx", "a:valor") not in exc
