@@ -22,7 +22,7 @@ constraints:
     regex: "^(?:m|FlextModelsPydantic)$"
   CONFIG:
     regex: "^(Settings)?ConfigDict$"
-fix: "model_config: typing.ClassVar[t.$CONFIG] = $QUALIFIER.$CONFIG($$$ARGS)"
+fix: "model_config: ClassVar[t.$CONFIG] = $QUALIFIER.$CONFIG($$$ARGS)"
 message: >-
   Declare model_config as ClassVar[t.ConfigDict] or
   ClassVar[t.SettingsConfigDict], retaining the matching m constructor.

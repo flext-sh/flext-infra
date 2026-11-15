@@ -346,7 +346,7 @@ filterwarnings = ["error", "once::pytest.PytestAssertRewriteWarning"]
 flext_fixture_trees_root = "tests/fixtures"
 flext_make_ci_value = "Y"
 flext_make_ci_variable = "CI"
-flext_slow_timeout_seconds = "25"
+flext_slow_timeout_seconds = "20"
 markers = [
   "smoke: public-interface smoke tests",
   "unit: unit tests",
