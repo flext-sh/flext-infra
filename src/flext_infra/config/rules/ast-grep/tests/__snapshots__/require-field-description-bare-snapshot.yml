@@ -1,0 +1,11 @@
+id: require-field-description-bare
+snapshots:
+  "class Order(m.FrozenModel):\n    parallel_workers: int\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          parallel_workers: int = m.Field(description="Parallel workers.")
+    labels:
+    - source: "parallel_workers: int"
+      style: primary
+      start: 32
+      end: 53

@@ -1,0 +1,11 @@
+id: require-field-description-annotated
+snapshots:
+  "class Order(m.FrozenModel):\n    total: Annotated[int, m.Field(ge=0)]\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          total: Annotated[int, m.Field(ge=0, description="Total.")]
+    labels:
+    - source: "total: Annotated[int, m.Field(ge=0)]"
+      style: primary
+      start: 32
+      end: 68

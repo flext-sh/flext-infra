@@ -1,0 +1,20 @@
+id: require-field-description-field-call
+snapshots:
+  "class Order(m.FrozenModel):\n    items: list[str] = m.Field(default_factory=list)\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          items: list[str] = m.Field(default_factory=list, description="Items.")
+    labels:
+    - source: "items: list[str] = m.Field(default_factory=list)"
+      style: primary
+      start: 32
+      end: 80
+  "class Order(m.FrozenModel):\n    label: str = m.Field(default=\"\")\n":
+    fixed: |
+      class Order(m.FrozenModel):
+          label: str = m.Field(default="", description="Label.")
+    labels:
+    - source: "label: str = m.Field(default=\"\")"
+      style: primary
+      start: 32
+      end: 64
