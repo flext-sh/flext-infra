@@ -9580,7 +9580,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 TypeError: If the model has no authenticated native source class.
 
             """
-            value = binding.get_object()
+            value = self._static_object(binding)
             if not self.py_class(value):
                 message = f"model has no authenticated native source class: {binding}"
                 raise TypeError(message)

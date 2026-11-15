@@ -1509,7 +1509,44 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         return members
 
     @staticmethod
+    def _static_object(binding: p.Infra.RopePyName) -> p.Infra.RopePyObject:
+        """Read the object a binding denotes to static analysis.
+
+        A declaration under ``if TYPE_CHECKING:`` (a facade publication, for
+        example) is evaluated by Rope's branch-aware inference on the
+        TYPE_CHECKING arm, the arm every static consumer reads.
+
+        Returns:
+            The binding's native object on the TYPE_CHECKING arm.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        if not runtime.assigned_name(binding):
+            return binding.get_object()
+        module, _line = runtime.definition_location(binding)
+        if not runtime.source_module(module):
+            return binding.get_object()
+        checking = runtime.qualified_name(
+            module.pycore.project, "TYPE_CHECKING", module_name="typing"
+        )
+        return binding.get_object(
+            branch_context=tuple(
+                (branch, True)
+                for assignment in binding.assignments
+                for branch, arm in assignment.branch_context or ()
+                if arm
+                and runtime.same_name(
+                    checking,
+                    runtime.expression_name(
+                        module.get_scope(), ast.unparse(branch.test)
+                    ),
+                )
+            )
+        )
+
+    @classmethod
     def upstream_protocol_facade(
+        cls,
         chain: Sequence[p.Infra.RopePyObject],
         package: Path,
         port: p.Infra.RopeSourceClass,
@@ -1546,7 +1583,7 @@ class FlextInfraUtilitiesModelsProtocolContracts:
                 or published.get_object() is not ancestor
                 or "p" not in analysis.public_export_names_source(module)
                 or exposed is None
-                or exposed.get_object() is not port
+                or cls._static_object(exposed) is not port
             ):
                 continue
             # The declared source identity, not Rope's source-folder-relative

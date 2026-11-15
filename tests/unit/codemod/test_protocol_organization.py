@@ -16,14 +16,21 @@ class TestsFlextInfraProtocolOrganization:
     """Exercise classification, movement and a fresh real consumer together."""
 
     @staticmethod
-    @c.Tests.MARK.parametrize("published", [False, True])
+    @c.Tests.MARK.parametrize(
+        ("published", "guarded"), [(False, False), (True, False), (True, True)]
+    )
     def test_model_inventory_resolves_existing_or_planned_protocol_owner(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
         *,
         published: bool,
+        guarded: bool,
     ) -> None:
-        """Native public bindings win over the not-yet-materialized mirror path."""
+        """Native public bindings win over the not-yet-materialized mirror path.
+
+        A guarded facade publishes the protocol as a ``TYPE_CHECKING`` alias,
+        the shape the facade generator renders.
+        """
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         module = package.name
         sources = {
@@ -43,7 +50,14 @@ class TestsFlextInfraProtocolOrganization:
                 "class Models(ModelsPayload): pass\nm = Models\n"
             ),
             package / "protocols.py": (
+                "from typing import TYPE_CHECKING, TypeAlias\n"
                 f"from {module}._protocols.combined import ProtocolsCombined\n"
+                "class Protocols(ProtocolsCombined):\n"
+                "    if TYPE_CHECKING:\n"
+                "        Packet: TypeAlias = ProtocolsCombined.Packet\n"
+                "p = Protocols\n"
+                if guarded
+                else f"from {module}._protocols.combined import ProtocolsCombined\n"
                 "class Protocols(ProtocolsCombined): pass\np = Protocols\n"
                 if published
                 else "class Protocols: pass\np = Protocols\n"

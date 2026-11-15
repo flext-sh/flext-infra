@@ -260,6 +260,7 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot):
 
         ast_node: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
         type_hint: FlextInfraProtocolsRopeRuntime.RopeAstNode | None
+        branch_context: tuple[tuple[ast.If, bool | None], ...] | None
 
         def get_lineno(self) -> int | None: ...
 
@@ -280,6 +281,12 @@ class FlextInfraProtocolsRopeRuntime(FlextInfraProtocolsWorkspaceSnapshot):
         """Rope assigned-name marker shape."""
 
         assignments: Sequence[FlextInfraProtocolsRopeRuntime.RopeAssignment]
+
+        def get_object(
+            self,
+            *,
+            branch_context: tuple[tuple[ast.If, bool | None], ...] = (),
+        ) -> FlextInfraProtocolsRopeRuntime.RopePyObject: ...
 
     @runtime_checkable
     class RopeImportedModule(RopePyName, Protocol):
