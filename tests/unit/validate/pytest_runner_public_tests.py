@@ -806,9 +806,7 @@ class TestsFlextInfraPytestRunner:
         recorded = (report_dir / "command.txt").read_text()
         tm.fail("--testmon" in recorded)
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
-        tm.that(
-            recorded, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
-        )
+        tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(
             recorded.split(),
             has=f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={policy.slow_timeout_seconds}",
@@ -911,20 +909,18 @@ class TestsFlextInfraPytestRunner:
         reports_root = cached_runner_project / runner.reports
         existing = set(reports_root.glob("*/run-context.json"))
         (cached_runner_project / runner.target / "test_bounded_policy.py").write_text(
-            "import pytest\nfrom flext_infra import config\nfrom tests import c, "
-            "tm\n\n"
+            "import pytest\nfrom flext_infra import c\n\n"
+            "def test_ordinary_budget(pytestconfig, request):\n"
+            "    assert pytestconfig.getoption('timeout') == 2\n"
+            "    assert request.node.get_closest_marker('timeout') is None\n\n"
             f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
             "def test_bounded_policy(pytestconfig, request):\n"
-            "    tm.that(pytestconfig.getoption('timeout'),\n"
-            "            eq=c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS)\n"
-            "    budget = config.Infra.tooling.tools.pytest.slow_timeout_seconds\n"
-            "    tm.that(pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS),\n"
-            "            eq=str(budget))\n"
+            "    assert pytestconfig.getoption('timeout') == 2\n"
+            "    budget = pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS)\n"
+            "    assert budget == '20'\n"
             "    marker = request.node.get_closest_marker('timeout')\n"
-            "    tm.that(tm.not_none(marker).args, eq=(budget,))\n"
-            "    stop = pytestconfig.getoption("
-            "c.Infra.PYTEST_SUITE_STOP_OPTION)\n"
-            "    tm.that(tm.not_none(stop) > 0, truth=True)\n",
+            "    assert marker is not None and marker.args == (20,)\n"
+            "    assert pytestconfig.getoption(c.Infra.PYTEST_SUITE_STOP_OPTION) > 0\n",
             encoding="utf-8",
         )
 

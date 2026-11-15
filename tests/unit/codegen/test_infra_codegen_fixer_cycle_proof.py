@@ -40,6 +40,7 @@ def _fix_workspace(
 
     """
     u.Tests.declare_workspace_projects(tmp_path, (project.name,))
+    u.Tests.seed_workspace_root(tmp_path)
     tm.ok(
         u.Tests.create_python_environment(
             project,
