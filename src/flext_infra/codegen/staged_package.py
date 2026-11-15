@@ -650,11 +650,13 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(elected)
         roots = elected.value
         roots.extend(cls._input_layouts(workspace, inputs, layouts))
-        roots.extend(
-            (layouts[name], False)
-            for _, name in u.family_discovery_candidates()
-            if name in layouts
-        )
+        rooted = {layout.project_root for layout, _ in roots}
+        if any(layout.project_root not in rooted for layout in layouts.values()):
+            roots.extend(
+                (layouts[name], False)
+                for _, name in u.family_discovery_candidates()
+                if name in layouts and layouts[name].project_root not in rooted
+            )
         for local, rewritten in roots:
             if any(item.project_root == local.project_root for item in selected):
                 continue
