@@ -129,6 +129,7 @@ Infra:
       - [ explicit_start, false ]
       pytest.ini_options:
       - [ asyncio_default_fixture_loop_scope, function ]
+      - [ timeout_method, thread ]
       - [ python_files, [ "*_test.py", "*_tests.py", "test_*.py" ] ]
       - [ testpaths, [ tests ] ]
       - [ minversion, "8.0" ]
@@ -472,7 +473,7 @@ Infra:
         enforcement-plugin: flext_tests.enforcement_plugin
         # Retain the complete selection, but expose known failures first.
         progress-args: [ --verbose, --failed-first ]
-        report-args: [ -ra, --durations=25, --durations-min=2.0, --tb=short ]
+        report-args: [ -ra, --durations=0, --durations-min=2.0, --tb=short ]
         diagnostic-args: [ -rA, --durations=0, --tb=long, --showlocals ]
         # One worker makes maxfail exact: no second in-flight case can fail
         # after the first failure has stopped the invocation.

@@ -671,9 +671,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
             if relative not in family:
                 continue
             in_models = law.module_import_layer(module) == models_layer
-            for top in snapshots.workspace_module_tree(snapshot, path).body:
-                if not isinstance(top, ast.ClassDef):
-                    continue
+            body = snapshots.workspace_module_tree(snapshot, path).body
+            for top in (node for node in body if isinstance(node, ast.ClassDef)):
                 if top.bases:
                     questions.append((
                         relative,
@@ -689,6 +688,8 @@ class FlextInfraUtilitiesCodemodProjectFacts:
                         )
                         for qualified, name in cls._nested_classes(top, top.name)
                     )
+        if not questions:
+            return {}
         modules = {
             path.relative_to(root).as_posix(): module
             for module, (path, _text) in sources.items()

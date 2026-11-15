@@ -222,6 +222,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
 
     @staticmethod
+    @cache
     def managed_uv() -> str:
         """Resolve the checkout's Mise-managed UV executable, never a PATH shim.
 
@@ -291,10 +292,12 @@ class TestsFlextInfraUtilitiesToolingFixture:
             ValueError: When a ``flext-`` dependency has no workspace source owner.
 
         """
-        projects = cls.workspace_source_projects()
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
+        if not pending:
+            return ()
+        projects = cls.workspace_source_projects()
         while pending:
             requirement = pending.pop()
             name = u.Infra.dep_name(requirement)
@@ -402,6 +405,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
     def create_python_environment(
         root: Path,
         *,
+        runtime_root: Path | None = None,
         dependency_projects: Sequence[Path] = (),
         session_runtime: p.Tests.SessionRuntime | None = None,
     ) -> p.Result[bool]:
@@ -414,9 +418,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
         binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
         if binary.failure:
             return r[bool].from_failure(binary)
-        environment = u.Infra.runtime_environment_dir(root)
+        environment = u.Infra.runtime_environment_dir(root, runtime_root=runtime_root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesToolingFixture.managed_uv()
         created = u.Cli.run_checked(
             [str(binary.value), "venv", "--python", sys.executable, str(environment)],
             cwd=root,
@@ -489,6 +492,64 @@ class TestsFlextInfraUtilitiesToolingFixture:
         )
 
     @classmethod
+    @cache
+    def scan_provider_projects(cls) -> tuple[Path, ...]:
+        """Resolve the current checkout's fixed scanner dependencies once.
+
+        Returns:
+            The scanner source checkout and its local dependency owners.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        return tuple(
+            dict.fromkeys((checkout, *cls.python_dependency_projects(checkout)))
+        )
+
+    @classmethod
+    def scanner_catalog_wheel(cls, storage: Path) -> Path:
+        """Prepare the real provider wheel through the shared fixture store.
+
+        Returns:
+            The current checkout's wheel carrying the universal catalog.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        (wheel,) = tm.ok(cls.python_dependency_wheels(storage, (checkout,)))
+        return wheel
+
+    @classmethod
+    def create_scanner_environment(
+        cls, root: Path, catalog_wheel: Path | None = None
+    ) -> p.Result[bool]:
+        """Give a standalone rule fixture its physical Python and catalog.
+
+        The scanner reads declared distributions and catalog files in the
+        target. These cases do not execute the provider or its dependencies.
+
+        Returns:
+            The native environment or wheel installation result.
+
+        """
+        created = cls.create_python_environment(root, runtime_root=root)
+        if created.failure or catalog_wheel is None:
+            return created
+        return u.Cli.run_checked(
+            (
+                cls.managed_uv(),
+                "pip",
+                "install",
+                "--no-deps",
+                "--offline",
+                "--python",
+                str(u.Infra.runtime_environment_dir(root, runtime_root=root)),
+                "--link-mode",
+                config.Infra.codegen.toolchain.uv_link_mode,
+                str(catalog_wheel),
+            ),
+            cwd=root,
+        )
+
+    @classmethod
     def provision_scan_workspace(
         cls,
         root: Path,
@@ -508,11 +569,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The installation result or the original environment failure.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
         dependency_projects = tuple(
             dict.fromkeys((
-                checkout,
-                *cls.python_dependency_projects(checkout),
+                *cls.scan_provider_projects(),
                 *cls.python_dependency_projects(root),
             ))
         )

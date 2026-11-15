@@ -242,10 +242,14 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         fixture_scope = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
         )
+        timeout_method = u.Infra.native_tool_setting(
+            tool_config, "pytest.ini_options", "timeout_method", str
+        )
         return (
             "-p",
             pytest.enforcement_plugin,
             f"--timeout={pytest.ordinary_timeout_seconds}",
+            f"--timeout-method={timeout_method}",
             *(
                 c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
                 if execution_mode == c.Infra.PytestExecutionMode.FULL

@@ -32,6 +32,37 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+_SCANNER_CATALOG_WHEEL = pytest.StashKey[Path]()
+
+
+@pytest.fixture(scope="session")
+def scanner_catalog(request: pytest.FixtureRequest) -> Path:
+    """Return the prepared native catalog for this worker's scanner cases.
+
+    Returns:
+        The current Infra wheel published before the item timers.
+
+    """
+    return request.config.stash[_SCANNER_CATALOG_WHEEL]
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Prepare the real scanner provider for selected execution cases once."""
+    if session.config.getoption("collectonly") or not any(
+        isinstance(item, pytest.Function)
+        and scanner_catalog.__name__ in item.fixturenames
+        for item in session.items
+    ):
+        return
+    checkout = Path(__file__).resolve().parents[1]
+    tm.ok(u.Infra.runtime_owner_root(checkout))
+    storage = u.Tests.scratch_root(
+        override=session.config.getini(c.Tests.SCRATCH_ROOT_INI) or None,
+    )
+    session.config.stash[_SCANNER_CATALOG_WHEEL] = u.Tests.scanner_catalog_wheel(
+        storage
+    )
 
 
 @pytest.fixture(scope="session")
