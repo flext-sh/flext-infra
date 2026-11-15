@@ -18,6 +18,7 @@ from tests import c, m, p, tm, u
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "binding", ["canonical", "foreign", "renamed", "duplicate", "annotation"]
     )
@@ -67,10 +68,15 @@ class UtilityFacadeOwnerPublication:
         )
         if binding != "canonical":
             # Authored source bodies are retained verbatim; only class
-            # publications are projected.
+            # publications are projected (duplicate model_config is deduplicated).
+            expected = (
+                "    model_config = Owner.model_config\n    Cli = Owner\n"
+                if binding == "duplicate"
+                else metadata
+            )
             tm.that(
                 tm.ok(tm.not_none(u.Infra.render_utility_facade(package))),
-                has=metadata,
+                has=expected,
             )
             return
         rendered = tm.ok(tm.not_none(u.Infra.render_utility_facade(package)))

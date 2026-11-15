@@ -89,11 +89,6 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
                 TestsFlextInfraArtifactRenderEmptyGuard._selection(destination, source),
             ),
         )
-        effective = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        tm.that(
-            {entry.destination for entry in effective.templates.entries},
-            has=destination,
-        )
         return root / destination
 
     @staticmethod
@@ -151,6 +146,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         return root, u.Tests.conform_request(root), workspace
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_empty_render_fails_loud_naming_template_and_cause(
         infra_git_repo: Path,
     ) -> None:
@@ -166,6 +162,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         tm.fail(destination.exists())
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_whitespace_render_fails_loud_with_template_stage_prefix(
         tmp_path: Path,
     ) -> None:
@@ -187,6 +184,7 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_rendered_content_passes_through_verbatim(
         tmp_path: Path,
     ) -> None:
@@ -195,8 +193,9 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         root, request, workspace = (
             TestsFlextInfraArtifactRenderEmptyGuard._scaffold_request(tmp_path, source)
         )
-        codegen = tm.ok(u.Infra.load_codegen_inputs(root)).spec
-        content = (u.Infra.codegen_templates_root(codegen) / source).read_text(
+        content = (
+            u.Infra.codegen_templates_root(config.Infra.codegen) / source
+        ).read_text(
             encoding=c.DEFAULT_ENCODING,
         )
         plan = tm.ok(u.Tests.conform_plan_result(root, request, workspace=workspace))

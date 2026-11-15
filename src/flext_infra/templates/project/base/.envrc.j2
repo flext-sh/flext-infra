@@ -117,10 +117,10 @@ fi
 
 # === SECTION: virtual environment (managed) ===
 # Source: native workspace ownership and the already provisioned environment.
-# uv project and environment selectors are never exported: Make passes them
-# explicitly and native uv discovery elects the same root, while an exported
-# selector outlives this directory in shells that never unload direnv and turns
-# any later `uv` into a write on this project's environment.
-export VIRTUAL_ENV="${VENV_DIR}"
+# uv project and environment selectors (including VIRTUAL_ENV) are never
+# exported: Make passes them explicitly and native uv discovery elects the
+# same root, while an exported selector outlives this directory in shells that
+# never unload direnv and warns or turns any later `uv` into a write on this
+# project's environment.
 PATH_add "${environment_bin}"
 # End SECTION: virtual environment

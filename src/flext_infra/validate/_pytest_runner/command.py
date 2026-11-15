@@ -515,6 +515,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        tooling = u.Infra.load_tooling_inputs(self.repository_root).unwrap()
         return (
             sys.executable,
             *(
@@ -542,7 +543,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet
             # scale. A one-item dispatch step makes that stop immediate.
-            *pytest.parallel_arguments,
+            *tooling.document.tools.pytest.parallel_arguments,
             "--benchmark-disable",
         )
 

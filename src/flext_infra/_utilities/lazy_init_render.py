@@ -22,6 +22,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesCodegenNamespace,
     FlextInfraUtilitiesLintRecipes,
     FlextInfraUtilitiesNativeTooling,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._docs import FlextInfraUtilitiesDocsScopeState
@@ -44,17 +45,24 @@ class FlextInfraUtilitiesLazyInitRender:
 
     @staticmethod
     def lazy_init_project_root(run: p.Infra.PythonModelRun, pkg_dir: Path) -> Path:
-        """Return the nearest enclosing directory declaring a ``pyproject.toml``.
+        """Return the canonical owner of an initializer, including bootstrap.
 
         Returns:
             The owning project root of ``pkg_dir``.
 
+        Raises:
+            ValueError: If the initializer has no declared owner.
+
         """
-        return next(
-            folder
-            for folder in (pkg_dir, *pkg_dir.parents)
-            if run.source_project.source_query(folder / c.PYPROJECT_FILENAME, "isfile")
+        owner = FlextInfraUtilitiesProjectDiscovery.nearest_project_root(
+            Path(run.source_project.root.real_path),
+            pkg_dir,
+            source_project=run.source_project,
         )
+        if owner is None:
+            msg = f"lazy-init package has no repository owner: {pkg_dir}"
+            raise ValueError(msg)
+        return owner
 
     @classmethod
     def lazy_init_render(

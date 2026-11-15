@@ -25,8 +25,8 @@ class FlextInfraRefactorNamespaceEnforcerProject:
     if TYPE_CHECKING:
         _repository_root: Path
 
+    @staticmethod
     def _enforce_project(
-        self,
         *,
         project_root: Path,
         py_files: Sequence[Path],
@@ -39,8 +39,14 @@ class FlextInfraRefactorNamespaceEnforcerProject:
         Returns:
             The resulting ``m.Infra.ProjectEnforcementReport``.
 
+        Raises:
+            ValueError: If the reports do not share an identified scan root.
+
         """
-        scan_root = self._repository_root
+        scan_root = before.repository_root
+        if scan_root is None or after.repository_root != scan_root:
+            msg = "namespace reports must share the scanned repository root"
+            raise ValueError(msg)
         cascade = FlextInfraNamespaceRelocationCascade()
         findings = cascade.findings_from_report(
             project_root, py_files, before.entries, scan_root=scan_root
