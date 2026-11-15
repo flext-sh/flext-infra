@@ -847,10 +847,8 @@ Infra:
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
-        # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # CI owns the complete gate. A pre-push row that runs make check/tests over
-        # the whole tree blocks every push for minutes, so only the commit-stage
-        # incremental hook is emitted.
+        # incremental selection. Pre-commit never runs tests. An opt-in pre-push
+        # hook reuses the primary check; the local workflow owns its test steps.
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -869,9 +867,9 @@ Infra:
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -888,16 +886,15 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        contexts: [ local, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, pre_push ] }
+        - { step: tests-primary, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local, pre_push ] }
-        - { step: check-primary, contexts: [ pre_push ] }
+        - { step: check, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:

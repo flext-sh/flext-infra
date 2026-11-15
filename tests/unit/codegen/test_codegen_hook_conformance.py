@@ -136,11 +136,11 @@ class TestsFlextInfraCodegenHookConformance:
 
     @staticmethod
     @c.Tests.MARK.parametrize("inherited", ["ci", "local"])
-    def test_pre_push_check_unsets_inherited_ci_before_the_real_make_runtime(
+    def test_pre_push_refuses_when_the_make_runtime_is_unprovisioned(
         tmp_path: Path,
         inherited: str,
     ) -> None:
-        """Execute the generated hook entry without replacing any runtime owner."""
+        """Inherited CI cannot turn the native check's failure into a pass."""
         root, _ = u.Tests.render_make_environment(
             tmp_path,
             c.Infra.MakeProfile.STANDALONE,
@@ -149,7 +149,6 @@ class TestsFlextInfraCodegenHookConformance:
         policy = config.Infra.codegen.make
         make = m.Infra.MakeSpec.model_validate({
             **policy.model_dump(exclude_computed_fields=True),
-            "pre_commit": False,
             "pre_push": True,
         })
         rendered = tm.ok(
@@ -168,12 +167,7 @@ class TestsFlextInfraCodegenHookConformance:
         repositories = u.Cli.json_as_sequence(document["repos"])
         repository = u.Cli.json_as_mapping(repositories[0])
         hooks = u.Cli.json_as_sequence(repository["hooks"])
-        check = next(
-            step
-            for step in make.workflow
-            if step.verb == c.Infra.VERB_CHECK
-            and step.phase == c.Infra.CheckPhase.COMPLETE
-        )
+        check = next(step for step in make.workflow if "pre_push" in step.contexts)
         hook = next(
             mapping
             for row in hooks
@@ -200,21 +194,7 @@ class TestsFlextInfraCodegenHookConformance:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
-        tm.that(
-            process.stdout,
-            has=(
-                "INFO: default context runs check gates: "
-                f"{' '.join(policy.check_gates_default)}\n"
-            ),
-        )
-        tm.that(
-            process.stderr,
-            has=(
-                "No module named flext_infra"
-                if policy.check_gates_default
-                else "no active check gates remain in the selected context"
-            ),
-        )
+        tm.that(process.stderr, has="No module named flext_infra")
 
     def test_check_and_apply_never_overwrite_foreign_hook_shims(
         self,
