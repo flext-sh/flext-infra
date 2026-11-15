@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCli
+from flext_infra import FlextInfraCli, config
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -31,6 +31,15 @@ class TestsFlextInfraGateOperationIsolation:
         document = project / "README.md"
         original = "# Fixture\n\n\nParagraph.\n"
         document.write_text(original, encoding="utf-8")
+        # The Markdown gate reads the generated native configuration, which
+        # renders the typed SSOT.
+        (project / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+            u.Infra.markdown_native_configuration(
+                config.Infra.tooling.tools.markdown,
+                config.Infra.codegen.markdown_exclude_globs,
+            ),
+            encoding="utf-8",
+        )
         # The check elects the project's runtime from its Git checkout, and
         # gates select a checkout by its tracked files.
         u.Tests.initialize_git_repo(project)
