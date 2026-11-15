@@ -25,14 +25,15 @@ class TestsFlextInfraGateOperationIsolation:
     ) -> None:
         """The final status stays red and independent effects follow explicit policy."""
         project = u.Tests.mk_project(tmp_path, "native-fixture", with_src=True)
-        # The check elects the project's runtime from its Git checkout.
-        u.Tests.initialize_git_repo(project)
         broken = project / "src" / "broken.py"
         broken.write_text("def broken(:\n", encoding="utf-8")
         before = broken.read_bytes()
         document = project / "README.md"
         original = "# Fixture\n\n\nParagraph.\n"
         document.write_text(original, encoding="utf-8")
+        # The check elects the project's runtime from its Git checkout, and
+        # gates select a checkout by its tracked files.
+        u.Tests.initialize_git_repo(project)
 
         exit_code = FlextInfraCli.infra_main([
             "check",
