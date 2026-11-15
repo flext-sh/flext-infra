@@ -344,13 +344,13 @@ class TestsFlextInfraDeclarationPayload:
         ],
     )
     def test_native_model_identity(
-        declaration_workspace: tuple[Path, Path],
+        tmp_path: Path,
         definition: str,
         *,
         accepted: bool,
     ) -> None:
         """Model admission preserves ancestry, declaration behavior and settings."""
-        root, package = declaration_workspace
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         source = (
             "from pydantic import BaseModel as ForeignBase, "
             "field_serializer, computed_field\n"
