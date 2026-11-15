@@ -160,10 +160,19 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: MutableMapping[str, p.Infra.ProjectResult] = {
-            result.project: result
-            for result in (() if previous is None else previous.results)
-        }
+        # Projects are keyed by exact root: equal basenames stay distinct.
+        # A previous phase ran the same ordered targets to completion.
+        results: MutableMapping[Path, p.Infra.ProjectResult] = (
+            {}
+            if previous is None
+            else dict(
+                zip(
+                    (target.path for target in projects),
+                    previous.results,
+                    strict=True,
+                )
+            )
+        )
         total = len(projects)
         failed = 0
         loop_start = time.monotonic()
@@ -182,7 +191,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                     if ctx.selected_files or gate_id in target.applicable_gates
                 ),
                 ctx,
-                results.get(target.name),
+                results.get(target.path),
             )
             if union_gates:
                 project_result = self._merged_union_result(
@@ -201,7 +210,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                         if target.path in executions
                     },
                 )
-            results[target.name] = project_result
+            results[target.path] = project_result
             if not project_result.gates and ctx.check_progress is not None:
                 ctx.check_progress(target.path, project_result)
             project_failed = any(

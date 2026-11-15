@@ -477,7 +477,10 @@ Read-only prerequisites share the existing bounded CLI signal wave across reposi
 each native tool retains its own project configuration, report directory and result.
 Repairs retain their serial publication order.
 A repository with no applicable prerequisite still runs its remaining applicable
-gates. An empty execution never proves that repository's complete check passed. The capture
+gates. An empty execution never proves that repository's complete check passed.
+The native pytest runner caps each suite at 240 seconds, including shutdown.
+Ordinary items have two seconds; explicitly slow items have twenty. The slow
+marker changes the item's deadline without excluding it from CI. The capture
 also compares the elected runtime's resolver manifest and lock before and after
 the gate; changed inputs prevent issuance of its original receipt.
 The typed report retains the requested inventory and explicitly records pending

@@ -2,13 +2,13 @@ id: pydantic-model-config-m-configdict-classvar
 valid:
   - |
     class Model:
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: typing.ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
   - |
     class Settings:
-        model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
+        model_config: typing.ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict()
   - |
     class Base:
-        model_config: ClassVar[t.ConfigDict] = FlextModelsPydantic.ConfigDict()
+        model_config: typing.ClassVar[t.ConfigDict] = FlextModelsPydantic.ConfigDict()
   - |
     class Model:
         model_config = other.ConfigDict()

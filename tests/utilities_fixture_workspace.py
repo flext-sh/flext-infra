@@ -215,6 +215,22 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         return workspace, project, package
 
     @staticmethod
+    def seed_workspace_root(
+        workspace: Path,
+        *,
+        pyproject: str = "[project]\nname='workspace'\nversion='1.0.0'\n",
+    ) -> None:
+        """Make a workspace root the Git checkout governed roots are.
+
+        The namespace and rule engines scan the workspace root: they open its
+        Git checkout, read its project metadata and run ast-grep through its
+        pinned Mise lock.
+        """
+        (workspace / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        TestsFlextInfraUtilitiesToolingFixture.copy_tracked_mise_seeds(workspace)
+        TestsFlextInfraUtilitiesGit.initialize_git_repo(workspace)
+
+    @staticmethod
     def write_standalone_workspace_manifest(
         project_dir: Path,
         name: str,

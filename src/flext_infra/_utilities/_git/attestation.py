@@ -386,9 +386,16 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             )
             for source in inputs.sources
         )
-        runtime_root = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(
-            repository_root,
+        inside_git = FlextInfraUtilitiesGitSemanticIdentity.git_is_inside_work_tree(
+            m.Infra.GitRepoRequest(repo_root=repository_root),
         ).unwrap()
+        runtime_root = (
+            FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(
+                repository_root,
+            ).unwrap()
+            if inside_git.value
+            else repository_root
+        )
         resolver_inputs: list[str] = []
         for name in (c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME):
             state = u.Cli.atomic_read_binary_file_state(

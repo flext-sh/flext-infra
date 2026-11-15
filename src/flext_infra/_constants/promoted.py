@@ -87,7 +87,7 @@ class FlextInfraConstantsPromoted:
         DISPATCHED = "Y"
         DISABLED = "N"
         BASH = "bash"
-        PYTHON_SAFE_PATH = "-P"
+        PYTHON_MODULE = "-m"
         VENV_BIN = "bin"
         VENV_PYTHON = "python"
         INCIDENT_DOMAIN = "incident"
