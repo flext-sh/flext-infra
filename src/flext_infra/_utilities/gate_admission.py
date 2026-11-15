@@ -273,14 +273,14 @@ class FlextInfraUtilitiesGateAdmission:
         ledger = cls._ledger_path(root, repository)
         with cls._queue_lock(root):
             kept = [
-                earlier
-                for earlier in cls._ledger(root, repository)
+                line
+                for line, earlier in cls._ledger_lines(root, repository)
                 if (earlier.gate, earlier.selection) != (record.gate, record.selection)
             ]
             ledger.parent.mkdir(exist_ok=True)
             u.Cli.atomic_write_text_file(
                 ledger,
-                "".join(f"{entry.model_dump_json()}\n" for entry in (*kept, record)),
+                "".join(f"{line}\n" for line in (*kept, record.model_dump_json())),
                 durability=c.Cli.WriteDurability.SCRATCH,
             ).unwrap()
 
@@ -319,11 +319,27 @@ class FlextInfraUtilitiesGateAdmission:
             The recorded successes, oldest first.
 
         """
+        return [record for _, record in cls._ledger_lines(root, repository)]
+
+    @classmethod
+    def _ledger_lines(
+        cls, root: Path, repository: Path
+    ) -> list[tuple[str, m.Infra.GateRunRecord]]:
+        """Read a checkout's repeat ledger with the line that carries each record.
+
+        A line another flext-infra version wrote is kept as written when the
+        ledger is rewritten, so the fields this version does not declare survive.
+        Must run under the queue lock.
+
+        Returns:
+            Each line and its record, oldest first.
+
+        """
         ledger = cls._ledger_path(root, repository)
         if not ledger.is_file():
             return []
         return [
-            m.Infra.GateRunRecord.model_validate_json(line)
+            (line, m.Infra.GateRunRecord.model_validate_json(line))
             for line in ledger.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
             if line.strip()
         ]

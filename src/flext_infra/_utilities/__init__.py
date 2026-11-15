@@ -648,6 +648,7 @@ install_lazy_exports(
             "_repeat_exempt",
             "_ledger_path",
             "_ledger",
+            "_ledger_lines",
             "_inherited_ticket",
             "_enqueue",
             "_await_admission",

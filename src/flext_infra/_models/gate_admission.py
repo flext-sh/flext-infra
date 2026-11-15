@@ -21,7 +21,8 @@ class FlextInfraModelsGateAdmission:
 
         The queue is per host and shared by every installed flext-infra
         version, so a ticket another version wrote may carry fields this one
-        does not declare: they are ignored, never stored.
+        does not declare: they are ignored, never stored. A field added later
+        needs a default, since an older record lacks it.
         """
 
         sequence: Annotated[

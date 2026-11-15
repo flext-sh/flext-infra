@@ -300,6 +300,9 @@ class TestsFlextInfraGateAdmission:
                 "field_of_another_version": str(tmp_path),
             })
             tm.that(type(record).model_validate_json(foreign), eq=record)
+            mistyped = json.dumps({**json.loads(foreign), "gate": 1})
+            with u.Tests.raises(m.ValidationError, match="gate"):
+                type(record).model_validate_json(mistyped)
 
     @classmethod
     def test_nested_gate_runs_under_its_ancestor_ticket(cls, tmp_path: Path) -> None:
@@ -374,6 +377,42 @@ class TestsFlextInfraGateAdmission:
         )
         (tmp_path / "check.release").unlink()
         cls._succeed(tmp_path, environment)
+
+    @classmethod
+    def test_recording_keeps_a_ledger_line_of_another_version(
+        cls, tmp_path: Path
+    ) -> None:
+        """A recorded success leaves another version's ledger line as written."""
+        environment = cls._environment(tmp_path, None)
+        now = datetime.now(UTC)
+        foreign = json.dumps({
+            **json.loads(
+                m.Infra.GateRunRecord(
+                    gate="foreign",
+                    repository=str(tmp_path),
+                    admitted_at=now,
+                    finished_at=now,
+                ).model_dump_json()
+            ),
+            "field_of_another_version": str(tmp_path),
+        })
+        history = (
+            tmp_path
+            / "state"
+            / Path(*c.Infra.GATE_ADMISSION_STATE_PARTS)
+            / c.Infra.GATE_ADMISSION_HISTORY_DIR
+        )
+        cls._succeed(tmp_path, environment)
+        ledger = next(history.iterdir())
+        ledger.write_text(
+            f"{foreign}\n{ledger.read_text(encoding='utf-8')}", encoding="utf-8"
+        )
+        other = cls._gate(environment, "other", repeat=True)
+        cls._await(tmp_path / "other.started")
+        tm.that(cls._release(tmp_path, "other", other), eq=0)
+        lines = ledger.read_text(encoding="utf-8").splitlines()
+        tm.that(lines[0], eq=foreign)
+        tm.that(len(lines), eq=3)
 
     @classmethod
     def test_ci_runner_and_pre_push_hook_are_not_repeat_limited(
