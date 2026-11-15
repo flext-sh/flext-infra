@@ -1010,6 +1010,33 @@ _builtin_mod_apply: _builtin_require_environment
 	for rule in $(strip $(RULES)); do selection="$$selection --rule-ids $$rule"; done; \
 	$(if $(MOD_PROFILE),FLEXT_INFRA_PROFILE=$(MOD_PROFILE) ,)FLEXT_INFRA_PROFILE_OUTPUT="$(PROJECT_ROOT)/{{ make.modification_profile_path }}" $(PROJECT_FLEXT_INFRA) refactor mod --repository-root "$(PROJECT_ROOT)"$$selection
 
+# SOP: Workspace Synchronization & Hygiene
+_builtin_sync_workspace_all: _builtin_require_environment
+	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	dry_run="$(strip $(DRY_RUN))"; \
+	$(PROJECT_FLEXT_INFRA) workspace sync --repository-root "$$root" $(if $$dry_run,--dry-run)
+
+_builtin_clean_workspace_all: _builtin_require_environment
+	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	dry_run="$(strip $(DRY_RUN))"; \
+	confirm="$(strip $(CONFIRM))"; \
+	$(PROJECT_FLEXT_INFRA) workspace clean --repository-root "$$root" $(if $$dry_run,--dry-run) $(if $$confirm,--confirm)
+
+# SOP: PR Validation & RCA
+_builtin_pr_validate_all: _builtin_require_environment
+	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	tracking_id="$(strip $(TRACKING_ID))"; \
+	$(PROJECT_FLEXT_INFRA) workspace pr-validate --repository-root "$$root" $(if $$tracking_id,--tracking-id "$$tracking_id")
+
+_builtin_rca_capture_all: _builtin_require_environment
+	@set -eu; \
+	root="$(abspath $(or $(strip $(ROOT)),$(PROJECT_ROOT)))"; \
+	tracking_id="$(strip $(TRACKING_ID))"; \
+	$(PROJECT_FLEXT_INFRA) workspace rca-capture --repository-root "$$root" $(if $$tracking_id,--tracking-id "$$tracking_id")
+
 # Public operations invoke only their own canonical implementation.
 _builtin-build: _builtin_build_artifacts
 	@$(PROJECT_FLEXT_INFRA) docs build --repository-root "$(PROJECT_ROOT)" --output-dir "{{ make.docs.reports_dir }}" --projects .
@@ -1024,6 +1051,10 @@ _builtin-clean: _builtin_clean_generated
 _builtin-gen: _builtin_gen_all
 _builtin-gen-scope: _builtin_gen_scope_all
 _builtin-mod: _builtin_mod_apply
+_builtin-sync-workspace: _builtin_sync_workspace_all
+_builtin-clean-workspace: _builtin_clean_workspace_all
+_builtin-pr-validate: _builtin_pr_validate_all
+_builtin-rca-capture: _builtin_rca_capture_all
 {%- if release_verbs %}
 # The repository's release capability elects these product operations.
 # Operator values cross the shell boundary as environment data.

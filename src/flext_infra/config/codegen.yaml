@@ -1,3 +1,5 @@
+# Copyright (c) 2026 FLEXT Team. All rights reserved.
+# SPDX-License-Identifier: MIT
 Infra:
   codegen:
     # Generic packaged defaults for deterministic project conformance.
@@ -102,7 +104,7 @@ Infra:
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
-    # threads per level (paths, then gates per path); mypy keeps its own
+    # threads per level (paths, then gates per level); pyrefly keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
 
@@ -337,7 +339,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
-      # the pyright wrapper, qlty, jscpd, waza, prek). A project that needs more
+      # pyrefly LSP, qlty, jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -395,7 +397,7 @@ Infra:
           binary: scc
           arguments: [ --version ]
           pattern: "^scc version {version}$"
-      # pyright's PyPI wrapper runs node from PATH.
+      # Node is required for pyrefly's LSP and other node-based tooling.
       - name: node
         version: latest
         version_probe:
@@ -640,7 +642,7 @@ Infra:
       # The committed lock contract supersedes the former lockfile-ban exclusion.
       # An empty list resets the setting and requires an empty effective readback.
       issue_exclusions:
-      # Axiom "generic facade publication" (python/mypy#22457; operator
+      # HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
       # decision 2026-11-13: "Yes, add to the axiom"): the generated
       # `Name: TypeAlias = Part.Name` publication is the only form mypy can
       # subscript; Sonar python:S6794 (use a `type` statement) rejects it as
@@ -650,7 +652,7 @@ Infra:
       - rule_key: python:S6794
         resource_key: "**/*.py"
         reason: >-
-          Axiom "generic facade publication" (python/mypy#22457; operator
+          HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
           decision 2026-11-13 "Yes, add to the axiom"): the generated
           `Name: TypeAlias = Part.Name` publication is the only form mypy can
           subscript. Retire with ruff UP040, pyright reportMissingTypeArgument,
@@ -708,14 +710,20 @@ Infra:
           setup: {max_load5: 160}
           upg: {max_load5: 80}
           gen: {max_load5: 160}
+          gen-scope: {max_load5: 160}
           mod: {max_load5: 80}
           fix: {max_load5: 80}
           fmt: {max_load5: 80}
           check: {max_load5: 160}
           tests: {max_load5: 80}
+          tests-full: {max_load5: 80}
           help: {max_load5: 80}
           build: {max_load5: 80}
           clean: {max_load5: 80}
+          sync-workspace: {max_load5: 80}
+          clean-workspace: {max_load5: 80}
+          pr-validate: {max_load5: 80}
+          rca-capture: {max_load5: 80}
         refusal_guidance:
         - Do not wait for the load to drop; run the lighter form now, it runs at idle priority.
         - Prefer make tests (incremental Testmon) over make tests-full; run tests-full only occasionally.
@@ -795,15 +803,14 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # One warm Mypy cache serves every checkout, clone, linked worktree and
-      # .venv of a repository (u.Infra.mypy_cache_directory keys the directory
-      # by the repository identity, the project's path inside it and the Python
-      # implementation and version). Mypy revalidates every entry by source
+      # One warm cache serves every checkout, clone, linked worktree and
+      # .venv of a repository. Revalidates every entry by source
       # hash, so a different lock or different sources in another worktree only
       # recompute the modules that differ and can never mask a finding. A cold
       # analysis cache is the worst outcome this toolchain can give a
       # developer: no cache key may ever include a checkout path or a
       # virtualenv path.
+      # DEPRECATED: mypy_cache retained for local compatibility only.
       mypy_cache:
         cache_environment_variable: MYPY_CACHE_DIR
         data_home_environment_variable: XDG_CACHE_HOME
@@ -865,13 +872,8 @@ Infra:
         # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
         #   (pyrefly included, so CI is never blind to types);
         # - CI=N and an unset CI (a developer's make check and the pre-push
-        #   hook) run every active gate: the whole-program checkers mypy and
-        #   pyright, the codemod rule set, smells and the project's own
-        #   validators block there. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
-        #   and the project-owned tools.mypy.timeout_seconds budget;
-        # - Mypy is a local-stage gate (GateStage.LOCAL): it never runs on a
-        #   remote runner, not even in the CI=N complete qualification run, and
-        #   a remote check reports it as NOT EXECUTED.
+        #   hook) run every active gate: pyrefly, the codemod rule set, smells
+        #   and the project's own validators block there.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
@@ -953,7 +955,6 @@ Infra:
       clean:
         cache_dirs:
         - __pycache__
-        - .mypy_cache
         - .pytest_cache
         - .ruff_cache
         - .pyrefly_cache
@@ -1030,6 +1031,18 @@ Infra:
         description: Build local distribution and documentation artifacts without publishing them.
       - name: clean
         description: Remove only declared disposable resources owned by the selected target.
+      - name: sync-workspace
+        description: Synchronize all governed repositories and submodules to the integration branch tip; fetch remotes, prune stale refs, verify submodule SHAs match .gitmodules.
+        arguments: [ DRY_RUN ]
+      - name: clean-workspace
+        description: Identify and optionally remove obsolete worktrees, stale preservation branches, drifted submodules, and stale generated projections; requires CONFIRM=yes to execute.
+        arguments: [ DRY_RUN, CONFIRM ]
+      - name: pr-validate
+        description: "Execute complete PR readiness checklist: workspace sync, gate evidence, RCA completeness, runtime QA, integration path verification."
+        arguments: [ TRACKING_ID ]
+      - name: rca-capture
+        description: "Record Root Cause Analysis evidence for the current tracking item: reproduction command, root cause, fix verification, and gate re-exercise."
+        arguments: [ TRACKING_ID ]
       custom_handler_profile_overrides: {}
       # Every declared built-in and project checking gate is active in
       # make check (tracker memory operator-ruling-2026-10-09-gate-baseline-0122);
@@ -1077,7 +1090,6 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
@@ -1249,9 +1261,6 @@ Infra:
       - [ terminal.integrated.env.linux, { PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}' } ]
       - [ ruff.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
       - [ ruff.path, [ '${runtimeEnvironment}/bin/ruff' ] ]
-      - [ mypy-type-checker.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
-      - [ mypy-type-checker.path, [ '${interpreter}', -m, mypy ] ]
-      - [ mypy-type-checker.cwd, '${nearestConfig}' ]
       - [ editor.mouseWheelZoom, true ]
       - [ explorer.excludeGitIgnore, true ]
       - [ files.autoSave, afterDelay ]
@@ -1264,7 +1273,7 @@ Infra:
       - [ python.analysis.autoImportCompletions, true ]
       - [ python.analysis.completeFunctionParens, true ]
       - [ python.analysis.diagnosticMode, workspace ]
-      - [ python.analysis.diagnosticsSource, Pylance + Pyright ]
+      - [ python.analysis.diagnosticsSource, Pylance ]
       - [ python.analysis.displayEnglishDiagnostics, true ]
       - [ python.analysis.enableAsyncProgram, false ]
       - [ python.analysis.enableExternalTypeServer, false ]
@@ -1288,7 +1297,6 @@ Infra:
       - [ python.analysis.languageServerBackend, default ]
       - [ python.analysis.languageServerMode, default ]
       - [ python.analysis.logLevel, Information ]
-      - [ python.analysis.pyrightVersion, fromEnvironment ]
       - [ python.analysis.referencesCodeLens, true ]
       - [ python.analysis.renameInDocstrings, true ]
       - [ python.analysis.showOnlyDirectDependenciesInAutoImport, false ]
@@ -1504,7 +1512,6 @@ Infra:
       archive_globs:
       - "*.log"
       - pytest_*.txt
-      - pyright_errors*.log
       - test_output.txt
       # Content submodule trees and agent law dirs are out of product-docs relocate.
       # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
@@ -1567,10 +1574,8 @@ Infra:
         # breaking editable wheel builds (release/wheel tests) after any
         # re-sync; declared here so every projected project keeps it.
         - editables>=0.6
-        - mypy>=2.3.1
         - pymdown-extensions
         - pyrefly>=1.2.0
-        - pyright>=1.1.411
         - pytest>=9.1.1
         - hypothesis
         - pytest-asyncio
@@ -1967,7 +1972,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"
@@ -2444,8 +2448,6 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            - tool.mypy
-            - tool.pyright
             - tool.pyrefly
             - tool.pytest
             - tool.coverage
@@ -2454,7 +2456,6 @@ Infra:
             - tool.yamlfix
             - tool.deptry
             - tool.hatch.version
-            - tool.pydantic-mypy
             - tool.vulture
             # Written by the conform pipeline from the project SSOT
             # (_sync_namespace_scope), so a conflict inside it is the owner's
