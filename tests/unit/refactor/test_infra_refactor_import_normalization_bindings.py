@@ -90,26 +90,49 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             )
 
     @classmethod
+    def test_published_fixture_import_stays_at_tests_root(cls, tmp_path: Path) -> None:
+        """A concrete fixture published by the tests root has one stable route."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        fixtures = tier / "fixtures"
+        cls._lazy_init(tier, {"TestsDemoFixtures": ".fixtures"})
+        cls._lazy_init(fixtures, {"TestsDemoFixtures": ".auth"})
+        (fixtures / "auth.py").write_text(
+            "class TestsDemoFixtures:\n    marker = 'fixture'\n"
+            "__all__ = ['TestsDemoFixtures']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = tier / "conftest.py"
+        source = (
+            "from tests import TestsDemoFixtures\nvalue = TestsDemoFixtures.marker\n"
+        )
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=source
+            ),
+            eq=source,
+        )
+
+    @classmethod
     def test_internal_tier_alias_binds_through_tier_root(cls, tmp_path: Path) -> None:
         """An internal tier imports root aliases from its own root."""
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
-        cls._lazy_init(tier, {"r": "flext_tests", "c": ".constants"})
+        cls._lazy_init(tier, {"c": "demo_pkg", "r": "flext_tests", "t": "demo_pkg"})
         normalized = cls._normalize(
             project,
             tier / "unit" / "test_demo.py",
             "from __future__ import annotations\n"
             "\n"
-            "from demo_pkg import c\n"
+            "from demo_pkg import c, t\n"
             "from flext_tests import r\n"
             "\n"
             "\n"
             "def test_demo() -> None:\n"
-            "    assert r.ok(c)\n",
+            "    assert c and t and r[str].ok('ready').value == 'ready'\n",
         )
 
-        tm.that(normalized, has="from tests import c, r\n")
-        tm.that(normalized, has="from tests import c, r, t\n")
+        tm.that(normalized, has="from tests import c, t\nfrom tests import r\n")
 
     @classmethod
     def test_relative_import_becomes_absolute(cls, tmp_path: Path) -> None:
@@ -217,7 +240,17 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         """A test module reading unbound tier letters imports them from its root."""
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
-        cls._lazy_init(tier, {"c": ".constants", "u": ".utilities"})
+        cls._lazy_init(tier, {"c": ".constants", "r": "flext_tests", "u": ".utilities"})
+        (tier / "constants.py").write_text(
+            "class c:\n    class Demo:\n        NAME = 'demo'\n__all__ = ['c']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (tier / "utilities.py").write_text(
+            "class u:\n    class Demo:\n        @staticmethod\n"
+            "        def run(name, value):\n            return bool(name and value)\n"
+            "__all__ = ['u']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
         target = tier / "unit" / "test_demo.py"
         normalized = cls._normalize(
             project,
@@ -228,7 +261,7 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "\n"
             "\n"
             "def test_demo(value: int) -> None:\n"
-            "    assert u.Demo.run(c.Demo.NAME, value)\n",
+            "    assert u.Demo.run(c.Demo.NAME, r[int].ok(value).value)\n",
         )
 
         tm.that(normalized, has="from tests import c, r, u\n")
@@ -270,7 +303,9 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         """A tier facade module never imports the alias it defines from its root."""
         project, _ = cls._project(tmp_path)
         tier = project / "tests"
-        cls._lazy_init(tier, {"c": ".constants"})
+        cls._lazy_init(
+            tier, {"c": ".constants", "r": "flext_tests", "resolved": ".constants"}
+        )
         target = tier / "constants.py"
         normalized = cls._normalize(
             project,
@@ -285,12 +320,14 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             "\n"
             "\n"
             "c = TestsDemoConstants\n"
-            "__all__ = ['TestsDemoConstants', 'c']\n",
+            "resolved = r[str].ok(c.NAME).value\n"
+            "__all__ = ['TestsDemoConstants', 'c', 'resolved']\n",
         )
+        tm.that(normalized, has="from tests import r\n")
         target.write_text(normalized, encoding="utf-8")
         result = tm.ok(
             u.Cli.run(
-                (sys.executable, "-c", "from tests import c, r; print(c.NAME)"),
+                (sys.executable, "-c", "from tests import resolved; print(resolved)"),
                 cwd=project,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(project)}),
             ),
@@ -311,16 +348,17 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
         cls,
         tmp_path: Path,
     ) -> None:
-        """Reject conflicting inline providers through the native publisher caller."""
-        u.Tests.run_native_callable(cls.scenario_distinct_providers, tmp_path)
-
-    @classmethod
-    def scenario_distinct_providers(
-        cls,
-        tmp_path: Path,
-    ) -> None:
         """Refuse a global binding that would change two real local consumers."""
-        project, package = cls._project(tmp_path)
+        project = tmp_path / "project"
+        package = u.Tests.src_package(
+            project,
+            "demo_pkg",
+            pyproject=(
+                "[project]\nname='demo'\nversion='1.0.0'\n"
+                "authors=[{name='FLEXT'}]\nlicense='MIT'\n"
+            ),
+        )
+        cls._lazy_init(package, {})
         for provider, value in (
             ("first_provider", "first provider"),
             ("second_provider", "second provider"),
@@ -574,7 +612,11 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         cls, tmp_path: Path
     ) -> None:
         """The same captured witnesses retain tombstones through both plan passes."""
-        project, package = cls._project(tmp_path)
+        project = tmp_path / "project"
+        package = u.Tests.src_package(
+            project, "demo_pkg", pyproject="[project]\nname='demo'\nversion='1.0.0'\n"
+        )
+        cls._lazy_init(package, {"DemoHelper": ".helper"})
         retired = (package / "retired_a.py", package / "retired_b.py")
         retired[0].write_text(
             "from demo_pkg.retired_b import Beta\nclass Alpha(Beta):\n    pass\n",
@@ -584,13 +626,13 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
             "from demo_pkg.retired_a import Alpha\nclass Beta(Alpha):\n    pass\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (package / "_utilities" / "helper.py").write_text(
+        (package / "helper.py").write_text(
             "class DemoHelper:\n    marker = 'retirement'\n__all__ = ['DemoHelper']\n",
             encoding=c.DEFAULT_ENCODING,
         )
         target = package / "consumer.py"
         target.write_text(
-            "from demo_pkg_utilities import DemoHelper\nvalue = DemoHelper.marker\n",
+            "from .helper import DemoHelper\nvalue = DemoHelper.marker\n",
             encoding=c.DEFAULT_ENCODING,
         )
         with u.Infra.workspace_snapshot(project, (project,)) as snapshot:
@@ -871,10 +913,12 @@ class TestsFlextInfraInheritedFacadeImportNormalization(
         tm.that(planned.error, has="runtime dependency cycles")
         tm.that(target.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
         process = tm.ok(
-            u.Cli.run(
+            u.Cli.run_raw(
                 (sys.executable, "-c", "from demo_pkg.alpha import Alpha"),
                 cwd=project,
                 options=m.Cli.ProcessOptions(env={"PYTHONPATH": str(package.parent)}),
             )
         )
         tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
+        tm.that(process.outcome.raw_return_code, eq=1)
+        tm.that(process.stderr, has="most likely due to a circular import")

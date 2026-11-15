@@ -31,12 +31,15 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             "\n"
             "from flext_core.lazy import install_lazy_exports\n"
             "\n"
+            f"__all__ = {tuple(exports)!r}\n"
+            "\n"
             "install_lazy_exports(\n"
             "    __name__,\n"
             "    globals(),\n"
             "    MappingProxyType({\n"
             f"{entries}"
             "    }),\n"
+            "    public_exports=__all__,\n"
             ")\n",
             encoding="utf-8",
         )
@@ -61,7 +64,7 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
             {
                 **{
                     letter: f".{families[letter].module}"
-                    for letter in ("c", "t", "m", "u")
+                    for letter in ("c", "t", "m", "p", "u")
                 },
                 "r": "flext_core",
                 "DemoApi": ".api",
@@ -110,9 +113,9 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         upstream = package.parent / "upstream_pkg"
         cls._lazy_init(
             upstream,
-            {letter: f".{families[letter].module}" for letter in ("c", "m", "u")},
+            {letter: f".{families[letter].module}" for letter in ("c", "m", "p", "u")},
         )
-        for letter in ("c", "m", "u"):
+        for letter in ("c", "m", "p", "u"):
             module = families[letter].module
             (upstream / f"{module}.py").write_text(
                 f"class {letter}:\n"

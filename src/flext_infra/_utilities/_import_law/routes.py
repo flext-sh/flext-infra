@@ -190,6 +190,9 @@ class FlextInfraUtilitiesImportLawRoutes(
                     or cls._import_law_unpublished_owner(
                         state, (node.module, alias.name), resolve, sources
                     )
+                    or FlextInfraUtilitiesImportLawRoutes._published_tests_root(
+                        state, (node.module, alias.name), resolve
+                    )
                     or cls.lazy_source(
                         state.scope,
                         node.module,
@@ -226,6 +229,28 @@ class FlextInfraUtilitiesImportLawRoutes(
                 ),
             )
         return edits
+
+    @staticmethod
+    def _published_tests_root(
+        state: p.Infra.ImportLawPass,
+        imported: tuple[str, str],
+        resolve: Callable[[str, str], p.Infra.RopePyName | None],
+    ) -> str | None:
+        """Retain a proven tests-root import ahead of the generic lazy route.
+
+        Returns:
+            The published root, or None when no current native binding is found.
+
+        """
+        module, name = imported
+        if module != state.scope.namespace or module != c.Infra.DIR_TESTS:
+            return None
+        if name not in state.root_exports:
+            return None
+        try:
+            return module if resolve(module, name) is not None else None
+        except FlextInfraUtilitiesRopeRuntime.rope_unresolved_error_types():
+            return None
 
     @staticmethod
     def _import_law_own_family_provider(
