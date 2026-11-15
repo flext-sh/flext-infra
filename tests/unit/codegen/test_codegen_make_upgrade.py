@@ -101,6 +101,41 @@ class TestsFlextInfraCodegenMakeUpgrade:
         )
 
     @staticmethod
+    def test_resolution_renders_the_pyproject_projection_of_the_locked_infra(
+        generated_make_template: tuple[c.Infra.MakeProfile, Path],
+    ) -> None:
+        """The final lock resolves with the upgraded flext-infra's overrides.
+
+        ``upg`` moves flext-infra forward; the resolver-wide overrides it owns
+        live in the project's pyproject projection. The shared resolution recipe
+        syncs the executor from the lock on disk and renders that projection
+        before it locks, so the lock after ``uv lock --upgrade`` records the
+        overrides of the flext-infra just locked, and ``lock`` does the same.
+        """
+        _profile, project_root = generated_make_template
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8",
+        )
+        refresh = (
+            '$(EXECUTOR_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)"'
+            " --what pyproject --scope self"
+        )
+        final_lock = '$(UV) lock --project "$(PROJECT_ROOT)"'
+        upgrading = makefile.split("\n_upg_lifecycle:\n", 1)[1].split("\n\n", 1)[0]
+        upgraded = upgrading.index('$(UV) lock --upgrade --project "$(PROJECT_ROOT)"')
+        refreshed = upgrading.index(refresh, upgraded)
+        synced = upgrading.rindex(
+            "$(SYNC_UPGRADE_EXECUTOR_RECIPE)", upgraded, refreshed
+        )
+        tm.ok(upgraded < synced < refreshed < upgrading.index(final_lock, refreshed))
+        locking = makefile.split("\n_lock_lifecycle:\n", 1)[1].split("\n\n", 1)[0]
+        tm.ok(
+            locking.index("$(SYNC_UPGRADE_EXECUTOR_RECIPE)")
+            < locking.index(refresh)
+            < locking.index(final_lock)
+        )
+
+    @staticmethod
     def test_no_generated_verb_prunes_host_wide_mise_tools(
         generated_make_template: tuple[c.Infra.MakeProfile, Path],
     ) -> None:

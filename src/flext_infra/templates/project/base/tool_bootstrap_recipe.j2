@@ -47,11 +47,15 @@
 {#- One lock resolution per project (ADR-030): each governed member forms its
     own uv.lock, then this project, whose lock is their composition. Only
     ``upgrade`` moves the pins a lock already holds; without it a changed
-    declaration resolves and every existing pin stays. -#}
+    declaration resolves and every existing pin stays. The executor synced from
+    the lock on disk first renders the pyproject projection, so the resolver-wide
+    overrides are those of the flext-infra that lock pins. -#}
 {% macro uv_lock_resolution(upgrade) -%}
 	{{ mise_network_admission() }} \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
+	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) codegen generate --root "$(PROJECT_ROOT)" --what pyproject --scope self; \
 	set -f; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \

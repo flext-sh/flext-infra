@@ -361,7 +361,10 @@ toolchain nor a corrupt lock stops it:
    without one forms it first through native `uv lock`) runs
    `deps cooldown-admission`; then native `uv lock --upgrade` with that Python,
    `deps upg-bounds` and a native `uv lock` that records the written bounds,
-   then the setup installation of exactly that lock.
+   then the setup installation of exactly that lock. Every resolution (`lock`
+   shares the recipe) first syncs the executor from the lock on disk and runs
+   `codegen generate --what pyproject --scope self`, so the final lock resolves
+   with the overrides of the flext-infra the upgrade locked.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
    `deps repair-mise-platforms`, which locks the tools missing a platform that

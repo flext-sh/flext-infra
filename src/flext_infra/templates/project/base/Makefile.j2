@@ -729,8 +729,9 @@ setup: _builtin_require_workspace
 endif
 
 # Upgrade relocks Mise and provisions the locked toolchain, then resolves
-# dependencies and writes the UV lock; projections belong to gen. Its one Python step runs last, from
-# the isolated executor (_upg_lifecycle). Attached members delegate the same
+# dependencies and writes the UV lock; projections belong to gen, except the
+# pyproject projection each resolution renders from the flext-infra its lock
+# pins. Its last Python step runs from the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
 upg: _builtin_require_workspace _builtin_require_github_credential _upg_toolchain
@@ -876,11 +877,13 @@ _builtin_require_environment: _builtin_require_interpreter
 # native `uv lock --upgrade` runs with that Python once per project: each
 # governed member in .gitmodules order forms its own uv.lock, then this
 # project, whose lock is their composition. The executor writes the upg-owned
-# bounds from those locks, the locks record them without upgrading, the frozen
+# bounds from those locks; resynced from them, it renders the pyproject
+# projection of the upgraded flext-infra; the locks record both without
+# upgrading, the frozen
 # installation follows, and last the executor repairs the one gap Mise does
 # not report: a locked tool missing a declared platform. The executor never
 # imports the project, so a project whose source no longer imports still has
-# every lock written. It generates no projection.
+# every lock written. It generates no other projection.
 .PHONY: _upg_toolchain _upg_lifecycle
 _upg_toolchain: _builtin_require_workspace _builtin_require_github_credential
 	+@set -eu; \
@@ -929,8 +932,9 @@ _upg_lifecycle:
 
 # Lock resolves a changed dependency declaration (a newly declared requirement)
 # into the UV locks and keeps every pin they already hold; only upg moves a pin.
-# It runs from the environment setup installed, provisions no tool, and ends with
-# the same frozen installation, so the new requirement is installed.
+# It runs from the environment setup installed, provisions no tool beyond the
+# executor that renders the pyproject projection, and ends with the same frozen
+# installation, so the new requirement is installed.
 .PHONY: _lock_lifecycle
 _lock_lifecycle:
 	+@set -eu; \
