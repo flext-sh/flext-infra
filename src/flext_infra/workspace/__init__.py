@@ -51,10 +51,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceLockCompleteness",
     "FlextInfraWorkspaceNativeReference",
     "FlextInfraWorkspacePropagation",
-    "FlextInfraWorkspaceSync",
-    "FlextInfraWorkspaceClean",
-    "FlextInfraWorkspacePrValidate",
-    "FlextInfraWorkspaceRcaCapture",
 )
 
 install_lazy_exports(
@@ -74,10 +70,6 @@ install_lazy_exports(
         "FlextInfraWorkspaceLockCompleteness": ".lock_completeness",
         "FlextInfraWorkspaceNativeReference": ".native_reference",
         "FlextInfraWorkspacePropagation": ".propagation",
-        "FlextInfraWorkspaceSync": ".sop",
-        "FlextInfraWorkspaceClean": ".sop",
-        "FlextInfraWorkspacePrValidate": ".sop",
-        "FlextInfraWorkspaceRcaCapture": ".sop",
     },
     public_exports=__all__,
 )
