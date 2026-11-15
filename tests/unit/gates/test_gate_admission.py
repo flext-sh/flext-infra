@@ -273,6 +273,34 @@ class TestsFlextInfraGateAdmission:
             os.kill(holder.pid, signal.SIGKILL)
             tm.ok(holder.wait(timeout=_WAIT_SECONDS))
 
+    @staticmethod
+    def test_records_of_another_version_read_their_declared_fields(
+        tmp_path: Path,
+    ) -> None:
+        """A queue or ledger record with a field this version lacks still reads."""
+        now = datetime.now(UTC)
+        ticket = m.Infra.GateTicket(
+            sequence=1,
+            pid=os.getpid(),
+            gate="foreign",
+            repository=str(tmp_path),
+            enqueued_at=now,
+            admitted_at=now,
+            heartbeat_at=now,
+        )
+        run = m.Infra.GateRunRecord(
+            gate="foreign",
+            repository=str(tmp_path),
+            admitted_at=now,
+            finished_at=now,
+        )
+        for record in (ticket, run):
+            foreign = json.dumps({
+                **json.loads(record.model_dump_json()),
+                "field_of_another_version": str(tmp_path),
+            })
+            tm.that(type(record).model_validate_json(foreign), eq=record)
+
     @classmethod
     def test_nested_gate_runs_under_its_ancestor_ticket(cls, tmp_path: Path) -> None:
         """A gate started inside an admitted gate never queues behind itself."""

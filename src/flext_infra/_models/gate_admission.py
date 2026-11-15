@@ -16,8 +16,13 @@ from flext_infra import c, t
 class FlextInfraModelsGateAdmission:
     """Records exchanged through the per-host heavy-gate queue."""
 
-    class GateTicket(m.ContractModel):
-        """One queued or admitted heavy gate; content is diagnostic and decisive."""
+    class GateTicket(m.ExternalContractModel):
+        """One queued or admitted heavy gate; content is diagnostic and decisive.
+
+        The queue is per host and shared by every installed flext-infra
+        version, so a ticket another version wrote may carry fields this one
+        does not declare: they are ignored, never stored.
+        """
 
         sequence: Annotated[
             t.PositiveInt, m.Field(description="Monotonic FIFO position")
@@ -38,8 +43,12 @@ class FlextInfraModelsGateAdmission:
             t.AwareDatetime, m.Field(description="Last liveness refresh by the owner")
         ]
 
-    class GateRunRecord(m.ContractModel):
-        """Latest successful full-weight run of one gate and selection."""
+    class GateRunRecord(m.ExternalContractModel):
+        """Latest successful full-weight run of one gate and selection.
+
+        The ledger is shared across installed versions like the queue; fields
+        another version adds are ignored.
+        """
 
         gate: Annotated[
             t.NonEmptyStr, m.Field(description="Full-weight gate that succeeded")
