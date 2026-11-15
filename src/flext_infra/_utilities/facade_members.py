@@ -1179,7 +1179,10 @@ class FlextInfraUtilitiesFacadeMembers:
         )
         references: dict[str, set[str]] = {}
         names: dict[str, set[str]] = {}
-        for root in lineage:
+        # Keep lineage and own declarations; an empty query has no foreign refs.
+        for root in (
+            root for root in lineage if root == package or referenced != frozenset()
+        ):
             facades = cls.facade_source_classes(
                 root, letters, source_project=source_project
             )

@@ -6,15 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from re import escape
+from typing import Literal
 
 from flext_infra import FlextInfraCli, config
 from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_infra.codemod import FlextInfraModGateEngine
 from flext_infra.gates import FlextInfraGatesCodemod
-from tests import c, m, p, t, tm, u
+from tests import c, m, t, tm, u
 
 
 class TestsFlextInfraCodemodGate:
@@ -24,40 +25,64 @@ class TestsFlextInfraCodemodGate:
     def _project(
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path | None = None,
         *,
-        severity: str = "error",
+        rule_severities: Mapping[str, str] | None = None,
     ) -> Path:
         return u.Tests.scanner_contract_project(
-            tmp_path, installed_dependency_path, session_runtime, severity=severity
+            tmp_path,
+            installed_dependency_path,
+            scanner_catalog,
+            rule_severities=rule_severities,
         )
 
-    @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize(
+        "rule_severities",
+        [
+            {"second": "error"},
+            {"first": "warning", "second": "info", "third": "hint"},
+        ],
+        ids=["error", "no-error-severity"],
+    )
     def test_policy_findings_block_at_every_severity(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
-        severity: str,
+        scanner_python: Path,
+        rule_severities: Mapping[str, str],
     ) -> None:
-        """Test policy findings block at every severity."""
+        """A real scan blocks even when no finding has error severity."""
         project = self._project(
-            tmp_path, installed_dependency_path, session_runtime, severity=severity
+            tmp_path,
+            installed_dependency_path,
+            scanner_python,
+            rule_severities=rule_severities,
         )
         source = project / "src" / "subject.py"
-        source.write_text("\nsecond(1)\n", encoding="utf-8")
+        source.write_text(
+            "\n" + "".join(f"{name}(1)\n" for name in rule_severities),
+            encoding="utf-8",
+        )
 
         execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
 
         tm.fail(execution.result.passed)
-        policy_findings = tuple(
-            issue for issue in execution.issues if issue.code == "contract-second"
+        expected = {
+            f"contract-{name}": (line, 1, severity)
+            for line, (name, severity) in enumerate(rule_severities.items(), start=2)
+        }
+        findings = tuple(issue for issue in execution.issues if issue.code in expected)
+        tm.that(len(findings), eq=len(expected), msg=execution.raw_output)
+        tm.that(
+            {
+                issue.code: (issue.line, issue.column, issue.severity)
+                for issue in findings
+                if issue.file.endswith("src/subject.py")
+            },
+            eq=expected,
+            msg=execution.raw_output,
         )
-        tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
-        finding = policy_findings[0]
-        tm.ok(finding.file.endswith("src/subject.py"))
-        tm.that((finding.line, finding.column), eq=(2, 1))
-        tm.that(finding.severity, eq=severity)
         tm.that(
             tuple(execution.result.errors),
             eq=tuple(issue.formatted for issue in execution.issues),
@@ -66,16 +91,18 @@ class TestsFlextInfraCodemodGate:
             execution.finding_count,
             eq=len(execution.issues),
         )
-        tm.that(execution.raw_output, has="contract-second: 1")
+        for rule_id in expected:
+            tm.that(execution.raw_output, has=f"{rule_id}: 1")
 
+    @c.Tests.MARK.slow
     def test_clean_native_scan_has_no_findings(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
     ) -> None:
         """Test clean native scan has no findings."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         (project / "src" / "subject.py").write_text("", encoding="utf-8")
 
         execution = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
@@ -103,11 +130,12 @@ class TestsFlextInfraCodemodGate:
             if issue.code == rule_id
         )
 
+    @c.Tests.MARK.slow
     def test_flext_tests_import_is_banned_only_in_the_infra_package(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
     ) -> None:
         """The project-root scan reports flext_tests only inside flext_infra.
 
@@ -115,7 +143,7 @@ class TestsFlextInfraCodemodGate:
         the rule fires when flext-infra scans itself (``src/...`` paths), not
         only from the workspace root, and never binds another package.
         """
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         for relative in ("src/flext_infra/leak.py", "src/flext_tests/tier.py"):
             module = project / relative
             module.parent.mkdir(parents=True)
@@ -126,14 +154,15 @@ class TestsFlextInfraCodemodGate:
             eq=["src/flext_infra/leak.py"],
         )
 
+    @c.Tests.MARK.slow
     def test_subprocess_is_banned_in_a_consumer(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
     ) -> None:
         """A consumer routes processes through the public execution owner."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         consumer = "src/consumer/spawn.py"
         module = project / consumer
         module.parent.mkdir(parents=True, exist_ok=True)
@@ -144,11 +173,12 @@ class TestsFlextInfraCodemodGate:
             eq=[consumer],
         )
 
+    @c.Tests.MARK.slow
     def test_generated_source_tree_is_inside_the_scan(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
     ) -> None:
         """A tracked generated-source module reaches the policy scan.
 
@@ -158,7 +188,7 @@ class TestsFlextInfraCodemodGate:
         """
         names = config.Infra.codegen.generated_sources
         tm.that(names, empty=False)
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         tree = project / "src" / "pkg" / names[0]
         tree.mkdir(parents=True)
         (tree / "wire_pb2.py").write_text("\nsecond(1)\n", encoding="utf-8")
@@ -173,14 +203,17 @@ class TestsFlextInfraCodemodGate:
             eq=True,
         )
 
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("route", ["check", "mod"])
     def test_owned_stub_paths_share_mod_and_check_admission(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
+        route: Literal["check", "mod"],
     ) -> None:
         """Empty, invalid, ignored and generated stubs fail without an AST match."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         retired = next(
             artifact.name
             for artifact in config.Infra.codegen.artifacts
@@ -217,35 +250,41 @@ class TestsFlextInfraCodemodGate:
             '[project]\nname = "owned-stubs"\nversion = "1.0.0"\n',
             encoding=c.DEFAULT_ENCODING,
         )
-        gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
-        observed = {
-            Path(issue.file).as_posix()
-            for issue in gate.issues
-            if issue.code == "ban-stub-file"
-        }
-        tm.that(observed, eq=set(owned))
-        tm.fail(gate.result.passed)
-        report = tm.ok(
-            FlextInfraModGateEngine.scan(
-                project, fix=False, selection=("ban-stub-file",)
+        if route == "check":
+            gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
+            observed = {
+                Path(issue.file).as_posix()
+                for issue in gate.issues
+                if issue.code == "ban-stub-file"
+            }
+            tm.that(observed, eq=set(owned))
+            tm.fail(gate.result.passed)
+        else:
+            u.Tests.git_bootstrap(project, ("add", "-A"))
+            report = tm.ok(
+                FlextInfraModGateEngine.scan(
+                    project, fix=False, selection=("ban-stub-file",)
+                )
             )
-        )
-        tm.that({entry.file.as_posix() for entry in report.entries}, eq=set(owned))
-        tm.that(report.detection_only, eq=len(owned))
-        tm.that(report.actionable, eq=0)
-        tm.ok(all(entry.origin == "owned-path" for entry in report.entries))
-        tm.ok(all(entry.source_state is not None for entry in report.entries))
+            tm.that({entry.file.as_posix() for entry in report.entries}, eq=set(owned))
+            tm.that(report.detection_only, eq=len(owned))
+            tm.that(report.actionable, eq=0)
+            tm.ok(all(entry.origin == "owned-path" for entry in report.entries))
+            tm.ok(all(entry.source_state is not None for entry in report.entries))
         for relative, content in owned.items():
             tm.that((project / relative).read_bytes(), eq=content)
 
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("route", ["check", "mod"])
     def test_custom_analysis_exclusion_keeps_stub_and_python_scope_distinct(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
+        route: Literal["check", "mod"],
     ) -> None:
         """Authored exclusions hide ordinary Python, never owned stub policy paths."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         custom = m.Infra.CodegenArtifactSpec(
             name="arbitrary_contract_exclusion",
             analysis_exclude=True,
@@ -266,13 +305,15 @@ class TestsFlextInfraCodemodGate:
                 ),
             }):
                 type(config).reset_for_testing()
-                elected = next(
-                    artifact
-                    for artifact in config.Infra.codegen.artifacts
-                    if artifact.name == custom.name
-                )
                 source_root = project / config.Infra.source_scan.roots[0]
-                excluded = source_root / elected.name
+                excluded = (
+                    source_root
+                    / next(
+                        artifact
+                        for artifact in config.Infra.codegen.artifacts
+                        if artifact.name == custom.name
+                    ).name
+                )
                 excluded.mkdir(parents=True)
                 stub = excluded / "boundary.pyi"
                 stub.write_bytes(b"")
@@ -288,44 +329,47 @@ class TestsFlextInfraCodemodGate:
                     ("ban-stub-file", stub.relative_to(project).as_posix()),
                     ("contract-second", active.relative_to(project).as_posix()),
                 }
-                gate = u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
-                tm.fail(gate.result.passed)
-                tm.that(
-                    {
+                if route == "check":
+                    gate = u.Tests.run_gate_check(
+                        FlextInfraGatesCodemod, tmp_path, project
+                    )
+                    tm.fail(gate.result.passed)
+                    observed = {
                         (issue.code, Path(issue.file).as_posix())
                         for issue in gate.issues
                         if issue.code in {rule for rule, _ in expected}
-                    },
-                    eq=expected,
-                )
-                report = tm.ok(
-                    FlextInfraModGateEngine.scan(
-                        project,
-                        fix=False,
-                        selection=("ban-stub-file", "contract-second"),
-                    ),
-                )
-                tm.that(
-                    {
+                    }
+                else:
+                    # Like check, mod must see the authored files in Git's
+                    # owned source inventory.
+                    u.Tests.git_bootstrap(project, ("add", "-A"))
+                    report = tm.ok(
+                        FlextInfraModGateEngine.scan(
+                            project,
+                            fix=False,
+                            selection=("ban-stub-file", "contract-second"),
+                        ),
+                    )
+                    observed = {
                         (entry.rule_id, entry.file.as_posix())
                         for entry in report.entries
-                    },
-                    eq=expected,
-                )
+                    }
+                tm.that(observed, eq=expected)
                 tm.ok(u.Cli.atomic_verify_binary_file_states(before))
         finally:
             type(config).reset_for_testing()
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("target_scope", ["in_tree", "foreign", "broken"])
     def test_stub_symlink_keeps_the_owned_path_name(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
         target_scope: str,
     ) -> None:
         """Check observes the stub name; Mod preserves the original physical guard."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         source_root = (
             project / "src" if target_scope == "in_tree" else tmp_path / "foreign"
         )
@@ -367,14 +411,15 @@ class TestsFlextInfraCodemodGate:
         )
         tm.ok(u.Cli.atomic_verify_binary_file_states((source_before,)))
 
+    @c.Tests.MARK.slow
     def test_runtime_typing_contracts_are_not_stub_paths(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
     ) -> None:
         """Protocol, ABC and overload ellipses in .py remain legitimate declarations."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         (project / "typings.py").write_text(
             "from abc import ABC, abstractmethod\n"
             "from typing import Protocol, overload\n"
@@ -401,14 +446,15 @@ class TestsFlextInfraCodemodGate:
         )
         tm.that(report.findings, eq=0)
 
+    @c.Tests.MARK.slow
     def test_unmanaged_git_submodule_does_not_hide_owned_sibling(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
     ) -> None:
         """Git excludes its foreign subtree while the sibling stays enforced."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         declaration = u.Tests.declare_workspace_projects(
             project,
             ("src/vendor",),
@@ -443,14 +489,15 @@ class TestsFlextInfraCodemodGate:
         tm.that(len(findings), eq=1)
         tm.ok(findings[0].file.endswith("src/vendor_owned.py"))
 
+    @c.Tests.MARK.slow
     def test_check_files_uses_every_rule_and_only_requested_files(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
     ) -> None:
-        """Test check files uses every rule and only requested files."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        """Run the declared rule catalog against only the requested files."""
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         selected = project / "src" / "selected.py"
         selected.write_text("second(1)\n", encoding="utf-8")
         other = project / "src" / "other.py"
@@ -469,32 +516,30 @@ class TestsFlextInfraCodemodGate:
         tm.that(len(policy_findings), eq=1, msg=execution.raw_output)
         tm.ok(policy_findings[0].file.endswith("src/selected.py"))
 
+    @staticmethod
     def test_missing_requested_file_cannot_be_deselected(
-        self,
         tmp_path: Path,
-        installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Test missing requested file cannot be deselected."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
-        missing = project / "src" / "missing.py"
+        missing = tmp_path / "missing.py"
         gate = FlextInfraGatesCodemod(tmp_path)
         context = u.Tests.gate_context(tmp_path)
 
         with u.Tests.raises(FileNotFoundError):
-            gate.check_files((missing,), project, context)
+            gate.check_files((missing,), tmp_path, context)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("finding", [False, True])
     def test_public_file_check_reuses_elected_scanner_scope(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
         *,
         finding: bool,
     ) -> None:
         """Public check uses the native configured scanner for exactly one file."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         source_root = project / config.Infra.source_scan.roots[0]
         source_root.mkdir(exist_ok=True)
         selected = source_root / "literal.py"
@@ -521,20 +566,20 @@ class TestsFlextInfraCodemodGate:
         findings = tm.ok(
             u.Infra.check_report_findings(project, reports_dir=report_path.parent),
         )
-        # The bundled policy rules also scan the selected file; the fixture
-        # rule proves the scope, because the unselected sibling matches it too.
+        # The same authored rule also matches the unselected sibling.
         tm.that(
             [row.rule_id for row in findings].count("contract-second"),
             eq=1 if finding else 0,
         )
         tm.that((selected.read_bytes(), sibling.read_bytes()), eq=before)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_workspace_pipeline_fails_the_project_on_policy_findings(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
         severity: str,
     ) -> None:
         """The public check facade fails the project on any rule finding.
@@ -543,7 +588,10 @@ class TestsFlextInfraCodemodGate:
         that fails the gate, whatever its native severity.
         """
         project = self._project(
-            tmp_path, installed_dependency_path, session_runtime, severity=severity
+            tmp_path,
+            installed_dependency_path,
+            scanner_python,
+            rule_severities=dict.fromkeys(("first", "second"), severity),
         )
         (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
         reports = tmp_path / "reports"
@@ -585,10 +633,10 @@ class TestsFlextInfraCodemodGate:
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
     ) -> None:
         """A prerequisite finding ends the verb; later gates are not executed."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         (project / "src" / "subject.py").write_text(
             "import os\nsecond(1)\n", encoding="utf-8"
         )
@@ -604,14 +652,15 @@ class TestsFlextInfraCodemodGate:
         tm.fail(results[0].passed)
         tm.that(set(results[0].gates), eq={"lint"})
 
+    @c.Tests.MARK.slow
     def test_invalid_rule_is_a_native_failure(
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_python: Path,
     ) -> None:
         """Test invalid rule is a native failure."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_python)
         rules = (project / c.Infra.CODEMOD_CONFIG_RELPATH).parent / c.Cli.RULES_DIR_NAME
         (rules / "second.yml").write_text(
             "id: contract-second\nlanguage: invalid-language\n"
@@ -639,10 +688,10 @@ class TestsFlextInfraCodemodGate:
         self,
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        scanner_catalog: Path,
     ) -> None:
         """A partial walk remains red even when another file has an error match."""
-        project = self._project(tmp_path, installed_dependency_path, session_runtime)
+        project = self._project(tmp_path, installed_dependency_path, scanner_catalog)
         (project / "src" / "subject.py").write_text("second(1)\n", encoding="utf-8")
         blocked = project / "src" / "unreadable"
         blocked.mkdir()

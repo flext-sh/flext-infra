@@ -271,10 +271,9 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
 
             """
             shape = u.Tests.MakeEnvironmentShape() if shape is None else shape
-            role = c.Infra.MakeProfile(profile.value)
             repository = u.Tests.repository_ref(
                 shape.project_name,
-                role=role,
+                role=profile,
             ).model_copy(
                 update={
                     "editable": True,
@@ -286,10 +285,17 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
                 },
             )
             project_root = tmp_path / profile.value / shape.project_name
-            u.Tests.WorktreeFixture.write_python_project(
+            pyproject = u.Tests.WorktreeFixture.write_python_project(
                 project_root,
                 repository.distribution,
             )
+            if not shape.package:
+                document = tm.ok(u.Cli.toml_read_document(pyproject))
+                uv = u.Cli.toml_ensure_table(
+                    u.Cli.toml_ensure_table(document, "tool"), "uv"
+                )
+                uv["package"] = False
+                tm.ok(u.Cli.toml_write_document(pyproject, document))
             for relative, command in shape.commands:
                 u.Tests.write_promoted_command(project_root / relative, command)
             if shape.version is not None:
@@ -343,7 +349,9 @@ class TestsFlextInfraUtilities(FlextInfraUtilities):
             repository_root = project_root
             workspace = u.Tests.workspace_spec(
                 repository,
-                project=u.Tests.project_spec(shape.project_name),
+                project=u.Tests.project_spec(shape.project_name)
+                if shape.package
+                else None,
             )
             plan = u.Tests.conform_plan(
                 project_root,

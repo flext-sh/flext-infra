@@ -10,6 +10,7 @@ import importlib
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -32,6 +33,122 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+_SCANNER_ENVIRONMENTS = pytest.StashKey[dict[str, Path]]()
+_PACKAGED_ENVIRONMENT = pytest.StashKey[Path]()
+
+
+@pytest.fixture(scope="session")
+def scanner_catalog(request: pytest.FixtureRequest) -> Path:
+    """Return the prepared native catalog for this worker's scanner cases.
+
+    Returns:
+        The relocatable environment containing the current Infra catalog.
+
+    """
+    return request.config.stash[_SCANNER_ENVIRONMENTS][scanner_catalog.__name__]
+
+
+@pytest.fixture(scope="session")
+def scanner_python(request: pytest.FixtureRequest) -> Path:
+    """Return the bare Python seed for local authored rule scenarios.
+
+    Returns:
+        The relocatable environment with no installed catalog.
+
+    """
+    return request.config.stash[_SCANNER_ENVIRONMENTS][scanner_python.__name__]
+
+
+@pytest.fixture(scope="session")
+def packaged_python(request: pytest.FixtureRequest) -> Path:
+    """Return the independently cloneable locked runtime for wheel tests.
+
+    Returns:
+        The physical seed created by this worker.
+
+    """
+    return request.config.stash[_PACKAGED_ENVIRONMENT]
+
+
+def _locked_package_environment(root: Path) -> Path:
+    """Build the package tests' physical template with the owning UV lock.
+
+    Returns:
+        The relocatable installed environment.
+
+    """
+    environment = u.Tests.prepare_scanner_environment(root)
+    resolver = tm.ok(
+        u.Infra.git_repository_root(
+            m.Infra.GitRepoRequest(repo_root=Path(__file__).parent),
+        ),
+    ).repository_root
+    tm.ok(
+        u.Cli.run_checked(
+            (
+                u.Tests.managed_uv(),
+                "sync",
+                "--project",
+                str(resolver),
+                "--frozen",
+                "--offline",
+            ),
+            cwd=root,
+            options=m.Cli.ProcessOptions(
+                env={"UV_PROJECT_ENVIRONMENT": str(environment)},
+            ),
+        )
+    )
+    return environment
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Prepare each selected shared native environment inside the suite clock."""
+    if session.config.getoption("collectonly"):
+        return
+    names = {
+        scanner_catalog.__name__,
+        scanner_python.__name__,
+        packaged_python.__name__,
+    }
+    selected = {
+        name
+        for item in session.items
+        if isinstance(item, pytest.Function)
+        for name in names.intersection(item.fixturenames)
+    }
+    if not selected:
+        return
+    storage = u.Tests.scratch_root(
+        override=session.config.getini(c.Tests.SCRATCH_ROOT_INI) or None,
+    )
+    seeds = TemporaryDirectory(prefix="native-environments-", dir=storage)
+    session.config.add_cleanup(seeds.cleanup)
+    if packaged_python.__name__ in selected:
+        session.config.stash[_PACKAGED_ENVIRONMENT] = _locked_package_environment(
+            Path(seeds.name) / packaged_python.__name__
+        )
+        selected.remove(packaged_python.__name__)
+    if not selected:
+        return
+    environments = {
+        name: u.Tests.prepare_scanner_environment(
+            Path(seeds.name) / name,
+            u.Tests.scanner_catalog_wheel(storage)
+            if name == scanner_catalog.__name__
+            else None,
+        )
+        for name in sorted(selected)
+    }
+    startup = Path(seeds.name) / "startup"
+    startup.mkdir()
+    project = u.Tests.scanner_contract_project(
+        startup, startup / "installed", next(iter(environments.values()))
+    )
+    # Index the shared interpreter's RECORD files before individual tests.
+    with u.Infra.codemod_workspace_snapshot(project):
+        session.config.stash[_SCANNER_ENVIRONMENTS] = environments
 
 
 @pytest.fixture(scope="session")

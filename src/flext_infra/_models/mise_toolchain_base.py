@@ -19,7 +19,7 @@ class FlextInfraModelsMiseToolchainBase:
         model_config = m.ConfigDict(
             strict=False,
             frozen=True,
-            extra="ignore",
+            extra="forbid",
             str_strip_whitespace=False,
         )
 

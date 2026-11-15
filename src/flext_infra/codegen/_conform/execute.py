@@ -393,10 +393,10 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         identities = self._control_identities(selected)
         if identities.failure:
             return result_type.from_failure(identities)
-        seed = self._control_seed(current_target, workspace, inputs)
+        seed = self._plan_existing_control(current_target, workspace, inputs)
         if seed.failure:
             return result_type.from_failure(seed)
-        graph = self._control_graph(root, workspace, inputs, selected, seed.value)
+        graph = self._control_graph(root, workspace, inputs, selected, seed.value.files)
         ordered = u.Cli.dag_order(graph)
         if ordered.failure:
             return result_type.from_failure(ordered)
@@ -404,12 +404,15 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         self.state.provider_plans = tuple(
             m.Infra.CodegenFilePlan.model_validate(file)
             for file in u.Infra.codegen_compose_file_plans(
-                (*(previous or ()), *seed.value), ordered=True
+                (*(previous or ()), *seed.value.files), ordered=True
             )
         )
         try:
             outcomes = tuple(
-                self._control_outcome(
+                seed.value
+                if len(ordered.value) == 1
+                and identities.value[name].name == current_target.repository.name
+                else self._control_outcome(
                     m.Infra.CodegenRepositoryPlanTask.model_validate({
                         "root": (root),
                         "workspace": (workspace),
@@ -468,27 +471,6 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
                 "workspace declares duplicate repository identities"
             )
         return result_type.ok(by_name)
-
-    def _control_seed(
-        self,
-        current_target: p.Infra.RepositoryConformTarget,
-        workspace: p.Infra.WorkspaceSpec,
-        inputs: p.Infra.CodegenInputs,
-    ) -> p.Result[tuple[p.Infra.CodegenFilePlan, ...]]:
-        """Plan the invoking target's existing control files for a sourced workspace.
-
-        Returns:
-            The invoking target's control file plans, empty without a declared
-            FLEXT source, or the original planning failure.
-
-        """
-        result_type = r[tuple[p.Infra.CodegenFilePlan, ...]]
-        if workspace.flext_source is None:
-            return result_type.ok(())
-        initial = self._plan_existing_control(current_target, workspace, inputs)
-        if initial.failure:
-            return result_type.from_failure(initial)
-        return result_type.ok(initial.value.files)
 
     @staticmethod
     def _control_graph(

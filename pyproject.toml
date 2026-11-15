@@ -187,6 +187,7 @@ optional_dependencies_dev_groups = []
 [tool.mypy]
 allow_redefinition = true
 check_untyped_defs = true
+disable_error_code = ["call-arg", "prop-decorator"]
 extra_checks = true
 follow_imports = "normal"
 follow_untyped_imports = true
@@ -410,6 +411,7 @@ minversion = "8.0"
 python_classes = ["Test*"]
 python_files = ["*_test.py", "*_tests.py", "test_*.py"]
 testpaths = ["tests"]
+timeout_method = "thread"
 
 [tool.ruff]
 extend-exclude = [

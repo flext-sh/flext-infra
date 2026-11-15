@@ -141,6 +141,7 @@ class TestsFlextInfraMiseToolchainProof:
         )
 
     @classmethod
+    @c.Tests.MARK.slow
     def test_public_proof_uses_the_owner_under_an_inherited_ceiling(
         cls, tmp_path: Path
     ) -> None:

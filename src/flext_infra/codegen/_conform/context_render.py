@@ -326,7 +326,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                 ),
                 "extra_verbs": (extra_verbs),
                 "script_dispatch": (repository.script_dispatch),
-                "verb_groups": (repository.verb_groups),
             }),
         )
 
@@ -680,6 +679,14 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
                     *packaged_data_paths.files,
                     *packaged_data_paths.directories,
                 )),
+                "wheel_data_sources": (
+                    FlextInfraEnsurePackagingPhase.wheel_data_sources(
+                        packaged_data_paths,
+                        project.package_name,
+                        project.root_packages,
+                        project.repository_namespace_packages,
+                    )
+                ),
                 "project_declaration_resource": (
                     (FlextInfraEnsurePackagingPhase.declaration_resource)(
                         package=repository.package,

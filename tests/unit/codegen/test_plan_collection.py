@@ -68,10 +68,11 @@ class TestsFlextInfraPlanCollection:
 
     def test_public_collector_publishes_configured_plans_and_repeats(
         self,
-        infra_git_repo: Path,
+        tmp_path: Path,
     ) -> None:
         """The public collector publishes plans and repeats without new effects."""
-        root = infra_git_repo
+        root = tmp_path
+        u.Tests.initialize_git_repo(root)
         configuration = self._config()
         configuration_path = root / "collection.yaml"
         self._write(
@@ -269,11 +270,17 @@ class TestsFlextInfraPlanCollection:
         )
         self._write(generated, "# Hand-edited generated output\n")
 
+        with u.Tests.raises(ValueError, match="artifact is missing or changed"):
+            u.Infra.docs_verify_plan_collection(tmp_path, config)
+
         repaired = u.Infra.docs_collect_plan_files(tmp_path, config)
 
         plan = next(item for item in repaired.files if item.path == generated)
         tm.that(plan.desired_content, eq=source.read_bytes())
         tm.ok(u.Infra.codegen_file_requires_effect(plan))
+        self._write(source, "# Different source revision\n")
+        with u.Tests.raises(ValueError, match="provenance or digest differs"):
+            u.Infra.docs_collect_plan_files(tmp_path, config)
 
     def test_disabled_collection_plans_manifest_owned_pruning(
         self,
@@ -394,10 +401,7 @@ class TestsFlextInfraPlanCollection:
         )
         for plan in third.files:
             self._write(plan.path, tm.not_none(plan.desired_content).decode())
-        fourth = u.Infra.docs_collect_plan_files(tmp_path, config)
-        tm.that(fourth.revisions, eq=third.revisions)
-        for plan in fourth.files:
-            tm.fail(u.Infra.codegen_file_requires_effect(plan))
+        self._prove_reobserved_revision(tmp_path, config, first, edited.encode())
 
     @c.Tests.MARK.parametrize(
         ("value", "expected"),
@@ -442,7 +446,7 @@ class TestsFlextInfraPlanCollection:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test projected attachment edit is collected when plan is unchanged."""
+        """Archive an edited projection and preserve it when the source returns."""
         projection = tmp_path / "home" / "plans"
         self._write(projection / "design.md", "# Original\n")
         self._write(projection / "design" / "research.md", "# Research\n")
@@ -472,8 +476,31 @@ class TestsFlextInfraPlanCollection:
         )
         for plan in changed.files:
             self._write(plan.path, tm.not_none(plan.desired_content).decode())
-        stable = u.Infra.docs_collect_plan_files(tmp_path, config)
-        tm.that(stable.revisions, eq=changed.revisions)
+        self._prove_reobserved_revision(tmp_path, config, initial, amendment.encode())
+
+    @classmethod
+    def _prove_reobserved_revision(
+        cls,
+        root: Path,
+        config: p.Infra.PlanCollectionConfig,
+        original: p.Infra.PlanCollectionBundle,
+        edited: bytes,
+    ) -> None:
+        """Select the observed source revision without changing the archived edit."""
+        reobserved = u.Infra.docs_collect_plan_files(root, config)
+        tm.that(reobserved.revisions, eq=original.revisions)
+        tm.ok(
+            any(
+                plan.desired_content == edited
+                and not u.Infra.codegen_file_requires_effect(plan)
+                for plan in reobserved.files
+            )
+        )
+        for plan in reobserved.files:
+            if u.Infra.codegen_file_requires_effect(plan):
+                cls._write(plan.path, tm.not_none(plan.desired_content).decode())
+        stable = u.Infra.docs_collect_plan_files(root, config)
+        tm.that(stable.revisions, eq=original.revisions)
         for plan in stable.files:
             tm.fail(u.Infra.codegen_file_requires_effect(plan))
 

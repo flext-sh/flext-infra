@@ -507,6 +507,11 @@ class FlextInfraProtocolsConfigContexts:
             ...
 
         @property
+        def wheel_data_sources(self) -> Sequence[tuple[str, str]]:
+            """Native wheel prefix mappings for selected data."""
+            ...
+
+        @property
         def project_declaration_resource(
             self,
         ) -> tuple[t.NonEmptyStr, t.NonEmptyStr] | None:

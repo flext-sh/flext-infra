@@ -706,9 +706,9 @@ $(addprefix _activated-,$({{ group }}_ROUTED)): _activated-%:
 endif
 {% endif %}
 {%- endmacro -%}
-{% macro verb_description(verb) %}{{ verb.description | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}{% endmacro -%}
+{% macro help_literal(text) %}{{ text | replace("\n", " ") | trim | replace("$", "$$") | replace("'", "'\"'\"'") }}{% endmacro -%}
 {% for verb in profile.verbs + (extra_verbs | list) %}
-VERB_DESCRIPTION_{{ verb.name }} := {{ verb_description(verb) }}
+VERB_DESCRIPTION_{{ verb.name }} := {{ help_literal(verb.description) }}
 VERB_ARGUMENTS_{{ verb.name }} :={% for argument in verb.arguments %} {{ argument }}{% endfor %}
 {% endfor %}
 VERB_HELP_LINE = printf '  %-16s %s\n' '$(1)' '$(VERB_DESCRIPTION_$(1))'$(if $(strip $(VERB_ARGUMENTS_$(1))),; printf '    Inputs: %s\n' '$(VERB_ARGUMENTS_$(1))')
@@ -790,7 +790,14 @@ endif
 
 _builtin-help:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
+{% if verb_groups %}
+{% for group in verb_groups %}
+	@printf '%s\n' '{{ help_literal(group.title) }}:'
+	@$(foreach verb,{% for verb in profile.verbs + (extra_verbs | list) if (verb.group or make.common_verb_group) == group.name %}{{ verb.name }} {% endfor %},$(call VERB_HELP_LINE,$(verb));)
+{% endfor %}
+{% else %}
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
+{% endif %}
 
 # A project owns the sources declared by its manifest. Generated setup
 # initializes only uninitialized governed gitlinks and never touches an

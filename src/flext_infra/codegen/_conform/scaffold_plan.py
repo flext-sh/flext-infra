@@ -156,58 +156,10 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
                 f"scaffold workspace has no project metadata: {workspace.name}",
             )
         root = target.root
-        required_data_destinations = frozenset(
-            entry.destination
-            for entry in codegen.templates.entries
-            if any(
-                Path(entry.destination).is_relative_to(Path(path))
-                for path in project.packaged_data_paths
-            )
+        scaffold_entries = self._elected_scaffold_entries(
+            target, workspace, project, codegen, contract
         )
-        selected_destinations = (
-            None
-            if contract.destinations is None
-            else codegen.templates.artifact_closure(contract.destinations)
-        )
-        # New and existing repositories share the exact same
-        # root-scoped modernizer pipeline, so first generation is a fixed point.
-        # A declared subproject consumes the workspace root
-        # tooling profile even before the atomic scaffold creates files on disk.
-        scaffold_entries = tuple(
-            (
-                entry,
-                entry.destination.format(
-                    package_name=project.package_name,
-                    ns=project.namespace,
-                    **u.Infra.runtime_module_names(
-                        project_name=target.repository.distribution,
-                        codegen=codegen,
-                    ),
-                ),
-            )
-            for entry in codegen.templates.entries
-            if entry.source is not None
-            and target.make_profile in entry.profiles
-            and u.Infra.codegen_bootstrap_provider_available(entry, workspace)
-            and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
-            and (
-                contract.delegates
-                or entry.destination == c.PYPROJECT_FILENAME
-                or entry.destination in required_data_destinations
-                or (
-                    selected_destinations is not None
-                    and entry.destination in selected_destinations
-                )
-            )
-            and (not entry.requires_release_protocol or target.publishes_release)
-            and (not entry.requires_beads or workspace.beads is not None)
-            and (not entry.requires_package or target.repository.package)
-            and (
-                selected_destinations is None
-                or entry.destination in selected_destinations
-                or entry.destination in required_data_destinations
-            )
-        )
+        # The first scaffold and later conformance use the same modernizer.
         modernizer = dependency_services.FlextInfraPyprojectModernizer(
             repository_root=root,
             skip_check=True,

@@ -104,6 +104,52 @@ class FlextInfraEnsurePackagingPhase:
             raise ValueError(msg)
 
     @staticmethod
+    def wheel_data_sources(
+        data: p.Infra.PackagedDataSelection,
+        package_name: str | None,
+        root_packages: Sequence[str],
+        namespaces: Sequence[str],
+    ) -> tuple[tuple[str, str], ...]:
+        """Map selected data through native Hatch directory prefixes.
+
+        Exact file selection remains in `only-include`. Do not widen a
+        rewrite to the repository root or shadow another declared source.
+
+        Returns:
+            The ordered source and installed directory mappings.
+
+        """
+        if package_name is None:
+            return ()
+        protected = tuple(
+            Path(path)
+            for path in (
+                *(
+                    f"{c.Infra.DEFAULT_SRC_DIR}/{name}"
+                    for name in (package_name, *root_packages)
+                ),
+                *namespaces,
+            )
+        )
+        sources = [
+            (
+                file
+                if not parent.parts
+                or any(
+                    parent.is_relative_to(path) or path.is_relative_to(parent)
+                    for path in protected
+                )
+                else parent.as_posix()
+            )
+            for file in data.files
+            for parent in (Path(file).parent,)
+        ]
+        return tuple(
+            (source, f"{package_name}/{source}")
+            for source in dict.fromkeys((*sources, *data.directories))
+        )
+
+    @staticmethod
     def resolve_data_paths(
         project_dir: Path,
         package_name: str,
@@ -349,9 +395,11 @@ class FlextInfraEnsurePackagingPhase:
                                 (package_name, *root_packages),
                                 strict=True,
                             ),
-                            *(
-                                (data_path, f"{package_name}/{data_path}")
-                                for data_path in data_paths
+                            *FlextInfraEnsurePackagingPhase.wheel_data_sources(
+                                data,
+                                package_name,
+                                root_packages,
+                                repository_namespace_packages,
                             ),
                             *(
                                 (namespace, namespace)

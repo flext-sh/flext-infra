@@ -576,8 +576,6 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             projection,
             states,
         )
-        if manifest.revisions:
-            cls._verify_collection_revisions(canonical, manifest, states)
         state = cls._CollectionState(
             canonical,
             projection,
@@ -586,9 +584,11 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             states=states,
         )
         if not configuration.enabled:
+            cls._verify_collection_revisions(canonical, manifest, states)
             return cls._disabled_collection_bundle(root, state)
         state.absorb_owned_artifacts()
         cls._collect_all_sources(root, configuration, state, excluded_outputs)
+        cls._verify_collection_revisions(canonical, manifest, states, repair=state)
         width = cls._collection_markdown_width(root, states)
         for path in sorted({canonical / item.canonical_path for item in state.history}):
             state.desired[path] = (
@@ -813,8 +813,13 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         canonical: Path,
         manifest: p.Infra.PlanCollectionManifest,
         states: MutableMapping[Path, p.Cli.AtomicFileState],
+        *,
+        repair: _CollectionState | None = None,
     ) -> None:
         """Compare immutable provenance and incoming digests with their published owner.
+
+        Collection can supply an identical revision hash recomputed from its
+        sources. The planned repair must still pass each original artifact digest.
 
         Raises:
             ValueError: If revision evidence is absent, duplicated or changed.
@@ -824,6 +829,10 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
         if len(set(identities)) != len(identities):
             msg = "published collection revision identities are duplicated"
             raise ValueError(msg)
+        owned = {
+            canonical / artifact.relative_path: artifact.digest
+            for artifact in manifest.artifacts
+        }
         for revision in manifest.revisions:
             incoming = canonical / cls._validated_owned_path(
                 revision.canonical_path.with_suffix("") / "incoming" / revision.digest,
@@ -859,15 +868,27 @@ class FlextInfraUtilitiesDocsCollection(FlextInfraUtilitiesDocsCollectionSources
             provenance = m.Infra.PlanCollectionRevision.model_validate_json(
                 provenance_content,
             )
-            if (
-                provenance != revision
-                or cls.collection_revision_digest(
+            if provenance != revision or (
+                cls.collection_revision_digest(
                     tuple(
                         (name, states[path])
                         for name, path in zip(names, paths, strict=True)
                     ),
                 )
                 != revision.digest
+                and not (
+                    repair is not None
+                    and repair.current_revisions.get((
+                        revision.source_id,
+                        revision.source_path,
+                    ))
+                    == revision
+                    and all(
+                        path in repair.desired
+                        and sha256(repair.desired[path]).hexdigest() == owned.get(path)
+                        for path in paths
+                    )
+                )
             ):
                 msg = (
                     "published collection revision provenance or digest differs: "

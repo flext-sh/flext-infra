@@ -168,9 +168,7 @@ def infra_test_workspace(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def infra_git_repo(
-    infra_test_workspace: Path, session_runtime: p.Tests.SessionRuntime
-) -> Path:
+def infra_git_checkout(infra_test_workspace: Path) -> Path:
     """Provide a provider-governed clone whose upstream is a local bare repo.
 
     Conformance reads this repository twice and both reads must agree. Detection
@@ -226,16 +224,29 @@ def infra_git_repo(
             ),
         ),
     )
+    return repo
+
+
+@pytest.fixture
+def infra_git_repo(
+    infra_git_checkout: Path, session_runtime: p.Tests.SessionRuntime
+) -> Path:
+    """Provide the governed checkout with its real Python dependency closure.
+
+    Returns:
+        The provisioned checkout root.
+
+    """
     tm.ok(
         u.Tests.create_python_environment(
-            repo,
+            infra_git_checkout,
             dependency_projects=u.Tests.python_dependency_projects(
                 tm.not_none(u.Infra.project_root(Path(__file__)))
             ),
             session_runtime=session_runtime,
         )
     )
-    return repo
+    return infra_git_checkout
 
 
 @pytest.fixture

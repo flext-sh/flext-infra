@@ -469,6 +469,10 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
                 description="Validated relative data paths shipped in distributions",
             ),
         ]
+        wheel_data_sources: Annotated[
+            Sequence[tuple[str, str]],
+            m.Field(description="Native wheel prefix mappings for selected data"),
+        ]
         project_declaration_resource: Annotated[
             tuple[t.NonEmptyStr, t.NonEmptyStr] | None,
             m.Field(

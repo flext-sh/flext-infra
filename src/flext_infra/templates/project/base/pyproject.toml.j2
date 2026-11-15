@@ -131,8 +131,8 @@ path = {{ hatch_build_hook_path | tojson }}
 {% for package in root_packages %}
 {{ ("src/" ~ package) | tojson }} = {{ package | tojson }}
 {% endfor %}
-{% for data_path in packaged_data_paths %}
-{{ data_path | tojson }} = {{ (package_name ~ "/" ~ data_path) | tojson }}
+{% for source, destination in wheel_data_sources %}
+{{ source | tojson }} = {{ destination | tojson }}
 {% endfor %}
 {% for namespace in repository_namespace_packages %}
 {{ namespace | tojson }} = {{ namespace | tojson }}

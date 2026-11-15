@@ -16,7 +16,7 @@ from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
+from flext_infra import config, u, validate
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
@@ -222,6 +222,7 @@ class TestsFlextInfraUtilitiesToolingFixture:
             )
 
     @staticmethod
+    @cache
     def managed_uv() -> str:
         """Resolve the checkout's Mise-managed UV executable, never a PATH shim.
 
@@ -262,16 +263,17 @@ class TestsFlextInfraUtilitiesToolingFixture:
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        targets = tm.ok(
+            u.Infra.repository_operation_targets(
+                source_root, c.Infra.CodegenConformScope.ALL
+            ),
         )
         return {
-            repository.distribution: (
-                checkout
-                if (source_root / repository.path).resolve() == primary
-                else source_root / repository.path
+            tm.ok(u.Infra.read_project_metadata_result(target.root)).project.name: (
+                checkout if target.root.resolve() == primary else target.root
             )
-            for repository in (specification.repository, *specification.subprojects)
+            for target in targets
+            if target.managed is not False
         }
 
     @classmethod
@@ -291,10 +293,12 @@ class TestsFlextInfraUtilitiesToolingFixture:
             ValueError: When a ``flext-`` dependency has no workspace source owner.
 
         """
-        projects = cls.workspace_source_projects()
         metadata = tm.ok(u.Infra.read_project_metadata_result(root))
         selected: t.MutableMappingKV[str, Path] = {}
         pending = list(metadata.project.dependencies)
+        if not pending:
+            return ()
+        projects = cls.workspace_source_projects()
         while pending:
             requirement = pending.pop()
             name = u.Infra.dep_name(requirement)
@@ -402,6 +406,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
     def create_python_environment(
         root: Path,
         *,
+        runtime_root: Path | None = None,
+        relocatable: bool = False,
         dependency_projects: Sequence[Path] = (),
         session_runtime: p.Tests.SessionRuntime | None = None,
     ) -> p.Result[bool]:
@@ -414,11 +420,17 @@ class TestsFlextInfraUtilitiesToolingFixture:
         binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
         if binary.failure:
             return r[bool].from_failure(binary)
-        environment = u.Infra.runtime_environment_dir(root)
+        environment = u.Infra.runtime_environment_dir(root, runtime_root=runtime_root)
         environment.parent.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesToolingFixture.managed_uv()
         created = u.Cli.run_checked(
-            [str(binary.value), "venv", "--python", sys.executable, str(environment)],
+            (
+                str(binary.value),
+                "venv",
+                *(("--relocatable",) if relocatable else ()),
+                "--python",
+                sys.executable,
+                str(environment),
+            ),
             cwd=root,
         )
         if created.failure or not dependency_projects:
@@ -489,6 +501,68 @@ class TestsFlextInfraUtilitiesToolingFixture:
         )
 
     @classmethod
+    @cache
+    def scan_provider_projects(cls) -> tuple[Path, ...]:
+        """Resolve the current checkout's fixed scanner dependencies once.
+
+        Returns:
+            The scanner source checkout and its local dependency owners.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        return tuple(
+            dict.fromkeys((checkout, *cls.python_dependency_projects(checkout)))
+        )
+
+    @classmethod
+    def scanner_catalog_wheel(cls, storage: Path) -> Path:
+        """Prepare the real provider wheel through the shared fixture store.
+
+        Returns:
+            The current checkout's wheel carrying the universal catalog.
+
+        """
+        checkout = Path(__file__).resolve().parents[1]
+        (wheel,) = tm.ok(cls.python_dependency_wheels(storage, (checkout,)))
+        return wheel
+
+    @classmethod
+    def prepare_scanner_environment(
+        cls, root: Path, catalog_wheel: Path | None = None
+    ) -> Path:
+        """Prepare a relocatable Python template before scanner item timers.
+
+        The scanner reads declared distributions and catalog files in the
+        target. These cases do not execute the provider or its dependencies.
+
+        Returns:
+            The physical environment to copy into each isolated checkout.
+
+        """
+        tm.ok(cls.create_python_environment(root, runtime_root=root, relocatable=True))
+        environment = u.Infra.runtime_environment_dir(root, runtime_root=root)
+        if catalog_wheel is not None:
+            private_wheel = shutil.copy2(catalog_wheel, root)
+            tm.ok(
+                u.Cli.run_checked(
+                    (
+                        cls.managed_uv(),
+                        "pip",
+                        "install",
+                        "--no-deps",
+                        "--offline",
+                        "--python",
+                        str(environment),
+                        "--link-mode",
+                        config.Infra.codegen.toolchain.uv_link_mode,
+                        str(private_wheel),
+                    ),
+                    cwd=root,
+                )
+            )
+        return environment
+
+    @classmethod
     def provision_scan_workspace(
         cls,
         root: Path,
@@ -508,11 +582,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The installation result or the original environment failure.
 
         """
-        checkout = Path(__file__).resolve().parents[1]
         dependency_projects = tuple(
             dict.fromkeys((
-                checkout,
-                *cls.python_dependency_projects(checkout),
+                *cls.scan_provider_projects(),
                 *cls.python_dependency_projects(root),
             ))
         )

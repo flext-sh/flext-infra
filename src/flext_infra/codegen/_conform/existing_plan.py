@@ -1045,8 +1045,28 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         managed = u.Infra.snapshot_project_managed_artifacts(root)
         if managed.failure:
             return result_type.from_failure(managed)
+        planned_data_files = (
+            tuple(
+                destination
+                for _, destination in self._elected_scaffold_entries(
+                    target,
+                    workspace,
+                    project,
+                    codegen,
+                    self.surface_contract(
+                        c.Infra.CodegenConformSurface.ALL, codegen=codegen
+                    ),
+                )
+            )
+            if project.packaged_data_paths
+            else ()
+        )
         tooling = self._scaffold_control_tooling(
-            target, project, codegen, managed.value
+            target,
+            project,
+            codegen,
+            managed.value,
+            planned_data_files=planned_data_files,
         )
         if tooling.failure:
             return result_type.from_failure(tooling)
@@ -1058,8 +1078,6 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             managed_artifacts=managed.value,
         )
         metadata = self._scaffold_metadata_plan(
-            target,
-            codegen,
             render_inputs,
             (
                 absent.value,
@@ -1067,6 +1085,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 *inputs.sources,
                 *tooling.value.sources,
             ),
+            planned_data_files=planned_data_files,
         )
         if metadata.failure:
             return result_type.from_failure(metadata)
@@ -1076,10 +1095,10 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
 
     def _scaffold_metadata_plan(
         self,
-        target: p.Infra.RepositoryConformTarget,
-        codegen: p.Infra.CodegenConfigSpec,
         render_inputs: p.Infra.CodegenRenderInputs,
         observed: tuple[p.Cli.AtomicFileState, ...],
+        *,
+        planned_data_files: tuple[str, ...],
     ) -> p.Result[p.Infra.CodegenFilePlan]:
         """Render the scaffold project metadata through its bootstrap binding.
 
@@ -1087,11 +1106,17 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             The rendered metadata file plan, or the binding or render failure.
 
         """
+        target = render_inputs.target
         binding = self._bootstrap_template_binding(
-            target, codegen, c.PYPROJECT_FILENAME
+            target, render_inputs.codegen, c.PYPROJECT_FILENAME
         )
         if binding.failure:
             return r[p.Infra.CodegenFilePlan].from_failure(binding)
+        context = self._project_render_context(
+            render_inputs, planned_data_files=planned_data_files
+        )
+        if context.failure:
+            return r[p.Infra.CodegenFilePlan].from_failure(context)
         entry, managed = binding.value
         return self._rendered_managed_plan(
             render_inputs,
@@ -1100,7 +1125,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                 "entry": (entry),
                 "destination": (entry.destination),
                 "failure_prefix": (""),
-                "project_context": (None),
+                "project_context": (context.value),
             }),
             target.root / c.PYPROJECT_FILENAME,
             inputs=observed,
@@ -1124,12 +1149,77 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             )
         return absent
 
+    @staticmethod
+    def _elected_scaffold_entries(
+        target: p.Infra.RepositoryConformTarget,
+        workspace: p.Infra.WorkspaceSpec,
+        project: p.Infra.ProjectSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        contract: p.Infra.CodegenConformSurfaceContract,
+    ) -> tuple[tuple[p.Infra.TemplateEntrySpec, str], ...]:
+        """Elect the same artifact destinations for bootstrap and publication.
+
+        Returns:
+            Each enabled template and its concrete repository-relative path.
+
+        """
+        required_data_destinations = frozenset(
+            entry.destination
+            for entry in codegen.templates.entries
+            if any(
+                Path(entry.destination).is_relative_to(Path(path))
+                for path in project.packaged_data_paths
+            )
+        )
+        selected_destinations = (
+            None
+            if contract.destinations is None
+            else codegen.templates.artifact_closure(contract.destinations)
+        )
+        runtime_modules = u.Infra.runtime_module_names(
+            project_name=target.repository.distribution, codegen=codegen
+        )
+        return tuple(
+            (
+                entry,
+                entry.destination.format(
+                    package_name=project.package_name,
+                    ns=project.namespace,
+                    **runtime_modules,
+                ),
+            )
+            for entry in codegen.templates.entries
+            if entry.source is not None
+            and target.make_profile in entry.profiles
+            and u.Infra.codegen_bootstrap_provider_available(entry, workspace)
+            and (entry.destination != c.PYPROJECT_FILENAME or contract.pyproject)
+            and (
+                contract.delegates
+                or entry.destination == c.PYPROJECT_FILENAME
+                or entry.destination in required_data_destinations
+                or (
+                    selected_destinations is not None
+                    and entry.destination in selected_destinations
+                )
+            )
+            and (not entry.requires_release_protocol or target.publishes_release)
+            and (not entry.requires_beads or workspace.beads is not None)
+            and (not entry.requires_package or target.repository.package)
+            and (
+                selected_destinations is None
+                or entry.destination in selected_destinations
+                or entry.destination in required_data_destinations
+            )
+        )
+
     def _scaffold_control_tooling(
         self,
         target: p.Infra.RepositoryConformTarget,
         project: p.Infra.ProjectSpec,
         codegen: p.Infra.CodegenConfigSpec,
         managed: p.Infra.ProjectManagedArtifactsSnapshot,
+        *,
+        planned_data_files: tuple[str, ...],
     ) -> p.Result[p.Infra.ToolingRuntimeContext]:
         """Resolve the scaffold tooling context without deriving a runtime.
 
@@ -1159,6 +1249,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
                     root_packages=project.root_packages,
                     repository_namespace_packages=project.repository_namespace_packages,
                     packaged_data_paths=project.packaged_data_paths,
+                    planned_data_files=planned_data_files,
                     declared_python_dirs=tuple(
                         self._scaffold_python_dirs(
                             codegen.templates.entries,
