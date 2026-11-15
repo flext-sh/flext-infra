@@ -64,15 +64,15 @@ snapshots:
     labels:
     - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
       style: primary
-      start: 18
-      end: 74
+      start: 16
+      end: 72
     - source: |-
         class Base:
             model_config = FlextModelsPydantic.ConfigDict(frozen=True)
       style: secondary
       start: 0
-      end: 74
+      end: 72
     - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
       style: secondary
-      start: 18
-      end: 74
+      start: 16
+      end: 72
