@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from flext_infra import FlextInfraCli, config, m
@@ -26,33 +25,24 @@ class TestsFlextInfraMakeGenRootContract:
         monkeypatch.delenv(c.Infra.GATE_ADMISSION_TICKET_ENV, raising=False)
         monkeypatch.delenv("RUNTIME_ROOT", raising=False)
         outer = tmp_path / "caller"
-        outer.mkdir()
-        u.Tests.initialize_git_repo(outer)
         target = outer / "nested"
-        target.mkdir()
-        u.Tests.initialize_git_repo(target)
+        target.mkdir(parents=True)
+        for repository in (outer, target):
+            u.Tests.git_bootstrap(repository, ("init", "-b", c.Infra.GIT_MAIN))
         (target / "pyproject.toml").write_text(
             '[project]\nname = "nested"\nversion = "0.0.1"\n', encoding="utf-8"
         )
         if provisioned:
-            creation = tm.ok(
-                u.Cli.run_raw((
-                    sys.executable,
-                    "-m",
-                    "venv",
-                    "--without-pip",
-                    str(target / ".venv"),
-                ))
-            )
-            tm.that(u.Cli.process_succeeded(creation.outcome), eq=True)
+            tm.that(u.Tests.provision_runtime_environment(target).is_file(), eq=True)
         generated = next(
             route
             for route in FlextInfraCli.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
             if route.name == "generate"
         )
+        target_environment = target / c.Infra.ENVIRONMENT_DIRECTORY
         tm.fail(
             generated.handler(m.Infra.CodegenGenerateRequest(root=target)),
-            has="not the target Python environment",
+            has=f"not the target Python environment {target_environment}",
         )
         tm.that(u.Infra.gate_admission_root().exists(), eq=False)
 

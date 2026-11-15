@@ -455,6 +455,7 @@ install_lazy_exports(
             "demo_project",
             "src_package",
             "namespace_workspace",
+            "seed_workspace_root",
             "write_standalone_workspace_manifest",
             "declared_requirements",
             "standalone_workspace",
