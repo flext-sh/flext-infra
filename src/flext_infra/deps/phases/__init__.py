@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from flext_infra.deps.phases.ensure_pyrefly import (
         FlextInfraEnsurePyreflyConfigPhase,
     )
+    from flext_infra.deps.phases.ensure_pyright import (
+        FlextInfraEnsurePyrightConfigPhase,
+    )
     from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
     from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
     from flext_infra.deps.phases.tool_tables import FlextInfraToolTablesPhase
@@ -28,6 +31,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraConsolidateGroupsPhase",
     "FlextInfraEnsurePackagingPhase",
     "FlextInfraEnsurePyreflyConfigPhase",
+    "FlextInfraEnsurePyrightConfigPhase",
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraToolTablesPhase",
@@ -40,6 +44,7 @@ install_lazy_exports(
         "FlextInfraConsolidateGroupsPhase": ".consolidate_groups",
         "FlextInfraEnsurePackagingPhase": ".ensure_packaging",
         "FlextInfraEnsurePyreflyConfigPhase": ".ensure_pyrefly",
+        "FlextInfraEnsurePyrightConfigPhase": ".ensure_pyright",
         "FlextInfraEnsureRuffConfigPhase": ".ensure_ruff",
         "FlextInfraInjectCommentsPhase": ".inject_comments",
         "FlextInfraToolTablesPhase": ".tool_tables",

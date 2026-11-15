@@ -2203,6 +2203,9 @@ class FlextInfraUtilitiesFacadeComponents:
     ) -> dict[str, str]:
         """Publish the PEP 695 generic member classes a namespace inherits.
 
+        Mypy and Pyright are discouraged and are not run by any Make verb,
+        gate, CI job or dependency; this publication is kept only as a
+        compatibility exception for their configuration.
         mypy binds ``C.attr`` only from C's own names (python/mypy#22457), so
         an inherited generic member class is not subscriptable through the
         namespace; ``Name: TypeAlias = Part.Name`` keeps the class itself and

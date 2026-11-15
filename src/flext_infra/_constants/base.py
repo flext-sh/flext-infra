@@ -87,11 +87,17 @@ class FlextInfraConstantsBase(
     "Entries kept by the per-directory ownership memo cache of a workspace scan."
     PYREFLY: ClassVar[str] = "pyrefly"
     "Pyrefly tool section key."
+    MYPY: ClassVar[str] = "mypy"
+    "Mypy tool section key."
+    PYRIGHT: ClassVar[str] = "pyright"
+    "Pyright tool section key."
     DIAGNOSTIC_LEVELS: ClassVar[Mapping[str, frozenset[str]]] = MappingProxyType({
+        PYRIGHT: frozenset({"none", "information", "warning", "error"}),
         PYREFLY: frozenset({"ignore", "info", "warn", "error"}),
     })
     "Native diagnostic levels each type checker accepts for one rule."
     DIAGNOSTIC_RULE_PATTERNS: ClassVar[Mapping[str, str]] = MappingProxyType({
+        PYRIGHT: r"^report[A-Z][A-Za-z]*$",
         PYREFLY: r"^[a-z]+(?:-[a-z]+)*$",
     })
     "Native rule-name grammar of each type checker."
@@ -121,6 +127,10 @@ class FlextInfraConstantsBase(
     "Pyrefly sub-config glob key naming the files the entry governs."
     SUB_CONFIG_ERRORS: ClassVar[str] = "errors"
     "Pyrefly sub-config error-severity table key."
+    EXTRA_PATHS: ClassVar[str] = "extraPaths"
+    "Pyright extra paths settings key."
+    REPORT_PRIVATE_USAGE: ClassVar[str] = "reportPrivateUsage"
+    "Pyright execution-environment private-usage settings key."
     VENV_DIR: ClassVar[str] = ".venv"
     "Runtime virtual environment directory name owned by the workspace."
     PYTHON_VERSION_HYPHEN: ClassVar[str] = "python-version"
@@ -131,6 +141,8 @@ class FlextInfraConstantsBase(
     "Taplo workspace formatting configuration filename."
     TAPLO_MISE_TOOL_NAME: ClassVar[str] = "taplo"
     "Mise selector key whose locked release formats managed TOML."
+    PYTHON_VERSION_UNDERSCORE: ClassVar[str] = "python_version"
+    "Mypy python_version settings key (underscored)."
     EXTEND: ClassVar[str] = "extend"
     "Ruff extend settings key."
     KNOWN_FIRST_PARTY_HYPHEN: ClassVar[str] = "known-first-party"

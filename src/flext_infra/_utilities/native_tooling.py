@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import glob
 import sysconfig
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -34,10 +35,17 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         pending: list[tuple[str, t.JsonValue]] = [
             (key, value) for pairs in document.settings.values() for key, value in pairs
         ]
+        pending.extend(
+            (key, value)
+            for override in document.tools.mypy.overrides
+            for key, value in override.settings
+        )
+        pyright = document.tools.pyright.path_rules
         pyrefly = document.tools.pyrefly.path_rules
         pending.extend(
             ("search-path", path)
             for path in (
+                *pyright.test_like_dirs,
                 pyrefly.source_dir,
                 pyrefly.project_root,
                 *pyrefly.env_dirs,
@@ -195,6 +203,22 @@ class FlextInfraUtilitiesNativeTooling(FlextInfraUtilitiesBase):
         """
         return FlextInfraUtilitiesNativeTooling.native_tool_setting(
             document, table, key, TypeForm(Sequence[str])
+        )
+
+    @staticmethod
+    def native_exclude_regex(globs: Sequence[str]) -> str:
+        """Translate exclusion globs into one regex for regex-only tools.
+
+        Mypy's ``exclude`` takes a single regular expression; the stdlib
+        translation of the same globs every analyzer excludes keeps one owner.
+
+        Returns:
+            The alternation of every translated glob.
+
+        """
+        return "|".join(
+            glob.translate(pattern, recursive=True, include_hidden=True)
+            for pattern in globs
         )
 
 

@@ -67,11 +67,14 @@ class FlextInfraExtraPathsManager(
             Path(path).parts[0] for path in self.analysis_exclusions if Path(path).parts
         )
 
-    def _search_path_set(self, *, project_dir: Path) -> t.Infra.StrSet:
+    def _search_path_set(
+        self, *, project_dir: Path, include_generated_roots: bool = True
+    ) -> t.Infra.StrSet:
         """Return the unordered shared search roots, minus the ordered ones.
 
-        A shared root counts when it exists on disk or when the active codegen
-        plan is about to materialize it.
+        A shared root counts when it exists on disk or, with
+        ``include_generated_roots``, when the active codegen plan is about to
+        materialize it.
 
         Returns:
             The unordered shared search roots, minus the ordered ones.
@@ -82,11 +85,29 @@ class FlextInfraExtraPathsManager(
             relative_path
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
-            or relative_path in self.generated_python_roots
+            or (
+                include_generated_roots and relative_path in self.generated_python_roots
+            )
         }
         paths.discard(rules.source_dir)
         paths.discard(rules.project_root)
         return paths
+
+    @staticmethod
+    def pyright_extra_paths() -> Sequence[str]:
+        """Compute the projected Pyright extra paths of a project.
+
+        Returns:
+            The source import root first, then the project root.
+
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        source_root = rules.source_dir
+        # The source import root stays first, matching the declared scaffold
+        # roots and the Pyrefly search-path order, so conformance converges.
+        paths: t.Infra.StrSet = {rules.project_root, source_root}
+        paths.discard(source_root)
+        return (source_root, *sorted(paths))
 
     def pyrefly_search_paths(
         self,
@@ -127,6 +148,36 @@ class FlextInfraExtraPathsManager(
         if has_source_root:
             ordered.insert(0, source_root)
         return tuple(ordered)
+
+    def mypy_search_paths(self, *, project_dir: Path) -> Sequence[str]:
+        """Compute the projected Mypy search paths: no project root by default.
+
+        Mypy enumerates every search-path root as a package root, so a root
+        that re-spells a module another root already provides reports the same
+        file under two module names. The source root and the shared roots on
+        disk are projected; the project root joins only for a declared
+        repository namespace.
+
+        Returns:
+            The resulting ``Sequence[str]``.
+
+        """
+        source_root = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+        paths = self._search_path_set(
+            project_dir=project_dir, include_generated_roots=False
+        )
+        elected = (
+            (source_root, *sorted(paths))
+            if (project_dir / source_root).is_dir()
+            else tuple(sorted(paths))
+        )
+        # A declared repository namespace (PEP 420, no __init__.py) is named
+        # from the project root, the one base that re-spells no other root.
+        return (
+            (*elected, ".")
+            if u.Infra.repository_namespace_packages(project_dir) and "." not in elected
+            else elected
+        )
 
     def _included_pyrefly_env_dirs(self, *, project_dir: Path) -> Sequence[str]:
         """Return the declared env dirs whose Python sources pyrefly analyzes.

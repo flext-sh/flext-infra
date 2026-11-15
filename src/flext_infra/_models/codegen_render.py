@@ -611,6 +611,9 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
                 "Authored class body source, retaining declaration order and trivia."
             ),
         )
+        # Mypy and Pyright are discouraged and are not run by any Make verb,
+        # gate, CI job or dependency; this publication is kept only as a
+        # compatibility exception for their configuration.
         publications: Mapping[str, str] = m.Field(
             default_factory=dict[str, str],
             description=(

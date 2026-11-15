@@ -362,6 +362,8 @@ install_lazy_exports(
             "DiagnosticRuleChange",
             "RuffLintConfig",
             "RuffConfig",
+            "MypyOverrideConfig",
+            "MypyConfig",
         ),
         "FlextInfraModelsDepsToolConfigProject": (
             "ProjectManagedArtifactsFragment",
@@ -373,6 +375,7 @@ install_lazy_exports(
         ),
         "FlextInfraModelsDepsToolConfigTypeCheckers": (
             "DiagnosticPathException",
+            "PyrightConfig",
             "PyreflyConfig",
         ),
         "FlextInfraModelsDocs": (

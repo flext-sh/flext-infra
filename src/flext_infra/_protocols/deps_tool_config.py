@@ -225,6 +225,18 @@ class FlextInfraProtocolsDepsToolConfig:
             ...
 
         @property
+        def mypy(self) -> FlextInfraProtocolsDepsToolConfigLinters.MypyConfig:
+            """Mypy settings."""
+            ...
+
+        @property
+        def pyright(
+            self,
+        ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyrightConfig:
+            """Pyright settings."""
+            ...
+
+        @property
         def pyrefly(
             self,
         ) -> FlextInfraProtocolsDepsToolConfigTypeCheckers.PyreflyConfig:

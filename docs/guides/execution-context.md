@@ -123,7 +123,9 @@ declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
 `Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+(python/mypy#22457; global axiom in `config/tooling.yaml`). Mypy and Pyright
+are discouraged and are not run by any Make verb, gate, CI job or dependency;
+their configuration is projected only as a compatibility exception. It is emitted
 under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
 through MRO and importing the facade loads no part (ADR-018, every facade part
 is deferred). That publication retires when the member stops being generic or
@@ -4109,8 +4111,8 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-The retired `check-pyright` and `mod-types` Make subverbs, including their former
-member-Makefile dispatch examples, are historical interfaces. Use the active
+The retired `mod-types` Make subverb, including its former member-Makefile
+dispatch examples, is a historical interface. Use the active
 root's selector-free `make check` for declared Pyrefly validation and native
 reports, and `make mod` for the existing semantic transformation pipeline.
 Missing declared coverage is repaired at those owners, never by reviving a

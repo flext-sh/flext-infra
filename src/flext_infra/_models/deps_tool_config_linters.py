@@ -1,4 +1,4 @@
-"""Ruff and diagnostic-authorization models for the deps subpackage.
+"""Ruff, Mypy and diagnostic-authorization models for the deps subpackage.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date
 from typing import Annotated, Self
 
@@ -183,6 +183,46 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
         lint: FlextInfraModelsDepsToolConfigLinters.RuffLintConfig = m.Field(
             description="Ruff lint configuration",
         )
+
+    class MypyOverrideConfig(m.ArbitraryTypesModel):
+        """Single [[tool.mypy.overrides]] entry."""
+
+        modules: Annotated[
+            Sequence[str],
+            m.Field(description="Module patterns for this override."),
+        ]
+        settings: Annotated[
+            t.Infra.SettingsPairs,
+            m.Field(description="Native override options as ordered key/value pairs."),
+        ] = ()
+        justification: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "Required citation (GitHub issue / PEP / mypy docs) justifying "
+                    "this override. AGENTS.md:319 forbids suppressions without "
+                    "evidence; leave empty only for strictly transitional overrides "
+                    "with a TODO in the module comment."
+                ),
+            ),
+        ] = ""
+
+    class MypyConfig(m.ArbitraryTypesModel):
+        """Ownership policy for the projected native Mypy options."""
+
+        ruling_disable_error_codes: tuple[t.NonEmptyStr, ...] = m.Field(
+            (),
+            alias="ruling-disable-error-codes",
+            strict=False,
+            description="Operator-authorized suspended diagnostics.",
+        )
+        overrides: Annotated[
+            tuple[
+                FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig,
+                ...,
+            ],
+            m.Field(description="Module scopes and justified native option pairs."),
+        ] = ()
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolConfigLinters"]

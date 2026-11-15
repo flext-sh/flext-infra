@@ -640,6 +640,9 @@ Infra:
       # ruff UP040 does. Justification and retirement condition at
       # tools.ruff.lint.ruling-disabled-rules in tooling.yaml; retire this
       # entry together with those four when mypy resolves #22457.
+      # Mypy and Pyright are discouraged and are not run by any Make verb,
+      # gate, CI job or dependency; this exclusion is kept only as a
+      # compatibility exception for their configuration.
       - rule_key: python:S6794
         resource_key: "**/*.py"
         reason: >-
@@ -1048,7 +1051,6 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
@@ -1150,7 +1152,6 @@ Infra:
       - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
       - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
       - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
-      - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
       - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
       - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
       - docs/standards/consumption-law.md
@@ -1941,7 +1942,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"
@@ -2418,8 +2418,9 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            # Retired analyzers (operator order 2026-11-13, ag-6w7a): owned and
-            # never rendered, so the overlay deletes these live tables.
+            # Mypy and Pyright are discouraged and are not run by any Make
+            # verb, gate, CI job or dependency; their tables are owned and
+            # projected only as a compatibility exception.
             - tool.mypy
             - tool.pyright
             - tool.pydantic-mypy

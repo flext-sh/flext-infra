@@ -335,6 +335,48 @@ exclude-dependencies = [{exclusion}]
                 ),
             }),
         )
+        mypy = u.Tests.toml_table_at(rendered, "tool", "mypy")
+        policy = config.Infra.tooling.tools.mypy
+        if policy.ruling_disable_error_codes:
+            tm.that(
+                mypy["disable_error_code"],
+                eq=list(policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
+        tm.that(mypy.get("ignore_errors", False), eq=False)
+        for entry in u.Tests.toml_list(mypy.get("overrides", [])):
+            override = u.Tests.toml_mapping(entry)
+            tm.that(override, lacks="disable_error_code")
+            tm.that(override.get("ignore_errors", False), eq=False)
+
+    @staticmethod
+    def test_scaffold_mypy_policy_matches_ssot_and_converges(tmp_path: Path) -> None:
+        """The actual Jinja scaffold preserves typed policy on repeated rendering."""
+        root = tmp_path / "fixture-project"
+        surface = c.Infra.CodegenConformSurface.PYPROJECT
+        first = u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface)
+        mypy = u.Tests.toml_table_at(first, "tool", "mypy")
+        policy = config.Infra.tooling.tools.mypy
+        if policy.ruling_disable_error_codes:
+            tm.that(
+                mypy["disable_error_code"],
+                eq=list(policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
+        for key, value in u.Infra.native_tool_settings(
+            config.Infra.tooling, "mypy"
+        ).items():
+            tm.that(mypy[key], eq=value)
+        tm.that(
+            u.Tests.toml_table_at(first, "tool", "pydantic-mypy"),
+            eq=u.Infra.native_tool_settings(config.Infra.tooling, "pydantic-mypy"),
+        )
+        tm.that(
+            u.Tests.scaffold_text(root, c.PYPROJECT_FILENAME, what=surface),
+            eq=first,
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("members", [(), ("fixture-member",)])
