@@ -16,7 +16,7 @@ from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
+from flext_infra import config, u, validate
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
@@ -234,17 +234,27 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The absolute UV executable the committed toolchain pins.
 
         """
+        return str(tm.ok(TestsFlextInfraUtilitiesToolingFixture._managed_uv_result()))
+
+    @staticmethod
+    @cache
+    def _managed_uv_result() -> p.Result[Path]:
+        """Resolve the fixture owner's pinned UV once per worker.
+
+        Returns:
+            The managed executable or the original toolchain failure.
+
+        """
         checkout = Path(__file__).resolve().parents[1]
-        return str(tm.ok(u.Infra.managed_mise_binary(c.Infra.UV, checkout)))
+        return u.Infra.managed_mise_binary(c.Infra.UV, checkout)
 
     @staticmethod
     @cache
     def workspace_source_projects() -> Mapping[str, Path]:
         """Map each workspace distribution to its source owner once per session.
 
-        The workspace topology is read-only for the whole session, so every
-        fixture resolves its dependency closure from this one native load
-        instead of reloading the workspace for each case.
+        Fixture dependency selection needs distribution names and source paths,
+        independent of the full workspace topology and its runtime policies.
 
         Returns:
             Each declared distribution and the checkout that owns its source.
@@ -262,17 +272,25 @@ class TestsFlextInfraUtilitiesToolingFixture:
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        members = (
+            tm.ok(u.Infra.git_require_submodule_contract(member))
+            for member in tm.ok(u.Infra.git_submodule_declarations(source_root))
         )
-        return {
-            repository.distribution: (
-                checkout
-                if (source_root / repository.path).resolve() == primary
-                else source_root / repository.path
-            )
-            for repository in (specification.repository, *specification.subprojects)
-        }
+        roots = (
+            source_root,
+            *(
+                source_root / member.path
+                for member in members
+                if member.managed is not False
+            ),
+        )
+        projects: t.MutableMappingKV[str, Path] = {}
+        for root in roots:
+            owner = checkout if root.resolve() == primary else root
+            declaration = owner / c.PYPROJECT_FILENAME
+            document = tm.ok(u.Cli.toml_read_json(declaration))
+            projects[u.Infra.project_name_from_payload(declaration, document)] = owner
+        return projects
 
     @classmethod
     def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
@@ -354,6 +372,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
         keyed by the content of each dependency's sources. A build is staged
         beside its destination and published by one atomic rename, so no worker
         ever reads a partial wheel and a later worker reuses the first build.
+        The worker memoizes results for its fixed source checkouts; a new worker
+        computes the content keys again. The layout is isolated from producers
+        that retire every key for a distribution whenever its sources change.
 
         Returns:
             Real wheels, or the original build failure without retrying it.
@@ -364,15 +385,17 @@ class TestsFlextInfraUtilitiesToolingFixture:
         wheels: list[Path] = []
         for project in dependency_projects:
             metadata = tm.ok(u.Infra.read_project_metadata_result(project))
-            owner = storage / "dependency-wheels" / metadata.project.name
-            destination = owner / fixture.python_dependency_source_digest(project)
+            owner = storage / "dependency-wheels-v2" / metadata.project.name
+            source_key = fixture.python_dependency_source_digest(project)
+            destination = owner / source_key
             owner.mkdir(parents=True, exist_ok=True)
-            with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+            with u.Cli.file_changes_lock(destination.with_suffix(".lock")):
                 if not destination.is_dir():
-                    # Earlier content keys and interrupted stagings are retired.
-                    for stale in owner.iterdir():
+                    prefix = f".staging-{source_key}-"
+                    # Only this build's interrupted staging is safe to discard.
+                    for stale in owner.glob(f"{prefix}*"):
                         shutil.rmtree(stale)
-                    staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
+                    staging = Path(mkdtemp(dir=owner, prefix=prefix))
                     built = u.Cli.run_checked(
                         (
                             binary,
@@ -399,6 +422,22 @@ class TestsFlextInfraUtilitiesToolingFixture:
         return r[tuple[Path, ...]].ok(tuple(wheels))
 
     @staticmethod
+    def _create_fixture_venv(
+        root: Path, environment: Path, binary: Path
+    ) -> p.Result[bool]:
+        """Provision an environment already elected by the runtime owner.
+
+        Returns:
+            The original result of the native UV venv operation.
+
+        """
+        environment.parent.mkdir(parents=True, exist_ok=True)
+        return u.Cli.run_checked(
+            [str(binary), "venv", "--python", sys.executable, str(environment)],
+            cwd=root,
+        )
+
+    @staticmethod
     def create_python_environment(
         root: Path,
         *,
@@ -411,15 +450,12 @@ class TestsFlextInfraUtilitiesToolingFixture:
             The resulting ``p.Result[bool]``.
 
         """
-        binary = u.Infra.managed_mise_binary(c.Infra.UV, Path.cwd())
+        binary = TestsFlextInfraUtilitiesToolingFixture._managed_uv_result()
         if binary.failure:
             return r[bool].from_failure(binary)
         environment = u.Infra.runtime_environment_dir(root)
-        environment.parent.mkdir(parents=True, exist_ok=True)
-        TestsFlextInfraUtilitiesToolingFixture.managed_uv()
-        created = u.Cli.run_checked(
-            [str(binary.value), "venv", "--python", sys.executable, str(environment)],
-            cwd=root,
+        created = TestsFlextInfraUtilitiesToolingFixture._create_fixture_venv(
+            root, environment, binary.value
         )
         if created.failure or not dependency_projects:
             return created
@@ -550,8 +586,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
             msg = f"Fixture environment must be physical: {environment}"
             raise ValueError(msg)
         if not (environment / "pyvenv.cfg").is_file():
-            TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
-                root,
+            binary = TestsFlextInfraUtilitiesToolingFixture._managed_uv_result()
+            TestsFlextInfraUtilitiesToolingFixture._create_fixture_venv(
+                root, environment, binary.unwrap()
             ).unwrap()
         provisioned = Path(sys.executable).parent
         bin_dir = environment / provisioned.name

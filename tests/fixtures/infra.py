@@ -106,11 +106,8 @@ def declaration_workspace(
 
 
 @pytest.fixture
-def source_preview_workspace(
-    tmp_path: Path,
-    session_runtime: p.Tests.SessionRuntime,
-) -> tuple[Path, Path]:
-    """Provide source preview with its own physical runtime and real dependencies.
+def source_preview_workspace(tmp_path: Path) -> tuple[Path, Path]:
+    """Provide a dependency-free preview checkout with its own runtime and real tools.
 
     Returns:
         The workspace root and its source package.
@@ -118,22 +115,12 @@ def source_preview_workspace(
     """
     root = tmp_path.with_name(f"{tmp_path.name}-source-preview")
     root.mkdir()
-    u.Tests.initialize_git_repo(root)
     package = u.Tests.src_package(
         root,
         "sample",
-        pyproject=(
-            "[project]\nname = 'sample'\nversion = '1.0.0'\n"
-            f'dependencies = ["{config.Infra.name}"]\n'
-        ),
+        pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
     )
-    tm.ok(
-        u.Tests.create_python_environment(
-            root,
-            dependency_projects=u.Tests.python_dependency_projects(root),
-            session_runtime=session_runtime,
-        ),
-    )
+    u.Tests.provision_checkout(root)
     return root, package
 
 

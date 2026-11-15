@@ -367,6 +367,7 @@ class FlextInfraPytestRunnerExecution(
             report_dir / c.Infra.GATE_CAPTURE_START_FILENAME,
             capture.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
+        u.Infra.bind_gate_capture(c.Infra.VERB_TEST, self.repository_root, report_dir)
         outcome = u.Cli.run_to_file(
             command,
             report_dir / "pytest.log",

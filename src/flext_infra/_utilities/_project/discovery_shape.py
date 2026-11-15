@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from contextlib import closing, nullcontext
+from contextlib import closing
 from pathlib import Path
 
 from flext_infra import c, config, m, p
@@ -92,23 +92,19 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
 
         """
         native = FlextInfraUtilitiesRopeRuntime
-        context = (
-            nullcontext(source_project)
-            if source_project is not None
-            else closing(
-                native.new_project(
-                    str(root),
-                    save_objectdb=False,
-                    filter_lists=(config.Infra.codegen.source_scan_ignored, ("",)),
-                )
+        commands = None if source_project is None else source_project.fscommands
+        # Discover imports against the same authenticated bytes, but with a
+        # separate Rope module cache. The strict producer must never reuse an
+        # empty module from the imports-only probe when it validates syntax.
+        with closing(
+            native.new_project(
+                str(root) if source_project is None else source_project.root.real_path,
+                save_objectdb=False,
+                filter_lists=(config.Infra.codegen.source_scan_ignored, ("",)),
+                fscommands=commands,
             )
-        )
-        with context as project:
-            if source_project is None:
-                # An imports-only probe: Rope's own option treats a module it
-                # cannot parse as declaring nothing, while the lint gate
-                # reports that syntax error as a finding of the checked tree.
-                project.get_prefs().set("ignore_syntax_errors", value=True)
+        ) as project:
+            project.get_prefs().set("ignore_syntax_errors", value=True)
             for resource in project.get_python_files():
                 if not Path(resource.real_path).is_relative_to(root):
                     continue

@@ -283,6 +283,10 @@ class TestsFlextInfraGateAdmission:
         )
         try:
             time.sleep(1)
+            with u.Tests.env_vars_context(env_vars=environment):
+                stale_attempt = u.Infra.observe_attempt(1)
+            tm.that(stale_attempt["state"], eq="stalled")
+            tm.that(ticket.exists(), eq=True)
             waiter = cls._gate(environment, "waiter")
             cls._await(tmp_path / "waiter.started")
             tm.that(ticket.exists(), eq=False)
@@ -291,6 +295,63 @@ class TestsFlextInfraGateAdmission:
         finally:
             os.kill(holder.pid, signal.SIGKILL)
             tm.ok(holder.wait(timeout=_WAIT_SECONDS))
+
+    @classmethod
+    def test_lookup_rejects_a_replaced_capture_after_ticket_removal(
+        cls, tmp_path: Path
+    ) -> None:
+        """Lookup authenticates the original start even without a retained ticket."""
+        report = tmp_path / "original"
+        report.mkdir()
+        start = report / c.Infra.GATE_CAPTURE_START_FILENAME
+        digest = "sha256:" + "0" * 64
+        capture = m.Infra.GateCaptureStart(
+            repository_root=tmp_path,
+            gate=c.Infra.VERB_CHECK,
+            intent=m.Infra.GateExecutionIntent(requested_gates=("format",)),
+            command=(sys.executable,),
+            repository=None,
+            commit_sha=None,
+            tree_sha=None,
+            dirty=None,
+            runtime_identity="test-runtime",
+            context_digest=digest,
+            policy=c.Infra.GateAcceptancePolicy.CLEAN,
+            policy_digest=digest,
+            started_at=datetime.now(UTC).isoformat(),
+            issue=None,
+        )
+        start.write_text(capture.model_dump_json(), encoding="utf-8")
+        environment = cls._environment(tmp_path, None)
+        with u.Tests.env_vars_context(env_vars=environment):
+            queue = u.Infra.gate_admission_root()
+            queue.mkdir(parents=True)
+            ticket_path = queue / f"{1:020d}{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"
+            now = datetime.now(UTC)
+            ticket_path.write_text(
+                m.Infra.GateTicket(
+                    sequence=1,
+                    pid=os.getpid(),
+                    gate=c.Infra.VERB_CHECK,
+                    repository=str(tmp_path),
+                    enqueued_at=now,
+                    admitted_at=now,
+                    heartbeat_at=now,
+                ).model_dump_json(),
+                encoding="utf-8",
+            )
+            with u.Tests.env_vars_context(
+                env_vars={c.Infra.GATE_ADMISSION_TICKET_ENV: str(ticket_path)},
+            ):
+                u.Infra.bind_gate_capture(c.Infra.VERB_CHECK, tmp_path, report)
+            ticket_path.unlink()
+            observed = u.Infra.observe_attempt(1)
+            tm.that(observed["state"], eq="interrupted")
+            tm.that(observed["raw_return_code"], eq=None)
+            alternate = capture.model_copy(update={"command": (sys.executable, "-V")})
+            start.write_text(alternate.model_dump_json(), encoding="utf-8")
+            with u.Tests.raises(ValueError, match="original capture identity"):
+                u.Infra.observe_attempt(1)
 
     @classmethod
     def test_nested_gate_runs_under_its_ancestor_ticket(cls, tmp_path: Path) -> None:

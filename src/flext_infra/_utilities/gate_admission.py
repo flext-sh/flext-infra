@@ -492,11 +492,11 @@ class FlextInfraUtilitiesGateAdmission:
         ticket.replace(ticket.with_suffix(".retired"))
 
     @classmethod
-    def bind_check_capture(cls, repository: Path, report_root: Path) -> None:
-        """Bind the original capture to its owning check, never to an ancestor.
+    def bind_gate_capture(cls, gate: str, repository: Path, report_root: Path) -> None:
+        """Bind the original capture to its owning admission, never to an ancestor.
 
         Raises:
-            RuntimeError: If the capture has the wrong checkout or is already bound.
+            RuntimeError: If the owning capture is already bound.
 
         """
         selected = u.Cli.process_env().get(c.Infra.GATE_ADMISSION_TICKET_ENV)
@@ -505,13 +505,50 @@ class FlextInfraUtilitiesGateAdmission:
         ticket = Path(selected)
         with cls._queue_lock(ticket.parent):
             record = cls._read(ticket)
-            if record.pid != os.getpid() or record.gate != c.Infra.VERB_CHECK:
+            if (
+                record.pid != os.getpid()
+                or Path(record.repository).resolve() != repository
+                or FlextInfraUtilitiesGateAdmission._capture_gate(record.gate) != gate
+            ):
                 return
             capture_link = ticket.with_suffix(".capture")
-            if Path(record.repository).resolve() != repository or capture_link.exists():
-                msg = f"check capture does not match its admission: {ticket}"
+            if capture_link.exists():
+                msg = f"gate capture does not match its admission: {ticket}"
                 raise RuntimeError(msg)
-            u.Cli.atomic_write_text_file(capture_link, str(report_root)).unwrap()
+            start = report_root / c.Infra.GATE_CAPTURE_START_FILENAME
+            identity = f"{record.sequence} {record.gate}"
+            digest = FlextInfraUtilitiesGateAdmission._capture_identity(
+                identity, report_root, start.read_bytes()
+            )
+            u.Cli.atomic_write_text_file(
+                capture_link, f"{identity} {digest}\n{report_root}"
+            ).unwrap()
+
+    @staticmethod
+    def _capture_gate(admission_gate: str) -> str:
+        """Return the native producer gate for this admission.
+
+        Returns:
+            The tests producer for both test routes, or the original gate.
+
+        """
+        return (
+            c.Infra.VERB_TEST
+            if admission_gate == c.Infra.VERB_TEST_FULL
+            else admission_gate
+        )
+
+    @staticmethod
+    def _capture_identity(identity: str, report: Path, start: bytes) -> str:
+        """Bind the original capture bytes and their report directory.
+
+        Returns:
+            The content identity retained with the attempt sequence.
+
+        """
+        return u.Cli.sha256_bytes(
+            identity.encode() + b"\0" + os.fsencode(report) + b"\0" + start
+        )
 
     @classmethod
     def observe_attempt(cls, sequence: int) -> t.JsonDict:
@@ -534,15 +571,18 @@ class FlextInfraUtilitiesGateAdmission:
             active = ticket.is_file()
             path = ticket if active else retired
             record = cls._read(path) if path.is_file() else None
-            report_root = (
+            binding = (
                 capture_link.read_text(encoding=c.DEFAULT_ENCODING)
                 if capture_link.is_file()
                 else None
             )
             live = (
-                active and cls._liveness_path(ticket).is_file() and cls._alive(ticket)
+                active
+                and record is not None
+                and cls._liveness_path(ticket).is_file()
+                and cls._alive(ticket)
             )
-        if record is None and report_root is None:
+        if record is None and binding is None:
             return {"sequence": sequence, "state": "unknown"}
         if record is not None and record.sequence != sequence:
             msg = f"retained admission identity does not match {sequence}"
@@ -552,26 +592,33 @@ class FlextInfraUtilitiesGateAdmission:
             if not live
             else ("running" if record is not None and record.admitted_at else "queued")
         )
+        if (
+            live
+            and record is not None
+            and (datetime.now(UTC) - record.heartbeat_at).total_seconds()
+            > config.Infra.gate_admission.ttl_seconds
+        ):
+            state = "stalled"
         data: t.JsonDict = {
             "sequence": sequence,
             "state": state,
             "gate": record.gate if record else None,
             "repository": record.repository if record else None,
-            "report_root": report_root,
+            "report_root": None,
             "commit_sha": None,
             "raw_return_code": None,
         }
-        if report_root is None:
+        if binding is None:
             if not live:
                 data["state"] = "report-unavailable"
             return data
         return FlextInfraUtilitiesGateAdmission._observe_capture(
-            Path(report_root), record, data, live=live
+            binding, record, data, live=live
         )
 
     @staticmethod
     def _observe_capture(
-        report: Path,
+        binding: str,
         record: p.Infra.GateTicket | None,
         data: t.JsonDict,
         *,
@@ -586,28 +633,64 @@ class FlextInfraUtilitiesGateAdmission:
             ValueError: If the capture and admission identities differ.
 
         """
+        header, _, location = binding.partition("\n")
+        identity, _, digest = header.rpartition(" ")
+        sequence, _, gate = identity.partition(" ")
+        report = Path(location)
+        if (
+            sequence != str(data["sequence"])
+            or not gate
+            or not report.is_absolute()
+            or not digest
+        ):
+            msg = f"invalid original capture binding for attempt {data['sequence']}"
+            raise ValueError(msg)
+        data["report_root"] = location
         start = report / c.Infra.GATE_CAPTURE_START_FILENAME
         if not start.is_file():
             data["state"] = "report-unavailable"
             return data
-        capture = m.Infra.GateCaptureStart.model_validate_json(start.read_bytes())
-        if record is not None and (
-            capture.repository_root != Path(record.repository).resolve()
-            or capture.gate != record.gate
+        original = start.read_bytes()
+        observed = FlextInfraUtilitiesGateAdmission._capture_identity(
+            identity, report, original
+        )
+        if observed != digest:
+            msg = f"original capture identity does not match attempt {sequence}"
+            raise ValueError(msg)
+        capture = m.Infra.GateCaptureStart.model_validate_json(original)
+        if capture.gate != FlextInfraUtilitiesGateAdmission._capture_gate(gate) or (
+            record is not None
+            and (
+                capture.repository_root != Path(record.repository).resolve()
+                or gate != record.gate
+            )
         ):
-            msg = f"original capture identity does not match attempt {record.sequence}"
+            msg = f"original capture identity does not match attempt {sequence}"
             raise ValueError(msg)
         data["commit_sha"] = capture.commit_sha
-        data["gate"] = capture.gate
+        data["gate"] = gate
         data["repository"] = str(capture.repository_root)
-        result = report / c.Infra.GATE_CAPTURE_RESULT_FILENAME
-        if result.is_file():
-            outcome = m.Infra.GateCaptureReport.model_validate_json(result.read_bytes())
-            data["raw_return_code"] = outcome.process.raw_return_code
-            data["state"] = "captured"
-        elif not live:
-            data["state"] = "interrupted"
-        return data
+        is_test = capture.intent.test_selection is not None
+        result = report / (
+            "suite-outcome.json" if is_test else c.Infra.GATE_CAPTURE_RESULT_FILENAME
+        )
+        if not result.is_file():
+            if not live:
+                data["state"] = "interrupted"
+            return data
+        payload = result.read_bytes()
+        outcome = (
+            m.Cli.ProcessOutcome.model_validate_json(payload)
+            if is_test
+            else m.Infra.GateCaptureReport.model_validate_json(payload).process
+        )
+        return {
+            **data,
+            "raw_return_code": outcome.raw_return_code,
+            "outcome_scope": "pytest-suite" if is_test else "check-run",
+            "forwarded_signal": outcome.forwarded_signal,
+            "state": "captured",
+        }
 
     @staticmethod
     def _alive(ticket: Path) -> bool:

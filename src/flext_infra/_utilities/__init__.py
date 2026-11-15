@@ -653,7 +653,7 @@ install_lazy_exports(
             "_await_admission",
             "_sweep",
             "_retire_ticket",
-            "bind_check_capture",
+            "bind_gate_capture",
             "observe_attempt",
             "_observe_capture",
             "_alive",
