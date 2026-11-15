@@ -30,7 +30,8 @@ class FlextInfraUtilitiesPromotedExecution(FlextInfraUtilitiesPromotedInvocation
         """Run one promoted command from its owner root and stream it live.
 
         The single workspace venv is authoritative for every inherited command;
-        the owner root only fixes the working directory. The child is not
+        the owner root is the working directory, and a Python command runs
+        there as a module of its scripts package (``python -m scripts.<path>``). The child is not
         captured, so output, Ctrl-C/SIGINT, and the exact exit code propagate.
 
         Returns:
@@ -70,17 +71,27 @@ class FlextInfraUtilitiesPromotedExecution(FlextInfraUtilitiesPromotedInvocation
             )),
             env_name.SUBMODULE_ROOT: str(project_root.resolve()),
         })
-        interpreter: Sequence[str] = (
+        # A Python command runs as a module of its owner's scripts package:
+        # the owner root is the working directory, so ``-m`` makes that package
+        # importable and the command binds its letters from it.
+        argv: Sequence[str] = (
             str(python),
-            c.Infra.PromotedSelector.PYTHON_SAFE_PATH,
+            c.Infra.PromotedSelector.PYTHON_MODULE,
+            ".".join(
+                command.path
+                .resolve()
+                .relative_to(project_root.resolve())
+                .with_suffix("")
+                .parts
+            ),
         )
         if command.path.suffix != c.Infra.EXT_PYTHON:
             bash = shutil.which(c.Infra.PromotedSelector.BASH)
             if bash is None:
                 cls.promoted_fail(message.BASH_MISSING)
-            interpreter = (bash,)
+            argv = (bash, str(command.path))
         result = u.Cli.run_raw(
-            (*interpreter, str(command.path)),
+            argv,
             cwd=project_root,
             options=m.Cli.ProcessOptions(
                 env=env,

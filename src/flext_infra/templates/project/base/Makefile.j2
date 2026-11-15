@@ -645,8 +645,9 @@ endef
 {% if script_dispatch %}
 # The declared dispatcher owns selector discovery and validation. WHAT travels
 # only as environment data, never as generated shell source or a target name.
+# It runs as a module from the project root, so its scripts package is importable.
 define _dispatch
-	@$(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)"
+	@cd "$(PROJECT_ROOT)" && $(UV_RUN) python -m {{ script_dispatch.dispatcher[:-3] | replace("/", ".") }} "$(1)"
 endef
 {% endif %}
 
