@@ -208,35 +208,6 @@ print(json.dumps({
     VERB_SYNC_WORKSPACE: ClassVar[str] = "sync"
     "Workspace CLI verb for synchronizing all repositories to integration tip."
 
-    VERB_CLEAN_WORKSPACE: ClassVar[str] = "clean"
-    "Workspace CLI verb for cleaning obsolete workspace artifacts."
-
-    VERB_PR_VALIDATE: ClassVar[str] = "pr-validate"
-    "Workspace CLI verb for executing PR readiness checklist."
-
-    VERB_RCA_CAPTURE: ClassVar[str] = "rca-capture"
-    "Workspace CLI verb for recording RCA evidence."
-
-    WORKSPACE_SYNC_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "workspace-sync.json"
-    )
-    "Canonical single-file receipt for the latest workspace-sync report."
-
-    WORKSPACE_CLEAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "workspace-clean.json"
-    )
-    "Canonical single-file receipt for the latest workspace-clean report."
-
-    WORKSPACE_PR_VALIDATE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "pr-validate.json"
-    )
-    "Canonical single-file receipt for the latest pr-validate report."
-
-    WORKSPACE_RCA_CAPTURE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "rca-capture.json"
-    )
-    "Canonical single-file receipt for the latest rca-capture report."
-
     WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
     )
