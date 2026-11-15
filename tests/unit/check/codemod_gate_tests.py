@@ -32,6 +32,7 @@ class TestsFlextInfraCodemodGate:
             tmp_path, installed_dependency_path, session_runtime, severity=severity
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_policy_findings_block_at_every_severity(
         self,

@@ -19,6 +19,7 @@ class TestsFlextInfraCodemodGateNativeRoute:
     """Cached and stopped native scans keep the gate's verdict exact."""
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_changed_utility_invalidates_every_cached_finding(
         tmp_path: Path,
         installed_dependency_path: Path,
@@ -81,6 +82,7 @@ class TestsFlextInfraCodemodGateNativeRoute:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("truncated", [False, True])
     def test_timed_out_scan_reports_every_published_finding(
         tmp_path: Path,
