@@ -23,13 +23,6 @@ from flext_infra import (
     u,
     workspace,
 )
-from flext_infra.workspace import (
-    FlextInfraWorkspaceClean,
-    FlextInfraWorkspaceDetector,
-    FlextInfraWorkspacePrValidate,
-    FlextInfraWorkspaceRcaCapture,
-    FlextInfraWorkspaceSync,
-)
 
 
 class FlextInfraWorkspaceRoutes:
@@ -557,43 +550,15 @@ class FlextInfraWorkspaceRoutes:
                     cls._detect_workspace,
                     None,
                 ),
-(
-                "propagate",
-                "Publish this workspace's flext-infra to every member",
-                workspace.FlextInfraWorkspacePropagation,
-                infra.workspace_propagate,
-                None,
-            ),
-            (
-                c.Infra.VERB_SYNC_WORKSPACE,
-                "Synchronize all governed repositories to the integration branch tip",
-                workspace.FlextInfraWorkspaceSync,
-                workspace.FlextInfraWorkspaceSync.execute_command,
-                "workspace synchronization completed",
-            ),
-            (
-                c.Infra.VERB_CLEAN_WORKSPACE,
-                "Identify and optionally remove obsolete workspace artifacts",
-                workspace.FlextInfraWorkspaceClean,
-                workspace.FlextInfraWorkspaceClean.execute_command,
-                "workspace cleanup completed",
-            ),
-            (
-                c.Infra.VERB_PR_VALIDATE,
-                "Execute complete PR readiness checklist",
-                workspace.FlextInfraWorkspacePrValidate,
-                workspace.FlextInfraWorkspacePrValidate.execute_command,
-                "PR validation completed",
-            ),
-            (
-                c.Infra.VERB_RCA_CAPTURE,
-                "Record Root Cause Analysis evidence for the current Bead",
-                workspace.FlextInfraWorkspaceRcaCapture,
-                workspace.FlextInfraWorkspaceRcaCapture.execute_command,
-                "RCA capture completed",
-            ),
-        )),
-    )
+                (
+                    "propagate",
+                    "Publish this workspace's flext-infra to every member",
+                    workspace.FlextInfraWorkspacePropagation,
+                    infra.workspace_propagate,
+                    None,
+                ),
+            )),
+        )
 
 
 __all__: list[str] = ["FlextInfraWorkspaceRoutes"]

@@ -1065,7 +1065,6 @@ class FlextInfraProtocolsWorkspace:
             """Declared dependency names."""
             ...
 
-
     @runtime_checkable
     class WorkspaceSyncRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
@@ -1154,7 +1153,9 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def repos(self) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceSyncRepoResult, ...]:
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceSyncRepoResult, ...]:
             """One row per declared repository."""
             ...
 
@@ -1251,7 +1252,9 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def repos(self) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceCleanRepoResult, ...]:
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceCleanRepoResult, ...]:
             """One row per declared repository."""
             ...
 
