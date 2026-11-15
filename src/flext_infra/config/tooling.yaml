@@ -582,16 +582,16 @@ Infra:
           # does.
           project-shared-search-paths: []
       pytest:
-        # Scaffold and modernizer share the aggregate execution policy. Ordinary
-        # items have no per-item deadline; the runner owns the invocation wall.
+        # The runner owns the aggregate wall and the ordinary item deadline.
         # Slow marks are a narrow integration-harness budget, not permission
         # for an unbounded test. Cases that exceed it require owner repair.
         # Operator order operator-order-2026-10-25-make-timeout-60s-cprofile:
         # every make verb finishes within 60s; slower runs are profiled with
         # cProfile and cured at their owner. The slow-phase stop reserve is
-        # xdist items per worker x slow-timeout + grace = 2 x 25 + 2 = 52 s,
+        # xdist items per worker x slow-timeout + grace = 2 x 20 + 2 = 42 s,
         # which must stay below run-timeout-seconds.
-        slow-timeout-seconds: 25
+        item-timeout-seconds: 2
+        slow-timeout-seconds: 20
         # Marker selection never removes the aggregate operation deadline.
         # Slow items also retain their declared per-item integration budget.
         slow-marker: slow
@@ -723,8 +723,7 @@ Infra:
         # The cross-layer enforcement catalog runs strict in every suite:
         # the test-reality laws (ENFORCE-019/051/054/055/098) fail the run
         # instead of warning; warnings are never a landing state.
-        # Per-item limits do not belong in baseline addopts; the runner owns
-        # the aggregate wall and the slow marker owns its narrow item policy.
+        # The runner supplies calibrated item limits outside baseline addopts.
       tomlsort:
         process-timeout-seconds: 60
       # Bandit test ids the security gate skips; every other test stays

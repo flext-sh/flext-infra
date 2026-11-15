@@ -228,6 +228,11 @@ class FlextInfraModelsDepsToolConfig(
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
 
+        item_timeout_seconds: int = m.Field(
+            alias="item-timeout-seconds",
+            gt=0,
+            description="Hard maximum runtime for one ordinary item.",
+        )
         # Every rendered pytest value is validated config data.
         slow_timeout_seconds: int = m.Field(
             alias="slow-timeout-seconds",

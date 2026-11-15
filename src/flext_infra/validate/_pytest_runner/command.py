@@ -484,7 +484,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         *,
         execution_mode: c.Infra.PytestExecutionMode,
     ) -> t.StrTuple:
-        """Return the aggregate graceful stop instant, without a unit item cap.
+        """Return the ordinary item budget and aggregate graceful stop instant.
 
         Returns:
             The bounded suite's time-limit arguments.
@@ -495,7 +495,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             execution_mode=execution_mode,
         )
         return (
-            *self._ITEM_LIMITS,
+            f"--timeout={config.Infra.tooling.tools.pytest.item_timeout_seconds}",
             f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
         )
 
