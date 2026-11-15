@@ -44,9 +44,6 @@ class FlextInfraModelsGateAdmission:
         heartbeat_at: Annotated[
             t.AwareDatetime, m.Field(description="Last liveness refresh by the owner")
         ]
-        report_root: Annotated[
-            str | None, m.Field(description="Original native capture directory")
-        ] = None
 
     class GateRunRecord(m.ContractModel):
         """Latest successful full-weight run of one gate and selection."""

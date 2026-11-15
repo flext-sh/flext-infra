@@ -507,12 +507,11 @@ class FlextInfraUtilitiesGateAdmission:
             record = cls._read(ticket)
             if record.pid != os.getpid() or record.gate != c.Infra.VERB_CHECK:
                 return
-            if Path(record.repository).resolve() != repository or record.report_root:
+            capture_link = ticket.with_suffix(".capture")
+            if Path(record.repository).resolve() != repository or capture_link.exists():
                 msg = f"check capture does not match its admission: {ticket}"
                 raise RuntimeError(msg)
-            cls._write(
-                ticket, record.model_copy(update={"report_root": str(report_root)})
-            )
+            u.Cli.atomic_write_text_file(capture_link, str(report_root)).unwrap()
 
     @classmethod
     def observe_attempt(cls, sequence: int) -> t.JsonDict:
@@ -528,46 +527,79 @@ class FlextInfraUtilitiesGateAdmission:
         root = cls.gate_admission_root()
         ticket = root / f"{sequence:020d}{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"
         retired = ticket.with_suffix(".retired")
-        if not ticket.is_file() and not retired.is_file():
+        capture_link = ticket.with_suffix(".capture")
+        if not root.is_dir():
             return {"sequence": sequence, "state": "unknown"}
         with cls._queue_lock(root):
             active = ticket.is_file()
-            record = cls._read(ticket if active else retired)
+            path = ticket if active else retired
+            record = cls._read(path) if path.is_file() else None
+            report_root = (
+                capture_link.read_text(encoding=c.DEFAULT_ENCODING)
+                if capture_link.is_file()
+                else None
+            )
             live = (
                 active and cls._liveness_path(ticket).is_file() and cls._alive(ticket)
             )
-        if record.sequence != sequence:
+        if record is None and report_root is None:
+            return {"sequence": sequence, "state": "unknown"}
+        if record is not None and record.sequence != sequence:
             msg = f"retained admission identity does not match {sequence}"
             raise ValueError(msg)
-        state = "closed" if not live else (
-            "running" if record.admitted_at is not None else "queued"
+        state = (
+            "closed"
+            if not live
+            else ("running" if record is not None and record.admitted_at else "queued")
         )
         data: t.JsonDict = {
             "sequence": sequence,
             "state": state,
-            "gate": record.gate,
-            "repository": record.repository,
-            "report_root": record.report_root,
+            "gate": record.gate if record else None,
+            "repository": record.repository if record else None,
+            "report_root": report_root,
             "commit_sha": None,
             "raw_return_code": None,
         }
-        if record.report_root is None:
+        if report_root is None:
             if not live:
                 data["state"] = "report-unavailable"
             return data
-        report = Path(record.report_root)
+        return FlextInfraUtilitiesGateAdmission._observe_capture(
+            Path(report_root), record, data, live=live
+        )
+
+    @staticmethod
+    def _observe_capture(
+        report: Path,
+        record: p.Infra.GateTicket | None,
+        data: t.JsonDict,
+        *,
+        live: bool,
+    ) -> t.JsonDict:
+        """Read original attestation files without interpreting gate success.
+
+        Returns:
+            The observation enriched with the capture identity and outcome.
+
+        Raises:
+            ValueError: If the capture and admission identities differ.
+
+        """
         start = report / c.Infra.GATE_CAPTURE_START_FILENAME
         if not start.is_file():
             data["state"] = "report-unavailable"
             return data
         capture = m.Infra.GateCaptureStart.model_validate_json(start.read_bytes())
-        if (
+        if record is not None and (
             capture.repository_root != Path(record.repository).resolve()
             or capture.gate != record.gate
         ):
-            msg = f"original capture identity does not match attempt {sequence}"
+            msg = f"original capture identity does not match attempt {record.sequence}"
             raise ValueError(msg)
         data["commit_sha"] = capture.commit_sha
+        data["gate"] = capture.gate
+        data["repository"] = str(capture.repository_root)
         result = report / c.Infra.GATE_CAPTURE_RESULT_FILENAME
         if result.is_file():
             outcome = m.Infra.GateCaptureReport.model_validate_json(result.read_bytes())
