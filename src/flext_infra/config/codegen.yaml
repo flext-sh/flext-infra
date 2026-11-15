@@ -2418,8 +2418,7 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            # Retired analyzers (operator order 2026-11-13, ag-6w7a): owned and
-            # never rendered, so the overlay deletes these live tables.
+            # Passive local tables remain projection-owned.
             - tool.mypy
             - tool.pyright
             - tool.pydantic-mypy
