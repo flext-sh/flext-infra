@@ -1,0 +1,6 @@
+Infra:
+  tooling:
+    tools:
+      pytest:
+        # Keep tests sharing a class-scoped checkout fixture on one worker.
+        parallel-distribution: loadscope

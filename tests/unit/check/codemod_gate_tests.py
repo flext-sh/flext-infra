@@ -17,8 +17,9 @@ from flext_infra.gates import FlextInfraGatesCodemod
 from tests import c, m, p, t, tm, u
 
 
+@c.Tests.MARK.slow
 class TestsFlextInfraCodemodGate:
-    """Block on every policy finding and on every native scanner failure."""
+    """Exercise the native scanner with a provisioned checkout per case."""
 
     @staticmethod
     def _project(
@@ -32,7 +33,6 @@ class TestsFlextInfraCodemodGate:
             tmp_path, installed_dependency_path, session_runtime, severity=severity
         )
 
-    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("severity", ["error", "warning", "info", "hint"])
     def test_policy_findings_block_at_every_severity(
         self,
@@ -657,6 +657,10 @@ class TestsFlextInfraCodemodGate:
                 u.Tests.run_gate_check(FlextInfraGatesCodemod, tmp_path, project)
         finally:
             blocked.chmod(original_mode)
+
+
+class TestsFlextInfraCodemodNativeJson:
+    """Validate native response decoding without provisioning a checkout."""
 
     @staticmethod
     @c.Tests.MARK.parametrize("payload", ["", "[", "{}", "[{}]", "[null]"])

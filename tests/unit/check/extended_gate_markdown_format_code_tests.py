@@ -185,6 +185,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=0,
         )
 
+    @c.Tests.MARK.slow
     def test_mkdocs_flavor_survives_cross_repository_union(
         self, tmp_path: Path
     ) -> None:

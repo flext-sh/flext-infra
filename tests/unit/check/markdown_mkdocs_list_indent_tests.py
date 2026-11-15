@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from tests import p
 
 
+@c.Tests.MARK.slow
 class TestsFlextInfraMarkdownMkdocsListIndent:
     """Public repair contract of the MkDocs list indentation."""
 
