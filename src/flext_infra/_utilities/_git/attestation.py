@@ -23,6 +23,7 @@ from git import GitCommandError
 from flext_infra import c, m, p, r, settings
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
+    FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities._git import (
@@ -350,6 +351,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             "issue": (identity.error if identity.failure else None),
             "context_digest": (
                 cls._gate_capture_context_digest(
+                    root,
                     request.gate,
                     request.intent,
                     inputs,
@@ -363,6 +365,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
 
     @staticmethod
     def _gate_capture_context_digest(
+        repository_root: Path,
         gate: str,
         intent: p.Infra.GateExecutionIntent,
         inputs: p.Infra.CodegenInputs,
@@ -383,6 +386,21 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             )
             for source in inputs.sources
         )
+        runtime_root = FlextInfraUtilitiesProjectDiscovery.runtime_owner_root(
+            repository_root,
+        ).unwrap()
+        resolver_inputs: list[str] = []
+        for name in (c.PYPROJECT_FILENAME, c.Infra.UV_LOCK_FILENAME):
+            state = u.Cli.atomic_read_binary_file_state(
+                runtime_root / name,
+                required=False,
+            ).unwrap()
+            digest = (
+                u.Cli.sha256_bytes(state.content)
+                if state.content is not None
+                else "absent"
+            )
+            resolver_inputs.append(f"resolver:{name}:{digest}")
         material = "\n".join((
             sys.version,
             platform.platform(),
@@ -391,6 +409,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             intent.model_dump_json(round_trip=True),
             inputs.spec.model_dump_json(round_trip=True),
             sources,
+            *resolver_inputs,
         ))
         return f"sha256:{u.Cli.sha256_content(material)}"
 
@@ -419,6 +438,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             issue is None
             and started.context_digest
             != cls._gate_capture_context_digest(
+                root,
                 started.gate,
                 started.intent,
                 inputs.value,
@@ -1229,7 +1249,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
         if inputs.failure:
             return r[bool].from_failure(inputs)
         actual_context = cls._gate_capture_context_digest(
-            facts.gate, facts.intent, inputs.value, facts.runtime_identity
+            repo_root, facts.gate, facts.intent, inputs.value, facts.runtime_identity
         )
         mismatches = tuple(
             field
