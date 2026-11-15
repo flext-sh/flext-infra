@@ -1540,13 +1540,16 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             if resource is None or Path(resource.real_path).is_relative_to(package):
                 continue
             published = module.get_attributes().get("p")
-            exposed = ancestor.get_attributes().get(port.get_name())
+            exposed = any(
+                (member := base.get_attributes().get(port.get_name())) is not None
+                and member.get_object() is port
+                for base in ancestor.get_mro()
+            )
             if (
                 published is None
                 or published.get_object() is not ancestor
                 or "p" not in analysis.public_export_names_source(module)
-                or exposed is None
-                or exposed.get_object() is not port
+                or not exposed
             ):
                 continue
             # The declared source identity, not Rope's source-folder-relative

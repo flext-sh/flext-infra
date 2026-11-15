@@ -5050,7 +5050,14 @@ class FlextInfraUtilitiesModelsProtocol:
             ).get_object()
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
-            port = self._source_class(facade.get_attribute(p.BaseModel.__name__))
+            facade.get_attribute(p.BaseModel.__name__)
+            port = self._source_class(
+                self.qualified_name(
+                    self.project,
+                    p.BaseModel.__qualname__,
+                    module_name=p.BaseModel.__module__,
+                )
+            )
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()

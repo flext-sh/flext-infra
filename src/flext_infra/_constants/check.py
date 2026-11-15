@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_core import c
 
 from flext_infra._constants.config import FlextInfraConstantsConfig
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
 from flext_infra._pytest import FlextInfraPytestProfileChild
 
 if TYPE_CHECKING:
@@ -411,10 +410,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Repository-relative path to the latest check receipt."
     TEST_REPORT_RELATIVE_PATH: ClassVar[Path] = Path("test-report.json")
     "Repository-relative path to the latest test receipt."
-    WORKSPACE_RCA_CAPTURE_REPORT_RELATIVE_PATH: ClassVar[Path] = (
-        Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "rca-capture.json"
-    )
-    "Repository-relative path to the latest RCA capture receipt."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

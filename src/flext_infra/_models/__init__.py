@@ -224,7 +224,6 @@ install_lazy_exports(
             "BanditReport",
             "RunCommand",
             "CheckProjectTarget",
-            "MypyResourceLimit",
             "MypyInvocation",
             "FixPyreflyConfigCommand",
             "SarifLocation",

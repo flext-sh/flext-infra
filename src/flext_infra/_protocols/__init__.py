@@ -307,7 +307,6 @@ install_lazy_exports(
             "NativeModuleSpec",
             "PytestRunContextReceiver",
             "RunCommand",
-            "MypyResourceLimit",
             "MypyInvocation",
             "FixPyreflyConfigCommand",
             "LineWrapLiteral",
