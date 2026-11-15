@@ -29,7 +29,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         project_name: str,
         authored_root: str,
     ) -> None:
-        """The generated Pyright projection retains authored scopes at fixed point."""
+        """The generated Pyrefly projection retains authored scopes at fixed point."""
         u.Tests.copy_tracked_mise_seeds(tmp_path)
         root = u.Tests.mk_project(
             tmp_path,
@@ -38,7 +38,7 @@ class TestsFlextInfraCodegenRepositoryRootScope:
         )
         project = u.Tests.project_spec(project_name)
         roots = (
-            config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            config.Infra.tooling.tools.pyrefly.path_rules.source_dir,
             "docs",
             "scripts",
             "examples",
@@ -70,16 +70,9 @@ class TestsFlextInfraCodegenRepositoryRootScope:
             item for item in first_plan.files if item.path.name == c.PYPROJECT_FILENAME
         )
         rendered = u.Tests.codegen_file_text(first)
-        pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
-        includes = frozenset(u.Tests.toml_strings(pyright["include"]))
-        tm.ok(frozenset(roots).issubset(includes))
-        tm.that(
-            frozenset(
-                str(u.Tests.toml_mapping(env)["root"])
-                for env in u.Tests.toml_list(pyright["executionEnvironments"])
-            ),
-            eq=includes,
-        )
+        pyrefly = u.Tests.toml_table_at(rendered, "tool", "pyrefly")
+        includes = frozenset(u.Tests.toml_strings(pyrefly[c.Infra.PROJECT_INCLUDES]))
+        tm.ok(frozenset(f"{root}/**/*.py*" for root in roots).issubset(includes))
         published = root / c.PYPROJECT_FILENAME
         published.write_bytes(tm.not_none(first.desired_content))
         published.chmod(tm.not_none(first.desired_mode))

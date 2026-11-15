@@ -67,9 +67,9 @@ class TestsFlextInfraDepsModernizerTooling:
     @c.Tests.MARK.parametrize(
         ("table", "key", "value"),
         [
-            ("pyright", "stubPath", "local_typing"),
-            ("pyright", "options", {"stubPath": "local_typing"}),
-            ("mypy", "custom_typeshed_dir", "local_typing"),
+            ("pyrefly", "stub-path", "local_typing"),
+            ("pyrefly", "options", {"stubPath": "local_typing"}),
+            ("pyrefly", "typeshed-path", "local_typing"),
             ("pyrefly", "search-path", ["typings/vendor"]),
             ("stubgen", "output", "local_typing"),
         ],
@@ -105,8 +105,8 @@ class TestsFlextInfraDepsModernizerTooling:
             ),
             "derived-settings": {
                 **tool_config_document.derived_settings,
-                "pyright": (
-                    *tool_config_document.derived_settings["pyright"],
+                "pyrefly": (
+                    *tool_config_document.derived_settings["pyrefly"],
                     "stubPath",
                 ),
             },
@@ -160,14 +160,11 @@ class TestsFlextInfraDepsModernizerTooling:
         ]
         document = tool_config_document
         payload = TestsFlextInfraDepsModernizerTooling._yaml_settings_payload(document)
-        removed_options = {("mypy", "mypy_path"), ("pyright", "extraPaths")}
         derived: t.JsonDict = {
-            table: [key for key in keys if (table, key) not in removed_options]
-            for table, keys in document.derived_settings.items()
+            table: list(keys) for table, keys in document.derived_settings.items()
         }
         extra: Mapping[str, tuple[str, t.JsonValue]] = {
-            "mypy": ("mypy_path", paths),
-            "pyright": ("extraPaths", paths),
+            "pyrefly": ("search-path", paths),
         }
         settings: t.JsonDict = {
             table: TestsFlextInfraDepsModernizerTooling._pairs(
@@ -182,8 +179,7 @@ class TestsFlextInfraDepsModernizerTooling:
         declaration.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.yaml_dump(declaration, {"Infra": {"tooling": payload}}))
         validated = tm.ok(u.Infra.load_tooling_inputs(root)).document
-        for table, key in (("mypy", "mypy_path"), ("pyright", "extraPaths")):
-            tm.that(dict(validated.settings[table])[key], eq=paths)
+        tm.that(dict(validated.settings["pyrefly"])["search-path"], eq=paths)
 
     @staticmethod
     @c.Tests.MARK.parametrize("relative_to_project", [False, True])
@@ -527,7 +523,7 @@ class TestsFlextInfraDepsModernizerTooling:
     def test_typecheck_policy_keeps_tracked_surfaces_visible(
         tool_config_document: p.Infra.ToolConfigDocument,
     ) -> None:
-        """Keep every tracked Python surface visible to all four analyzers."""
+        """Keep every tracked Python surface visible to every analyzer."""
         tools = tool_config_document.tools
         tracked_surfaces = frozenset({"examples", "scripts", "src", "tests"})
         hidden_globs = frozenset({
@@ -552,11 +548,6 @@ class TestsFlextInfraDepsModernizerTooling:
                 )
             ),
             eq=frozenset({"examples", "scripts", "tests"}),
-        )
-        tm.that(frozenset(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
-        tm.that(
-            hidden_globs.isdisjoint(tools.pyright.path_rules.default_excludes),
-            eq=True,
         )
         tm.that(frozenset(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
         tm.that(

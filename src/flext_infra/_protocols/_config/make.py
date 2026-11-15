@@ -123,8 +123,7 @@ class FlextInfraProtocolsConfigMake:
         def remote_variable(self) -> t.NonEmptyStr:
             """Structural member projected from the owning model.
 
-            Variable every remote runner exports, whatever CI token the step passes;
-            a remote check never runs a local-stage gate.
+            Variable every remote runner exports, whatever CI token the step passes.
             """
             ...
 
@@ -327,37 +326,6 @@ class FlextInfraProtocolsConfigMake:
             ...
 
     @runtime_checkable
-    class MypyCacheSpec(
-        FlextInfraProtocolsConfigExternalCache.Directory[
-            FlextInfraConstantsConfig.MypyCacheEnvironment
-        ],
-        FlextInfraProtocolsConfigContract.ConfigContract,
-        Protocol,
-    ):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def data_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.MypyCacheEnvironment:
-            """XDG persistent cache-home variable."""
-            ...
-
-        @property
-        def user_home_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.MypyCacheEnvironment:
-            """User home variable for the XDG default."""
-            ...
-
-        @property
-        def cache_environment_variable(
-            self,
-        ) -> FlextInfraConstantsConfig.MypyCacheEnvironment:
-            """Mypy's cache-directory environment variable."""
-            ...
-
-    @runtime_checkable
     class MakeRuffSpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -536,11 +504,6 @@ class FlextInfraProtocolsConfigMake:
             Declarative save/budget/quota policy for the shared testmon cache (#1001
             delta).
             """
-            ...
-
-        @property
-        def mypy_cache(self) -> FlextInfraProtocolsConfigMake.MypyCacheSpec:
-            """Project-keyed shared Mypy analysis cache policy."""
             ...
 
         @property

@@ -372,7 +372,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(commands["pyrefly"], has=str(config_path))
 
     @staticmethod
-    @c.Tests.MARK.parametrize("gate", [c.Infra.RUFF, c.Infra.MYPY])
+    @c.Tests.MARK.parametrize("gate", [c.Infra.RUFF, c.Infra.PYREFLY])
     def test_preview_source_writes_preserves_live_sources(
         source_preview_workspace: tuple[Path, Path],
         gate: str,

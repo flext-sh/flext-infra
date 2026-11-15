@@ -32,10 +32,8 @@ if TYPE_CHECKING:
     from flext_infra.gates.markdown_format import FlextInfraGatesMarkdownFormat
     from flext_infra.gates.markdown_list_indent import FlextInfraMarkdownListIndent
     from flext_infra.gates.markdown_support import FlextInfraMarkdownGateBase
-    from flext_infra.gates.mypy import FlextInfraGatesMypy
     from flext_infra.gates.project_module import FlextInfraGatesProjectModule
     from flext_infra.gates.pyrefly import FlextInfraGatesPyrefly
-    from flext_infra.gates.pyright import FlextInfraGatesPyright
     from flext_infra.gates.ruff_base import FlextInfraGatesRuffGate
     from flext_infra.gates.ruff_format import FlextInfraGatesRuffFormat
     from flext_infra.gates.ruff_lint import FlextInfraGatesRuffLint
@@ -62,10 +60,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraGatesMarkdown",
     "FlextInfraGatesMarkdownCode",
     "FlextInfraGatesMarkdownFormat",
-    "FlextInfraGatesMypy",
     "FlextInfraGatesProjectModule",
     "FlextInfraGatesPyrefly",
-    "FlextInfraGatesPyright",
     "FlextInfraGatesRuffFormat",
     "FlextInfraGatesRuffGate",
     "FlextInfraGatesRuffLint",
@@ -98,10 +94,8 @@ install_lazy_exports(
         "FlextInfraGatesMarkdown": ".markdown",
         "FlextInfraGatesMarkdownCode": ".markdown_code",
         "FlextInfraGatesMarkdownFormat": ".markdown_format",
-        "FlextInfraGatesMypy": ".mypy",
         "FlextInfraGatesProjectModule": ".project_module",
         "FlextInfraGatesPyrefly": ".pyrefly",
-        "FlextInfraGatesPyright": ".pyright",
         "FlextInfraGatesRuffFormat": ".ruff_format",
         "FlextInfraGatesRuffGate": ".ruff_base",
         "FlextInfraGatesRuffLint": ".ruff_lint",

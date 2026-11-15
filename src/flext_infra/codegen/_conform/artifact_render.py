@@ -1159,7 +1159,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 "package": (target.repository.package),
                 "analyzer_roots": (
                     tuple(
-                        config.Infra.tooling.tools.pyright.path_rules.env_dirs,
+                        config.Infra.tooling.tools.pyrefly.path_rules.env_dirs,
                     )
                 ),
                 "workspace_repositories": (
@@ -1208,7 +1208,7 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
                 "script_dispatch": (target.repository.script_dispatch),
                 "verb_groups": (target.repository.verb_groups),
                 "workspace_cli_group": (c.Infra.CLI_GROUP_WORKSPACE),
-                "mypy_timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
+                "timeout_exit_code": (c.Infra.PROCESS_TIMEOUT_EXIT_CODE),
                 "timeout_command": (c.Infra.TIMEOUT_COMMAND),
                 "timeout_kill_after_seconds": (c.Infra.TIMEOUT_KILL_AFTER_SECONDS),
             }),

@@ -56,7 +56,6 @@ class FlextInfraConstantsCli:
         "--json-output",
         "--reports-dir",
         "--ruff-args",
-        "--pyright-args",
         "--operation",
         "--branch",
         "--base",
