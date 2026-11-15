@@ -1,0 +1,157 @@
+# Automatic repair of require-field-description: the field gets the canonical
+# description derived from its name (`parallel_workers` -> "Parallel workers."),
+# the same convention the summary-docstring recipe uses for symbols. Each rule
+# owns one declaration shape; a shape none of them covers stays a
+# require-field-description finding for authored text.
+id: require-field-description-bare
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE"
+    - not:
+        has:
+          field: right
+          regex: "."
+    - not:
+        regex: "\\bdescription\\s*="
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+fix: '$NAME: $TYPE = m.Field(description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+
+---
+id: require-field-description-default
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE = $DEFAULT"
+    - not:
+        regex: "\\bdescription\\s*="
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+  DEFAULT:
+    not:
+      regex: "^m\\.Field\\("
+fix: '$NAME: $TYPE = m.Field(default=$DEFAULT, description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+
+---
+id: require-field-description-field-call
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE = m.Field($$$ARGS)"
+    - not:
+        regex: "\\bdescription\\s*="
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+fix: '$NAME: $TYPE = m.Field($$$ARGS, description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+
+---
+id: require-field-description-annotated
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: Annotated[$TYPE, m.Field($$$ARGS)]"
+    - not:
+        regex: "\\bdescription\\s*="
+fix: '$NAME: Annotated[$TYPE, m.Field($$$ARGS, description="$TEXT.")]'
+message: Describe the field `$NAME` with its canonical name-derived description.
+
+---
+id: require-field-description-annotated-default
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: Annotated[$TYPE, m.Field($$$ARGS)] = $DEFAULT"
+    - not:
+        regex: "\\bdescription\\s*="
+fix: '$NAME: Annotated[$TYPE, m.Field($$$ARGS, description="$TEXT.")] = $DEFAULT'
+message: Describe the field `$NAME` with its canonical name-derived description.
