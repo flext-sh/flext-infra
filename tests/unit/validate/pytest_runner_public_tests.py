@@ -901,13 +901,25 @@ class TestsFlextInfraPytestRunner:
 
     @staticmethod
     @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("overrun", [False, True])
     def test_full_suite_applies_effective_slow_and_aggregate_policy(
         cached_runner_project: Path,
+        *,
+        overrun: bool,
     ) -> None:
         """Real pytest enforces slow-item policy within the shared invocation wall."""
         runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
         reports_root = cached_runner_project / runner.reports
         existing = set(reports_root.glob("*/run-context.json"))
+        if overrun:
+            (
+                cached_runner_project / runner.target / "test_ordinary_overrun.py"
+            ).write_text(
+                "from threading import Event\n\n"
+                "def test_ordinary_overrun():\n"
+                "    Event().wait(3)\n",
+                encoding="utf-8",
+            )
         (cached_runner_project / runner.target / "test_bounded_policy.py").write_text(
             "import pytest\nfrom flext_infra import c\n\n"
             "def test_ordinary_budget(pytestconfig, request):\n"
@@ -924,9 +936,14 @@ class TestsFlextInfraPytestRunner:
             encoding="utf-8",
         )
 
-        tm.that(tm.ok(runner.execute_full()), eq=0)
+        tm.that(tm.ok(runner.execute_full()), eq=int(overrun))
 
         contexts = sorted(set(reports_root.glob("*/run-context.json")) - existing)
+        if overrun:
+            tm.that(
+                contexts[0].with_name("pytest.log").read_text(),
+                has="Timeout (>2.0s)",
+            )
         parsed = [
             m.Infra.PytestRunContext.model_validate_json(p.read_text())
             for p in contexts

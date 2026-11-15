@@ -22,6 +22,41 @@ class TestsFlextInfraPytestRunnerSuiteStop:
     """Exercise the real runner around its graceful-stop boundary."""
 
     @staticmethod
+    def test_suite_stop_uses_the_selected_repository_slow_reserve(
+        cached_runner_project: Path,
+    ) -> None:
+        """A tighter repository budget must not inherit the fleet drain reserve."""
+        tooling = cached_runner_project / "config" / "tooling.yaml"
+        tooling.parent.mkdir(exist_ok=True)
+        tooling.write_text(
+            "Infra:\n  tooling:\n    tools:\n      pytest:\n"
+            "        run-timeout-seconds: 12\n"
+            "        slow-timeout-seconds: 3\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        runner = u.Tests.PytestRunner.runner_for(cached_runner_project)
+        tooling_policy = (
+            u.Infra
+            .load_tooling_inputs(
+                cached_runner_project,
+            )
+            .unwrap()
+            .document.tools.pytest
+        )
+        tm.that(tooling_policy.run_timeout_seconds, eq=12)
+        tm.that(tooling_policy.slow_timeout_seconds, eq=3)
+        runner = runner.model_copy(
+            update={"run_timeout_seconds": tooling_policy.run_timeout_seconds},
+        )
+        tm.that(
+            runner.suite_stop_monotonic(
+                serial=True,
+                execution_mode=c.Infra.PytestExecutionMode.FULL,
+            ),
+            eq=runner.started_at_monotonic + 12 - 3 - runner.termination_grace_seconds,
+        )
+
+    @staticmethod
     def _read(path: Path) -> str:
         """Read one published receipt through the files facade.
 

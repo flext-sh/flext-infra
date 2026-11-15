@@ -232,7 +232,7 @@ class FlextInfraModelsDepsToolConfig(
         ordinary_timeout_seconds: int = m.Field(
             alias="ordinary-timeout-seconds",
             gt=0,
-            le=2,
+            le=20,
             description="Hard maximum runtime for one ordinary item.",
         )
         slow_timeout_seconds: int = m.Field(

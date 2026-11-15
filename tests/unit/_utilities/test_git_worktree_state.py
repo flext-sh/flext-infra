@@ -59,16 +59,24 @@ class TestsFlextInfraGitWorktreeState:
         partial.write_text("staged\n", encoding="utf-8")
         binary.write_bytes(b"\x00staged\xff")
         deleted.unlink()
-        u.Tests.git_run(source, "add", "partial.txt", "binary.dat", "deleted.txt")
-        u.Tests.git_run(source, "rm", "recreated.txt")
+        recreated.unlink()
+        added = source / "added.txt"
+        added.write_text("index content\n", encoding="utf-8")
+        u.Tests.git_run(
+            source,
+            "add",
+            "--",
+            "partial.txt",
+            "binary.dat",
+            "deleted.txt",
+            "recreated.txt",
+            "added.txt",
+        )
         recreated.write_text("untracked replacement\n", encoding="utf-8")
         partial.write_text("unstaged without final newline", encoding="utf-8")
         partial.chmod(0o751)
         binary.write_bytes(b"\x00unstaged\xfe")
         binary.chmod(0o600)
-        added = source / "added.txt"
-        added.write_text("index content\n", encoding="utf-8")
-        u.Tests.git_run(source, "add", "added.txt")
         added.unlink()
         untracked = source / "untracked.dat"
         untracked.write_bytes(b"\xff\x00untracked")

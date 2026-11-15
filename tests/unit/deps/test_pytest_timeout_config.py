@@ -114,7 +114,7 @@ class TestsFlextInfraPytestTimeoutConfig:
     @c.Tests.MARK.parametrize(
         ("field", "over_budget"),
         [
-            ("ordinary-timeout-seconds", 3),
+            ("ordinary-timeout-seconds", 21),
             ("slow-timeout-seconds", 21),
             ("run-timeout-seconds", 241),
         ],
@@ -131,7 +131,7 @@ class TestsFlextInfraPytestTimeoutConfig:
 
     @staticmethod
     def test_ci_must_not_exclude_slow_items() -> None:
-        """The slow marker increases the item budget without excluding the item."""
+        """The slow marker must preserve the item in CI's population."""
         policy = config.Infra.tooling.tools.pytest
         payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
         payload["ci-excluded-markers"] = [policy.slow_marker]

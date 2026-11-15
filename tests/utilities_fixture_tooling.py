@@ -16,7 +16,7 @@ from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
+from flext_infra import config, u, validate
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
@@ -249,6 +249,9 @@ class TestsFlextInfraUtilitiesToolingFixture:
         Returns:
             Each declared distribution and the checkout that owns its source.
 
+        Raises:
+            ValueError: If two workspace sources declare the same distribution.
+
         """
         # A linked worktree is never a registered submodule: its primary
         # checkout names the superproject that owns the sibling sources. The
@@ -262,17 +265,29 @@ class TestsFlextInfraUtilitiesToolingFixture:
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        declarations = tm.ok(u.Infra.git_submodule_declarations(source_root))
+        projects: dict[str, Path] = {}
+        roots = (
+            source_root,
+            *(
+                source_root / item.path
+                for item in declarations
+                if item.managed is not False
+            ),
         )
-        return {
-            repository.distribution: (
-                checkout
-                if (source_root / repository.path).resolve() == primary
-                else source_root / repository.path
-            )
-            for repository in (specification.repository, *specification.subprojects)
-        }
+        for root in roots:
+            if not root.resolve().is_relative_to(source_root):
+                msg = f"Fixture dependency escapes workspace root: {root}"
+                raise ValueError(msg)
+            source = checkout if root.resolve() == primary else root
+            if not (source / c.PYPROJECT_FILENAME).is_file():
+                continue
+            name = tm.ok(u.Infra.read_project_metadata_result(source)).project.name
+            if name in projects:
+                msg = f"Duplicate fixture dependency distribution: {name}"
+                raise ValueError(msg)
+            projects[name] = source
+        return projects
 
     @classmethod
     def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:

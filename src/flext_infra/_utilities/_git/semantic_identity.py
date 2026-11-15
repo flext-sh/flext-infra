@@ -258,7 +258,7 @@ class FlextInfraUtilitiesGitSemanticIdentity(FlextInfraUtilitiesGitRepo):
             Whether ``repo_root`` sits inside a Git work tree.
 
         """
-        refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
+        refreshed = FlextInfraUtilitiesGitRepo.refresh_binary(force=False)
         if refreshed.failure:
             return r[p.Infra.GitBoolReport].from_failure(refreshed)
         resolved = request.repo_root.expanduser().resolve()
