@@ -7,7 +7,8 @@ same in a scoped and an unscoped run, and the fresh stand-in's MRO names the rea
 class's base objects. A class no facade composes stays a plain lazy export, and a
 composed part whose base is a third-party or builtin type, that flattens a base
 around a routed one, or that a stand-in cannot represent (rule 5), fails
-generation by name. A facade of one tier root
+generation by name. A part the package's own import-time code reads (its eager
+``__version__`` module) stays real (rule 5). A facade of one tier root
 (``examples``) that another tier's facade composes stays real, like a public
 ``src`` facade.
 
@@ -88,6 +89,35 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         tm.that(initializer, has="FlextDemoCapabilityNamespace")
         tm.that(initializer, lacks='"FlextDemoCapabilityNamespace": (')
         tm.that(initializer, has=self._DEFERRED_BLOCK)
+
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
+    def test_part_read_at_package_import_is_not_deferred(
+        self,
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """A part the eager ``__version__`` module imports stays real.
+
+        The other part is still deferred, and a fresh package import reads
+        the real class, so no stand-in is published at import.
+        """
+        root = deferred_capability_project
+        fixture_tree("lazy-deferred-capability-import-time", destination=root)
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
+        initializer = self._initializer(root)
+        tm.that(initializer, lacks='"FlextDemoCapabilityBase": (')
+        tm.that(initializer, has='"FlextDemoCapabilityHeavy": (')
+        tm.that(initializer, has='"base_value",')
+        tm.that(initializer, lacks="defer_lazy_bases(")
+        tm.that(
+            u.Tests.run_lazy_init_probe(
+                (root / "import_time_probe.py").read_text(encoding=c.DEFAULT_ENCODING),
+                python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
+            ),
+            eq=["False", "1.0.0"],
+        )
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote

@@ -3999,6 +3999,14 @@ class: the non-dunder names each exposes at runtime, including names bound by
 unpacking, decorators or `setattr`, must be equal, or the stale initializer fails
 with a `make gen` fix (rule 2).
 
+Two composed classes stay real instead of becoming stand-ins (rule 5): a class
+whose body binds no member and names no base, and a class the package's own
+import-time code reads. That code is each module an eager dunder binding (such as
+`__version__`) loads while the package initializes, together with every
+in-package module those modules import at runtime, transitively; the facts are
+the same parse's runtime imports. A stand-in published there would make the
+process mix stand-ins and real classes, which the eager lazy mode refuses.
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public

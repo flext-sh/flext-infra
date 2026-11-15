@@ -717,6 +717,7 @@ install_lazy_exports(
             "_lazy_init_build_plan",
             "_lazy_init_instance_deferrals",
             "_lazy_init_deferrals",
+            "_lazy_init_import_time",
             "_lazy_init_binds_nothing",
             "_lazy_init_part_exporters",
             "_lazy_init_class_index",
