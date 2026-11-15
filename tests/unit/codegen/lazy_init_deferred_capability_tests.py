@@ -254,6 +254,30 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
+    def test_ancestor_attribute_base_is_shared_by_its_root_route(
+        deferred_capability_project: Path,
+        fixture_tree: p.Tests.FixtureTree,
+    ) -> None:
+        """An attribute of a published ancestor class is shared as named."""
+        root = deferred_capability_project
+        fixture_tree("lazy-deferred-capability-examples-facade", destination=root)
+        fixture_tree("lazy-deferred-capability-ancestor-dotted", destination=root)
+        tm.that(u.Tests.run_lazy_init(root), eq=0)
+        tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
+        source = (
+            root / c.Infra.DIR_EXAMPLES / "_capability" / c.Infra.INIT_PY
+        ).read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            source,
+            has=(
+                '"ExamplesFlextDemoCapabilityExtra": '
+                '(("flext_demo", "FlextDemoUtilities.Demo"),),'
+            ),
+        )
+
+    @staticmethod
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.remote
     def test_tier_root_facade_composed_by_another_tier_stays_real(
         deferred_capability_project: Path,
         fixture_tree: p.Tests.FixtureTree,
