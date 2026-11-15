@@ -1205,8 +1205,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
         """Remove checkout-absolute type checker interpreter pins.
 
-        Search paths belong to the analyzer phase; environment selection is
-        owned by Make and the opened editor folder.
+        Search paths belong to the analyzer phase. Preserve its member-local
+        execution environments and their order through full generation.
 
         Returns:
             The resulting ``p.Result[bool]``.
@@ -1219,6 +1219,35 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         if pyrefly is not None:
             u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
             u.Cli.toml_remove_key_if_present(pyrefly, "python")
+
+        pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
+        if pyright is None:
+            return r[bool].ok(value=True)
+
+        # Environment selection is owned by Make and the opened editor folder.
+        interpreter_keys = ("pythonPath", "pythonInterpreterPath")
+        for key in interpreter_keys:
+            u.Cli.toml_remove_key_if_present(pyright, key)
+        raw_environments = u.Cli.json_as_sequence(
+            u.Cli.toml_value(pyright, "executionEnvironments"),
+        )
+        normalized_environments: list[t.JsonValue] = []
+        for index, environment in enumerate(raw_environments):
+            if not isinstance(environment, Mapping):
+                return r[bool].fail(
+                    f"tool.pyright.executionEnvironments[{index}] must be a mapping",
+                )
+            mapping = u.json_mapping_adapter().validate_python(environment)
+            normalized: t.JsonDict = dict(mapping)
+            for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
+                normalized.pop(key, None)
+            normalized_environments.append(normalized)
+        if raw_environments:
+            u.Cli.toml_sync_value(
+                pyright,
+                "executionEnvironments",
+                normalized_environments,
+            )
         return r[bool].ok(value=True)
 
 

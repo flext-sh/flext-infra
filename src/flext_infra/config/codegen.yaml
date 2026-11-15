@@ -1941,7 +1941,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"

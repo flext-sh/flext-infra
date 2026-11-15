@@ -937,6 +937,7 @@ install_lazy_exports(
             "native_tool_configuration",
             "native_tool_setting",
             "native_tool_strings",
+            "native_exclude_regex",
         ),
         "FlextInfraUtilitiesNetwork": (
             "_connection",

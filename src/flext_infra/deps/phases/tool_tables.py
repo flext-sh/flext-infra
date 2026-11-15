@@ -1,6 +1,6 @@
 """Phase: mirror every config-owned tool table whose shape is pure policy data.
 
-pytest, codespell, hatch metadata, tomlsort, yamlfix,
+pytest, mypy, pydantic-mypy, codespell, hatch metadata, tomlsort, yamlfix,
 deptry namespaces, vulture, and coverage share one behavior: each table is a
 direct projection of ``config.Infra.tooling``. One declarative phase set owns
 them so no per-tool class re-implements the same apply contract.
@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import c, m, p, t, u, workspace
+from flext_infra import c, deps, m, p, t, u, workspace
 from flext_infra._utilities import (
     FlextInfraUtilitiesNativeTooling,
     FlextInfraUtilitiesProjectDiscovery,
@@ -187,6 +187,46 @@ class FlextInfraToolTablesPhase:
             operations=(m.Infra.DepsToml.SetOp(key=path[-1], value=payload),),
         )
 
+    def _mypy_phase(
+        self,
+        mypy_search_paths: Sequence[str],
+        repository_namespace_packages: Sequence[str] = (),
+    ) -> p.Infra.PhaseConfig:
+        """Combine native options with the Mypy execution policy.
+
+        Returns:
+            The complete Mypy table, preserving option and plugin array order.
+
+        """
+        policy = self._tool_config.tools.mypy
+        payload = FlextInfraUtilitiesNativeTooling.native_tool_configuration(
+            self._tool_config, c.Infra.MYPY
+        )
+        payload[c.Infra.PYTHON_VERSION_UNDERSCORE] = (
+            self._codegen.toolchain.python_version
+        )
+        payload["mypy_path"] = list(mypy_search_paths)
+        # PEP 420 packages (first- or third-party) resolve only with namespace
+        # packages on (operator-ruling-2026-11-14-mypy-namespace-packages).
+        payload["namespace_packages"] = True
+        # A declared repository namespace has no __init__.py: mypy names its
+        # modules from explicit package bases, never from the file's directory.
+        payload["explicit_package_bases"] = bool(repository_namespace_packages)
+        # One exclusion owner: the codegen artifact registry, as Mypy's regex.
+        payload["exclude"] = FlextInfraUtilitiesNativeTooling.native_exclude_regex(
+            self._codegen.analyzer_exclude_globs
+        )
+        if policy.ruling_disable_error_codes:
+            payload["disable_error_code"] = list(policy.ruling_disable_error_codes)
+        payload["overrides"] = [
+            {
+                "module": list(entry.modules),
+                **FlextInfraUtilitiesNativeTooling.configuration_pairs(entry.settings),
+            }
+            for entry in policy.overrides
+        ]
+        return self._native_phase(c.Infra.MYPY, payload)
+
     def _pytest_phase(self) -> p.Infra.PhaseConfig:
         """Project native pytest options and its shared operational vocabulary.
 
@@ -293,6 +333,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         repository_namespace_packages: Sequence[str],
+        mypy_search_paths: Sequence[str],
     ) -> Sequence[p.Infra.PhaseConfig]:
         """Compose declarative tables and the registered semantic owners.
 
@@ -332,6 +373,7 @@ class FlextInfraToolTablesPhase:
             native_phases.append(self._native_phase(table, image))
         return (
             *native_phases,
+            self._mypy_phase(mypy_search_paths, repository_namespace_packages),
             self._pytest_phase(),
             self._vulture_phase(path),
             self._deptry_phase(path, repository_namespace_packages),
@@ -343,6 +385,7 @@ class FlextInfraToolTablesPhase:
         *,
         path: Path,
         repository_namespace_packages: Sequence[str] = (),
+        mypy_search_paths: Sequence[str] | None = None,
     ) -> Sequence[str]:
         """Apply every policy table to one normalized payload.
 
@@ -350,11 +393,19 @@ class FlextInfraToolTablesPhase:
             The resulting ``Sequence[str]``.
 
         """
+        elected_mypy_paths = (
+            deps.FlextInfraExtraPathsManager(
+                repository_root=path.parent
+            ).mypy_search_paths(project_dir=path.parent)
+            if mypy_search_paths is None
+            else mypy_search_paths
+        )
         return FlextInfraUtilitiesPyprojectTomlPhases.apply_toml_phases(
             payload,
             *self._phases(
                 path=path.parent,
                 repository_namespace_packages=repository_namespace_packages,
+                mypy_search_paths=elected_mypy_paths,
             ),
         )
 

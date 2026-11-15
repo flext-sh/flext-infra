@@ -387,8 +387,8 @@ message: >-
 # factory such as `default_factory=dict`) are values, not annotations.
 #
 # No path is exempt in the universal layer. Dunder comparison/equality methods keep
-# their LSP-required `object` parameter (mypy rejects the narrowed @override
-# signature), so parameter annotations of those dunders are exempt too.
+# their LSP-required `object` parameter, so parameter annotations of those
+# dunders are exempt too.
 id: ban-broad-annotation
 language: python
 severity: error

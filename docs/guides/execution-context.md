@@ -4099,7 +4099,7 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-The retired `check-pyright` and `mod-types` Make subverbs, including their former
+The retired type-check and `mod-types` Make subverbs, including their former
 member-Makefile dispatch examples, are historical interfaces. Use the active
 root's selector-free `make check` for declared Pyrefly validation and native
 reports, and `make mod` for the existing semantic transformation pipeline.

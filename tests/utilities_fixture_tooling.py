@@ -15,6 +15,9 @@ from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
+from textwrap import indent
+
+from typing_extensions import TypeForm
 
 from flext_infra import config, u, validate, workspace
 from tests import c, m, p, r, t, tm
@@ -220,6 +223,91 @@ class TestsFlextInfraUtilitiesToolingFixture:
             return tm.ok(
                 u.Cli.files_read_text(reports_root / latest_name / "summary.txt"),
             )
+
+    @staticmethod
+    def mypy_deadline_limit() -> p.Infra.MypyResourceLimit:
+        """Reserve harness startup and cleanup inside the configured slow budget.
+
+        Returns:
+            The resulting ``m.Infra.MypyResourceLimit``.
+
+        """
+        policy = config.Infra.tooling.tools.pytest
+        available = (
+            policy.slow_timeout_seconds
+            - c.Infra.MYPY_TIMEOUT_GRACE_SECONDS
+            - policy.termination_grace_seconds
+        )
+        return m.Infra.MypyResourceLimit(
+            memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+            timeout_seconds=min(
+                config.Infra.tooling.tools.mypy.timeout_seconds,
+                available // 2,
+            ),
+        )
+
+    @staticmethod
+    def reap_mypy_descendant(pid_file: Path, timeout: int) -> None:
+        """Reap a registered workload in pytest teardown, preserving call failures.
+
+        Raises:
+            RuntimeError: If ``snapshot.outcome.raw_return_code not in {0, 1} or
+                snapshot.stderr``.
+
+        """
+        pid = pid_file.read_text(encoding=c.DEFAULT_ENCODING)
+        snapshot = u.Cli.run_raw(
+            ("/bin/ps", "-p", str(int(pid)), "-o", "stat="),
+            timeout=timeout,
+        ).unwrap()
+        if snapshot.outcome.raw_return_code not in {0, 1} or snapshot.stderr:
+            raise RuntimeError(snapshot.stderr)
+        state = snapshot.stdout.strip()
+        if state and not state.startswith("Z"):
+            u.Cli.run(("/bin/kill", "-KILL", pid), timeout=timeout).unwrap()
+
+    @staticmethod
+    def mypy_workload(root: Path, plugin_body: str = "") -> p.Infra.MypyInvocation:
+        """Create a real checker project with an optional workload plugin.
+
+        Returns:
+            The resulting ``m.Infra.MypyInvocation``.
+
+        """
+        source = root / "checked.py"
+        source.write_text("value: int = 1\n", encoding=c.DEFAULT_ENCODING)
+        config_file = root / c.PYPROJECT_FILENAME
+        # The workload checks through the governed checker settings, so its
+        # crash reporting (show_traceback) matches every managed project.
+        # Each workload owns its cache inside its root: mypy's default
+        # .mypy_cache is relative to the process cwd, which concurrent workers
+        # share, and its SQLite metastore then fails with "database is locked".
+        tooling = u.Infra.load_tooling_inputs(root).unwrap().document
+        options = u.Infra.native_tool_configuration(tooling, "mypy")
+        options["cache_dir"] = str(root / ".mypy_cache")
+        options["python_version"] = config.Infra.codegen.toolchain.python_version
+        if plugin_body:
+            plugin = root / "workload.py"
+            plugin.write_text(
+                "from mypy.plugin import Plugin\n\n"
+                "def plugin(version: str) -> type[Plugin]:\n"
+                + indent(plugin_body, "    ")
+                + "\n    return Plugin\n",
+                encoding=c.DEFAULT_ENCODING,
+            )
+            options["plugins"] = [
+                *u.Infra.native_tool_setting(
+                    tooling, "mypy", "plugins", TypeForm(Sequence[str])
+                ),
+                str(plugin),
+            ]
+        config_file.write_text(
+            u.Cli.toml_dumps(
+                u.Cli.toml_document_from_mapping({"tool": {"mypy": options}})
+            ),
+            encoding=c.DEFAULT_ENCODING,
+        )
+        return m.Infra.MypyInvocation(targets=(source,), config_file=config_file)
 
     @staticmethod
     def managed_uv() -> str:

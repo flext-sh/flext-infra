@@ -2,9 +2,11 @@ Infra:
   tooling:
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
-    derived-tool-roots: [ deptry, pyrefly, pytest, ruff, vulture ]
+    derived-tool-roots: [ deptry, mypy, pyrefly, pyright, pytest, ruff, vulture ]
     derived-settings:
+      mypy: [ python_version, mypy_path, namespace_packages, explicit_package_bases, exclude, overrides, disable_error_code ]
       pyrefly: [ python-version, sub-config ]
+      pyright: [ pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath ]
       pytest.ini_options: [ flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value ]
       ruff: [ target-version ]
     # Native options are free key/value pairs, grouped by their tool table.
@@ -13,6 +15,10 @@ Infra:
       codespell:
       - [ check-filenames, true ]
       - [ ignore-words-list, 'crate,nd' ]
+      pydantic-mypy:
+      - [ init_forbid_extra, true ]
+      - [ init_typed, true ]
+      - [ warn_required_dynamic_aliases, true ]
       pyrefly:
       - [ disable-project-excludes-heuristics, true ]
       - [ use-ignore-files, false ]
@@ -134,6 +140,24 @@ Infra:
       - [ python_classes, [ "Test*" ] ]
       - [ filterwarnings, [ error, "once::pytest.PytestAssertRewriteWarning" ] ]
       - [ addopts, [ --benchmark-disable, --strict-markers, --markdown-docs, --durations=10 ] ]
+      pyright:
+      - [ pythonPlatform, Linux ]
+      - [ reportCallIssue, error ]
+      - [ reportConstantRedefinition, error ]
+      - [ reportIncompatibleMethodOverride, error ]
+      - [ reportInconsistentConstructor, error ]
+      - [ reportMissingImports, error ]
+      - [ reportMissingModuleSource, error ]
+      - [ reportPrivateUsage, error ]
+      - [ reportUnnecessaryCast, error ]
+      - [ reportUnnecessaryComparison, error ]
+      - [ reportUnnecessaryIsInstance, error ]
+      - [ reportUnusedClass, error ]
+      - [ reportUnusedFunction, error ]
+      - [ reportUnusedImport, error ]
+      - [ reportUnusedVariable, error ]
+      - [ typeCheckingMode, strict ]
+      - [ useLibraryCodeForTypes, true ]
       ruff:
       - [ namespace-packages, [ tests, examples, scripts ] ]
       - [ fix, false ]
@@ -207,6 +231,21 @@ Infra:
       - [ 'scripts/**/*.py', [ commented-out-code, invalid-module-name, line-too-long ] ]
       # The fleet testing contract expresses expectations with ``assert``.
       - [ 'tests/**/*.py', [ assert ] ]
+      mypy:
+      - [ plugins, [ pydantic.mypy ] ]
+      - [ allow_redefinition, true ]
+      - [ check_untyped_defs, true ]
+      - [ extra_checks, true ]
+      - [ follow_untyped_imports, true ]
+      - [ local_partial_types, true ]
+      - [ no_implicit_reexport, true ]
+      - [ show_traceback, true ]
+      - [ strict_equality, true ]
+      - [ warn_redundant_casts, true ]
+      - [ warn_return_any, true ]
+      - [ warn_unreachable, true ]
+      - [ warn_unused_ignores, true ]
+      - [ follow_imports, normal ]
     tools:
       # Non-linter tool sections are config-owned as well.
       markdown:
@@ -430,6 +469,98 @@ Infra:
           # https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
           # https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
           # bad-dunder-method-name remains enabled for every other unrecognized dunder name.
+      mypy:
+        # Default analysis budget, not the project ceiling. Project overlays
+        # may select a measured finite budget up to max_timeout_seconds.
+        # Neither field is controlled through environment variables.
+        timeout_seconds: 90
+        max_timeout_seconds: 600
+        # Pydantic 2 and pydantic.mypy are mandatory (operator 2026-10-05).
+        # Missing, empty, and v1 plugin declarations fail validation rather
+        # than being silently repaired by schema defaults.
+        # Analyze source distributions that have real annotations but omit
+        # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
+        # it converts every public boundary into Any and makes its imports
+        # fail before our typed protocols can validate them.
+        # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
+        # Operator ruling 2026-10-05 (mypy-pydantic law): call-arg and
+        # prop-decorator stay suspended until the fleet facade-alias family
+        # is cured; pydantic.mypy remains mandatory. Operator order 2026-11-13
+        # restores the 2026-11-08 suspension set that 387febe2ec reduced to two
+        # codes without authorization. Operator order 2026-11-14, verbatim: "o
+        # que vale são as 12 entradas de suspensão" — these fourteen are the
+        # whole set in every project, with no drift either way. Only the
+        # operator changes them; tests/unit/deps/test_modernizer_tool_tables.py
+        # fails on any addition or removal until that authorization is recorded.
+        ruling-disable-error-codes: [ call-arg, prop-decorator, arg-type, assignment, attr-defined, has-type, list-item, misc, name-defined, no-any-return, override, unreachable, valid-type, var-annotated ]
+        overrides:
+        - modules: [ rope.* ]
+          settings: [ [ follow_untyped_imports, true ] ]
+          justification: >-
+            Analyze Rope's installed source without suppressing import-untyped; https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports
+      pyright:
+        # Global axioms (operator order 2026-11-03, verbatim:
+        # "reportMissingTypeStubs tb tem que entrar em tooling.yaml global como
+        # axioma, lembre-se que axiomas tem que ser autorizados unicamente pelo
+        # operador e ser globais"; earlier ruling
+        # operator-ruling-20261022-missing-type-stubs): strict mode requires a
+        # stub file for an untyped third-party import even when Pyright already
+        # infers the library source. Used surfaces stay typed through `p`
+        # protocols at one boundary module per library. Axioms are global and
+        # only the operator authorizes them; no project overrides them.
+         ruling-disabled-rules:
+         - reportMissingTypeStubs
+         # Axiom (operator authorization 2026-11-08): pyright cannot resolve
+         # structural protocol members / advanced type forms derived from
+         # Pydantic models the way pyrefly does; the canonical form uses p.*
+         # protocols and is validated by pyrefly + mypy. These codes are
+         # silenced globally until the canonical protocol projection lands.
+         - reportUnknownMemberType
+         - reportUnknownArgumentType
+         - reportInvalidTypeForm
+         - reportUnknownVariableType
+         - reportUnknownParameterType
+         - reportUnknownLambdaType
+         - reportIncompatibleVariableOverride
+         # Axiom (operator authorization 2026-11-08, continuation): pyright
+         # cannot resolve the protocol/model duality (p.* vs m.*) and the
+         # advanced typing forms used across the fleet; these are false
+         # positives from linter incapacity, not real defects. Silenced
+         # globally until the canonical projection lands.
+         - reportUndefinedVariable
+         - reportGeneralTypeIssues
+         - reportUnnecessaryIsInstance
+         - reportArgumentType
+         - reportAttributeAccessIssue
+         - reportCallIssue
+         - reportUntypedFunctionDecorator
+         - reportAssignmentType
+         - reportReturnType
+         - reportAbstractUsage
+         # Axiom "generic facade publication" (python/mypy#22457): justification
+         # and retirement condition at tools.ruff.lint.ruling-disabled-rules.
+         - reportMissingTypeArgument
+         path-rules:
+          # Source and tracked consumer surfaces are all
+          # first-class environments so no analyzer can hide their diagnostics.
+          source-dir: src
+          project-root: .
+          env-dirs: [ src, tests, examples, scripts ]
+          test-like-dirs: [ tests, examples, scripts ]
+          default-excludes:
+          - "**/.*"
+          ignored-diagnostic-globs: []
+          # Authorized, path-scoped type-checker rule exceptions: the single
+          # list for both checkers. One entry renders the Pyright
+          # executionEnvironment and the Pyrefly sub-config of its root. Each
+          # entry names root (an existing project-relative file or directory),
+          # rationale, authorization (tracker-key, or operator-words + date +
+          # channel) and changes (checker, rule, old, new). A missing
+          # authorization or root fails.
+          diagnostic-path-exceptions: []
+          source-report-private-usage: error
+          test-like-report-private-usage: error
+          other-report-private-usage: error
       pyrefly:
         findings-exit-codes: [ 1 ]
         # Axiom "generic facade publication" (python/mypy#22457): justification
@@ -446,16 +577,10 @@ Infra:
           # Empty: scripts/ owns scripts/__init__.py, so every script module
           # resolves as `scripts.*` with the repo root as CWD. Adding "." or
           # "scripts" here makes the same file reachable under a second module
-          # name. scripts/ is analyzed because `files` names it, not because
-          # the search path does.
+          # name, which mypy reports as source-file-found-twice. scripts/ is
+          # analyzed because `files` names it, not because the search path
+          # does.
           project-shared-search-paths: []
-          # Authorized, path-scoped type-checker rule exceptions: one entry
-          # renders the Pyrefly sub-config of its root. Each entry names root
-          # (an existing project-relative file or directory), rationale,
-          # authorization (tracker-key, or operator-words + date + channel) and
-          # changes (checker, rule, old, new). A missing authorization or root
-          # fails.
-          diagnostic-path-exceptions: []
       pytest:
         # Scaffold and modernizer share the aggregate execution policy. Ordinary
         # items have no per-item deadline; the runner owns the invocation wall.

@@ -419,8 +419,7 @@ message: >-
 # in __all__, exactly once, to the facade class that module defines. Each
 # branch captures its own variable, each constrained natively. A name
 # declared in __all__ and never bound is the type checkers'
-# unsupported-dunder-all finding. An import of the alias is a binding too:
-# mypy keeps the imported type and rejects the later assignment.
+# unsupported-dunder-all finding. An import of the alias is a binding too.
 id: ban-runtime-alias-rebind
 language: python
 severity: error

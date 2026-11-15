@@ -35,6 +35,9 @@ class FlextInfraTypes(FlextCliTypes):
     transparently from ``FlextTypes`` via FLEXT.
     """
 
+    type PyrightScalarValue = str | bool | int
+    """Scalar value accepted by a Pyright setting."""
+
     class Infra(
         FlextInfraTypesAdapters,
         FlextInfraTypesBase,

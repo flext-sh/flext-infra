@@ -237,6 +237,13 @@ class FlextInfraCodegenRoutes:
                 None,
             ),
             (
+                "extra-paths",
+                "Synchronize pyright/mypy extraPaths",
+                deps.FlextInfraExtraPathsManager,
+                deps.FlextInfraExtraPathsManager.execute,
+                None,
+            ),
+            (
                 "modernize",
                 "Modernize workspace pyproject files",
                 deps.FlextInfraPyprojectModernizer,

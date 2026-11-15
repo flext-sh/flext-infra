@@ -133,6 +133,9 @@ class TestsFlextInfraModernizerPyrefly:
                 u.Tests.toml_table_at(rendered, "tool", "pyrefly"),
                 lacks="python-interpreter-path",
             )
+            pyright = u.Tests.toml_table_at(rendered, "tool", "pyright")
+            tm.that(pyright, lacks="venv")
+            tm.that(pyright, lacks="venvPath")
 
     def test_root_payload_receives_canonical_fields(self) -> None:
         """Root payloads receive version, default search path, and strict errors."""
@@ -339,14 +342,14 @@ class TestsFlextInfraModernizerPyrefly:
                 msg=f"{key}: runtime={runtime!r}; rendered={rendered_values!r}",
             )
 
-    def test_existing_python_roots_feed_project_includes(self, tmp_path: Path) -> None:
-        """Existing Python roots feed project-scoped Pyrefly includes."""
+    def test_pyright_include_feeds_project_includes(self, tmp_path: Path) -> None:
+        """Existing Pyright roots feed project-scoped Pyrefly includes."""
         project_dir = tmp_path / "flext-core"
         for directory in ("src", "tests"):
             (project_dir / directory).mkdir(parents=True)
         (project_dir / "src" / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(
-            "[project]\nname = 'flext-core'\n",
+            "[tool.pyright]\ninclude = ['src']\n",
             encoding="utf-8",
         )
 
@@ -358,7 +361,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     @staticmethod
-    def test_include_globs_derive_existing_python_roots(
+    def test_pyright_include_globs_derive_existing_python_roots(
         tmp_path: Path,
     ) -> None:
         """Derive canonical recursive selectors from existing Python roots."""
@@ -373,7 +376,8 @@ class TestsFlextInfraModernizerPyrefly:
         )
         (project_dir / "scripts" / "check.py").write_text("", encoding="utf-8")
         (project_dir / c.PYPROJECT_FILENAME).write_text(
-            "[project]\nname = 'flext-core'\n",
+            "[tool.pyright]\n"
+            "include = ['src', 'tests/unit/**/*.py', 'scripts/check.py']\n",
             encoding="utf-8",
         )
 

@@ -53,7 +53,8 @@ class FlextInfraProtocolsConfigTemplates:
             """Structural member projected from the owning model.
 
             VS Code keys actively stripped from the settings projection because they
-            conflict with their pyproject.toml or tool-file owner.
+            conflict with a pyrightconfig.json/pyproject.toml owner (Pylance
+            settingsNotOverridable).
             """
             ...
 

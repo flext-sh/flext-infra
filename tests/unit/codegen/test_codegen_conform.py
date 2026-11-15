@@ -644,7 +644,7 @@ class TestsFlextInfraCodegenConform:
     ) -> None:
         """The gen verb converges for a Python root beyond declarative env_dirs.
 
-        Two derivations used to select the type-checker analysis roots: the
+        Two derivations used to select the pyright execution environments: the
         dependency command discovered roots ON DISK, while conform planned them
         from declarative ``env_dirs``. A project owning a Python directory
         outside that list therefore oscillated between two writers. Conform is
@@ -671,7 +671,7 @@ class TestsFlextInfraCodegenConform:
             eq=True,
         )
         tm.that(
-            extra_root in config.Infra.tooling.tools.pyrefly.path_rules.env_dirs,
+            extra_root in config.Infra.tooling.tools.pyright.path_rules.env_dirs,
             eq=False,
         )
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
@@ -727,6 +727,14 @@ class TestsFlextInfraCodegenConform:
                 "pyrefly",
             )["project-includes"],
             lacks="scripts/**/*.py*",
+        )
+        tm.that(
+            u.Tests.toml_table_at(
+                (root / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                "tool",
+                "pyright",
+            )["include"],
+            lacks="scripts",
         )
 
     # Two conform apply cycles plus a check exercise the slow integration harness.
