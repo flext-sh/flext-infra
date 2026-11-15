@@ -376,10 +376,10 @@ class TestsFlextInfraGateAcceptance:
         tm.that(execution.raw_output.strip(), empty=False)
 
     @staticmethod
-    def test_native_fix_does_not_reject_already_fixed_diagnostics(
+    def test_native_fix_retains_the_requested_exit_and_check_accepts(
         tmp_path: Path,
     ) -> None:
-        """Ruff can report a findings exit even after every violation was fixed."""
+        """Repair runs once and keeps Ruff's exit; only an explicit check accepts."""
         project = u.Tests.mk_project(
             tmp_path,
             "repaired",
@@ -396,9 +396,7 @@ class TestsFlextInfraGateAcceptance:
             ruff_args=("--select", "F401", "--exit-non-zero-on-fix"),
         )
         execution = gate.fix(project, context)
-        tm.ok(execution.result.passed)
-        tm.that(execution.outcome, eq=c.Infra.ToolOutcome.CLEAN)
-        tm.that(execution.issues, empty=True)
+        tm.fail(execution.result.passed)
         tm.that(source.read_text(encoding="utf-8"), lacks="import os")
         tm.ok(gate.check(project, context).result.passed)
 
