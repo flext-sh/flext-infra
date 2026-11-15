@@ -26,10 +26,8 @@ from flext_infra.gates import (
     FlextInfraGatesMarkdown,
     FlextInfraGatesMarkdownCode,
     FlextInfraGatesMarkdownFormat,
-    FlextInfraGatesMypy,
     FlextInfraGatesProjectModule,
     FlextInfraGatesPyrefly,
-    FlextInfraGatesPyright,
     FlextInfraGatesRuffFormat,
     FlextInfraGatesRuffLint,
     FlextInfraGatesRuntimeIntegrity,
@@ -126,8 +124,6 @@ class FlextInfraGateRegistry:
             FlextInfraGatesDeps,
             FlextInfraGatesRuffFormat,
             FlextInfraGatesPyrefly,
-            FlextInfraGatesMypy,
-            FlextInfraGatesPyright,
             FlextInfraGatesBandit,
             FlextInfraGatesMarkdown,
             FlextInfraGatesMarkdownFormat,
@@ -160,7 +156,7 @@ class FlextInfraGateRegistry:
         """Largest declared check budget of the selected gates over the projects.
 
         Each registered gate owns its budget reader, so a project-dependent
-        budget (the Mypy overlay) is read from the same owner the run uses.
+        budget is read from the same owner the run uses.
 
         Returns:
             The maximum gate runner budget, in seconds.

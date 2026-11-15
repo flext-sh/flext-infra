@@ -31,34 +31,34 @@ snapshots:
       style: secondary
       start: 0
       end: 121
-  "def nested(document):\n    tools = u.json_mapping_adapter().validate_python(document[\"tools\"])\n    mypy = u.json_mapping_adapter().validate_python(tools[\"mypy\"])\n    mypy[\"overrides\"] = []\n":
+  "def nested(document):\n    tools = u.json_mapping_adapter().validate_python(document[\"tools\"])\n    deps = u.json_mapping_adapter().validate_python(tools[\"deps\"])\n    deps[\"overrides\"] = []\n":
     fixed: |
       def nested(document):
           tools = u.json_mapping_adapter().validate_python(document["tools"])
-          mypy = u.json_dict_adapter().validate_python(tools["mypy"])
-          mypy["overrides"] = []
+          deps = u.json_dict_adapter().validate_python(tools["deps"])
+          deps["overrides"] = []
     labels:
-    - source: mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
+    - source: deps = u.json_mapping_adapter().validate_python(tools["deps"])
       style: primary
       start: 98
       end: 160
-    - source: mypy
+    - source: deps
       style: secondary
       start: 165
       end: 169
-    - source: mypy["overrides"]
+    - source: deps["overrides"]
       style: secondary
       start: 165
       end: 182
-    - source: mypy["overrides"] = []
+    - source: deps["overrides"] = []
       style: secondary
       start: 165
       end: 187
     - source: |-
         def nested(document):
             tools = u.json_mapping_adapter().validate_python(document["tools"])
-            mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
-            mypy["overrides"] = []
+            deps = u.json_mapping_adapter().validate_python(tools["deps"])
+            deps["overrides"] = []
       style: secondary
       start: 0
       end: 187

@@ -240,11 +240,6 @@ class FlextInfraProtocolsCheck:
             ...
 
         @property
-        def pyright_args(self) -> str | None:
-            """Extra arguments forwarded to Pyright."""
-            ...
-
-        @property
         def file(self) -> str | None:
             """One literal repository-relative file; read-only gates."""
             ...
@@ -257,63 +252,6 @@ class FlextInfraProtocolsCheck:
         @property
         def reports_dir_path(self) -> Path:
             """Resolve the requested base; the checker owns its unique run leaf."""
-            ...
-
-    @runtime_checkable
-    class MypyResourceLimit(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def memory_limit_mb(self) -> int:
-            """Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)."""
-            ...
-
-        @property
-        def timeout_seconds(self) -> int:
-            """Structural member projected from the owning model.
-
-            Positive Mypy wall-time limit in seconds, resolved from
-            tools.mypy.timeout_seconds in tooling.yaml or the env override.
-            """
-            ...
-
-        @property
-        def memory_limit_bytes(self) -> int:
-            """Validated memory limit converted to bytes for the platform owner."""
-            ...
-
-    @runtime_checkable
-    class MypyInvocation(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def targets(self) -> tuple[Path, ...]:
-            """Files or directories to check."""
-            ...
-
-        @property
-        def workspace(self) -> Path | None:
-            """Workspace owning the checker environment."""
-            ...
-
-        @property
-        def config_file(self) -> Path | None:
-            """Owned Mypy configuration."""
-            ...
-
-        @property
-        def report_json(self) -> bool:
-            """Emit native JSON diagnostics."""
-            ...
-
-        @property
-        def verbose(self) -> bool:
-            """Emit Mypy progress."""
-            ...
-
-        @property
-        def profile_output(self) -> Path | None:
-            """Optional cProfile output destination."""
             ...
 
     @runtime_checkable

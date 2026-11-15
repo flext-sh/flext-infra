@@ -42,20 +42,6 @@ class FlextInfraProtocolsDeps:
             ...
 
     @runtime_checkable
-    class TypeCheckerPathRules(Protocol):
-        """Path-rule fields every type-checker configuration declares."""
-
-        @property
-        def source_dir(self) -> str:
-            """Import root the generated search paths order first."""
-            ...
-
-        @property
-        def project_root(self) -> str:
-            """Project-root entry the generated search paths order last."""
-            ...
-
-    @runtime_checkable
     class DetectCommand(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
