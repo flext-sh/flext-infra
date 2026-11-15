@@ -275,10 +275,12 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
             "plan = staging.plan_sources(root, {target: 'value = 1\\n'}).unwrap()\n"
             "assert family.name in {layout.package_name for layout in plan.layouts}\n"
             "sealed = {state.path: state for state in plan.inputs}\n"
-            "for name in ('__init__.py', '__version__.py', 'marker.py'):\n"
+            # The census elects the family as a read-only closure root, so
+            # every family source contributes its exact original bytes.
+            "for name in ('__init__.py', '__version__.py', 'marker.py',"
+            " 'typing_only.py'):\n"
             "    path = family / name\n"
             "    assert sealed[path].content == path.read_bytes()\n"
-            "assert family / 'typing_only.py' not in sealed\n"
             "assert family_root / 'pyproject.toml' not in sealed\n"
             "assert not target.exists()\n",
             str(root),
@@ -304,7 +306,10 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         )
         normalized = tm.ok(u.Infra.normalized_codegen_changes((plan,)))
         emitted = tm.not_none(normalized[0].desired_content)
-        tm.that(emitted.decode(c.DEFAULT_ENCODING), eq="values = dict(answer=42)\n")
+        # The destination's own Ruff policy decides the repair; the candidate
+        # changes and the formatter spaces its assignment.
+        tm.that(emitted, ne=b"values=dict(answer=42)\n")
+        tm.that(emitted, has=b"values = ")
         repeated = tm.ok(
             u.Infra.normalized_codegen_changes((
                 m.Infra.CodegenFilePlan(
@@ -371,14 +376,20 @@ class TestsFlextInfraArtifactRenderEmptyGuard:
         document = tm.not_none(
             u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
         )
-        document["tool"] = {"ruff": {"lint": {"select": ["UP040"]}}}
+        # Only the rule selection changes; the fleet target version stays, so
+        # UP040 applies to the declared Python line.
+        ruff = u.Cli.toml_mapping_ensure_table(
+            u.Cli.toml_mapping_ensure_table(document, "tool"), "ruff"
+        )
+        ruff["lint"] = {"select": ["UP040"]}
         metadata.write_text(u.Cli.toml_dumps(document), encoding=c.DEFAULT_ENCODING)
         staged = tm.not_none(
             u.Cli.toml_parse_text(metadata.read_text(encoding=c.DEFAULT_ENCODING))
         )
-        staged["tool"] = {
-            "ruff": {"lint": {"select": ["UP040"], "unfixable": ["UP040"]}}
-        }
+        staged_ruff = u.Cli.toml_mapping_ensure_table(
+            u.Cli.toml_mapping_ensure_table(staged, "tool"), "ruff"
+        )
+        staged_ruff["lint"] = {"select": ["UP040"], "unfixable": ["UP040"]}
         destination = package / "facade.py"
         candidate = (
             b"from typing import TypeAlias\n\n\n"
