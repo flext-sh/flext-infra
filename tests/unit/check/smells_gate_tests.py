@@ -311,7 +311,8 @@ class TestsFlextInfraSmellsGate:
             f"def wide({params}):\n    return p0\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        (tmp_path / c.Infra.GITIGNORE).write_text(
+        # The project's own checkout owns its ignore policy.
+        (smells_project / c.Infra.GITIGNORE).write_text(
             "local_*.py\n",
             encoding=c.DEFAULT_ENCODING,
         )
@@ -356,6 +357,14 @@ class TestsFlextInfraSmellsGate:
         comparison_enabled = self._write_comparisons(
             self._comparison_config(tmp_path, variation),
             self._package(smells_project),
+        )
+        # A workspace checks its members as registered submodules.
+        u.Tests.initialize_git_repo(tmp_path)
+        u.Tests.WorktreeFixture.attach_submodule(
+            tmp_path,
+            smells_project,
+            distribution=smells_project.name,
+            relative_path=smells_project.name,
         )
         reports_dir = tmp_path / "reports"
         projects = tm.ok(
