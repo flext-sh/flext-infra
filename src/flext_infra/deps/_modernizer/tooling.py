@@ -32,7 +32,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         """Return one canonical pyproject using the same phases as workspace apply.
 
         An atomic scaffold declares future roots before they exist on disk.
-        Pyrefly combines those declarations with the canonical inventory of
+        Pyright combines those declarations with the canonical inventory of
         existing owned Python sources; a scaffold declaration cannot hide them.
 
         Returns:

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -17,7 +18,8 @@ from flext_infra.deps.phases import (
     FlextInfraEnsureRuffConfigPhase,
     FlextInfraToolTablesPhase,
 )
-from tests import c, m, p, t, tm, u
+from flext_infra.gates import FlextInfraGatesMypy
+from tests import c, e, m, p, t, tm, u
 
 
 class TestsFlextInfraDepsModernizerToolTables:
@@ -65,6 +67,222 @@ class TestsFlextInfraDepsModernizerToolTables:
         for segment in path:
             table = u.Tests.toml_mapping(table[segment])
         return table
+
+    def test_mypy_admits_python_in_fixture_materialization_roots(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Fixture materialization does not exempt Python from type analysis."""
+        payload, _ = self._applied(tmp_path)
+        exclude = re.compile(str(self._table(payload, "mypy")["exclude"]))
+        for root in config.Infra.codegen.exclusions.scenario_data_roots:
+            tm.that(exclude.match(f"{root}/scenario/module.py"), none=True)
+            tm.that(exclude.match(f"{root}/module.py"), none=True)
+        tm.that(exclude.match("tests/unit/test_behavior.py"), none=True)
+
+    def test_mypy_suspension_set_is_the_operator_authorized_set(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Render exactly the operator-authorized mypy suspensions, no drift.
+
+        Operator ruling 2026-10-05 authorizes call-arg and prop-decorator;
+        operator order 2026-11-14 ("o que vale são as 12 entradas de
+        suspensão") authorizes the other twelve. Adding or removing a code in
+        tooling.yaml fails here until the operator records the change.
+        """
+        payload, _ = self._applied(tmp_path)
+        rendered = list(
+            u.Tests.toml_strings(self._table(payload, "mypy")["disable_error_code"])
+        )
+        tm.that(len(rendered), eq=len(set(rendered)))
+        tm.that(
+            sorted(rendered),
+            eq=[
+                "arg-type",
+                "assignment",
+                "attr-defined",
+                "call-arg",
+                "has-type",
+                "list-item",
+                "misc",
+                "name-defined",
+                "no-any-return",
+                "override",
+                "prop-decorator",
+                "unreachable",
+                "valid-type",
+                "var-annotated",
+            ],
+        )
+
+    def test_mypy_table_mirrors_policy(self, tmp_path: Path) -> None:
+        """Render toolchain Python plus config-owned plugins and overrides."""
+        mypy_policy = config.Infra.tooling.tools.mypy
+        native_options = u.Infra.native_tool_settings(config.Infra.tooling, "mypy")
+        payload, _ = self._applied(
+            tmp_path,
+            "[tool.mypy]\n"
+            'plugins = ["custom.plugin"]\n'
+            'disable_error_code = ["assignment", "has-type", "redundant-cast"]\n'
+            "strict_concatenate = true\n"
+            'overrides = [{ module = ["stale.*"] }]\n',
+        )
+        mypy = self._table(payload, "mypy")
+        tm.that(
+            mypy["python_version"],
+            eq=config.Infra.codegen.toolchain.python_version,
+        )
+        tm.that(mypy, lacks="strict_concatenate")
+        # PEP 420 packages always resolve; package bases follow declared
+        # repository namespaces, and this fixture declares none.
+        tm.that(mypy["namespace_packages"], eq=True)
+        tm.that(mypy["explicit_package_bases"], eq=False)
+        tm.that(
+            list(u.Tests.toml_strings(mypy["plugins"])),
+            eq=native_options["plugins"],
+        )
+        if mypy_policy.ruling_disable_error_codes:
+            tm.that(
+                list(u.Tests.toml_strings(mypy["disable_error_code"])),
+                eq=list(mypy_policy.ruling_disable_error_codes),
+            )
+        else:
+            tm.that(mypy, lacks="disable_error_code")
+        tm.that(
+            list(u.Tests.toml_list(mypy["overrides"])),
+            eq=[
+                {
+                    "module": list(entry.modules),
+                    **u.Infra.configuration_pairs(entry.settings),
+                }
+                for entry in mypy_policy.overrides
+            ],
+        )
+        for key, value in native_options.items():
+            tm.that(mypy[key], eq=value)
+        second = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Tests.toml_payload(
+                u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+            ),
+        )
+        changes = FlextInfraToolTablesPhase(
+            config.Infra.tooling, codegen=config.Infra.codegen
+        ).apply_payload(
+            second,
+            path=tmp_path / "flext-sample" / c.PYPROJECT_FILENAME,
+        )
+        tm.that(second, eq=payload)
+        tm.that(changes, empty=True)
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "plugins",
+        [(), ("custom.plugin",), ("pydantic.mypy", "pydantic.v1.mypy")],
+    )
+    def test_mypy_rejects_missing_or_v1_pydantic_plugin(
+        plugins: Sequence[str],
+    ) -> None:
+        """The typed policy cannot remove mandatory Pydantic 2 support."""
+        tooling = config.Infra.tooling
+        payload = tooling.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload["settings"] = {
+            **tooling.settings,
+            "mypy": (
+                *(pair for pair in tooling.settings["mypy"] if pair[0] != "plugins"),
+                ("plugins", list(plugins)),
+            ),
+        }
+        with u.Tests.raises(e.PydanticValidationError, match=r"pydantic\.mypy"):
+            m.Infra.ToolConfigDocument.model_validate(payload)
+
+    @c.Tests.MARK.slow
+    @c.Tests.MARK.parametrize("enable_unrelated", [False, True])
+    def test_mypy_projected_policy_keeps_plugin_and_unsuspended_errors(
+        self,
+        tmp_path: Path,
+        *,
+        enable_unrelated: bool,
+    ) -> None:
+        """The real Mypy consumer retains formerly suspended plugin diagnostics."""
+        tooling = config.Infra.tooling
+        tooling = tooling.model_copy(
+            update={
+                "tools": tooling.tools.model_copy(
+                    update={
+                        "mypy": tooling.tools.mypy.model_copy(
+                            update={"ruling_disable_error_codes": ()}
+                        )
+                    }
+                )
+            }
+        )
+        if enable_unrelated:
+            tooling = tooling.model_copy(
+                update={
+                    "settings": {
+                        **tooling.settings,
+                        "mypy": (
+                            *tooling.settings["mypy"],
+                            ("enable_error_code", ["arg-type"]),
+                        ),
+                    }
+                },
+            )
+        payload, _ = self._applied(tmp_path, tool_config=tooling)
+        mypy = self._table(payload, "mypy")
+        tm.that(
+            tuple(u.Tests.toml_strings(mypy["plugins"])),
+            eq=tuple(
+                u.Tests.strings(
+                    u.Infra.native_tool_settings(tooling, "mypy")["plugins"]
+                )
+            ),
+        )
+        tm.that(mypy, lacks="disable_error_code")
+        if enable_unrelated:
+            tm.that(
+                mypy["enable_error_code"],
+                eq=u.Infra.native_tool_settings(tooling, "mypy")["enable_error_code"],
+            )
+        project = tmp_path / "flext-sample"
+        (project / c.PYPROJECT_FILENAME).write_text(
+            u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
+            encoding="utf-8",
+        )
+        source = project / "src" / "flext_sample" / "model.py"
+        declarations = (
+            "from pydantic import BaseModel, computed_field\n"
+            "class Model(BaseModel):\n"
+            "    value: int\n"
+            "    @computed_field\n"
+            "    @property\n"
+            "    def derived(self) -> int:\n"
+            "        return self.value\n"
+            "def missing_argument() -> Model:\n"
+            "    return Model()\n"
+        )
+        source.write_text(declarations, encoding="utf-8")
+        context = m.Infra.GateContext(
+            repository_root=project,
+            reports_dir=project / ".reports",
+        )
+        gate = FlextInfraGatesMypy(project)
+        initial = gate.check(project, context)
+        tm.fail(initial.result.passed)
+        tm.that([issue.code for issue in initial.issues], has="call-arg")
+
+        source.write_text(
+            declarations
+            + "def requires_integer(value: int) -> int:\n"
+            + "    return value\n"
+            + 'invalid = requires_integer("incorrect")\n',
+            encoding="utf-8",
+        )
+        rejected = gate.check(project, context)
+        tm.fail(rejected.result.passed)
+        tm.that([issue.code for issue in rejected.issues], has="arg-type")
+        tm.that([issue.code for issue in rejected.issues], has="call-arg")
 
     def test_pytest_table_replaces_policy_and_merges_extensions(
         self,
@@ -134,12 +352,54 @@ class TestsFlextInfraDepsModernizerToolTables:
             truth=True,
         )
 
+    @c.Tests.MARK.parametrize("follow_untyped", [False, True])
+    def test_mypy_source_analysis_override_round_trips_policy(
+        self,
+        tmp_path: Path,
+        *,
+        follow_untyped: bool,
+    ) -> None:
+        """Project the configured import analysis flag without disabling errors."""
+        tooling = config.Infra.tooling
+        entry = m.Infra.MypyOverrideConfig.model_validate({
+            "modules": ("arbitrary_dependency.*",),
+            "settings": (("follow_untyped_imports", follow_untyped),),
+            "justification": (
+                "https://mypy.readthedocs.io/en/stable/"
+                "config_file.html#follow-untyped-imports"
+            ),
+        })
+        configured = tooling.model_copy(
+            update={
+                "tools": tooling.tools.model_copy(
+                    update={
+                        "mypy": tooling.tools.mypy.model_copy(
+                            update={"overrides": (entry,)},
+                        ),
+                    },
+                ),
+            },
+        )
+
+        payload, _ = self._applied(tmp_path, tool_config=configured)
+
+        tm.that(
+            list(u.Tests.toml_list(self._table(payload, "mypy")["overrides"])),
+            eq=[
+                {
+                    "module": list(entry.modules),
+                    "follow_untyped_imports": follow_untyped,
+                },
+            ],
+        )
+
     def test_formatting_tables_mirror_policy(self, tmp_path: Path) -> None:
-        """Render codespell, hatch, tomlsort, yamlfix, and vulture."""
+        """Render codespell, hatch, tomlsort, yamlfix, pydantic-mypy, and vulture."""
         tooling = config.Infra.tooling
         payload, changes = self._applied(
             tmp_path,
-            f'[tool.codespell]\nskip = "{c.GIT_DIR_NAME}"\n',
+            f'[tool.codespell]\nskip = "{c.GIT_DIR_NAME}"\n'
+            "[tool.pydantic-mypy]\nwarn_untyped_fields = true\n",
         )
         codespell = self._table(payload, "codespell")
         tm.that(codespell, lacks="skip")
@@ -174,6 +434,12 @@ class TestsFlextInfraDepsModernizerToolTables:
         tm.that(
             yamlfix["explicit_start"],
             eq=u.Infra.native_tool_settings(tooling, "yamlfix")["explicit_start"],
+        )
+        pydantic_mypy = self._table(payload, "pydantic-mypy")
+        tm.that(pydantic_mypy, lacks="warn_untyped_fields")
+        tm.that(
+            pydantic_mypy["init_typed"],
+            eq=u.Infra.native_tool_settings(tooling, "pydantic-mypy")["init_typed"],
         )
         vulture = self._table(payload, "vulture")
         tm.that(

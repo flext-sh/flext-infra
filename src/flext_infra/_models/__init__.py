@@ -224,6 +224,8 @@ install_lazy_exports(
             "BanditReport",
             "RunCommand",
             "CheckProjectTarget",
+            "MypyResourceLimit",
+            "MypyInvocation",
             "FixPyreflyConfigCommand",
             "SarifLocation",
             "LineWrapLiteral",
@@ -362,6 +364,8 @@ install_lazy_exports(
             "DiagnosticRuleChange",
             "RuffLintConfig",
             "RuffConfig",
+            "MypyOverrideConfig",
+            "MypyConfig",
         ),
         "FlextInfraModelsDepsToolConfigProject": (
             "ProjectManagedArtifactsFragment",
@@ -373,6 +377,7 @@ install_lazy_exports(
         ),
         "FlextInfraModelsDepsToolConfigTypeCheckers": (
             "DiagnosticPathException",
+            "PyrightConfig",
             "PyreflyConfig",
         ),
         "FlextInfraModelsDocs": (
@@ -462,6 +467,12 @@ install_lazy_exports(
             "DeptryNativeReport",
             "DeptryScan",
             "GateContext",
+            "MypyDiagnostic",
+            "PyrightPosition",
+            "PyrightRange",
+            "PyrightDiagnostic",
+            "PyrightSummary",
+            "PyrightReport",
             "PyreflyDiagnostic",
             "PyreflyReport",
             "GateReportEvidence",

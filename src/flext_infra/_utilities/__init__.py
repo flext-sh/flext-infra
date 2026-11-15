@@ -77,6 +77,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesMarkdownTooling,
     )
     from flext_infra._utilities.mise_binary import FlextInfraUtilitiesMiseBinary
+    from flext_infra._utilities.mypy import FlextInfraUtilitiesMypy
     from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
     from flext_infra._utilities.namespace_analysis import (
         FlextInfraUtilitiesRefactorNamespaceFlext,
@@ -211,6 +212,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesModelsProtocol",
     "FlextInfraUtilitiesModelsProtocolContracts",
     "FlextInfraUtilitiesModelsProtocolRetirement",
+    "FlextInfraUtilitiesMypy",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesNativeTooling",
     "FlextInfraUtilitiesNetwork",
@@ -301,6 +303,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesModelsProtocol": ".protocol_models",
         "FlextInfraUtilitiesModelsProtocolContracts": ".protocol_contracts",
         "FlextInfraUtilitiesModelsProtocolRetirement": ".protocol_retirement",
+        "FlextInfraUtilitiesMypy": ".mypy",
         "FlextInfraUtilitiesNamespaceConfig": ".namespace_config",
         "FlextInfraUtilitiesNativeTooling": ".native_tooling",
         "FlextInfraUtilitiesNetwork": ".network",
@@ -351,6 +354,7 @@ install_lazy_exports(
             "env_lookup",
             "env_value",
             "selected_check_gates",
+            "not_executed_local_gates",
             "resolve_repository_root_or_cwd",
             "real_account_home",
             "normalize_optional_path",
@@ -822,6 +826,7 @@ install_lazy_exports(
         ),
         "FlextInfraUtilitiesLogParser": (
             "check_report_findings",
+            "mypy_build_sources",
             "junit_report_root",
         ),
         "FlextInfraUtilitiesManagedConflicts": (
@@ -923,6 +928,7 @@ install_lazy_exports(
             "facade_rebinding",
             "retired_sources",
         ),
+        "FlextInfraUtilitiesMypy": (),
         "FlextInfraUtilitiesNamespaceConfig": (
             "namespace_meta",
             "_namespace_flag",
@@ -937,6 +943,7 @@ install_lazy_exports(
             "native_tool_configuration",
             "native_tool_setting",
             "native_tool_strings",
+            "native_exclude_regex",
         ),
         "FlextInfraUtilitiesNetwork": (
             "_connection",
@@ -1107,6 +1114,8 @@ install_lazy_exports(
             "_run_lint_gate",
             "lint_gate_result",
             "_lint_report_errors",
+            "_pyright_report_errors",
+            "_mypy_report_errors",
             "_ruff_report_errors",
             "lint_execution_errors",
             "_lint_snapshot_from_results",
@@ -1372,8 +1381,27 @@ install_lazy_exports(
             "repository_baseline_branch",
         ),
         "FlextInfraUtilitiesResourceLimits": (
+            "_MEMORY_FAILURE_MARKERS",
+            "_required_executable",
+            "_environment_integer",
+            "node_heap_megabytes",
+            "mypy_resource_limit",
+            "mypy_arguments",
+            "mypy_command",
+            "mypy_cache_directory",
+            "mypy_cache_lock",
+            "environment_cache_identity",
             "ruff_cache_directory",
             "external_cache_directory",
+            "mypy_limited_command",
+            "mypy_runner_timeout",
+            "mypy_runner_deadline",
+            "mypy_runner_timeout_for_project",
+            "mypy_resource_limit_for_project",
+            "_project_mypy_budget",
+            "_bounded_mypy_diagnostic",
+            "mypy_launch_failure_diagnostic",
+            "mypy_failure_diagnostic",
         ),
         "FlextInfraUtilitiesRope": (),
         "FlextInfraUtilitiesScriptMetadata": (
@@ -1599,6 +1627,10 @@ defer_lazy_bases(
             (".", "FlextInfraUtilitiesScriptMetadata"),
         ),
         "FlextInfraUtilitiesMarkdownTooling": ((".", "FlextInfraUtilitiesBase"),),
+        "FlextInfraUtilitiesMypy": (
+            ("flext_infra._utilities._mypy", "FlextInfraUtilitiesMypyProfile"),
+            ("flext_infra._utilities._mypy", "FlextInfraUtilitiesMypySupervisor"),
+        ),
         "FlextInfraUtilitiesNativeTooling": ((".", "FlextInfraUtilitiesBase"),),
         "FlextInfraUtilitiesProject": (
             (

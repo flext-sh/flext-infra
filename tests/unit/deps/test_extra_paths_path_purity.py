@@ -68,8 +68,9 @@ class TestsFlextInfraExtraPathsArePure:
 
         manager = TestsFlextInfraExtraPathsSupport.manager(tmp_path)
         search_paths = manager.pyrefly_search_paths(project_dir=consumer)
+        extra_paths = manager.pyright_extra_paths()
 
-        for entry in search_paths:
+        for entry in (*search_paths, *extra_paths):
             tm.that(
                 entry.startswith(".."),
                 truth=False,

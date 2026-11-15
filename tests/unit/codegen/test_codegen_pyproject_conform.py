@@ -21,13 +21,40 @@ from tests.unit.codegen.pyproject_conform_support import (
 class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupport):
     """Pyproject conformance: topology, metadata overlay and dev floors."""
 
-    def test_artifact_composition_retires_the_removed_analyzer_tables(
+    def test_artifact_composition_preserves_pyright_first_match_resolution(
         self,
         tmp_path: Path,
     ) -> None:
-        """Composition deletes retired analyzer tables and reaches a fixed point."""
+        """Public composition preserves narrow-first roots and ordered local paths."""
         workspace = self._workspace()
-        retired = ("mypy", "pyright", "pydantic-mypy")
+        privacy = config.Infra.tooling.tools.pyright.path_rules
+        environments = (
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member/z_checked/inner",
+                extra_paths=(
+                    "fixture-member/z_checked/support",
+                    "fixture-member/src",
+                ),
+                report_private_usage=privacy.test_like_report_private_usage,
+            ),
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member/a_checked",
+                extra_paths=(
+                    "fixture-member/src",
+                    "fixture-member/a_checked/support",
+                ),
+                report_private_usage=privacy.test_like_report_private_usage,
+            ),
+            m.Infra.PyrightConfig.ExecutionEnvironment(
+                root="fixture-member",
+                extra_paths=("fixture-member", "fixture-member/src"),
+                report_private_usage=privacy.other_report_private_usage,
+            ),
+        )
+        expected: list[t.JsonValue] = [
+            environment.model_dump(mode="json", by_alias=True)
+            for environment in environments
+        ]
         payload: t.JsonMapping = {
             "project": {
                 "name": workspace.repository.distribution,
@@ -35,7 +62,7 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
                 "dependencies": [],
             },
             "dependency-groups": {"codegen": [u.Tests.flext_source(config.Infra.name)]},
-            "tool": {table: {"retired": True} for table in retired},
+            "tool": {"pyright": {"executionEnvironments": expected}},
         }
         source = u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload))
         (tmp_path / c.PYPROJECT_FILENAME).write_text(
@@ -70,8 +97,8 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
             )
         )
         first_tools = u.Tests.toml_mapping(u.Tests.toml_payload(first)["tool"])
-        for table in retired:
-            tm.that(first_tools, lacks=table)
+        first_pyright = u.Tests.toml_mapping(first_tools["pyright"])
+        tm.that(first_pyright["executionEnvironments"], eq=expected)
         (tmp_path / c.PYPROJECT_FILENAME).write_text(first, encoding=c.DEFAULT_ENCODING)
         second = tm.ok(
             FlextInfraCodegenConform.Generate.compose_project_artifact(
@@ -81,6 +108,9 @@ class TestsFlextInfraCodegenPyprojectConform(TestsFlextInfraPyprojectConformSupp
                 render_inputs=inputs,
             )
         )
+        second_tools = u.Tests.toml_mapping(u.Tests.toml_payload(second)["tool"])
+        second_pyright = u.Tests.toml_mapping(second_tools["pyright"])
+        tm.that(second_pyright["executionEnvironments"], eq=expected)
         tm.that(second, eq=first)
 
     def test_leaf_conformance_preserves_parent_workspace_execution(

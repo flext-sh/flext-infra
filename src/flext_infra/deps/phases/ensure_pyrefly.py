@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, m, p, t, u
 
 if TYPE_CHECKING:
     from flext_infra.deps import FlextInfraExtraPathsManager
@@ -104,8 +104,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
         errors = u.Cli.toml_mapping_ensure_table(options, c.Infra.SUB_CONFIG_ERRORS)
         for rule in self._tool_config.tools.pyrefly.ruling_disabled_rules:
             errors[rule] = "ignore"
-        # Authorized path exceptions scope their rule levels through
-        # glob-matched sub-configs relative to this file.
+        # The same authorized entries render Pyright environments; Pyrefly
+        # scopes them through glob-matched sub-configs relative to this file.
         sub_configs: list[t.JsonValue] = [
             {
                 c.Infra.SUB_CONFIG_MATCHES: root,
@@ -145,43 +145,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 paths_manager=paths_manager,
             ),
         )
-
-    def render_source(
-        self,
-        source: str,
-        *,
-        context: p.Infra.PyprojectAnalyzerContext,
-        paths_manager: FlextInfraExtraPathsManager | None = None,
-    ) -> p.Result[str]:
-        """Project only the analyzer table, preserving the rest of the document.
-
-        The caller injects the analyzer inputs its full modernization owns.
-
-        Returns:
-            TOML with the same configuration emitted by full modernization.
-
-        """
-        parsed = u.Cli.toml_mapping_from_text_result(source)
-        if parsed.failure:
-            return r[str].from_failure(parsed)
-        payload: t.MutableJsonMapping = dict(parsed.value)
-        self.apply_payload(payload, context=context, paths_manager=paths_manager)
-        document = u.Cli.toml_parse_text(source)
-        if document is None:
-            return r[str].fail(
-                "validated TOML could not be parsed for round-trip editing"
-            )
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
-        expected = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.PYREFLY))
-        if expected is None:
-            return r[str].fail("Pyrefly projection produced no analyzer table")
-        ordered = u.Cli.json_dumps(u.normalize_to_json_value(expected), sort_keys=True)
-        if ordered.failure:
-            return r[str].from_failure(ordered)
-        # This table is generated in full. Replacing its value also normalizes
-        # nested object keys while retaining semantic list order.
-        tool[c.Infra.PYREFLY] = u.json_mapping_adapter().validate_json(ordered.value)
-        return r[str].ok(u.Cli.toml_dumps(document))
 
 
 __all__: list[str] = ["FlextInfraEnsurePyreflyConfigPhase"]
