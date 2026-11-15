@@ -22,7 +22,7 @@ snapshots:
   "class Model:\n    model_config = m.ConfigDict()\n":
     fixed: |
       class Model:
-          model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
+          model_config: typing.ClassVar[t.ConfigDict] = m.ConfigDict()
     labels:
     - source: model_config = m.ConfigDict()
       style: primary
@@ -41,7 +41,7 @@ snapshots:
   "class Model:\n    model_config = m.ConfigDict(frozen=True, extra='forbid')\n":
     fixed: |
       class Model:
-          model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra='forbid')
+          model_config: typing.ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra='forbid')
     labels:
     - source: model_config = m.ConfigDict(frozen=True, extra='forbid')
       style: primary
@@ -60,7 +60,7 @@ snapshots:
   "class Settings:\n    model_config = m.SettingsConfigDict(env_prefix='APP_')\n":
     fixed: |
       class Settings:
-          model_config: ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix='APP_')
+          model_config: typing.ClassVar[t.SettingsConfigDict] = m.SettingsConfigDict(env_prefix='APP_')
     labels:
     - source: model_config = m.SettingsConfigDict(env_prefix='APP_')
       style: primary
@@ -75,4 +75,23 @@ snapshots:
     - source: model_config = m.SettingsConfigDict(env_prefix='APP_')
       style: secondary
       start: 20
+      end: 74
+  "class Base:\n    model_config = FlextModelsPydantic.ConfigDict(frozen=True)\n":
+    fixed: |
+      class Base:
+          model_config: typing.ClassVar[t.ConfigDict] = FlextModelsPydantic.ConfigDict(frozen=True)
+    labels:
+    - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: primary
+      start: 16
+      end: 74
+    - source: |-
+        class Base:
+            model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: secondary
+      start: 0
+      end: 74
+    - source: model_config = FlextModelsPydantic.ConfigDict(frozen=True)
+      style: secondary
+      start: 16
       end: 74
