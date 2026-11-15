@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import p, tm, u
+from tests import c, tm, u
 
 
 class TestsProtocolRootModelProjection:
@@ -56,7 +56,7 @@ class TestsProtocolRootModelProjection:
 
     @classmethod
     def test_generic_root_model_preset_projects_its_protocol(
-        cls, tmp_path: Path, native_consumer: p.Tests.NativeConsumer
+        cls, tmp_path: Path
     ) -> None:
         """A PEP 695 subclass of ``m.RootModel[...]`` reaches the public facade."""
         root, package = cls._workspace(tmp_path, "")
@@ -70,16 +70,57 @@ class TestsProtocolRootModelProjection:
         for relative, source in projected.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
         tm.ok(u.Tests.materialize_lazy_init(u.Tests.create_lazy_init_service(root)))
-        native_consumer(
-            f"sys.path.insert(0, {str(package.parent)!r})\n"
+        result = u.Tests.run_lazy_init_probe(
             f"from {package.name}.models import m\n"
             f"from {package.name}.protocols import p\n"
-            "from flext_tests import tm\n"
             "summary = m.SummaryPerFile[int].model_validate({'a.csv': 1})\n"
-            "tm.ok(isinstance(summary, p.SummaryPerFile))\n"
-            "tm.that(summary.root, eq={'a.csv': 1})\n",
+            "print(isinstance(summary, p.SummaryPerFile))\n"
+            "print(summary.root == {'a.csv': 1})\n",
+            python_paths=(str(package.parent),),
             cwd=root,
         )
+        tm.that(result, eq=["True", "True"])
+
+    @classmethod
+    def test_moved_generated_holder_rebinds_public_facade(cls, tmp_path: Path) -> None:
+        """A moved generated holder is replaced at its same-path destination."""
+        root, package = cls._workspace(tmp_path, "")
+        (package / "_models/ingest.py").rename(package / "_models/base.py")
+        models = package / "models.py"
+        source = models.read_text(encoding=c.DEFAULT_ENCODING)
+        models.write_text(
+            source.replace(".ingest", ".base"), encoding=c.DEFAULT_ENCODING
+        )
+        (package / "_protocols/base.py").write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n"
+            "from typing import Protocol, runtime_checkable\n"
+            "class ProtocolsIngest:\n"
+            "    @runtime_checkable\n    class SummaryPerFile[V](Protocol):\n"
+            "        @property\n        def root(self) -> dict[str, V]: ...\n"
+            "__all__ = ['ProtocolsIngest']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        (package / "protocols.py").write_text(
+            f"from {package.name}._protocols.base import ProtocolsIngest\n"
+            "class Protocols(ProtocolsIngest): pass\n"
+            "p = Protocols\n__all__ = ['Protocols', 'p']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        with u.Infra.facade_source_project(root) as binding:
+            after = tm.ok(u.Infra.protocol_model_sources_from_source(root, binding[0]))
+        facade = after[(package / "protocols.py").relative_to(root)]
+        tm.that(facade, has="ProtocolsBase", lacks="ProtocolsIngest")
+        for relative, source in after.items():
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, source))
+        result = u.Tests.run_lazy_init_probe(
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            "summary = m.SummaryPerFile[int].model_validate({'a.csv': 1})\n"
+            "print(isinstance(summary, p.SummaryPerFile))\n",
+            python_paths=(str(package.parent),),
+            cwd=root,
+        )
+        tm.that(result, eq=["True"])
 
     @classmethod
     def test_facade_base_without_source_class_names_file_class_and_base(
