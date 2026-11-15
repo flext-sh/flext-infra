@@ -42,3 +42,8 @@ invalid:
 
     class Model:
         model_config = ConfigDict(frozen=True)
+  - |
+    from __future__ import annotations
+
+    class Base:
+        model_config = FlextModelsPydantic.ConfigDict(frozen=True)

@@ -3,7 +3,8 @@
 # contract makes class metadata explicit with a native ClassVar annotation.
 #
 # The callee is exactly what the annotators cover: the native `ConfigDict`
-# (pydantic-model-config-configdict-classvar) and the `m` facade constructors
+# (pydantic-model-config-configdict-classvar) and the `m` and
+# `FlextModelsPydantic` facade constructors
 # (pydantic-model-config-m-configdict-classvar). The ClassVar import rules bind
 # the name only for those rewrites; an aliased facade constructor or an
 # inherited `Parent.model_config` has no annotator, so importing ClassVar there
@@ -26,7 +27,7 @@ rule:
             - kind: identifier
               regex: "^ConfigDict$"
             - kind: attribute
-              regex: "^m\\.(Settings)?ConfigDict$"
+              regex: "^(?:m|FlextModelsPydantic)\\.(Settings)?ConfigDict$"
     - inside:
         kind: block
         stopBy: end
