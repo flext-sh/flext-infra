@@ -17,10 +17,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import u
 from git import GitCommandError
 
-from flext_infra import c, m, p, r, settings
+from flext_infra import c, m, p, r, settings, u
 from flext_infra._utilities import (
     FlextInfraUtilitiesBase,
     FlextInfraUtilitiesProjectDiscovery,
@@ -33,7 +32,6 @@ from flext_infra._utilities._git import (
 from flext_infra._utilities._git.attestation_evidence import (
     FlextInfraUtilitiesGitAttestationEvidence,
 )
-from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
 
 
 class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidence):
@@ -265,7 +263,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             report_root / c.Infra.GATE_CAPTURE_START_FILENAME,
             started_capture.model_dump_json(round_trip=True) + "\n",
         ).unwrap()
-        FlextInfraUtilitiesGateAdmission.bind_check_capture(root, report_root)
+        u.Infra.bind_check_capture(root, report_root)
         native = u.Cli.run_to_file(
             command,
             report_root / "execution.log",

@@ -16,7 +16,7 @@ from functools import cache
 from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 
-from flext_infra import config, u, validate, workspace
+from flext_infra import config, u, validate
 from tests import c, m, p, r, t, tm
 from tests.utilities_git import TestsFlextInfraUtilitiesGit
 
@@ -242,9 +242,8 @@ class TestsFlextInfraUtilitiesToolingFixture:
     def workspace_source_projects() -> Mapping[str, Path]:
         """Map each workspace distribution to its source owner once per session.
 
-        The workspace topology is read-only for the whole session, so every
-        fixture resolves its dependency closure from this one native load
-        instead of reloading the workspace for each case.
+        Fixture dependency selection needs distribution names and source paths,
+        independent of the full workspace topology and its runtime policies.
 
         Returns:
             Each declared distribution and the checkout that owns its source.
@@ -262,17 +261,25 @@ class TestsFlextInfraUtilitiesToolingFixture:
         source_root = tm.ok(
             u.Infra.git_repository_root(m.Infra.GitRepoRequest(repo_root=primary))
         ).repository_root
-        specification = tm.ok(
-            workspace.FlextInfraWorkspaceDetector.load_workspace_spec(source_root),
+        members = (
+            tm.ok(u.Infra.git_require_submodule_contract(member))
+            for member in tm.ok(u.Infra.git_submodule_declarations(source_root))
         )
-        return {
-            repository.distribution: (
-                checkout
-                if (source_root / repository.path).resolve() == primary
-                else source_root / repository.path
-            )
-            for repository in (specification.repository, *specification.subprojects)
-        }
+        roots = (
+            source_root,
+            *(
+                source_root / member.path
+                for member in members
+                if member.managed is not False
+            ),
+        )
+        projects: t.MutableMappingKV[str, Path] = {}
+        for root in roots:
+            owner = checkout if root.resolve() == primary else root
+            declaration = owner / c.PYPROJECT_FILENAME
+            document = tm.ok(u.Cli.toml_read_json(declaration))
+            projects[u.Infra.project_name_from_payload(declaration, document)] = owner
+        return projects
 
     @classmethod
     def python_dependency_projects(cls, root: Path) -> tuple[Path, ...]:
@@ -365,14 +372,16 @@ class TestsFlextInfraUtilitiesToolingFixture:
         for project in dependency_projects:
             metadata = tm.ok(u.Infra.read_project_metadata_result(project))
             owner = storage / "dependency-wheels" / metadata.project.name
-            destination = owner / fixture.python_dependency_source_digest(project)
+            source_key = fixture.python_dependency_source_digest(project)
+            destination = owner / source_key
             owner.mkdir(parents=True, exist_ok=True)
-            with u.Cli.file_changes_lock(owner.with_suffix(".lock")):
+            with u.Cli.file_changes_lock(destination.with_suffix(".lock")):
                 if not destination.is_dir():
-                    # Earlier content keys and interrupted stagings are retired.
-                    for stale in owner.iterdir():
+                    prefix = f".staging-{source_key}-"
+                    # Only this build's interrupted staging is safe to discard.
+                    for stale in owner.glob(f"{prefix}*"):
                         shutil.rmtree(stale)
-                    staging = Path(mkdtemp(dir=owner, prefix=".staging-"))
+                    staging = Path(mkdtemp(dir=owner, prefix=prefix))
                     built = u.Cli.run_checked(
                         (
                             binary,

@@ -23,8 +23,6 @@ from flext_infra import (
     u,
     workspace,
 )
-from flext_infra._models.gate_admission import FlextInfraModelsGateAdmission
-from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
 
 
 class FlextInfraWorkspaceRoutes:
@@ -32,7 +30,7 @@ class FlextInfraWorkspaceRoutes:
 
     @staticmethod
     def _observe_gate_attempt(
-        params: FlextInfraModelsGateAdmission.GateAttemptRequest,
+        params: p.Infra.GateAttemptRequest,
     ) -> p.Cli.ErasedCommandResult:
         """Read the admission and evidence owned by one attempt.
 
@@ -41,7 +39,7 @@ class FlextInfraWorkspaceRoutes:
 
         """
         return r[t.JsonDict].ok(
-            value=FlextInfraUtilitiesGateAdmission.observe_attempt(params.sequence)
+            value=u.Infra.observe_attempt(params.sequence)
         )
 
     @staticmethod
@@ -432,7 +430,7 @@ class FlextInfraWorkspaceRoutes:
             m.Cli.ResultCommandRoute(
                 name="gate-attempt",
                 help_text="Read an original gate attempt without executing it",
-                model_cls=FlextInfraModelsGateAdmission.GateAttemptRequest,
+                model_cls=m.Infra.GateAttemptRequest,
                 handler=cls._observe_gate_attempt,
                 success_formatter=cls._payload_json_formatter,
             ),
