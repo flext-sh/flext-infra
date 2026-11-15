@@ -156,9 +156,17 @@ class FlextInfraReleaseReleaseArtifact(FlextInfraReleaseReleaseBoundary):
         root = PurePosixPath(name).parts[0].casefold()
         if link:
             return f"{path.name} contains symbolic or hard link: {name}"
+        permitted_wheel_roots = {
+            package,
+            *(
+                candidate.casefold()
+                for candidate in allowed_roots
+                if candidate.casefold() not in c.Infra.RELEASE_SDIST_ROOT_DIRS
+            ),
+        }
         if (
             wheel
-            and root != package
+            and root not in permitted_wheel_roots
             and not (
                 root.startswith(f"{package}-")
                 and root.endswith((".data", ".dist-info"))

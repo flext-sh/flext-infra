@@ -490,6 +490,37 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(staged_metadata, lacks="git+")
             tm.that(staged_metadata, lacks="[tool.uv")
 
+        @staticmethod
+        def test_repository_namespace_package_builds_into_wheel_and_sdist(
+            tmp_path: Path,
+        ) -> None:
+            """Admit a declared repository namespace package in the built wheel."""
+            project_name = "flext-a"
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
+            project = workspace / project_name
+            pyproject = project / c.PYPROJECT_FILENAME
+            pyproject.write_text(
+                pyproject
+                .read_text(encoding="utf-8")
+                .replace(
+                    'only-include = ["src/flext_a"]',
+                    'only-include = ["infra", "src/flext_a"]',
+                )
+                .replace(
+                    '"src/flext_a" = "flext_a"',
+                    '"infra" = "infra"\n"src/flext_a" = "flext_a"',
+                ),
+                encoding="utf-8",
+            )
+            infra_dir = project / "infra"
+            infra_dir.mkdir(parents=True, exist_ok=True)
+            (infra_dir / "__init__.py").write_text("", encoding="utf-8")
+            u.Tests.commit_git_changes(project, "declare infra namespace package")
+
+            result = u.Tests.run_release_build(workspace, project_name)
+
+            tm.that(result, eq=0)
+
     class TestsStrictModels:
         """Release report model boundary behavior."""
 
