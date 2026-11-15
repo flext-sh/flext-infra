@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import config, u
 from tests import c, m, p, tm
@@ -29,8 +29,8 @@ class TestsFlextInfraUtilitiesPromoted:
 
     # Markers of the retired ``flext-command`` block. Only the reference of
     # what a consumer declared before the PEP 723 cutover reads them.
-    PROMOTED_LEGACY_START: Final = "/// flext-command"
-    PROMOTED_LEGACY_END: Final = "///"
+    PROMOTED_LEGACY_START: ClassVar[str] = "/// flext-command"
+    PROMOTED_LEGACY_END: ClassVar[str] = "///"
 
     @staticmethod
     def promoted_legacy_header(source: str) -> tuple[str, t.JsonMapping]:
