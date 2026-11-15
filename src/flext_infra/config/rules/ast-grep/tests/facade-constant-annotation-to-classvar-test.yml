@@ -1,0 +1,30 @@
+id: facade-constant-annotation-to-classvar
+# `valid` MUST NOT match: ClassVar and Final annotations, an unannotated
+# constant, a private name and a nested class.
+valid:
+  - |
+    from typing import ClassVar
+    class FlextThingConstants:
+        NAME: ClassVar[str] = "x"
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        NAME: Final[str] = "x"
+  - |
+    class FlextThingConstants:
+        NAME = "x"
+  - |
+    class FlextThingConstants:
+        _NAME: str = "x"
+  - |
+    class FlextThingConstants:
+        class Inner:
+            NAME: str = "x"
+# `invalid` MUST match and wrap the annotation in ClassVar.
+invalid:
+  - |
+    class FlextThingConstants:
+        NAME: str = "x"
+  - |
+    class FlextThingConstants:
+        SIZES: tuple[int, ...] = (1, 2)

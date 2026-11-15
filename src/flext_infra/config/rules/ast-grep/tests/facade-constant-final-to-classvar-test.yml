@@ -1,0 +1,35 @@
+id: facade-constant-final-to-classvar
+# `valid` MUST NOT match: already ClassVar, a private name, a nested class
+# (not a facade part), and a function-local annotation.
+valid:
+  - |
+    from typing import ClassVar
+    class FlextThingConstants:
+        RETRIES: ClassVar[int] = 30
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        _RETRIES: Final[int] = 30
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        class Inner:
+            RETRIES: Final[int] = 30
+  - |
+    from typing import Final
+    def build() -> int:
+        retries: Final[int] = 30
+        return retries
+# `invalid` MUST match and rewrite Final to ClassVar.
+invalid:
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        RETRIES: Final[int] = 30
+  - |
+    from pathlib import Path
+    from typing import Final
+    class FlextThingConstants:
+        """Constants."""
+
+        HOME: Final[Path] = Path.home()

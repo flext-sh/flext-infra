@@ -1,0 +1,29 @@
+# Binds `ClassVar` in a `_constants` module that has no module-level
+# `from typing import ...` yet; facade-constant-classvar-import owns the module
+# that already has one.
+#
+# Idempotent: once the typing import exists the rule no longer matches.
+id: facade-constant-classvar-import-new
+language: python
+severity: error
+files:
+  - "src/**/_constants/**/*.py"
+rule:
+  all:
+    - pattern: "from __future__ import annotations"
+    - inside:
+        kind: module
+        all:
+          - has:
+              stopBy: end
+              matches: facade-part-constant
+          - not:
+              has:
+                kind: import_from_statement
+                has:
+                  field: module_name
+                  regex: "^typing$"
+fix: "from __future__ import annotations\n\nfrom typing import ClassVar"
+message: >-
+  Modules declaring annotated constants on a _constants facade part bind
+  ClassVar at module level.

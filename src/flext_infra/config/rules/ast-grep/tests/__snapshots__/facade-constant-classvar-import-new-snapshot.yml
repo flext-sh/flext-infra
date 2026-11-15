@@ -1,0 +1,50 @@
+id: facade-constant-classvar-import-new
+snapshots:
+  "from __future__ import annotations\nclass FlextThingConstants:\n    RETRIES: int = 30\n":
+    fixed: |
+      from __future__ import annotations
+      
+      from typing import ClassVar
+      class FlextThingConstants:
+          RETRIES: int = 30
+    labels:
+    - source: from __future__ import annotations
+      style: primary
+      start: 0
+      end: 34
+    - source: "RETRIES: int = 30"
+      style: secondary
+      start: 66
+      end: 83
+    - source: |
+        from __future__ import annotations
+        class FlextThingConstants:
+            RETRIES: int = 30
+      style: secondary
+      start: 0
+      end: 84
+  "from __future__ import annotations\nimport re\nclass FlextThingConstants:\n    NAME: str = \"x\"\n":
+    fixed: |
+      from __future__ import annotations
+      
+      from typing import ClassVar
+      import re
+      class FlextThingConstants:
+          NAME: str = "x"
+    labels:
+    - source: from __future__ import annotations
+      style: primary
+      start: 0
+      end: 34
+    - source: "NAME: str = \"x\""
+      style: secondary
+      start: 76
+      end: 91
+    - source: |
+        from __future__ import annotations
+        import re
+        class FlextThingConstants:
+            NAME: str = "x"
+      style: secondary
+      start: 0
+      end: 92

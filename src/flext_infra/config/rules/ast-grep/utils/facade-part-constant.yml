@@ -1,0 +1,25 @@
+# Reusable guard: a public annotated assignment declared directly in the body
+# of a module-level class. In a `_constants` family module that class is a
+# facade part, and the ADR-018 stand-in composition law (rule 5) refuses a
+# facade part whose body holds a field-like annotation: only `ClassVar` is
+# representable by a lazy stand-in.
+id: facade-part-constant
+language: Python
+rule:
+  kind: assignment
+  all:
+    - has:
+        field: left
+        kind: identifier
+        regex: "^[A-Za-z]"
+    - has:
+        field: type
+        kind: type
+  inside:
+    kind: expression_statement
+    inside:
+      kind: block
+      inside:
+        kind: class_definition
+        inside:
+          kind: module

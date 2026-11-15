@@ -1,0 +1,25 @@
+id: facade-constant-final-to-classvar
+snapshots:
+  "from pathlib import Path\nfrom typing import Final\nclass FlextThingConstants:\n    \"\"\"Constants.\"\"\"\n\n    HOME: Final[Path] = Path.home()\n":
+    fixed: |
+      from pathlib import Path
+      from typing import Final
+      class FlextThingConstants:
+          """Constants."""
+      
+          HOME: ClassVar[Path] = Path.home()
+    labels:
+    - source: "HOME: Final[Path] = Path.home()"
+      style: primary
+      start: 103
+      end: 134
+  "from typing import Final\nclass FlextThingConstants:\n    RETRIES: Final[int] = 30\n":
+    fixed: |
+      from typing import Final
+      class FlextThingConstants:
+          RETRIES: ClassVar[int] = 30
+    labels:
+    - source: "RETRIES: Final[int] = 30"
+      style: primary
+      start: 56
+      end: 80

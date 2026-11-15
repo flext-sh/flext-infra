@@ -1,0 +1,20 @@
+id: facade-constant-annotation-to-classvar
+snapshots:
+  "class FlextThingConstants:\n    NAME: str = \"x\"\n":
+    fixed: |
+      class FlextThingConstants:
+          NAME: ClassVar[str] = "x"
+    labels:
+    - source: "NAME: str = \"x\""
+      style: primary
+      start: 31
+      end: 46
+  "class FlextThingConstants:\n    SIZES: tuple[int, ...] = (1, 2)\n":
+    fixed: |
+      class FlextThingConstants:
+          SIZES: ClassVar[tuple[int, ...]] = (1, 2)
+    labels:
+    - source: "SIZES: tuple[int, ...] = (1, 2)"
+      style: primary
+      start: 31
+      end: 62

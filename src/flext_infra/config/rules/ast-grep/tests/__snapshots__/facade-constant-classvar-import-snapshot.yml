@@ -1,0 +1,44 @@
+id: facade-constant-classvar-import
+snapshots:
+  "from typing import Final\nclass FlextThingConstants:\n    RETRIES: Final[int] = 30\n":
+    fixed: |
+      from typing import ClassVar, Final
+      class FlextThingConstants:
+          RETRIES: Final[int] = 30
+    labels:
+    - source: from typing import Final
+      style: primary
+      start: 0
+      end: 24
+    - source: "RETRIES: Final[int] = 30"
+      style: secondary
+      start: 56
+      end: 80
+    - source: |
+        from typing import Final
+        class FlextThingConstants:
+            RETRIES: Final[int] = 30
+      style: secondary
+      start: 0
+      end: 81
+  "from typing import TYPE_CHECKING, Final\nclass FlextThingConstants:\n    NAME: str = \"x\"\n":
+    fixed: |
+      from typing import ClassVar, TYPE_CHECKING, Final
+      class FlextThingConstants:
+          NAME: str = "x"
+    labels:
+    - source: from typing import TYPE_CHECKING, Final
+      style: primary
+      start: 0
+      end: 39
+    - source: "NAME: str = \"x\""
+      style: secondary
+      start: 71
+      end: 86
+    - source: |
+        from typing import TYPE_CHECKING, Final
+        class FlextThingConstants:
+            NAME: str = "x"
+      style: secondary
+      start: 0
+      end: 87

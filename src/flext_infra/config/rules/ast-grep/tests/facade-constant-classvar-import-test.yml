@@ -1,0 +1,33 @@
+id: facade-constant-classvar-import
+# `valid` MUST NOT match: ClassVar already imported, no annotated constant on
+# a module-level class, and a TYPE_CHECKING-only typing import.
+valid:
+  - |
+    from typing import ClassVar, Final
+    class FlextThingConstants:
+        RETRIES: Final[int] = 30
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        RETRIES = 30
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        class Inner:
+            RETRIES: Final[int] = 30
+  - |
+    from typing import ClassVar
+    if TYPE_CHECKING:
+        from typing import Final
+    class FlextThingConstants:
+        RETRIES: ClassVar[int] = 30
+# `invalid` MUST match and add ClassVar to the module-level typing import.
+invalid:
+  - |
+    from typing import Final
+    class FlextThingConstants:
+        RETRIES: Final[int] = 30
+  - |
+    from typing import TYPE_CHECKING, Final
+    class FlextThingConstants:
+        NAME: str = "x"

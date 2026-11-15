@@ -1,0 +1,24 @@
+# A plain-annotated constant (`NAME: T = value`) on a `_constants` facade part
+# is a field-like annotation, which the ADR-018 stand-in composition law
+# (rule 5) refuses. `ClassVar[T]` is the form a lazy stand-in represents.
+#
+# Idempotent: ClassVar and Final annotations are excluded (Final is owned by
+# facade-constant-final-to-classvar), so a rewritten member never re-matches.
+id: facade-constant-annotation-to-classvar
+language: python
+severity: error
+files:
+  - "src/**/_constants/**/*.py"
+rule:
+  all:
+    - pattern: "$NAME: $T = $V"
+    - matches: facade-part-constant
+constraints:
+  T:
+    not:
+      regex: "^(ClassVar|Final)(\\[|$)"
+fix: "$NAME: ClassVar[$T] = $V"
+message: >-
+  A constant on a _constants facade part must be a ClassVar; a plain
+  annotation is field-like and a lazy stand-in cannot represent it
+  (ADR-018 stand-in composition law, rule 5).
