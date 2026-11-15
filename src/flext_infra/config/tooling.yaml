@@ -1,5 +1,6 @@
 Infra:
   tooling:
+    # EXTERMINATED: mypy/pyright removed from fleet. Kept for local compatibility only. DO NOT ADD NEW RULES.
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
     derived-tool-roots: [ deptry, mypy, pyrefly, pyright, pytest, ruff, vulture ]
@@ -140,6 +141,8 @@ Infra:
       - [ python_classes, [ "Test*" ] ]
       - [ filterwarnings, [ error, "once::pytest.PytestAssertRewriteWarning" ] ]
       - [ addopts, [ --benchmark-disable, --strict-markers, --markdown-docs, --durations=10 ] ]
+      - [ timeout, 20 ]
+      - [ timeout_method, thread ]
       pyright:
       - [ pythonPlatform, Linux ]
       - [ reportCallIssue, error ]
