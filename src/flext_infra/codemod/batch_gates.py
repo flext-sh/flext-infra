@@ -809,18 +809,25 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-    ) -> p.Result[tuple[Path, p.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[Path, p.Cli.AtomicFileState | None]]:
         """Associate a finding with its source's current state.
 
+        A linked stub leaf is admitted by its path alone: check names it
+        without reading through the link, and mod refuses it before scanning.
+
         Returns:
-            The resulting ``(file_path, state)`` pair, or the drift failure.
+            The ``(file_path, state)`` pair, without a state for a linked stub
+            leaf, or the drift failure.
 
         """
+        outcome = r[tuple[Path, p.Cli.AtomicFileState | None]]
         file_path = Path(file)
+        if u.Infra.codemod_source_path(root, file_path).is_symlink():
+            return outcome.ok((file_path, None))
         resolved_file = (root / file_path).resolve()
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure and not resolved_file.exists():
-            return r[tuple[Path, p.Cli.AtomicFileState]].fail(
+            return outcome.fail(
                 f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
@@ -909,7 +916,9 @@ class FlextInfraModGateEngine:
         raw_replacement = finding.get("replacement")
         replacement = raw_replacement if isinstance(raw_replacement, str) else None
         native_file = str(finding.get("file"))
-        authenticated = context.authenticated.get(native_file)
+        authenticated: p.Result[tuple[Path, p.Cli.AtomicFileState | None]] | None = (
+            context.authenticated.get(native_file)
+        )
         if authenticated is None:
             authenticated = cls._authenticated_snapshot(root, native_file)
         file_path = Path(native_file)
@@ -925,7 +934,7 @@ class FlextInfraModGateEngine:
             classification = c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
         else:
             file_path, snapshot = authenticated.value
-            if snapshot.content is None:
+            if snapshot is not None and snapshot.content is None:
                 return r[p.Infra.ModScanFinding].fail(
                     f"authenticated snapshot has no content: {file_path}",
                 )
@@ -1275,10 +1284,10 @@ class FlextInfraModGateEngine:
         )
         keys = {
             path: FlextInfraCodemodScanCache.source_key(
-                digest, path.relative_to(root), context.inventory[path]
+                digest, path.relative_to(root), state
             )
             for path in sorted(cls._scan_source_paths(root, targets))
-            if path.suffix != ".pyi"
+            if (state := context.inventory[path]) is not None
         }
         fragments: dict[Path, Path | str | None] = {
             path: FlextInfraCodemodScanCache.lookup(key) for path, key in keys.items()
@@ -1505,9 +1514,19 @@ class FlextInfraModGateEngine:
                         f"{resolved_project}"
                     )
                 stage = Path(directory) / str(len(reports))
-                ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.project_plan(plan, project), stage
-                )
+                try:
+                    ruleset = u.Infra.codemod_stage_scan_ruleset(
+                        u.Infra.project_plan(plan, project), stage
+                    )
+                except ValueError as exc:
+                    # Staging runs ast-grep over the projected ruleset; its
+                    # refusal stops this scan like any other native failure.
+                    reports.append(
+                        cls.recounted(()).model_copy(
+                            update={"native_failures": (str(exc),)}
+                        )
+                    )
+                    break
                 sys.stderr.write(
                     f"mod: ast-grep project={project.name} "
                     f"provider={ruleset.provider} rules={len(ruleset.rule_ids)}\n",
@@ -1682,6 +1701,7 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n",
         )
         sys.stderr.flush()
+        cls._require_regular_stub_leaves(root, targets)
         scanned = cls.native_findings(root, plan, targets).flat_map(cls._completed_scan)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
@@ -1712,6 +1732,17 @@ class FlextInfraModGateEngine:
             ),
             exact_replacements=False,
         )
+
+    @classmethod
+    def _require_regular_stub_leaves(cls, root: Path, targets: Sequence[str]) -> None:
+        """Refuse a selected stub leaf that is not a regular file.
+
+        A lexical stub leaf is only a path finding for check; mod keeps its
+        physical guard, and the unreadable leaf's own failure escapes unchanged.
+        """
+        for stub in sorted(cls._scan_source_paths(root, targets)):
+            if stub.suffix == ".pyi":
+                u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
 
     @staticmethod
     def _completed_scan(
@@ -1753,7 +1784,9 @@ class FlextInfraModGateEngine:
         """
         context = m.Infra.ModScanSourceContext(
             inventory={
-                path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                path: None
+                if path.suffix == ".pyi"
+                else u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in sorted(cls._scan_source_paths(root, targets))
             },
             repository_roots=tuple(
