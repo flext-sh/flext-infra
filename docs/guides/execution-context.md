@@ -2796,7 +2796,11 @@ prefix for these verbs.
   `make tests`, `gen` and `gen-scope` are not limited either; they still queue for a
   slot.
 
-The fail-early phase order of ADR-032 is not implemented yet (bead `flext-mcjop`).
+Heavy routes resolve the declared toolchain before entering the queue. When
+`make gen ROOT=...` targets another checkout and needs a provisioned
+environment, generation rejects a missing target interpreter before admission.
+Run `make setup` and `make gen` in the target checkout so facade resolution
+uses that checkout's own dependencies.
 The per-verb load, processor and memory limits are owned by the Make admission
 prelude (`make.admission` in `config/codegen.yaml`), not by this queue.
 
