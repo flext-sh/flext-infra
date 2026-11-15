@@ -26,3 +26,7 @@ fix: "model_config: ClassVar[t.$CONFIG] = $QUALIFIER.$CONFIG($$$ARGS)"
 message: >-
   Declare model_config as ClassVar[t.ConfigDict] or
   ClassVar[t.SettingsConfigDict], retaining the matching m constructor.
+metadata:
+  # Prerequisite of the preset rewrites: they read the ClassVar form this rule
+  # writes, so the theme laws elect it with them (ADR-028 Decision 18 item 2).
+  enforce: [ENFORCE-108, ENFORCE-109]
