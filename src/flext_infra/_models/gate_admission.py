@@ -16,6 +16,13 @@ from flext_infra import c, t
 class FlextInfraModelsGateAdmission:
     """Records exchanged through the per-host heavy-gate queue."""
 
+    class GateAttemptRequest(m.ContractModel):
+        """Select one original gate attempt by its admission sequence."""
+
+        sequence: Annotated[
+            t.PositiveInt, m.Field(description="Attempt sequence emitted by admission")
+        ]
+
     class GateTicket(m.ContractModel):
         """One queued or admitted heavy gate; content is diagnostic and decisive."""
 
@@ -37,6 +44,9 @@ class FlextInfraModelsGateAdmission:
         heartbeat_at: Annotated[
             t.AwareDatetime, m.Field(description="Last liveness refresh by the owner")
         ]
+        report_root: Annotated[
+            str | None, m.Field(description="Original native capture directory")
+        ] = None
 
     class GateRunRecord(m.ContractModel):
         """Latest successful full-weight run of one gate and selection."""

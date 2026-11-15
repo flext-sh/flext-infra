@@ -23,10 +23,26 @@ from flext_infra import (
     u,
     workspace,
 )
+from flext_infra._models.gate_admission import FlextInfraModelsGateAdmission
+from flext_infra._utilities.gate_admission import FlextInfraUtilitiesGateAdmission
 
 
 class FlextInfraWorkspaceRoutes:
     """Own release and workspace command routes."""
+
+    @staticmethod
+    def _observe_gate_attempt(
+        params: FlextInfraModelsGateAdmission.GateAttemptRequest,
+    ) -> p.Cli.ErasedCommandResult:
+        """Read the admission and evidence owned by one attempt.
+
+        Returns:
+            The observation without dispatching a gate.
+
+        """
+        return r[t.JsonDict].ok(
+            value=FlextInfraUtilitiesGateAdmission.observe_attempt(params.sequence)
+        )
 
     @staticmethod
     def _editable_members(
@@ -413,6 +429,13 @@ class FlextInfraWorkspaceRoutes:
 
         """
         return (
+            m.Cli.ResultCommandRoute(
+                name="gate-attempt",
+                help_text="Read an original gate attempt without executing it",
+                model_cls=FlextInfraModelsGateAdmission.GateAttemptRequest,
+                handler=cls._observe_gate_attempt,
+                success_formatter=cls._payload_json_formatter,
+            ),
             m.Cli.ResultCommandRoute(
                 name="signing-identity",
                 help_text="Inspect native public signing references without key access",

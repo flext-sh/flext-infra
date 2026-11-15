@@ -20,6 +20,15 @@ class FlextInfraProtocolsGateAdmission:
     """Own the structural contracts declared by its model source."""
 
     @runtime_checkable
+    class GateAttemptRequest(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def sequence(self) -> t.PositiveInt:
+            """Attempt sequence emitted by admission."""
+            ...
+
+    @runtime_checkable
     class GateTicket(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -56,6 +65,11 @@ class FlextInfraProtocolsGateAdmission:
         @property
         def heartbeat_at(self) -> t.AwareDatetime:
             """Last liveness refresh by the owner."""
+            ...
+
+        @property
+        def report_root(self) -> str | None:
+            """Original native capture directory."""
             ...
 
     @runtime_checkable

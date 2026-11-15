@@ -527,6 +527,7 @@ install_lazy_exports(
             "EnforcementCatalog",
         ),
         "FlextInfraProtocolsGateAdmission": (
+            "GateAttemptRequest",
             "GateTicket",
             "GateRunRecord",
             "HostPressureSnapshot",

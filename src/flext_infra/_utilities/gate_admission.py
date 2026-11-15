@@ -5,6 +5,9 @@ A ticket's owner holds an exclusive liveness lock for its whole life, so a
 dead owner frees its slot the moment any waiter looks; a live owner whose
 heartbeat is older than the TTL is reclaimed. Admission is strict FIFO and
 capacity follows the host-pressure level the host-budget owner publishes.
+The emitted attempt path names the original queue record. On retirement the
+record moves to the same stem with a ``.retired`` suffix; retirement alone is
+not evidence that the gate ran or succeeded.
 A full-weight run that succeeded in a checkout is refused before it queues
 while its declared repeat window is open.
 
@@ -26,7 +29,7 @@ from pathlib import Path
 
 from flext_cli import u
 
-from flext_infra import c, config, m, p, settings
+from flext_infra import c, config, m, p, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesMiseBinary,
     FlextInfraUtilitiesProjectDiscovery,
@@ -150,6 +153,7 @@ class FlextInfraUtilitiesGateAdmission:
         )
         heartbeat.start()
         try:
+            u.Cli.emit_raw(f"gate admission: attempt {ticket}\n", error=True)
             admitted = cls._await_admission(root, ticket, reclaimed, wait_seconds)
             os.environ[c.Infra.GATE_ADMISSION_TICKET_ENV] = str(ticket)
             with u.Cli.process_deadline_scope(
@@ -167,7 +171,8 @@ class FlextInfraUtilitiesGateAdmission:
             stop.set()
             heartbeat.join()
             with cls._queue_lock(root):
-                ticket.unlink(missing_ok=True)
+                if ticket.is_file():
+                    FlextInfraUtilitiesGateAdmission._retire_ticket(ticket)
             cls._liveness_path(ticket).unlink(missing_ok=True)
             os.close(liveness)
 
@@ -465,12 +470,12 @@ class FlextInfraUtilitiesGateAdmission:
         for ticket in sorted(root.glob(f"*{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}")):
             record = cls._read(ticket)
             if ticket != own and not cls._alive(ticket):
-                ticket.unlink()
+                FlextInfraUtilitiesGateAdmission._retire_ticket(ticket)
                 cls._liveness_path(ticket).unlink(missing_ok=True)
                 continue
             stalled = (now - record.heartbeat_at).total_seconds()
             if ticket != own and stalled > ttl:
-                ticket.unlink()
+                FlextInfraUtilitiesGateAdmission._retire_ticket(ticket)
                 u.Cli.emit_raw(
                     f"gate admission: reclaimed ticket {record.sequence} "
                     f"({record.gate} pid {record.pid} {record.repository}): "
@@ -480,6 +485,97 @@ class FlextInfraUtilitiesGateAdmission:
                 continue
             live.append(record)
         return live
+
+    @staticmethod
+    def _retire_ticket(ticket: Path) -> None:
+        """Retain the original admission record outside the active queue."""
+        ticket.replace(ticket.with_suffix(".retired"))
+
+    @classmethod
+    def bind_check_capture(cls, repository: Path, report_root: Path) -> None:
+        """Bind the original capture to its owning check, never to an ancestor.
+
+        Raises:
+            RuntimeError: If the capture has the wrong checkout or is already bound.
+
+        """
+        selected = u.Cli.process_env().get(c.Infra.GATE_ADMISSION_TICKET_ENV)
+        if selected is None:
+            return
+        ticket = Path(selected)
+        with cls._queue_lock(ticket.parent):
+            record = cls._read(ticket)
+            if record.pid != os.getpid() or record.gate != c.Infra.VERB_CHECK:
+                return
+            if Path(record.repository).resolve() != repository or record.report_root:
+                msg = f"check capture does not match its admission: {ticket}"
+                raise RuntimeError(msg)
+            cls._write(
+                ticket, record.model_copy(update={"report_root": str(report_root)})
+            )
+
+    @classmethod
+    def observe_attempt(cls, sequence: int) -> t.JsonDict:
+        """Read an original attempt without entering the queue or running its gate.
+
+        Returns:
+            Original admission, capture identity and process outcome, when present.
+
+        Raises:
+            ValueError: If the retained evidence describes a different attempt.
+
+        """
+        root = cls.gate_admission_root()
+        ticket = root / f"{sequence:020d}{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"
+        retired = ticket.with_suffix(".retired")
+        if not ticket.is_file() and not retired.is_file():
+            return {"sequence": sequence, "state": "unknown"}
+        with cls._queue_lock(root):
+            active = ticket.is_file()
+            record = cls._read(ticket if active else retired)
+            live = (
+                active and cls._liveness_path(ticket).is_file() and cls._alive(ticket)
+            )
+        if record.sequence != sequence:
+            msg = f"retained admission identity does not match {sequence}"
+            raise ValueError(msg)
+        state = "closed" if not live else (
+            "running" if record.admitted_at is not None else "queued"
+        )
+        data: t.JsonDict = {
+            "sequence": sequence,
+            "state": state,
+            "gate": record.gate,
+            "repository": record.repository,
+            "report_root": record.report_root,
+            "commit_sha": None,
+            "raw_return_code": None,
+        }
+        if record.report_root is None:
+            if not live:
+                data["state"] = "report-unavailable"
+            return data
+        report = Path(record.report_root)
+        start = report / c.Infra.GATE_CAPTURE_START_FILENAME
+        if not start.is_file():
+            data["state"] = "report-unavailable"
+            return data
+        capture = m.Infra.GateCaptureStart.model_validate_json(start.read_bytes())
+        if (
+            capture.repository_root != Path(record.repository).resolve()
+            or capture.gate != record.gate
+        ):
+            msg = f"original capture identity does not match attempt {sequence}"
+            raise ValueError(msg)
+        data["commit_sha"] = capture.commit_sha
+        result = report / c.Infra.GATE_CAPTURE_RESULT_FILENAME
+        if result.is_file():
+            outcome = m.Infra.GateCaptureReport.model_validate_json(result.read_bytes())
+            data["raw_return_code"] = outcome.process.raw_return_code
+            data["state"] = "captured"
+        elif not live:
+            data["state"] = "interrupted"
+        return data
 
     @staticmethod
     def _alive(ticket: Path) -> bool:

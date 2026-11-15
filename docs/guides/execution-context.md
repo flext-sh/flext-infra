@@ -2782,6 +2782,11 @@ prefix for these verbs.
   keep the deadline of the pytest runner.
 - A waiter prints its position and the current holders on stderr each time they
   change, and is admitted only when a slot is free and no live ticket is ahead of it.
+- `flext-infra workspace gate-attempt --sequence <sequence>` reads the original
+  admission and, for a captured check, its original report directory, commit,
+  and process return code. It does not dispatch a gate. An ended attempt with
+  a capture start but no result is interrupted. An unavailable report is not
+  evidence of execution or success.
 - The budget is armed after admission through the flext-cli process deadline
   (`u.Cli.process_deadline_scope`), so time in the queue never counts. At
   `budget_seconds - grace_seconds` the kernel one-shot timer fires, the process

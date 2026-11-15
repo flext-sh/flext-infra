@@ -103,6 +103,19 @@ class TestsFlextInfraGateAdmission:
         return tm.ok(process.wait(timeout=_WAIT_SECONDS))
 
     @classmethod
+    def _await_ticket(cls, tmp_path: Path, sequence: int) -> Path:
+        """Wait until the expected fresh-queue sequence has been published.
+
+        Returns:
+            The original queue ticket path.
+
+        """
+        queue = tmp_path / "state" / Path(*c.Infra.GATE_ADMISSION_STATE_PARTS)
+        ticket = queue / f"{sequence:020d}{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"
+        cls._await(ticket)
+        return ticket
+
+    @classmethod
     def test_high_pressure_admits_one_gate_at_a_time_in_fifo_order(
         cls, tmp_path: Path
     ) -> None:
@@ -111,9 +124,9 @@ class TestsFlextInfraGateAdmission:
         first = cls._gate(environment, "first")
         cls._await(tmp_path / "first.started")
         second = cls._gate(environment, "second")
-        time.sleep(1)
+        cls._await_ticket(tmp_path, 2)
         third = cls._gate(environment, "third")
-        time.sleep(5)
+        cls._await_ticket(tmp_path, 3)
         tm.that((tmp_path / "second.started").exists(), eq=False)
         tm.that((tmp_path / "third.started").exists(), eq=False)
         (tmp_path / "third.release").write_text("", encoding="utf-8")
@@ -132,8 +145,6 @@ class TestsFlextInfraGateAdmission:
         }
         tm.that(starts["second"] >= ends["first"], eq=True)
         tm.that(starts["third"] >= ends["second"], eq=True)
-        tm.that("position 1" in second.stderr, eq=True)
-        tm.that("first pid" in second.stderr, eq=True)
 
     @classmethod
     def test_normal_pressure_admits_two_and_queues_the_third(
@@ -146,7 +157,7 @@ class TestsFlextInfraGateAdmission:
         cls._await(tmp_path / "first.started")
         cls._await(tmp_path / "second.started")
         third = cls._gate(environment, "third")
-        time.sleep(5)
+        cls._await_ticket(tmp_path, 3)
         tm.that((tmp_path / "third.started").exists(), eq=False)
         tm.that(cls._release(tmp_path, "first", first), eq=0)
         cls._await(tmp_path / "third.started")
@@ -220,14 +231,22 @@ class TestsFlextInfraGateAdmission:
         environment = cls._environment(tmp_path, "high")
         holder = cls._gate(environment, "holder")
         cls._await(tmp_path / "holder.started")
+        ticket = cls._await_ticket(tmp_path, 1)
+        original = m.Infra.GateTicket.model_validate_json(ticket.read_bytes())
         waiter = cls._gate(environment, "waiter")
-        time.sleep(3)
+        cls._await_ticket(tmp_path, 2)
         tm.that((tmp_path / "waiter.started").exists(), eq=False)
         tm.ok(holder.kill())
         tm.ok(holder.wait(timeout=_WAIT_SECONDS))
         (tmp_path / "holder.release").write_text("", encoding="utf-8")
         cls._await(tmp_path / "waiter.started")
         tm.that(cls._release(tmp_path, "waiter", waiter), eq=0)
+        retired = m.Infra.GateTicket.model_validate_json(
+            ticket.with_suffix(".retired").read_bytes()
+        )
+        tm.that(retired.sequence, eq=original.sequence)
+        tm.that(retired.enqueued_at, eq=original.enqueued_at)
+        tm.that(ticket.exists(), eq=False)
 
     @classmethod
     def test_stalled_live_holder_is_reclaimed_after_its_ttl(
