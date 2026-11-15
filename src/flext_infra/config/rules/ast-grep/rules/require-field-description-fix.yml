@@ -30,11 +30,62 @@ rule:
           regex: "."
     - not:
         regex: "\\bdescription\\s*="
+    - regex: "^[^\\n]{0,65}$"
 constraints:
   TYPE:
     not:
       regex: "^Annotated\\["
 fix: '$NAME: $TYPE = m.Field(description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
+
+---
+# Long-head sibling of the rule above: when `name: Type` is multi-line or longer
+# than 65 columns, `<indent>name: Type = m.Field(` cannot fit the 88-column line
+# (88 - 11 for ` = m.Field(` - 12 of class-body indent) and ruff format has no
+# stable layout for it. The description then goes into multi-line `Annotated`
+# metadata and the value, if any, stays assigned. Same match as the short rule
+# with the head-length guard negated: the pair is exclusive and exhaustive.
+id: require-field-description-bare-annotated
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+  BARE:
+    replace:
+      source: $TYPE
+      replace: "^\\(\\s*(?<INNER>[^()#]*[^()#\\s])\\s*\\)$"
+      by: "$INNER"
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE"
+    - not:
+        has:
+          field: right
+          regex: "."
+    - not:
+        regex: "\\bdescription\\s*="
+    - not:
+        regex: "^[^\\n]{0,65}$"
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+fix: "$NAME: Annotated[\n    $BARE,\n    m.Field(description=\"$TEXT.\"),\n]"
 message: Describe the field `$NAME` with its canonical name-derived description.
 metadata:
   enforce: [ENFORCE-103]
@@ -63,6 +114,7 @@ rule:
     - pattern: "$NAME: $TYPE = $DEFAULT"
     - not:
         regex: "\\bdescription\\s*="
+    - regex: "^[^\\n=]{0,65}\\s*(?:=|$)"
 constraints:
   TYPE:
     not:
@@ -71,6 +123,55 @@ constraints:
     not:
       regex: "^m\\.Field\\("
 fix: '$NAME: $TYPE = m.Field(default=$DEFAULT, description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
+
+---
+# Long-head sibling of the rule above: when `name: Type` is multi-line or longer
+# than 65 columns, `<indent>name: Type = m.Field(` cannot fit the 88-column line
+# (88 - 11 for ` = m.Field(` - 12 of class-body indent) and ruff format has no
+# stable layout for it. The description then goes into multi-line `Annotated`
+# metadata and the value, if any, stays assigned. Same match as the short rule
+# with the head-length guard negated: the pair is exclusive and exhaustive.
+id: require-field-description-default-annotated
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+  BARE:
+    replace:
+      source: $TYPE
+      replace: "^\\(\\s*(?<INNER>[^()#]*[^()#\\s])\\s*\\)$"
+      by: "$INNER"
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE = $DEFAULT"
+    - not:
+        regex: "\\bdescription\\s*="
+    - not:
+        regex: "^[^\\n=]{0,65}\\s*(?:=|$)"
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+  DEFAULT:
+    not:
+      regex: "^m\\.Field\\("
+fix: "$NAME: Annotated[\n    $BARE,\n    m.Field(description=\"$TEXT.\"),\n] = $DEFAULT"
 message: Describe the field `$NAME` with its canonical name-derived description.
 metadata:
   enforce: [ENFORCE-103]
@@ -99,11 +200,58 @@ rule:
     - pattern: "$NAME: $TYPE = m.Field($$$ARGS)"
     - not:
         regex: "\\bdescription\\s*="
+    - regex: "^[^\\n=]{0,65}\\s*(?:=|$)"
 constraints:
   TYPE:
     not:
       regex: "^Annotated\\["
 fix: '$NAME: $TYPE = m.Field($$$ARGS, description="$TEXT.")'
+message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
+
+---
+# Long-head sibling of the rule above: when `name: Type` is multi-line or longer
+# than 65 columns, `<indent>name: Type = m.Field(` cannot fit the 88-column line
+# (88 - 11 for ` = m.Field(` - 12 of class-body indent) and ruff format has no
+# stable layout for it. The description then goes into multi-line `Annotated`
+# metadata and the value, if any, stays assigned. Same match as the short rule
+# with the head-length guard negated: the pair is exclusive and exhaustive.
+id: require-field-description-field-call-annotated
+language: python
+severity: error
+files:
+  - "**/models.py"
+  - "**/_models.py"
+  - "**/_models/**/*.py"
+transform:
+  WORDS:
+    replace:
+      source: $NAME
+      replace: "_"
+      by: " "
+  TEXT:
+    convert:
+      source: $WORDS
+      toCase: capitalize
+  BARE:
+    replace:
+      source: $TYPE
+      replace: "^\\(\\s*(?<INNER>[^()#]*[^()#\\s])\\s*\\)$"
+      by: "$INNER"
+rule:
+  all:
+    - matches: model-field-assignment
+    - pattern: "$NAME: $TYPE = m.Field($$$ARGS)"
+    - not:
+        regex: "\\bdescription\\s*="
+    - not:
+        regex: "^[^\\n=]{0,65}\\s*(?:=|$)"
+constraints:
+  TYPE:
+    not:
+      regex: "^Annotated\\["
+fix: "$NAME: Annotated[\n    $BARE,\n    m.Field(description=\"$TEXT.\"),\n] = m.Field($$$ARGS)"
 message: Describe the field `$NAME` with its canonical name-derived description.
 metadata:
   enforce: [ENFORCE-103]
