@@ -5050,7 +5050,13 @@ class FlextInfraUtilitiesModelsProtocol:
             ).get_object()
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
-            port = self._source_class(facade.get_attribute(p.BaseModel.__name__))
+            binding = FlextInfraUtilitiesRopeRuntime.class_assignment_binding(
+                facade.get_attribute(p.BaseModel.__name__)
+            )
+            if binding is None:
+                message = "model copy contract has no unambiguous source binding"
+                raise ValueError(message)
+            port = self._source_class(binding)
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
