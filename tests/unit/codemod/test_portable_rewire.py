@@ -247,12 +247,12 @@ class TestsFlextInfraPortableRewire:
         tm.fail(origin.exists())
         with (
             u.Infra.open_project(
-                package.parent,
+                receiver.parent,
                 project_roots=(receiver, producer),
                 consumer_root=receiver,
             ) as project,
             workspace_api.FlextInfraRopeWorkspace.open_workspace(
-                receiver, rope_repository_root=package.parent, source_project=project
+                receiver, rope_repository_root=receiver.parent, source_project=project
             ) as workspace,
         ):
             replayed = tm.ok(
@@ -282,12 +282,12 @@ class TestsFlextInfraPortableRewire:
         before_repeat = consumer.read_bytes()
         with (
             u.Infra.open_project(
-                package.parent,
+                receiver.parent,
                 project_roots=(receiver, producer),
                 consumer_root=receiver,
             ) as project,
             workspace_api.FlextInfraRopeWorkspace.open_workspace(
-                receiver, rope_repository_root=package.parent, source_project=project
+                receiver, rope_repository_root=receiver.parent, source_project=project
             ) as workspace,
         ):
             repeated = tm.ok(

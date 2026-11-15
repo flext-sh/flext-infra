@@ -296,7 +296,10 @@ class TestsFlextInfraPortableBindingRewire:
                 u.Tests.run_lazy_init_probe(
                     "from external_receiver.consumer import consume\n"
                     "assert consume() == 4\n",
-                    python_paths=(str(origin.parent.parent), str(consumer.parent)),
+                    python_paths=(
+                        str(origin.parent.parent),
+                        str(consumer.parent.parent),
+                    ),
                 ),
                 eq=[],
             )

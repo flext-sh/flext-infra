@@ -318,7 +318,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@4cb40a6fe564c6761dcb2f4e6c79d7fb7304f96f
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@394d91c0d9669a6de02b8b54f081d014f784fd52
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -1689,6 +1689,9 @@ Infra:
         patterns:
         - "!scripts/"
         - "scripts/*.py"
+        # The generated package initializer is tracked: without it a checker
+        # names scripts/hooks/* as hooks.* and `import scripts.hooks` fails.
+        - "!scripts/__init__.py"
         - "scripts/*.sh"
         - "scripts/*.md"
         - "scripts/maintenance/"

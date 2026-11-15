@@ -754,6 +754,26 @@ class FlextInfraModelsConfigArtifact(
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid")
 
+        @m.model_validator(mode="after")
+        def _validate_admission_overrides(self) -> Self:
+            """Admission overrides name a canonical or repository-declared verb.
+
+            Returns:
+                The validated codegen contract.
+
+            Raises:
+                ValueError: If an override names an undeclared verb.
+
+            """
+            declared = {verb.name for verb in self.make.verbs} | {
+                verb.name for verb in self.repository.extra_verbs
+            }
+            unknown = sorted(set(self.make.admission.overrides) - declared)
+            if unknown:
+                msg = f"make.admission.overrides name undeclared verbs: {unknown}"
+                raise ValueError(msg)
+            return self
+
         @m.computed_field
         @property
         def analyzer_exclude_globs(self) -> tuple[str, ...]:

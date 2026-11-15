@@ -191,32 +191,6 @@ class FlextInfraUtilitiesCodemodNativePackage:
             )
         )
 
-    @staticmethod
-    def _codemod_installed_initializer(
-        snapshot: p.Infra.WorkspaceSnapshot,
-        package: str,
-    ) -> p.Infra.RopeSourceModule | None:
-        """Elect a native installed package initializer without executing it.
-
-        Returns:
-            The source initializer, or no package declaration for this candidate.
-
-        """
-        resource = snapshot.engine.find_module(package)
-        if resource is None or FlextInfraUtilitiesRopeRuntime.file_resource(resource):
-            return None
-        initializer = Path(resource.real_path) / c.Infra.INIT_PY
-        if not initializer.is_file():
-            return None
-        return FlextInfraUtilitiesRopeRuntime.require_source_module(
-            FlextInfraUtilitiesRopeCore.resolve_pymodule(
-                snapshot.engine,
-                FlextInfraUtilitiesRopeRuntime.file_resource_at(
-                    snapshot.engine, initializer
-                ),
-            )
-        )
-
     @classmethod
     def codemod_provider_aliases(
         cls,
@@ -232,7 +206,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
             ValueError: If an elected native initializer has no source resource.
 
         """
-        module = cls._codemod_installed_initializer(snapshot, package)
+        module = FlextInfraUtilitiesRopeCore.package_initializer(
+            snapshot.engine, package
+        )
         if module is None:
             return frozenset()
         resource = module.get_resource()
@@ -273,7 +249,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         """
         if not cls.codemod_provider_aliases(snapshot, package):
             return None
-        declaring = cls._codemod_installed_initializer(snapshot, package)
+        declaring = FlextInfraUtilitiesRopeCore.package_initializer(
+            snapshot.engine, package
+        )
         if declaring is None:
             message = f"elected facade initializer disappeared: {package}"
             raise ValueError(message)

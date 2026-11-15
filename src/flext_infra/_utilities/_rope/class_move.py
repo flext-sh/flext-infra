@@ -318,14 +318,14 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module move source and target are identical: {source}"
             )
-        validation = cls._validate_module_resource_paths(root, source, target)
+        validation = cls._validate_module_resource_paths(project, root, source, target)
         if validation.failure:
             return r[tuple[p.Infra.CodegenFilePlan, ...]].from_failure(validation)
         return cls._module_resource_move_plans(project, root, (source, target), view)
 
     @staticmethod
     def _validate_module_resource_paths(
-        root: Path, source: Path, target: Path
+        project: p.Infra.RopeProject, root: Path, source: Path, target: Path
     ) -> p.Result[bool]:
         """Reject invalid module identifiers and occupied package parents.
 
@@ -338,7 +338,16 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 return r[bool].fail(
                     f"module resource move requires a Python file module: {path}"
                 )
-            names = (*path.parent.relative_to(root).parts, path.stem)
+            source_root = max(
+                (
+                    folder
+                    for resource in project.get_source_folders()
+                    if path.is_relative_to(folder := Path(resource.real_path).resolve())
+                ),
+                key=lambda folder: len(folder.parts),
+                default=root,
+            )
+            names = (*path.parent.relative_to(source_root).parts, path.stem)
             if any(
                 not name.isidentifier() or keyword.iskeyword(name) for name in names
             ):
@@ -385,10 +394,15 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
                 f"module source has no observed mode: {source}"
             )
-        target_plan = cls._module_destination_plan(root, target, "", mode)
-        if target.with_suffix("").exists():
+        target_plan = declared.get(target)
+        if target_plan is None:
+            target_plan = cls._module_destination_plan(root, target, "", mode)
+        if (
+            target_plan.desired_content not in {None, b""}
+            or target.with_suffix("").exists()
+        ):
             return r[tuple[p.Infra.CodegenFilePlan, ...]].fail(
-                f"module destination is occupied: {target.with_suffix('')}"
+                f"module destination is occupied: {target}"
             )
         candidate = dict(sources)
         virtual = [target_plan]
@@ -584,9 +598,10 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 return r[Path].fail(
                     f"module intermediate is occupied: {intermediate.with_suffix('')}"
                 )
-            declaration = cls._module_destination_plan(root, intermediate, "", mode)
             if intermediate != target:
-                virtual.append(declaration)
+                virtual.append(
+                    cls._module_destination_plan(root, intermediate, "", mode)
+                )
             native = FlextInfraUtilitiesRopeRuntimeModules.snapshot_project(
                 project, candidate, declared_files=tuple(virtual)
             )
@@ -601,7 +616,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                     target.stem,
                     options=m.Infra.RopeRenameOptions(
                         resources=tuple(
-                            cls._resource(native, root, path) for path in candidate
+                            cls._resource(native, root, path)
+                            for path in candidate
+                            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                         ),
                     ),
                 )
@@ -628,7 +645,9 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
                 changes = mover.get_changes(
                     native.get_folder(target.parent.relative_to(root).as_posix()),
                     resources=tuple(
-                        cls._resource(native, root, path) for path in candidate
+                        cls._resource(native, root, path)
+                        for path in candidate
+                        if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                     ),
                 )
                 cls._module_resource_changes(changes, candidate, intermediate, target)
@@ -668,7 +687,11 @@ class FlextInfraUtilitiesRopeClassMove(FlextInfraUtilitiesRopeMovePublication):
         source, target = paths
         expected = id(cls._elected_move_module(project, root, source, role="source"))
         for path, text in consumers.items():
-            if path == source or not cls._binds_name(text, source.stem):
+            if (
+                path == source
+                or path.suffix not in c.Infra.PYTHON_SOURCE_SUFFIXES
+                or not cls._binds_name(text, source.stem)
+            ):
                 continue
             module = FlextInfraUtilitiesRopeCorePyModule.resolve_pymodule(
                 project, cls._resource(project, root, path)

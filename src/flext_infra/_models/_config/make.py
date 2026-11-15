@@ -1152,25 +1152,6 @@ class FlextInfraModelsConfigMake(
         ]
 
         @m.model_validator(mode="after")
-        def _validate_admission_overrides(self) -> Self:
-            """Admission overrides name declared public verbs only.
-
-            Returns:
-                The resulting ``Self``.
-
-            Raises:
-                ValueError: If an override names an undeclared verb.
-
-            """
-            unknown = sorted(
-                set(self.admission.overrides) - {verb.name for verb in self.verbs},
-            )
-            if unknown:
-                msg = f"make.admission.overrides name undeclared verbs: {unknown}"
-                raise ValueError(msg)
-            return self
-
-        @m.model_validator(mode="after")
         def _validate_project_check_gates(self) -> Self:
             """Project gates are unique and never shadow a built-in gate.
 
