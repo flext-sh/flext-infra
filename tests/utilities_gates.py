@@ -28,15 +28,16 @@ class TestsFlextInfraUtilitiesGates:
     def scanner_contract_project(
         tmp_path: Path,
         installed_dependency_path: Path,
-        session_runtime: p.Tests.SessionRuntime,
+        provider: p.Tests.SessionRuntime | Path | None = None,
         *,
-        severity: str = "error",
+        rule_severities: Mapping[str, str] | None = None,
     ) -> Path:
-        """Provision a governed project whose catalog holds two contract rules.
+        """Provision a governed project with a local native contract catalog.
 
-        ``contract-first`` and ``contract-second`` match ``first(...)`` and
-        ``second(...)`` calls at ``severity``; the package itself is clean, so
-        only each case's own sources produce findings.
+        Each rule matches a call with its name. The default catalog matches
+        ``first(...)`` and ``second(...)``; the package itself is clean.
+        A prepared environment is copied into the checkout. A session runtime
+        provisions the actual dependency closure for consumer scenarios.
 
         Returns:
             The provisioned project root.
@@ -58,17 +59,31 @@ class TestsFlextInfraUtilitiesGates:
                     f"id: contract-{name}\nlanguage: Python\nseverity: {severity}\n"
                     f"message: Observed {name}\nrule:\n  pattern: {name}($VALUE)\n"
                 )
-                for name in ("first", "second")
+                for name, severity in (
+                    rule_severities
+                    if rule_severities is not None
+                    else dict.fromkeys(("first", "second"), "error")
+                ).items()
             },
         )
-        # The rule plan reads the target checkout's own runtime, never the
-        # invoking interpreter, so the scanned project owns a provisioned one.
+        # The rule plan always reads the target checkout's own runtime.
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project)
-        tm.ok(
-            TestsFlextInfraUtilitiesToolingFixture.provision_scan_workspace(
-                project, session_runtime=session_runtime
+        if isinstance(provider, Path):
+            TestsFlextInfraUtilitiesToolingFixture.reflink_copy_tree(
+                provider, u.Infra.runtime_environment_dir(project, runtime_root=project)
             )
-        )
+        elif provider is None:
+            tm.ok(
+                TestsFlextInfraUtilitiesToolingFixture.create_python_environment(
+                    project, runtime_root=project
+                )
+            )
+        else:
+            tm.ok(
+                TestsFlextInfraUtilitiesToolingFixture.provision_scan_workspace(
+                    project, session_runtime=provider
+                )
+            )
         return project
 
     @staticmethod

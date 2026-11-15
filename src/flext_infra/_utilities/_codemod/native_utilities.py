@@ -794,29 +794,34 @@ class FlextInfraUtilitiesCodemodNative:
         )
         if not rendered.rules and not rendered.utilities and not rendered.scopes:
             return None
-        files: dict[Path, t.JsonMapping] = {
-            Path(c.Infra.CODEMOD_CONFIG_FILENAME): {
-                c.Infra.CODEMOD_RULE_DIRS_KEY: [c.Infra.CODEMOD_RULE_DIRS_KEY],
-                c.Infra.CODEMOD_UTIL_DIRS_KEY: [c.Infra.CODEMOD_UTIL_DIRS_KEY],
-            },
-            Path(c.Infra.CODEMOD_SCOPES_FILENAME): {
-                selector: list(paths) for selector, paths in rendered.scopes.items()
-            },
+        files: dict[Path, Sequence[t.JsonMapping]] = {
+            Path(c.Infra.CODEMOD_CONFIG_FILENAME): (
+                {
+                    c.Infra.CODEMOD_RULE_DIRS_KEY: [c.Infra.CODEMOD_RULE_DIRS_KEY],
+                    c.Infra.CODEMOD_UTIL_DIRS_KEY: [c.Infra.CODEMOD_UTIL_DIRS_KEY],
+                },
+            ),
+            Path(c.Infra.CODEMOD_SCOPES_FILENAME): (
+                {selector: list(paths) for selector, paths in rendered.scopes.items()},
+            ),
             **{
                 Path(c.Infra.CODEMOD_UTIL_DIRS_KEY)
-                / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}": document
+                / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}": (document,)
                 for identity, document in rendered.utilities.items()
             },
-            **{
-                Path(c.Infra.CODEMOD_RULE_DIRS_KEY)
-                / f"{identity}{c.Infra.CODEMOD_RULE_SUFFIX}": document
-                for identity, document in rendered.rules.items()
-            },
         }
+        if rendered.rules:
+            # Native rule catalogs admit a document stream, while utilities
+            # require a file each. The bundle keeps rule order and one durable
+            # write for the generated rule catalog instead of one per rule.
+            files[
+                Path(c.Infra.CODEMOD_RULE_DIRS_KEY)
+                / c.Infra.CODEMOD_NATIVE_RULE_BUNDLE_FILENAME
+            ] = tuple(rendered.rules[identity] for identity in sorted(rendered.rules))
         rules = FlextInfraUtilitiesCodemodRules
         texts = {
-            path: rules.codemod_native_documents_text((document,))
-            for path, document in files.items()
+            path: rules.codemod_native_documents_text(documents)
+            for path, documents in files.items()
         }
         digest = u.Cli.sha256_content(
             u.Cli.json_dumps(
