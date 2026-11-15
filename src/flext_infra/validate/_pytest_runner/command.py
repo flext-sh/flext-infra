@@ -66,7 +66,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         Selection and inventory consume the same clock, so the instant leaves
         the typed stop reserve before the process deadline. Slow items have a
-        bounded drain; ordinary items do not. The process wall still terminates
+        bounded drain. The process wall still terminates
         an unfinished item and preserves its causal timeout outcome rather than
         promising a synthetic unit completion window.
 
@@ -74,8 +74,10 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``float``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
         if self.carries_slow_items(execution_mode):
+            pytest = (
+                u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
+            ).tools.pytest
             reserve = (
                 pytest.slow_serial_suite_stop_reserve_seconds
                 if serial

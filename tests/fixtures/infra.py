@@ -20,14 +20,15 @@ from tests import c, p, t, tm, u
 _PROJECT_ROOT = tm.not_none(u.Infra.project_root(Path(__file__)))
 
 
-@pytest.fixture
-def native_cprofile(tmp_path: Path) -> Path:
+@pytest.fixture(scope="session")
+def native_cprofile_seed(tmp_path_factory: pytest.TempPathFactory) -> bytes:
     """Create real pstats outside any profiler owned by the pytest worker.
 
     Returns:
-        The independently measured native profile.
+        The independently measured native profile bytes.
 
     """
+    tmp_path = tmp_path_factory.mktemp("native-cprofile")
     profile = tmp_path / c.Infra.REPORTS_DIR_NAME / "fixture.pstats"
     profile.parent.mkdir(parents=True, exist_ok=True)
     workload = tmp_path / "profile_workload.py"
@@ -45,6 +46,20 @@ def native_cprofile(tmp_path: Path) -> Path:
             cwd=tmp_path,
         )
     )
+    return profile.read_bytes()
+
+
+@pytest.fixture
+def native_cprofile(tmp_path: Path, native_cprofile_seed: bytes) -> Path:
+    """Give each case a private copy of the worker's real profile.
+
+    Returns:
+        The private native profile path.
+
+    """
+    profile = tmp_path / c.Infra.REPORTS_DIR_NAME / "fixture.pstats"
+    profile.parent.mkdir(parents=True, exist_ok=True)
+    profile.write_bytes(native_cprofile_seed)
     return profile
 
 

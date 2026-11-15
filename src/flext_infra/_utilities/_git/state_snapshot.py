@@ -189,6 +189,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         root: Path,
         paths: Sequence[Path],
         entries: Sequence[p.Infra.GitWorktreeIndexEntry],
+        head_entries: Sequence[p.Infra.GitWorktreeIndexEntry],
     ) -> tuple[p.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
@@ -217,7 +218,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         )
         gitlinks = {
             entry.path: entry.oid
-            for entry in (*cls._state_head_entries(root, paths), *entries)
+            for entry in (*head_entries, *entries)
             if entry.mode == c.Infra.GIT_GITLINK_MODE_TEXT
         }
         indexed_gitlinks = {
@@ -271,8 +272,9 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             msg = "snapshot requires the repository root"
             raise ValueError(msg)
         entries = cls.state_snapshot_index(root, request.paths) if request.paths else ()
+        head_entries = cls._state_head_entries(root, request.paths)
         files = (
-            cls._state_snapshot_files(root, request.paths, entries)
+            cls._state_snapshot_files(root, request.paths, entries, head_entries)
             if request.paths
             else ()
         )
@@ -289,7 +291,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             "branch": (None if repo.head.is_detached else repo.active_branch.name),
             "retained_commits": (retained),
             "paths": (tuple(request.paths)),
-            "head_entries": (cls._state_head_entries(root, request.paths)),
+            "head_entries": (head_entries),
             "index_entries": (entries),
             "files": (files),
         })

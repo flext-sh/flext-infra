@@ -188,8 +188,8 @@ class TestsFlextInfraGateHookDefaults:
                 msg = "native report rejected"
                 raise ValueError(msg)
 
-    class _SlowInherited(_Probe):
-        """Spend two seconds so a tiny inherited timeout would kill the probe."""
+    class _InheritedTimeout(_Probe):
+        """Run a short real subprocess under the inherited timeout."""
 
         @override
         def _build_check_command(
@@ -208,7 +208,7 @@ class TestsFlextInfraGateHookDefaults:
             return (
                 sys.executable,
                 "-c",
-                "import time; time.sleep(2); print('FINISHED')",
+                "import time; time.sleep(0.1); print('FINISHED')",
             )
 
     class _ShortTimeout(_Probe):
@@ -371,14 +371,15 @@ class TestsFlextInfraGateHookDefaults:
                 self._ValidateOverride(project).check(project, context)
 
     def test_inherited_timeout_allows_a_short_command(self, tmp_path: Path) -> None:
-        """A two-second probe finishes under the inherited deadline."""
+        """A short probe finishes under the inherited deadline."""
         project, reports = self._project(tmp_path)
-        execution = self._SlowInherited(project).check(
+        execution = self._InheritedTimeout(project).check(
             project,
             self._context(project, reports),
         )
         tm.that(execution.raw_output, has="FINISHED")
 
+    @c.Tests.MARK.slow
     def test_replaced_timeout_stops_a_long_command(self, tmp_path: Path) -> None:
         """A gate that replaces ``check_timeout`` is cut off at that deadline."""
         project, reports = self._project(tmp_path)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import ast
 from collections import deque
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from functools import lru_cache, partial
 from os.path import commonpath
 from pathlib import Path
@@ -650,11 +650,7 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(elected)
         roots = elected.value
         roots.extend(cls._input_layouts(workspace, inputs, layouts))
-        roots.extend(
-            (layouts[name], False)
-            for _, name in u.family_discovery_candidates()
-            if name in layouts
-        )
+        roots.extend(cls._unrooted_family_layouts(roots, layouts))
         for local, rewritten in roots:
             if any(item.project_root == local.project_root for item in selected):
                 continue
@@ -674,6 +670,31 @@ class FlextInfraStagedPackage:
             if path not in states:
                 states[path] = source_project.source_state(path, required=False)
         return result_type.ok((selected, states))
+
+    @staticmethod
+    def _unrooted_family_layouts(
+        roots: Sequence[tuple[p.Infra.RopeProjectLayout, bool]],
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
+    ) -> list[tuple[p.Infra.RopeProjectLayout, bool]]:
+        """Discover family providers only when they can add a local project.
+
+        Returns:
+            Local family layouts not already selected as roots.
+
+        """
+        rooted_projects = {layout.project_root for layout, _ in roots}
+        unrooted_layouts = {
+            name: layout
+            for name, layout in layouts.items()
+            if layout.project_root not in rooted_projects
+        }
+        if not unrooted_layouts:
+            return []
+        return [
+            (unrooted_layouts[name], False)
+            for _, name in u.family_discovery_candidates()
+            if name in unrooted_layouts
+        ]
 
     @staticmethod
     def _layout_imports(

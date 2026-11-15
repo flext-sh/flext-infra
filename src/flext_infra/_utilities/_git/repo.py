@@ -245,7 +245,7 @@ class FlextInfraUtilitiesGitRepo:
         )
 
     @classmethod
-    def refresh_binary(cls) -> p.Result[bool]:
+    def refresh_binary(cls, *, force: bool = True) -> p.Result[bool]:
         """Point GitPython at the absolute path of the canonical git binary.
 
         Returns:
@@ -256,8 +256,11 @@ class FlextInfraUtilitiesGitRepo:
         resolved = shutil.which(c.Infra.GIT)
         if resolved is None:
             return r[bool].fail(f"git executable not found on PATH: {c.Infra.GIT}")
+        if not force and resolved == Git.GIT_PYTHON_GIT_EXECUTABLE:
+            return r[bool].ok(value=True)
         try:
-            Git.refresh(resolved)
+            if not Git.refresh(resolved):
+                return r[bool].fail(f"git binary refresh failed: {resolved}")
         except (FileNotFoundError, OSError) as exc:
             return r[bool].fail(f"git binary refresh failed: {exc}", exception=exc)
         return r[bool].ok(value=True)
@@ -279,7 +282,7 @@ class FlextInfraUtilitiesGitRepo:
         """
         resolved = repo_root.expanduser().resolve()
         try:
-            refreshed = cls.refresh_binary()
+            refreshed = cls.refresh_binary(force=False)
             if refreshed.failure:
                 return r[Repo].from_failure(refreshed)
             repo = Repo(resolved, search_parent_directories=True)
