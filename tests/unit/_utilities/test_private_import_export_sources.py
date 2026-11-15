@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import infra
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -25,7 +24,9 @@ class TestsFlextInfraPrivateImportExportSources:
         tmp_path: Path, *, materialized: bool, dynamic: bool
     ) -> None:
         """Only explicit exports are admitted; source is never executed or written."""
-        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "example_package"
+        package.mkdir(parents=True)
+        (package / c.Infra.INIT_PY).touch()
         module = f"{package.name}.consumer"
         path = package / "consumer.py"
         source = (
@@ -39,9 +40,9 @@ class TestsFlextInfraPrivateImportExportSources:
         )
         if materialized:
             path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        with infra.rope_workspace(root) as workspace:
+        with u.Infra.workspace_overlay_project(tmp_path, (tmp_path,)) as project:
             bindings, exports = u.Infra.declared_exports(
-                {module: (source, False)}, project=workspace.rope_project
+                {module: (source, False)}, project=project
             )
         tm.that(bindings[f"{module}.Published"], eq={"absent_provider.Actual"})
         tm.that(
