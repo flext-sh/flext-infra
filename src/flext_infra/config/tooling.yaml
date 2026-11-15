@@ -1,5 +1,6 @@
 Infra:
   tooling:
+    # EXTERMINATED: mypy/pyright removed from fleet. Kept for local compatibility only. DO NOT ADD NEW RULES.
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
     derived-tool-roots: [ deptry, pyrefly, pytest, ruff, vulture ]
