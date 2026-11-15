@@ -90,6 +90,34 @@ class TestsFlextInfraRefactorImportNormalizationBindings(
             )
 
     @classmethod
+    def test_published_fixture_import_stays_at_tests_root(cls, tmp_path: Path) -> None:
+        """A concrete fixture published by the tests root has one stable route."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        fixtures = tier / "fixtures"
+        cls._lazy_init(tier, {"TestsDemoFixtures": ".fixtures"})
+        cls._lazy_init(fixtures, {"TestsDemoFixtures": ".auth"})
+        for package in (tier, fixtures):
+            initializer = package / c.Infra.INIT_PY
+            with initializer.open("a", encoding=c.DEFAULT_ENCODING) as stream:
+                stream.write("\n__all__ = ['TestsDemoFixtures']\n")
+        (fixtures / "auth.py").write_text(
+            "class TestsDemoFixtures:\n    marker = 'fixture'\n"
+            "__all__ = ['TestsDemoFixtures']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        target = tier / "conftest.py"
+        source = (
+            "from tests import TestsDemoFixtures\nvalue = TestsDemoFixtures.marker\n"
+        )
+        tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project, file_path=target, source=source
+            ),
+            eq=source,
+        )
+
+    @classmethod
     def test_internal_tier_alias_binds_through_tier_root(cls, tmp_path: Path) -> None:
         """An internal tier imports root aliases from its own root."""
         project, _ = cls._project(tmp_path)

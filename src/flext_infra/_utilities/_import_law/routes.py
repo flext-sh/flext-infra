@@ -190,6 +190,13 @@ class FlextInfraUtilitiesImportLawRoutes(
                     or cls._import_law_unpublished_owner(
                         state, (node.module, alias.name), resolve, sources
                     )
+                    # Authored tests consume the generated tests root.
+                    or (
+                        node.module == state.scope.namespace == c.Infra.DIR_TESTS
+                        and alias.name in state.root_exports
+                        and resolve(node.module, alias.name) is not None
+                        and node.module
+                    )
                     or cls.lazy_source(
                         state.scope,
                         node.module,
