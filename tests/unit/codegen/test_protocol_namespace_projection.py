@@ -11,7 +11,7 @@ from pathlib import Path
 from textwrap import indent
 from typing import Literal
 
-from flext_infra.gates import FlextInfraGatesMypy, FlextInfraGatesPyrefly
+from flext_infra.gates import FlextInfraGatesPyrefly
 from tests import c, m, p, tm, u
 
 
@@ -232,16 +232,15 @@ class TestsFlextInfraProtocolNamespaceProjection:
             u.Cli.atomic_write_text_file(
                 pyproject,
                 tm.ok(u.Cli.files_read_text(pyproject))
-                + '\n[tool.mypy]\n[tool.pyrefly]\nproject-includes = ["src"]\n',
+                + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
             )
         )
         context = m.Infra.GateContext(
             repository_root=root, reports_dir=root / ".reports"
         )
         context.reports_dir.mkdir(parents=True, exist_ok=True)
-        for gate in (FlextInfraGatesMypy(root), FlextInfraGatesPyrefly(root)):
-            checked = gate.check(root, context)
-            tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
+        checked = FlextInfraGatesPyrefly(root).check(root, context)
+        tm.that(checked.result.passed, eq=True, msg=checked.raw_output)
 
     @staticmethod
     @c.Tests.MARK.parametrize("family", ["p", "m"])

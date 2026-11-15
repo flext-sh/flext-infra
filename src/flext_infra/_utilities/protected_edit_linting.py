@@ -15,7 +15,6 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, MutableMapping, MutableSequence, Sequence
-from contextlib import nullcontext
 from itertools import islice
 from pathlib import Path
 from typing import ClassVar
@@ -857,7 +856,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     env=cls._ruff_environment(),
                     remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 ),
-                timeout=cls._gate_deadline(c.Infra.RUFF),
+                timeout=cls._gate_deadline(),
             )
             if executed.failure:
                 return r[bool].from_failure(executed)
@@ -903,7 +902,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
                 input_data=source,
             ),
-            timeout=cls._gate_deadline(c.Infra.RUFF),
+            timeout=cls._gate_deadline(),
         )
         if executed.failure:
             return r[str].from_failure(executed)
@@ -1335,7 +1334,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _lint_command(
         cls,
         py_file: Path,
-        workspace: Path,
         *,
         command_cwd: Path,
         tool_name: str,
@@ -1347,22 +1345,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
             The resulting ``Sequence[str]``.
 
         """
-        if tool_name == c.Infra.MYPY:
-            return FlextInfraUtilitiesResourceLimits.mypy_limited_command(
-                m.Infra.MypyInvocation(
-                    targets=(py_file.resolve(),),
-                    workspace=workspace,
-                    report_json=True,
-                ),
-            )
         command: Sequence[str] = (
             *cls._workspace_tool_command(template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
         if tool_name == c.Infra.RUFF:
             command = (*command, "--output-format", c.Infra.OUTPUT_JSON)
-        elif tool_name == c.Infra.PYRIGHT:
-            command = (*command, "--outputjson")
         elif tool_name == c.Infra.PYREFLY:
             command = (
                 *command,
@@ -1399,7 +1387,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 entry[0],
                 cls._lint_command(
                     py_file,
-                    workspace,
                     command_cwd=command_cwd,
                     tool_name=entry[0],
                     template=entry[1],
@@ -1430,12 +1417,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if not selected_tools:
             return cls._lint_snapshot_from_results(())
 
-        # The pool waits for the slowest DECLARED gate deadline (mypy owns a
-        # resource-limited deadline of its own); a shorter pool budget cut the
-        # gate short and reported the cut as lint errors, reverting valid edits.
-        timeout_budget = (
-            max(cls._gate_deadline(entry[0]) for entry in selected_tools) + 10
-        )
+        # The pool waits for the DECLARED gate deadline; a shorter pool
+        # budget cut the gate short and reported the cut as lint errors,
+        # reverting valid edits.
+        timeout_budget = cls._gate_deadline() + 10
         pool = concurrent.futures.ThreadPoolExecutor(
             max_workers=max(
                 1, min(config.Infra.codegen.lint_snapshot_workers, len(selected_tools))
@@ -1476,15 +1461,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return cls._lint_snapshot_from_results(tuple(results))
 
     @staticmethod
-    def _gate_deadline(tool_name: str) -> int:
+    def _gate_deadline() -> int:
         """Return the one declared deadline for a lint gate subprocess.
 
         Returns:
             The one declared deadline for a lint gate subprocess.
 
         """
-        if tool_name == c.Infra.MYPY:
-            return FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
         return max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
     @classmethod
@@ -1506,7 +1489,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_cwd = cls._command_cwd(py_file, workspace)
         cmd = cls._lint_command(
             py_file,
-            workspace,
             command_cwd=command_cwd,
             tool_name=tool_name,
             template=template,
@@ -1530,25 +1512,16 @@ class FlextInfraUtilitiesProtectedEditLinting:
         environment = dict(cls._command_env())
         if tool_name == c.Infra.RUFF:
             environment = dict(cls._ruff_environment())
-        elif tool_name == c.Infra.MYPY:
-            environment[c.Infra.MypyCacheEnvironment.CACHE_DIR.value] = str(
-                FlextInfraUtilitiesResourceLimits.mypy_cache_directory(command_cwd)
-            )
-        with (
-            FlextInfraUtilitiesResourceLimits.mypy_cache_lock(command_cwd)
-            if tool_name == c.Infra.MYPY
-            else nullcontext()
-        ):
-            run_result = u.Cli.run_raw(
-                cmd,
-                cwd=command_cwd,
-                options=m.Cli.ProcessOptions(
-                    env=environment,
-                    remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
-                    input_data=source,
-                ),
-                timeout=cls._gate_deadline(tool_name),
-            )
+        run_result = u.Cli.run_raw(
+            cmd,
+            cwd=command_cwd,
+            options=m.Cli.ProcessOptions(
+                env=environment,
+                remove_env_keys=cls._COMMAND_ENV_REMOVE_KEYS,
+                input_data=source,
+            ),
+            timeout=cls._gate_deadline(),
+        )
         return cls.lint_gate_result(tool_name, run_result)
 
     @staticmethod
@@ -1581,14 +1554,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 else (c.Cli.EXIT_CODE_FAILURE,)
             ),
         )
-        resource_error = (
-            FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(output)
-            if tool_name == c.Infra.MYPY
-            else None
-        )
-        failure = resource_error
+        failure: str | None = None
         if classification is c.Infra.ToolOutcome.ERROR:
-            failure = failure or (
+            failure = (
                 f"{tool_name} execution failed: "
                 f"exit={output.outcome.raw_return_code}, "
                 f"timed_out={output.outcome.timed_out}, "
@@ -1614,10 +1582,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result = r[Sequence[str]]
-        if tool_name == c.Infra.MYPY:
-            return cls._mypy_report_errors(source)
-        if tool_name == c.Infra.PYRIGHT:
-            return cls._pyright_report_errors(source)
         if tool_name == c.Infra.PYREFLY:
             pyrefly = u.validate_value(
                 m.Infra.PyreflyReport, source, from_json=True, strict=True
@@ -1633,60 +1597,6 @@ class FlextInfraUtilitiesProtectedEditLinting:
         if tool_name != c.Infra.RUFF:
             return result.fail(f"unsupported lint report contract: {tool_name}")
         return cls._ruff_report_errors(source)
-
-    @staticmethod
-    def _pyright_report_errors(source: str) -> p.Result[Sequence[str]]:
-        """Validate native diagnostics and require actual analyzed sources.
-
-        Returns:
-            Complete findings or the original malformed/empty-analysis failure.
-
-        """
-        result = r[Sequence[str]]
-        report = u.validate_value(
-            m.Infra.PyrightReport, source, from_json=True, strict=True
-        )
-        if report.failure:
-            return result.from_failure(report)
-        observed = report.value
-        if not observed.summary.files_analyzed:
-            return result.fail("pyright analyzed no files for the selected source")
-        return result.ok(
-            tuple(
-                f"{entry.file}:"
-                f"{entry.range.start.line + 1 if entry.range else 0}:"
-                f"{entry.range.start.character + 1 if entry.range else 0}: "
-                f"{entry.severity}: {entry.message} [{entry.rule or ''}]"
-                for entry in observed.general_diagnostics
-                if entry.severity in {"error", "warning"}
-            ),
-        )
-
-    @staticmethod
-    def _mypy_report_errors(source: str) -> p.Result[Sequence[str]]:
-        """Validate every native JSON-lines diagnostic, retaining hints and failures.
-
-        Returns:
-            Complete diagnostic lines, or the original malformed-report failure.
-
-        """
-        result = r[Sequence[str]]
-        lines: list[str] = []
-        for line in filter(str.strip, source.splitlines()):
-            diagnostic = u.validate_value(
-                m.Infra.MypyDiagnostic, line, from_json=True, strict=True
-            )
-            if diagnostic.failure:
-                return result.from_failure(diagnostic)
-            entry = diagnostic.value
-            if entry.severity != "error":
-                continue
-            lines.append(
-                f"{entry.file}:{entry.line}:{entry.column}: "
-                f"{entry.severity}: {entry.message} [{entry.code or ''}]"
-                + (f"\n{entry.hint}" if entry.hint else "")
-            )
-        return result.ok(tuple(lines))
 
     @staticmethod
     def _ruff_report_errors(source: str) -> p.Result[Sequence[str]]:

@@ -608,7 +608,7 @@ class TestsFlextInfraCodegenCandidateBootstrap:
         pyproject = first / c.PYPROJECT_FILENAME
         content = pyproject.read_text(encoding="utf-8")
         pyproject.write_text(
-            content + '\n[tool.mypy]\nplugins = ["pydantic.mypy"]\n',
+            content + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
             encoding="utf-8",
         )
         before = tm.ok(u.Cli.atomic_read_binary_file_state(pyproject, required=True))

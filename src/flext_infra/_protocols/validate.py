@@ -99,7 +99,6 @@ class FlextInfraProtocolsValidate:
     class StubAnalysisReport(FlextInfraProtocolsMixins.ProjectNameMixin, Protocol):
         """Structural data contract projected from the owning model."""
 
-        mypy_hints: MutableSequence[str]
         internal_missing: MutableSequence[str]
         unresolved_missing: MutableSequence[str]
         total_missing: t.NonNegativeInt

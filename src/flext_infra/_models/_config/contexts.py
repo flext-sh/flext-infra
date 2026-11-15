@@ -253,7 +253,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             t.NonEmptyStr,
             m.Field(description="CLI group that owns the workspace propagate route"),
         ]
-        mypy_timeout_exit_code: Annotated[
+        timeout_exit_code: Annotated[
             int,
             m.Field(gt=0, description="Wall-time limiter timeout exit code"),
         ]
@@ -279,7 +279,7 @@ class FlextInfraModelsConfigContexts(FlextInfraModelsConfigRepository):
             FlextInfraModelsConfigMake.MakeSpec,
             m.Field(description="Generated Make command contract"),
         ]
-        mypy_timeout_exit_code: Annotated[
+        timeout_exit_code: Annotated[
             int,
             m.Field(gt=0, description="Wall-time limiter timeout exit code"),
         ]

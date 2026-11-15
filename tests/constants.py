@@ -146,7 +146,6 @@ class TestsFlextInfraConstants(FlextInfraConstants):
             "MATCH",
             "PROJECT",
             "PROJECTS",
-            "PYRIGHT_ARGS",
             "PYTEST_ARGS",
             "RUFF_ARGS",
             "UV",

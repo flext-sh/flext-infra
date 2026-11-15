@@ -65,7 +65,7 @@ class TestsFlextInfraManualCommand:
     @staticmethod
     def test_uv_run_blocked_tool_blocked() -> None:
         """Test uv run blocked tool blocked."""
-        for tool in ("ruff", "pytest", "mypy", "pyright"):
+        for tool in ("ruff", "pytest", "pyrefly"):
             tm.ok(_V.command_blocked(f"uv run --all-packages {tool} src/"))
 
     @staticmethod

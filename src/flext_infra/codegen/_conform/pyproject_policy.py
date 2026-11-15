@@ -66,10 +66,10 @@ class FlextInfraCodegenConformPyprojectPolicy(FlextInfraCodegenConformFilePlans)
             and entry.source is not None
             and Path(entry.destination).parts
         }
-        source_dir = config.Infra.tooling.tools.pyright.path_rules.source_dir
+        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
         return tuple(
             directory
-            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            for directory in config.Infra.tooling.tools.pyrefly.path_rules.env_dirs
             if directory in generated_roots and (package or directory != source_dir)
         )
 

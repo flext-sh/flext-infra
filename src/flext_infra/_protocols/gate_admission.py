@@ -67,11 +67,6 @@ class FlextInfraProtocolsGateAdmission:
             """Last liveness refresh by the owner."""
             ...
 
-        @property
-        def report_root(self) -> str | None:
-            """Original native capture directory."""
-            ...
-
     @runtime_checkable
     class GateRunRecord(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""

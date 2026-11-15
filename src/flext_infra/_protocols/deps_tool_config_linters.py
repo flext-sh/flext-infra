@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import date
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -92,29 +92,6 @@ class FlextInfraProtocolsDepsToolConfigLinters:
         @property
         def lint(self) -> FlextInfraProtocolsDepsToolConfigLinters.RuffLintConfig:
             """Ruff lint configuration."""
-            ...
-
-    @runtime_checkable
-    class MypyOverrideConfig(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        modules: Sequence[str]
-        settings: t.Infra.SettingsPairs
-        justification: str
-
-    @runtime_checkable
-    class MypyConfig(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        timeout_seconds: int
-        max_timeout_seconds: int
-        ruling_disable_error_codes: tuple[t.NonEmptyStr, ...]
-
-        @property
-        def overrides(
-            self,
-        ) -> tuple[FlextInfraProtocolsDepsToolConfigLinters.MypyOverrideConfig, ...]:
-            """Module scopes and justified native option pairs."""
             ...
 
 

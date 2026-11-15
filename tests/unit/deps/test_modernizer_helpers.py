@@ -22,7 +22,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         "docs": ["sphinx"],
         "security": ["bandit"],
         "test": ["coverage"],
-        "typings": ["mypy"],
+        "typings": ["pyrefly"],
     }
 
     @u.Tests.fixture
