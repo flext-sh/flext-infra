@@ -6,14 +6,55 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from flext_infra import config, m
-from tests import c, infra, tm, u
+from flext_infra import FlextInfraCli, config, m
+from tests import c, infra, t, tm, u
 
 
 class TestsFlextInfraMakeGenRootContract:
     """Native Testmon owns tests; generation stays inside the workspace."""
+
+    @staticmethod
+    @c.Tests.MARK.parametrize("provisioned", [False, True])
+    def test_native_generation_rejects_foreign_python_before_queueing(
+        tmp_path: Path, monkeypatch: t.Tests.MonkeyPatch, *, provisioned: bool
+    ) -> None:
+        """A nested checkout cannot use the caller's Python for facade resolution."""
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "host-state"))
+        monkeypatch.delenv(c.Infra.GATE_ADMISSION_TICKET_ENV, raising=False)
+        monkeypatch.delenv("RUNTIME_ROOT", raising=False)
+        outer = tmp_path / "caller"
+        outer.mkdir()
+        u.Tests.initialize_git_repo(outer)
+        target = outer / "nested"
+        target.mkdir()
+        u.Tests.initialize_git_repo(target)
+        (target / "pyproject.toml").write_text(
+            '[project]\nname = "nested"\nversion = "0.0.1"\n', encoding="utf-8"
+        )
+        if provisioned:
+            creation = tm.ok(
+                u.Cli.run_raw((
+                    sys.executable,
+                    "-m",
+                    "venv",
+                    "--without-pip",
+                    str(target / ".venv"),
+                ))
+            )
+            tm.that(u.Cli.process_succeeded(creation.outcome), eq=True)
+        generated = next(
+            route
+            for route in FlextInfraCli.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
+            if route.name == "generate"
+        )
+        tm.fail(
+            generated.handler(m.Infra.CodegenGenerateRequest(root=target)),
+            has="not the target Python environment",
+        )
+        tm.that(u.Infra.gate_admission_root().exists(), eq=False)
 
     @staticmethod
     def test_test_verbs_declare_no_manual_file_selector() -> None:

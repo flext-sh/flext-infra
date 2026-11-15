@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 from flext_cli import FlextCli
 
 from flext_infra import (
@@ -16,7 +19,6 @@ from flext_infra import (
     m,
     p,
     r,
-    settings,
     t,
     u,
     workspace as workspace_services,
@@ -38,13 +40,51 @@ class FlextInfraCodegenHandlers:
             The existing result routes bound to this public API instance.
 
         """
-        return FlextCli.service_routes(
+        routes = FlextCli.service_routes(
             cls,
             provide=provide,
             owner=FlextInfraCodegenHandlers,
             operation_prefix="codegen_",
             success_formatter=FlextInfraCodegenHandlers._codegen_message,
         )
+        return tuple(
+            FlextCli.result_route(
+                metadata=route,
+                model_cls=m.Infra.CodegenGenerateRequest,
+                handler=lambda request: FlextInfraCodegenHandlers._generate_from_cli(
+                    provide(), request
+                ),
+                    success_formatter=FlextInfraCodegenHandlers._generation_message,
+            )
+            if route.name == "generate"
+            else route
+            for route in routes
+        )
+
+    @staticmethod
+    def _generate_from_cli(
+        service: p.Infra.CodegenService, request: m.Infra.CodegenGenerateRequest
+    ) -> p.Result[p.Infra.CodegenResult]:
+        """Reject a foreign Python environment before the generation route queues.
+
+        Returns:
+            The generation result or the runtime discovery failure.
+
+        """
+        if request.what not in c.Infra.ALLOW_UNPROVISIONED_SURFACES:
+            owner = u.Infra.runtime_owner_root(request.root.expanduser().resolve())
+            if owner.failure:
+                return r[p.Infra.CodegenResult].from_failure(owner)
+            environment = u.Infra.runtime_environment_dir(
+                owner.value, runtime_root=owner.value
+            )
+            if Path(sys.prefix).resolve() != environment:
+                return r[p.Infra.CodegenResult].fail(
+                    f"generation uses {sys.prefix}, not the target Python "
+                    f"environment {environment}; run make setup and make gen "
+                    "in the target checkout"
+                )
+        return service.codegen_generate(request)
 
     @staticmethod
     def _codegen_message(operation: str, value: t.Cli.ResultValue) -> str:
@@ -62,6 +102,16 @@ class FlextInfraCodegenHandlers:
             raise TypeError(message)
         if operation == "codegen_conform":
             return "project conformance complete"
+        return FlextInfraCodegenHandlers._generation_message(value)
+
+    @staticmethod
+    def _generation_message(value: p.Infra.CodegenResult) -> str:
+        """Render the generation receipt at the public boundary.
+
+        Returns:
+            The generation summary.
+
+        """
         return (
             "generation receipt: "
             f"repositories={len(value.plan.repositories)} "
@@ -85,17 +135,6 @@ class FlextInfraCodegenHandlers:
 
         """
         requested = request.root.expanduser().resolve()
-        caller_root = type(settings).fetch_global().Infra.runtime_root
-        if (
-            caller_root is not None
-            and not requested.is_relative_to(caller_root.resolve())
-            and request.what not in c.Infra.ALLOW_UNPROVISIONED_SURFACES
-            and not u.Infra.runtime_python(requested).is_file()
-        ):
-            return r[p.Infra.CodegenResult].fail(
-                f"generation target {requested} has no provisioned Python "
-                "environment; run make setup and make gen in the target checkout"
-            )
         with u.Infra.gate_admitted(
             c.Infra.GATE_ADMISSION_GENERATION,
             requested,
