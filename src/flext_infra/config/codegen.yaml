@@ -700,6 +700,7 @@ Infra:
         overrides:
           setup: {max_load5: 160}
           upg: {max_load5: 80}
+          lock: {max_load5: 80}
           gen: {max_load5: 160}
           gen-scope: {max_load5: 160}
           mod: {max_load5: 80}
