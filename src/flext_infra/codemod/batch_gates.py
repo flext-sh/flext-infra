@@ -809,18 +809,25 @@ class FlextInfraModGateEngine:
     def _authenticated_snapshot(
         root: Path,
         file: str,
-    ) -> p.Result[tuple[Path, p.Cli.AtomicFileState]]:
+    ) -> p.Result[tuple[Path, p.Cli.AtomicFileState | None]]:
         """Associate a finding with its source's current state.
 
+        A linked stub leaf is admitted by its path alone: check names it
+        without reading through the link, and mod refuses it before scanning.
+
         Returns:
-            The resulting ``(file_path, state)`` pair, or the drift failure.
+            The ``(file_path, state)`` pair, without a state for a linked stub
+            leaf, or the drift failure.
 
         """
+        outcome = r[tuple[Path, p.Cli.AtomicFileState | None]]
         file_path = Path(file)
+        if u.Infra.codemod_source_path(root, file_path).is_symlink():
+            return outcome.ok((file_path, None))
         resolved_file = (root / file_path).resolve()
         observed = u.Cli.atomic_read_binary_file_state(resolved_file, required=True)
         if observed.failure and not resolved_file.exists():
-            return r[tuple[Path, p.Cli.AtomicFileState]].fail(
+            return outcome.fail(
                 f"finding source vanished during scanning: {resolved_file}",
                 error_code=c.Infra.MOD_SCAN_SOURCE_DRIFT_ERROR_CODE,
             )
@@ -909,7 +916,9 @@ class FlextInfraModGateEngine:
         raw_replacement = finding.get("replacement")
         replacement = raw_replacement if isinstance(raw_replacement, str) else None
         native_file = str(finding.get("file"))
-        authenticated = context.authenticated.get(native_file)
+        authenticated: p.Result[tuple[Path, p.Cli.AtomicFileState | None]] | None = (
+            context.authenticated.get(native_file)
+        )
         if authenticated is None:
             authenticated = cls._authenticated_snapshot(root, native_file)
         file_path = Path(native_file)
@@ -925,7 +934,7 @@ class FlextInfraModGateEngine:
             classification = c.Infra.ModScanFindingClass.DEFERRED_SOURCE_DRIFT
         else:
             file_path, snapshot = authenticated.value
-            if snapshot.content is None:
+            if snapshot is not None and snapshot.content is None:
                 return r[p.Infra.ModScanFinding].fail(
                     f"authenticated snapshot has no content: {file_path}",
                 )
