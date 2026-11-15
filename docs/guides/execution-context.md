@@ -701,7 +701,13 @@ predicate and inspect its actual inputs rather than disabling admission to proce
 
 For a declared script dispatcher, Make transports `WHAT` as literal environment
 data and invokes that dispatcher exactly once. The dispatcher owns discovery,
-selection, validation and its original exit status. Make does not interpolate the
+selection, validation and its original exit status. Make runs the dispatcher as a
+module from the project root (`python -m scripts.dispatch`), and the dispatcher
+runs each Python command the same way from its owner root
+(`python -m scripts.<verb>.<what>`), with the command's `if __name__ == "__main__":`
+block as its entry. The owner's `scripts` package is therefore importable, and a
+command binds its facade letters from it (`from scripts import u`) like any other
+module of that package. Shell commands still run as files. Make does not interpolate the
 selector into shell source, scan script roots, select an `all.sh` substitute or
 probe selector-named private targets. Explicit verb-level custom handlers retain
 their declared hook contract; they are not a second selector registry. Generation
