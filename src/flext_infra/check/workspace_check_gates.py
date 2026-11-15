@@ -235,19 +235,21 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     @staticmethod
     def _gate_parallelism(stage_count: int) -> int:
-        """Bound concurrent read-only gates by the typed Mypy memory reservation.
+        """Bound concurrent read-only gates by the declared gate memory reservation.
 
         Each concurrent gate may host one whole-program checker, so the host's
-        physical memory divided by the memory the tooling policy reserves for
-        one Mypy run caps the concurrency.
+        physical memory divided by the memory reserved for one such gate caps
+        the concurrency.
 
         Returns:
             The number of gates that may run at once, at least one.
 
         """
         physical_bytes = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-        reserved_bytes = u.Infra.mypy_resource_limit().memory_limit_bytes
-        return max(1, min(stage_count, physical_bytes // reserved_bytes))
+        return max(
+            1,
+            min(stage_count, physical_bytes // c.Infra.GATE_MEMORY_RESERVATION_BYTES),
+        )
 
     @staticmethod
     def _prerequisite_parallelism(gate_id: str, stage_count: int) -> int:
@@ -324,11 +326,11 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
         Read-only gates share no mutable state, so they run concurrently
         through the public CLI pipeline inside one process signal wave,
-        bounded by the memory the typed Mypy policy reserves per
-        whole-program checker. Repairs share mutable files and keep their
-        declared serial order and locks; an explicit fail-fast run stays
-        serial so it can stop at the first failure. Every operation retains
-        its verdict and receipt, reported in declared order.
+        bounded by the memory reserved per whole-program checker. Repairs
+        share mutable files and keep their declared serial order and locks;
+        an explicit fail-fast run stays serial so it can stop at the first
+        failure. Every operation retains its verdict and receipt, reported in
+        declared order.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from defusedxml import ElementTree as DefusedET
@@ -47,44 +46,6 @@ class FlextInfraUtilitiesLogParser:
             sarif_path.read_text(encoding=c.DEFAULT_ENCODING),
             from_json=True,
         ).map(lambda report: tuple(res for run in report.runs for res in run.results))
-
-    @staticmethod
-    def mypy_build_sources(stderr: str, project_dir: Path) -> tuple[Path, ...]:
-        """Read the selected sources and completion proof from Mypy's verbose trace.
-
-        Mypy prints each ``BuildSource`` path as a Python string literal, so the
-        literal is decoded once here, at the tool-output boundary.
-
-        Returns:
-            The resolved source paths Mypy reported, in trace order.
-
-        Raises:
-            TypeError: If a reported source path is not a string literal.
-            ValueError: If an entry is malformed, no source is reported, or the
-                trace lacks completion evidence.
-
-        """
-        lines = stderr.splitlines()
-        sources: list[Path] = []
-        for line in lines:
-            if c.Infra.MYPY_BUILD_SOURCE_MARKER not in line:
-                continue
-            match = c.Infra.MYPY_BUILD_SOURCE_RE.search(line)
-            if match is None:
-                msg = f"Malformed Mypy native source entry: {line}"
-                raise ValueError(msg)
-            raw_path = ast.literal_eval(match.group(1))
-            if not isinstance(raw_path, str):
-                msg = f"Mypy native source path is not a string: {line}"
-                raise TypeError(msg)
-            sources.append((project_dir / raw_path).resolve())
-        if not sources:
-            msg = "Mypy native build trace contains no selected sources"
-            raise ValueError(msg)
-        if not any(c.Infra.MYPY_BUILD_FINISHED_MARKER in line for line in lines):
-            msg = "Mypy native build trace lacks completion evidence"
-            raise ValueError(msg)
-        return tuple(sources)
 
     @staticmethod
     def junit_report_root(junit: Path) -> p.Infra.XmlElementLike | None:

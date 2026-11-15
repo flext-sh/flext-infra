@@ -1,4 +1,4 @@
-"""Pyright and Pyrefly tool configuration models for the deps subpackage.
+"""Pyrefly tool configuration models for the deps subpackage.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import PurePosixPath
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, Self
 
-from flext_cli import m, u
-from typing_extensions import TypeForm
+from flext_cli import m
 
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models import FlextInfraModelsDepsToolConfigLinters
 
 
@@ -23,8 +22,8 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
     class DiagnosticPathException(m.ContractModel):
         """One authorized rule-level exception for an existing file or directory.
 
-        The same entry renders the Pyright execution environment and the
-        Pyrefly sub-config of its root; no second list exists.
+        The entry renders the Pyrefly sub-config of its root; no second list
+        exists.
         """
 
         root: Annotated[
@@ -86,117 +85,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 raise ValueError(msg)
             return self
 
-    class PyrightConfig(m.ArbitraryTypesModel):
-        """Pyright strict settings loaded from YAML."""
-
-        class ExecutionEnvironment(m.ContractModel):
-            """Pyright execution environment entry."""
-
-            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
-
-            root: Annotated[
-                str,
-                m.Field(description="Execution environment root path."),
-            ]
-            report_private_usage: str = m.Field(
-                alias=c.Infra.REPORT_PRIVATE_USAGE,
-                description="reportPrivateUsage override for this environment.",
-            )
-            extra_paths: Sequence[str] = m.Field(
-                alias=c.Infra.EXTRA_PATHS,
-                description="extraPaths applied to this execution environment.",
-            )
-            diagnostic_levels: Mapping[str, str] = m.Field(
-                default_factory=u.empty(TypeForm(Mapping[str, str])),
-                exclude=True,
-                description=(
-                    "Authorized native rule levels the renderer adds to this "
-                    "environment's payload."
-                ),
-            )
-
-        class PathRulesConfig(m.ArbitraryTypesModel):
-            """Path resolution rules loaded from YAML."""
-
-            project_root_env_dirs: Sequence[str] = m.Field(
-                (),
-                alias="project-root-env-dirs",
-                description=(
-                    "Included directories resolved from their project package parent."
-                ),
-            )
-
-            source_dir: str = m.Field(
-                "src", alias="source-dir", description="Primary source directory name."
-            )
-            project_root: str = m.Field(
-                ".",
-                alias="project-root",
-                description="Project root path entry used in path resolution.",
-            )
-            env_dirs: Sequence[str] = m.Field(
-                (),
-                alias="env-dirs",
-                description="Canonical execution environment directories in order.",
-            )
-            test_like_dirs: Sequence[str] = m.Field(
-                (),
-                alias="test-like-dirs",
-                description="Env dirs that should include project root in extraPaths.",
-            )
-            default_excludes: Sequence[str] = m.Field(
-                (),
-                alias="default-excludes",
-                description="Always-applied pyright exclude globs.",
-            )
-            ignored_diagnostic_globs: Sequence[str] = m.Field(
-                (),
-                alias="ignored-diagnostic-globs",
-                description=(
-                    "Pyright ignore globs for files that remain on search paths but "
-                    "must not emit diagnostics."
-                ),
-            )
-            diagnostic_path_exceptions: tuple[
-                (FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException),
-                ...,
-            ] = m.Field(
-                (),
-                alias="diagnostic-path-exceptions",
-                description=(
-                    "Authorized rule exceptions; each entry renders its Pyright "
-                    "environment and its Pyrefly sub-config."
-                ),
-            )
-            source_report_private_usage: str = m.Field(
-                alias="source-report-private-usage",
-                description="reportPrivateUsage value for source-dir execution envs.",
-            )
-            test_like_report_private_usage: str = m.Field(
-                alias="test-like-report-private-usage",
-                description="reportPrivateUsage value for test-like execution envs.",
-            )
-            other_report_private_usage: str = m.Field(
-                alias="other-report-private-usage",
-                description=(
-                    "reportPrivateUsage value for non-source/non-test-like envs."
-                ),
-            )
-
-        path_rules: PathRulesConfig = m.Field(
-            alias="path-rules",
-            description="Pyright path resolution and execution-env rules.",
-        )
-        ruling_disabled_rules: tuple[t.NonEmptyStr, ...] = m.Field(
-            (),
-            alias="ruling-disabled-rules",
-            strict=False,
-            description=(
-                "Operator-authorized global axioms: Pyright rules disabled at "
-                "the SSOT for every project, projected as level none."
-            ),
-        )
-
     class PyreflyConfig(m.ArbitraryTypesModel):
         """Pyrefly execution and path policy; native options live in settings."""
 
@@ -245,6 +133,17 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 description=(
                     "Additional shared workspace paths for declared_repository pyrefly "
                     "search-path."
+                ),
+            )
+            diagnostic_path_exceptions: tuple[
+                (FlextInfraModelsDepsToolConfigTypeCheckers.DiagnosticPathException),
+                ...,
+            ] = m.Field(
+                (),
+                alias="diagnostic-path-exceptions",
+                description=(
+                    "Authorized rule exceptions; each entry renders its Pyrefly "
+                    "sub-config."
                 ),
             )
 

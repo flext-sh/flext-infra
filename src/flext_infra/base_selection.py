@@ -24,7 +24,7 @@ class FlextInfraProjectSelectionServiceBase[
     """Shared service foundation for commands that target workspace projects.
 
     The bound is JsonPayload's value union without its Pydantic serialization
-    metadata, which Mypy's Pydantic plugin erases when used as an upper bound.
+    metadata.
     """
 
     selected_projects: Annotated[

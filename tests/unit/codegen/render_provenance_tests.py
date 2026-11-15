@@ -97,7 +97,6 @@ class TestsFlextInfraRenderProvenance:
                     cwd=project,
                     env={
                         "PYTHONPATH": str(override),
-                        "MYPYPATH": str(override),
                         "VIRTUAL_ENV": str(override),
                         "UV_PROJECT": str(override),
                         "UV_PROJECT_ENVIRONMENT": str(override),

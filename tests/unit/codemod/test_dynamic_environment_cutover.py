@@ -27,7 +27,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
         root, package = u.Tests.create_lazy_init_workspace(tmp_path)
         path = package / "consumer.py"
         access = (
-            "os.environ.get(str(config.Infra.codegen.make.mypy_cache."
+            "os.environ.get(str(config.Infra.codegen.make.ruff_cache."
             "data_home_environment_variable))"
         )
         current_owner = Path(inspect.getfile(type(settings)))
@@ -157,13 +157,13 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             "import os\nimport sys\nfrom flext_infra import config\n"
             "from flext_tests import tm\n"
             "def read_value():\n"
-            "    policy = config.Infra.codegen.make.mypy_cache\n"
+            "    policy = config.Infra.codegen.make.ruff_cache\n"
             f"    return {access}\n"
             "if sys.argv[1] == 'missing-required':\n"
             "    try:\n"
             "        read_value()\n"
             "    except KeyError as error:\n"
-            "        assert error.args == (str(config.Infra.codegen.make.mypy_cache"
+            "        assert error.args == (str(config.Infra.codegen.make.ruff_cache"
             ".data_home_environment_variable),)\n"
             "    else:\n"
             "        tm.reject('required key was defaulted')\n"
@@ -197,7 +197,7 @@ class TestsFlextInfraDynamicEnvironmentCutover:
             )
         tm.that(remaining, empty=True)
         path.write_text(sources[path], encoding="utf-8")
-        key = str(config.Infra.codegen.make.mypy_cache.data_home_environment_variable)
+        key = config.Infra.codegen.make.ruff_cache.data_home_environment_variable
         environment: dict[str, str] = {} if value is None else {key: value}
         mode = "missing-required" if required and value is None else "value"
         output = tm.ok(

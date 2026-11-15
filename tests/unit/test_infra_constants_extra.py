@@ -178,8 +178,6 @@ class TestsFlextInfraConstantsInfraExtra:
             c.Infra.LINT,
             c.Infra.FORMAT,
             c.Infra.PYREFLY,
-            c.Infra.MYPY,
-            c.Infra.PYRIGHT,
             c.Infra.SECURITY,
             c.Infra.MARKDOWN,
         ]

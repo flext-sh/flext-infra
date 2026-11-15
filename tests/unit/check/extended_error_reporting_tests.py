@@ -255,59 +255,6 @@ class TestsFlextInfraGateErrorReporting:
         tm.ok(blocked_receipt.is_dir())
 
     @staticmethod
-    @c.Tests.MARK.slow
-    def test_workspace_checker_emits_mypy_plugin_traceback(
-        tmp_path: Path,
-        capsys: t.Tests.CaptureFixture[str],
-    ) -> None:
-        """Mypy's real plugin loader failure survives structured-output parsing."""
-        project_dir = u.Tests.mk_project(
-            tmp_path,
-            "p1",
-            pyproject=(
-                '[project]\nname = "p1"\n'
-                '[tool.mypy]\nplugins = ["broken_plugin.py"]\nshow_traceback = true\n'
-            ),
-            with_src=True,
-        )
-        (project_dir / "src" / "p1" / "value.py").write_text(
-            "value: int = 1\n",
-            encoding="utf-8",
-        )
-        (project_dir / "broken_plugin.py").write_text(
-            "def plugin(version: str) -> None:\n"
-            '    raise RuntimeError("broken plugin entry point")\n',
-            encoding="utf-8",
-        )
-        u.Tests.initialize_git_repo(project_dir)
-
-        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
-            ["p1"],
-            [c.Infra.MYPY],
-            u.Tests.gate_context(tmp_path, tmp_path / "reports"),
-        )
-
-        tm.ok(result)
-        project = result.value[0]
-        tm.fail(project.passed)
-        execution = project.gates[c.Infra.MYPY]
-        tm.that(
-            any(issue.code == c.Infra.ToolOutcome.ERROR for issue in execution.issues),
-            eq=True,
-        )
-        raw_receipt = tm.not_none(execution.raw_receipt)
-        captured = capsys.readouterr()
-        tm.that(f"{captured.out}\n{captured.err}", has=str(raw_receipt))
-        tm.that(
-            raw_receipt.read_text(encoding="utf-8"),
-            has=[
-                "Error calling the plugin(version) entry point",
-                "Traceback (most recent call last)",
-                "RuntimeError: broken plugin entry point",
-            ],
-        )
-
-    @staticmethod
     @c.Tests.MARK.parametrize(
         ("readme", "config_text", "expected"),
         [

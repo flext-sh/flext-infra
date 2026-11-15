@@ -131,7 +131,14 @@ class UtilityFacadeOwnerPublication:
             for origin in ("leaf", "barrel")
             for source_root in (
                 None,
-                *config.Infra.tooling.tools.pyright.path_rules.test_like_dirs,
+                *(
+                    directory
+                    for directory in (
+                        config.Infra.tooling.tools.pyrefly.path_rules.env_dirs
+                    )
+                    if directory
+                    != config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+                ),
                 "auxiliary",
             )
         ],
@@ -807,24 +814,28 @@ class UtilityFacadeOwnerPublication:
             f"value: {owner} = {owner}()\n"
             f"owner: type[{owner}] = {owner}\n",
         )
-        for checker in ("mypy", "pyright"):
-            result = tm.ok(
-                u.Cli.run_raw(
-                    (
-                        sys.executable,
-                        "-m",
-                        checker,
-                        str(consumer_path),
-                    ),
-                    cwd=root,
-                    options=m.Cli.ProcessOptions(env=environment),
+        result = tm.ok(
+            u.Cli.run_raw(
+                (
+                    sys.executable,
+                    "-m",
+                    c.Infra.PYREFLY,
+                    c.Infra.CHECK,
+                    "--search-path",
+                    str(package.parent),
+                    "--python-interpreter-path",
+                    sys.executable,
+                    str(consumer_path),
                 ),
-            )
-            tm.that(
-                u.Cli.process_succeeded(result.outcome),
-                eq=True,
-                msg=result.stdout + result.stderr,
-            )
+                cwd=root,
+                options=m.Cli.ProcessOptions(env=environment),
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(result.outcome),
+            eq=True,
+            msg=result.stdout + result.stderr,
+        )
 
     @staticmethod
     def _write(path: Path, source: str) -> None:

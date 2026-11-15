@@ -27,7 +27,6 @@ class TestsFlextInfraOwnedPythonCoverage:
         "gate_class",
         [
             gates.FlextInfraGatesRuffLint,
-            gates.FlextInfraGatesMypy,
             gates.FlextInfraGatesPyrefly,
         ],
     )
@@ -41,7 +40,7 @@ class TestsFlextInfraOwnedPythonCoverage:
         pyproject = project / c.PYPROJECT_FILENAME
         pyproject.write_text(
             pyproject.read_text(encoding="utf-8")
-            + '\n[tool.mypy]\n[tool.pyrefly]\nproject-includes = ["src"]\n',
+            + '\n[tool.pyrefly]\nproject-includes = ["src"]\n',
             encoding="utf-8",
         )
         reports = project / ".reports"

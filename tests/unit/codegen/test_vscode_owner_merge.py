@@ -727,8 +727,8 @@ class TestsFlextInfraVscodeOwnerMergePublication:
         )
 
     @staticmethod
-    def test_merge_strips_retired_pyright_keys(tmp_path: Path) -> None:
-        """Pylance settingsNotOverridable keys must be stripped, not preserved."""
+    def test_merge_strips_retired_analysis_keys(tmp_path: Path) -> None:
+        """Keys owned by the analyzer configuration are stripped, not preserved."""
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)

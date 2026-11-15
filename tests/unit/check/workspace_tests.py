@@ -131,10 +131,9 @@ class TestsFlextInfraWorkspaceChecker:
         result = FlextInfraWorkspaceChecker(repository_root=tmp_path).resolve_gates([
             "lint",
             "pyrefly",
-            "mypy",
-            "pyright",
+            "format",
         ])
-        tm.ok(result, eq=["lint", "pyrefly", "mypy", "pyright"])
+        tm.ok(result, eq=["lint", "pyrefly", "format"])
 
     @staticmethod
     def test_resolve_gates_rejects_a_repeated_gate(tmp_path: Path) -> None:

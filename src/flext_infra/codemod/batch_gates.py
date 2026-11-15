@@ -1701,11 +1701,7 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n",
         )
         sys.stderr.flush()
-        # A lexical stub leaf is only a path finding for check; mod keeps its
-        # physical guard and refuses a leaf that is not a regular file.
-        for stub in sorted(cls._scan_source_paths(root, targets)):
-            if stub.suffix == ".pyi":
-                u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
+        cls._require_regular_stub_leaves(root, targets)
         scanned = cls.native_findings(root, plan, targets).flat_map(cls._completed_scan)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
@@ -1736,6 +1732,17 @@ class FlextInfraModGateEngine:
             ),
             exact_replacements=False,
         )
+
+    @classmethod
+    def _require_regular_stub_leaves(cls, root: Path, targets: Sequence[str]) -> None:
+        """Refuse a selected stub leaf that is not a regular file.
+
+        A lexical stub leaf is only a path finding for check; mod keeps its
+        physical guard, and the unreadable leaf's own failure escapes unchanged.
+        """
+        for stub in sorted(cls._scan_source_paths(root, targets)):
+            if stub.suffix == ".pyi":
+                u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
 
     @staticmethod
     def _completed_scan(

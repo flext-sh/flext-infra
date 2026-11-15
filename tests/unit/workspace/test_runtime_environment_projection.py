@@ -11,8 +11,7 @@ from typing import Literal
 
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
-from flext_infra.deps.phases import FlextInfraEnsurePyrightConfigPhase
-from tests import c, m, t, tm, u
+from tests import c, tm, u
 
 
 class TestsFlextInfraRuntimeEnvironmentProjection:
@@ -85,7 +84,7 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
     @c.Tests.MARK.parametrize(
         "mode", ["standalone", "workspace", "member", "nested-member", "worktree"]
     )
-    def test_editor_and_pyright_select_the_same_physical_environment(
+    def test_editor_selects_the_owning_physical_environment(
         cls,
         tmp_path: Path,
         mode: Literal["standalone", "workspace", "member", "nested-member", "worktree"],
@@ -105,10 +104,6 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         selected = Path(editor_interpreter.replace("${workspaceFolder}", str(project)))
         tm.that(selected.parent.resolve(), eq=interpreter.parent.resolve())
         tm.that(selected.name, eq=interpreter.name)
-        tm.that(
-            tuple(u.Tests.toml_strings(document["mypy-type-checker.interpreter"])),
-            eq=(editor_interpreter,),
-        )
         executed = tm.ok(
             u.Cli.capture(
                 (str(selected), "-c", "import sys; print(sys.prefix)"),
@@ -118,25 +113,6 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
         tm.that(
             Path(executed).resolve(),
             eq=(owner / c.Infra.ENVIRONMENT_DIRECTORY).resolve(),
-        )
-        payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
-        phase = FlextInfraEnsurePyrightConfigPhase(
-            config.Infra.tooling, codegen=config.Infra.codegen
-        )
-        context = m.Infra.PyprojectAnalyzerContext(
-            is_root=mode == "workspace", repository_root=owner, project_dir=project
-        )
-        phase.apply_payload(payload, context=context, analysis_exclusions=())
-        table = u.Tests.toml_mapping(u.Tests.toml_mapping(payload["tool"])["pyright"])
-        environment_parent = u.type_adapter(str).validate_python(table["venvPath"])
-        environment_name = u.type_adapter(str).validate_python(table["venv"])
-        tm.that(
-            (project / environment_parent / environment_name).resolve(),
-            eq=Path(executed).resolve(),
-        )
-        tm.that(
-            phase.apply_payload(payload, context=context, analysis_exclusions=()),
-            empty=True,
         )
         settings = project / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         settings.parent.mkdir(exist_ok=True)
@@ -149,28 +125,3 @@ class TestsFlextInfraRuntimeEnvironmentProjection:
             ),
             eq=rendered,
         )
-
-    @classmethod
-    def test_explicit_mypy_command_does_not_borrow_an_installed_checker(
-        cls, tmp_path: Path
-    ) -> None:
-        """A dependency-free selected environment fails rather than using the host."""
-        project = cls._project(tmp_path, "flext-projection-isolated")
-        u.Tests.provision_runtime_environment(project)
-        document = u.Tests.json_payload(
-            tm.ok(
-                FlextInfraCodegenConform.Generate.render_vscode_settings(
-                    project, codegen=config.Infra.codegen
-                )
-            )
-        )
-        interpreter = next(
-            iter(u.Tests.toml_strings(document["mypy-type-checker.interpreter"]))
-        ).replace("${workspaceFolder}", str(project))
-        command = tuple(
-            argument.replace("${interpreter}", interpreter)
-            for argument in u.Tests.toml_strings(document["mypy-type-checker.path"])
-        )
-        result = tm.ok(u.Cli.run_raw((*command, "--version"), cwd=project))
-        tm.that(u.Cli.process_succeeded(result.outcome), eq=False)
-        tm.that(result.stderr, has="mypy")
