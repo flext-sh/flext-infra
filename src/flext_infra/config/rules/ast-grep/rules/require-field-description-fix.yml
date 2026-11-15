@@ -36,6 +36,8 @@ constraints:
       regex: "^Annotated\\["
 fix: '$NAME: $TYPE = m.Field(description="$TEXT.")'
 message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
 
 ---
 id: require-field-description-default
@@ -70,6 +72,8 @@ constraints:
       regex: "^m\\.Field\\("
 fix: '$NAME: $TYPE = m.Field(default=$DEFAULT, description="$TEXT.")'
 message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
 
 ---
 id: require-field-description-field-call
@@ -101,6 +105,8 @@ constraints:
       regex: "^Annotated\\["
 fix: '$NAME: $TYPE = m.Field($$$ARGS, description="$TEXT.")'
 message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
 
 ---
 id: require-field-description-annotated
@@ -128,6 +134,8 @@ rule:
         regex: "\\bdescription\\s*="
 fix: '$NAME: Annotated[$TYPE, m.Field($$$ARGS, description="$TEXT.")]'
 message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
 
 ---
 id: require-field-description-annotated-default
@@ -155,3 +163,5 @@ rule:
         regex: "\\bdescription\\s*="
 fix: '$NAME: Annotated[$TYPE, m.Field($$$ARGS, description="$TEXT.")] = $DEFAULT'
 message: Describe the field `$NAME` with its canonical name-derived description.
+metadata:
+  enforce: [ENFORCE-103]
