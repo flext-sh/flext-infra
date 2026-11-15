@@ -158,7 +158,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.ok("_builtin-incidente:" in rendered)
         tm.ok("_builtin-charts:" in rendered)
         # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.ok("scripts/dispatch.py" in rendered)
+        tm.ok("python -m scripts.dispatch " in rendered)
         # Script dispatch roots are recorded for operator visibility.
         tm.ok("apps/demo-app/scripts" in rendered)
 
@@ -230,7 +230,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         # No script routing leaks into non-opted-in repositories.
         tm.fail("tr '-' '_'" in rendered)
-        tm.fail("scripts/dispatch.py" in rendered)
+        tm.fail("scripts.dispatch" in rendered)
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self,
