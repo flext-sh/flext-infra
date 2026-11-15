@@ -21,13 +21,13 @@ from collections.abc import (
     Sequence,
 )
 {# AGENTS.md U2-U8 pattern (pure leaf; ENV_PREFIX as a key; settings mirrors config). #}
-from typing import Final
+from typing import ClassVar
 
 
 class {{ class_stem }}ConstantsSettings:
     """Pure settings-domain keys, including the environment prefix."""
 
-    ENV_PREFIX: Final[str] = "{{ env_prefix }}"
+    ENV_PREFIX: ClassVar[str] = "{{ env_prefix }}"
 
 
 __all__: list[str] = ["{{ class_stem }}ConstantsSettings"]
