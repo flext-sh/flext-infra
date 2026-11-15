@@ -913,6 +913,7 @@ install_lazy_exports(
             "_protocol_self_imports",
             "_validate_protocol_public_bindings",
             "protocol_contract_members",
+            "mro_class",
             "upstream_protocol_facade",
         ),
         "FlextInfraUtilitiesModelsProtocolRetirement": (

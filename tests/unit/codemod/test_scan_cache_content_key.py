@@ -21,30 +21,24 @@ class TestsFlextInfraCodemodScanCacheContentKey:
     """The scan cache key authenticates the content of every scanned source."""
 
     @staticmethod
-    def _project(tmp_path: Path) -> tuple[Path, Path, tuple[str, ...]]:
+    def _project(root: Path) -> tuple[Path, Path, tuple[str, ...]]:
         """Build a scannable project and elect its deep-import rule partition.
 
         Returns:
             The project root, its consumer test module and the elected rules.
 
         """
-        root = u.Tests.mk_project(
-            tmp_path,
-            "scan-cache",
-            pyproject='[project]\nname = "scan-cache"\nversion = "0.1.0"\n',
-            with_src=True,
-        )
-        package = root / c.Infra.DEFAULT_SRC_DIR / "scan_cache"
+        package = root / c.Infra.DEFAULT_SRC_DIR / "flext_demo"
         tests_root = root / c.Infra.DIR_TESTS
         consumer = tests_root / "unit" / "test_client.py"
         sources = {
             package / c.Infra.INIT_PY: (
-                "from scan_cache.client import Client\n__all__ = ['Client']\n"
+                "from flext_demo.client import Client\n__all__ = ['Client']\n"
             ),
             package / "client.py": "class Client:\n    pass\n",
             tests_root / c.Infra.INIT_PY: "",
             tests_root / "unit" / c.Infra.INIT_PY: "",
-            consumer: "from scan_cache.client import Client\nPARTS = (Client,)\n",
+            consumer: "from flext_demo.client import Client\nPARTS = (Client,)\n",
         }
         for path, content in sources.items():
             tm.ok(u.Cli.ensure_dir(path.parent))
@@ -59,9 +53,11 @@ class TestsFlextInfraCodemodScanCacheContentKey:
         return root, consumer, selection
 
     @classmethod
-    def test_rescan_after_repair_reports_no_stale_finding(cls, tmp_path: Path) -> None:
+    def test_rescan_after_repair_reports_no_stale_finding(
+        cls, duplicate_project: Path
+    ) -> None:
         """A repaired source scanned again at the same path reports nothing."""
-        root, consumer, selection = cls._project(tmp_path)
+        root, consumer, selection = cls._project(duplicate_project)
         before = tm.ok(
             FlextInfraModGateEngine.scan(
                 root, fix=False, selection=selection, source_files=(consumer,)
@@ -73,7 +69,7 @@ class TestsFlextInfraCodemodScanCacheContentKey:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                consumer, "from scan_cache import Client\nPARTS = (Client,)\n"
+                consumer, "from flext_demo import Client\nPARTS = (Client,)\n"
             )
         )
         after = tm.ok(
@@ -85,11 +81,11 @@ class TestsFlextInfraCodemodScanCacheContentKey:
 
     @classmethod
     def test_unchanged_rescan_hits_and_one_change_rescans_one_source(
-        cls, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        cls, duplicate_project: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """An unchanged rescan is served whole; one edit rescans one source."""
-        root, consumer, selection = cls._project(tmp_path)
-        package = root / c.Infra.DEFAULT_SRC_DIR / "scan_cache"
+        root, consumer, selection = cls._project(duplicate_project)
+        package = root / c.Infra.DEFAULT_SRC_DIR / "flext_demo"
         first = tm.ok(
             FlextInfraModGateEngine.scan(root, fix=False, selection=selection)
         )

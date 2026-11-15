@@ -80,7 +80,7 @@ class TestsFlextInfraCodemodScanCacheBatchProgress:
     ) -> None:
         """Only the batches after the stop are misses on the next run."""
         root = cls._project(tmp_path)
-        monkeypatch.setattr(config.Infra.codegen.make, "scan_batch_files", 1)
+        monkeypatch.setitem(config.Infra.codegen.make.__dict__, "scan_batch_files", 1)
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:
             plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         targets = u.Infra.ast_grep_scan_targets(root)
