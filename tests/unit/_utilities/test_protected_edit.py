@@ -10,7 +10,7 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import infra, settings
+from flext_infra import config, infra, settings
 from tests import c, m, tm, u
 
 
@@ -35,7 +35,6 @@ def _provision_edited_sample(
     return project_config, py_file, original, updated
 
 
-@c.Tests.MARK.usefixtures("provisioned_workspace")
 class TestsFlextInfraUtilitiesProtectedEdit:
     @staticmethod
     @c.Tests.MARK.parametrize("mode", ["empty", "malformed", "signal", "timeout"])
@@ -163,15 +162,25 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @u.Tests.fixture
     @staticmethod
-    def provisioned_workspace(
+    def preview_sample(
         tmp_path: Path,
-    ) -> None:
-        """The edited workspace is a checkout whose environment owns the tools."""
-        (tmp_path / c.PYPROJECT_FILENAME).write_text(
-            "[project]\nname = 'sample'\nversion = '1.0.0'\n",
-            encoding=c.DEFAULT_ENCODING,
+    ) -> tuple[Path, Path]:
+        """Build a Git-backed source package for the native preview boundary.
+
+        Returns:
+            The isolated checkout and its sample package.
+
+        """
+        root = u.Tests.git_repository(tmp_path)
+        package = u.Tests.src_package(
+            root,
+            "sample",
+            pyproject=(
+                "[project]\nname = 'sample'\nversion = '1.0.0'\n"
+                f'dependencies = ["{config.Infra.name}"]\n'
+            ),
         )
-        u.Tests.provision_checkout(tmp_path)
+        return root, package
 
     @staticmethod
     @c.Tests.MARK.parametrize(c.ProcessingMode.BATCH, [False, True])
@@ -372,12 +381,14 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(commands["pyrefly"], has=str(config_path))
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("gate", [c.Infra.RUFF, c.Infra.PYREFLY])
     def test_preview_source_writes_preserves_live_sources(
-        source_preview_workspace: tuple[Path, Path],
+        preview_sample: tuple[Path, Path],
         gate: str,
     ) -> None:
-        tmp_path, package = source_preview_workspace
+        """Run a native diagnostic gate against a staged Git-backed candidate."""
+        tmp_path, package = preview_sample
         py_file = package / "sample.py"
         original_source = "def value() -> int:\n    return 1\n"
         updated_source = "def value() -> int:\n    return 2\n"
@@ -398,10 +409,10 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_staged_source_consumer_reads_candidate_without_live_writes(
-        source_preview_workspace: tuple[Path, Path],
+        preview_sample: tuple[Path, Path],
     ) -> None:
         """Expose candidate bytes to the real consumer through public staging."""
-        tmp_path, package = source_preview_workspace
+        tmp_path, package = preview_sample
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         updated = "VALUE = 2\n"
@@ -434,11 +445,12 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_source_preview_preserves_parser_exception_and_cleans_staging(
-        source_preview_workspace: tuple[Path, Path],
+        preview_sample: tuple[Path, Path],
     ) -> None:
-        """A real parser failure leaves live bytes untouched for a fresh view."""
-        tmp_path, package = source_preview_workspace
+        """Two native previews prove parser failure cleanup and fresh staging."""
+        tmp_path, package = preview_sample
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         invalid = "def value(:\n"
@@ -530,6 +542,9 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
         with u.Tests.env_vars_context({
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: str(inherited),
+            # The isolated sample exercises native collection, not the
+            # harness's third-party pytest plugins.
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": c.ParserBooleanToken.ONE,
         }):
             result = u.Infra.protected_source_write(
                 py_file,
