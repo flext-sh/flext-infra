@@ -360,9 +360,12 @@ toolchain nor a corrupt lock stops it:
    the UV stage uses.
 5. `_upg_lifecycle`: the executor formed from the committed lock (a project
    without one forms it first through native `uv lock`) runs
-   `deps cooldown-admission`; then native `uv lock --upgrade` with that Python,
-   `deps upg-bounds` and a native `uv lock` that records the written bounds,
-   then the setup installation of exactly that lock.
+   `deps cooldown-admission`; then native `uv lock --upgrade` with that Python.
+   The executor is synced to that upgraded lock and renders the pyproject
+   projection (`codegen generate --what pyproject`), so a resolver-wide
+   override the upgraded flext-infra owns is the one the final lock resolves;
+   then `deps upg-bounds` and a native `uv lock` that records both, then the
+   setup installation of exactly that lock.
 6. Last, the isolated upgrade executor (`make.executor_environment`, a declared
    ignored artifact of the `.gitignore` projection) runs
    `deps repair-mise-platforms`, which locks the tools missing a platform that

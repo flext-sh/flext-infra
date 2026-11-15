@@ -960,7 +960,10 @@ setup: _builtin_require_workspace
 endif
 
 # Upgrade relocks Mise and provisions the locked toolchain, then resolves
-# dependencies and writes the UV lock; projections belong to gen. Its one Python step runs last, from
+# dependencies and writes the UV lock; projections belong to gen, except the
+# pyproject dependency projection: the upgraded flext-infra renders it before
+# the final lock, so a resolver-wide override it owns (the Rope fork pin) never
+# stays behind the generator that reads it. Its last Python step runs from
 # the isolated executor (_upg_lifecycle). Attached members delegate the same
 # operation to their physical workspace owner before resolving anything.
 ifeq ($(PROJECT_ROOT),$(RUNTIME_ROOT))
@@ -1351,6 +1354,8 @@ _upg_lifecycle:
 	done; \
 	set +f; \
 	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) codegen generate --root "$(RUNTIME_ROOT)" --what pyproject --scope self; \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
