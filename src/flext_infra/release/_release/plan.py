@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, config, m, p, r, u
 from flext_infra.release._release import FlextInfraReleaseReleasePublish
@@ -15,6 +16,11 @@ from flext_infra.release._release import FlextInfraReleaseReleasePublish
 
 class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
     """Decide the release and prove no version changed outside the protocol."""
+
+    _SUBJECT_BODY_FORMAT: ClassVar[str] = "--format=%s%x1f%b%x1e"
+    "``git log`` format: subject, unit separator, body, record separator."
+    _FIELD_SEPARATOR: ClassVar[str] = "\x1f"
+    _RECORD_SEPARATOR: ClassVar[str] = "\x1e"
 
     def phase_plan(
         self,
@@ -346,8 +352,9 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
             policy_branch=config.Infra.codegen.branch_policy.integration_branch,
         )
 
-    @staticmethod
+    @classmethod
     def _subjects(
+        cls,
         root: Path,
         since: str,
         *,
@@ -358,7 +365,10 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
         The first-parent merges are the pull requests merged into the
         integration line; they carry the titles the bump and the notes derive
         from. Merges inside a lane (base adoption, lane-to-lane) are not
-        releases and stay out.
+        releases and stay out. GitHub's default merge message puts the
+        pull-request title in the body under a ``Merge pull request #N``
+        subject; the title is read there, so a repository left on that
+        default still states its release information.
 
         Returns:
             Commit subjects reachable from HEAD since ``since``.
@@ -369,14 +379,36 @@ class FlextInfraReleaseReleasePlan(FlextInfraReleaseReleasePublish):
                 c.Infra.GIT,
                 "log",
                 *(("--merges", "--first-parent") if merges_only else ()),
-                "--format=%s",
+                cls._SUBJECT_BODY_FORMAT,
                 f"{since}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
-        return log.map(
-            lambda text: tuple(line for line in text.splitlines() if line.strip()),
-        )
+        return log.map(cls._record_subjects)
+
+    @staticmethod
+    def _record_subjects(text: str) -> tuple[str, ...]:
+        """Return one subject per log record, a default merge by its body title.
+
+        Returns:
+            The subjects in log order, blank records left out.
+
+        """
+        subjects: list[str] = []
+        for record in text.split(FlextInfraReleaseReleasePlan._RECORD_SEPARATOR):
+            subject, _, body = record.strip().partition(
+                FlextInfraReleaseReleasePlan._FIELD_SEPARATOR
+            )
+            subject = subject.strip()
+            if c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
+                title = next(
+                    (line.strip() for line in body.splitlines() if line.strip()),
+                    "",
+                )
+                subject = title or subject
+            if subject:
+                subjects.append(subject)
+        return tuple(subjects)
 
 
 __all__: list[str] = ["FlextInfraReleaseReleasePlan"]
