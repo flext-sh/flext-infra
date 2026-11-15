@@ -2317,6 +2317,9 @@ class FlextInfraUtilitiesCodemodNativePackage:
         Returns:
             The external-import rule document keyed by id.
 
+        Raises:
+            ValueError: If the provider lacks a required native utility.
+
         """
         package = FlextInfraUtilitiesPyprojectConform.project_package_name(
             project.absolute()
@@ -2329,21 +2332,19 @@ class FlextInfraUtilitiesCodemodNativePackage:
         shape = c.Infra.CODEMOD_EXTERNAL_IMPORT_SHAPE
         rule_id = f"{shape}{c.Infra.CODEMOD_GENERATED_ID_SEPARATOR}{package}"
         roles = (c.Infra.IMPORT_LAW_LAYER_ZERO_ROLE, c.Infra.IMPORT_LAW_FAMILY_ROLE)
+        rules = FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rules(catalog)
+        utilities: dict[str, t.JsonValue] = {}
+        for name in (library, c.Infra.CODEMOD_TYPE_CHECKING_GUARD_UTILITY):
+            if name not in rules:
+                msg = f"provider {catalog} declares no single utility {name}"
+                raise ValueError(msg)
+            utilities[name] = dict(rules[name])
         document: dict[str, t.JsonValue] = {
             "id": rule_id,
             "language": c.Infra.CODEMOD_PYTHON_LANGUAGE,
             "severity": "error",
             "files": ["**/*.py"],
-            "utils": {
-                **{
-                    name: dict(
-                        FlextInfraUtilitiesCodemodRules.codemod_provider_utility_rule(
-                            catalog, name
-                        )
-                    )
-                    for name in (library, c.Infra.CODEMOD_TYPE_CHECKING_GUARD_UTILITY)
-                },
-            },
+            "utils": utilities,
             "rule": {"all": [{"pattern": "$MODULE"}, {"matches": library}]},
             "constraints": {
                 "MODULE": {

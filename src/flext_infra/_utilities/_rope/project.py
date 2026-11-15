@@ -1055,7 +1055,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
     @staticmethod
     @lru_cache(maxsize=c.Infra.CONTENT_CACHE_MAXSIZE)
     def _distribution_extension_modules(
-        state: tuple[tuple[str, int], ...],
+        state: tuple[str, int],
     ) -> tuple[str, ...]:
         """Derive the compiled modules the installed distributions declare.
 
@@ -1063,8 +1063,8 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         preference. Each distribution on the Python path declares its files
         in its own metadata; a file carrying an interpreter extension suffix
         is a compiled module, named by its folder-relative dotted path. The
-        key is each folder with its modification time, so an install or
-        removal is a new key, never a stale election.
+        key is one folder with its modification time. An install or removal
+        invalidates that folder without rereading unrelated distributions.
 
         Returns:
             The dotted compiled-module names in deterministic order.
@@ -1072,9 +1072,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
         """
         suffixes = sorted(EXTENSION_SUFFIXES, key=len, reverse=True)
         names: set[str] = set()
-        for distribution in metadata.distributions(
-            path=[folder for folder, _ in state]
-        ):
+        for distribution in metadata.distributions(path=[state[0]]):
             record = distribution.read_text("RECORD")
             if record is not None and not any(suffix in record for suffix in suffixes):
                 continue
@@ -1138,6 +1136,7 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                 for entry in (*python_path, *sys.path)
                 if (folder := Path(entry).resolve()).is_dir()
             )
+            extension_modules = FlextInfraRopeProject._distribution_extension_modules
             prefs["extension_modules"] = tuple(
                 sorted({
                     *(
@@ -1148,13 +1147,13 @@ class FlextInfraRopeProject(FlextInfraRopeNativeProject):
                         and module.__spec__ is not None
                         and module.__spec__.origin in {"built-in", "frozen"}
                     ),
-                    *FlextInfraRopeProject._distribution_extension_modules(
-                        tuple(
-                            dict.fromkeys(
-                                (str(folder), folder.stat().st_mtime_ns)
-                                for folder in folders
-                            )
-                        )
+                    *(
+                        name
+                        for folder in dict.fromkeys(folders)
+                        for name in extension_modules((
+                            str(folder),
+                            folder.stat().st_mtime_ns,
+                        ))
                     ),
                 })
             )
