@@ -157,6 +157,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_source_mirror_projects_field_annotations_without_field_metadata(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -336,6 +337,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("bases", ["Left, Right", "Right, Left"])
     def test_diamond_override_matches_the_runtime_model(
         tmp_path: Path,
@@ -635,6 +637,7 @@ class TestsModelProtocolNativeMro:
         tm.that(destination.read_text(), eq=authored)
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_model_projection_owns_existing_structural_contract(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
@@ -706,6 +709,7 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_model_projection_replaces_duplicate_authored_property(
         tmp_path: Path,
         native_consumer: p.Tests.NativeConsumer,
