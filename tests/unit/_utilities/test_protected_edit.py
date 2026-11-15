@@ -409,10 +409,14 @@ class TestsFlextInfraUtilitiesProtectedEdit:
 
     @staticmethod
     def test_staged_source_consumer_reads_candidate_without_live_writes(
-        preview_sample: tuple[Path, Path],
+        tmp_path: Path,
     ) -> None:
         """Expose candidate bytes to the real consumer through public staging."""
-        tmp_path, package = preview_sample
+        package = u.Tests.src_package(
+            tmp_path,
+            "sample",
+            pyproject="[project]\nname = 'sample'\nversion = '1.0.0'\n",
+        )
         py_file = package / "sample.py"
         original = "VALUE = 1\n"
         updated = "VALUE = 2\n"
@@ -437,9 +441,6 @@ class TestsFlextInfraUtilitiesProtectedEdit:
             {py_file.resolve(): updated},
             consume_candidate,
         )
-        if observed.failure:
-            state = tmp_path / c.Infra.TRANSACTION_STATE_DIRNAME
-            u.Cli.info(f"native preview state effects: {tuple(state.rglob('*'))}")
         tm.ok(observed, eq=(updated, original, before_modified_ns))
         tm.that(py_file.read_text(encoding=c.DEFAULT_ENCODING), eq=original)
         tm.that(py_file.stat().st_mtime_ns, eq=before_modified_ns)

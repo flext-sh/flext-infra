@@ -650,11 +650,7 @@ class FlextInfraStagedPackage:
             return result_type.from_failure(elected)
         roots = elected.value
         roots.extend(cls._input_layouts(workspace, inputs, layouts))
-        roots.extend(
-            (layouts[name], False)
-            for _, name in u.family_discovery_candidates()
-            if name in layouts
-        )
+        roots.extend(cls._unobserved_family_roots(layouts, roots))
         for local, rewritten in roots:
             if any(item.project_root == local.project_root for item in selected):
                 continue
@@ -674,6 +670,26 @@ class FlextInfraStagedPackage:
             if path not in states:
                 states[path] = source_project.source_state(path, required=False)
         return result_type.ok((selected, states))
+
+    @staticmethod
+    def _unobserved_family_roots(
+        layouts: Mapping[str, p.Infra.RopeProjectLayout],
+        roots: list[tuple[p.Infra.RopeProjectLayout, bool]],
+    ) -> tuple[tuple[p.Infra.RopeProjectLayout, bool], ...]:
+        """Discover installed family roots only if a local layout is unobserved.
+
+        Returns:
+            Additional local roots selected by the installed family inventory.
+
+        """
+        unobserved = layouts.keys() - {layout.package_name for layout, _ in roots}
+        if not unobserved:
+            return ()
+        return tuple(
+            (layouts[name], False)
+            for _, name in u.family_discovery_candidates()
+            if name in unobserved
+        )
 
     @staticmethod
     def _layout_imports(
