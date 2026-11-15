@@ -1,0 +1,9 @@
+id: require-field-description-annotated
+valid:
+- |
+  class Order(m.FrozenModel):
+      total: Annotated[int, m.Field(description="Order total")]
+invalid:
+- |
+  class Order(m.FrozenModel):
+      total: Annotated[int, m.Field(ge=0)]
