@@ -1017,12 +1017,8 @@ class FlextInfraModelsWorkspace:
         at_integration_tip: Annotated[
             bool, m.Field(description="Whether at integration tip")
         ]
-        ahead_by: Annotated[
-            int, m.Field(description="Commits ahead of integration")
-        ]
-        behind_by: Annotated[
-            int, m.Field(description="Commits behind integration")
-        ]
+        ahead_by: Annotated[int, m.Field(description="Commits ahead of integration")]
+        behind_by: Annotated[int, m.Field(description="Commits behind integration")]
         error: Annotated[str | None, m.Field(description="Error message if any")]
 
     class WorkspaceSyncReport(m.ContractModel):
@@ -1079,9 +1075,7 @@ class FlextInfraModelsWorkspace:
         testmon_db_cleaned: Annotated[
             bool, m.Field(description="Stale testmon DB removed")
         ]
-        venv_recreated: Annotated[
-            bool, m.Field(description="Stale .venv recreated")
-        ]
+        venv_recreated: Annotated[bool, m.Field(description="Stale .venv recreated")]
         error: Annotated[str | None, m.Field(description="Error message if any")]
 
     class WorkspaceCleanReport(m.ContractModel):
@@ -1118,9 +1112,7 @@ class FlextInfraModelsWorkspace:
         gate_evidence: Annotated[
             bool, m.Field(description="All gate evidence recorded")
         ]
-        rca_complete: Annotated[
-            bool, m.Field(description="RCA evidence complete")
-        ]
+        rca_complete: Annotated[bool, m.Field(description="RCA evidence complete")]
         runtime_qa: Annotated[bool, m.Field(description="Runtime QA passed")]
         integration_path: Annotated[
             bool, m.Field(description="Integration path verified")
@@ -1147,18 +1139,12 @@ class FlextInfraModelsWorkspace:
         reproduction_recorded: Annotated[
             bool, m.Field(description="Reproduction command recorded")
         ]
-        root_cause_recorded: Annotated[
-            bool, m.Field(description="Root cause recorded")
-        ]
-        fix_verified: Annotated[
-            bool, m.Field(description="Fix verification recorded")
-        ]
+        root_cause_recorded: Annotated[bool, m.Field(description="Root cause recorded")]
+        fix_verified: Annotated[bool, m.Field(description="Fix verification recorded")]
         gate_reexercised: Annotated[
             bool, m.Field(description="Gate re-exercise recorded")
         ]
-        all_recorded: Annotated[
-            bool, m.Field(description="All RCA evidence recorded")
-        ]
+        all_recorded: Annotated[bool, m.Field(description="All RCA evidence recorded")]
         errors: Annotated[tuple[str, ...], m.Field(description="Error messages if any")]
 
     class ProjectInfo(

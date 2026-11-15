@@ -978,95 +978,6 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
-    class ProjectInfo(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def name(self) -> t.NonEmptyStr:
-            """Project name."""
-            ...
-
-        @property
-        def path(self) -> Path:
-            """Absolute or relative project path."""
-            ...
-
-        @property
-        def stack(self) -> t.NonEmptyStr:
-            """Primary technology stack."""
-            ...
-
-        @property
-        def has_tests(self) -> bool:
-            """Project has test suite."""
-            ...
-
-        @property
-        def has_src(self) -> bool:
-            """Project has source directory."""
-            ...
-
-        @property
-        def project_class(self) -> t.NonEmptyStr:
-            """Docs/governance project classification."""
-            ...
-
-        @property
-        def package_name(self) -> str:
-            """Primary Python package name."""
-            ...
-
-        @property
-        def make_profile(self) -> c.Infra.MakeProfile:
-            """Topology proven by this checkout's .gitmodules."""
-            ...
-
-        @property
-        def declared_subproject(self) -> bool:
-            """Whether the aggregate workspace declares this path."""
-            ...
-
-    @runtime_checkable
-    class ProjectPyprojectState(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def project_root(self) -> Path:
-            """Project root path."""
-            ...
-
-        @property
-        def pyproject_path(self) -> Path:
-            """Resolved pyproject path."""
-            ...
-
-        @property
-        def payload(self) -> t.JsonMapping:
-            """Parsed pyproject payload."""
-            ...
-
-        @property
-        def docs_meta(self) -> t.JsonMapping:
-            """Parsed tool.flext.docs payload."""
-            ...
-
-        @property
-        def project_name(self) -> str:
-            """Declared project name."""
-            ...
-
-        @property
-        def package_name(self) -> str:
-            """Primary package name."""
-            ...
-
-        @property
-        def dependency_names(self) -> Sequence[str]:
-            """Declared dependency names."""
-            ...
-
-
-    @runtime_checkable
     class WorkspaceSyncRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
@@ -1154,7 +1065,9 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def repos(self) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceSyncRepoResult, ...]:
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceSyncRepoResult, ...]:
             """One row per declared repository."""
             ...
 
@@ -1251,7 +1164,9 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def repos(self) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceCleanRepoResult, ...]:
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceCleanRepoResult, ...]:
             """One row per declared repository."""
             ...
 
@@ -1384,6 +1299,94 @@ class FlextInfraProtocolsWorkspace:
         @property
         def errors(self) -> tuple[str, ...]:
             """Error messages if any."""
+            ...
+
+    @runtime_checkable
+    class ProjectInfo(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> t.NonEmptyStr:
+            """Project name."""
+            ...
+
+        @property
+        def path(self) -> Path:
+            """Absolute or relative project path."""
+            ...
+
+        @property
+        def stack(self) -> t.NonEmptyStr:
+            """Primary technology stack."""
+            ...
+
+        @property
+        def has_tests(self) -> bool:
+            """Project has test suite."""
+            ...
+
+        @property
+        def has_src(self) -> bool:
+            """Project has source directory."""
+            ...
+
+        @property
+        def project_class(self) -> t.NonEmptyStr:
+            """Docs/governance project classification."""
+            ...
+
+        @property
+        def package_name(self) -> str:
+            """Primary Python package name."""
+            ...
+
+        @property
+        def make_profile(self) -> c.Infra.MakeProfile:
+            """Topology proven by this checkout's .gitmodules."""
+            ...
+
+        @property
+        def declared_subproject(self) -> bool:
+            """Whether the aggregate workspace declares this path."""
+            ...
+
+    @runtime_checkable
+    class ProjectPyprojectState(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def project_root(self) -> Path:
+            """Project root path."""
+            ...
+
+        @property
+        def pyproject_path(self) -> Path:
+            """Resolved pyproject path."""
+            ...
+
+        @property
+        def payload(self) -> t.JsonMapping:
+            """Parsed pyproject payload."""
+            ...
+
+        @property
+        def docs_meta(self) -> t.JsonMapping:
+            """Parsed tool.flext.docs payload."""
+            ...
+
+        @property
+        def project_name(self) -> str:
+            """Declared project name."""
+            ...
+
+        @property
+        def package_name(self) -> str:
+            """Primary package name."""
+            ...
+
+        @property
+        def dependency_names(self) -> Sequence[str]:
+            """Declared dependency names."""
             ...
 
 

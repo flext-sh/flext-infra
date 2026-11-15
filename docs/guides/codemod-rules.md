@@ -210,10 +210,13 @@ Its matcher owner is `flext-tests`; its patterns, native fixtures, and generated
 snapshots have one writable owner in `flext-infra`. Consumers reexport the same
 `tm` binding rather than copying matcher or transformation implementations.
 Rules must preserve Python's evaluation and scope semantics, not merely remove
-the `assert` token. In particular, narrowing and lazy-message guards use the
-terminating public matcher without rebinding a referenced name or changing the
-exception category. Runtime comparisons against the original snippets validate
-these properties; snapshot text alone does not prove them.
+the `assert` token. A plain condition becomes one `tm.that(..., truth=...)`
+expression, with `assertion_message` when the assert carried one; a condition
+that needs its branch (the `branch-condition` util: narrowing or short-circuit)
+keeps one negated branch with the terminating `tm.reject`, without rebinding a
+referenced name or changing the exception category. Runtime comparisons
+against the original snippets validate these properties; snapshot text alone
+does not prove them.
 
 ### Pyrefly strict-typing cures (campaign flext-osru9, census 2026-10-28)
 
@@ -369,14 +372,6 @@ as small as possible. Renames and moves that Rope's refactorings express run
 through them, not through a custom planner (ADR-028 Decision 17), and a rename of
 library-named exports to capability names follows ADR-028 Decision 15.
 
-The `ban-library-named-facade-member` rule bans a facade member prefixed by an
-installed distribution the project imports. A project whose domain is a
-technology owns that name as a capability, not a leak. A distribution prefix is
-removed from the rule when the project owns a package or subpackage of that
-normalized name (automatic), or when the repository declares it in
-`Infra.codegen.repository.domain_capabilities` (override). Declared stdlib
-backports (`Infra.tooling.lazy_init.stdlib_backports`) are never prefixes.
-
 #### One pipeline, one owner per law
 
 ADR-028 Decision 18 item 2
@@ -418,11 +413,6 @@ under bead `flext-brr3y`:
 - **Executed rules are a gate metric.** The number of rules a `make mod` run
   executes per project is reported from `mod-findings.json` (`totals_by_rule`).
   Its budget is a typed configuration key, never a number in code.
-- **Evidence keeps only the bytes it references.** The native scan bytes behind
-  the evidence live in `.reports/refactor/native/<sha256>`. Each evidence
-  publication removes the artifacts that no declared evidence report references
-  and that are older than `mod_evidence.native_artifact_retention_seconds`, so
-  an in-flight scan never loses bytes it has not yet published.
 
 These laws are authored rules over computed facts, each with fixtures (epic
 `flext-lqfqo`):
