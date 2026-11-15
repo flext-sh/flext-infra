@@ -23,6 +23,10 @@ fix: "model_config: ClassVar[t.$CONFIG] = $VAL"
 message: >-
   model_config annotations use their native t.ConfigDict or
   t.SettingsConfigDict contract; retain the m constructor and all arguments.
+metadata:
+  # Prerequisite of the preset rewrites: they read the ClassVar form this rule
+  # writes, so the theme laws elect it with them (ADR-028 Decision 18 item 2).
+  enforce: [ENFORCE-108, ENFORCE-109]
 ---
 # A constants spelling does not supply the runtime constructor. Preserve its
 # arguments while selecting the existing annotation and value owners. The
@@ -50,3 +54,7 @@ fix: "model_config: ClassVar[t.$CONFIG] = m.$CONFIG($$$ARGS)"
 message: >-
   model_config uses t.ConfigDict for its annotation and m.ConfigDict for its
   runtime constructor; preserve the original configuration arguments.
+metadata:
+  # Prerequisite of the preset rewrites: they read the ClassVar form this rule
+  # writes, so the theme laws elect it with them (ADR-028 Decision 18 item 2).
+  enforce: [ENFORCE-108, ENFORCE-109]
