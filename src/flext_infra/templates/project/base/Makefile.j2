@@ -657,9 +657,12 @@ endef
    Operations that consume activation enter direnv before their handlers. -#}
 {# One parameterized rule set per verb group replaces a rendered block per verb.
    Unactivated verbs consume the physical runtime without the environment file
-   they may regenerate; activated verbs enter direnv (CI is pre-activated). An
-   activated verb without hooks resolves its builtin and environment in this
-   process; a hooked or interpreter-bound one runs through RUN_PUBLIC. -#}
+   they may regenerate; activated verbs enter direnv locally and the already
+   provisioned Mise environment on a remote runner. Activation follows the
+   runner reality, not the check partition token: the complete qualification
+   runs CI=N for local-stage gates on a fresh runner whose .envrc was never
+   allowed. An activated verb without hooks resolves its builtin and environment
+   in this process; a hooked or interpreter-bound one runs through RUN_PUBLIC. -#}
 {% macro verb_rules(group, verbs) -%}
 {% set ns = namespace(plain=[], dispatch=[], active=[], interp=[]) -%}
 {% for verb in verbs if verb.name not in ("setup", "upg", "lock") -%}
@@ -688,7 +691,7 @@ $({{ group }}_DISPATCH):
 {% if ns.active %}
 $({{ group }}_ACTIVATED): %: _builtin_require_workspace
 	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" '{{ make_profile }}'
-	+@$(if $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
+	+@$(if $(or $(filter {{ make.ci.value }},$({{ make.ci.variable }})),$(filter {{ make.ci.remote_value }},$({{ make.ci.remote_variable }}))),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$({{ group }}_ACTIVATED))
 ifneq ($(strip $({{ group }}_DIRECT)),)
 $(addprefix _activated-,$({{ group }}_DIRECT)): _activated-%: _builtin-%

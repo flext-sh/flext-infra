@@ -143,6 +143,77 @@ class TestsFlextInfraCodegenMakeRuntimeIdentity:
         tm.that(result.stdout, has="locked-direnv-activated")
 
     @staticmethod
+    def test_remote_runner_activation_never_requires_an_allowed_envrc(
+        tmp_path: Path,
+    ) -> None:
+        """A remote complete check activates without direnv trust.
+
+        The complete qualification passes the local token to select the
+        local-stage gate partition, but it runs on a fresh remote runner whose
+        generated ``.envrc`` was never allowed. Activation follows the runner
+        reality instead: the verb runs in the already provisioned Mise
+        environment, while the local path still enters direnv.
+        """
+        make = config.Infra.codegen.make
+        root, _ = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        tm.ok(u.Tests.provision_python_project_environment(root))
+        envrc = root / c.Infra.ENVRC_FILENAME
+        envrc.write_text(
+            envrc.read_text(encoding="utf-8") + "\n# trust hash changed\n",
+            encoding="utf-8",
+        )
+        (root / make.custom_handler_policy.filename).write_text(
+            ".PHONY: post-status\n"
+            "post-status:\n\t@printf 'remote-activation-without-direnv\\n'\n",
+            encoding="utf-8",
+        )
+        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        activation = next(
+            line
+            for line in rendered.splitlines()
+            if line.lstrip().startswith("+@") and "_activated-$@" in line
+        )
+        tm.that(
+            activation,
+            has=(f"$(filter {make.ci.remote_value},$({make.ci.remote_variable}))"),
+        )
+
+        remote = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"],
+                cwd=root,
+                env={
+                    make.ci.variable: make.ci.local_value,
+                    make.ci.remote_variable: make.ci.remote_value,
+                },
+            ),
+        )
+
+        tm.that(
+            u.Cli.process_succeeded(remote.outcome),
+            eq=True,
+            msg=remote.stdout + remote.stderr,
+        )
+        tm.that(remote.stdout, has="remote-activation-without-direnv")
+
+        local = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"],
+                cwd=root,
+                env={
+                    make.ci.variable: make.ci.local_value,
+                    make.ci.remote_variable: c.ParserBooleanToken.FALSE,
+                },
+            ),
+        )
+
+        tm.that(u.Cli.process_succeeded(local.outcome), eq=False)
+        tm.that(local.stderr, has="is blocked")
+
+    @staticmethod
     def test_status_ignores_a_project_local_mise_override(
         tmp_path: Path,
     ) -> None:
