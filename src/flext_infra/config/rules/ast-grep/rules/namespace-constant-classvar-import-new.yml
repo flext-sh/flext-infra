@@ -32,3 +32,7 @@ fix: "from __future__ import annotations\n\nfrom typing import ClassVar"
 message: >-
   Modules declaring FlextTestsConstants.Tests constants bind ClassVar at
   module level.
+metadata:
+  # Prerequisite of the preset rewrites: they read the ClassVar form this rule
+  # writes, so the theme laws elect it with them (ADR-028 Decision 18 item 2).
+  enforce: [ENFORCE-108, ENFORCE-109]
