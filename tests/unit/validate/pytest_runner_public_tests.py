@@ -806,9 +806,7 @@ class TestsFlextInfraPytestRunner:
         recorded = (report_dir / "command.txt").read_text()
         tm.fail("--testmon" in recorded)
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
-        tm.that(
-            recorded, has=f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}"
-        )
+        tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
         tm.that(
             recorded.split(),
             has=f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={policy.slow_timeout_seconds}",
@@ -915,8 +913,9 @@ class TestsFlextInfraPytestRunner:
             "tm\n\n"
             f"@pytest.mark.{config.Infra.tooling.tools.pytest.slow_marker}\n"
             "def test_bounded_policy(pytestconfig, request):\n"
+            "    policy = config.Infra.tooling.tools.pytest\n"
             "    tm.that(pytestconfig.getoption('timeout'),\n"
-            "            eq=c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS)\n"
+            "            eq=policy.ordinary_timeout_seconds)\n"
             "    budget = config.Infra.tooling.tools.pytest.slow_timeout_seconds\n"
             "    tm.that(pytestconfig.getini(c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS),\n"
             "            eq=str(budget))\n"

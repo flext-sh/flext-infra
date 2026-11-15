@@ -229,9 +229,16 @@ class FlextInfraModelsDepsToolConfig(
         """Pytest baseline settings loaded from YAML."""
 
         # Every rendered pytest value is validated config data.
+        ordinary_timeout_seconds: int = m.Field(
+            alias="ordinary-timeout-seconds",
+            gt=0,
+            le=2,
+            description="Hard maximum runtime for one ordinary item.",
+        )
         slow_timeout_seconds: int = m.Field(
             alias="slow-timeout-seconds",
             gt=0,
+            le=20,
             description="Hard maximum runtime for one explicitly slow item.",
         )
         slow_marker: t.NonEmptyStr = m.Field(
@@ -241,14 +248,8 @@ class FlextInfraModelsDepsToolConfig(
         run_timeout_seconds: int = m.Field(
             alias="run-timeout-seconds",
             gt=0,
-            le=1800,
-            description=(
-                "Fleet-default wall-clock maximum for one testmon runner operation. "
-                "Repositories whose session prepares a real local runtime (for example "
-                "the Docker OUD stack) may declare a higher budget; the previous 120s "
-                "fleet ceiling predates in-session real-runtime preparation and is "
-                "recorded in the fleet policy notes."
-            ),
+            le=240,
+            description="Aggregate wall-clock maximum for one pytest operation.",
         )
         termination_grace_seconds: int = m.Field(
             alias="termination-grace-seconds",
@@ -458,11 +459,12 @@ class FlextInfraModelsDepsToolConfig(
             if self.slow_timeout_seconds >= self.run_timeout_seconds:
                 msg = "pytest slow timeout must be less than run timeout"
                 raise ValueError(msg)
-            # Only the slow phase has a bounded item drain. Ordinary items are
-            # stopped by the aggregate process wall, not a synthetic item cap.
             reserve = self.slow_suite_stop_reserve_seconds
             if self.run_timeout_seconds <= reserve:
                 msg = "pytest run timeout must exceed the suite stop reserve"
+                raise ValueError(msg)
+            if self.slow_marker in self.ci_excluded_markers:
+                msg = "pytest slow marker must not be excluded from CI"
                 raise ValueError(msg)
             if "--verbose" not in self.progress_args:
                 msg = "pytest progress args must expose verbose item progress"
