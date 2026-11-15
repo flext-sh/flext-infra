@@ -10,6 +10,7 @@ import importlib
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -32,6 +33,61 @@ _TRACKED_CODEGEN_CONFIG_PATH = (
     / c.Infra.CODEGEN_CONFIG_FILENAME
 )
 _TRACKED_CODEGEN_CONFIG_BYTES = pytest.StashKey[bytes]()
+_SCANNER_ENVIRONMENTS = pytest.StashKey[dict[str, Path]]()
+
+
+@pytest.fixture(scope="session")
+def scanner_catalog(request: pytest.FixtureRequest) -> Path:
+    """Return the prepared native catalog for this worker's scanner cases.
+
+    Returns:
+        The relocatable environment containing the current Infra catalog.
+
+    """
+    return request.config.stash[_SCANNER_ENVIRONMENTS][scanner_catalog.__name__]
+
+
+@pytest.fixture(scope="session")
+def scanner_python(request: pytest.FixtureRequest) -> Path:
+    """Return the bare Python seed for local authored rule scenarios.
+
+    Returns:
+        The relocatable environment with no installed catalog.
+
+    """
+    return request.config.stash[_SCANNER_ENVIRONMENTS][scanner_python.__name__]
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_finish(session: pytest.Session) -> None:
+    """Prepare the selected real scanner environments before item timers."""
+    if session.config.getoption("collectonly"):
+        return
+    names = {scanner_catalog.__name__, scanner_python.__name__}
+    selected = {
+        name
+        for item in session.items
+        if isinstance(item, pytest.Function)
+        for name in names.intersection(item.fixturenames)
+    }
+    if not selected:
+        return
+    checkout = Path(__file__).resolve().parents[1]
+    tm.ok(u.Infra.runtime_owner_root(checkout))
+    storage = u.Tests.scratch_root(
+        override=session.config.getini(c.Tests.SCRATCH_ROOT_INI) or None,
+    )
+    seeds = TemporaryDirectory(prefix="scanner-environments-", dir=storage)
+    session.config.add_cleanup(seeds.cleanup)
+    session.config.stash[_SCANNER_ENVIRONMENTS] = {
+        name: u.Tests.prepare_scanner_environment(
+            Path(seeds.name) / name,
+            u.Tests.scanner_catalog_wheel(storage)
+            if name == scanner_catalog.__name__
+            else None,
+        )
+        for name in sorted(selected)
+    }
 
 
 @pytest.fixture(scope="session")
