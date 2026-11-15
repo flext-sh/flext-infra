@@ -221,3 +221,36 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
                 c.Infra.CodegenConformSurface.MISE_CONFIG,
                 c.Infra.CodegenConformScope.SELF,
             )
+
+    def test_attached_member_ignore_policy_keeps_its_own_trees(
+        self, tmp_path: Path
+    ) -> None:
+        """An attached member never inherits the workspace-root deny-all policy."""
+        root, member = self._attached_workspace(tmp_path)
+        plan = tm.ok(
+            self._plan(
+                member,
+                c.Infra.CodegenConformSurface.GITIGNORE,
+                c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        rendered = next(
+            u.Tests.codegen_file_text(item)
+            for item in plan.files
+            if item.path == member / c.Infra.GITIGNORE
+        )
+        tm.that(rendered.splitlines(), lacks="/*/")
+        tm.that(u.Tests.is_tracked_under(rendered, "charts/new/Chart.yaml"), eq=True)
+        root_plan = tm.ok(
+            self._plan(
+                root,
+                c.Infra.CodegenConformSurface.GITIGNORE,
+                c.Infra.CodegenConformScope.SELF,
+            )
+        )
+        root_rendered = next(
+            u.Tests.codegen_file_text(item)
+            for item in root_plan.files
+            if item.path == root / c.Infra.GITIGNORE
+        )
+        tm.that(root_rendered.splitlines(), has="/*/")
