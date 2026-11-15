@@ -21,18 +21,18 @@ class TestsFlextInfraConfigLocalOverrides:
         make = FlextInfraConfig.fetch_global().Infra.codegen.make
         policy = make.testmon_cache_policy
         tm.that(type(policy).model_validate_json(policy.model_dump_json()), eq=policy)
-        for spec in (make.ruff_cache, make.mypy_cache):
+        for spec in (make.ruff_cache,):
             cache_type = type(spec)
             cache = cache_type.model_validate(
                 {"external_storage_directory": spec.external_storage_directory},
             )
             tm.that(
                 cache.data_home_environment_variable,
-                eq=c.Infra.MypyCacheEnvironment.DATA_HOME.value,
+                eq=c.Infra.CacheHomeEnvironment.DATA_HOME.value,
             )
             tm.that(
                 cache.user_home_environment_variable,
-                eq=c.Infra.MypyCacheEnvironment.USER_HOME.value,
+                eq=c.Infra.CacheHomeEnvironment.USER_HOME.value,
             )
             tm.that(type(cache.data_home_environment_variable), eq=str)
             tm.that(type(cache.user_home_environment_variable), eq=str)
@@ -77,7 +77,7 @@ class TestsFlextInfraConfigLocalOverrides:
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
-    def test_empty_mypy_overlay_keeps_selected_global_policy(
+    def test_empty_native_overlay_keeps_selected_global_policy(
         tmp_path: Path,
     ) -> None:
         """An empty native option layer retains policy supplied by its owner."""
@@ -88,13 +88,13 @@ class TestsFlextInfraConfigLocalOverrides:
         )
         local.parent.mkdir(parents=True)
         local.write_text(
-            "Infra:\n  tooling:\n    settings:\n      mypy: []\n",
+            "Infra:\n  tooling:\n    settings:\n      codespell: []\n",
             encoding="utf-8",
         )
         tooling = tm.ok(u.Infra.load_tooling_inputs(tmp_path)).document
         tm.that(
-            u.Infra.native_tool_settings(tooling, "mypy"),
-            eq=u.Infra.native_tool_settings(baseline, "mypy"),
+            u.Infra.native_tool_settings(tooling, "codespell"),
+            eq=u.Infra.native_tool_settings(baseline, "codespell"),
         )
 
     @staticmethod

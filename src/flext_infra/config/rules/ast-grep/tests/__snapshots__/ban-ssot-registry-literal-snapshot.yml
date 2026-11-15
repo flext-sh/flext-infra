@@ -14,9 +14,9 @@ snapshots:
       style: secondary
       start: 18
       end: 51
-  "class FlextInfraServiceGuard:\n    def check(self) -> None:\n        command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}\n":
+  "class FlextInfraServiceGuard:\n    def check(self) -> None:\n        command_allowlist = {name: True for name in (\"ruff\", \"deps\")}\n":
     labels:
-    - source: "command_allowlist = {name: True for name in (\"ruff\", \"mypy\")}"
+    - source: "command_allowlist = {name: True for name in (\"ruff\", \"deps\")}"
       style: primary
       start: 67
       end: 128
@@ -24,7 +24,7 @@ snapshots:
       style: secondary
       start: 67
       end: 84
-    - source: "{name: True for name in (\"ruff\", \"mypy\")}"
+    - source: "{name: True for name in (\"ruff\", \"deps\")}"
       style: secondary
       start: 87
       end: 128

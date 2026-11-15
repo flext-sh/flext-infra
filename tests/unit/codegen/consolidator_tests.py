@@ -74,8 +74,8 @@ class TestsFlextInfraCodegenConsolidator:
         (project_root / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext-demo'\nversion='0.1.0'\n"
             "\n"
-            "[tool.mypy]\n"
-            'mypy_path = ["src"]\n',
+            "[tool.vulture]\n"
+            'paths = ["src"]\n',
             encoding="utf-8",
         )
         u.Tests.declare_workspace_projects(repository_root, (project_root.name,))

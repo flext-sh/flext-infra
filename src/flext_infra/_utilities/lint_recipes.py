@@ -1393,8 +1393,8 @@ class FlextInfraUtilitiesLintRecipes(
         parentheses; a long full-line comment is reflowed at the same indent,
         and a trailing comment on an otherwise fitting code line moves to its
         own line at the same indent. Directives that bind to their line
-        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pyright:``, ``pylint:``,
-        ``isort:``, ``mypy:``) keep their position. The parser folds implicit
+        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pylint:``, ``isort:``)
+        keep their position. The parser folds implicit
         concatenation and drops comments, so the repaired module's AST must
         equal the original one. A line holding neither keeps its text and its
         finding.
@@ -1493,10 +1493,8 @@ class FlextInfraUtilitiesLintRecipes(
             "noqa",
             "fmt:",
             "ruff:",
-            "pyright:",
             "pylint:",
             "isort:",
-            "mypy:",
         )):
             return None
         newline = line[len(line.rstrip("\r\n")) :]

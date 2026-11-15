@@ -224,7 +224,7 @@ print(json.dumps({
     FLEXT_EDITABLE_BUILD_SETTING: ClassVar[str] = "editable_mode=strict"
     (
         "PEP 517 setting for editable bindings: a path-based install that static"
-        " resolvers (Rope, pyrefly, pyright) see, never an import-hook finder."
+        " resolvers (Rope, pyrefly) see, never an import-hook finder."
     )
     CODEGEN_PLAN_REPORT_RELATIVE_PATH: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "codegen-plan.json"

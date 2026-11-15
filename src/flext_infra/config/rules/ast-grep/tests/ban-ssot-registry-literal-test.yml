@@ -26,6 +26,6 @@ invalid:
   - |
     class FlextInfraServiceGuard:
         def check(self) -> None:
-            command_allowlist = {name: True for name in ("ruff", "mypy")}
+            command_allowlist = {name: True for name in ("ruff", "deps")}
   - |
     tool_denylist = {}

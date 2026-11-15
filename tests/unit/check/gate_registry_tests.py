@@ -54,9 +54,8 @@ class TestsFlextInfraGateRegistry:
         """The Make fixable-gate vocabulary equals the gates that declare can_fix.
 
         `make fix` routes through `check run --fix`. Without a
-        gate selector that run executes EVERY gate, including pyright and
-        mypy, which cannot fix anything and cost ~37s -- the verb timed out
-        (exit 124).
+        gate selector that run executes EVERY gate, including the type
+        checker, which cannot fix anything -- the verb timed out (exit 124).
 
         Runtime contract: verbs own tools by intent. `fmt` owns formatting
         (ruff format plus the fmt_gates writers such as markdown-format),

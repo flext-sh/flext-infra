@@ -230,7 +230,7 @@ def test_models_infra_inherited_members_keep_native_static_types(
                 "--scope",
                 "self",
                 "--gates",
-                "lint,pyrefly,pyright,mypy",
+                "lint,pyrefly",
                 "--file",
                 consumer.relative_to(root).as_posix(),
                 "--report-output",
