@@ -3,7 +3,7 @@ snapshots:
   "class Model:\n    model_config = ConfigDict(str_strip_whitespace=True)\n":
     fixed: |
       class Model:
-          model_config: ClassVar[ConfigDict] = ConfigDict(str_strip_whitespace=True)
+          model_config: typing.ClassVar[ConfigDict] = ConfigDict(str_strip_whitespace=True)
     labels:
     - source: model_config = ConfigDict(str_strip_whitespace=True)
       style: primary
