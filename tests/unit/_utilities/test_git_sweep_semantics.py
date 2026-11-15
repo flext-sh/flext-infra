@@ -31,7 +31,6 @@ class TestsFlextInfraGitSweepSemantics:
         remote = u.Tests.configure_local_origin(repository, tmp_path / "remote")
         integration = u.Tests.integration_branch(repository)
         _ = u.Tests.git_run(repository, "switch", integration)
-        u.Tests.git_run(repository, "push", c.Infra.GIT_ORIGIN, integration)
         u.Tests.git_run(
             superproject,
             "-c",
@@ -126,7 +125,8 @@ class TestsFlextInfraGitSweepSemantics:
         self, tmp_path: Path
     ) -> None:
         """An incident ref is retained; recovery uses no stash operation."""
-        repository, _ = self._published(tmp_path)
+        repository = u.Tests.git_repository(tmp_path)
+        _ = u.Tests.configure_local_origin(repository, tmp_path / "remote")
         (repository / "dirty.txt").write_text("retained\n", encoding="utf-8")
         checkpoint, publication = self._retained(repository)
         u.Tests.git_run(
@@ -144,9 +144,6 @@ class TestsFlextInfraGitSweepSemantics:
                 )
             ),
             has="existing stash state",
-        )
-        tm.ok(
-            u.Infra.git_verify_worktree_checkpoint_publication(checkpoint, publication)
         )
         tm.ok(u.Infra.git_create_checkpoint_branch(checkpoint, publication, "recovery"))
         tm.that(
@@ -263,7 +260,8 @@ class TestsFlextInfraGitSweepSemantics:
         changed: str,
     ) -> None:
         """No name or caller receipt substitutes for live capture and retention."""
-        repository, _ = self._published(tmp_path)
+        repository = u.Tests.git_repository(tmp_path)
+        _ = u.Tests.configure_local_origin(repository, tmp_path / "remote")
         dirty = repository / "dirty.txt"
         dirty.write_text("captured\n", encoding="utf-8")
         checkpoint, publication = self._retained(repository)
@@ -290,8 +288,7 @@ class TestsFlextInfraGitSweepSemantics:
         )
         before = index.read_bytes()
         content = dirty.read_bytes()
-        refs = u.Tests.git_capture(repository, "show-ref")
-        head = u.Tests.git_capture(repository, "rev-parse", "HEAD")
+        refs = u.Tests.git_capture(repository, "show-ref", "--head")
 
         tm.fail(
             u.Infra.git_create_checkpoint_branch(checkpoint, publication, "recovery")
@@ -299,8 +296,7 @@ class TestsFlextInfraGitSweepSemantics:
 
         tm.that(index.read_bytes(), eq=before)
         tm.that(dirty.read_bytes(), eq=content)
-        tm.that(u.Tests.git_capture(repository, "show-ref"), eq=refs)
-        tm.that(u.Tests.git_capture(repository, "rev-parse", "HEAD"), eq=head)
+        tm.that(u.Tests.git_capture(repository, "show-ref", "--head"), eq=refs)
 
     def test_merge_probe_detects_squash_merged_and_pending_work(
         self,

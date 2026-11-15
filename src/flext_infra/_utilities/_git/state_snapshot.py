@@ -132,19 +132,20 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         if index_file is not None:
             repo.git.update_environment(GIT_INDEX_FILE=str(index_file))
         pathspecs = cls._state_pathspecs(paths)
-        for row in repo.git.ls_files("-v", "-z", "--", *pathspecs).split("\0"):
-            if row and (row[0].islower() or row[0] == "S"):
+        entries: list[p.Infra.GitWorktreeIndexEntry] = []
+        for row in repo.git.ls_files("-v", "--stage", "-z", "--", *pathspecs).split(
+            "\0"
+        ):
+            if not row:
+                continue
+            metadata, raw_path = row.split("\t", 1)
+            flag, mode, oid, stage = metadata.split()
+            if flag.islower() or flag == "S":
                 msg = (
                     "capture requires index entries without assume-unchanged "
                     "or skip-worktree flags"
                 )
                 raise ValueError(msg)
-        entries: list[p.Infra.GitWorktreeIndexEntry] = []
-        for row in repo.git.ls_files("--stage", "-z", "--", *pathspecs).split("\0"):
-            if not row:
-                continue
-            metadata, raw_path = row.split("\t", 1)
-            mode, oid, stage = metadata.split()
             if stage != c.ParserBooleanToken.ZERO:
                 msg = f"capture requires resolved index entries: {raw_path}"
                 raise ValueError(msg)
@@ -164,10 +165,11 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
     def _state_head_entries(
         cls,
         root: Path,
+        head: str,
         paths: Sequence[Path],
     ) -> tuple[p.Infra.GitWorktreeIndexEntry, ...]:
         rows = (
-            cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", "HEAD")
+            cls._repo(root).git.ls_tree("-r", "--full-tree", "-z", head)
             if paths
             else ""
         )
@@ -189,6 +191,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         root: Path,
         paths: Sequence[Path],
         entries: Sequence[p.Infra.GitWorktreeIndexEntry],
+        head_entries: Sequence[p.Infra.GitWorktreeIndexEntry],
     ) -> tuple[p.Infra.GitWorktreeFileState, ...]:
         repo = cls._repo(root)
         pathspecs = cls._state_pathspecs(paths)
@@ -200,24 +203,14 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             "--",
             *pathspecs,
         )
-        head_paths = repo.git.ls_files(
-            "--cached",
-            "--with-tree=HEAD",
-            "-z",
-            "--",
-            *pathspecs,
-        )
         candidates = sorted(
-            {
-                Path(path)
-                for path in (raw_paths + "\0" + head_paths).split("\0")
-                if path
-            },
+            {Path(path) for path in raw_paths.split("\0") if path}
+            | {entry.path for entry in head_entries},
             key=Path.as_posix,
         )
         gitlinks = {
             entry.path: entry.oid
-            for entry in (*cls._state_head_entries(root, paths), *entries)
+            for entry in (*head_entries, *entries)
             if entry.mode == c.Infra.GIT_GITLINK_MODE_TEXT
         }
         indexed_gitlinks = {
@@ -270,13 +263,17 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
         if Path(repo.working_tree_dir or "").resolve() != root:
             msg = "snapshot requires the repository root"
             raise ValueError(msg)
+        head = repo.head.commit.hexsha
         entries = cls.state_snapshot_index(root, request.paths) if request.paths else ()
+        head_entries = cls._state_head_entries(root, head, request.paths)
         files = (
-            cls._state_snapshot_files(root, request.paths, entries)
+            cls._state_snapshot_files(root, request.paths, entries, head_entries)
             if request.paths
             else ()
         )
-        head = repo.head.commit.hexsha
+        if repo.head.commit.hexsha != head:
+            msg = "HEAD changed while capturing worktree state"
+            raise ValueError(msg)
         retained = tuple(
             sorted(
                 {repo.commit(oid).hexsha for oid in request.retained_commits} - {head},
@@ -289,7 +286,7 @@ class FlextInfraUtilitiesGitStateSnapshot(FlextInfraUtilitiesGitRepo):
             "branch": (None if repo.head.is_detached else repo.active_branch.name),
             "retained_commits": (retained),
             "paths": (tuple(request.paths)),
-            "head_entries": (cls._state_head_entries(root, request.paths)),
+            "head_entries": head_entries,
             "index_entries": (entries),
             "files": (files),
         })

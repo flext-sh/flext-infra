@@ -35,17 +35,16 @@ class TestsFlextInfraGitStateCheckpoint:
 
     @staticmethod
     def _capture(parent: Path) -> p.Infra.GitWorktreeStateCheckpoint:
-        source = u.Tests.git_repository(parent)
+        source = parent / "repository"
+        source.mkdir()
         tracked = source / "README.md"
         tracked.write_text("baseline\n", encoding="utf-8")
-        u.Tests.git_run(source, "add", "README.md")
-        u.Tests.git_run(source, "commit", "-m", "tracked checkpoint baseline")
+        u.Tests.initialize_git_repo(source)
         tracked.write_bytes(b"staged\n")
-        u.Tests.git_run(source, "add", "README.md")
+        (source / "added.txt").write_text("staged addition\n", encoding="utf-8")
+        u.Tests.git_run(source, "add", "README.md", "added.txt")
         tracked.write_bytes(b"working\x00\xff")
         tracked.chmod(0o600)
-        (source / "added.txt").write_text("staged addition\n", encoding="utf-8")
-        u.Tests.git_run(source, "add", "added.txt")
         (source / "untracked").symlink_to("README.md")
         snapshot = tm.ok(
             u.Infra.git_snapshot_worktree_state(

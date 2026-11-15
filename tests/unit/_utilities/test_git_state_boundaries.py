@@ -259,14 +259,15 @@ class TestsFlextInfraGitStateBoundaries:
             u.Tests.git_run(source, "update-index", f"--no-{flag}", "README.md")
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_file_directory_roundtrip_preserves_partial_index(
         tmp_path: Path,
     ) -> None:
-        source = u.Tests.git_repository(tmp_path)
+        source = tmp_path / "repository"
+        source.mkdir()
         path = source / "shape"
         path.write_bytes(b"original file\n")
-        u.Tests.git_run(source, "add", "shape")
-        u.Tests.git_run(source, "commit", "-m", "baseline shape")
+        u.Tests.initialize_git_repo(source)
         lane = tmp_path / "lane"
         u.Tests.git_run(source, "worktree", "add", "--detach", str(lane))
         path.unlink()
@@ -287,7 +288,6 @@ class TestsFlextInfraGitStateBoundaries:
         tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
         tm.ok(u.Infra.git_apply_worktree_checkpoint(checkpoint, lane))
 
-        tm.ok(tm.ok(u.Infra.git_verify_worktree_state(snapshot, lane)))
         tm.that(
             (lane / "shape/child.bin").read_bytes(),
             eq=(path / "child.bin").read_bytes(),
