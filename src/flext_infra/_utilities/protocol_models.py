@@ -2230,6 +2230,7 @@ class FlextInfraUtilitiesModelsProtocol:
             candidates = [ast.unparse(base) for base in namespace.bases]
             imports: dict[str, str] = {}
             modules: dict[str, str] = {}
+            original = self.project.get_module(f"{self.package_name}.protocols")
             for relative, content in rendered.items():
                 target = self.repository_root / relative
                 part = target.relative_to(package_dir / "_protocols")
@@ -2240,12 +2241,40 @@ class FlextInfraUtilitiesModelsProtocol:
                     for node in ast.parse(content).body
                     if isinstance(node, ast.ClassDef)
                 )
+                module_name = self.module_name_for(relative)
+                displaced = self._source_replaced_holder(target, owner)
+                if displaced in candidates and FlextInfraUtilitiesRopeRuntime.same_name(
+                    self.resolve_symbol(original.get_scope(), displaced),
+                    self.project.get_module(module_name).get_attribute(displaced),
+                ):
+                    candidates.remove(displaced)
                 if owner not in candidates:
                     candidates.append(owner)
-                module_name = self.module_name_for(relative)
                 imports[owner] = f"from {module_name} import {owner}"
                 modules[owner] = module_name
             return candidates, imports, modules
+
+        def _source_replaced_holder(self, destination: Path, owner: str) -> str:
+            """Find the prior generated holder declared in this same destination.
+
+            Returns:
+                Its name, or an empty string for an unchanged or authored holder.
+
+            """
+            if not self.project.source_query(destination, "isfile"):
+                return ""
+            source = self.project.source_text(destination)
+            if not source.startswith(c.Infra.AUTOGEN_HEADER):
+                return ""
+            previous = next(
+                (
+                    node.name
+                    for node in ast.parse(source).body
+                    if isinstance(node, ast.ClassDef)
+                ),
+                owner,
+            )
+            return previous if previous != owner else ""
 
         def _source_aggregate_bases(
             self,
