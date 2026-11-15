@@ -231,7 +231,10 @@ class FlextInfraWorkspaceChecker(
     def _resolve_requested_gates(
         params: p.Infra.RunCommand, *, phase: c.Infra.CheckPhase
     ) -> p.Result[Sequence[str]]:
-        """Bind primary admission to its exact unfiltered global policy.
+        """Bind primary admission to its exact unfiltered read-only policy.
+
+        The scope stays the caller's: every governed repository locally, the
+        invoked repository alone in CI and the commit hook.
 
         Returns:
             The declared inventory or the first invalid phase selection.
@@ -243,14 +246,13 @@ class FlextInfraWorkspaceChecker(
             if any((
                 params.file is not None,
                 params.projects,
-                params.scope != c.Infra.CodegenConformScope.ALL,
                 params.gate_set != c.Infra.CheckGateSet.CHECK,
                 params.apply,
                 params.check_only,
                 params.ruff_args is not None,
             )):
                 return r[Sequence[str]].fail(
-                    "primary check requires unfiltered read-only global check scope"
+                    "primary check requires an unfiltered read-only check"
                 )
             if params.gates and tuple(params.gates) != gates:
                 return r[Sequence[str]].fail(

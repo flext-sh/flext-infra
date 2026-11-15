@@ -244,76 +244,49 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         tm.fail(any("make pre-commit" in command for command in commands))
 
     @staticmethod
-    def test_pre_commit_runs_setup_then_check() -> None:
-        """The commit hook provisions the checkout, then runs the check row."""
+    def test_pre_commit_runs_the_ci_rows() -> None:
+        """The commit hook runs the CI rows: setup first, checks in primary phase."""
         make = config.Infra.codegen.make
+        hook = tuple(step for step in make.workflow if "pre_commit" in step.contexts)
+        tm.that(hook, eq=tuple(step for step in make.workflow if "ci" in step.contexts))
+        tm.that(hook[0].verb, eq=c.Infra.VERB_SETUP)
         tm.that(
-            tuple(step.verb for step in make.workflow if "pre_commit" in step.contexts),
-            eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
+            {step.phase for step in hook if step.verb == c.Infra.VERB_CHECK},
+            eq={c.Infra.CheckPhase.PRIMARY},
         )
 
     @staticmethod
-    def test_pre_commit_workflow_refuses_a_missing_setup() -> None:
-        """A commit hook that checks without provisioning first is refused."""
+    @c.Tests.MARK.parametrize(
+        "identity",
+        [step.identity for step in config.Infra.codegen.make.workflow],
+    )
+    def test_pre_commit_workflow_refuses_rows_other_than_the_ci_rows(
+        identity: str,
+    ) -> None:
+        """Moving any row into or out of the commit hook alone is refused."""
         base = config.Infra.codegen.make.model_dump(
             mode="json", exclude_computed_fields=True
         )
-        rows = u.Tests.json_rows(base, "workflow")
         payload = {
             **base,
             "workflow": [
                 {
                     **row,
                     "contexts": (
-                        [
-                            context
-                            for context in u.Tests.json_strings(row["contexts"])
-                            if context != "pre_commit"
-                        ]
-                        if row["verb"] == c.Infra.VERB_SETUP
+                        sorted(
+                            {*u.Tests.json_strings(row["contexts"])} ^ {"pre_commit"}
+                        )
+                        if row["identity"] == identity
                         else row["contexts"]
                     ),
                 }
-                for row in rows
+                for row in u.Tests.json_rows(base, "workflow")
             ],
         }
         with u.Tests.raises(
-            e.PydanticValidationError, match="pre-commit hook requires"
+            e.PydanticValidationError, match="pre-commit hook runs the CI rows"
         ):
             m.Infra.MakeSpec.model_validate(payload)
-
-    @staticmethod
-    def test_pre_commit_workflow_refuses_every_other_operation() -> None:
-        """Any other declared workflow verb in the commit hook is refused."""
-        base = config.Infra.codegen.make.model_dump(
-            mode="json", exclude_computed_fields=True
-        )
-        rows = u.Tests.json_rows(base, "workflow")
-        others = [
-            row["verb"]
-            for row in rows
-            if row["verb"] not in {c.Infra.VERB_SETUP, c.Infra.VERB_CHECK}
-        ]
-        tm.that(others, empty=False)
-        for verb in others:
-            payload = {
-                **base,
-                "workflow": [
-                    {
-                        **row,
-                        "contexts": (
-                            [*u.Tests.json_strings(row["contexts"]), "pre_commit"]
-                            if row["verb"] == verb
-                            else row["contexts"]
-                        ),
-                    }
-                    for row in rows
-                ],
-            }
-            with u.Tests.raises(
-                e.PydanticValidationError, match="pre-commit hook requires"
-            ):
-                m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
     @c.Tests.MARK.parametrize(
@@ -327,7 +300,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
     def test_ci_workflow_requires_its_provisioning_and_test_boundaries(
         verb: str,
     ) -> None:
-        """Removing any declared CI approval verb from CI is refused."""
+        """Removing any declared CI row from CI alone is refused."""
         payload = config.Infra.codegen.make.model_dump(
             mode="json", exclude_computed_fields=True
         )
@@ -346,7 +319,10 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             }
             for row in u.Tests.json_rows(payload, "workflow")
         ]
-        with u.Tests.raises(e.PydanticValidationError, match="CI requires setup"):
+        with u.Tests.raises(
+            e.PydanticValidationError,
+            match="CI starts with setup|pre-commit hook runs the CI rows",
+        ):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
@@ -358,12 +334,16 @@ class TestsFlextInfraCodegenMakeCheckPartition:
         )
         rows = u.Tests.json_rows(payload, "workflow")
         positions = [
-            next(i for i, row in enumerate(rows) if row["verb"] == verb)
+            next(
+                i
+                for i, row in enumerate(rows)
+                if row["verb"] == verb and "ci" in u.Tests.json_strings(row["contexts"])
+            )
             for verb in (first, second)
         ]
         rows[positions[0]], rows[positions[1]] = rows[positions[1]], rows[positions[0]]
         payload["workflow"] = [*rows]
-        with u.Tests.raises(e.PydanticValidationError, match="CI requires setup"):
+        with u.Tests.raises(e.PydanticValidationError, match="CI starts with setup"):
             m.Infra.MakeSpec.model_validate(payload)
 
     @staticmethod
@@ -390,7 +370,7 @@ class TestsFlextInfraCodegenMakeCheckPartition:
             m.Infra.MakeWorkflowStepSpec(
                 identity=phase.name,
                 verb=phase.name,
-                contexts=("local", "ci"),
+                contexts=("local", "ci", "pre_commit"),
             ).model_dump(mode="json", exclude_computed_fields=True),
         )
         payload["workflow"] = [*rows]

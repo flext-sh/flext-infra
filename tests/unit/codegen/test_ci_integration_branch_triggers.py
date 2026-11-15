@@ -192,7 +192,7 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
     def test_ci_and_hook_share_the_check_and_test_workflow(
         profile: c.Infra.MakeProfile,
     ) -> None:
-        """CI approval and the commit hook share their check and test operations."""
+        """CI approval and the commit hook run the same rows, in the same order."""
         codegen = config.Infra.codegen
         spec = u.CodegenTestSupport.Ci.workflow_spec(
             dist="approval-consumer",
@@ -233,11 +233,15 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
                         eq=False,
                     )
         tm.that(rendered, lacks=["continue-on-error", "make pre-commit"])
+        # fmt and fix repair in place, so CI fails when a row changed a file.
+        tm.that(
+            [str(step.get("run", "")) for step in steps][steps.index(approval[-1]) + 1],
+            eq="git diff --exit-code --ignore-submodules=all",
+        )
         hook = tm.ok(
             u.Cli.template_render(
                 root / ".pre-commit-config.yaml.j2",
                 m.Infra.MakeWorkflowRenderSpec(
-                    scenario_data_roots=config.Infra.codegen.exclusions.scenario_data_roots,
                     dist=spec.dist,
                     make=codegen.make,
                 ),
@@ -248,21 +252,17 @@ class TestsFlextInfraCiIntegrationBranchTriggers:
             step for step in codegen.make.workflow if "pre_commit" in step.contexts
         )
         tm.that(
-            tuple(step.verb for step in commit_steps),
-            eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK),
+            commit_steps,
+            eq=tuple(step for step in codegen.make.workflow if "ci" in step.contexts),
         )
-        # Each commit row renders its own hook, in workflow order: setup
-        # provisions through Make, check runs the engine on the staged files.
+        # Each commit row renders its own hook, in workflow order, and runs
+        # its Make command under the commit token.
         positions = [
             hook.index(f"flext-pre-commit-{step.identity}") for step in commit_steps
         ]
         tm.that(positions, eq=sorted(positions))
-        tm.that(hook, has=f"{commit_token} {commit_steps[0].make_command}")
-        tm.that(hook, has=f'{commit_token} "$FLEXT" check run')
-        # Comments may name other verbs; no hook command runs them.
-        for line in hook.splitlines():
-            if "bash -eu -o pipefail -c" in line:
-                tm.that(line, lacks=["make pre-commit", "make fmt", "make fix"])
+        for step in commit_steps:
+            tm.that(hook, has=f"{commit_token} {step.make_command};")
 
     @staticmethod
     @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))

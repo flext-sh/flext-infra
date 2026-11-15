@@ -129,9 +129,10 @@ class FlextInfraModelsConfigMake(
             t.NonEmptyStr,
             m.Field(
                 description=(
-                    "Token the generated commit hook passes to its check row: "
-                    "check then runs only the commit-stage gates "
-                    "(MakeSpec.pre_commit_check_gates) and no other validator."
+                    "Token the generated commit hook passes to every row: "
+                    "fmt, fix and the primary check then act on the committing "
+                    "repository only. A complete check under it runs only the "
+                    "commit-stage gates (MakeSpec.pre_commit_check_gates)."
                 ),
             ),
         ]
@@ -1166,16 +1167,15 @@ class FlextInfraModelsConfigMake(
         def _validate_workflow(self, declared: set[str], admissible: set[str]) -> None:
             """Validate the workflow verbs against the declared public verbs.
 
-            CI provisions first and runs the read-only check and complete test
-            owners in order. The pre-commit rows run setup, then the read-only
-            check.
+            CI provisions first and its only check or tests row is the primary
+            check. The pre-commit rows are the CI rows.
 
             Raises:
                 ValueError: If make workflow verbs must be unique; or if make
                     workflow verbs are not declared public verbs; or if make
                     workflow verbs must be available in every profile; or if CI
                     approval boundaries or milestone order are invalid; or if
-                    the pre-commit rows are not setup followed by check.
+                    the pre-commit rows are not the CI rows.
 
             """
             workflow_verbs = tuple(step.verb for step in self.workflow)
@@ -1226,15 +1226,17 @@ class FlextInfraModelsConfigMake(
                 )
                 != milestones
             ):
-                msg = "CI requires setup followed by the fast primary check only"
+                msg = (
+                    "CI starts with setup and its only check or tests row is "
+                    "the primary check"
+                )
                 raise ValueError(msg)
+            # The commit hook runs the CI rows (ADR-029).
             hook = tuple(
-                step.verb for step in self.workflow if "pre_commit" in step.contexts
+                step for step in self.workflow if "pre_commit" in step.contexts
             )
-            # A commit first provisions the checkout's own environment, so the
-            # check runs the locked toolchain even in a fresh lane worktree.
-            if hook != (c.Infra.VERB_SETUP, c.Infra.VERB_CHECK):
-                msg = "the pre-commit hook requires setup followed by check"
+            if hook != approval:
+                msg = "the pre-commit hook runs the CI rows"
                 raise ValueError(msg)
 
         def _validate_workflow_requirements(self) -> None:
@@ -1302,7 +1304,7 @@ class FlextInfraModelsConfigMake(
 
             Raises:
                 ValueError: If tests lack global primary admission or complete
-                    check lacks prior behavioral admission outside the commit hook.
+                    check lacks prior behavioral admission.
 
             """
             tests = next(
@@ -1316,10 +1318,10 @@ class FlextInfraModelsConfigMake(
             )
             if not any(
                 required.step == tests.identity
-                and set(required.contexts) == set(complete.contexts) - {"pre_commit"}
+                and set(required.contexts) == set(complete.contexts)
                 for required in complete.requires
             ):
-                msg = "complete check requires native tests outside the commit hook"
+                msg = "complete check requires native tests"
                 raise ValueError(msg)
             final_tests = next(
                 step
@@ -1457,10 +1459,10 @@ class FlextInfraModelsConfigMake(
         @m.computed_field
         @property
         def pre_commit_check_gates(self) -> tuple[str, ...]:
-            """The commit hook runs only the fast commit-stage gates.
+            """Commit-stage gates a complete check runs under the commit token.
 
             Returns:
-                The active gates, in default order, the commit hook admits.
+                The active commit-stage gates, in default order.
 
             """
             stages = self.check_gate_stages

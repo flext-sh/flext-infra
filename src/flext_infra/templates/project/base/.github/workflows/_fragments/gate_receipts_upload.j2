@@ -1,8 +1,8 @@
 
       # Why: a failed gate's job log prints only counts; its raw receipts under
-      # the declared gate receipts directory are the evidence. Only approval
-      # rows capture receipts, so the upload runs exactly when one of them
-      # failed (tests included), never after a setup failure that left none.
+      # the declared gate receipts directory are the evidence. Only check and
+      # tests rows capture receipts, so the upload runs exactly when one of
+      # them failed, never after a setup, fmt or fix failure that left none.
       - name: Upload gate receipts on failure
         if: {% raw %}${{ failure() && ({% endraw %}{{ gate_receipts_failed }}{% raw %}) }}{% endraw %}
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].version }}

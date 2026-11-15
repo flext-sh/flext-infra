@@ -344,10 +344,10 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """The commit hook provisions then checks; pre-push adds the tests.
+        """The commit hook runs the CI rows; pre-push adds the tests.
 
-        Operator order 2026-11-12: the commit hook is (setup, check), so a fresh
-        lane commits against its own locked toolchain; tests run on push.
+        Setup is the first commit row, so a fresh lane commits against its own
+        locked toolchain; every commit check row is the primary phase.
         """
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
@@ -355,7 +355,14 @@ class TestsFlextInfraCodegenArtifactSsot:
 
         commit_verbs = tuple(step.verb for step in pre_commit)
         push_verbs = {step.verb for step in pre_push}
-        tm.that(commit_verbs, eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK))
+        tm.that(
+            pre_commit, eq=tuple(step for step in workflow if "ci" in step.contexts)
+        )
+        tm.that(commit_verbs[0], eq=c.Infra.VERB_SETUP)
+        tm.that(
+            {step.phase for step in pre_commit if step.verb == c.Infra.VERB_CHECK},
+            eq={c.Infra.CheckPhase.PRIMARY},
+        )
         tm.ok(c.Infra.VERB_CHECK in push_verbs)
         tm.ok(c.Infra.VERB_TEST in push_verbs)
         tm.ok(c.Infra.VERB_TEST not in commit_verbs)

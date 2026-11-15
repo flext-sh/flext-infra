@@ -86,3 +86,9 @@ class TestsFlextInfraCiCompleteCheck:
             if step.get("name") == "Upload gate receipts on failure"
         )
         tm.that(receipts["if"], has="steps.qualification-check.outcome == 'failure'")
+        # Only check and tests rows capture receipts.
+        for step in (item for item in spec.make.workflow if "ci" in item.contexts):
+            tm.that(
+                f"steps.approval-{step.identity}.outcome" in str(receipts["if"]),
+                eq=step.verb in {c.Infra.VERB_CHECK, c.Infra.VERB_TEST},
+            )

@@ -823,11 +823,13 @@ Infra:
         # Other pre-push verbs use this token to preserve local test behavior;
         # pre-push check unsets CI so it runs every active check gate.
         local_value: N
-        # pre_commit_value: the generated commit hook passes this token to its
-        # check row, which then runs only the commit-stage (fast) gates.
+        # pre_commit_value: the generated commit hook passes this token to
+        # every row; fmt, fix and the primary check then act on the committing
+        # repository only, as under `value`.
         pre_commit_value: C
         # Every remote runner exports this pair whatever CI token a step
-        # passes.
+        # passes; with it check, fmt, fix and tests act on the runner's own
+        # repository only, as under `value` and `pre_commit_value`.
         remote_variable: GITHUB_ACTIONS
         remote_value: "true"
         # Gate baseline of the 0.12 line (tracker memory
@@ -838,19 +840,22 @@ Infra:
         # partition derives from it (gate-budget law; tracker memory
         # operator-ruling-2026-10-01-precommit-fast-only):
         # - pre_commit_value runs MakeSpec.pre_commit_check_gates, the fast
-        #   commit-stage lint/format/markdown gates only;
+        #   commit-stage lint/format/markdown gates only (no hook row runs
+        #   the complete check);
         # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
         #   (pyrefly included, so CI is never blind to types);
         # - CI=N and an unset CI (a developer's make check and the pre-push
         #   hook) run every active gate: the codemod rule set, smells and the
-        #   project's own validators block there.
+        #   project's own validators block there;
+        # - the primary phase runs MakeSpec.check_prerequisite_gates under
+        #   every token.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
-        # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # CI owns the complete gate. A pre-push row that runs make check/tests over
-        # the whole tree blocks every push for minutes, so only the commit-stage
-        # incremental hook is emitted.
+        # incremental selection. The commit hook runs the CI rows, which hold
+        # no tests row. A pre-push row that runs make check/tests over the
+        # whole tree blocks every push for minutes, so only the commit hook is
+        # emitted.
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -866,29 +871,30 @@ Infra:
       # worktree commits against its own locked toolchain, never PATH.
       - { identity: setup, verb: setup, contexts: [ local, ci, pre_commit ] }
       # Initial behavioral admission requires global source evidence, not full check.
-      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
+      - { identity: check-primary, verb: check, phase: primary, contexts: [ local, pre_push ] }
       - identity: tests-primary
         verb: tests
         contexts: [ local, pre_push ]
         requires:
         - { step: check-primary, contexts: [ local, pre_push ] }
-      # CI never generates: check's `codegen conform --mode check` is the
-      # read-only projection verdict of the LOCKED generator, so a stale or
-      # skewed projection fails there, while CI generation would run the
-      # local codemod cascade and verify only its own output.
+      # CI and the commit hook do not run gen in this stage.
       - { identity: gen, verb: gen, contexts: [ local ], requires: [ { step: tests-primary, contexts: [ local ] } ] }
-      - { identity: fmt, verb: fmt, contexts: [ local ], requires: [ { step: gen, contexts: [ local ] } ] }
-      - { identity: fix, verb: fix, contexts: [ local ], requires: [ { step: fmt, contexts: [ local ] } ] }
+      # The commit hook and CI run fmt, fix and the primary check, in that
+      # order (ADR-029). The hook stages what fmt and fix changed; CI fails
+      # when they change a file.
+      - { identity: fmt, verb: fmt, contexts: [ local, ci, pre_commit ], requires: [ { step: gen, contexts: [ local ] } ] }
+      - { identity: fix, verb: fix, contexts: [ local, ci, pre_commit ], requires: [ { step: fmt, contexts: [ local, ci, pre_commit ] } ] }
       - { identity: mod, verb: mod, contexts: [ local ], requires: [ { step: fix, contexts: [ local ] } ] }
       - identity: check-primary-refresh
         verb: check
         phase: primary
-        contexts: [ local ]
+        contexts: [ local, ci, pre_commit ]
         requires:
         - { step: mod, contexts: [ local ] }
+        - { step: fix, contexts: [ ci, pre_commit ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        contexts: [ local, pre_push ]
         requires:
         - { step: tests-primary, contexts: [ local, pre_push ] }
         - { step: check-primary-refresh, contexts: [ local ] }

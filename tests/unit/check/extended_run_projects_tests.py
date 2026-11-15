@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.check import FlextInfraWorkspaceChecker
-from tests import c, tm, u
+from tests import c, m, tm, u
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
+
+    from tests import t
 
 
 class TestsFlextInfraRunProjects:
@@ -65,6 +69,81 @@ class TestsFlextInfraRunProjects:
         )
 
         tm.fail(result, has="selected no projects")
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        ("scope", "members"),
+        [
+            (c.Infra.CodegenConformScope.SELF, ()),
+            (c.Infra.CodegenConformScope.ALL, ("sample-member",)),
+        ],
+    )
+    def test_primary_check_validates_the_requested_scope(
+        tmp_path: Path,
+        scope: c.Infra.CodegenConformScope,
+        members: tuple[str, ...],
+    ) -> None:
+        """Scope self checks the invoked repository alone; all adds members."""
+        root = tmp_path / "workspace"
+        member = u.Tests.WorktreeFixture.governed_workspace_with_member(
+            root, member="sample-member"
+        )
+        report = tm.ok(
+            FlextInfraWorkspaceChecker(repository_root=root).execute_report(
+                m.Infra.RunCommand(
+                    repository_root=root,
+                    phase=c.Infra.CheckPhase.PRIMARY,
+                    scope=scope,
+                    reports_dir=str(tmp_path / "reports"),
+                )
+            )
+        )
+        tm.that(
+            tuple(target.path for target in report.targets),
+            eq=(root, *(member.parent / name for name in members)),
+        )
+        tm.that(
+            tuple(result.project for result in report.results),
+            eq=(root.name, *members),
+        )
+        tm.that(
+            report.requested_gates,
+            eq=config.Infra.codegen.make.check_prerequisite_gates,
+        )
+
+    @staticmethod
+    @c.Tests.MARK.parametrize(
+        "selection",
+        [
+            {"projects": ["sample-member"]},
+            {"gates": (c.Infra.LINT,)},
+            {"gate-set": c.Infra.CheckGateSet.FIX},
+            {"apply": True},
+            {"check-only": True},
+            {"file": "sample.py", "gates": (c.Infra.LINT,)},
+        ],
+    )
+    def test_primary_check_refuses_every_filter(
+        tmp_path: Path,
+        selection: Mapping[str, t.JsonValue],
+    ) -> None:
+        """The primary phase admits no file, project, gate or repair selection."""
+        root = tmp_path / "workspace"
+        u.Tests.WorktreeFixture.governed_workspace_with_member(
+            root, member="sample-member"
+        )
+        tm.ok(u.Cli.atomic_write_text_file(root / "sample.py", '"""Sample."""\n'))
+        tm.fail(
+            FlextInfraWorkspaceChecker(repository_root=root).execute_report(
+                m.Infra.RunCommand.model_validate({
+                    "repository_root": root,
+                    "phase": c.Infra.CheckPhase.PRIMARY,
+                    "scope": c.Infra.CodegenConformScope.SELF,
+                    **selection,
+                })
+            ),
+            has="primary check",
+        )
 
     @staticmethod
     def _member(tmp_path: Path, name: str) -> Path:

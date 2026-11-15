@@ -29,3 +29,7 @@ jobs:
       - name: {{ step.make_command }}
         run: {{ step.make_command }}
 {%- endfor %}
+
+      # fmt and fix repair in place: a file they changed was committed unrepaired.
+      - name: Approval rows left no difference
+        run: git diff --exit-code --ignore-submodules=all

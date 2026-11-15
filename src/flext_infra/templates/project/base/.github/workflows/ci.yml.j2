@@ -149,28 +149,37 @@ jobs:
 {%- endif %}
 {%- include "_fragments/custom_steps.j2" %}
 
-{%- set ci_check = namespace(setup_id="", ran="", failed="") %}
+{%- set ci_check = namespace(setup_id="", ran="", receipts_failed="") %}
 {%- for step in make.workflow if "ci" in step.contexts %}
 {%- set approval_id = "approval-" ~ step.identity %}
 {%- if loop.first %}
 {%- set ci_check.setup_id = approval_id %}
 {%- else %}
 {%- set ci_check.ran = ci_check.ran ~ (" || " if ci_check.ran else "") ~ "steps." ~ approval_id ~ ".outcome == 'success' || steps." ~ approval_id ~ ".outcome == 'failure'" %}
-{%- set ci_check.failed = ci_check.failed ~ (" || " if ci_check.failed else "") ~ "steps." ~ approval_id ~ ".outcome == 'failure'" %}
+{%- if step.verb in ("check", "tests") %}
+{%- set ci_check.receipts_failed = ci_check.receipts_failed ~ "steps." ~ approval_id ~ ".outcome == 'failure' || " %}
+{%- endif %}
 {%- endif %}
       # CI approval, one visible step per ci workflow row ({{ make.approval_verbs | join(" -> ") }}).
       - name: {{ step.make_command }} (blocking)
         id: {{ approval_id }}
 {%- if not loop.first %}
-        # Every approval verb reports once setup provisioned the environment,
-        # so one red verdict never hides the others; a declared requirement
-        # (workflow requires) admits the step only after that verb is green.
+        # A row runs once setup provisioned the environment and every row it
+        # requires (workflow requires) is green; rows without a requirement
+        # report independently of one another.
         if: {% raw %}${{ !cancelled() && steps.{% endraw %}{{ ci_check.setup_id }}{% raw %}.outcome == 'success'{% endraw %}{% for required in step.requires if "ci" in required.contexts %}{% raw %} && steps.{% endraw %}approval-{{ required.step }}{% raw %}.outcome == 'success'{% endraw %}{% endfor %}{% raw %} }}{% endraw %}
 {%- endif %}
         run: {{ make.ci.variable }}={{ make.ci.value }} {{ step.make_command }}
 {%- endfor %}
+      # fmt and fix repair in place: a file they changed was committed unrepaired.
+      # Own project only, as in the commit hook: a submodule's state is its own CI's.
+      - name: Approval rows left no difference
+        if: {% raw %}${{ !cancelled() && steps.{% endraw %}{{ ci_check.setup_id }}{% raw %}.outcome == 'success' }}{% endraw %}
+        run: git diff --exit-code --ignore-submodules=all
 {%- for step in make.workflow if step.verb == "check" and step.phase != "primary" %}
 {%- if loop.first %}
+      # The local token selects every active gate; the remote runner pair
+      # keeps the check on this repository only.
       - name: Complete check qualification
         id: qualification-check
         if: {% raw %}${{ !cancelled() && inputs.full_check == true && steps.{% endraw %}{{ ci_check.setup_id }}{% raw %}.outcome == 'success' }}{% endraw %}
@@ -202,7 +211,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
-{%- set gate_receipts_failed = ci_check.failed ~ " || steps.qualification-check.outcome == 'failure'" %}
+{%- set gate_receipts_failed = ci_check.receipts_failed ~ "steps.qualification-check.outcome == 'failure'" %}
 {%- include "_fragments/gate_receipts_upload.j2" %}
 
       # The lock-hash key is immutable: save only when the exact key missed,

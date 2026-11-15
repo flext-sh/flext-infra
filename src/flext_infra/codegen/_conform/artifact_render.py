@@ -786,7 +786,6 @@ class FlextInfraCodegenConformArtifactRender(FlextInfraCodegenConformContextRend
             spec = m.Infra.MakeWorkflowRenderSpec.model_validate({
                 "dist": (dist),
                 "make": (codegen.make),
-                "scenario_data_roots": (codegen.exclusions.scenario_data_roots),
             })
         elif destination == c.Infra.MARKDOWN_CONFIG_FILENAME:
             tooling = render_inputs.tooling_runtime

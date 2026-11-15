@@ -230,7 +230,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
             "--phase",
             phase.value,
             "--scope",
-            c.Infra.CodegenConformScope.ALL.value,
+            request.scope.value,
             "--reports-dir",
             str(report_root / c.Infra.VERB_CHECK),
             *(
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesGitAttestation(FlextInfraUtilitiesGitAttestationEvidenc
                 "repository_root": root,
                 "gates": gates,
                 "phase": phase,
-                "scope": c.Infra.CodegenConformScope.ALL,
+                "scope": request.scope,
             },
         )
         started_capture = cls.git_begin_gate_capture(

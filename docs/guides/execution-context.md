@@ -4130,16 +4130,35 @@ Pyrefly are the only Python analyzers: Ruff owns formatting and lint, Pyrefly
 owns whole-program type analysis, and no second type checker runs beside them
 (operator order 2026-11-13, `ag-6w7a`). Ruff uses one shared external cache
 (`u.Infra.ruff_cache_directory`) and keys its own entries by its version and
-package root inside it; FLEXT adds no namespace of its own. The commit hook
-first provisions the checkout with `make setup`,
-then passes `make.ci.pre_commit_value` to the check, which runs only the fast
-commit-stage gates (`make.pre_commit_check_gates`: lint, format and Markdown)
-through the engine that setup provisioned; it runs no tests and no other
-validator. Staged Python files run the lint and format gates on those files; a
-staged Markdown file runs the `markdown` and `markdown-format` gates over the
-repository, never a raw `rumdl` pass, so a declared foreign projected block
-(`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
-`make check` and `make fmt`. Codemod, smells and repository-owned validators
+package root inside it; FLEXT adds no namespace of its own.
+
+The generated commit hook (run by `prek`) and CI run the same rows, in the
+same order: the `make.workflow` rows declared for both the `ci` and
+`pre_commit` contexts (setup first, repairs, then the primary check phase;
+no tests row). Every FLEXT project runs them the same way: a workspace root,
+a standalone checkout and an attached member (operator order 2026-11-15).
+
+In the hook and in CI a repository validates itself only. The CI token, the
+hook's `make.ci.pre_commit_value` and a remote runner (`make.ci.remote_variable`
+set to `make.ci.remote_value`, whatever token a step passes) each select scope
+`self`: `check` (both phases), `fmt`, `fix` and `tests` act on the invoked
+repository alone, from its own root. A workspace root never validates its
+members there, and an attached member never checks its superproject; each
+subproject is validated by its own hook and CI. The whole-workspace check is a
+local operation: with no token, or the local token off a runner, `check` covers
+every governed repository, and its primary phase runs from the runtime root.
+The primary phase admits no file, project, gate or repair selection in either
+scope. Make runs without Git's hook-local variables; each row then
+stages the regular tracked files its verb changed, never a gitlink, into the
+index Git handed the hook, so the commit carries the repairs. One native
+`git diff --cached --check` follows the rows and rejects whitespace errors and
+conflict markers in what is being committed. CI runs
+`git diff --exit-code --ignore-submodules=all` after its rows and fails when
+they changed a file of its own repository. A complete `make check`
+under the commit token runs only the commit-stage gates
+(`make.pre_commit_check_gates`); no hook row runs it.
+
+Codemod, smells and repository-owned validators
 carry the push stage, so they block locally and at pre-push. Every gate blocks in
 every context that runs it; there is no informative or advisory gate. The `check`
 pre-push hook drops the inherited `CI` to run every active gate.
@@ -4148,11 +4167,9 @@ and the shared merge-control classifier. It reads literal source-link targets wi
 following them. Every finding, including a native warning, blocks approval while its
 original severity remains in the receipt.
 
-Every workspace and standalone projection exposes `make pre-commit` for the CI
-validation
-workflow. CI invokes the separate approval verbs declared by `make.workflow`, in their
-declared order; it never substitutes the fast hook for approval, and no verb requires
-a clean or unchanged tree. The configured CI token selects the blocking CI gate
+CI invokes the approval rows declared by `make.workflow`, in their declared
+order, and no verb requires a clean or unchanged tree. The configured CI token
+selects the blocking CI gate
 partition. Audit is read-only conformance and installed-lock provenance, not
 generation or a dirty-tree check; legitimate staged changes are not rejected simply
 for being staged.

@@ -565,6 +565,18 @@ class FlextInfraModelsGates(FlextInfraModelsDuplication):
             Path | None,
             m.Field(description="Invocation-owned typed checker summary destination"),
         ] = None
+        scope: Annotated[
+            Literal[
+                c.Infra.CodegenConformScope.ALL,
+                c.Infra.CodegenConformScope.SELF,
+            ],
+            m.Field(
+                description=(
+                    "Check every governed repository, or only this repository "
+                    "(CI and the commit hook)"
+                ),
+            ),
+        ] = c.Infra.CodegenConformScope.ALL
 
     class GateCaptureFinishRequest(m.ContractModel):
         """Reaped producer facts and publication context for one original capture."""

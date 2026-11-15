@@ -159,8 +159,8 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         The former single ``make pre-commit`` step failed unattended runs
         because setup refused a stale lock; setup now provisions whatever the
         locks state (operator-ruling-2026-10-09-setup-resilient), so the gates
-        run on push and pull request instead of only on manual dispatch. After
-        setup, every verb reports even when an earlier one is red.
+        run on push and pull request instead of only on manual dispatch. Every
+        row waits for setup; a row also waits for the rows it requires.
         """
         workflow = (rendered_project / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8",
@@ -256,21 +256,18 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
             for step in make.workflow
             if make.pre_commit and "pre_commit" in step.contexts
         )
+        # The rows come first; one native Git check of the commit follows.
         tm.that(
-            [hook["id"] for hook in commits],
+            [hook["id"] for hook in commits[: len(commit_steps)]],
             eq=[f"flext-pre-commit-{step.identity}" for step in commit_steps],
         )
+        tm.that(
+            [hook["entry"] for hook in commits[len(commit_steps) :]],
+            eq=["git diff --cached --check"] if make.pre_commit else [],
+        )
         token = f"{make.ci.variable}={make.ci.pre_commit_value}"
-        for hook, step in zip(commits, commit_steps, strict=True):
-            # Setup provisions through Make; check runs on the staged files.
-            tm.that(
-                hook["entry"],
-                has=(
-                    f'{token} "$FLEXT" check run'
-                    if step.verb == c.Infra.VERB_CHECK
-                    else f"{token} {step.make_command}"
-                ),
-            )
+        for hook, step in zip(commits, commit_steps, strict=False):
+            tm.that(hook["entry"], has=f"{token} {step.make_command};")
         pushes = [hook for hook in hooks if hook.get("stages") == ["pre-push"]]
         expected = tuple(
             step.verb

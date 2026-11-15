@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import config
 from tests import c, tm, u
 
 
@@ -47,3 +48,23 @@ class TestsFlextInfraCodegenCiTemplateProjection:
 
         tm.that(rendered, lacks="\n\n\n")
         tm.that(rendered, has="          fetch-depth: 0\n\n      - name: ")
+
+    def test_rows_are_followed_by_the_no_difference_step(self) -> None:
+        """The CI rows run in order, then CI fails when they changed a file."""
+        commands = [
+            str(step.get("run", ""))
+            for step in u.CodegenTestSupport.Ci.ci_job_steps(self._render())
+            if "run" in step
+        ]
+
+        tm.that(
+            commands,
+            eq=[
+                *(
+                    step.make_command
+                    for step in config.Infra.codegen.make.workflow
+                    if "ci" in step.contexts
+                ),
+                "git diff --exit-code --ignore-submodules=all",
+            ],
+        )
