@@ -227,18 +227,11 @@ class FlextInfraModelsCodegenLazyInit:
                 "their symbols are not reexported by an ancestor."
             ),
         )
-        deferred_members: Mapping[str, Sequence[str]] = m.Field(
-            default_factory=dict,
+        deferred_exports: Sequence[str] = m.Field(
+            default_factory=tuple,
             description=(
-                "Own member names of each facade-composed class export; it "
-                "loads on first member use."
-            ),
-        )
-        deferred_bases: Mapping[str, Sequence[tuple[str, str]]] = m.Field(
-            default_factory=dict,
-            description=(
-                "``(package, export)`` of the base stand-ins each deferred "
-                "export shares, in the real class's base order."
+                "Facade-composed class exports published as stand-ins; their "
+                "members and bases are resolved at run time from the code."
             ),
         )
         deferred_instances: Sequence[str] = m.Field(
@@ -494,18 +487,11 @@ class FlextInfraModelsCodegenLazyInit:
         lazy_export_mapping: t.NonEmptyStr = m.Field(
             description="Literal elected export-to-target installer argument.",
         )
-        deferred_members_mapping: str = m.Field(
+        deferred_exports_argument: str = m.Field(
             default_factory=str,
             description=(
-                "Line-prefixed ``deferred_members`` installer argument; empty "
-                "when the package defers no export."
-            ),
-        )
-        deferred_bases_call: str = m.Field(
-            default_factory=str,
-            description=(
-                "``defer_lazy_bases`` call bound after the installer; empty "
-                "when no deferred export shares a base stand-in."
+                "Line-prefixed ``deferred_members`` installer argument naming "
+                "the stand-in exports; empty when the package defers none."
             ),
         )
         deferred_instances_call: str = m.Field(

@@ -542,24 +542,16 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             if not cls._lazy_init_binds_nothing(run, owner)
         )
-        exporters = cls._lazy_init_part_exporters(run, parts)
         for package_dir, plan in tuple(run.plans.items()):
             scope = (plan.context, plan.lazy_map)
-            index = {
-                name: cls._lazy_init_class_index(run, scope, owner, exporters)
-                for name, owner in sorted(plan.lazy_map.items())
-                if owner in parts
-            }
-            if index:
+            deferred = tuple(
+                name for name, owner in sorted(plan.lazy_map.items()) if owner in parts
+            )
+            for name in deferred:
+                cls._lazy_init_require_part(run, scope, plan.lazy_map[name])
+            if deferred:
                 updated[package_dir] = plan.model_copy(
-                    update={
-                        "deferred_members": {
-                            name: members for name, (members, _) in index.items()
-                        },
-                        "deferred_bases": {
-                            name: bases for name, (_, bases) in index.items() if bases
-                        },
-                    }
+                    update={"deferred_exports": deferred}
                 )
         return updated
 
@@ -583,106 +575,44 @@ class FlextInfraUtilitiesLazyInitPlan:
             and not cls._lazy_init_body_members(facts, owner[1])
         )
 
-    @staticmethod
-    def _lazy_init_part_exporters(
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        parts: frozenset[tuple[str, str]],
-    ) -> Mapping[tuple[str, str], tuple[str, str]]:
-        """Return the nearest initializer export of every deferred part.
-
-        The nearest initializer is the one of the part module's own package;
-        every initializer exporting a part defers it, so its export is the
-        stand-in a deriving stand-in shares as a base.
-
-        Returns:
-            The ``(package, export)`` of each part some initializer exports.
-
-        """
-        exporters: dict[tuple[str, str], tuple[str, str]] = {}
-        for plan in run.plans.values():
-            package = plan.context.current_pkg
-            for name, owner in plan.lazy_map.items():
-                if owner not in parts:
-                    continue
-                known = exporters.get(owner)
-                nearest = owner[0].rpartition(".")[0] == package
-                if known is None or nearest:
-                    exporters[owner] = (package, name)
-        return exporters
-
     @classmethod
-    def _lazy_init_class_index(
+    def _lazy_init_require_part(
         cls,
         run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         scope: tuple[
             FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
         ],
         owner: tuple[str, str],
-        exporters: Mapping[tuple[str, str], tuple[str, str]],
-    ) -> tuple[Sequence[str], Sequence[tuple[str, str]]]:
-        """Return a stand-in's own members and the bases it shares.
+    ) -> None:
+        """Require a part and every in-package base a stand-in becomes representable.
 
-        A base another package's generated initializer publishes is shared by
-        the route its source imports (root ADR-018 stand-in composition law,
-        rule 4); an in-package base an initializer defers is shared through
-        that export. Shared in the real base order, C3 reproduces the real MRO.
-        Any other in-package base is flattened into the members.
-
-        Returns:
-            The member names and the ``(package, export)`` of each shared base.
+        The runtime resolves members and bases from the code (root ADR-018
+        stand-in composition law, rules 2 and 4); an in-package base becomes
+        a stand-in too, so rule 5 holds along the whole in-package walk. A
+        base another package publishes ends the walk at its boundary.
 
         Raises:
-            ValueError: If the export is not a class of its package; if a base
-                is neither a class of its package nor published by a generated
-                FLEXT initializer; if a flattened base follows or derives from
-                a routed base, whose names its members would shadow; or if a
-                flattened base binds a name a shared base binds.
+            ValueError: If a class of the walk is not a class of its package
+                or a stand-in cannot represent it.
 
         """
-        module, name = owner
-        facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, module)
-        if facts is None or name not in facts.classes:
-            msg = f"deferred export {module}.{name} is not a class of its package"
-            raise ValueError(msg)
-        cls._lazy_init_require_representable(facts, owner)
-        members = dict.fromkeys(cls._lazy_init_body_members(facts, name))
-        shared: list[tuple[str, str]] = []
-        shared_names: set[str] = set()
-        flattened: set[str] = set()
-        routed = False
-        for base in facts.classes[name]:
-            target, foreign = cls._lazy_init_required_base(run, scope, owner, base)
-            if foreign:
-                shared.append(target)
-                routed = True
+        pending, visited = [owner], set[tuple[str, str]]()
+        while pending:
+            module, name = pending.pop()
+            if (module, name) in visited:
                 continue
-            inherited, derives = cls._lazy_init_class_members(run, scope, target)
-            export = exporters.get(target)
-            if export is not None:
-                shared.append((
-                    "." if export[0] == scope[0].current_pkg else export[0],
-                    export[1],
-                ))
-                shared_names.update(inherited)
-                continue
-            if routed or derives:
-                msg = (
-                    f"deferred export {module}.{name} flattens the base {base}, "
-                    f"which {'follows' if routed else 'derives from'} a base "
-                    "another package publishes; export that base so the "
-                    "stand-in shares it"
-                )
-                raise ValueError(msg)
-            flattened.update(inherited)
-            members.update(dict.fromkeys(inherited))
-        clash = sorted((flattened & shared_names) - set(facts.class_members[name]))
-        if clash:
-            msg = (
-                f"deferred export {module}.{name} flattens a base that binds "
-                f"names a shared base also binds: {clash}"
+            visited.add((module, name))
+            facts = FlextInfraUtilitiesPythonModel.python_model_module(
+                run.model, module
             )
-            raise ValueError(msg)
-        return tuple(members), tuple(shared)
+            if facts is None or name not in facts.classes:
+                msg = f"deferred class {module}.{name} is not a class of its package"
+                raise ValueError(msg)
+            cls._lazy_init_require_representable(facts, (module, name))
+            for base in facts.classes[name]:
+                resolved = cls._lazy_init_base(run, scope, module, base)
+                if resolved is not None and not resolved[1]:
+                    pending.append(resolved[0])
 
     @classmethod
     def _lazy_init_base(
@@ -715,36 +645,6 @@ class FlextInfraUtilitiesLazyInitPlan:
         if target is None or target[0].split(".", maxsplit=1)[0] != scope[0].surface:
             return None
         return target, False
-
-    @classmethod
-    def _lazy_init_required_base(
-        cls,
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        scope: tuple[
-            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
-        ],
-        owner: tuple[str, str],
-        base: str,
-    ) -> tuple[tuple[str, str], bool]:
-        """Resolve one base of a class whose stand-in must carry it.
-
-        Returns:
-            The resolved base, as ``_lazy_init_base`` returns it.
-
-        Raises:
-            ValueError: If the base is neither a class of its package nor
-                published by a generated FLEXT initializer.
-
-        """
-        resolved = cls._lazy_init_base(run, scope, owner[0], base)
-        if resolved is None:
-            msg = (
-                f"deferred class {owner[0]}.{owner[1]} has the base {base}, which "
-                "is neither a class of its package nor published by a generated "
-                "FLEXT initializer (ADR-018 stand-in composition law, rule 4)"
-            )
-            raise ValueError(msg)
-        return resolved
 
     @staticmethod
     def _lazy_init_require_representable(
@@ -869,55 +769,6 @@ class FlextInfraUtilitiesLazyInitPlan:
                 if resolved is not None and not resolved[1]:
                     pending.append((*resolved[0], plan))
         return frozenset(composed)
-
-    @classmethod
-    def _lazy_init_class_members(
-        cls,
-        run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
-        scope: tuple[
-            FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
-        ],
-        owner: tuple[str, str],
-    ) -> tuple[Sequence[str], bool]:
-        """Return every non-dunder name the class bodies of an in-package MRO bind.
-
-        A base another package publishes ends the walk at the package boundary.
-
-        Returns:
-            The member names in MRO declaration order, and whether the walk
-            met a base another package publishes.
-
-        Raises:
-            ValueError: If a class of the walk is not a class of its package or
-                has a base neither of its package nor published by a generated
-                FLEXT initializer.
-
-        """
-        members: dict[str, None] = {}
-        routed = False
-        pending: list[tuple[str, str]] = [owner]
-        visited: set[tuple[str, str]] = set()
-        while pending:
-            module, name = pending.pop(0)
-            if (module, name) in visited:
-                continue
-            visited.add((module, name))
-            facts = FlextInfraUtilitiesPythonModel.python_model_module(
-                run.model, module
-            )
-            if facts is None or name not in facts.classes:
-                msg = f"deferred base {module}.{name} is not a class of its package"
-                raise ValueError(msg)
-            cls._lazy_init_require_representable(facts, (module, name))
-            members.update(dict.fromkeys(cls._lazy_init_body_members(facts, name)))
-            for base in facts.classes[name]:
-                target, foreign = cls._lazy_init_required_base(
-                    run, scope, (module, name), base
-                )
-                routed = routed or foreign
-                if not foreign:
-                    pending.append(target)
-        return tuple(members), routed
 
     @staticmethod
     def _lazy_init_ancestor_route(
