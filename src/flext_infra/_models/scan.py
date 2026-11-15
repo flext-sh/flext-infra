@@ -206,9 +206,14 @@ class FlextInfraModelsScan:
         inventory: Annotated[
             Mapping[
                 Path,
-                m.Cli.AtomicFileState,
+                m.Cli.AtomicFileState | None,
             ],
-            m.Field(description="Exact sources captured before the native scan"),
+            m.Field(
+                description=(
+                    "Exact sources captured before the native scan; a lexical "
+                    "stub leaf is a path-only entry without content"
+                )
+            ),
         ]
         repository_roots: Annotated[
             tuple[Path, ...],

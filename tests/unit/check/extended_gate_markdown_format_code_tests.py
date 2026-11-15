@@ -269,6 +269,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
+        # Gates select a checkout by its tracked files.
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))

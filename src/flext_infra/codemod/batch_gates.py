@@ -1275,10 +1275,10 @@ class FlextInfraModGateEngine:
         )
         keys = {
             path: FlextInfraCodemodScanCache.source_key(
-                digest, path.relative_to(root), context.inventory[path]
+                digest, path.relative_to(root), state
             )
             for path in sorted(cls._scan_source_paths(root, targets))
-            if path.suffix != ".pyi"
+            if (state := context.inventory[path]) is not None
         }
         fragments: dict[Path, Path | str | None] = {
             path: FlextInfraCodemodScanCache.lookup(key) for path, key in keys.items()
@@ -1682,6 +1682,11 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n",
         )
         sys.stderr.flush()
+        # A lexical stub leaf is only a path finding for check; mod keeps its
+        # physical guard and refuses a leaf that is not a regular file.
+        for stub in sorted(cls._scan_source_paths(root, targets)):
+            if stub.suffix == ".pyi":
+                u.Cli.atomic_read_binary_file_state(stub, required=True).unwrap()
         scanned = cls.native_findings(root, plan, targets).flat_map(cls._completed_scan)
         if scanned.failure:
             return r[p.Infra.ModScanReport].from_failure(scanned)
@@ -1753,7 +1758,9 @@ class FlextInfraModGateEngine:
         """
         context = m.Infra.ModScanSourceContext(
             inventory={
-                path: u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+                path: None
+                if path.suffix == ".pyi"
+                else u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
                 for path in sorted(cls._scan_source_paths(root, targets))
             },
             repository_roots=tuple(

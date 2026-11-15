@@ -244,8 +244,12 @@ class FlextInfraProtocolsScan:
         project_source_roots: Mapping[Path, Path] | None
 
         @property
-        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState]:
-            """Exact sources captured before the native scan."""
+        def inventory(self) -> Mapping[Path, p.Cli.AtomicFileState | None]:
+            """Structural member projected from the owning model.
+
+            Exact sources captured before the native scan; a lexical stub leaf is a
+            path-only entry without content.
+            """
             ...
 
         repository_roots: tuple[Path, ...]
