@@ -471,6 +471,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A parseable fenced Python block selects the embedded-code gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
 
         tm.ok(
             FlextInfraGatesMarkdownCode(tmp_path).selected_for(
