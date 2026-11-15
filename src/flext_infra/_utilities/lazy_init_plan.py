@@ -750,10 +750,14 @@ class FlextInfraUtilitiesLazyInitPlan:
         facts = FlextInfraUtilitiesPythonModel.python_model_module(run.model, module)
         if facts is not None and base in facts.classes:
             return (module, base), False
-        dotted = None if facts is None else facts.imports.get(base)
+        # An attribute base (``Root.Attr``) is shared through its root's route.
+        root, _, path = base.partition(".")
+        dotted = None if facts is None else facts.imports.get(root)
         route = cls._lazy_init_ancestor_route(run, scope, dotted)
         if route is not None:
-            return route, True
+            return (route[0], f"{route[1]}.{path}" if path else route[1]), True
+        if path:
+            return None
         target = cls._lazy_init_base_target(run, scope, dotted)
         if target is None or target[0].split(".", maxsplit=1)[0] != scope[0].surface:
             return None
