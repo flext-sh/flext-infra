@@ -1514,9 +1514,19 @@ class FlextInfraModGateEngine:
                         f"{resolved_project}"
                     )
                 stage = Path(directory) / str(len(reports))
-                ruleset = u.Infra.codemod_stage_scan_ruleset(
-                    u.Infra.project_plan(plan, project), stage
-                )
+                try:
+                    ruleset = u.Infra.codemod_stage_scan_ruleset(
+                        u.Infra.project_plan(plan, project), stage
+                    )
+                except ValueError as exc:
+                    # Staging runs ast-grep over the projected ruleset; its
+                    # refusal stops this scan like any other native failure.
+                    reports.append(
+                        cls.recounted(()).model_copy(
+                            update={"native_failures": (str(exc),)}
+                        )
+                    )
+                    break
                 sys.stderr.write(
                     f"mod: ast-grep project={project.name} "
                     f"provider={ruleset.provider} rules={len(ruleset.rule_ids)}\n",
