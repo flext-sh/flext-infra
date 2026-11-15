@@ -103,6 +103,8 @@ class TestsFlextInfraPyrightPublicContract:
             u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
             encoding=c.DEFAULT_ENCODING,
         )
+        # The phase binds Pyright to the checkout's own environment.
+        u.Tests.provision_checkout(root)
         result = FlextInfraGatesPyright(root).check(
             root,
             m.Infra.GateContext(repository_root=root, reports_dir=root / ".reports"),
@@ -139,11 +141,14 @@ class TestsFlextInfraPyrightPublicContract:
             root = tmp_path / name
             tests = root / "tests"
             tests.mkdir(parents=True)
+            # The phase elects each project's runtime from its Git checkout.
+            u.Tests.initialize_git_repo(root)
             (root / rules.source_dir).mkdir(parents=True, exist_ok=True)
             (tests / "__init__.py").write_text(
                 "from typing import TYPE_CHECKING\n"
                 "if TYPE_CHECKING:\n"
-                "    from tests.constants import c\n",
+                "    from tests.constants import c\n"
+                "__all__ = ['c']\n",
                 encoding="utf-8",
             )
             (tests / "constants.py").write_text(
@@ -157,7 +162,7 @@ class TestsFlextInfraPyrightPublicContract:
                 encoding="utf-8",
             )
             (tests / "consumer.py").write_text(
-                "from tests import c, r\n"
+                "from tests import c\n"
                 f"def catalog() -> {annotation}:\n"
                 "    return c.Tests.RULES_CATALOG_BASIC\n",
                 encoding="utf-8",
@@ -183,7 +188,13 @@ class TestsFlextInfraPyrightPublicContract:
         project = tmp_path / selected
         if selected == "workspace":
             project = tmp_path
-            u.Tests.declare_workspace_projects(tmp_path, ("first", "second"))
+            # A workspace checks its projects as registered submodules.
+            u.Tests.initialize_git_repo(tmp_path)
+            for name, _, _ in projects:
+                u.Tests.commit_git_changes(tmp_path / name, "fixture")
+                u.Tests.WorktreeFixture.attach_submodule(
+                    tmp_path, tmp_path / name, distribution=name, relative_path=name
+                )
             u.Tests.write_project_beads_config(tmp_path, selected)
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
             payload["project"] = {"name": selected, "version": "0.1.0"}
@@ -200,6 +211,8 @@ class TestsFlextInfraPyrightPublicContract:
                 u.Cli.toml_dumps(u.Cli.toml_document_from_mapping(payload)),
                 encoding="utf-8",
             )
+        # The selected checkout owns the environment Pyright resolves.
+        u.Tests.provision_checkout(project)
         context = m.Infra.GateContext(
             repository_root=project,
             reports_dir=project / ".reports",
@@ -259,7 +272,8 @@ class TestsFlextInfraPyrightPublicContract:
         rules = tool_config_document.tools.pyright.path_rules
         roots = tuple(dict.fromkeys((*rules.env_dirs, rules.project_root)))
         for index, root in enumerate(roots):
-            directory = tmp_path / root / "fixtures"
+            # Outside the excluded ``tests/fixtures`` tree, so every root reports.
+            directory = tmp_path / root / "cases"
             directory.mkdir(parents=True, exist_ok=True)
             (directory / f"consumer_{index}.py").write_text(consumer, encoding="utf-8")
         (tmp_path / rules.source_dir / "owner.py").write_text(
@@ -272,6 +286,8 @@ class TestsFlextInfraPyrightPublicContract:
             "    return 1\n",
             encoding="utf-8",
         )
+        # The phase binds Pyright to this checkout's own environment.
+        u.Tests.provision_checkout(tmp_path)
         payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python({})
         FlextInfraEnsurePyrightConfigPhase(
             tool_config_document,

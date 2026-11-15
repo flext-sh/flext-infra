@@ -20,6 +20,22 @@ class TestsFlextInfraCheckReportProgress:
     """Observe real native receipts and interrupted aggregate reports."""
 
     @staticmethod
+    def _register_members(workspace: Path, *members: Path) -> None:
+        """Commit each member and register it as a submodule of ``workspace``.
+
+        A workspace checks its members as registered submodules.
+        """
+        for member in members:
+            u.Tests.commit_git_changes(member, "fixture")
+            relative = member.relative_to(workspace).as_posix()
+            u.Tests.WorktreeFixture.attach_submodule(
+                workspace,
+                member,
+                distribution=relative.replace("/", "-"),
+                relative_path=relative,
+            )
+
+    @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "first_has_python",
@@ -55,6 +71,7 @@ class TestsFlextInfraCheckReportProgress:
                 "def increment(value: int) -> int:\n    return value + 1\n",
                 encoding=c.DEFAULT_ENCODING,
             )
+        TestsFlextInfraCheckReportProgress._register_members(workspace, first, second)
         reports = workspace / "reports"
         refusal = "The consumer audit policy refuses the second Bandit launch"
         consumer = TestsFlextInfraCheckReportProgress._consumer_script(
@@ -97,9 +114,9 @@ class TestsFlextInfraCheckReportProgress:
         tm.that(summary.results, length=1)
         attempted = summary.results[0]
         tm.that(attempted.project, eq=first.name)
-        tm.that(summary.targets[1].applicable_gates, eq=(c.Infra.SECURITY,))
+        tm.that(tuple(summary.targets[1].applicable_gates), eq=(c.Infra.SECURITY,))
         if first_has_python:
-            tm.that(summary.targets[0].applicable_gates, eq=(c.Infra.SECURITY,))
+            tm.that(tuple(summary.targets[0].applicable_gates), eq=(c.Infra.SECURITY,))
             tm.that(tuple(attempted.gates), eq=(c.Infra.SECURITY,))
             execution = attempted.gates[c.Infra.SECURITY]
             tm.ok(execution.result.passed)
@@ -217,6 +234,7 @@ class TestsFlextInfraCheckReportProgress:
                 "def increment(value: int) -> int:\n    return value + 1\n",
                 encoding=c.DEFAULT_ENCODING,
             )
+        TestsFlextInfraCheckReportProgress._register_members(root, member)
         reports = root / "reports"
 
         summary = tm.ok(
@@ -256,4 +274,8 @@ class TestsFlextInfraCheckReportProgress:
             tm.that(bandit.errors, empty=True)
         (report_path,) = reports.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         persisted = m.Infra.SarifReport.model_validate_json(report_path.read_bytes())
-        tm.that(tm.not_none(persisted.properties), eq=summary)
+        # The persisted report is JSON: compare the JSON-native facts.
+        tm.that(
+            tm.not_none(persisted.properties).model_dump(mode="json"),
+            eq=summary.model_dump(mode="json"),
+        )

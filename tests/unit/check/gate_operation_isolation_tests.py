@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraCli
+from flext_infra import FlextInfraCli, config
 from tests import c, tm, u
 
 if TYPE_CHECKING:
@@ -25,14 +25,24 @@ class TestsFlextInfraGateOperationIsolation:
     ) -> None:
         """The final status stays red and independent effects follow explicit policy."""
         project = u.Tests.mk_project(tmp_path, "native-fixture", with_src=True)
-        # The check elects the project's runtime from its Git checkout.
-        u.Tests.initialize_git_repo(project)
         broken = project / "src" / "broken.py"
         broken.write_text("def broken(:\n", encoding="utf-8")
         before = broken.read_bytes()
         document = project / "README.md"
         original = "# Fixture\n\n\nParagraph.\n"
         document.write_text(original, encoding="utf-8")
+        # The Markdown gate reads the generated native configuration, which
+        # renders the typed SSOT.
+        (project / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
+            u.Infra.markdown_native_configuration(
+                config.Infra.tooling.tools.markdown,
+                config.Infra.codegen.markdown_exclude_globs,
+            ),
+            encoding="utf-8",
+        )
+        # The check elects the project's runtime from its Git checkout, and
+        # gates select a checkout by its tracked files.
+        u.Tests.initialize_git_repo(project)
 
         exit_code = FlextInfraCli.infra_main([
             "check",
