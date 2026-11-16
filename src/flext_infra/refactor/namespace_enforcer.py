@@ -89,46 +89,27 @@ class FlextInfraNamespaceEnforcer(
             path for paths in files_by_project.values() for path in paths
         )
         plan_root = (
-            self._repository_root / project_names[0]
-            if project_names
-            and len(project_names) == 1
-            and (self._repository_root / project_names[0]).is_dir()
-            else project_roots[0]
-            if len(project_roots) == 1
-            else self._repository_root
+            project_roots[0] if len(project_roots) == 1 else self._repository_root
         )
         with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
             before_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         source_files = tuple(sorted(scoped)) if module is not None else None
-        before = FlextInfraModGateEngine.scan(
-            self._repository_root,
-            fix=False,
-            source_files=source_files,
-        ).unwrap()
-        before = before.model_copy(
-            update={
-                "entries": tuple(
-                    entry
-                    for entry in before.entries
-                    if (self._repository_root / entry.file).resolve() in scoped
-                ),
-            }
-        )
+        before = self._scan_scope(plan_root, before_plan, source_files, scoped)
         if apply:
             for project_root, py_files in files_by_project.items():
                 if module is not None:
                     FlextInfraCodemodLoopPhaseImportNormalization.apply_files(
                         project_root, py_files
                     )
-                relocation_ids = tuple(cascade.relocation_by_rule(project_root))
-                if not relocation_ids or not py_files:
+                if not py_files:
                     continue
-                current = FlextInfraModGateEngine.scan(
-                    project_root,
-                    fix=False,
-                    selection=relocation_ids,
-                    source_files=py_files,
-                ).unwrap()
+                current = (
+                    before
+                    if module is None and project_root == plan_root
+                    else self._scan_relocations(project_root, py_files)
+                )
+                if current is None:
+                    continue
                 cascade.run(
                     project_root=project_root,
                     rope_project=self._rope_project,
@@ -138,28 +119,15 @@ class FlextInfraNamespaceEnforcer(
                     py_files=py_files,
                     gates=gates,
                 )
+        after_plan = before_plan
+        if apply:
+            with u.Infra.codemod_workspace_snapshot(plan_root) as snapshot:
+                after_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         after = (
-            FlextInfraModGateEngine.scan(
-                self._repository_root,
-                fix=False,
-                source_files=source_files,
-            ).unwrap()
+            self._scan_scope(plan_root, after_plan, source_files, scoped)
             if apply
             else before
         )
-        after = after.model_copy(
-            update={
-                "entries": tuple(
-                    entry
-                    for entry in after.entries
-                    if (self._repository_root / entry.file).resolve() in scoped
-                ),
-            }
-        )
-        after_plan = before_plan
-        if apply:
-            with u.Infra.codemod_workspace_snapshot(self._repository_root) as snapshot:
-                after_plan = u.Infra.codemod_rule_plan(snapshot).unwrap()
         rule_ids = tuple(
             sorted({
                 rule.id for plan in (before_plan, after_plan) for rule in plan.rules
@@ -190,6 +158,51 @@ class FlextInfraNamespaceEnforcer(
                 )
                 for root, py_files in files_by_project.items()
             ),
+        )
+
+    @staticmethod
+    def _scan_relocations(
+        root: Path, files: Sequence[Path]
+    ) -> p.Infra.ModScanReport | None:
+        """Read fresh relocation findings when the initial report cannot be reused.
+
+        Returns:
+            The scan report, or none when no relocation rules apply.
+
+        """
+        rule_ids = tuple(FlextInfraNamespaceRelocationCascade.relocation_by_rule(root))
+        return (
+            FlextInfraModGateEngine.scan(
+                root, fix=False, selection=rule_ids, source_files=files
+            ).unwrap()
+            if rule_ids
+            else None
+        )
+
+    @staticmethod
+    def _scan_scope(
+        root: Path,
+        plan: p.Infra.CodemodRulePlan,
+        source_files: Sequence[Path] | None,
+        scoped: frozenset[Path],
+    ) -> p.Infra.ModScanReport:
+        """Scan the plan's repository and keep findings on the selected sources.
+
+        Returns:
+            The filtered report with its original native evidence.
+
+        """
+        report = FlextInfraModGateEngine.scan(
+            root, fix=False, selection=plan, source_files=source_files
+        ).unwrap()
+        return report.model_copy(
+            update={
+                "entries": tuple(
+                    entry
+                    for entry in report.entries
+                    if (root / entry.file).resolve() in scoped
+                ),
+            }
         )
 
     def _resolve_project_roots(

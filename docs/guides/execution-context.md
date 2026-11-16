@@ -4001,6 +4001,14 @@ class: the non-dunder names each exposes at runtime, including names bound by
 unpacking, decorators or `setattr`, must be equal, or the stale initializer fails
 with a `make gen` fix (rule 2).
 
+Two composed classes stay real instead of becoming stand-ins (rule 5): a class
+whose body binds no member and names no base, and a class the package's own
+import-time code reads. That code is each module an eager dunder binding (such as
+`__version__`) loads while the package initializes, together with every
+in-package module those modules import at runtime, transitively; the facts are
+the same parse's runtime imports. A stand-in published there would make the
+process mix stand-ins and real classes, which the eager lazy mode refuses.
+
 Lazy initializer planning keeps facade exports lazy. A version metadata export
 whose name collides with its child module uses the existing eager-dunder contract:
 the scalar is bound before lazy installation and omitted from the lazy map. Public
@@ -4139,10 +4147,10 @@ validator. Staged Python files run the lint and format gates on those files; a
 staged Markdown file runs the `markdown` and `markdown-format` gates over the
 repository, never a raw `rumdl` pass, so a declared foreign projected block
 (`tooling.tools.markdown.projected-blocks`) reads the same in the hook as in
-`make check` and `make fmt`. Codemod, smells and repository-owned validators
-carry the push stage, so they block locally and at pre-push. Every gate blocks in
-every context that runs it; there is no informative or advisory gate. The `check`
-pre-push hook drops the inherited `CI` to run every active gate.
+`make check` and `make fmt`. When enabled, the generated pre-push hook
+drops inherited `CI` and runs the workflow's primary check once. The local
+workflow retains the complete check and test steps. Every gate blocks in
+every context that runs it; there is no informative or advisory gate.
 Conflict detection uses the canonical Git inventory, including unpublished files,
 and the shared merge-control classifier. It reads literal source-link targets without
 following them. Every finding, including a native warning, blocks approval while its

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.models import FlextInfraModels as ImportedModels
+from flext_infra import FlextInfraModels as ImportedModels
 
 
 class TestsImportedModelReference:

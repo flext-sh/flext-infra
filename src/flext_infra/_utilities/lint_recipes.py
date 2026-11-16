@@ -182,8 +182,13 @@ class FlextInfraUtilitiesLintRecipes(
                 license, or ``module`` has no identity.
 
         """
-        for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (
+        candidates = (
+            (pkg_dir,)
+            if declaration_inputs is not None
+            else (pkg_dir, *pkg_dir.parents)
+        )
+        for candidate in candidates:
+            if declaration_inputs is None and not (
                 (candidate / c.PYPROJECT_FILENAME).is_file()
                 if source_project is None
                 else source_project.source_query(

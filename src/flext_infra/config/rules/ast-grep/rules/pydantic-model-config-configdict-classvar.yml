@@ -16,7 +16,7 @@ rule:
         stopBy: end
         inside:
           kind: class_definition
-fix: "model_config: typing.ClassVar[ConfigDict] = ConfigDict($$$ARGS)"
+fix: "model_config: ClassVar[ConfigDict] = ConfigDict($$$ARGS)"
 message: >-
   FLEXT model_config declarations explicitly identify class metadata with
   ClassVar while retaining the directly bound native constructor and type.

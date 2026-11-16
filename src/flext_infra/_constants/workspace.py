@@ -205,6 +205,9 @@ print(json.dumps({
     FLEET_GAPS_ROUTE_NAME: ClassVar[str] = "fleet-gaps"
     "Canonical workspace CLI verb that reports per-repository fleet gaps."
 
+    VERB_SYNC_WORKSPACE: ClassVar[str] = "sync"
+    "Workspace CLI verb for synchronizing all repositories to integration tip."
+
     WORKSPACE_OPERATION_REPORT_DIRECTORY: ClassVar[Path] = (
         Path(FlextInfraConstantsSourceCode.REPORTS_DIR_NAME) / "setup-operations"
     )

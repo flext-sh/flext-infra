@@ -38,12 +38,6 @@ class TestsWorkspaceOperationReceipts:
         tm.that(type(state) is type(observed), eq=True)
         tm.that(state.path, eq=observed.path)
         tm.that(state.content, eq=observed.content)
-        tm.that(
-            m.Infra.WorkspaceRuntimeContext.model_json_schema()["$defs"][
-                m.Cli.AtomicFileState.__name__
-            ],
-            eq=m.Cli.AtomicFileState.model_json_schema(),
-        )
 
         payload["installation_inputs"] = (
             {

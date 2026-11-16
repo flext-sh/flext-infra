@@ -32,7 +32,9 @@ class TestsFlextInfraCodegenCensus:
         config_path = project / c.Infra.CODEMOD_CONFIG_RELPATH
         rules = config_path.parent / c.Cli.RULES_DIR_NAME
         rules.mkdir(parents=True)
-        (project / "src").mkdir()
+        package = project / "src" / "census_contract"
+        package.mkdir(parents=True)
+        (package / "__init__.py").touch()
         (project / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "census-contract"\nversion = "1.0.0"\n'
             "dependencies = []\n",
@@ -53,7 +55,7 @@ class TestsFlextInfraCodegenCensus:
             "message: Observed detect-only\nrule:\n  pattern: third($VALUE)\n",
             encoding="utf-8",
         )
-        (project / "src" / "subject.py").write_text(
+        (package / "subject.py").write_text(
             "first(1)\nthird(2)\n",
             encoding="utf-8",
         )
@@ -63,12 +65,18 @@ class TestsFlextInfraCodegenCensus:
         u.Tests.copy_tracked_mise_seeds(project)
         return project
 
+    @c.Tests.MARK.slow
     def test_report_violations_carry_rule_location_and_fixability(
         self,
         tmp_path: Path,
+        session_runtime: p.Tests.SessionRuntime,
     ) -> None:
         """Test report violations carry rule location and fixability."""
         project = self._project(tmp_path)
+        u.Tests.initialize_git_repo(project)
+        tm.ok(
+            u.Tests.provision_scan_workspace(project, session_runtime=session_runtime)
+        )
         report = FlextInfraNamespaceValidator(repository_root=project).build_report()
 
         violations = tm.ok(u.Infra.parse_namespace_validation(report, project))
@@ -81,8 +89,10 @@ class TestsFlextInfraCodegenCensus:
         tm.that(sorted(observed), eq=sorted((self._FIXABLE_RULE, self._DETECT_RULE)))
         fixable = observed[self._FIXABLE_RULE]
         detect = observed[self._DETECT_RULE]
-        tm.that((fixable.module, fixable.line), eq=("src/subject.py", 1))
-        tm.that((detect.module, detect.line), eq=("src/subject.py", 2))
+        tm.that(
+            (fixable.module, fixable.line), eq=("src/census_contract/subject.py", 1)
+        )
+        tm.that((detect.module, detect.line), eq=("src/census_contract/subject.py", 2))
         tm.that(fixable.message, eq="Observed fixable")
         tm.ok(fixable.fixable)
         tm.fail(detect.fixable)

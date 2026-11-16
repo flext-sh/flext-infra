@@ -257,6 +257,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
             f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={pytest.slow_timeout_seconds}",
+            *(
+                ("-o", "timeout_func_only=true")
+                if pytest.item_deadline_call_only
+                else ()
+            ),
             *(("-m", expression) if expression else ()),
         )
 
@@ -515,6 +520,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        tooling = u.Infra.load_tooling_inputs(self.repository_root).unwrap()
         return (
             sys.executable,
             *(
@@ -542,7 +548,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet
             # scale. A one-item dispatch step makes that stop immediate.
-            *pytest.parallel_arguments,
+            *tooling.document.tools.pytest.parallel_arguments,
             "--benchmark-disable",
         )
 
