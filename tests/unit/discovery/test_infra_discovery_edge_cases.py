@@ -20,6 +20,12 @@ from tests import c, tm, u
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
+    @u.Tests.fixture(autouse=True)
+    @staticmethod
+    def _git_checkout(tmp_path: Path) -> None:
+        """Every discovery scenario is a real checkout, like every project."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
+
     @staticmethod
     @c.Tests.MARK.parametrize(
         ("source", "expected"),
