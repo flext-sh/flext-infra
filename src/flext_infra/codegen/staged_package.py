@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import shutil
+import time
 from collections import deque
 from collections.abc import Callable, Mapping, MutableMapping
 from functools import lru_cache, partial
@@ -38,6 +40,29 @@ class FlextInfraStagedPackage:
         """
         gettempdir()
         return "from tempfile import gettempdir as _source_storage\n_source_storage()\n"
+
+    @staticmethod
+    def sweep_stale_previews(parent: Path) -> None:
+        """Remove candidate trees that killed producers could not clean up.
+
+        ``TemporaryDirectory`` cleans on a normal exit. A SIGTERM/SIGKILL during
+        generation never runs that finalizer, so each killed run leaves a full
+        workspace copy beside the mutation lock — 31 such trees accumulated in
+        this rig, the oldest three weeks old, and a stale copy can shadow the
+        installed package for member plan validation. A tree older than an hour
+        cannot belong to a live run and is deleted before a new one is created.
+        """
+        cutoff = time.time() - 3600
+        try:
+            candidates = list(parent.glob("flext-source-preview-*"))
+        except OSError:
+            return
+        for candidate in candidates:
+            try:
+                if candidate.is_dir() and candidate.stat().st_mtime < cutoff:
+                    shutil.rmtree(candidate, ignore_errors=True)
+            except OSError:
+                continue
 
     def preview_sources[T](
         self,
@@ -73,6 +98,7 @@ class FlextInfraStagedPackage:
         storage = u.Cli.ensure_dir(lock.value.parent)
         if storage.failure:
             return r[T].from_failure(storage)
+        self.sweep_stale_previews(lock.value.parent)
         with TemporaryDirectory(
             prefix="flext-source-preview-", dir=lock.value.parent
         ) as directory:
