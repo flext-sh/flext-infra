@@ -37,3 +37,30 @@ class TestsFlextInfraPythonModelPorts:
             second = u.Infra.python_model_module_at(run, source, name)
             tm.that(second is first, eq=True)
             tm.that(len(cache), eq=1)
+
+    @staticmethod
+    def test_type_checking_annotations_are_not_standin_defects(tmp_path: Path) -> None:
+        """A type-only declaration does not exist at runtime (ADR-018 rule 5)."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "type_only.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from __future__ import annotations\n"
+                "from pathlib import Path\n"
+                "from typing import TYPE_CHECKING\n"
+                "class TypeOnly:\n"
+                "    if TYPE_CHECKING:\n"
+                "        base_dir: Path | None\n"
+                "__all__ = ['TypeOnly']\n",
+            )
+        )
+        name = f"{package.name}.type_only"
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            run: p.Infra.PythonModelRun = u.Infra.python_model_run(
+                snapshot.engine,
+                {name: source},
+                module_facts=snapshot.python_module_facts,
+            )
+            facts = u.Infra.python_model_module_at(run, source, name)
+        tm.that(facts.class_standin_defects.get("TypeOnly", ()), empty=True)
