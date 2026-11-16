@@ -131,6 +131,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         # A real project is a Git checkout; the checker elects its runtime
         # from Git and refuses a plain directory.
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         return project_dir
 
     @staticmethod
