@@ -137,9 +137,6 @@ class FlextInfraUtilitiesImportLawRoutes(
         Returns:
             Import edits with one provider per lexical facade binding.
 
-        Raises:
-            ValueError: If the caller did not supply its captured source project.
-
         """
         edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         bindings: dict[tuple[int, str], tuple[str, str]] = {}
