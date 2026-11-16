@@ -21,6 +21,9 @@ ignores:
   - "**/tests/__init__.py"
   - "**/tests/*/__init__.py"
   - "**/tests/_*/**"
+  # Private implementation directories start with `_` at any depth of the
+  # tests tree; their internal composition is not a test reading the root.
+  - "**/tests/**/_*/**"
   - "**/tests/fixtures/**"
   # The generated facades compose their `tests._<family>` stems; their imports
   # are the projection's output, mirroring `test-facade-rewire`.
@@ -29,6 +32,9 @@ ignores:
   - "**/tests/protocols.py"
   - "**/tests/typings.py"
   - "**/tests/utilities.py"
+  # The tests facade's shared implementation owners compose each other before
+  # the generated root namespace publishes them.
+  - "**/tests/utilities_*.py"
 rule:
   any:
     - kind: import_from_statement

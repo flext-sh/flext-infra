@@ -102,8 +102,8 @@ Infra:
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
-    # threads per level (paths, then gates per path); the bound caps
-    # concurrent type checkers.
+    # threads per level (paths, then gates per level); pyrefly keeps its own
+    # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
 
     # Per-module scc code-LOC ceiling of authored modules, enforced by the
@@ -336,8 +336,8 @@ Infra:
       # (mise.lock then carries the URL only); every other tool's current
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
-      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
-      # jscpd, waza, prek). A project that needs more
+      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
+      # pyrefly LSP, qlty, jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -633,7 +633,7 @@ Infra:
       # The committed lock contract supersedes the former lockfile-ban exclusion.
       # An empty list resets the setting and requires an empty effective readback.
       issue_exclusions:
-      # Axiom "generic facade publication" (python/mypy#22457; operator
+      # HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
       # decision 2026-11-13: "Yes, add to the axiom"): the generated
       # `Name: TypeAlias = Part.Name` publication is the only form mypy can
       # subscript; Sonar python:S6794 (use a `type` statement) rejects it as
@@ -643,12 +643,11 @@ Infra:
       - rule_key: python:S6794
         resource_key: "**/*.py"
         reason: >-
-          Axiom "generic facade publication" (python/mypy#22457; operator
+          HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
           decision 2026-11-13 "Yes, add to the axiom"): the generated
           `Name: TypeAlias = Part.Name` publication is the only form mypy can
-          subscript. Retire with ruff UP040, pyright reportMissingTypeArgument,
-          pyrefly implicit-any-type-argument and bad-override when mypy
-          resolves #22457.
+          subscript. Retire with ruff UP040, pyrefly implicit-any-type-argument
+          and bad-override when mypy resolves #22457.
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
@@ -842,15 +841,13 @@ Infra:
         # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
         #   (pyrefly included, so CI is never blind to types);
         # - CI=N and an unset CI (a developer's make check and the pre-push
-        #   hook) run every active gate: the codemod rule set, smells and the
-        #   project's own validators block there.
+        #   hook) run every active gate: pyrefly, the codemod rule set, smells
+        #   and the project's own validators block there.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
-        # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # CI owns the complete gate. A pre-push row that runs make check/tests over
-        # the whole tree blocks every push for minutes, so only the commit-stage
-        # incremental hook is emitted.
+        # incremental selection. Pre-commit never runs tests. An opt-in pre-push
+        # hook reuses the primary check; the local workflow owns its test steps.
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -869,9 +866,9 @@ Infra:
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -888,16 +885,15 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        contexts: [ local, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, pre_push ] }
+        - { step: tests-primary, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local, pre_push ] }
-        - { step: check-primary, contexts: [ pre_push ] }
+        - { step: check, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
@@ -1048,7 +1044,6 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
@@ -1150,7 +1145,6 @@ Infra:
       - docs/plans/2026-09-14-stabilization-handoff/previous-handoff-source.md
       - docs/plans/2026-09-22-pipeline-integracao-continua-plano.md
       - docs/plans/2026-09-22-rope-generator-stabilization/02-achados-codegen.md
-      - docs/plans/2026-09-23-handoff-mypy-stabilization-e-integracao.md
       - docs/plans/2026-09-25-v8-flext-service-base/05-phases.md
       - docs/plans/2026-09-25-v8-flext-service-base/07-sessions-guide.md
       - docs/standards/consumption-law.md
@@ -1310,12 +1304,6 @@ Infra:
       - python.analysis.extraPaths
       - python.analysis.useLibraryCodeForTypes
       - ruff.nativeServer
-      # Mypy and Pyright are retired (operator order 2026-11-13, ag-6w7a):
-      # Pylance runs Pyrefly diagnostics, so their editor keys are deleted.
-      - mypy-type-checker.cwd
-      - mypy-type-checker.interpreter
-      - mypy-type-checker.path
-      - python.analysis.pyrightVersion
       # markdownlint is retired: rvben.rumdl reads .rumdl.toml in the editor.
       - markdownlint.config
       - markdownlint.lintWorkspaceGlobs
@@ -1941,7 +1929,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"
@@ -2418,11 +2405,6 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            # Retired analyzers (operator order 2026-11-13, ag-6w7a): owned and
-            # never rendered, so the overlay deletes these live tables.
-            - tool.mypy
-            - tool.pyright
-            - tool.pydantic-mypy
             - tool.pyrefly
             - tool.pytest
             - tool.coverage

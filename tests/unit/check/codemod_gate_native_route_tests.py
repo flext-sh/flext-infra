@@ -15,6 +15,7 @@ from flext_infra.gates import FlextInfraGatesCodemod
 from tests import c, m, p, t, tm, u
 
 
+@c.Tests.MARK.slow
 class TestsFlextInfraCodemodGateNativeRoute:
     """Cached and stopped native scans keep the gate's verdict exact."""
 

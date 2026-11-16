@@ -14,7 +14,7 @@ from flext_infra import FlextInfraCli
 from tests import tm
 
 if TYPE_CHECKING:
-    from _pytest.capture import CaptureFixture
+    import pytest
 
 
 class TestsFlextInfraFixPyreflyConfig:
@@ -22,7 +22,7 @@ class TestsFlextInfraFixPyreflyConfig:
 
     @staticmethod
     def test_fix_pyrefly_config_main_executes_real_cli_help(
-        capsys: CaptureFixture[str],
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test fix pyrefly config main executes real cli help."""
         exit_code = FlextInfraCli.infra_main([

@@ -245,6 +245,15 @@ class FlextInfraModelsDepsToolConfig(
             alias="slow-marker",
             description="Native pytest marker whose items run in their own phase.",
         )
+        item_deadline_call_only: bool = m.Field(
+            default=False,
+            alias="item-deadline-call-only",
+            description=(
+                "Native pytest-timeout func_only: an item deadline measures the "
+                "test call only, leaving fixture teardown and plugin bookkeeping "
+                "to the suite deadline instead of a test budget."
+            ),
+        )
         run_timeout_seconds: int = m.Field(
             alias="run-timeout-seconds",
             gt=0,

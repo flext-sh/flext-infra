@@ -17,6 +17,7 @@ import ast
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from re import Match
 
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
@@ -762,6 +763,16 @@ class FlextInfraUtilitiesCodemodProject(
         """
         if validation.failure:
             return r[tuple[p.Infra.CensusViolation, ...]].from_failure(validation)
+        matches: list[Match[str]] = []
+        for violation in validation.value.violations:
+            match = c.Infra.VIOLATION_PATTERN.match(violation)
+            if match is None:
+                msg = (
+                    f"namespace violation does not follow the report format: "
+                    f"{violation}"
+                )
+                raise ValueError(msg)
+            matches.append(match)
         with cls.codemod_workspace_snapshot(root) as snapshot:
             planned = cls.codemod_rule_plan(snapshot)
         if planned.failure:
@@ -778,25 +789,17 @@ class FlextInfraUtilitiesCodemodProject(
                 for rule_id in rule_ids
             }
         )
-        parsed: list[p.Infra.CensusViolation] = []
-        for violation in validation.value.violations:
-            match = c.Infra.VIOLATION_PATTERN.match(violation)
-            if match is None:
-                msg = (
-                    f"namespace violation does not follow the report format: "
-                    f"{violation}"
-                )
-                raise ValueError(msg)
-            parsed.append(
-                m.Infra.CensusViolation(
-                    module=match.group("module"),
-                    rule=match.group("rule"),
-                    line=int(match.group("line")),
-                    message=match.group("message"),
-                    fixable=match.group("rule") in repairable,
-                ),
+        parsed = tuple(
+            m.Infra.CensusViolation(
+                module=match.group("module"),
+                rule=match.group("rule"),
+                line=int(match.group("line")),
+                message=match.group("message"),
+                fixable=match.group("rule") in repairable,
             )
-        return r[tuple[p.Infra.CensusViolation, ...]].ok(tuple(parsed))
+            for match in matches
+        )
+        return r[tuple[p.Infra.CensusViolation, ...]].ok(parsed)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCodemodProject"]

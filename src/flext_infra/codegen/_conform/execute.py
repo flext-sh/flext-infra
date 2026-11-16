@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import ExitStack
 from pathlib import Path
 from typing import Self, override
@@ -300,46 +300,7 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             The plan and written paths, or the first failure.
 
         """
-        control_plan = self._control_plan(request)
-        if control_plan.failure:
-            return r[p.Infra.CodegenResult].from_failure(control_plan)
-        planned = self._planned(request)
-        if planned.failure:
-            return r[p.Infra.CodegenResult].from_failure(planned)
-        plan = m.Infra.CodegenPlan.model_validate(planned.value)
-        plan.files = tuple(
-            m.Infra.CodegenFilePlan.model_validate(file)
-            for file in u.Infra.codegen_compose_file_plans(
-                (*control_plan.value.files, *plan.files), ordered=True
-            )
-        )
-        return self._published(
-            request,
-            plan,
-            after_publication,
-            after_cohort_publication=after_cohort_publication,
-        )
-
-    def _control_plan(
-        self,
-        request: p.Infra.CodegenGenerateRequest,
-    ) -> p.Result[p.Infra.CodegenPlan]:
-        """Plan the native file-only control cohort before Python inventory.
-
-        The cohort exists to materialize a scaffold's declared project metadata
-        before member planning when the manifest is not on disk yet. An
-        existing workspace already publishes every control destination from
-        the full managed plan of the same original tree, so planning it twice
-        only repeated the render and its Git probes; those destinations keep
-        their single owner in the full plan and the refusal still happens
-        before the run's one publication.
-
-        Returns:
-            The control cohort plan with every repository outcome, or the
-            first workspace, selection, seed or ordering failure.
-
-        """
-        result_type = r[p.Infra.CodegenPlan]
+        result_type = r[p.Infra.CodegenResult]
         root = request.root.expanduser().resolve()
         captured = u.Infra.load_codegen_inputs(root)
         if captured.failure:
@@ -347,26 +308,38 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
         elected = self._planning_workspace(request, root, inputs=captured.value)
         if elected.failure:
             return result_type.from_failure(elected)
-        workspace, current_target, current_repository = elected.value
-        selected = self._select_repositories(request, workspace, current_repository)
+        workspace, _, repository = elected.value
+        selected = self._select_repositories(request, workspace, repository)
         if selected.failure:
             return result_type.from_failure(selected)
-        if workspace.flext_source is None:
-            return result_type.ok(
-                m.Infra.CodegenPlan(
-                    request=request,
-                    repositories=selected.value,
-                    workspace=workspace,
-                    uv_environments=(),
-                    files=(),
-                )
+        control_files: Sequence[p.Infra.CodegenFilePlan] = ()
+        if workspace.flext_source is not None:
+            control = self._scaffold_control_plan(
+                request, root, elected.value, captured.value, selected.value
             )
-        return self._scaffold_control_plan(
+            if control.failure:
+                return result_type.from_failure(control)
+            control_files = control.value.files
+        started = time.monotonic()
+        u.Cli.info(f"stage=planning state=start root={root}")
+        planned = self._plan_selected_repositories(
+            request, captured.value, elected.value, selected.value
+        )
+        self._report_planning(root, started, planned)
+        if planned.failure:
+            return r[p.Infra.CodegenResult].from_failure(planned)
+        plan = m.Infra.CodegenPlan.model_validate(planned.value)
+        plan.files = tuple(
+            m.Infra.CodegenFilePlan.model_validate(file)
+            for file in u.Infra.codegen_compose_file_plans(
+                (*control_files, *plan.files), ordered=True
+            )
+        )
+        return self._published(
             request,
-            root,
-            (workspace, current_target, current_repository),
-            captured.value,
-            selected.value,
+            plan,
+            after_publication,
+            after_cohort_publication=after_cohort_publication,
         )
 
     def _scaffold_control_plan(
@@ -661,13 +634,20 @@ class FlextInfraCodegenConformExecute(FlextInfraCodegenConformPlan):
             if request.what in c.Infra.FILE_ONLY_SURFACES
             else self._plan_request(request)
         )
+        self._report_planning(request.root, started, planned)
+        return planned
+
+    @staticmethod
+    def _report_planning(
+        root: Path, started: float, planned: p.Result[p.Infra.CodegenPlan]
+    ) -> None:
+        """Report the completed planning phase."""
         u.Cli.info(
-            f"stage=planning state=end root={request.root} "
+            f"stage=planning state=end root={root} "
             f"elapsed={time.monotonic() - started:.3f}s "
             f"files={len(planned.value.files) if planned.success else 0} "
             f"failed={planned.failure}"
         )
-        return planned
 
     def _published(
         self,
