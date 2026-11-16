@@ -146,6 +146,8 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: ClassVar[str] = "origin"
     GIT_MAIN: ClassVar[str] = "main"
     GIT_HEAD: ClassVar[str] = "HEAD"
+    SOURCE_PREVIEW_PREFIX: ClassVar[str] = "flext-source-preview-"
+    "Directory prefix of the staged source preview beside the mutation lock."
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: ClassVar[str] = "flext-core"

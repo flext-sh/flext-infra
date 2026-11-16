@@ -54,7 +54,7 @@ class FlextInfraStagedPackage:
         """
         cutoff = time.time() - 3600
         try:
-            candidates = list(parent.glob("flext-source-preview-*"))
+            candidates = list(parent.glob(f"{c.Infra.SOURCE_PREVIEW_PREFIX}*"))
         except OSError:
             return
         for candidate in candidates:
@@ -100,7 +100,7 @@ class FlextInfraStagedPackage:
             return r[T].from_failure(storage)
         self.sweep_stale_previews(lock.value.parent)
         with TemporaryDirectory(
-            prefix="flext-source-preview-", dir=lock.value.parent
+            prefix=c.Infra.SOURCE_PREVIEW_PREFIX, dir=lock.value.parent
         ) as directory:
             root = Path(directory)
             u.Cli.info("stage=source-preview-materialize state=start")

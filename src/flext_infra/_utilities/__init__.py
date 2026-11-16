@@ -1003,6 +1003,7 @@ install_lazy_exports(
             "package_name_for_dir",
             "discover_python_files",
             "_walk_python_files",
+            "_staged_preview_sources",
             "_source_file_admitted",
             "_python_file_belongs_to_project",
             "analyzer_python_roots",

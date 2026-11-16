@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraConstantsGit:
+    GITMODULES_FILENAME: ClassVar[str] = ".gitmodules"
     """Git-specific constants for the GitPython-backed facet."""
 
     GIT_COMMIT_OID_RE: ClassVar[t.RegexPattern] = re.compile(

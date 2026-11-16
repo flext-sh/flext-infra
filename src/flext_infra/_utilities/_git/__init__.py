@@ -264,6 +264,9 @@ install_lazy_exports(
         "FlextInfraUtilitiesGitScope": (
             "ScopeFacts",
             "git_repo_root",
+            "git_binding_issues",
+            "_binding_state",
+            "_binding_issue",
             "git_tracked_repo_relative_paths",
             "scope_relative_paths",
             "_git_tracked_scope_relative_paths",
