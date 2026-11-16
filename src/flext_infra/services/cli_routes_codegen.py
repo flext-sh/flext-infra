@@ -52,6 +52,18 @@ class FlextInfraCodegenRoutes:
         return deps.FlextInfraCooldownAdmission.record_bounds(request)
 
     @staticmethod
+    def execute_verify_pin_convergence(
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Verify all governed ``uv.lock`` files agree on shared Git SHAs.
+
+        Returns:
+            Success when every governed lock converges, or the drift report.
+
+        """
+        return deps.FlextInfraLockIntegrityVerifier.verify_pin_convergence(request)
+
+    @staticmethod
     def check_routes() -> tuple[p.Cli.ResultCommandRoute, ...]:
         """Build the check group's native model and handler bindings.
 
@@ -249,6 +261,13 @@ class FlextInfraCodegenRoutes:
                 deps.FlextInfraLockIntegrityVerifier,
                 deps.FlextInfraLockIntegrityVerifier.execute,
                 None,
+            ),
+            (
+                "verify-pin-convergence",
+                "Verify governed uv.lock files converge on shared Git dependency SHAs",
+                m.Infra.WorkspaceRequest,
+                FlextInfraCodegenRoutes.execute_verify_pin_convergence,
+                "every governed uv.lock agrees on shared Git dependency SHAs",
             ),
         ))
 

@@ -189,7 +189,8 @@ class TestsFlextInfraFileGateAndReconcileMakefile:
                 "workspace verify-environment",
             ],
         )
-        tm.that(lifecycle, has='$(DIRENV) allow "$(PROJECT_ROOT)"')
+        tm.that(lifecycle, has="$(GOVERNED_CHECKOUTS)")
+        tm.that(lifecycle, has='$(DIRENV) allow "$$allow_root"')
 
     def test_standalone_render_omits_the_reconcile_step(
         self,
