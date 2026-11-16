@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import ClassVar, cast, is_protocol, override
 
 from flext_cli import u
+from rope.base import exceptions as rope_exceptions
 
 from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
@@ -3729,13 +3730,41 @@ class FlextInfraUtilitiesModelsProtocol:
                 binding = self.resolve_symbol(lexical, holder_name)
                 if binding is None:
                     continue
-                holder = binding.get_object()
+                holder = self._source_base_holder(binding)
                 if not self.py_class(holder):
                     continue
                 resolved = self.mro_class(holder, expr.attr)
                 if resolved is not None and model_base in resolved.get_mro():
                     return True
             return False
+
+        def _source_base_holder(
+            self,
+            binding: p.Infra.RopePyName,
+        ) -> p.Infra.RopePyObject:
+            """Resolve a base holder through its import's generated publication.
+
+            Returns:
+                The holder object the binding names, directly or through the
+                imported package's declared lazy export route.
+
+            """
+            if isinstance(binding, p.Infra.RopeImportedName):
+                module_name = binding.imported_module.module_name
+                if module_name:
+                    try:
+                        published = self.qualified_name(
+                            self.project,
+                            binding.imported_name,
+                            module_name=module_name,
+                        )
+                    except rope_exceptions.AttributeNotFoundError:
+                        published = None
+                    if published is not None:
+                        holder = published.get_object()
+                        if self.py_class(holder):
+                            return holder
+            return binding.get_object()
 
         def _source_generated_holder(self, destination: Path) -> str:
             """Name the holder class the generator owns for one protocol module.
