@@ -2774,7 +2774,7 @@ prefix for these verbs.
   repository.
 - `Infra.gate_admission` in `config/infra.yaml` declares the capacity (`capacity_normal`,
   and `capacity_high` when `FLEXT_GATE_ADMISSION_PRESSURE_FILE` publishes a high or
-  critical level), the heartbeat, the TTL and the budgets of generation and
+  critical level), the heartbeat ceiling and the budgets of generation and
   modification. Check arms the largest declared budget of the gates it runs; tests
   keep the deadline of the pytest runner.
 - A waiter prints its position and the current holders on stderr each time they
@@ -2786,10 +2786,13 @@ prefix for these verbs.
   deadline of their native pytest runner and arm no route budget.
 - A gate started inside an admitted gate inherits `FLEXT_GATE_ADMISSION_TICKET` and
   neither queues nor arms a second budget.
-- A dead holder frees its slot when the next waiter looks at the queue. A holder
-  whose heartbeat is older than the TTL is reclaimed; when its heartbeat finds the
-  ticket gone, it expires its own deadline (`u.Cli.process_deadline_expire`) and
-  stops the same way.
+- A dead holder frees its slot when the next waiter looks at the queue: no process
+  holds its liveness lock. A live holder is never reclaimed, whatever its heartbeat
+  age, so a long generation always finishes under the ticket it was admitted with.
+  The owner renews its heartbeat for its whole declared budget (at most
+  `heartbeat_seconds`, at least several renewals before the deadline); the heartbeat
+  is diagnostic, never ownership. A renewal that fails expires the route's own
+  deadline, and a vanished ticket fails the admission.
 - A full-weight run that succeeded in a checkout is refused before it queues while
   its repeat window in `Infra.gate_admission.repeat` is open: a complete `make check`,
   `make tests-full`, `make mod` without `LAWS`/`RULES`, and `make mod` repeating the

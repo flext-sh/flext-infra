@@ -2,11 +2,12 @@
 
 Every heavy gate on one host joins one queue under the user's state home.
 A ticket's owner holds an exclusive liveness lock for its whole life, so a
-dead owner frees its slot the moment any waiter looks; a live owner whose
-heartbeat is older than the TTL is reclaimed. Admission is strict FIFO and
-capacity follows the host-pressure level the host-budget owner publishes.
-A full-weight run that succeeded in a checkout is refused before it queues
-while its declared repeat window is open.
+dead owner frees its slot the moment any waiter looks, and a live owner is
+never reclaimed: its heartbeat renews for the whole declared budget but is
+diagnostic, never ownership. Admission is strict FIFO and capacity follows
+the host-pressure level the host-budget owner publishes. A full-weight run
+that succeeded in a checkout is refused before it queues while its declared
+repeat window is open.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -108,9 +109,9 @@ class FlextInfraUtilitiesGateAdmission:
         the timeout status; a route without a budget keeps the deadline of its
         native runner. A process started inside an admitted gate inherits
         its ancestor's ticket through ``FLEXT_GATE_ADMISSION_TICKET``, runs
-        inside its ancestor's deadline and never queues again. When the queue
-        reclaims a stalled owner's ticket, the owner expires that same
-        deadline; a ticket reclaimed while still waiting fails the admission.
+        inside its ancestor's deadline and never queues again. A ticket that
+        vanishes fails the admission; an admitted route whose lease renewal
+        fails expires that same deadline with the first cause.
 
         Yields:
             The admitted ticket; its path is exported to every child process.
@@ -125,23 +126,25 @@ class FlextInfraUtilitiesGateAdmission:
         root.mkdir(parents=True, exist_ok=True)
         ticket, liveness = cls._enqueue(root, gate, repository)
         reclaimed = threading.Event()
-        bounded = threading.Event()
+        armed = threading.Event()
         stop = threading.Event()
+        renewals: list[BaseException] = []
 
         def refresh() -> None:
-            interval = config.Infra.gate_admission.heartbeat_seconds
+            interval = cls._heartbeat_interval(budget)
             while not stop.wait(interval):
-                with cls._queue_lock(root):
-                    if not ticket.is_file():
+                try:
+                    cls._renew(root, ticket, reclaimed)
+                except BaseException as failure:
+                    renewals.append(failure)
+                    if armed.is_set():
+                        u.Cli.process_deadline_expire()
+                    else:
                         reclaimed.set()
-                        break
-                    cls._write(
-                        ticket,
-                        cls._read(ticket).model_copy(
-                            update={"heartbeat_at": datetime.now(UTC)}
-                        ),
-                    )
-            if reclaimed.is_set() and bounded.is_set():
+                    raise
+                if reclaimed.is_set():
+                    break
+            if reclaimed.is_set() and armed.is_set():
                 u.Cli.error(f"gate admission ticket {ticket.name} was reclaimed")
                 u.Cli.process_deadline_expire()
 
@@ -150,7 +153,9 @@ class FlextInfraUtilitiesGateAdmission:
         )
         heartbeat.start()
         try:
-            admitted = cls._await_admission(root, ticket, reclaimed, wait_seconds)
+            admitted = cls._await_admission(
+                root, ticket, reclaimed, renewals, wait_seconds
+            )
             os.environ[c.Infra.GATE_ADMISSION_TICKET_ENV] = str(ticket)
             with u.Cli.process_deadline_scope(
                 None
@@ -160,7 +165,7 @@ class FlextInfraUtilitiesGateAdmission:
                     termination_grace_seconds=budget.grace_seconds,
                 )
             ):
-                bounded.set()
+                armed.set()
                 yield admitted
         finally:
             os.environ.pop(c.Infra.GATE_ADMISSION_TICKET_ENV, None)
@@ -393,6 +398,7 @@ class FlextInfraUtilitiesGateAdmission:
         root: Path,
         ticket: Path,
         reclaimed: threading.Event,
+        renewals: list[BaseException],
         wait_seconds: float | None,
     ) -> m.Infra.GateTicket:
         """Wait in FIFO order until a slot is free for this ticket.
@@ -402,7 +408,7 @@ class FlextInfraUtilitiesGateAdmission:
 
         Raises:
             TimeoutError: If ``wait_seconds`` expires first.
-            RuntimeError: If the queue reclaimed the ticket.
+            RuntimeError: If the lease renewal failed or the ticket vanished.
 
         """
         policy = config.Infra.gate_admission
@@ -410,9 +416,13 @@ class FlextInfraUtilitiesGateAdmission:
         reported = ""
         while True:
             with cls._queue_lock(root):
-                if reclaimed.is_set() or not ticket.is_file():
-                    msg = f"gate admission ticket {ticket.name} was reclaimed"
-                    raise RuntimeError(msg)
+                if renewals or reclaimed.is_set() or not ticket.is_file():
+                    msg = (
+                        f"gate admission lease renewal failed: {renewals[0]}"
+                        if renewals
+                        else f"gate admission ticket {ticket.name} was reclaimed"
+                    )
+                    raise RuntimeError(msg) from (renewals[0] if renewals else None)
                 live = cls._sweep(root, own=ticket)
                 capacity = cls.gate_admission_capacity()
                 holders = [record for record in live if record.admitted_at]
@@ -451,35 +461,76 @@ class FlextInfraUtilitiesGateAdmission:
 
     @classmethod
     def _sweep(cls, root: Path, *, own: Path) -> list[m.Infra.GateTicket]:
-        """Drop dead and stalled tickets; return every remaining live ticket.
+        """Drop dead owners' tickets; return every remaining live ticket.
 
-        Must run under the queue lock.
+        The liveness lock is the only ownership proof: a ticket whose lock no
+        process holds is released, and a live owner keeps its slot whatever
+        its heartbeat age. Must run under the queue lock.
 
         Returns:
             The live tickets, including the caller's own.
 
         """
-        ttl = config.Infra.gate_admission.ttl_seconds
-        now = datetime.now(UTC)
         live: list[m.Infra.GateTicket] = []
         for ticket in sorted(root.glob(f"*{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}")):
             record = cls._read(ticket)
-            if ticket != own and not cls._alive(ticket):
-                ticket.unlink()
-                cls._liveness_path(ticket).unlink(missing_ok=True)
+            if ticket == own or cls._alive(ticket):
+                live.append(record)
                 continue
-            stalled = (now - record.heartbeat_at).total_seconds()
-            if ticket != own and stalled > ttl:
-                ticket.unlink()
-                u.Cli.emit_raw(
-                    f"gate admission: reclaimed ticket {record.sequence} "
-                    f"({record.gate} pid {record.pid} {record.repository}): "
-                    f"heartbeat {stalled:.0f}s old exceeds ttl {ttl}s\n",
-                    error=True,
-                )
-                continue
-            live.append(record)
+            ticket.unlink()
+            cls._liveness_path(ticket).unlink(missing_ok=True)
+            u.Cli.emit_raw(
+                f"gate admission: released ticket {record.sequence} "
+                f"({record.gate} pid {record.pid} {record.repository}): "
+                "its owner no longer holds the liveness lock\n",
+                error=True,
+            )
         return live
+
+    @classmethod
+    def _renew(cls, root: Path, ticket: Path, reclaimed: threading.Event) -> None:
+        """Refresh one live ticket's heartbeat under the queue lock.
+
+        A vanished ticket marks ``reclaimed``; the owner then expires its
+        deadline instead of running without an admitted slot.
+
+        """
+        with cls._queue_lock(root):
+            if not ticket.is_file():
+                reclaimed.set()
+                return
+            cls._write(
+                ticket,
+                cls._read(ticket).model_copy(
+                    update={"heartbeat_at": datetime.now(UTC)}
+                ),
+            )
+
+    @staticmethod
+    def _heartbeat_interval(budget: p.Infra.RouteBudgetSpec | None) -> float:
+        """Derive the lease renewal interval from the declared route budget.
+
+        A live owner renews its lease for its whole declared budget: the
+        configured ``heartbeat_seconds`` is the ceiling and a declared
+        fraction of the budget guarantees several renewals before the
+        deadline. A route without a budget renews at the ceiling.
+
+        Returns:
+            The renewal interval in seconds.
+
+        """
+        ceiling = config.Infra.gate_admission.heartbeat_seconds
+        if budget is None:
+            return float(ceiling)
+        return float(
+            max(
+                1,
+                min(
+                    ceiling,
+                    budget.budget_seconds // c.Infra.GATE_ADMISSION_HEARTBEAT_DIVISOR,
+                ),
+            )
+        )
 
     @staticmethod
     def _alive(ticket: Path) -> bool:
