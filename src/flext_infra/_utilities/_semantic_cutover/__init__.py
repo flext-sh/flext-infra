@@ -321,6 +321,7 @@ install_lazy_exports(
             "_constant_reference",
             "_constant_declaring_references",
             "_constant_public_paths",
+            "_constant_public_members",
             "_constant_owner_binding",
         ),
         "FlextInfraUtilitiesSemanticContracts": (

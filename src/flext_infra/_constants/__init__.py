@@ -1076,6 +1076,7 @@ install_lazy_exports(
             "GIT_ORIGIN",
             "GIT_MAIN",
             "GIT_HEAD",
+            "SOURCE_PREVIEW_PREFIX",
             "PKG_CORE",
             "PKG_CORE_UNDERSCORE",
             "PKG_TESTS_UNDERSCORE",
