@@ -214,15 +214,14 @@ class UtilityFacadeOwnerPublication:
                 )
             )
         plan = tm.ok(
-            FlextInfraCodegenConform.Generate(
-                state=m.Infra.CodegenConformState(repository_root=root),
-            ).plan(
+            u.Tests.conform_plan_result(
+                root,
                 u.Tests.conform_request(
                     root,
                     what=c.Infra.CodegenConformSurface.ALL,
                     scope=c.Infra.CodegenConformScope.SELF,
                     mode=c.Infra.CodegenConformMode.CHECK,
-                )
+                ),
             )
         )
         tm.that(
