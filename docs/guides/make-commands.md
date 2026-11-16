@@ -243,7 +243,7 @@ to repair authored declarations.
 | `fmt`        | Format authored content through the configured formatters.                                                                                                                                                  | —                         |
 | `check`      | Validate declarations, projections, environment, documentation and configured gates without repairs or publication.                                                                                         | CHECK_PHASE               |
 | `tests`      | Run native incremental tests through the persistent Testmon selection.                                                                                                                                      | —                         |
-| `tests-full` | Run the complete applicable population once without Testmon; harness gates are reported NOT EXECUTED outside their harness (ADR-029).                                                                       | —                         |
+| `tests-full` | Run the complete selected inventory once without Testmon.                                                                                                                                                   | —                         |
 | `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
 | `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
 | `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
@@ -772,10 +772,3 @@ governance consumer of this owner, not a second Git hygiene engine.
 - Getting started
 - Codemod Rules
 - [Infra Execution Context](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/docs/guides/execution-context.md)
-
-For a native gate owned by another checkout, use
-`flext-infra workspace native-gate --repository-root "$PWD" --budget-seconds 900
---argv=make --argv=check`. Repeat `--argv` once per argument. The route shares
-the host admission queue with Infra gates, starts the deadline at admission,
-and preserves the native command's exit status. The checkout still declares
-the checks that qualify it for integration.

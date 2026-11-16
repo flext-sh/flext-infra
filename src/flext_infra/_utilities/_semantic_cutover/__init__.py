@@ -479,6 +479,7 @@ install_lazy_exports(
             "_declared_class_node",
             "behavior_source_modules",
             "behavior_utility_owners",
+            "_public_export_names_from_tree",
             "_typing_behavior_lineage",
             "_behavior_member_declared",
             "_behavior_effective_declaration",
