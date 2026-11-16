@@ -451,12 +451,15 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 continue
             if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
+            bases = tuple(owner.get_mro())
             for name, binding in owner.get_attributes().items():
                 if name.startswith("_"):
                     continue
+                value = binding.get_object()
+                if value in bases:
+                    continue
                 reference = f"{prefix}.{name}"
                 found[reference] = binding
-                value = binding.get_object()
                 if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
