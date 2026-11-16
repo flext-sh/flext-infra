@@ -1040,6 +1040,56 @@ class TestsFlextInfraHookRetirement:
     """Setup retires only its managed hook section when the validator is absent."""
 
     @staticmethod
+    def test_setup_resolves_prek_through_mise_exec(tmp_path: Path) -> None:
+        """Prek is resolved in the activated Mise environment, never a bare shim."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "prek-resolution", c.Infra.MakeProfile.STANDALONE
+        )
+        fake_home = tmp_path / "home"
+        (fake_home / ".local" / "bin").mkdir(parents=True)
+        prek = fake_home / "fake-prek"
+        prek.write_text("#!/bin/sh\nexit 0\n", encoding=c.DEFAULT_ENCODING)
+        prek.chmod(0o755)
+        mise = fake_home / "fake-mise"
+        mise.write_text(
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            "  *'exec -- which prek'*) printf '%s\\n' \"" + str(prek) + '" ;;\n'
+            "  *'which prek'*) "
+            "echo 'mise ERROR prek is a mise bin however it is not "
+            "currently active' >&2; "
+            "exit 1 ;;\n"
+            "  *) exit 0 ;;\n"
+            "esac\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        mise.chmod(0o755)
+        bootstrap = fake_home / ".local" / "bin" / "mise"
+        bootstrap.write_text(
+            '#!/bin/sh\nprintf \'%s\\n\' "$(dirname "$0")/../../fake-mise"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        bootstrap.chmod(0o755)
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(file >hooks-recipe.sh,$(INSTALL_GIT_HOOKS_RECIPE))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(
+            u.Tests.run_isolated_make(["help"], cwd=root, env={"HOME": str(fake_home)}),
+        )
+        env = {**os.environ, "HOME": str(fake_home), "CI": ""}
+        process = tm.ok(
+            u.Cli.run_raw(
+                ("sh", "hooks-recipe.sh"),
+                cwd=root,
+                env=env,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        )
+        output = process.stdout + process.stderr
+        tm.that(output, has="hooks skipped (no validator)")
+
+    @staticmethod
     def test_setup_retires_managed_hook_without_validator(tmp_path: Path) -> None:
         """A missing validator removes the managed section and keeps foreign content."""
         root, _ = u.Tests.render_make_environment(
