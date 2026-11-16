@@ -176,7 +176,14 @@ class FlextInfraPytestRunnerExecution(
         # entirely outside this phase's marker. Both are empty scopes. A
         # whole-suite budgeted inventory that collects nothing stays a failure.
         scope_may_be_empty = self.slow_phase or self.target_file is not None
-        accepted: set[c.Infra.PytestExitCode] = {c.Infra.PytestExitCode.OK} | (
+        # The selection pass executes the collected items only to fingerprint
+        # their dependencies. An item failure is the suite's outcome, not a
+        # failed collection: the manifest is still complete, and the real suite
+        # run must follow and report it. Collection errors remain fatal.
+        accepted: set[c.Infra.PytestExitCode] = {
+            c.Infra.PytestExitCode.OK,
+            c.Infra.PytestExitCode.TESTS_FAILED,
+        } | (
             set()
             if complete and not scope_may_be_empty
             else {c.Infra.PytestExitCode.NO_TESTS_COLLECTED}
