@@ -70,6 +70,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
         profile = Profile()
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
