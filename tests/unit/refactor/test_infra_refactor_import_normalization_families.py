@@ -804,3 +804,47 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             ),
             eq=native,
         )
+
+    @classmethod
+    def test_tier_root_local_reexport_is_a_fixed_point(cls, tmp_path: Path) -> None:
+        """A tier consumer keeps the root lazy route to a locally re-exported name."""
+        project, _ = cls._project(tmp_path)
+        tier = project / "tests"
+        fixtures = tier / "fixtures"
+        cls._lazy_init(fixtures, {"DemoSettings": ".settings"})
+        (fixtures / "settings.py").write_text(
+            "class DemoSettings:\n"
+            "    marker = 'fixture'\n"
+            "__all__: list[str] = ['DemoSettings']\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        cls._lazy_init(tier, {"DemoSettings": ".fixtures"})
+        cls._lazy_init(tier / "_utilities", {"DemoTools": ".tools"})
+        target = tier / "_utilities" / "tools.py"
+        source = (
+            "from tests import DemoSettings\n"
+            "\n"
+            "\n"
+            "class DemoTools:\n"
+            "    SETTINGS = DemoSettings\n"
+            "\n"
+            "\n"
+            "__all__: list[str] = ['DemoTools']\n"
+        )
+        first = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=target,
+                source=source,
+            )
+        )
+        second = tm.ok(
+            u.Infra.normalize_import_source(
+                project_root=project,
+                file_path=target,
+                source=first,
+            )
+        )
+        tm.that(first, has="from tests import DemoSettings")
+        tm.that(first, lacks="from tests.fixtures import DemoSettings")
+        tm.that(second, eq=first)
