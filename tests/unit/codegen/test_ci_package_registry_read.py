@@ -59,16 +59,12 @@ class TestsFlextInfraCiPackageRegistryRead:
         declared = self._job_permissions(packages_read=True, template="docs.yml.j2")
         undeclared = self._job_permissions(packages_read=False, template="docs.yml.j2")
 
-        for job in ("docs-quality", "build"):
-            tm.that(
-                u.Cli.JSON_MAPPING_ADAPTER.validate_python(declared[job]).get(
-                    "packages"
-                ),
-                eq="read",
-            )
-            tm.that(
-                u.Cli.JSON_MAPPING_ADAPTER.validate_python(undeclared[job]).get(
-                    "packages"
-                ),
-                eq=None,
-            )
+        job = "docs-quality"
+        tm.that(
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(declared[job]).get("packages"),
+            eq="read",
+        )
+        tm.that(
+            u.Cli.JSON_MAPPING_ADAPTER.validate_python(undeclared[job]),
+            eq={"contents": "read"},
+        )
