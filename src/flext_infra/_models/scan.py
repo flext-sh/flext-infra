@@ -246,6 +246,16 @@ class FlextInfraModelsScan:
                 )
             ),
         ] = None
+        scan_batch_files: Annotated[
+            int | None,
+            m.Field(
+                ge=1,
+                description=(
+                    "Targets per native scan batch; absent selects the configured "
+                    "codegen batch size"
+                ),
+            ),
+        ] = None
 
     class ModScanFindingReference(ModScanFinding):
         """Serialized occurrence referencing the report's authenticated inventory."""

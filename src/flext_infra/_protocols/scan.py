@@ -263,6 +263,7 @@ class FlextInfraProtocolsScan:
 
         repositories: MutableMapping[Path, str]
         runner: p.Cli.CommandRunner | None
+        scan_batch_files: int | None
 
     @runtime_checkable
     class ModScanFindingReference(ModScanFinding, Protocol):

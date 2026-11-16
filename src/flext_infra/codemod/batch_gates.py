@@ -323,6 +323,7 @@ class FlextInfraModGateEngine(FlextInfraModGateScanner):
         targets: Sequence[str],
         *,
         runner: p.Cli.CommandRunner = u.Cli,
+        scan_batch_files: int | None = None,
     ) -> p.Result[p.Infra.ModScanReport]:
         """Scan targets with every elected ruleset; check and mod share this route.
 
@@ -341,6 +342,7 @@ class FlextInfraModGateEngine(FlextInfraModGateScanner):
                 sorted(plan.project_rule_ids, key=cls._path_depth, reverse=True)
             ),
             runner=runner,
+            scan_batch_files=scan_batch_files,
         )
         scanned = cls._native_scan_report(root, plan, targets, context)
         if scanned.failure:
