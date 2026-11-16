@@ -129,6 +129,7 @@ class TestsFlextInfraWorkspaceCheckCli:
         tm.that(exit_code, eq=1)
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "entrypoint",
         [("flext-infra",), (sys.executable, "-m", "flext_infra")],

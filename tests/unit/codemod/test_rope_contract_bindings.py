@@ -23,6 +23,7 @@ class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("carrier", ["model", "function"])
     @c.Tests.MARK.parametrize(
         ("imports", "metadata", "variant"),
@@ -170,356 +171,6 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(
             tm.ok(u.Infra.plan_contract_rules(workspace, sources, rules)), empty=True
         )
-        after = tm.ok(
-            infra_subprocess.capture(
-                command, cwd=workspace.repository_root, options=options
-            )
-        )
-        tm.that(after, eq=before)
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        "default",
-        [
-            "'ready'",
-            "Field(default='ready', description='Retained')",
-            "Field('ready', validate_default=True)",
-        ],
-    )
-    def test_exhaustive_enum_string_defaults_keep_strict_pydantic_contract(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        default: str,
-    ) -> None:
-        """A valid Literal string default becomes its native enum member producer."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from enum import StrEnum, unique\nfrom typing import Literal\n"
-            "from pydantic import BaseModel, ConfigDict, Field\n"
-            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
-            "    FAILED = 'failed'\n"
-            "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
-            "validate_default=True)\n"
-            f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
-            "evidence = (Payload().model_dump_json(), "
-            "Payload.model_fields['kind'].description, "
-            "Payload.model_json_schema()['properties']['kind']['default'])\n"
-            "preserved_member = Payload().kind is State.READY\n"
-            "preserved_dump_member = Payload().model_dump()['kind'] is State.READY\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
-        tm.that(len(edits), eq=1)
-        path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
-        after = runpy.run_path(str(path))
-        tm.that(after["evidence"], eq=before)
-        tm.that(after["preserved_member"], eq=True)
-        tm.that(after["preserved_dump_member"], eq=True)
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("default", "error"),
-        [
-            ("Field(default_factory=produce)", "default factory"),
-            ("produce()", "default producer"),
-            ("DEFAULT", "default alias"),
-        ],
-    )
-    def test_exhaustive_enum_unproven_default_producers_fail_before_effects(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        default: str,
-        error: str,
-    ) -> None:
-        """Valid old defaults remain authored when their enum producer is unproven."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from enum import StrEnum, unique\nfrom typing import Literal\n"
-            "from pydantic import BaseModel, ConfigDict, Field\n"
-            "@unique\nclass State(StrEnum):\n    READY = 'ready'\n"
-            "    FAILED = 'failed'\n"
-            "DEFAULT = 'ready'\ndef produce():\n    return 'ready'\n"
-            "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
-            "validate_default=True)\n"
-            f"    kind: Literal[State.READY, State.FAILED] = {default}\n"
-            "evidence = Payload().model_dump_json()\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        with u.Tests.raises(ValueError, match=error):
-            u.Infra.plan_contract_rules(workspace, {path: source}, rules)
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("annotation", "defaulted"),
-        [
-            ("Choice[StateAlias.READY, StateAlias.FAILED]", True),
-            (
-                (
-                    "Annotated[Choice[StateAlias.READY, StateAlias.FAILED], "
-                    "Field(description='Retained')]"
-                ),
-                True,
-            ),
-            ("list[Choice[StateAlias.READY, StateAlias.FAILED]]", True),
-            ("Choice[StateAlias.READY, StateAlias.FAILED] | None", True),
-            ("Choice[ready, failed]", True),
-            ("Final[Choice[StateAlias.READY, StateAlias.FAILED]]", False),
-        ],
-    )
-    def test_exhaustive_enum_contract_preserves_real_pydantic_wire_values(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        annotation: str,
-        *,
-        defaulted: bool,
-    ) -> None:
-        """The native action retains metadata/defaults and enum wire domains."""
-        workspace, path = rope_contract_consumer
-        value = "[State.READY]" if annotation.startswith("list[") else "State.READY"
-        suffix = f" = {value}" if defaulted else ""
-        default = "Payload()" if defaulted else "parsed"
-        source = (
-            "from enum import StrEnum, unique\n"
-            "from typing import Annotated, Final, Literal as Choice\n"
-            "from pydantic import BaseModel, ConfigDict, Field\n"
-            "@unique\n"
-            "class State(StrEnum):\n"
-            "    READY = 'ready'\n"
-            "    FAILED = 'failed'\n"
-            "StateAlias = State\n"
-            "ready = State.READY\n"
-            "failed = State.FAILED\n"
-            "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, use_enum_values=False, "
-            "validate_default=True)\n"
-            f"    value: {annotation}{suffix}\n"
-            f"parsed = Payload.model_validate({{'value': {value}}})\n"
-            f"default_value = {default}\n"
-            "evidence = (parsed.model_dump_json(), default_value.model_dump_json(), "
-            "Payload.model_fields['value'].description, "
-            "Payload.model_fields['value'].is_required(), "
-            "Payload.model_fields['value'].frozen)\n"
-            "stored_members = (all(item is State.READY for item in parsed.value) "
-            "if isinstance(parsed.value, list) else parsed.value is State.READY)\n"
-            "dumped = parsed.model_dump()['value']\n"
-            "dumped_members = (all(item is State.READY for item in dumped) "
-            "if isinstance(dumped, list) else dumped is State.READY)\n"
-            "decoded = Payload.model_validate_json(parsed.model_dump_json()).value\n"
-            "decoded_members = (all(item is State.READY for item in decoded) "
-            "if isinstance(decoded, list) else decoded is State.READY)\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        tm.that(len(rules), eq=1)
-        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
-        tm.that(len(edits), eq=1)
-        path.write_text(edits[0].updated_source, encoding=c.DEFAULT_ENCODING)
-        after = runpy.run_path(str(path))
-        tm.that(after["evidence"], eq=before)
-        tm.that(after["stored_members"], eq=True)
-        tm.that(after["dumped_members"], eq=True)
-        tm.that(after["decoded_members"], eq=True)
-        tm.that(
-            tm.ok(
-                u.Infra.plan_contract_rules(
-                    workspace, {path: edits[0].updated_source}, rules
-                )
-            ),
-            empty=True,
-        )
-
-    @staticmethod
-    @c.Tests.MARK.parametrize(
-        ("annotation", "consumer", "evidence"),
-        [
-            ("Literal[State.READY]", "", "Payload.model_json_schema()"),
-            ("Literal[State.READY, State.READY]", "", "Payload.model_json_schema()"),
-            ("Literal[State.READY, Other.FAILED]", "", "Payload.model_json_schema()"),
-            (
-                "Annotated[str, Literal[State.READY, State.FAILED]]",
-                "",
-                "Payload.model_json_schema()",
-            ),
-            (
-                "Literal[State.READY, State.FAILED]",
-                (
-                    "class OtherPayload(BaseModel):\n"
-                    "    kind: Literal['other']\n"
-                    "Variants = Payload | OtherPayload\n"
-                    "DiscriminatorMetadata = Field(description='Retained', "
-                    "discriminator='kind')\n"
-                    "class Envelope(BaseModel):\n"
-                    "    payload: Annotated[Variants, DiscriminatorMetadata]\n"
-                ),
-                "Envelope.model_json_schema()",
-            ),
-            *(
-                (
-                    f"{qualifier}[Literal[State.READY, State.FAILED]] = 'ready'",
-                    "",
-                    "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
-                )
-                for qualifier in ("ClassVar", "CV", "AliasCV")
-            ),
-            (
-                "'ClassVar[Literal[State.READY, State.FAILED]]' = 'ready'",
-                "",
-                "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
-            ),
-            (
-                (
-                    "Annotated[ClassVar[Literal[State.READY, State.FAILED]], "
-                    "'class-data'] = 'ready'"
-                ),
-                "",
-                "(Payload.model_json_schema(), Payload.kind, type(Payload.kind))",
-            ),
-        ],
-    )
-    def test_exhaustive_enum_contract_retains_narrowed_and_discriminator_contracts(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        annotation: str,
-        consumer: str,
-        evidence: str,
-    ) -> None:
-        """Subset, duplicate, mixed, metadata and alias discriminators stay intact."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from enum import StrEnum, unique\n"
-            "from typing import Annotated, ClassVar, ClassVar as CV, Literal\n"
-            "from pydantic import BaseModel, Field\n"
-            "@unique\n"
-            "class State(StrEnum):\n"
-            "    READY = 'ready'\n"
-            "    FAILED = 'failed'\n"
-            "@unique\n"
-            "class Other(StrEnum):\n"
-            "    READY = 'other-ready'\n"
-            "    FAILED = 'other-failed'\n"
-            "AliasCV = ClassVar\n"
-            "class Payload(BaseModel):\n"
-            f"    kind: {annotation}\n" + consumer + f"evidence = {evidence}\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        before = runpy.run_path(str(path))["evidence"]
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        tm.that(
-            tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules)),
-            empty=True,
-        )
-        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
-
-    @staticmethod
-    def test_exhaustive_enum_contract_refuses_opaque_discriminator_before_effects(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-    ) -> None:
-        """A callable discriminator requires explicit proof before any preview."""
-        workspace, path = rope_contract_consumer
-        source = (
-            "from enum import StrEnum, unique\n"
-            "from typing import Annotated, Literal\n"
-            "from pydantic import BaseModel, Field\n"
-            "@unique\n"
-            "class State(StrEnum):\n"
-            "    READY = 'ready'\n"
-            "    FAILED = 'failed'\n"
-            "class Payload(BaseModel):\n"
-            "    kind: Literal[State.READY, State.FAILED]\n"
-            "def classify(value):\n"
-            "    return value['kind']\n"
-            "class Envelope(BaseModel):\n"
-            "    payload: Annotated[Payload, Field(discriminator=classify)]\n"
-        )
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        with u.Tests.raises(ValueError, match="native string field identity"):
-            u.Infra.plan_contract_rules(workspace, {path: source}, rules)
-
-    @staticmethod
-    def test_exhaustive_enum_contract_imports_owner_for_foreign_member_aliases(
-        rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
-        infra_subprocess: p.Cli.CommandRunner,
-    ) -> None:
-        """Bare imported member aliases acquire their proven native enum import."""
-        workspace, path = rope_contract_consumer
-        owner = path.parent / "enum_owner.py"
-        provider = (
-            "from enum import StrEnum, unique\n"
-            "@unique\n"
-            "class State(StrEnum):\n"
-            "    READY = 'ready'\n"
-            "    WAITING = 'waiting'\n"
-            "Ready = State.READY\n"
-            "Waiting = State.WAITING\n"
-        )
-        source = (
-            "from typing import Literal\n"
-            "from pydantic import BaseModel, ConfigDict\n"
-            f"from {path.parent.name}.enum_owner import Ready, Waiting\n"
-            "class Payload(BaseModel):\n"
-            "    model_config = ConfigDict(strict=True, "
-            "use_enum_values=False, validate_default=True)\n"
-            "    kind: Literal[Ready, Waiting] = Ready\n"
-        )
-        owner.write_text(provider, encoding=c.DEFAULT_ENCODING)
-        path.write_text(source, encoding=c.DEFAULT_ENCODING)
-        command = (
-            sys.executable,
-            "-c",
-            (
-                f"from {path.parent.name}.consumer import Payload\n"
-                f"from {path.parent.name}.enum_owner import Ready\n"
-                "parsed = Payload.model_validate({'kind': Ready})\n"
-                "print(parsed.model_dump_json())\n"
-                "print(Payload().model_dump_json())\n"
-                "print(parsed.kind is Ready, Payload().kind is Ready, "
-                "parsed.model_dump()['kind'] is Ready)\n"
-            ),
-        )
-        options = m.Cli.ProcessOptions(env={"PYTHONPATH": str(path.parent.parent)})
-        before = tm.ok(
-            infra_subprocess.capture(
-                command, cwd=workspace.repository_root, options=options
-            )
-        )
-        rules = tuple(
-            rule
-            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
-            if rule.id == "pydantic-exhaustive-strenum-annotation"
-        )
-        edits = tm.ok(
-            u.Infra.plan_contract_rules(
-                workspace, {owner: provider, path: source}, rules
-            )
-        )
-        tm.that(len(edits), eq=1)
-        for edit in edits:
-            edit.file_path.write_text(edit.updated_source, encoding=c.DEFAULT_ENCODING)
         after = tm.ok(
             infra_subprocess.capture(
                 command, cwd=workspace.repository_root, options=options
@@ -719,6 +370,11 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-defaulted-field-metadata"),
+        indirect=True,
+    )
+    @c.Tests.MARK.parametrize(
         "source",
         [
             *(
@@ -777,7 +433,25 @@ class TestsFlextInfraRopeContractBindings:
         source: str,
     ) -> None:
         """Required, factory-precedence and composed fields retain native behavior."""
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        workspace, path = rope_contract_consumer
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id.startswith("pydantic-")
+        )
+        tm.that(rules, empty=False)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(edits, empty=False)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            empty=True,
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize(

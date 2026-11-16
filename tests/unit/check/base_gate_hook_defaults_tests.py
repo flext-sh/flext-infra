@@ -370,6 +370,7 @@ class TestsFlextInfraGateHookDefaults:
             with u.Tests.raises(ValueError, match="native report rejected"):
                 self._ValidateOverride(project).check(project, context)
 
+    @c.Tests.MARK.slow
     def test_inherited_timeout_allows_a_short_command(self, tmp_path: Path) -> None:
         """A two-second probe finishes under the inherited deadline."""
         project, reports = self._project(tmp_path)
@@ -379,6 +380,7 @@ class TestsFlextInfraGateHookDefaults:
         )
         tm.that(execution.raw_output, has="FINISHED")
 
+    @c.Tests.MARK.slow
     def test_replaced_timeout_stops_a_long_command(self, tmp_path: Path) -> None:
         """A gate that replaces ``check_timeout`` is cut off at that deadline."""
         project, reports = self._project(tmp_path)

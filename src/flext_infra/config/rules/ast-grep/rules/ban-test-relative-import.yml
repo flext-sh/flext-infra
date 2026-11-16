@@ -12,6 +12,10 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+ignores:
+  # Scenario fixtures are synthetic package trees consumed as data; their
+  # relative base imports are the fixture input, not a collected test import.
+  - "**/tests/fixtures/**"
 rule:
   kind: import_from_statement
   regex: '^from\s+\.'

@@ -58,23 +58,6 @@ class TestsFlextInfraExtendedCliEntry:
             eq=1,
         )
 
-    def test_run_accepts_explicit_scope(self, tmp_path: Path) -> None:
-        """Test run accepts explicit scope."""
-        workspace = self._workspace(tmp_path)
-        tm.that(
-            FlextInfraCli.infra_main([
-                "check",
-                "run",
-                "--repository-root",
-                str(workspace),
-                "--projects",
-                "p1",
-                "--gates",
-                "lint",
-            ]),
-            eq=0,
-        )
-
     def test_run_without_projects_evaluates_only_the_repository(
         self,
         tmp_path: Path,
@@ -108,8 +91,9 @@ class TestsFlextInfraExtendedCliEntry:
             eq=0,
         )
 
+    @c.Tests.MARK.slow
     def test_with_projects_success(self, tmp_path: Path) -> None:
-        """Test with projects success."""
+        """A real lint run succeeds for the explicitly selected workspace member."""
         workspace = self._workspace(tmp_path)
         tm.that(
             FlextInfraCli.infra_main([

@@ -978,6 +978,330 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
+    class WorkspaceSyncRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def dry_run(self) -> bool:
+            """Preview only; do not execute sync operations."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceSyncRepoResult(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Repository name."""
+            ...
+
+        @property
+        def root(self) -> Path:
+            """Repository checkout root."""
+            ...
+
+        @property
+        def present(self) -> bool:
+            """Whether the checkout exists."""
+            ...
+
+        @property
+        def fetched(self) -> bool:
+            """Whether fetch was executed."""
+            ...
+
+        @property
+        def pruned(self) -> bool:
+            """Whether stale refs were pruned."""
+            ...
+
+        @property
+        def submodule_synced(self) -> bool:
+            """Whether submodules were synced."""
+            ...
+
+        @property
+        def integration_branch(self) -> str | None:
+            """Resolved integration branch."""
+            ...
+
+        @property
+        def at_integration_tip(self) -> bool:
+            """Whether at integration tip."""
+            ...
+
+        @property
+        def ahead_by(self) -> int:
+            """Commits ahead of integration."""
+            ...
+
+        @property
+        def behind_by(self) -> int:
+            """Commits behind integration."""
+            ...
+
+        @property
+        def error(self) -> str | None:
+            """Error message if any."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceSyncReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Invoking workspace root."""
+            ...
+
+        @property
+        def workspace_name(self) -> str:
+            """Workspace identity name."""
+            ...
+
+        @property
+        def integration_branch(self) -> str:
+            """Resolved integration branch."""
+            ...
+
+        @property
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceSyncRepoResult, ...]:
+            """One row per declared repository."""
+            ...
+
+        @property
+        def all_at_tip(self) -> bool:
+            """Whether all repos at integration tip."""
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether this was a dry run."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceCleanRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def dry_run(self) -> bool:
+            """Preview only; do not execute cleanup operations."""
+            ...
+
+        @property
+        def confirm(self) -> bool:
+            """Confirm execution (required when not dry-run)."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceCleanRepoResult(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def name(self) -> str:
+            """Repository name."""
+            ...
+
+        @property
+        def root(self) -> Path:
+            """Repository checkout root."""
+            ...
+
+        @property
+        def present(self) -> bool:
+            """Whether the checkout exists."""
+            ...
+
+        @property
+        def worktrees_removed(self) -> int:
+            """Obsolete worktrees removed."""
+            ...
+
+        @property
+        def preserve_branches_removed(self) -> int:
+            """Stale preserve branches removed."""
+            ...
+
+        @property
+        def submodule_drift_fixed(self) -> bool:
+            """Submodule SHA drift corrected."""
+            ...
+
+        @property
+        def generated_projections_cleaned(self) -> int:
+            """Stale generated files removed."""
+            ...
+
+        @property
+        def testmon_db_cleaned(self) -> bool:
+            """Stale testmon DB removed."""
+            ...
+
+        @property
+        def venv_recreated(self) -> bool:
+            """Stale .venv recreated."""
+            ...
+
+        @property
+        def error(self) -> str | None:
+            """Error message if any."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceCleanReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Invoking workspace root."""
+            ...
+
+        @property
+        def workspace_name(self) -> str:
+            """Workspace identity name."""
+            ...
+
+        @property
+        def repos(
+            self,
+        ) -> tuple[FlextInfraProtocolsWorkspace.WorkspaceCleanRepoResult, ...]:
+            """One row per declared repository."""
+            ...
+
+        @property
+        def dry_run(self) -> bool:
+            """Whether this was a dry run."""
+            ...
+
+        @property
+        def confirm(self) -> bool:
+            """Whether execution was confirmed."""
+            ...
+
+    @runtime_checkable
+    class WorkspacePrValidateRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def tracking_id(self) -> str | None:
+            """Bead ID to validate against."""
+            ...
+
+    @runtime_checkable
+    class WorkspacePrValidateReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Invoking workspace root."""
+            ...
+
+        @property
+        def workspace_name(self) -> str:
+            """Workspace identity name."""
+            ...
+
+        @property
+        def tracking_id(self) -> str | None:
+            """Bead ID validated."""
+            ...
+
+        @property
+        def workspace_sync(self) -> bool:
+            """Workspace sync passed."""
+            ...
+
+        @property
+        def gate_evidence(self) -> bool:
+            """All gate evidence recorded."""
+            ...
+
+        @property
+        def rca_complete(self) -> bool:
+            """RCA evidence complete."""
+            ...
+
+        @property
+        def runtime_qa(self) -> bool:
+            """Runtime QA passed."""
+            ...
+
+        @property
+        def integration_path(self) -> bool:
+            """Integration path verified."""
+            ...
+
+        @property
+        def all_passed(self) -> bool:
+            """All checks passed."""
+            ...
+
+        @property
+        def errors(self) -> tuple[str, ...]:
+            """Error messages if any."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceRcaCaptureRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def tracking_id(self) -> str | None:
+            """Bead ID to record RCA for."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceRcaCaptureReport(FlextCliProtocols.BaseModel, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Invoking workspace root."""
+            ...
+
+        @property
+        def workspace_name(self) -> str:
+            """Workspace identity name."""
+            ...
+
+        @property
+        def tracking_id(self) -> str | None:
+            """Bead ID recorded."""
+            ...
+
+        @property
+        def reproduction_recorded(self) -> bool:
+            """Reproduction command recorded."""
+            ...
+
+        @property
+        def root_cause_recorded(self) -> bool:
+            """Root cause recorded."""
+            ...
+
+        @property
+        def fix_verified(self) -> bool:
+            """Fix verification recorded."""
+            ...
+
+        @property
+        def gate_reexercised(self) -> bool:
+            """Gate re-exercise recorded."""
+            ...
+
+        @property
+        def all_recorded(self) -> bool:
+            """All RCA evidence recorded."""
+            ...
+
+        @property
+        def errors(self) -> tuple[str, ...]:
+            """Error messages if any."""
+            ...
+
+    @runtime_checkable
     class ProjectInfo(FlextCliProtocols.BaseModel, Protocol):
         """Structural data contract projected from the owning model."""
 

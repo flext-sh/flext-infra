@@ -990,6 +990,163 @@ class FlextInfraModelsWorkspace:
             m.Field(description="One row per declared member and external consumer"),
         ]
 
+    class WorkspaceSyncRequest(WorkspaceRequest):
+        """Synchronize all governed repositories to the integration branch tip."""
+
+        dry_run: Annotated[
+            bool,
+            m.Field(description="Preview only; do not execute sync operations"),
+        ] = False
+
+    class WorkspaceSyncRepoResult(m.ContractModel):
+        """Result of synchronizing one repository."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        name: Annotated[str, m.Field(description="Repository name")]
+        root: Annotated[Path, m.Field(description="Repository checkout root")]
+        present: Annotated[bool, m.Field(description="Whether the checkout exists")]
+        fetched: Annotated[bool, m.Field(description="Whether fetch was executed")]
+        pruned: Annotated[bool, m.Field(description="Whether stale refs were pruned")]
+        submodule_synced: Annotated[
+            bool, m.Field(description="Whether submodules were synced")
+        ]
+        integration_branch: Annotated[
+            str | None, m.Field(description="Resolved integration branch")
+        ]
+        at_integration_tip: Annotated[
+            bool, m.Field(description="Whether at integration tip")
+        ]
+        ahead_by: Annotated[int, m.Field(description="Commits ahead of integration")]
+        behind_by: Annotated[int, m.Field(description="Commits behind integration")]
+        error: Annotated[str | None, m.Field(description="Error message if any")]
+
+    class WorkspaceSyncReport(m.ContractModel):
+        """Typed receipt of one workspace sync run."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
+        workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
+        integration_branch: Annotated[
+            str, m.Field(description="Resolved integration branch")
+        ]
+        repos: Annotated[
+            tuple[FlextInfraModelsWorkspace.WorkspaceSyncRepoResult, ...],
+            m.Field(description="One row per declared repository"),
+        ]
+        all_at_tip: Annotated[
+            bool, m.Field(description="Whether all repos at integration tip")
+        ]
+        dry_run: Annotated[bool, m.Field(description="Whether this was a dry run")]
+
+    class WorkspaceCleanRequest(WorkspaceRequest):
+        """Identify and optionally remove obsolete workspace artifacts."""
+
+        dry_run: Annotated[
+            bool,
+            m.Field(description="Preview only; do not execute cleanup operations"),
+        ] = False
+        confirm: Annotated[
+            bool,
+            m.Field(description="Confirm execution (required when not dry-run)"),
+        ] = False
+
+    class WorkspaceCleanRepoResult(m.ContractModel):
+        """Result of cleaning one repository."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        name: Annotated[str, m.Field(description="Repository name")]
+        root: Annotated[Path, m.Field(description="Repository checkout root")]
+        present: Annotated[bool, m.Field(description="Whether the checkout exists")]
+        worktrees_removed: Annotated[
+            int, m.Field(description="Obsolete worktrees removed")
+        ]
+        preserve_branches_removed: Annotated[
+            int, m.Field(description="Stale preserve branches removed")
+        ]
+        submodule_drift_fixed: Annotated[
+            bool, m.Field(description="Submodule SHA drift corrected")
+        ]
+        generated_projections_cleaned: Annotated[
+            int, m.Field(description="Stale generated files removed")
+        ]
+        testmon_db_cleaned: Annotated[
+            bool, m.Field(description="Stale testmon DB removed")
+        ]
+        venv_recreated: Annotated[bool, m.Field(description="Stale .venv recreated")]
+        error: Annotated[str | None, m.Field(description="Error message if any")]
+
+    class WorkspaceCleanReport(m.ContractModel):
+        """Typed receipt of one workspace clean run."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
+        workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
+        repos: Annotated[
+            tuple[FlextInfraModelsWorkspace.WorkspaceCleanRepoResult, ...],
+            m.Field(description="One row per declared repository"),
+        ]
+        dry_run: Annotated[bool, m.Field(description="Whether this was a dry run")]
+        confirm: Annotated[bool, m.Field(description="Whether execution was confirmed")]
+
+    class WorkspacePrValidateRequest(WorkspaceRequest):
+        """Execute complete PR readiness checklist."""
+
+        tracking_id: Annotated[
+            str | None,
+            m.Field(description="Bead ID to validate against"),
+        ] = None
+
+    class WorkspacePrValidateReport(m.ContractModel):
+        """Typed receipt of one PR validation run."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
+        workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
+        tracking_id: Annotated[str | None, m.Field(description="Bead ID validated")]
+        workspace_sync: Annotated[bool, m.Field(description="Workspace sync passed")]
+        gate_evidence: Annotated[
+            bool, m.Field(description="All gate evidence recorded")
+        ]
+        rca_complete: Annotated[bool, m.Field(description="RCA evidence complete")]
+        runtime_qa: Annotated[bool, m.Field(description="Runtime QA passed")]
+        integration_path: Annotated[
+            bool, m.Field(description="Integration path verified")
+        ]
+        all_passed: Annotated[bool, m.Field(description="All checks passed")]
+        errors: Annotated[tuple[str, ...], m.Field(description="Error messages if any")]
+
+    class WorkspaceRcaCaptureRequest(WorkspaceRequest):
+        """Record Root Cause Analysis evidence for the current Bead."""
+
+        tracking_id: Annotated[
+            str | None,
+            m.Field(description="Bead ID to record RCA for"),
+        ] = None
+
+    class WorkspaceRcaCaptureReport(m.ContractModel):
+        """Typed receipt of one RCA capture run."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        workspace_root: Annotated[Path, m.Field(description="Invoking workspace root")]
+        workspace_name: Annotated[str, m.Field(description="Workspace identity name")]
+        tracking_id: Annotated[str | None, m.Field(description="Bead ID recorded")]
+        reproduction_recorded: Annotated[
+            bool, m.Field(description="Reproduction command recorded")
+        ]
+        root_cause_recorded: Annotated[bool, m.Field(description="Root cause recorded")]
+        fix_verified: Annotated[bool, m.Field(description="Fix verification recorded")]
+        gate_reexercised: Annotated[
+            bool, m.Field(description="Gate re-exercise recorded")
+        ]
+        all_recorded: Annotated[bool, m.Field(description="All RCA evidence recorded")]
+        errors: Annotated[tuple[str, ...], m.Field(description="Error messages if any")]
+
     class ProjectInfo(
         FlextInfraModelsMixins.ProjectEntryNameMixin,
         m.ArbitraryTypesModel,

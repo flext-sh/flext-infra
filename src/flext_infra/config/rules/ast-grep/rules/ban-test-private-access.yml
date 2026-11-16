@@ -35,6 +35,11 @@ files:
   - "**/tests/**/*.py"
   - "**/examples/**/*.py"
   - "**/conftest.py"
+ignores:
+  # Scenario fixtures drive synthetic child processes and lazy probes whose
+  # stdlib-level close/import primitives are the scenario itself, not a test
+  # reading a production owner's private state.
+  - "**/tests/fixtures/**"
 rule:
   any:
     - all:
