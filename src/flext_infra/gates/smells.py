@@ -257,7 +257,7 @@ class FlextInfraGatesSmells(FlextInfraGates):
         """
         if not sarif_json.strip():
             return r[tuple[p.Infra.Issue, ...]].fail("qlty returned empty SARIF output")
-        parsed = u.Cli.json_parse(sarif_json)
+        parsed = u.Cli.json_loads(sarif_json)
         if parsed.failure:
             return r[tuple[p.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
