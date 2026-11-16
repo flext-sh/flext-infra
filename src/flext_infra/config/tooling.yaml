@@ -555,9 +555,7 @@ Infra:
           # against the process CPU count.
           # Reserve physical memory for each xdist worker and its child process
           # tree; this bound may reduce the tested ceiling on smaller hosts.
-          # Reserve physical memory for each xdist worker and its child process
-          # tree; this bound may reduce the tested ceiling on smaller hosts.
-        parallel-worker-memory-gb: 2
+        parallel-worker-memory-gb: 4
         # Keep scheduling centralized within the measured worker budget.
         parallel-distribution: load
         # Preserve xdist's native scope-size ordering unless a project declares
