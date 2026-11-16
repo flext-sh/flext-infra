@@ -1,4 +1,4 @@
-"""Package version the root initializer binds eagerly from a facade part.
+"""Package version the root initializer binds eagerly from an internal part.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

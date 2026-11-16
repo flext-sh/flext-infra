@@ -92,8 +92,8 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.remote
+    @staticmethod
     def test_part_read_at_package_import_is_not_deferred(
-        self,
         deferred_capability_project: Path,
         fixture_tree: p.Tests.FixtureTree,
     ) -> None:
@@ -106,17 +106,12 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         fixture_tree("lazy-deferred-capability-import-time", destination=root)
         tm.that(u.Tests.run_lazy_init(root), eq=0)
         tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
-        initializer = self._initializer(root)
-        tm.that(initializer, lacks='"FlextDemoCapabilityBase": (')
-        tm.that(initializer, has='"FlextDemoCapabilityHeavy": (')
-        tm.that(initializer, has='"base_value",')
-        tm.that(initializer, lacks="defer_lazy_bases(")
         tm.that(
             u.Tests.run_lazy_init_probe(
                 (root / "import_time_probe.py").read_text(encoding=c.DEFAULT_ENCODING),
                 python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
             ),
-            eq=["False", "1.0.0"],
+            eq=["False", "1.0.0", "eager-ok"],
         )
 
     @c.Tests.MARK.slow
