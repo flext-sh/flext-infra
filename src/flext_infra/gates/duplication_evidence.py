@@ -335,7 +335,7 @@ class FlextInfraDuplicationEvidence:
                 msg = f"invalid YAML source: {yaml_parsed.error}"
                 raise ValueError(msg)
         elif format_name == "json":
-            json_parsed = u.Cli.json_parse(source)
+            json_parsed = u.Cli.json_loads(source)
             if json_parsed.failure:
                 msg = f"invalid JSON source: {json_parsed.error}"
                 raise ValueError(msg)

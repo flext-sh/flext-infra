@@ -1141,7 +1141,7 @@ class FlextInfraCodemodDuplicateApply(
         )
         if not report_path.is_file():
             return ()
-        parsed = u.Cli.json_parse(report_path.read_text(encoding=c.DEFAULT_ENCODING))
+        parsed = u.Cli.json_loads(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure:
             msg = f"jscpd report is not parseable: {report_path}: {parsed.error}"
             raise ValueError(msg)

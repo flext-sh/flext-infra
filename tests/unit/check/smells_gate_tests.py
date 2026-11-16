@@ -378,13 +378,13 @@ class TestsFlextInfraSmellsGate:
             ),
         )
         execution = projects[0].gates[c.Infra.SMELLS]
-        native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(execution.raw_output)))
+        native = u.Cli.json_as_mapping(tm.ok(u.Cli.json_loads(execution.raw_output)))
         tm.not_none(execution.raw_receipt)
         (report_path,) = reports_dir.glob(f"*/{c.Infra.CHECK_REPORT_SARIF_FILENAME}")
         report_text = report_path.read_text(
             encoding=c.DEFAULT_ENCODING,
         )
-        published = u.Cli.json_as_mapping(tm.ok(u.Cli.json_parse(report_text)))
+        published = u.Cli.json_as_mapping(tm.ok(u.Cli.json_loads(report_text)))
         native_results = tuple(
             result
             for run in u.Cli.json_deep_mapping_list(native, "runs")

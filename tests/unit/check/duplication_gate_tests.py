@@ -339,10 +339,10 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         tm.fail(execution.result.passed)
         tm.ok(len(execution.issues) >= 1)
         rendered = u.Cli.json_as_mapping(
-            u.Cli.json_parse(
+            u.Cli.json_loads(
                 (
                     root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
-                ).read_text(encoding="utf-8"),
+                ).read_text(encoding="utf-8")
             ).unwrap(),
         )
         tm.that(
@@ -514,7 +514,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
             / f"{c.Infra.JSCPD_REPORT_FILENAME.removesuffix('.json')}.sarif"
         )
         runs = u.Cli.json_as_mapping(
-            u.Cli.json_parse(sarif.read_text(encoding="utf-8")).unwrap()
+            u.Cli.json_loads(sarif.read_text(encoding="utf-8")).unwrap()
         ).get("runs")
         tm.ok(isinstance(runs, list) and len(runs) >= 1)
 
@@ -600,10 +600,10 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
         """
         return u.Cli.json_as_mapping(
-            u.Cli.json_parse(
+            u.Cli.json_loads(
                 (
                     root / c.Infra.JSCPD_REPORT_DIRNAME / c.Infra.JSCPD_CONFIG_FILENAME
-                ).read_text(encoding="utf-8"),
+                ).read_text(encoding="utf-8")
             ).unwrap(),
         )
 
@@ -617,7 +617,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
         """
         assessment = root / "reports" / "duplication.raw.assessment.json"
         mapping = u.Cli.json_as_mapping(
-            u.Cli.json_parse(assessment.read_text(encoding="utf-8")).unwrap()
+            u.Cli.json_loads(assessment.read_text(encoding="utf-8")).unwrap()
         )
         return u.Cli.json_as_mapping(mapping.get("counts", {}))
 
