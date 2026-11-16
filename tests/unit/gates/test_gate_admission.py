@@ -121,7 +121,7 @@ class TestsFlextInfraGateAdmission:
                     tm.that(ticket.admitted_at is None, eq=True)
                     return
             time.sleep(0.05)
-        tm.fail(f"Gate process {process.pid} did not queue")
+        pytest.fail(f"Gate process {process.pid} did not queue")
 
     @classmethod
     def _release(cls, tmp_path: Path, name: str, process: p.Cli.ManagedProcess) -> int:
