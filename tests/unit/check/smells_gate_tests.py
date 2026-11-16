@@ -342,6 +342,7 @@ class TestsFlextInfraSmellsGate:
         tm.ok(execution.result.passed)
         tm.that(execution.issues, length=0)
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize(
         "variation",
         ["current", "raised", "similar-only", "disabled"],

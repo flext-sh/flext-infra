@@ -79,6 +79,7 @@ class FlextInfraProtocolsDepsToolConfig:
         ordinary_timeout_seconds: int
         slow_timeout_seconds: int
         slow_marker: t.NonEmptyStr
+        item_deadline_call_only: bool
         run_timeout_seconds: int
         termination_grace_seconds: int
         max_failures: int

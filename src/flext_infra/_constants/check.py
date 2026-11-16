@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
@@ -409,6 +410,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     CHECK_PROFILE_FILENAME: ClassVar[str] = "check.pstats"
     "Optional native profile of the captured checker in its invocation directory."
+    CHECK_REPORT_RELATIVE_PATH: ClassVar[Path] = Path(CHECK_REPORT_SARIF_FILENAME)
+    "Repository-relative path to the latest check receipt."
+    TEST_REPORT_RELATIVE_PATH: ClassVar[Path] = Path("test-report.json")
+    "Repository-relative path to the latest test receipt."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )

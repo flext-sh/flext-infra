@@ -25,6 +25,8 @@ ignores:
   - "**/tests/_*/**"
   - "**/tests/fixtures/**"
   - "**/tests/utilities.py"
+  - "**/tests/base.py"
+  - "**/tests/settings.py"
   - "**/tests/constants.py"
   - "**/tests/models.py"
   - "**/tests/protocols.py"
