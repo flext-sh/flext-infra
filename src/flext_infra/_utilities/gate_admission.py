@@ -194,16 +194,13 @@ class FlextInfraUtilitiesGateAdmission:
             Path.cwd(),
             runtime_root=type(settings).fetch_global().Infra.runtime_root,
         ).parent
-        for tool in config.Infra.codegen.toolchain.tools:
-            resolved = FlextInfraUtilitiesMiseBinary.managed_mise_binary(
-                tool.name, owner_root
+        resolved = FlextInfraUtilitiesMiseBinary.resolve_declared_tools(owner_root)
+        if resolved.failure:
+            msg = (
+                "preflight: declared toolchain does not resolve before queueing: "
+                f"{resolved.error}"
             )
-            if resolved.failure:
-                msg = (
-                    f"preflight: declared tool {tool.name} does not resolve "
-                    f"before queueing: {resolved.error}"
-                )
-                raise FileNotFoundError(msg)
+            raise FileNotFoundError(msg)
 
     @classmethod
     def gate_repeat_refuse(
