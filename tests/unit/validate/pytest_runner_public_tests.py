@@ -410,7 +410,7 @@ class TestsFlextInfraPytestRunner:
             "import pytest\nfrom runner_sample import answer\n\n"
             + "".join(
                 f"def test_budgeted_{index}() -> None:\n    assert answer()\n\n"
-                for index in range(3)
+                for index in range(1)
             )
             + f"@pytest.mark.{policy.slow_marker}\n"
             "def test_slow_red() -> None:\n    assert answer() < 0\n",
@@ -418,22 +418,16 @@ class TestsFlextInfraPytestRunner:
         )
         source = cached_runner_project / "src" / "runner_sample" / "__init__.py"
 
+        # A global incremental run includes slow items by declaration, so the
+        # budgeted phase is red while the slow item is red.
         tm.that(
             tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
-            eq=0,
-        )
-        tm.that(
-            tm.ok(
-                u.Tests.PytestRunner.runner_for(
-                    cached_runner_project, slow_phase=True
-                ).execute()
-            ),
             ne=0,
         )
         source.write_text("def answer() -> int:\n    return 41 + 1\n", encoding="utf-8")
         tm.that(
             tm.ok(u.Tests.PytestRunner.runner_for(cached_runner_project).execute()),
-            eq=0,
+            ne=0,
         )
 
         tm.that(
@@ -797,8 +791,8 @@ class TestsFlextInfraPytestRunner:
         )
         tm.that(accounting.executed_count, eq=1 + len(executable))
         tm.that(accounting.reported_count, eq=1 + len(executable))
-        tm.that(accounting.inventory_count, eq=1 + len(markers))
-        tm.that(accounting.deselected_count, eq=len(not_executed))
+        tm.that(accounting.inventory_count, eq=1 + len(executable))
+        tm.that(accounting.deselected_count, eq=0)
         tm.that(
             accounting.executed_count + accounting.deselected_count,
             eq=accounting.inventory_count,
@@ -1038,7 +1032,10 @@ class TestsFlextInfraPytestRunner:
             "*/run-context.json",
         )
         context = m.Infra.PytestRunContext.model_validate_json(context_path.read_text())
-        tm.that(context.execution_mode, eq="incremental")
+        tm.that(
+            context.execution_mode,
+            eq=c.Infra.PytestExecutionMode.GLOBAL_INCREMENTAL,
+        )
         outcome = m.Cli.ProcessOutcome.model_validate_json(
             (context_path.parent / "suite-outcome.json").read_text(),
         )
