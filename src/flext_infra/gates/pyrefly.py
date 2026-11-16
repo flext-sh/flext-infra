@@ -97,7 +97,12 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
             tuple(check_dirs),
             selected_files=ctx.selected_files,
         )
-        return self._python_module_command(
+        runtime_python = u.Infra.runtime_python(
+            project_dir, runtime_root=ctx.runtime_root
+        )
+        return (
+            str(runtime_python),
+            "-m",
             c.Infra.PYREFLY,
             c.Infra.CHECK,
             *target_args,
@@ -108,7 +113,7 @@ class FlextInfraGatesPyrefly(FlextInfraGates):
                 for argument in ("--search-path", str(source))
             ),
             "--python-interpreter-path",
-            str(u.Infra.runtime_python(project_dir, runtime_root=ctx.runtime_root)),
+            str(runtime_python),
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--min-severity",
