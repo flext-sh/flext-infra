@@ -806,17 +806,20 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # `make upg`'s residual flext-infra step imports neither the project's source nor
 # the runtime environment.
 override EXECUTOR_FLEXT_INFRA = env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH "$(FLEXT_INFRA_EXECUTOR_PYTHON)" -I -m flext_infra
-# Native uv syncs the executor from the project's frozen lock: the dependency
-# group that pins flext-infra, without editable installs, into its own
-# environment (recreated first when it is not a uv environment, and refreshed,
-# so a sync never targets a Mise base interpreter). A consumer excludes the
-# project, so the executor never imports its source. A project in flext-infra's
-# own runtime closure (derived from the installed metadata) supplies part of the
-# executor, so its locked non-editable build is installed, never the editable
-# source. upg forms it from the committed lock for the pre-resolution
-# cooldown admission and again from the written locks for the last repair.
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --link-mode clone; \
+# Native uv syncs the executor from the dependency group that pins flext-infra,
+# without editable installs, into its own environment (recreated first when it
+# is not a uv environment, and refreshed, so a sync never targets a Mise base
+# interpreter). A consumer excludes the project, so the executor never imports
+# its source. A project in flext-infra's own runtime closure (derived from the
+# installed metadata) supplies part of the executor, so its locked non-editable
+# build is installed, never the editable source. upg's pre-resolution executor
+# follows the declared sources (--no-frozen) so a Makefile generated from the
+# current tip can run commands the committed lock predates; its post-resolution
+# executor is frozen from the written locks for the last repair.
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)
+SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)
+SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+	env -u MISE_PYTHON_UV_VENV_AUTO -u UV_PROJECT -u UV_WORKING_DIR -u UV_CONFIG_FILE -u UV_PROJECT_ENVIRONMENT -u UV_PYTHON -u UV_PYTHON_DOWNLOADS -u UV_NO_CONFIG -u UV_NO_SOURCES -u UV_FROZEN -u UV_LOCKED -u VIRTUAL_ENV -u PYTHONHOME -u PYTHONPATH UV_PROJECT_ENVIRONMENT="$$install_environment" timeout --signal=TERM --kill-after=5s 118s $(UV) sync $(1) --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "dev" --no-editable --link-mode clone; \
 	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
 	$(VERIFY_ENVIRONMENT)
 
@@ -1348,7 +1351,7 @@ _upg_lifecycle:
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	[ -f "$(RUNTIME_ROOT)/uv.lock" ] || $(UV) lock --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
+	$(SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps cooldown-admission --repository-root "$(RUNTIME_ROOT)"; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
