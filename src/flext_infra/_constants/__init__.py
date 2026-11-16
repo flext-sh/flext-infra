@@ -627,6 +627,7 @@ install_lazy_exports(
             "DOCS_TEST_DOUBLE_HEADING_RE",
         ),
         "FlextInfraConstantsGit": (
+            "GITMODULES_FILENAME",
             "GIT_COMMIT_OID_RE",
             "GIT_COMMIT_REF_RE",
             "GIT_UNBORN_HEAD_MARKER",
