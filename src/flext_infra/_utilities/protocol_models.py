@@ -6893,49 +6893,6 @@ class FlextInfraUtilitiesModelsProtocol:
                 ast.parse(f"{holder}.{member_path}", mode="eval").body, node
             )
 
-        def _source_collect_import_routes(
-            self, statement: ast.stmt, expression: tuple[str, str], routes: set[str]
-        ) -> bool:
-            """Add the first-party model routes one import binds for an expression.
-
-            ``expression`` holds the referenced root name and its member suffix.
-
-            Returns:
-                Whether the import binds the root to a foreign owner.
-
-            """
-            root, suffix = expression
-            foreign_binding = False
-            if isinstance(statement, ast.ImportFrom) and statement.level == 0:
-                for alias in statement.names:
-                    if (alias.asname or alias.name) != root:
-                        continue
-                    if statement.module is None or not statement.module.startswith(
-                        f"{self.source_package_name}._models."
-                    ):
-                        exported = self.source_model_package_exports.get((
-                            statement.module or "",
-                            alias.name,
-                        ))
-                        if exported is None:
-                            foreign_binding = True
-                            continue
-                        routes.add(f"{exported}.{suffix}")
-                    else:
-                        routes.add(f"{statement.module}.{alias.name}.{suffix}")
-            if isinstance(statement, ast.Import):
-                for alias in statement.names:
-                    local = alias.asname or alias.name.partition(".")[0]
-                    if local != root:
-                        continue
-                    if not alias.name.startswith(
-                        f"{self.source_package_name}._models."
-                    ):
-                        foreign_binding = True
-                        continue
-                    routes.add(f"{alias.name}.{suffix}")
-            return foreign_binding
-
         @classmethod
         def _source_typing_bindings(
             cls, tree: ast.Module, model: ast.ClassDef, symbol: str

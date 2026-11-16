@@ -114,6 +114,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        u.Tests.git_bootstrap(project_dir, ("init", "--quiet"))
         if markdown_config is not None:
             (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
                 markdown_config, encoding="utf-8"
@@ -130,6 +131,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         # A real project is a Git checkout; the checker elects its runtime
         # from Git and refuses a plain directory.
         TestsFlextInfraUtilitiesGit.initialize_git_repo(project_dir)
+        u.Tests.git_bootstrap(project_dir, ("add", "-A"))
         return project_dir
 
     @staticmethod

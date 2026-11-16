@@ -402,9 +402,7 @@ class TestsFlextInfraRefactorImportNormalizationFamilies(
             "    assert DemoApi(c, m, u, DemoApiTestDataHelper)\n",
         )
 
-        tm.that(normalized, has="from tests import c\n")
-        tm.that(normalized, has="from tests import c, u\n")
-        tm.that(normalized, has="from tests import c, m\n")
+        tm.that(normalized, has="from tests import c, m, u\n")
         tm.that(normalized, has="from demo_pkg import DemoApi\n")
         tm.that(
             normalized,
