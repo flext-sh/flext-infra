@@ -263,19 +263,32 @@ class FlextInfraUtilitiesPythonModel:
 
     @staticmethod
     def _python_model_assigned(node: ast.Assign | ast.AnnAssign) -> Sequence[str]:
-        """Return the plain names one assignment binds.
+        """Return the plain names one assignment binds at class creation.
 
-        An unpacking or subscript target binds no static name, so the whole
-        assignment binds none; attribute targets bind no module name.
+        A name target binds itself; a tuple or list target binds every plain
+        name it contains, in target order, including a starred element;
+        attribute and subscript targets bind no plain name. This mirrors the
+        names the class body actually binds at runtime.
 
         Returns:
             The bound names in target order.
 
         """
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        if not all(isinstance(target, (ast.Name, ast.Attribute)) for target in targets):
-            return ()
-        return tuple(target.id for target in targets if isinstance(target, ast.Name))
+        names: list[str] = []
+
+        def bind(target: ast.expr) -> None:
+            if isinstance(target, ast.Name):
+                names.append(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for element in target.elts:
+                    bind(element)
+            elif isinstance(target, ast.Starred):
+                bind(target.value)
+
+        for target in targets:
+            bind(target)
+        return tuple(names)
 
     @classmethod
     def _python_model_class_exports(cls, node: ast.ClassDef) -> Sequence[str] | None:

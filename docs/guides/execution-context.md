@@ -122,8 +122,8 @@ protocols only in the protocol family. A module-level family class (a model
 declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
-`Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+`Name: TypeAlias = Part.Name`, the one form the compatibility type surface can
+subscript there (global axiom in `config/tooling.yaml`). It is emitted
 under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
 through MRO and importing the facade loads no part (ADR-018, every facade part
 is deferred). That publication retires when the member stops being generic or
@@ -2693,6 +2693,18 @@ from the primary checkout or Git common directory. The generated Makefile, gener
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
+An attached member remains governed by the superproject environment even when the
+superproject does not declare it as a native uv workspace member. Its own committed
+lock is then not the validation owner: a consumer gate that depends on a newer FLEXT
+owner revision observes it only after the workspace lock moves through `make upg` at
+the superproject. Conversely, a linked Git worktree owns its own
+`<RUNTIME_ROOT>/.venv` exactly like a standalone checkout; analyzer bindings follow
+that ownership and never resolve the primary checkout or the Git common directory.
+The generator derives `venvPath` from the topology: `"."` for an environment owner
+and the derived relative path for an attached member. A generated `venvPath` that
+resolves through the primary checkout is a defect, never an accepted fallback
+(tracked by `flext-itpd1.13.11` and `flext-do3lv.8`).
+
 Editable imports and packaged configuration share one delivery path: both resolve
 from the editable source tree, so a configuration edit is live without `make setup`.
 Only a declared build hook adds generated native UV cache keys, retaining UV's
@@ -3972,6 +3984,13 @@ it does not authorize reexports. Explicit facade letters and inherited serving
 contracts continue through the existing letter election. Authored initializers
 retain their declared publications and content.
 
+Generated family initializers publish through `flext_core.lazy.install_lazy_exports`,
+declare their part modules in `deferred_members`, and call `defer_lazy_bases`
+(`flext_core.lazy.defer_bases`) for the composed facade parts. Those names are the
+generator's output contract — owned by the `flext-infra` lazy-init planner and
+`flext_core.lazy`, emitted by `make gen`, and never authored or hand-edited. The
+current `flext-api` and `flext-auth` family initializers are the reference shape.
+
 Facade inheritance never treats the package currently being planned as its own
 parent. Its direct modules have already elected its local publications; reading
 that package's previous generated initializer would reintroduce retired exports.
@@ -4006,10 +4025,10 @@ with a `make gen` fix (rule 2).
 
 Two composed classes stay real instead of becoming stand-ins (rule 5): a class
 whose body binds no member and names no base, and a class the package's own
-import-time code reads. That code is each module an eager dunder binding (such as
-`__version__`) loads while the package initializes, together with every
-in-package module those modules import at runtime, transitively; the facts are
-the same parse's runtime imports. A stand-in published there would make the
+import-time code reads. That code is each module an eager dunder binding loads
+while the package initializes, together with every in-package module those
+modules import at runtime, transitively; the facts are the same parse's runtime
+imports. A stand-in published there would make the
 process mix stand-ins and real classes, which the eager lazy mode refuses.
 
 Lazy initializer planning keeps facade exports lazy. A version metadata export
@@ -4120,7 +4139,7 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-The retired `check-pyright` and `mod-types` Make subverbs, including their former
+The retired type-check and type-mod Make subverbs, including their former
 member-Makefile dispatch examples, are historical interfaces. Use the active
 root's selector-free `make check` for declared Pyrefly validation and native
 reports, and `make mod` for the existing semantic transformation pipeline.
@@ -4871,10 +4890,13 @@ annotation does not replace an existing facade binding.
 
 The pytest deadline correction applies the same absolute
 entrypoint clock to complete, incremental, file, coverage and profiled operations.
-Selection mode cannot disable that clock. The typed tooling policy bounds the
-operation, including lock waits, collection and execution, within the 120-second
-command contract. One declared budget replaces project-specific wall exceptions.
-Termination grace stays inside that budget.
+Selection mode cannot disable that clock. The typed tooling policy owns the values:
+`ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
+(20 s) applies to `slow` and the heavy capability markers, and
+`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
+budget across every member suite, and a per-member reset is rejected. Collection,
+session setup, fixture teardown and plugin bookkeeping belong to the suite deadline,
+which reserves its own shutdown time. Termination grace stays inside that budget.
 Historical 300-, 600- and 1200-second exceptions are superseded by the current
 performance requirement, rather than retained as measurement modes.
 

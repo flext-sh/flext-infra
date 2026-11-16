@@ -10,6 +10,7 @@
 - [Test design](#test-design)
 - [Pydantic and type checking](#pydantic-and-type-checking)
 - [Canonical execution](#canonical-execution)
+- [Item deadlines and the applicable population](#item-deadlines-and-the-applicable-population)
 - [Generated documentation](#generated-documentation)
 - [Related guides](#related-guides)
 

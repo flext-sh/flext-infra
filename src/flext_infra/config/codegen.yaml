@@ -336,8 +336,8 @@ Infra:
       # (mise.lock then carries the URL only); every other tool's current
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
-      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
-      # pyrefly LSP, qlty, jscpd, waza, prek). A project that needs more
+      # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, qlty,
+      # jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
