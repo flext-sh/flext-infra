@@ -254,3 +254,22 @@ class TestsFlextInfraCodegenAttachedWorkspaceProfile:
             if item.path == root / c.Infra.GITIGNORE
         )
         tm.that(root_rendered.splitlines(), has="/*/")
+
+    def test_linked_worktree_owns_its_runtime(self, tmp_path: Path) -> None:
+        """A linked lane's runtime owner is the lane checkout, not the primary."""
+        _, member = self._attached_workspace(tmp_path)
+        lane = tmp_path / "lane-runtime"
+        tm.ok(
+            u.Cli.run_checked((
+                "git",
+                "-C",
+                str(member),
+                "worktree",
+                "add",
+                "-b",
+                "lane-runtime",
+                str(lane),
+            ))
+        )
+        owner = tm.ok(u.Infra.runtime_owner_root(lane))
+        tm.that(owner, eq=lane.resolve())

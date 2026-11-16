@@ -95,7 +95,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             rendered,
             has=(
                 "SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = "
-                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)"
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen --upgrade)"
             ),
         )
         tm.that(

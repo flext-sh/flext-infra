@@ -947,87 +947,63 @@ class FlextInfraUtilitiesRopeRuntimeModules(
             # quoted-move troca conteúdos no mesmo path): resolve pela
             # rota lazy do pacote publicador quando existe; sem rota, a
             # identidade é ilegível neste ponto fixo — propaga limpa.
-            target = (
-                FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
-                    project, module.rpartition(".")[0], attributes[0]
+            identity = (
+                FlextInfraUtilitiesRopeRuntimeModules._lazy_export_identity(
+                    project, module.rpartition(".")[0], attributes
                 )
                 if "." in module
                 else None
             )
-            if target is None:
+            if identity is None:
                 raise
-            owner = f"{module.rpartition('.')[0]}{target}"
-            return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                project,
-                ".".join(attributes),
-                module_name=owner,
-            )
+            return identity
         try:
             identity = value.get_attribute(attributes[0])
         except rope_exceptions.AttributeNotFoundError:
             # Fachadas lazy-init (``install_lazy_exports``) publicam o mapa
             # de rotas como argumento literal do call no __init__ (SSOT
             # estática: ``nome -> ".caminho"`` ou ``(".caminho", nome)``).
-            target = FlextInfraUtilitiesRopeRuntimeModules._lazy_route(
-                project, module, attributes[0]
+            identity = FlextInfraUtilitiesRopeRuntimeModules._lazy_export_identity(
+                project, module, attributes
             )
-            if target is None:
+            if identity is None:
                 raise
-            owner = f"{module}{target}" if target.startswith(".") else target
-            return FlextInfraUtilitiesRopeRuntimeModules.qualified_name(
-                project,
-                ".".join(attributes[1:]) or attributes[0],
-                module_name=owner,
-            )
+            return identity
         for attribute in attributes[1:]:
             identity = identity.get_object().get_attribute(attribute)
         return identity
 
-    @staticmethod
-    def _lazy_route(
+    @classmethod
+    def _lazy_export_identity(
+        cls,
         project: p.Infra.RopeProject,
         module_name: str,
-        name: str,
-    ) -> str | None:
-        """Reads the lazy-init route of one export from the package's SSOT call.
+        attributes: Sequence[str],
+    ) -> p.Infra.RopePyName | None:
+        """Resolve a lazy-published export and its remaining attribute path.
 
         Returns:
-            The relative module path bound to ``name``, or none without the
-            lazy contract.
+            The native binding the initializer publishes for the first
+            attribute, or none without a declared route.
 
         """
         package = project.get_module(module_name)
         resource = package.get_resource()
         if resource is None:
             return None
-        tree = project.get_pymodule(resource).get_ast()
-        for node in ast.walk(tree):
-            if not (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Call)
-                and getattr(node.value.func, "id", "") == "install_lazy_exports"
-            ):
-                continue
-            mapping_index = c.Infra.LAZY_EXPORT_MAPPING_ARGUMENT_INDEX
-            if len(node.value.args) <= mapping_index:
-                continue
-            mapping = node.value.args[mapping_index]
-            inner = (
-                mapping.args[0]
-                if isinstance(mapping, ast.Call) and mapping.args
-                else mapping
-            )
-            if not isinstance(inner, ast.Dict):
-                continue
-            for key_node, value_node in zip(inner.keys, inner.values, strict=False):
-                if (
-                    isinstance(key_node, ast.Constant)
-                    and key_node.value == name
-                    and isinstance(value_node, ast.Constant)
-                    and isinstance(value_node.value, str)
-                ):
-                    return value_node.value
-        return None
+        path = Path(resource.real_path)
+        if path.is_dir():
+            path /= c.Infra.INIT_PY
+        reference = cls.resolve_lazy_export_bindings(
+            module_name,
+            path,
+            project.source_text(path),
+            project=project,
+        ).get(attributes[0])
+        if reference is None:
+            return None
+        route = ".".join((*reference.attributes, *attributes[1:])) or attributes[0]
+        return cls.qualified_name(project, route, module_name=reference.target)
 
     @classmethod
     def name_definition_resource_path(
