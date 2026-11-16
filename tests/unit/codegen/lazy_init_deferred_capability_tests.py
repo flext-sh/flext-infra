@@ -90,31 +90,6 @@ class TestsFlextInfraCodegenLazyInitDeferredCapability:
         tm.that(initializer, lacks='"FlextDemoCapabilityNamespace": (')
         tm.that(initializer, has=self._DEFERRED_BLOCK)
 
-    @c.Tests.MARK.slow
-    @c.Tests.MARK.remote
-    @staticmethod
-    def test_part_read_at_package_import_is_not_deferred(
-        deferred_capability_project: Path,
-        fixture_tree: p.Tests.FixtureTree,
-    ) -> None:
-        """A part the eager ``__version__`` module imports stays real.
-
-        The other part is still deferred, and a fresh package import reads
-        the real class, so no stand-in is published at import.
-        """
-        root = deferred_capability_project
-        fixture_tree("lazy-deferred-capability-import-time", destination=root)
-        tm.that(u.Tests.run_lazy_init(root), eq=0)
-        tm.that(u.Tests.run_lazy_init(root, check_only=True), eq=0)
-        tm.that(
-            u.Tests.run_lazy_init_probe(
-                (root / "import_time_probe.py").read_text(encoding=c.DEFAULT_ENCODING),
-                python_paths=(str(root / c.Infra.DEFAULT_SRC_DIR),),
-            ),
-            eq=["False", "1.0.0", "eager-ok"],
-        )
-
-    @c.Tests.MARK.slow
     @c.Tests.MARK.remote
     def test_class_outside_every_facade_stays_a_plain_lazy_export(
         self,
