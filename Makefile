@@ -186,7 +186,7 @@ unexport GITHUB_API_TOKEN
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace
+MAKE_PROFILE := standalone
 REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -609,7 +609,7 @@ _bootstrap_setup_tools: _builtin_require_workspace
 # process the root and every governed member together in one checker run
 # (operator ruling 2026-10-25: never member by member); each multi-root tool
 # runs once over their union.
-GATE_SCOPE := $(if $(filter Y,$(CI)),self,all)
+GATE_SCOPE := self
 # Local and CI consume the same native project/workspace declarations and lock.
 # Setup always bootstraps: `uv sync --frozen` installs exactly the committed
 # uv.lock without re-resolving or rewriting it, so manifest drift never blocks
@@ -808,10 +808,10 @@ SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_
 # every member's declared extras and groups, without copying dependency graphs.
 
 
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone
 
 ifeq ($(CI),Y)
-override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --all-packages --no-editable
+override SETUP_SYNC_ARGS := --all-extras --all-groups --link-mode clone --no-editable
 endif
 
 # Custom hooks are declared in CI too; load their selected physical Makefile.
@@ -919,7 +919,7 @@ PROFILE_VERBS_DIRECT := $(filter-out $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INT
 PROFILE_VERBS_ROUTED := $(PROFILE_VERBS_HOOKED) $(PROFILE_VERBS_INTERPRETER)
 
 $(PROFILE_VERBS_PLAIN): %: _builtin_require_workspace _builtin_require_interpreter
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	$(call RUN_PUBLIC,$@)
 
 
@@ -928,7 +928,7 @@ $(PROFILE_VERBS_DISPATCH):
 
 
 $(PROFILE_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(PROFILE_VERBS_ACTIVATED))
 ifneq ($(strip $(PROFILE_VERBS_DIRECT)),)
@@ -990,7 +990,7 @@ SCRIPT_VERBS_ROUTED := $(SCRIPT_VERBS_HOOKED) $(SCRIPT_VERBS_INTERPRETER)
 
 
 $(SCRIPT_VERBS_ACTIVATED): %: _builtin_require_workspace
-	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'workspace'
+	@printf '==> %s | project=%s | profile=%s\n' '$@' "$(PROJECT_ROOT)" 'standalone'
 	+@$(if $(filter Y,$(CI)),$(MISE) -C "$(RUNTIME_ROOT)" exec -- $(SELF_MAKE) _activated-$@,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _activated-$@)
 .PHONY: $(addprefix _activated-,$(SCRIPT_VERBS_ACTIVATED))
 ifneq ($(strip $(SCRIPT_VERBS_DIRECT)),)
@@ -1026,7 +1026,13 @@ _setup_lifecycle: _builtin_require_workspace
 		Y:*) ;; \
 		*" pre-setup "*) $(SELF_MAKE) pre-setup ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),,$(DIRENV) allow "$(PROJECT_ROOT)";) \
+	$(if $(filter Y,$(CI)),,set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f;) \
 	$(if $(filter Y,$(CI)),$(SELF_MAKE) _setup_activated,$(DIRENV) exec "$(PROJECT_ROOT)" $(SELF_MAKE) _setup_activated)
 
 # Setup installs UV's frozen resolution; Mise completes missing native tool
@@ -1045,7 +1051,7 @@ ifneq ($(CI),Y)
 endif
 
 _builtin-help:
-	@printf '%s\n' 'flext-infra [workspace]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 	@$(foreach verb,$(PUBLIC_VERBS),$(call VERB_HELP_LINE,$(verb));)
 
 # A project owns the sources declared by its manifest. Generated setup
@@ -1341,15 +1347,18 @@ _upg_lifecycle:
 	fi; \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
+	upg_pkg_flags=""; \
+	for pkg in $(UPG_PACKAGES); do upg_pkg_flags="$$upg_pkg_flags --upgrade-package $$pkg"; done; \
+	if [ -z "$$upg_pkg_flags" ]; then upg_pkg_flags=" --upgrade"; fi; \
 	set -f; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \
 		case "$$checkout" in .) continue ;; esac; \
 		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
-			$(UV) lock --upgrade --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+			$(UV) lock$$upg_pkg_flags --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
 	done; \
 	set +f; \
-	$(UV) lock --upgrade --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
+	$(UV) lock$$upg_pkg_flags --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads; \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
 	bootstrap_stage=network-auth; \
 	if git config --global --get-regexp '^url\.https?://[^ /]+:[^ /]+@.*\.insteadof$$' >/dev/null; then \
@@ -1376,10 +1385,17 @@ _upg_lifecycle:
 	$(INSTALL_RUNTIME_RECIPE); \
 	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps repair-mise-platforms --repository-root "$(RUNTIME_ROOT)"; \
+	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps verify-pin-convergence --repository-root "$(RUNTIME_ROOT)"; \
 	case " $(CUSTOM_DECLARED_TARGETS) " in \
 		*" post-upg "*) $(SELF_MAKE) post-upg ;; \
 	esac; \
-	$(if $(filter Y,$(CI)),:,$(DIRENV) allow "$(PROJECT_ROOT)")
+	$(if $(filter Y,$(CI)),:,set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f)
 
 # Lock resolves a changed dependency declaration (a newly declared requirement)
 # into the UV locks and keeps every pin they already hold; only upg moves a pin.

@@ -420,6 +420,18 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
+    class NativeGateRequest(WorkspaceRequest):
+        """A native command admitted to the shared host gate queue."""
+
+        argv: Annotated[
+            tuple[str, ...],
+            m.Field(min_length=1, description="Native executable and arguments"),
+        ]
+        budget_seconds: Annotated[
+            t.PositiveInt,
+            m.Field(gt=1, description="Native wall budget including termination grace"),
+        ]
+
     class WorkspaceTestsRequest(WorkspaceRequest):
         """Select repositories for native persistent incremental tests."""
 

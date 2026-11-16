@@ -52,15 +52,32 @@
 	{{ mise_network_admission() }} \
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
+	{% if upgrade -%}
+	upg_pkg_flags=""; \
+	for pkg in $(UPG_PACKAGES); do upg_pkg_flags="$$upg_pkg_flags --upgrade-package $$pkg"; done; \
+	if [ -z "$$upg_pkg_flags" ]; then upg_pkg_flags=" --upgrade"; fi; \
+	{% endif -%}
 	set -f; \
 	$(GOVERNED_CHECKOUTS); \
 	for checkout in $$checkouts; do \
 		case "$$checkout" in .) continue ;; esac; \
 		[ ! -f "$$root/$$checkout/pyproject.toml" ] || \
-			$(UV) lock{{ " --upgrade" if upgrade }} --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
+			$(UV) lock{% if upgrade %}$$upg_pkg_flags{% endif %} --project "$$root/$$checkout" --python "$$desired_python" --no-python-downloads; \
 	done; \
 	set +f; \
-	$(UV) lock{{ " --upgrade" if upgrade }} --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads;
+	$(UV) lock{% if upgrade %}$$upg_pkg_flags{% endif %} --project "$(PROJECT_ROOT)" --python "$$desired_python" --no-python-downloads;
+{%- endmacro %}
+
+{#- Authorize direnv on every governed checkout that ships an .envrc so
+    submodules and worktrees never trip ".envrc is blocked". -#}
+{% macro direnv_allow_governed() -%}
+	set -f; \
+	$(GOVERNED_CHECKOUTS); \
+	for checkout in $$checkouts; do \
+		if [ "$$checkout" = . ]; then allow_root="$$root"; else allow_root="$$root/$$checkout"; fi; \
+		[ ! -f "$$allow_root/.envrc" ] || $(DIRENV) allow "$$allow_root"; \
+	done; \
+	set +f
 {%- endmacro %}
 
 {#- Native installation preserves valid pins. Setup fills absent lock entries;

@@ -17,6 +17,8 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from flext_infra import FlextInfraConfig
 from tests import TestsFlextInfraGateAdmissionHolder, c, m, p, tm, u
 
@@ -28,7 +30,15 @@ class TestsFlextInfraGateAdmission:
 
     @staticmethod
     def _environment(tmp_path: Path, level: str | None) -> dict[str, str]:
-        environment = {"XDG_STATE_HOME": str(tmp_path / "state")}
+        state_home = Path(
+            os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")
+        )
+        environment = {
+            "XDG_STATE_HOME": str(tmp_path / "state"),
+            "MISE_STATE_DIR": os.environ.get(
+                "MISE_STATE_DIR", str(state_home / "mise")
+            ),
+        }
         if level is not None:
             snapshot = tmp_path / "pressure.json"
             snapshot.write_text(
@@ -83,6 +93,7 @@ class TestsFlextInfraGateAdmission:
                             ci.variable,
                             ci.remote_variable,
                             c.Infra.GATE_REPEAT_HOOK_STAGE_ENV,
+                            c.Infra.GATE_ADMISSION_TICKET_ENV,
                         )
                         if key not in environment
                     ],
@@ -97,12 +108,83 @@ class TestsFlextInfraGateAdmission:
             tm.that(time.monotonic() < deadline, eq=True, msg=f"never appeared: {path}")
             time.sleep(0.2)
 
+    @staticmethod
+    def _await_waiting(tmp_path: Path, process: p.Cli.ManagedProcess) -> None:
+        queue = tmp_path / "state" / Path(*c.Infra.GATE_ADMISSION_STATE_PARTS)
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            for path in queue.glob(f"*{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"):
+                if not path.exists():
+                    continue
+                ticket = m.Infra.GateTicket.model_validate_json(path.read_bytes())
+                if ticket.pid == process.pid:
+                    tm.that(ticket.admitted_at is None, eq=True)
+                    return
+            time.sleep(0.05)
+        pytest.fail(f"Gate process {process.pid} did not queue")
+
     @classmethod
     def _release(cls, tmp_path: Path, name: str, process: p.Cli.ManagedProcess) -> int:
         (tmp_path / f"{name}.release").write_text("", encoding="utf-8")
         return tm.ok(process.wait(timeout=_WAIT_SECONDS))
 
     @classmethod
+    @pytest.mark.slow
+    @pytest.mark.parametrize("status", [0, 17])
+    def test_native_gate_preserves_child_status(
+        cls, tmp_path: Path, status: int
+    ) -> None:
+        """The public route preserves the native status and working directory."""
+        output = cls._native_gate(
+            tmp_path, f"import os, sys; print(os.getcwd()); sys.exit({status})", "5"
+        )
+        tm.that(output.outcome.raw_return_code, eq=status)
+        tm.that(str(tmp_path) in output.stdout, eq=True)
+
+    @classmethod
+    @pytest.mark.slow
+    def test_native_gate_bounds_child_execution(cls, tmp_path: Path) -> None:
+        """The admitted child cannot outlive the declared execution budget."""
+        output = cls._native_gate(tmp_path, "import time; time.sleep(60)", "2")
+        tm.that(output.outcome.timed_out, eq=False)
+        tm.that(output.outcome.raw_return_code, eq=124)
+
+    @classmethod
+    def _native_gate(
+        cls, tmp_path: Path, program: str, budget: str
+    ) -> p.Cli.CommandOutput:
+        """Invoke the installed CLI against an isolated admission queue.
+
+        Returns:
+            The native route output, including its shell status.
+
+        """
+        return tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    "workspace",
+                    "native-gate",
+                    "--repository-root",
+                    str(tmp_path),
+                    "--budget-seconds",
+                    budget,
+                    f"--argv={sys.executable}",
+                    "--argv=-c",
+                    f"--argv={program}",
+                ],
+                timeout=10,
+                options=m.Cli.ProcessOptions(
+                    env=cls._environment(tmp_path, "normal"),
+                    remove_env_keys=[c.Infra.GATE_ADMISSION_TICKET_ENV],
+                ),
+            )
+        )
+
+    @classmethod
+    @pytest.mark.slow
     def test_high_pressure_admits_one_gate_at_a_time_in_fifo_order(
         cls, tmp_path: Path
     ) -> None:
@@ -111,9 +193,9 @@ class TestsFlextInfraGateAdmission:
         first = cls._gate(environment, "first")
         cls._await(tmp_path / "first.started")
         second = cls._gate(environment, "second")
-        time.sleep(1)
+        cls._await_waiting(tmp_path, second)
         third = cls._gate(environment, "third")
-        time.sleep(5)
+        cls._await_waiting(tmp_path, third)
         tm.that((tmp_path / "second.started").exists(), eq=False)
         tm.that((tmp_path / "third.started").exists(), eq=False)
         (tmp_path / "third.release").write_text("", encoding="utf-8")
@@ -136,6 +218,7 @@ class TestsFlextInfraGateAdmission:
         tm.that("first pid" in second.stderr, eq=True)
 
     @classmethod
+    @pytest.mark.slow
     def test_normal_pressure_admits_two_and_queues_the_third(
         cls, tmp_path: Path
     ) -> None:
@@ -146,7 +229,7 @@ class TestsFlextInfraGateAdmission:
         cls._await(tmp_path / "first.started")
         cls._await(tmp_path / "second.started")
         third = cls._gate(environment, "third")
-        time.sleep(5)
+        cls._await_waiting(tmp_path, third)
         tm.that((tmp_path / "third.started").exists(), eq=False)
         tm.that(cls._release(tmp_path, "first", first), eq=0)
         cls._await(tmp_path / "third.started")
@@ -202,26 +285,29 @@ class TestsFlextInfraGateAdmission:
         tm.that((tmp_path / "slow.ended").exists(), eq=False)
 
     @classmethod
+    @pytest.mark.slow
     def test_queue_wait_never_counts_against_the_budget(cls, tmp_path: Path) -> None:
         """A waiter queued longer than its budget still runs once admitted."""
         environment = cls._environment(tmp_path, "high")
         holder = cls._gate(environment, "holder")
         cls._await(tmp_path / "holder.started")
-        waiter = cls._gate(environment, "waiter", budget_seconds=4)
-        time.sleep(6)
+        waiter = cls._gate(environment, "waiter", budget_seconds=2)
+        cls._await_waiting(tmp_path, waiter)
+        time.sleep(2.05)
         tm.that((tmp_path / "waiter.started").exists(), eq=False)
         (tmp_path / "waiter.release").write_text("", encoding="utf-8")
         tm.that(cls._release(tmp_path, "holder", holder), eq=0)
         tm.that(tm.ok(waiter.wait(timeout=_WAIT_SECONDS)), eq=0)
 
     @classmethod
+    @pytest.mark.slow
     def test_dead_holder_frees_its_slot_by_liveness(cls, tmp_path: Path) -> None:
         """A killed holder's slot goes to the next waiter without any TTL wait."""
         environment = cls._environment(tmp_path, "high")
         holder = cls._gate(environment, "holder")
         cls._await(tmp_path / "holder.started")
         waiter = cls._gate(environment, "waiter")
-        time.sleep(3)
+        cls._await_waiting(tmp_path, waiter)
         tm.that((tmp_path / "waiter.started").exists(), eq=False)
         tm.ok(holder.kill())
         tm.ok(holder.wait(timeout=_WAIT_SECONDS))
