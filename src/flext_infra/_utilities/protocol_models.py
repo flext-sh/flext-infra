@@ -5095,11 +5095,16 @@ class FlextInfraUtilitiesModelsProtocol:
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
             resolved_port = self.mro_class(facade, p.BaseModel.__name__)
-            port = (
-                resolved_port
-                if resolved_port is not None
-                else self._source_class(facade.get_attribute(p.BaseModel.__name__))
-            )
+            if resolved_port is not None:
+                port = resolved_port
+            else:
+                port_binding = facade.get_attribute(p.BaseModel.__name__)
+                assigned_port = self._source_assigned_class(port_binding, frozenset())
+                port = (
+                    assigned_port
+                    if assigned_port is not None
+                    else self._source_class(port_binding)
+                )
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -9623,6 +9628,65 @@ class FlextInfraUtilitiesModelsProtocol:
             if not self.py_class(value):
                 return None
             return self.resolve_symbol(value.get_scope(), route)
+
+        @staticmethod
+        def _source_assignment_values(tree: ast.Module) -> dict[int, ast.expr]:
+            """Index every assigned expression by its target identity.
+
+            Returns:
+                The target identities mapped to their assigned expressions.
+
+            """
+            values: dict[int, ast.expr] = {}
+            for statement in ast.walk(tree):
+                if isinstance(statement, ast.Assign):
+                    for target in statement.targets:
+                        values[id(target)] = statement.value
+                elif (
+                    isinstance(statement, ast.AnnAssign) and statement.value is not None
+                ):
+                    values[id(statement.target)] = statement.value
+            return values
+
+        def _source_assigned_class(
+            self,
+            binding: p.Infra.RopePyName,
+            seen: frozenset[int],
+        ) -> p.Infra.RopeSourceClass | None:
+            """Follow an assigned alias to the class it republishes.
+
+            Returns:
+                The assigned source class, or None when no alias resolves.
+
+            """
+            if not (
+                FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(binding)
+                and id(binding) not in seen
+            ):
+                return None
+            module, _line = FlextInfraUtilitiesRopeRuntime.definition_location(binding)
+            if module is None or module.get_resource() is None:
+                return None
+            values = self._source_assignment_values(module.get_ast())
+            scope = module.get_scope()
+            for assignment in binding.assignments:
+                node = assignment.ast_node
+                value = None if node is None else values.get(id(node))
+                if value is None:
+                    continue
+                alias = FlextInfraUtilitiesRopeRuntime.expression_name(
+                    scope, ast.unparse(value)
+                )
+                if alias is None:
+                    continue
+                resolved = (
+                    self._source_assigned_class(alias, seen | {id(binding)})
+                    if FlextInfraUtilitiesRopeRuntimeTypes.assigned_name(alias)
+                    else self._source_class(alias)
+                )
+                if resolved is not None:
+                    return resolved
+            return None
 
         def _source_class(self, binding: p.Infra.RopePyName) -> p.Infra.RopeSourceClass:
             """Require the source capability already proved by model admission.
