@@ -336,6 +336,75 @@ class TestsModelProtocolNativeMro:
         )
 
     @staticmethod
+    def test_lazy_family_root_holder_resolves_nested_model_base(
+        tmp_path: Path,
+        native_consumer: p.Tests.NativeConsumer,
+    ) -> None:
+        """A family-root lazy export names the holder of a nested model base."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "_models" / "__init__.py": (
+                "from flext_core.lazy import install_lazy_exports\n"
+                "__all__ = ('ModelsHolder',)\n"
+                "install_lazy_exports(\n"
+                "    __name__,\n"
+                "    globals(),\n"
+                "    {'ModelsHolder': '.holder'},\n"
+                ")\n"
+            ),
+            package / "_models" / "holder.py": (
+                "from pydantic import BaseModel\n"
+                "class ModelsHolder:\n"
+                "    class Entity(BaseModel):\n"
+                "        title: str\n"
+                "__all__ = ['ModelsHolder']\n"
+            ),
+            package / "_models" / "consumer.py": (
+                "from __future__ import annotations\n"
+                f"from {package.name}._models import ModelsHolder\n"
+                "class ModelsConsumer:\n"
+                "    class Request(ModelsHolder.Entity):\n"
+                "        pass\n"
+                "__all__ = ['ModelsConsumer']\n"
+            ),
+            package / "models.py": (
+                f"from {package.name}._models.consumer import ModelsConsumer\n"
+                f"from {package.name}._models.holder import ModelsHolder\n"
+                "class Models:\n"
+                "    class Project(ModelsConsumer, ModelsHolder):\n"
+                "        pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    class Project:\n        pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+        }
+        for path, content in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        destination = (package / "_protocols" / "consumer.py").relative_to(root)
+        tm.ok(destination in projected)
+        for relative, content in projected.items():
+            tm.ok(u.Cli.ensure_dir((root / relative).parent))
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
+        native_consumer(
+            "from flext_tests import tm\n"
+            f"sys.path.insert(0, {str(package.parent)!r})\n"
+            f"from {package.name}.models import m\n"
+            f"from {package.name}.protocols import p\n"
+            "value = m.Project.Request(title='lazy-holder')\n"
+            "tm.ok(isinstance(value, p.Project.Request))\n"
+            "tm.ok(isinstance(value, p.Project.Entity))\n"
+            "tm.that(value.title, eq='lazy-holder')\n",
+            cwd=root,
+        )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("bases", ["Left, Right", "Right, Left"])
     def test_diamond_override_matches_the_runtime_model(
         tmp_path: Path,
