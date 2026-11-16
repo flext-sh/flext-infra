@@ -370,6 +370,11 @@ class TestsFlextInfraRopeContractBindings:
 
     @staticmethod
     @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        u.Tests.contract_rule_targets("pydantic-defaulted-field-metadata"),
+        indirect=True,
+    )
+    @c.Tests.MARK.parametrize(
         "source",
         [
             *(
@@ -428,7 +433,25 @@ class TestsFlextInfraRopeContractBindings:
         source: str,
     ) -> None:
         """Required, factory-precedence and composed fields retain native behavior."""
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        workspace, path = rope_contract_consumer
+        rules = tuple(
+            rule
+            for rule in u.Infra.declared_contract_rules(workspace.repository_root)
+            if rule.id.startswith("pydantic-")
+        )
+        tm.that(rules, empty=False)
+        path.write_text(source, encoding=c.DEFAULT_ENCODING)
+        before = runpy.run_path(str(path))["evidence"]
+        edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))
+        tm.that(edits, empty=False)
+        tm.that(path.read_text(encoding=c.DEFAULT_ENCODING), eq=source)
+        updated = edits[0].updated_source
+        path.write_text(updated, encoding=c.DEFAULT_ENCODING)
+        tm.that(runpy.run_path(str(path))["evidence"], eq=before)
+        tm.that(
+            tm.ok(u.Infra.plan_contract_rules(workspace, {path: updated}, rules)),
+            empty=True,
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize(
