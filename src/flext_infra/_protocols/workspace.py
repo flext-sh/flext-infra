@@ -330,8 +330,8 @@ class FlextInfraProtocolsWorkspace:
             ...
 
         @property
-        def budget_seconds(self) -> int:
-            """Native execution deadline after admission."""
+        def budget_seconds(self) -> t.PositiveInt:
+            """Native wall budget including termination grace."""
             ...
 
     @runtime_checkable
