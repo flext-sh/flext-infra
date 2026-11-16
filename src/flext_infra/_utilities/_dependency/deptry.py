@@ -262,7 +262,7 @@ class FlextInfraUtilitiesDependencyDeptry:
     @staticmethod
     def _deptry_source_identity(
         manifest: p.Cli.AtomicPhysicalTreeManifest,
-    ) -> tuple[p.Cli.AtomicPhysicalTreeEntry | dict[str, object], ...]:
+    ) -> tuple[p.Cli.AtomicPhysicalTreeEntry | Mapping[str, object], ...]:
         """Authenticate source bytes and physical bindings independently of bytecode.
 
         Returns:
