@@ -1220,13 +1220,19 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             if loaded.failure:
                 u.Infra.codegen_raise_failure(resolved.value, loaded)
             inputs = loaded.value
-        planned_inputs = planner._repository_planning_inputs(
-            resolved.value,
-            task.workspace,
-            task.current_target,
-            repository,
-            inputs=inputs,
-        )
+        for _ in range(2):
+            planned_inputs = planner._repository_planning_inputs(
+                resolved.value,
+                task.workspace,
+                task.current_target,
+                repository,
+                inputs=inputs,
+            )
+            if not (
+                planned_inputs.failure
+                and planner._repository_inputs_drifted(planned_inputs)
+            ):
+                break
         if planned_inputs.failure:
             u.Infra.codegen_raise_failure(resolved.value, planned_inputs)
         return planner._governed_repository_outcome(
@@ -1320,6 +1326,16 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ),
             elapsed=time.monotonic() - started,
         )
+
+    @staticmethod
+    def _repository_inputs_drifted(failure: p.FailureLike) -> bool:
+        """Whether a planning read was invalidated by a concurrent write.
+
+        Returns:
+            The resulting bool.
+
+        """
+        return str(failure.error).startswith(c.Infra.ATOMIC_SOURCE_DRIFT_PREFIX)
 
     def _repository_planning_inputs(
         self,

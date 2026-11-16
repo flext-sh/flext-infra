@@ -241,31 +241,53 @@ class FlextInfraGatesDuplication(FlextInfraDuplicationReport, FlextInfraGates):
             spans = tuple(self._typed_side_span_key(side) for side in sides)
             if spans[0] == spans[1]:
                 continue
-            if not any(Path(side.name).is_relative_to(project_dir) for side in sides):
+            if not any(
+                Path(self._side_file_name(side)).is_relative_to(project_dir)
+                for side in sides
+            ):
+                continue
+            if any(
+                self._is_generated_source(Path(self._side_file_name(side)))
+                for side in sides
+            ):
                 continue
             pair = "|".join(sorted(spans))
             if pair in seen_pairs:
                 continue
             seen_pairs.add(pair)
             aligned.append(index)
-        return tuple(
-            issues[issue_index]
-            for issue_index, duplicate_index in enumerate(aligned)
+        clone_count = len(aligned)
+        blocking_issues = tuple(
+            issues[position]
+            for position, duplicate_index in enumerate(aligned)
             if duplicate_index in blocking
         )
+        return (*blocking_issues, *issues[clone_count:])
 
     @staticmethod
-    def _typed_side_span_key(side: p.Infra.JscpdFile) -> str:
+    def _side_file_name(side: p.Infra.JscpdFile) -> str:
+        """Return one typed clone side's on-disk file name.
+
+        Returns:
+            The name without jscpd's markdown-embedded ``:language`` suffix.
+
+        """
+        raw = side.name
+        file_name, separator, _language = raw.rpartition(":")
+        return file_name if separator and file_name and "." in file_name else raw
+
+    @classmethod
+    def _typed_side_span_key(cls, side: p.Infra.JscpdFile) -> str:
         """Return one typed clone side's raw-issue span identity.
 
         Returns:
             The resulting ``<file>:<start>:<end>`` key.
 
         """
-        raw = side.name
-        file_name, separator, _language = raw.rpartition(":")
-        name = file_name if separator and file_name and "." in file_name else raw
-        return f"{name}:{side.start_location.line}:{side.end_location.line}"
+        return (
+            f"{cls._side_file_name(side)}:"
+            f"{side.start_location.line}:{side.end_location.line}"
+        )
 
     def _scan_project(
         self,
