@@ -20,6 +20,10 @@ class TestsFlextInfraLazyInitTestNamespace:
     ) -> None:
         """The tests facade exposes sibling public APIs and omits test modules."""
         repository_root, package_root = u.Tests.demo_lazy_init_workspace(tmp_path)
+        package_root.joinpath("__version__.py").write_text(
+            '__all__: list[str] = ["__version__"]\n__version__ = "0.1.0"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
             class_name="FlextDemoPublic",
@@ -62,6 +66,7 @@ class TestsFlextInfraLazyInitTestNamespace:
         tm.that(init_content, has='"FlextDemoPublic"')
         tm.that(init_content, has='"ScriptsPublic"')
         tm.that(init_content, has='"ExamplesPublic"')
+        tm.that(init_content, lacks='"__version__"')
         tm.that(init_content, lacks='"TestsNamespaceLeak"')
         compile(init_content, "tests/__init__.py", "exec")
 
