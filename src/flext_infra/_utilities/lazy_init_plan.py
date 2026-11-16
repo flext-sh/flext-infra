@@ -532,13 +532,16 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         updated = dict(cls._lazy_init_instance_deferrals(run))
         run.plans.update(updated)
-        # A class that binds no member is not deferred (root ADR-018 stand-in
-        # composition law, rule 5): an empty stand-in is invalid.
+        # A class that binds no member, and a class the package's own
+        # import-time code reads, is not deferred (root ADR-018 stand-in
+        # composition law, rule 5): an empty stand-in is invalid, and a
+        # stand-in published at import forbids an eager process.
         parts = frozenset(
             owner
             for owner in (
                 cls._lazy_init_facade_composed(run)
                 - cls._lazy_init_facade_roots(run).keys()
+                - cls._lazy_init_import_time(run)
             )
             if not cls._lazy_init_binds_nothing(run, owner)
         )
@@ -562,6 +565,46 @@ class FlextInfraUtilitiesLazyInitPlan:
                     }
                 )
         return updated
+
+    @classmethod
+    def _lazy_init_import_time(
+        cls, run: FlextInfraModelsCodegenLazyInit.LazyInitRun
+    ) -> frozenset[tuple[str, str]]:
+        """Return every in-package class the package's own import reads.
+
+        An eager dunder binding (``__version__``) loads its module while the
+        package initializes, and with it every in-package module that module
+        imports at runtime, transitively; each class those imports name runs
+        at import (root ADR-018 stand-in composition law, rule 5).
+
+        Returns:
+            The ``(module, class)`` of each class read at package import.
+
+        """
+        python = FlextInfraUtilitiesPythonModel
+        read: set[tuple[str, str]] = set()
+        for plan in run.plans.values():
+            scope = (plan.context, plan.lazy_map)
+            pending = [module for module, _ in plan.eager_dunders.values()]
+            loaded: set[str] = set()
+            while pending:
+                module = pending.pop()
+                facts = python.python_model_module(run.model, module)
+                if module in loaded or facts is None:
+                    continue
+                loaded.add(module)
+                for name in sorted(facts.runtime_names):
+                    dotted = facts.imports.get(name)
+                    if dotted in run.model.module_files:
+                        pending.append(dotted)
+                        continue
+                    target = cls._lazy_init_base_target(run, scope, dotted)
+                    if target is not None and (
+                        target[0].split(".", maxsplit=1)[0] == plan.context.surface
+                    ):
+                        read.add(target)
+                        pending.append(target[0])
+        return frozenset(read)
 
     @classmethod
     def _lazy_init_binds_nothing(
