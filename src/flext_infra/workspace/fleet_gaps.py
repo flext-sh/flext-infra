@@ -218,7 +218,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         return tuple(
             u.validate_value(m.Infra.FleetPullRequest, item).unwrap()
             for item in u.Cli.json_as_sequence(
-                u.Cli.json_parse(run.value.stdout).unwrap()
+                u.Cli.json_loads(run.value.stdout).unwrap()
             )
         )
 
@@ -275,9 +275,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         stamp_path = repo_root / c.Infra.SKILLS_STAMP_RELPATH
         if not stamp_path.is_file():
             return None
-        parsed = u.Cli.json_parse(
-            stamp_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
+        parsed = u.Cli.json_loads(stamp_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure or not isinstance(parsed.value, dict):
             return None
         return u.json_mapping_adapter().validate_python(parsed.value)
@@ -448,9 +446,7 @@ class FlextInfraWorkspaceFleetGaps(s[p.Infra.FleetGapsReport]):
         report_path = repo_root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         if not report_path.is_file():
             return 0
-        parsed = u.Cli.json_parse(
-            report_path.read_text(encoding=c.DEFAULT_ENCODING),
-        )
+        parsed = u.Cli.json_loads(report_path.read_text(encoding=c.DEFAULT_ENCODING))
         if parsed.failure or not isinstance(parsed.value, dict):
             return 0
         findings = parsed.value.get("findings")

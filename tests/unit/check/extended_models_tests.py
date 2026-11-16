@@ -66,7 +66,7 @@ class TestsFlextInfraModels:
         payload = tm.ok(u.Cli.json_dumps(native))
         result = m.Infra.SarifResult.model_validate_json(payload)
         emitted = u.Cli.json_as_mapping(
-            tm.ok(u.Cli.json_parse(result.model_dump_json())),
+            tm.ok(u.Cli.json_loads(result.model_dump_json())),
         )
         for key in ("locations", "relatedLocations"):
             location = u.Cli.json_deep_mapping_list(emitted, key)[0]
