@@ -83,6 +83,35 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(check_body, lacks="--apply")
 
     @staticmethod
+    def test_upg_pre_resolution_executor_follows_declared_sources(
+        tmp_path: Path,
+    ) -> None:
+        """The pre-resolution executor is not frozen; the final repair executor is."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "upg-executor", c.Infra.MakeProfile.STANDALONE
+        )
+        rendered = (root / "Makefile").read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            rendered,
+            has=(
+                "SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = "
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)"
+            ),
+        )
+        tm.that(
+            rendered,
+            has=(
+                "SYNC_UPGRADE_EXECUTOR_RECIPE = "
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)"
+            ),
+        )
+        lifecycle = rendered.split("_upg_lifecycle:", 1)[1].split("\n\n", 1)[0]
+        tm.ok(
+            lifecycle.index("SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE")
+            < lifecycle.index("$(SYNC_UPGRADE_EXECUTOR_RECIPE)")
+        )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
     def test_every_native_sync_clears_the_caller_environment(
         tmp_path: Path,

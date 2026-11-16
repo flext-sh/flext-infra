@@ -607,17 +607,20 @@ override PROJECT_FLEXT_INFRA := $(PROJECT_INFRA_RUN) -m flext_infra
 # `make upg`'s residual flext-infra step imports neither the project's source nor
 # the runtime environment.
 override EXECUTOR_FLEXT_INFRA = env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} "$(FLEXT_INFRA_EXECUTOR_PYTHON)" -I -m flext_infra
-# Native uv syncs the executor from the project's frozen lock: the dependency
-# group that pins flext-infra, without editable installs, into its own
-# environment (recreated first when it is not a uv environment, and refreshed,
-# so a sync never targets a Mise base interpreter). A consumer excludes the
-# project, so the executor never imports its source. A project in flext-infra's
-# own runtime closure (derived from the installed metadata) supplies part of the
-# executor, so its locked non-editable build is installed, never the editable
-# source. upg forms it from the committed lock for the pre-resolution
-# cooldown admission and again from the written locks for the last repair.
-SYNC_UPGRADE_EXECUTOR_RECIPE = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
-	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync --frozen --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --link-mode {{ uv_link_mode }}; \
+# Native uv syncs the executor from the dependency group that pins flext-infra,
+# without editable installs, into its own environment (recreated first when it
+# is not a uv environment, and refreshed, so a sync never targets a Mise base
+# interpreter). A consumer excludes the project, so the executor never imports
+# its source. A project in flext-infra's own runtime closure (derived from the
+# installed metadata) supplies part of the executor, so its locked non-editable
+# build is installed, never the editable source. upg's pre-resolution executor
+# follows the declared sources (--no-frozen) so a Makefile generated from the
+# current tip can run commands the committed lock predates; its post-resolution
+# executor is frozen from the written locks for the last repair.
+SYNC_UPGRADE_EXECUTOR_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)
+SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)
+SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
+	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync $(1) --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --link-mode {{ uv_link_mode }}; \
 	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
 	$(VERIFY_ENVIRONMENT)
 
@@ -930,7 +933,7 @@ _upg_lifecycle:
 	mise_bin="$(MISE)"; \
 	$(RESOLVE_DESIRED_PYTHON); \
 	[ -f "$(RUNTIME_ROOT)/{{ uv_lock_filename }}" ] || $(UV) lock --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads; \
-	$(SYNC_UPGRADE_EXECUTOR_RECIPE); \
+	$(SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE); \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps cooldown-admission --repository-root "$(RUNTIME_ROOT)"; \
 	{{ uv_lock_resolution(true) }} \
 	PATH="$$(dirname "$$mise_bin"):$$PATH" $(EXECUTOR_FLEXT_INFRA) deps upg-bounds --repository-root "$(RUNTIME_ROOT)"; \
