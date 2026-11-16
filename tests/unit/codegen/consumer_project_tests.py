@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import config, infra
-from flext_infra.check.gate_registry import FlextInfraGateRegistry
+from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.codegen import (
     FlextInfraCodegenConform,
     FlextInfraCodegenMakeBootstrap,
