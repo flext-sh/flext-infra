@@ -299,6 +299,7 @@ install_lazy_exports(
             "ENFORCEMENT_CATALOG",
             "GATE_TOOLS_BY_KIND",
             "GATE_ENFORCES",
+            "ENFORCEMENT_UNCLAIMED_FIX_RULES",
             "GATE_KINDS",
             "GATE_STAGES",
             "TYPE_CHECKER_GATES",
