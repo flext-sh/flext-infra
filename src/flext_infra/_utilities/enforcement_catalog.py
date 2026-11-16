@@ -54,12 +54,19 @@ class FlextInfraUtilitiesEnforcementCatalog:
         owner repeats is a duplicate; an id claimed only by disabled or
         unregistered owners is an orphan.
 
+        An active authored rule that carries a ``fix`` and claims no law is
+        invisible to a law selection. The packaged provider declares how many
+        remain in ``ENFORCEMENT_UNCLAIMED_FIX_RULES``; any other provider
+        declares none. A count that differs from the declaration, in either
+        direction, fails with every unclaimed rule id.
+
         Args:
             codemod_config: ast-grep provider config whose rule documents are
                 read; the packaged provider config when omitted.
 
         Returns:
-            The derived catalog, or the first duplicate or orphan claim.
+            The derived catalog, or the first duplicate, orphan or undeclared
+            unclaimed-fix defect.
 
         """
         result = r[p.Infra.EnforcementCatalog]
@@ -78,6 +85,23 @@ class FlextInfraUtilitiesEnforcementCatalog:
             return result.fail(defect)
         if not claims:
             return result.fail("no owner claims any enforcement law")
+        declared = (
+            c.Infra.ENFORCEMENT_UNCLAIMED_FIX_RULES if codemod_config is None else 0
+        )
+        unclaimed = sorted(
+            rule.id
+            for rule in rules.value
+            if rule.fixable
+            and not rule.enforce
+            and not rule.disabled
+            and rule.partition_of is None
+        )
+        if len(unclaimed) != declared:
+            return result.fail(
+                f"enforcement catalog declares {declared} fix-bearing rule(s) "
+                f"without a law, catalog produced {len(unclaimed)}: "
+                f"{', '.join(unclaimed)}",
+            )
         return result.ok(
             m.Infra.EnforcementCatalog.model_validate({"claims": (claims)})
         )
