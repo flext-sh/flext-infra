@@ -3972,6 +3972,13 @@ it does not authorize reexports. Explicit facade letters and inherited serving
 contracts continue through the existing letter election. Authored initializers
 retain their declared publications and content.
 
+Generated family initializers publish through `flext_core.lazy.install_lazy_exports`,
+declare their part modules in `deferred_members`, and call `defer_lazy_bases`
+(`flext_core.lazy.defer_bases`) for the composed facade parts. Those names are the
+generator's output contract — owned by the `flext-infra` lazy-init planner and
+`flext_core.lazy`, emitted by `make gen`, and never authored or hand-edited. The
+current `flext-api` and `flext-auth` family initializers are the reference shape.
+
 Facade inheritance never treats the package currently being planned as its own
 parent. Its direct modules have already elected its local publications; reading
 that package's previous generated initializer would reintroduce retired exports.
