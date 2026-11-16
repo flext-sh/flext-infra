@@ -314,13 +314,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         source_containers = frozenset(
             project_dir / path.relative_to(project_dir).parts[0]
             for path in source_paths
-                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-                and len(path.relative_to(project_dir).parts) > 1
-                and not any(
-                    part.startswith(".") or part in effective_skip
-                    for part in path.relative_to(project_dir).parts[:-1]
-                )
-                and cls._source_file_admitted(path, source_project, owned_stub=False)
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            and len(path.relative_to(project_dir).parts) > 1
+            and not any(
+                part.startswith(".") or part in effective_skip
+                for part in path.relative_to(project_dir).parts[:-1]
+            )
+            and cls._source_file_admitted(path, source_project, owned_stub=False)
         )
         return [
             subdir.name
@@ -668,8 +668,9 @@ class FlextInfraUtilitiesProjectDiscovery(
             })
         )
 
-    @staticmethod
+    @classmethod
     def _walk_python_files(
+        cls,
         directory: Path,
         skip_dirs: frozenset[str],
         *,
@@ -722,7 +723,9 @@ class FlextInfraUtilitiesProjectDiscovery(
             error.add_note(f"Python source discovery scope: {directory}")
             raise
         if source_paths is None:
-            source_paths = cls._staged_preview_sources(directory)
+            source_paths = FlextInfraUtilitiesProjectDiscovery._staged_preview_sources(
+                directory
+            )
             if source_paths is None:
                 msg = f"Python source discovery requires a Git checkout: {directory}"
                 raise RuntimeError(msg)

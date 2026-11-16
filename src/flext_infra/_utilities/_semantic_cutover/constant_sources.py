@@ -451,6 +451,8 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 continue
             if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
+            if not isinstance(owner, p.Infra.RopeClassObject):
+                continue
             for reference, binding, value in cls._constant_public_members(
                 prefix, owner
             ):
@@ -462,7 +464,7 @@ class FlextInfraUtilitiesSemanticConstantSources:
     @staticmethod
     def _constant_public_members(
         prefix: str,
-        owner: p.Infra.RopePyObject,
+        owner: p.Infra.RopeClassObject,
     ) -> Iterator[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject]]:
         """Yield a namespace's public members without its inherited parts.
 
