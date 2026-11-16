@@ -1015,13 +1015,6 @@ class TestsModelProtocolBuiltLazyMap:
     """Regression for the build_lazy_import_map holder gap (A1.1)."""
 
     @staticmethod
-    @c.Tests.MARK.xfail(
-        strict=True,
-        reason=(
-            "A1.1: _lazy_route reads only literal install_lazy_exports maps; a "
-            "build_lazy_import_map initializer leaves the holder unresolved"
-        ),
-    )
     def test_built_lazy_map_holder_resolves_nested_model_base(
         tmp_path: Path,
     ) -> None:
