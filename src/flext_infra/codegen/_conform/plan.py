@@ -839,10 +839,15 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             ): task.repository.distribution
             for task in tasks
         }
+        planned_names = {name for wave in waves.value for name in wave}
+        missing = tuple(name for name in distributions if name not in planned_names)
+        ordered_waves = (*waves.value, missing) if missing else waves.value
         return (
             tuple(manifests),
             graph,
-            tuple(tuple(distributions[name] for name in wave) for wave in waves.value),
+            tuple(
+                tuple(distributions[name] for name in wave) for wave in ordered_waves
+            ),
         )
 
     def _managed_plan_outcomes(
