@@ -6,6 +6,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
@@ -36,6 +38,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
@@ -65,6 +69,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
@@ -95,6 +101,8 @@ severity: error
 files:
   - "**/tests/**/*.py"
   - "**/conftest.py"
+metadata:
+  enforce: [ENFORCE-127]
 rule:
   all:
     - any:
