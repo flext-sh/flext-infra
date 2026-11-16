@@ -20,6 +20,12 @@ from tests import c, tm, u
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
+    @u.Tests.fixture(autouse=True)
+    @staticmethod
+    def _git_checkout(tmp_path: Path) -> None:
+        """Every discovery scenario is a real checkout, like every project."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
+
     @staticmethod
     @c.Tests.MARK.parametrize(
         ("source", "expected"),
@@ -64,6 +70,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
+        u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
         profile = Profile()
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)

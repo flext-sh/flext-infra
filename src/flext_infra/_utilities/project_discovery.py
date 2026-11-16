@@ -286,6 +286,9 @@ class FlextInfraUtilitiesProjectDiscovery(
         Returns:
             Directory names in deterministic order.
 
+        Raises:
+            RuntimeError: If ``project_dir`` is outside a Git checkout.
+
         """
         if not (
             project_dir.is_dir()
@@ -305,12 +308,12 @@ class FlextInfraUtilitiesProjectDiscovery(
         # the checked root, decides the candidates. No directory below it is
         # probed, so an ignored or ceiling-bounded directory is never entered.
         source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(project_dir)
-        source_containers = (
-            None
-            if source_paths is None
-            else frozenset(
-                project_dir / path.relative_to(project_dir).parts[0]
-                for path in source_paths
+        if source_paths is None:
+            msg = f"Python source discovery requires a Git checkout: {project_dir}"
+            raise RuntimeError(msg)
+        source_containers = frozenset(
+            project_dir / path.relative_to(project_dir).parts[0]
+            for path in source_paths
                 if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
                 and len(path.relative_to(project_dir).parts) > 1
                 and not any(
@@ -318,7 +321,6 @@ class FlextInfraUtilitiesProjectDiscovery(
                     for part in path.relative_to(project_dir).parts[:-1]
                 )
                 and cls._source_file_admitted(path, source_project, owned_stub=False)
-            )
         )
         return [
             subdir.name
@@ -352,15 +354,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 if source_project is None
                 else source_project.source_query(subdir / c.Infra.GIT_DIR, "exists")
             )
-            and (
-                any(
-                    cls._walk_python_files(
-                        subdir, effective_skip, source_project=source_project
-                    )
-                )
-                if source_containers is None
-                else subdir in source_containers
-            )
+            and subdir in source_containers
         ]
 
     @classmethod
@@ -694,6 +688,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         Raises:
             OSError: If a ``OSError`` is caught.
+            RuntimeError: If ``directory`` is outside a Git checkout.
 
         """
 
@@ -726,16 +721,15 @@ class FlextInfraUtilitiesProjectDiscovery(
         except OSError as error:
             error.add_note(f"Python source discovery scope: {directory}")
             raise
-        source_containers = (
-            None
-            if source_paths is None
-            else frozenset(
-                parent
-                for path in source_paths
-                if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
-                for parent in path.parents
-                if parent.is_relative_to(directory)
-            )
+        if source_paths is None:
+            msg = f"Python source discovery requires a Git checkout: {directory}"
+            raise RuntimeError(msg)
+        source_containers = frozenset(
+            parent
+            for path in source_paths
+            if path.suffix in c.Infra.PYTHON_SOURCE_SUFFIXES
+            for parent in path.parents
+            if parent.is_relative_to(directory)
         )
         walk = (
             directory.walk(on_error=on_error)
@@ -757,8 +751,7 @@ class FlextInfraUtilitiesProjectDiscovery(
                 )
                 and parent / name not in excluded_paths
                 and (
-                    source_containers is None
-                    or parent / name in source_containers
+                    parent / name in source_containers
                     or any((parent / name).is_relative_to(root) for root in owned_roots)
                     or any(
                         (parent / name).is_relative_to(directory / root)
