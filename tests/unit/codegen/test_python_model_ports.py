@@ -64,3 +64,33 @@ class TestsFlextInfraPythonModelPorts:
             )
             facts = u.Infra.python_model_module_at(run, source, name)
         tm.that(facts.class_standin_defects.get("TypeOnly", ()), empty=True)
+
+    @staticmethod
+    def test_type_checking_members_are_not_runtime_class_members(
+        tmp_path: Path,
+    ) -> None:
+        """A type-only declaration binds no class member at runtime."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "type_only_members.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "from typing import TYPE_CHECKING\n"
+                "class TypeOnlyMembers:\n"
+                "    if TYPE_CHECKING:\n"
+                "        def run_raw(self) -> None: ...\n"
+                "        declared: int\n"
+                "    def run(self) -> None: ...\n"
+                "    value = 1\n"
+                "__all__ = ['TypeOnlyMembers']\n",
+            )
+        )
+        name = f"{package.name}.type_only_members"
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            run: p.Infra.PythonModelRun = u.Infra.python_model_run(
+                snapshot.engine,
+                {name: source},
+                module_facts=snapshot.python_module_facts,
+            )
+            facts = u.Infra.python_model_module_at(run, source, name)
+        tm.that(facts.class_members["TypeOnlyMembers"], eq=("run", "value"))

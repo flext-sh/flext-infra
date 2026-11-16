@@ -307,14 +307,24 @@ class FlextInfraUtilitiesPythonModel:
     def _python_model_class_members(cls, node: ast.ClassDef) -> Sequence[str]:
         """Return the names one class body binds at class creation.
 
-        An annotation without a value binds no class attribute.
+        An annotation without a value binds no class attribute, and a
+        declaration under ``if TYPE_CHECKING:`` never binds one at runtime.
 
         Returns:
             The bound names in declaration order.
 
         """
+        type_only = {
+            inner
+            for statement in node.body
+            if isinstance(statement, ast.If)
+            and cls._python_model_head(statement.test) == "TYPE_CHECKING"
+            for inner, _ in cls._python_model_statements(statement)
+        }
         bound: dict[str, None] = {}
         for statement, _ in cls._python_model_statements(node):
+            if statement in type_only:
+                continue
             if isinstance(
                 statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
             ):
