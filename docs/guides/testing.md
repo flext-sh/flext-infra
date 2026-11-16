@@ -10,8 +10,8 @@
 - [Test design](#test-design)
 - [Pydantic and type checking](#pydantic-and-type-checking)
 - [Canonical execution](#canonical-execution)
-- [Item deadlines and the applicable population](#item-deadlines-and-the-applicable-population)
 - [Generated documentation](#generated-documentation)
+- [Execution budgets and the shared runner](#execution-budgets-and-the-shared-runner)
 - [Related guides](#related-guides)
 
 <!-- TOC END -->
@@ -194,24 +194,6 @@ Run the declared operation without selectors. If a required workflow is missing,
 repair its existing owner and rerun the standard verb; do not introduce a parallel
 diagnostic command or revive retired aliases.
 
-## Item deadlines and the applicable population
-
-Every generated `pyproject.toml` projects `timeout = 20` and
-`timeout_method = "signal"` for pytest-timeout. The Make runner passes the ordinary
-2 s budget and the declared 20 s slow budget, and `item-deadline-call-only` keeps
-fixture setup, teardown and plugin bookkeeping outside the item budget. `signal` is
-mandatory on POSIX: the `thread` mechanism calls `os._exit(1)` when a deadline
-expires, which kills the xdist worker with no traceback and surfaces as “node down:
-Not properly terminated”. pytest-timeout falls back to thread only where a test runs
-outside the main thread.
-
-A case whose measured call time cannot fit the ordinary budget is declared with the
-slow marker. The marker is a tier declaration backed by measurement, never a way to
-hide a regression. `make tests` and `make tests-full` both execute the complete
-applicable population: harness gates (remote suites) are deselected outside their
-harness and reported NOT EXECUTED, while `docker` retains its declared local `.env`
-policy. A named file still selects a harness gate deliberately.
-
 ## Generated documentation
 
 Member copies of this guide are generated projections. Change this root source and
@@ -222,6 +204,22 @@ make gen
 ```
 
 Do not edit a member projection by hand.
+
+## Execution budgets and the shared runner
+
+Budgets are configuration-owned by `flext-infra/src/flext_infra/config/tooling.yaml`:
+`ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
+(20 s) applies to `slow` and the heavy capability markers, and
+`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
+budget across every member suite, and a per-member reset is rejected. Collection,
+session setup, fixture teardown and plugin bookkeeping belong to the suite deadline; an
+item budget never pays for them. A test that starts a child process is a
+process-boundary test and carries the `slow` marker instead of straining the ordinary
+budget.
+
+CLI coverage runs in-process through `u.Tests.cli_in_process`, which owns stream
+capture, the environment scope and termination-handler restoration; the caller keeps
+only its domain configuration.
 
 ## Related guides
 
