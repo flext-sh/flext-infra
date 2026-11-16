@@ -352,7 +352,16 @@ class FlextInfraUtilitiesPythonModel:
             if keyword.arg == "metaclass"
             and not (isinstance(keyword.value, ast.Name) and keyword.value.id == "type")
         )
+        type_only = {
+            inner
+            for statement in node.body
+            if isinstance(statement, ast.If)
+            and cls._python_model_head(statement.test) == "TYPE_CHECKING"
+            for inner, _ in cls._python_model_statements(statement)
+        }
         for statement, _ in cls._python_model_statements(node):
+            if statement in type_only:
+                continue
             match statement:
                 case ast.FunctionDef() | ast.AsyncFunctionDef():
                     name = statement.name
