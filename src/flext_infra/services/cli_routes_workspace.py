@@ -76,6 +76,45 @@ class FlextInfraWorkspaceRoutes:
         )
 
     @staticmethod
+    def _native_gate(params: p.Infra.NativeGateRequest) -> p.Cli.ErasedCommandResult:
+        """Run the native gate under the existing admission and supervisor.
+
+        Returns:
+            The native result, preserving its exit outcome.
+
+        """
+        budget = m.Infra.RouteBudgetSpec(
+            budget_seconds=params.budget_seconds,
+            grace_seconds=min(
+                c.Infra.TIMEOUT_KILL_AFTER_SECONDS, params.budget_seconds // 2
+            ),
+        )
+        with u.Infra.gate_admitted("native-gate", params.repository_root, budget):
+            result = u.Cli.run_raw(
+                params.argv, cwd=params.repository_root, capture=False
+            )
+        if result.failure:
+            return r[int].from_failure(result)
+        outcome = result.value.outcome
+        status, classification = outcome.raw_return_code, "failure"
+        if outcome.timed_out:
+            status, classification = c.Infra.PROCESS_TIMEOUT_EXIT_CODE, "timeout"
+        elif status < 0:
+            status, classification = (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - status,
+                "signal",
+            )
+        if status:
+            return r[int].fail(
+                f"Native gate exited with code {status}",
+                error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
+                error_data=m.Infra.ProcessExit(
+                    exit_code=status, classification=classification
+                ).model_dump(),
+            )
+        return r[int].ok(0)
+
+    @staticmethod
     def _tests(
         params: p.Infra.WorkspaceTestsRequest,
         *,

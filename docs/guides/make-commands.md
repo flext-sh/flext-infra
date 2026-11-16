@@ -804,3 +804,10 @@ governance consumer of this owner, not a second Git hygiene engine.
 - Getting started
 - Codemod Rules
 - [Infra Execution Context](https://github.com/flext-sh/flext-infra/blob/0.12.0-dev/docs/guides/execution-context.md)
+
+For a native gate owned by another checkout, use
+`flext-infra workspace native-gate --repository-root "$PWD" --budget-seconds 900
+--argv=make --argv=check`. Repeat `--argv` once per argument. The route shares
+the host admission queue with Infra gates, starts the deadline at admission,
+and preserves the native command's exit status. The checkout still declares
+the checks that qualify it for integration.
