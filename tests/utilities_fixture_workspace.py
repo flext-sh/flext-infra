@@ -114,6 +114,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         project_dir = root / name
         project_dir.mkdir(parents=True, exist_ok=True)
         (project_dir / c.PYPROJECT_FILENAME).write_text(pyproject, encoding="utf-8")
+        u.Tests.git_bootstrap(project_dir, ("init", "--quiet"))
         if markdown_config is not None:
             (project_dir / c.Infra.MARKDOWN_CONFIG_FILENAME).write_text(
                 markdown_config, encoding="utf-8"
