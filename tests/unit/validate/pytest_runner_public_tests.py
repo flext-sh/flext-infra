@@ -729,12 +729,12 @@ class TestsFlextInfraPytestRunner:
     @staticmethod
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("ci_context", [False, True])
-    def test_full_executes_every_marker_once_without_touching_testmon(
+    def test_full_executes_the_applicable_population_once_without_touching_testmon(
         cached_runner_project: Path,
         *,
         ci_context: bool,
     ) -> None:
-        """A bounded full execution ignores even an invalid pre-existing cache."""
+        """A bounded full execution ignores its cache and its harness gates."""
         policy = config.Infra.tooling.tools.pytest
         markers = tuple(
             sorted({
@@ -743,6 +743,11 @@ class TestsFlextInfraPytestRunner:
                 *policy.ci_excluded_markers,
             }),
         )
+        # Harness gates are not applicable outside their harness: FULL reports
+        # them NOT EXECUTED and never runs them, exactly as the local
+        # incremental scope does.
+        not_executed = tuple(sorted(set(policy.harness_gate_markers)))
+        executable = tuple(marker for marker in markers if marker not in not_executed)
         marker_lines = "".join(f'  "{marker}",\n' for marker in policy.standard_markers)
         (cached_runner_project / c.PYPROJECT_FILENAME).write_text(
             "[tool.pytest.ini_options]\n"
@@ -790,16 +795,20 @@ class TestsFlextInfraPytestRunner:
         accounting = m.Infra.TestmonRunAccounting.model_validate_json(
             (report_dir / "run-accounting.json").read_text(),
         )
-        tm.that(accounting.executed_count, eq=1 + len(markers))
-        tm.that(accounting.reported_count, eq=1 + len(markers))
+        tm.that(accounting.executed_count, eq=1 + len(executable))
+        tm.that(accounting.reported_count, eq=1 + len(executable))
         tm.that(accounting.inventory_count, eq=1 + len(markers))
-        tm.that(accounting.deselected_count, eq=0)
+        tm.that(accounting.deselected_count, eq=len(not_executed))
+        tm.that(
+            accounting.executed_count + accounting.deselected_count,
+            eq=accounting.inventory_count,
+        )
         tm.that(
             (report_dir / "summary.txt").read_text().splitlines(),
             has=[
                 "outcome=executed",
                 "exit=0",
-                "not_executed_external_gates=",
+                f"not_executed_external_gates={','.join(not_executed)}",
                 "not_executed_ci_markers=",
             ],
         )
@@ -807,6 +816,7 @@ class TestsFlextInfraPytestRunner:
         tm.fail("--testmon" in recorded)
         tm.that(recorded, has=c.Infra.PYTEST_SUITE_STOP_OPTION)
         tm.that(recorded, has=f"--timeout={policy.ordinary_timeout_seconds}")
+        tm.that(recorded, has=[*not_executed])
         tm.that(
             recorded.split(),
             has=f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={policy.slow_timeout_seconds}",

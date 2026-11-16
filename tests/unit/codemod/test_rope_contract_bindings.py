@@ -19,11 +19,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+@c.Tests.MARK.slow
 class TestsFlextInfraRopeContractBindings:
     """Prove lexical identity and execution order without publishing unsafe edits."""
 
     @staticmethod
-    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("carrier", ["model", "function"])
     @c.Tests.MARK.parametrize(
         ("imports", "metadata", "variant"),
@@ -641,7 +641,11 @@ class TestsFlextInfraRopeContractBindings:
             "evidence = (missing, not hasattr(second, '_history'), "
             "first._history, descriptor.get_default() is descriptor.default)\n"
         )
-        u.Tests.prove_contract_migration(rope_contract_consumer, source)
+        # Native private handling is already canonical: the cutover plans no
+        # edit, and the descriptors must keep behaving exactly as authored.
+        u.Tests.prove_contract_migration(
+            rope_contract_consumer, source, expect_change=False
+        )
 
     @staticmethod
     def test_native_metadata_admission_preserves_nonfields_and_homonyms(

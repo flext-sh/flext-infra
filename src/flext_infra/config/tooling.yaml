@@ -174,7 +174,10 @@ Infra:
       - [ filterwarnings, [ error, "once::pytest.PytestAssertRewriteWarning" ] ]
       - [ addopts, [ --benchmark-disable, --strict-markers, --markdown-docs, --durations=10 ] ]
       - [ timeout, 20 ]
-      - [ timeout_method, thread ]
+      # POSIX signal delivery fails the item loudly; the thread mechanism calls
+      # os._exit(1) and silently kills the xdist worker. pytest-timeout falls
+      # back to thread only where a test runs outside the main thread.
+      - [ timeout_method, signal ]
       ruff:
       - [ namespace-packages, [ tests, examples, scripts ] ]
       - [ fix, false ]
@@ -606,9 +609,12 @@ Infra:
         # Under the Make CI token the incremental global scope (`make tests`)
         # deselects them too: CI has neither Docker nor remote services, so they
         # are reported NOT EXECUTED, never skipped (operator decision 2026-11-05).
-        # `make test-full` runs locally only and executes every marker once,
-        # without testmon and without any time limit. Existing external tests
-        # retain their declared environment and authentication requirements.
+        # `make tests-full` runs the complete applicable population once,
+        # without Testmon and without a test-count limit. Harness gates are
+        # not applicable outside their harness, so FULL deselects them like
+        # the incremental local scope and reports them NOT EXECUTED; existing
+        # external tests retain their declared environment and authentication
+        # requirements.
         # Locally, `docker` tests run only when the untracked `.env` names
         # DOCKER_HOST; otherwise flext-tests' applicability owner skips them
         # as an unmet prerequisite before fixtures run (operator decision
@@ -617,8 +623,8 @@ Infra:
         external-gate-markers: [ remote, docker ]
         # Harness gates run only under the harness that provides their inputs
         # (ai-hub `make runtime-acceptance` names its remote suite). Local
-        # `make tests` deselects them exactly as CI does and reports them NOT
-        # EXECUTED; `make test-full` and a named file still select them.
+        # `make tests` and `make tests-full` deselect them and report them NOT
+        # EXECUTED exactly as CI does; a named file still selects them.
         harness-gate-markers: [ remote ]
         # A slow mark grants an item budget, never a CI exclusion.
         ci-excluded-markers: []
