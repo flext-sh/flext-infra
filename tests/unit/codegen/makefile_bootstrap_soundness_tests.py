@@ -61,25 +61,55 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         tm.that(recipe, has="--no-python-downloads $(SETUP_SYNC_ARGS)")
         tm.that(recipe, lacks="$(UV) lock")
         tm.that(recipe, lacks="--locked")
-        resolver = '$(MISE) -C "$(RUNTIME_ROOT)" which python'
+        resolver = "$(RESOLVE_DESIRED_PYTHON)"
+        tm.that(recipe, has=resolver)
+        tm.that(recipe, has='--python "$$desired_python"')
         tm.ok(recipe.index(resolver) < recipe.index(sync))
         for verb in ("fmt", "fix"):
             body = rendered.split(
                 f"_builtin_{verb}_all: _builtin_require_environment\n", 1
             )[1].split("\n\n", 1)[0]
             tm.that(body, lacks="--gates")
-            tm.that(body, has=f"--gate-set {verb} --apply")
+            tm.that(body, has=f"--gate-set {verb} --scope")
+            tm.that(body, has="--apply")
         check_body = rendered.split(
             "_builtin_check_all: _builtin_require_environment\n", 1
         )[1].split("\n\n", 1)[0]
         tm.that(
             check_body,
+            has=f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} --repository-root",
+        )
+        tm.that(check_body, has="--phase")
+        tm.that(check_body, lacks="--apply")
+
+    @staticmethod
+    def test_upg_pre_resolution_executor_follows_declared_sources(
+        tmp_path: Path,
+    ) -> None:
+        """The pre-resolution executor is not frozen; the final repair executor is."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "upg-executor", c.Infra.MakeProfile.STANDALONE
+        )
+        rendered = (root / "Makefile").read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(
+            rendered,
             has=(
-                f"{c.Infra.CLI_GROUP_WORKSPACE} {c.Infra.VERB_CHECK} "
-                '--repository-root "$(PROJECT_ROOT)"'
+                "SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = "
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)"
             ),
         )
-        tm.that(check_body, lacks="--apply")
+        tm.that(
+            rendered,
+            has=(
+                "SYNC_UPGRADE_EXECUTOR_RECIPE = "
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)"
+            ),
+        )
+        lifecycle = rendered.split("_upg_lifecycle:", 1)[1].split("\n\n", 1)[0]
+        tm.ok(
+            lifecycle.index("SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE")
+            < lifecycle.index("$(SYNC_UPGRADE_EXECUTOR_RECIPE)")
+        )
 
     @staticmethod
     @c.Tests.MARK.parametrize("profile", list(c.Infra.MakeProfile))
@@ -1033,3 +1063,147 @@ class TestsFlextInfraMakefileBootstrapSoundness:
         if not broken:
             tm.that(tuple(foreign.iterdir()), eq=(foreign / "owner.txt",))
             tm.that((foreign / "owner.txt").read_bytes(), eq=b"foreign-owned bytes")
+
+
+class TestsFlextInfraHookRetirement:
+    """Setup retires only its managed hook section when the validator is absent."""
+
+    @staticmethod
+    def test_setup_resolves_prek_through_mise_exec(tmp_path: Path) -> None:
+        """Prek is resolved in the activated Mise environment, never a bare shim."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "prek-resolution", c.Infra.MakeProfile.STANDALONE
+        )
+        fake_home = tmp_path / "home"
+        (fake_home / ".local" / "bin").mkdir(parents=True)
+        prek = fake_home / "fake-prek"
+        prek.write_text("#!/bin/sh\nexit 0\n", encoding=c.DEFAULT_ENCODING)
+        prek.chmod(0o755)
+        mise = fake_home / "fake-mise"
+        mise.write_text(
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            "  *'exec -- which prek'*) printf '%s\\n' \"" + str(prek) + '" ;;\n'
+            "  *'which prek'*) "
+            "echo 'mise ERROR prek is a mise bin however it is not "
+            "currently active' >&2; "
+            "exit 1 ;;\n"
+            "  *) exit 0 ;;\n"
+            "esac\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        mise.chmod(0o755)
+        bootstrap = fake_home / ".local" / "bin" / "mise"
+        bootstrap.write_text(
+            '#!/bin/sh\nprintf \'%s\\n\' "$(dirname "$0")/../../fake-mise"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        bootstrap.chmod(0o755)
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(file >hooks-recipe.sh,$(INSTALL_GIT_HOOKS_RECIPE))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(
+            u.Tests.run_isolated_make(["help"], cwd=root, env={"HOME": str(fake_home)}),
+        )
+        env = {**os.environ, "HOME": str(fake_home), "CI": ""}
+        process = tm.ok(
+            u.Cli.run_raw(
+                ("sh", "hooks-recipe.sh"),
+                cwd=root,
+                env=env,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        )
+        output = process.stdout + process.stderr
+        tm.that(output, has="hooks skipped (no validator)")
+
+    @staticmethod
+    def test_setup_retires_managed_hook_without_validator(tmp_path: Path) -> None:
+        """A missing validator removes the managed section and keeps foreign content."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "hook-retirement", c.Infra.MakeProfile.STANDALONE
+        )
+        hook = root / ".git" / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        hook.write_text(
+            "#!/bin/sh\n"
+            "# BEGIN FLEXT-INFRA SETUP: Generated by make setup (flext-infra); "
+            "rerun make setup to refresh.\n"
+            "echo managed\n"
+            "# END FLEXT-INFRA SETUP\n"
+            "echo foreign\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        hook.chmod(0o755)
+        fake_home = tmp_path / "home"
+        (fake_home / ".local" / "bin").mkdir(parents=True)
+        prek = fake_home / "fake-prek"
+        prek.write_text("#!/bin/sh\nexit 0\n", encoding=c.DEFAULT_ENCODING)
+        prek.chmod(0o755)
+        mise = fake_home / "fake-mise"
+        mise.write_text(
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            "  *'which prek'*) printf '%s\\n' \"$0\".fake-prek ;;\n"
+            "  *) exit 0 ;;\n"
+            "esac\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        mise.chmod(0o755)
+        (mise.with_name("fake-mise.fake-prek")).symlink_to(prek)
+        bootstrap = fake_home / ".local" / "bin" / "mise"
+        bootstrap.write_text(
+            '#!/bin/sh\nprintf \'%s\\n\' "$(dirname "$0")/../../fake-mise"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        bootstrap.chmod(0o755)
+        tm.fail((root / ".github" / "scripts" / "validate-git-hook.sh").exists())
+        (root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "$(file >hooks-recipe.sh,$(INSTALL_GIT_HOOKS_RECIPE))\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        tm.ok(
+            u.Tests.run_isolated_make(["help"], cwd=root, env={"HOME": str(fake_home)})
+        )
+        recipe = root / "hooks-recipe.sh"
+        tm.ok(recipe.is_file())
+        env = {**os.environ, "HOME": str(fake_home), "CI": ""}
+        process = tm.ok(
+            u.Cli.run_raw(
+                ("sh", "hooks-recipe.sh"),
+                cwd=root,
+                env=env,
+                timeout=c.Infra.TIMEOUT_SHORT,
+            )
+        )
+        output = process.stdout + process.stderr
+        tm.that(output, has="hooks skipped (no validator)")
+        content = hook.read_text(encoding=c.DEFAULT_ENCODING)
+        tm.that(content, lacks="Generated by make setup (flext-infra)")
+        tm.that(content, has="echo foreign")
+
+
+class TestsFlextInfraToolchainProjection:
+    """The preflight validates the published runtime, not a stale SSOT projection."""
+
+    @staticmethod
+    def test_declared_tool_missing_from_manifest_is_not_a_deadlock(
+        tmp_path: Path,
+    ) -> None:
+        """A stale projection is skipped; the regenerating route owns the repair."""
+        root, _ = u.Tests.render_make_environment(
+            tmp_path / "stale-tool", c.Infra.MakeProfile.STANDALONE
+        )
+        manifest = root / c.Infra.MISE_TOML_FILENAME
+        lines = manifest.read_text(encoding=c.DEFAULT_ENCODING).splitlines()
+        manifest.write_text(
+            "\n".join(line for line in lines if not line.startswith(("uv =", '"uv" =')))
+            + "\n",
+            encoding=c.DEFAULT_ENCODING,
+        )
+        resolved = tm.ok(u.Infra.resolve_declared_tools(root))
+        names = {path.name for path in resolved}
+        tm.that(
+            "uv" in names, eq=False, msg="stale uv projection entered the preflight"
+        )

@@ -1009,3 +1009,69 @@ class TestsModelProtocolNativeMro:
         )
 
         tm.fail((root / c.Infra.DEFAULT_SRC_DIR / c.Infra.PACKAGE_IMPORT_NAME).exists())
+
+
+class TestsModelProtocolBuiltLazyMap:
+    """Regression for the build_lazy_import_map holder gap (A1.1)."""
+
+    @staticmethod
+    @c.Tests.MARK.xfail(
+        strict=True,
+        reason=(
+            "A1.1: _lazy_route reads only literal install_lazy_exports maps; a "
+            "build_lazy_import_map initializer leaves the holder unresolved"
+        ),
+    )
+    def test_built_lazy_map_holder_resolves_nested_model_base(
+        tmp_path: Path,
+    ) -> None:
+        """A build_lazy_import_map root names the holder of a nested model base."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        sources = {
+            package / "_models" / "__init__.py": (
+                "from flext_core import build_lazy_import_map\n"
+                "from flext_core.lazy import install_lazy_exports\n"
+                "__all__ = ('ModelsHolder',)\n"
+                "install_lazy_exports(\n"
+                "    __name__,\n"
+                "    globals(),\n"
+                '    build_lazy_import_map({".holder": ("ModelsHolder",)}),\n'
+                ")\n"
+            ),
+            package / "_models" / "holder.py": (
+                "from pydantic import BaseModel\n"
+                "class ModelsHolder:\n"
+                "    class Entity(BaseModel):\n"
+                "        title: str\n"
+                "__all__ = ['ModelsHolder']\n"
+            ),
+            package / "_models" / "consumer.py": (
+                "from __future__ import annotations\n"
+                f"from {package.name}._models import ModelsHolder\n"
+                "class ModelsConsumer:\n"
+                "    class Request(ModelsHolder.Entity):\n"
+                "        pass\n"
+                "__all__ = ['ModelsConsumer']\n"
+            ),
+            package / "models.py": (
+                f"from {package.name}._models.consumer import ModelsConsumer\n"
+                f"from {package.name}._models.holder import ModelsHolder\n"
+                "class Models:\n"
+                "    class Project(ModelsConsumer, ModelsHolder):\n"
+                "        pass\n"
+                "m = Models\n__all__ = ['Models', 'm']\n"
+            ),
+            package / "protocols.py": (
+                "class Protocols:\n    class Project:\n        pass\n"
+                "p = Protocols\n__all__ = ['Protocols', 'p']\n"
+            ),
+        }
+        for path, content in sources.items():
+            tm.ok(u.Cli.ensure_dir(path.parent))
+            tm.ok(u.Cli.atomic_write_text_file(path, content))
+        with u.Infra.facade_source_project(root) as binding:
+            projected = tm.ok(
+                u.Infra.protocol_model_sources_from_source(root, binding[0])
+            )
+        destination = (package / "_protocols" / "consumer.py").relative_to(root)
+        tm.ok(destination in projected)

@@ -72,6 +72,51 @@ class FlextInfraUtilitiesMiseBinary:
         )
 
     @staticmethod
+    def resolve_declared_tools(owner_root: Path) -> p.Result[tuple[Path, ...]]:
+        """Resolve the declared tools the committed runtime actually projects.
+
+        A tool declared by the SSOT but absent from the committed runtime
+        manifest is a stale projection. The route that regenerates the manifest
+        owns that repair; a route that actually needs the tool still fails at
+        its own use. The preflight therefore validates the intersection, never a
+        projection the tree has not published.
+
+        Returns:
+            The absolute executable of every projected declared tool.
+
+        """
+        resolved: list[Path] = []
+        for tool in config.Infra.codegen.toolchain.tools:
+            outcome = FlextInfraUtilitiesMiseBinary.managed_mise_binary(
+                tool.name, owner_root
+            )
+            if outcome.failure:
+                declared = FlextInfraUtilitiesMiseBinary._manifest_declares(
+                    owner_root, tool.selector or tool.name
+                )
+                if declared.success and not declared.value:
+                    continue
+                return r[tuple[Path, ...]].from_failure(outcome)
+            resolved.append(outcome.value)
+        return r[tuple[Path, ...]].ok(tuple(resolved))
+
+    @staticmethod
+    def _manifest_declares(owner_root: Path, selector: str) -> p.Result[bool]:
+        """Report whether the committed runtime manifest declares ``selector``.
+
+        Returns:
+            ``True`` when the published manifest carries the request.
+
+        """
+        requested = FlextInfraUtilitiesMiseBinary._committed_mise_tool_request(
+            owner_root,
+            selector,
+        )
+        if requested.failure:
+            return r[bool].from_failure(requested)
+        return r[bool].ok(bool(requested.value))
+
+    @staticmethod
     def managed_mise_self(owner_root: Path) -> p.Result[Path]:
         """Qualify the physical Mise reader before it loads project locks.
 
