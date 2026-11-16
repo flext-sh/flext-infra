@@ -772,6 +772,7 @@ install_lazy_exports(
             "NativeImportReference",
             "NativeImportRequest",
             "WorkspaceRequest",
+            "NativeGateRequest",
             "WorkspaceTestsRequest",
             "FlextEditableRequest",
             "FlextEditableSelection",

@@ -299,6 +299,7 @@ install_lazy_exports(
             "ENFORCEMENT_CATALOG",
             "GATE_TOOLS_BY_KIND",
             "GATE_ENFORCES",
+            "ENFORCEMENT_UNCLAIMED_FIX_RULES",
             "GATE_KINDS",
             "GATE_STAGES",
             "TYPE_CHECKER_GATES",
@@ -415,6 +416,7 @@ install_lazy_exports(
         ),
         "FlextInfraConstantsCodegen": (
             "FILE_ONLY_SURFACES",
+            "ATOMIC_SOURCE_DRIFT_PREFIX",
             "IMPORT_NORMALIZATION_DEGRADED_MESSAGE",
             "IMPORT_NORMALIZATION_DEGRADED_SOURCE",
             "NAMESPACE_ROLE_DEGRADED_MESSAGE",

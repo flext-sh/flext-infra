@@ -13,6 +13,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterable, Mapping, MutableSequence, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from importlib import import_module
 from inspect import getsource
 from pathlib import Path
 from textwrap import dedent, indent
@@ -384,6 +385,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             + "import os, sysconfig\n"
             "from collections.abc import Iterable, Mapping, MutableSequence, Sequence\n"
             "from contextlib import ExitStack\n"
+            "from importlib import import_module\n"
             "from importlib.machinery import BuiltinImporter, ExtensionFileLoader, "
             "FrozenImporter, ModuleSpec\n"
             "from sys import modules\n"
@@ -472,7 +474,12 @@ class FlextInfraValidateFreshImport(s[bool]):
             AttributeError: If the two runtime namespaces differ.
 
         """
-        real = sys.modules[klass.__module__]
+        real = sys.modules.get(klass.__module__)
+        if real is None:
+            # A deferred stand-in carries its owner module's name while the lazy
+            # facade has not imported that module yet; the probe resolves the
+            # owner first, exactly as the class's first eager use would.
+            real = import_module(klass.__module__)
         for part in klass.__qualname__.split("."):
             real = getattr(real, part)
         if real is klass:

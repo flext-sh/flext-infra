@@ -9,9 +9,11 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import shutil
+import sys
 from typing import TYPE_CHECKING
 
 import flext_cli
+import pytest
 
 import flext_infra
 from flext_infra.validate import FlextInfraValidateFreshImport
@@ -141,6 +143,21 @@ class TestsFlextInfraFreshImportCompleteness:
     def test_stale_stand_in_fails() -> None:
         """A stand-in missing a name of its real class fails by name."""
         real = c.Infra.LazyInitScore
+        stale = type(
+            real.__name__,
+            (),
+            {"__module__": real.__module__, "__qualname__": real.__qualname__},
+        )
+        with u.Tests.raises(AttributeError, match="differs from its real class"):
+            FlextInfraValidateFreshImport.require_complete_standin(stale)
+
+    @staticmethod
+    def test_owner_module_is_imported_before_the_stand_in_comparison(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A deferred stand-in resolves its owner module instead of raising KeyError."""
+        real = c.Infra.LazyInitScore
+        monkeypatch.delitem(sys.modules, real.__module__)
         stale = type(
             real.__name__,
             (),

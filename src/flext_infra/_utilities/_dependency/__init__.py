@@ -32,6 +32,7 @@ install_lazy_exports(
             "_shipped_import_base",
             "_declared_deptry_roots",
             "_authenticated_deptry_sources",
+            "_deptry_source_identity",
             "_verified_deptry_sources",
             "_captured_deptry_inputs",
             "_run_deptry",
