@@ -41,10 +41,7 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectDiscovery,
     FlextInfraUtilitiesWorkspaceSnapshot,
 )
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeRuntimeModules,
-)
+from flext_infra._utilities._rope import FlextInfraUtilitiesRopeRuntimeModules
 from flext_infra._utilities._rope.runtime_refactors import (
     FlextInfraUtilitiesRopeRuntimeRefactors,
 )
@@ -454,8 +451,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
         cls,
         modules: Mapping[str, tuple[str, bool]],
         utility_directory: str,
-        *,
-        source_project: p.Infra.RopeProject,
     ) -> tuple[
         Mapping[tuple[str, str], Sequence[tuple[str, str]]],
         frozenset[tuple[str, str, str, str]],
@@ -473,11 +468,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             if utility_directory not in parts:
                 continue
             tree = ast.parse(source)
-            exports = FlextInfraUtilitiesRopeAnalysis.public_export_names_source(
-                FlextInfraUtilitiesRopeRuntimeTypes.require_declared_source_module(
-                    source_project, module
-                )
-            )
+            exports = cls._public_export_names_from_tree(tree)
             for declaration in tree.body:
                 if (
                     not isinstance(declaration, ast.ClassDef)
@@ -517,6 +508,34 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                                 member.name,
                             ))
         return owners, frozenset(contextual)
+
+    @staticmethod
+    def _public_export_names_from_tree(tree: ast.Module) -> Sequence[str]:
+        """Return the explicit public ABI declared in one source tree.
+
+        Returns:
+            The names declared by the module's ``__all__``.
+
+        """
+        for statement in tree.body:
+            if isinstance(statement, ast.Assign):
+                targets = statement.targets
+                value = statement.value
+            elif isinstance(statement, ast.AnnAssign):
+                targets = (statement.target,)
+                value = statement.value
+            else:
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
+                for target in targets
+            ):
+                continue
+            declared = ast.literal_eval(value) if value is not None else ()
+            if isinstance(declared, (list, tuple)):
+                return tuple(str(item) for item in declared)
+            return ()
+        return ()
 
     @classmethod
     def _typing_behavior_lineage(
@@ -737,13 +756,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                 Path(source_project.root.real_path),
                 planned_sources={**production, **owner_sources},
                 source_project=source_project,
-            ) as (bound_project, _captured):
+            ) as (_bound_project, _captured):
                 ownership = cls.behavior_utility_owners(
                     modules,
                     FlextInfraUtilitiesCodegenNamespace.facade_family_declared_by(
                         c.Infra.UTILITIES_PY
                     ).directory,
-                    source_project=bound_project,
                 )
 
             def rewrite(
