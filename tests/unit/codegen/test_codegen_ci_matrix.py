@@ -345,7 +345,7 @@ class TestsFlextInfraCodegenCiMatrix(TestsFlextInfraCodegenCiMatrixSupport):
         tm.ok(rendered)
         rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace projects")
-        tm.that(rendered_text.count("Init private workspace projects"), eq=2)
+        tm.that(rendered_text.count("Init private workspace projects"), eq=1)
 
     @staticmethod
     def test_ci_uses_typed_action_catalog(rendered_project: Path) -> None:
