@@ -132,14 +132,16 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
         elects its complete native Python source scope before constructing
         resources; provider receipts do not enlarge that scope. An immutable
         snapshot keeps its captured inventory, including proposed virtual modules.
+        A root conftest.py that pytest loads as a plugin, not as an importable
+        module, is outside the graph.
 
         Returns:
             The resulting ``tuple[Mapping[str, frozenset[str]], Mapping[Path,
                 str]]``.
 
         Raises:
-            e.OperationError: If rope could not name one module; its context
-                names that module.
+            e.OperationError: If rope could not name one importable module; its
+                context names that module.
 
         """
         raw: MutableMapping[str, set[str]] = {}
@@ -171,6 +173,13 @@ class FlextInfraUtilitiesImportLawGraph(FlextInfraUtilitiesImportLawPolicy):
                 else pymodule.get_name()
             )
             if not name:
+                if (
+                    path.name == "conftest.py"
+                    and not (path.parent / "__init__.py").is_file()
+                ):
+                    # pytest loads a root conftest.py as a plugin, not as an
+                    # importable module; it has no place in the import graph.
+                    continue
                 msg = f"rope could not name module {resource.path}"
                 raise e.OperationError(
                     msg, context={c.Infra.MOD_FAILURE_MODULE_KEY: str(path)}

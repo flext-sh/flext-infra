@@ -115,8 +115,8 @@ class TestsFlextInfraPytestTimeoutConfig:
         ("field", "over_budget"),
         [
             ("ordinary-timeout-seconds", 3),
-            ("slow-timeout-seconds", 21),
-            ("run-timeout-seconds", 241),
+            ("slow-timeout-seconds", 1801),
+            ("run-timeout-seconds", 1801),
         ],
     )
     def test_deadlines_cannot_exceed_operator_caps(
@@ -128,6 +128,23 @@ class TestsFlextInfraPytestTimeoutConfig:
         payload[field] = over_budget
         with u.Tests.raises(c.ValidationError, match="less than or equal"):
             type(policy).model_validate(payload)
+
+    @staticmethod
+    def test_long_execution_budget_is_admitted_by_the_operator_caps() -> None:
+        """A long slow item and its run wall stay inside the declared caps."""
+        policy = config.Infra.tooling.tools.pytest
+        payload = policy.model_dump(by_alias=True, exclude_computed_fields=True)
+        payload.update({
+            "slow-timeout-seconds": 120,
+            "run-timeout-seconds": 900,
+            "termination-grace-seconds": 5,
+        })
+
+        admitted = type(policy).model_validate(payload)
+
+        tm.that(admitted.slow_timeout_seconds, eq=120)
+        tm.that(admitted.run_timeout_seconds, eq=900)
+        tm.ok(admitted.slow_timeout_seconds < admitted.run_timeout_seconds)
 
     @staticmethod
     def test_ci_must_not_exclude_slow_items() -> None:
