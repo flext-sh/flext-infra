@@ -172,9 +172,7 @@ def deptry_report_payload(fixture_tree: p.Tests.FixtureTree) -> t.JsonPayload:
         The resulting ``t.JsonPayload``.
 
     """
-    parsed = u.Cli.json_parse(
-        (fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8")
-    )
+    parsed = u.Cli.json_loads((fixture_tree("deps") / "deptry_report.json").read_text(encoding="utf-8"))
     parsed = tm.not_none(parsed)
     tm.ok(parsed)
     return parsed.value

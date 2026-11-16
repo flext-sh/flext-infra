@@ -402,7 +402,7 @@ class FlextInfraGatesRuffLint(FlextInfraGatesRuffGate):
 
         """
         del ctx
-        report = u.Cli.json_parse(result.stdout or "[]").unwrap()
+        report = u.Cli.json_loads(result.stdout or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)

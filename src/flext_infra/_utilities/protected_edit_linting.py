@@ -761,7 +761,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         )
         if reported.failure:
             return r[frozenset[str]].from_failure(reported)
-        report = u.Cli.json_parse(reported.value or "[]").unwrap()
+        report = u.Cli.json_loads(reported.value or "[]").unwrap()
         if not isinstance(report, list):
             msg = f"Ruff JSON report is not a list: {type(report).__name__}"
             raise TypeError(msg)
@@ -1607,7 +1607,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         """
         result = r[Sequence[str]]
-        loaded = u.Cli.json_parse(source)
+        loaded = u.Cli.json_loads(source)
         if loaded.failure or not isinstance(loaded.value, list):
             return (
                 result.from_failure(loaded)

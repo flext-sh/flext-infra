@@ -218,7 +218,7 @@ class FlextInfraCodegenVscode:
             The validated editor document.
 
         """
-        parsed = u.Cli.json_parse(cls._normalize_jsonc(content))
+        parsed = u.Cli.json_loads(cls._normalize_jsonc(content))
         if parsed.failure:
             return r[t.JsonMapping].from_failure(parsed)
         if not isinstance(parsed.value, Mapping):
