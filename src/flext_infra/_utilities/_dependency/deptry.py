@@ -260,6 +260,31 @@ class FlextInfraUtilitiesDependencyDeptry:
         return result_type.ok(tuple(manifests))
 
     @staticmethod
+    def _deptry_source_identity(
+        manifest: p.Cli.AtomicPhysicalTreeManifest,
+    ) -> tuple[p.Cli.AtomicPhysicalTreeEntry | dict[str, object], ...]:
+        """Authenticate source bytes and physical bindings independently of bytecode.
+
+        Returns:
+            Ordered entries with directory counters and Python cache artifacts omitted.
+
+        """
+        root = manifest.root.path
+        return tuple(
+            entry.model_dump(exclude={"mtime_ns", "ctime_ns", "link_count"})
+            if entry.kind == "directory"
+            else entry
+            for entry in (manifest.root, *manifest.entries)
+            if not (
+                "__pycache__" in entry.path.relative_to(root).parts
+                and (
+                    entry.kind == "directory"
+                    or (entry.kind == "file" and entry.path.suffix == ".pyc")
+                )
+            )
+        )
+
+    @staticmethod
     def _verified_deptry_sources(
         sources: Sequence[p.Cli.AtomicPhysicalTreeManifest],
         *,
@@ -273,10 +298,11 @@ class FlextInfraUtilitiesDependencyDeptry:
         """
         result_type = r[bool]
         for source in sources:
-            current = u.Cli.atomic_inventory_physical_tree(source.root.path)
+            current = u.Cli.atomic_inventory_physical_tree(source.root.path, source)
             if current.failure:
                 return result_type.from_failure(current)
-            if current.value != source:
+            identity = FlextInfraUtilitiesDependencyDeptry._deptry_source_identity
+            if identity(current.value) != identity(source):
                 return result_type.fail(
                     f"deptry production source changed {moment}: {source.root.path}"
                 )

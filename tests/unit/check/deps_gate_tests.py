@@ -662,13 +662,13 @@ class TestsFlextInfraDepsGate:
     @staticmethod
     @c.Tests.MARK.parametrize(
         "change",
-        ["ambiguous", "source", "shipped-source", "wrong-lock"],
+        ["ambiguous", "source", "shipped-source", "wrong-lock", "bytecode"],
     )
-    def test_dependency_plan_refuses_unevidenced_repair(
+    def test_dependency_plan_authenticates_publication_inputs(
         tmp_path: Path,
         change: str,
     ) -> None:
-        """Missing identity proof and changed inputs cannot publish a requirement."""
+        """Source changes block publication; derived Python caches do not."""
         root = TestsFlextInfraDepsGate._project(tmp_path, "", "import requests\n")
         if change == "shipped-source":
             TestsFlextInfraDepsGate._ship_second_root(
@@ -701,6 +701,18 @@ class TestsFlextInfraDepsGate:
                 ),
             )
             tm.that(inputs.lock.path.read_bytes(), eq=before_lock)
+        elif change == "bytecode":
+            plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
+            tm.ok(
+                u.Cli.capture(
+                    [sys.executable, "-m", "compileall", "-q", c.Infra.DEFAULT_SRC_DIR],
+                    cwd=root,
+                )
+            )
+            tm.that(
+                bool(tuple((root / c.Infra.DEFAULT_SRC_DIR).rglob("*.pyc"))), eq=True
+            )
+            tm.that(u.Infra.publish_runtime_dependency_plan(plan).unwrap(), eq=True)
         elif change in {"source", "shipped-source"}:
             plan = u.Infra.runtime_dependency_plan(scan, inputs).unwrap()
             changed = "infra" if change == "shipped-source" else "src"
