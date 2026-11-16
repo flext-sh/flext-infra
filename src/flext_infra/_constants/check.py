@@ -207,6 +207,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     The enforcement catalog derives from these claims beside the other owners'
     declarations; a claim by an unregistered gate is inactive.
     """
+    # Ratchet that only goes down: a fix-bearing rule claims its law, then this
+    # count drops in the same change.
+    ENFORCEMENT_UNCLAIMED_FIX_RULES: ClassVar[int] = 125
+    """Active packaged ast-grep rules that carry a ``fix`` and claim no law."""
     GATE_KINDS: ClassVar[Mapping[str, FlextInfraConstantsConfig.GateKind]] = (
         MappingProxyType({
             gate: kind for kind, tools in GATE_TOOLS_BY_KIND.items() for gate in tools
