@@ -321,6 +321,20 @@ class FlextInfraProtocolsWorkspace:
             ...
 
     @runtime_checkable
+    class NativeGateRequest(WorkspaceRequest, Protocol):
+        """Structural data contract projected from the owning model."""
+
+        @property
+        def argv(self) -> tuple[str, ...]:
+            """Native executable and arguments."""
+            ...
+
+        @property
+        def budget_seconds(self) -> int:
+            """Native execution deadline after admission."""
+            ...
+
+    @runtime_checkable
     class WorkspaceTestsRequest(WorkspaceRequest, Protocol):
         """Structural data contract projected from the owning model."""
 
