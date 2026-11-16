@@ -618,7 +618,7 @@ override EXECUTOR_FLEXT_INFRA = env{% for variable in make.native_environment_un
 # current tip can run commands the committed lock predates; its post-resolution
 # executor is frozen from the written locks for the last repair.
 SYNC_UPGRADE_EXECUTOR_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--frozen)
-SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen)
+SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = $(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen --upgrade-package flext-infra)
 SYNC_UPGRADE_EXECUTOR_WITH = $(call TARGET_ENVIRONMENT,$(FLEXT_INFRA_EXECUTOR_VENV)); \
 	env{% for variable in make.native_environment_unset %} -u {{ variable }}{% endfor %} UV_PROJECT_ENVIRONMENT="$$install_environment" {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s {{ make.setup_timeout_seconds }}s $(UV) sync $(1) --project "$(RUNTIME_ROOT)" --python "$$desired_python" --no-python-downloads --no-default-groups --group "{{ make.executor_environment.dependency_group }}"{% if not executor_installs_project %} --no-install-project{% endif %} --no-editable --link-mode {{ uv_link_mode }}; \
 	$(INSTALL_FLEXT_INFRA) --help >/dev/null; \
