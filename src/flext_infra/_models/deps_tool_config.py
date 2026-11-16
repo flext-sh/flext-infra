@@ -238,7 +238,7 @@ class FlextInfraModelsDepsToolConfig(
         slow_timeout_seconds: int = m.Field(
             alias="slow-timeout-seconds",
             gt=0,
-            le=20,
+            le=1800,
             description="Hard maximum runtime for one explicitly slow item.",
         )
         slow_marker: t.NonEmptyStr = m.Field(
@@ -257,7 +257,7 @@ class FlextInfraModelsDepsToolConfig(
         run_timeout_seconds: int = m.Field(
             alias="run-timeout-seconds",
             gt=0,
-            le=240,
+            le=1800,
             description="Aggregate wall-clock maximum for one pytest operation.",
         )
         termination_grace_seconds: int = m.Field(
