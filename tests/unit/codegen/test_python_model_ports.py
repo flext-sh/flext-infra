@@ -94,3 +94,32 @@ class TestsFlextInfraPythonModelPorts:
             )
             facts = u.Infra.python_model_module_at(run, source, name)
         tm.that(facts.class_members["TypeOnlyMembers"], eq=("run", "value"))
+
+    @staticmethod
+    def test_unpacking_binds_every_plain_class_member(tmp_path: Path) -> None:
+        """An unpacking target binds each plain name at class creation."""
+        root, package = u.Tests.create_lazy_init_workspace(tmp_path)
+        source = package / "unpacking_members.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                source,
+                "class UnpackingMembers:\n"
+                "    first, second = 1, 2\n"
+                "    head, *tail = (1, 2, 3)\n"
+                "    holder.attr = 4\n"
+                "    def method(self) -> None: ...\n"
+                "__all__ = ['UnpackingMembers']\n",
+            )
+        )
+        name = f"{package.name}.unpacking_members"
+        with u.Infra.workspace_snapshot(root, (root,)) as snapshot:
+            run: p.Infra.PythonModelRun = u.Infra.python_model_run(
+                snapshot.engine,
+                {name: source},
+                module_facts=snapshot.python_module_facts,
+            )
+            facts = u.Infra.python_model_module_at(run, source, name)
+        tm.that(
+            facts.class_members["UnpackingMembers"],
+            eq=("first", "second", "head", "tail", "method"),
+        )

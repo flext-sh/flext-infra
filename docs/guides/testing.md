@@ -10,6 +10,7 @@
 - [Test design](#test-design)
 - [Pydantic and type checking](#pydantic-and-type-checking)
 - [Canonical execution](#canonical-execution)
+- [Item deadlines and the applicable population](#item-deadlines-and-the-applicable-population)
 - [Generated documentation](#generated-documentation)
 - [Related guides](#related-guides)
 
@@ -192,6 +193,24 @@ the complete selected set.
 Run the declared operation without selectors. If a required workflow is missing,
 repair its existing owner and rerun the standard verb; do not introduce a parallel
 diagnostic command or revive retired aliases.
+
+## Item deadlines and the applicable population
+
+Every generated `pyproject.toml` projects `timeout = 20` and
+`timeout_method = "signal"` for pytest-timeout. The Make runner passes the ordinary
+2 s budget and the declared 20 s slow budget, and `item-deadline-call-only` keeps
+fixture setup, teardown and plugin bookkeeping outside the item budget. `signal` is
+mandatory on POSIX: the `thread` mechanism calls `os._exit(1)` when a deadline
+expires, which kills the xdist worker with no traceback and surfaces as “node down:
+Not properly terminated”. pytest-timeout falls back to thread only where a test runs
+outside the main thread.
+
+A case whose measured call time cannot fit the ordinary budget is declared with the
+slow marker. The marker is a tier declaration backed by measurement, never a way to
+hide a regression. `make tests` and `make tests-full` both execute the complete
+applicable population: harness gates (remote suites) are deselected outside their
+harness and reported NOT EXECUTED, while `docker` retains its declared local `.env`
+policy. A named file still selects a harness gate deliberately.
 
 ## Generated documentation
 
