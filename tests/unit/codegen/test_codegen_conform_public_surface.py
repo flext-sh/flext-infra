@@ -25,6 +25,18 @@ class TestsFlextInfraCodegenConformPublicSurface:
     """The conform public surface: docs bootstrap, CLI routing, dependency scope."""
 
     @staticmethod
+    def test_all_surfaces_plan_the_workspace_root_envrc(tmp_path: Path) -> None:
+        """A workspace ALL plan never drops the root repository's envrc surface."""
+        plan = u.Tests.scaffold_plan(tmp_path, members=("member-a",))
+        root_envrc = (tmp_path / c.Infra.ENVRC_FILENAME).resolve()
+        planned = tuple(file.path.resolve() for file in plan.files)
+        tm.that(
+            root_envrc in planned,
+            eq=True,
+            msg=f"root envrc missing from the ALL plan: {root_envrc}",
+        )
+
+    @staticmethod
     def test_complete_bootstrap_plans_initializers_without_removed_owners(
         infra_git_repo: Path,
     ) -> None:
