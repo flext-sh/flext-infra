@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, MutableSequence
+from collections.abc import Iterator, Mapping, MutableMapping, MutableSequence
 from pathlib import Path
 
 from flext_infra import c, e, p, t
@@ -451,18 +451,36 @@ class FlextInfraUtilitiesSemanticConstantSources:
                 continue
             if not FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(owner):
                 continue
-            bases = tuple(owner.get_mro())
-            for name, binding in owner.get_attributes().items():
-                if name.startswith("_"):
-                    continue
-                value = binding.get_object()
-                if value in bases:
-                    continue
-                reference = f"{prefix}.{name}"
+            for reference, binding, value in cls._constant_public_members(
+                prefix, owner
+            ):
                 found[reference] = binding
                 if FlextInfraUtilitiesRopeRuntimeTypes.abstract_class(value):
                     pending.append((reference, value, (*ancestors, owner)))
         return found
+
+    @staticmethod
+    def _constant_public_members(
+        prefix: str,
+        owner: p.Infra.RopePyObject,
+    ) -> Iterator[tuple[str, p.Infra.RopePyName, p.Infra.RopePyObject]]:
+        """Yield a namespace's public members without its inherited parts.
+
+        A base class is the internal part the composition extends, never a
+        composed public member, so its name is not a second owner path.
+
+        Yields:
+            The public reference, its binding and its native object.
+
+        """
+        bases = tuple(owner.get_mro())
+        for name, binding in owner.get_attributes().items():
+            if name.startswith("_"):
+                continue
+            value = binding.get_object()
+            if value in bases:
+                continue
+            yield f"{prefix}.{name}", binding, value
 
     @staticmethod
     def _constant_owner_binding(
