@@ -53,7 +53,10 @@ class TestsFlextInfraRefactorImportNormalizationSupport:
         package: Path = u.Tests.src_package(
             project,
             "demo_pkg",
-            pyproject="[project]\nname='demo'\nversion='1.0.0'\n",
+            pyproject=(
+                "[project]\nname='demo'\nversion='1.0.0'\n"
+                "license = 'MIT'\nauthors = [{name = 'FLEXT'}]\n"
+            ),
         )
         families = u.Infra.facade_families()
         cls._lazy_init(
