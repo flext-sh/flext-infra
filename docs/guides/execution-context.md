@@ -122,8 +122,8 @@ protocols only in the protocol family. A module-level family class (a model
 declared beside its part class) fails generation with the part class it must
 move into: facades publish classes through MRO composition. A PEP 695 generic
 member class a namespace inherits from its family part is also published as
-`Name: TypeAlias = Part.Name`, the one form mypy can subscript there
-(python/mypy#22457; global axiom in `config/tooling.yaml`). It is emitted
+`Name: TypeAlias = Part.Name`, the one form the compatibility type surface can
+subscript there (global axiom in `config/tooling.yaml`). It is emitted
 under `if TYPE_CHECKING:` in the namespace, so the runtime reaches the class
 through MRO and importing the facade loads no part (ADR-018, every facade part
 is deferred). That publication retires when the member stops being generic or
@@ -4025,10 +4025,10 @@ with a `make gen` fix (rule 2).
 
 Two composed classes stay real instead of becoming stand-ins (rule 5): a class
 whose body binds no member and names no base, and a class the package's own
-import-time code reads. That code is each module an eager dunder binding (such as
-`__version__`) loads while the package initializes, together with every
-in-package module those modules import at runtime, transitively; the facts are
-the same parse's runtime imports. A stand-in published there would make the
+import-time code reads. That code is each module an eager dunder binding loads
+while the package initializes, together with every in-package module those
+modules import at runtime, transitively; the facts are the same parse's runtime
+imports. A stand-in published there would make the
 process mix stand-ins and real classes, which the eager lazy mode refuses.
 
 Lazy initializer planning keeps facade exports lazy. A version metadata export
@@ -4139,7 +4139,7 @@ Selected functional gates remain blocking. `make check` fails when the selection
 contains no projects or when a selected project has no `pyproject.toml`; no project is
 skipped silently.
 
-The retired `check-pyright` and `mod-types` Make subverbs, including their former
+The retired type-check and type-mod Make subverbs, including their former
 member-Makefile dispatch examples, are historical interfaces. Use the active
 root's selector-free `make check` for declared Pyrefly validation and native
 reports, and `make mod` for the existing semantic transformation pipeline.
