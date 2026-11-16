@@ -102,7 +102,7 @@ Infra:
     # Fresh import probes are independent subprocesses within one validation.
     fresh_import_workers: 3
     # Protected-edit lint snapshots run their gate subprocesses in this many
-    # threads per level (paths, then gates per path); mypy keeps its own
+    # threads per level (paths, then gates per level); pyrefly keeps its own
     # resource-limited deadline, so the bound caps concurrent type checkers.
     lint_snapshot_workers: 4
 
@@ -318,7 +318,7 @@ Infra:
       # override-dependencies bind only this project's own resolution, never
       # the metadata an installer of this distribution resolves.
       uv_override_dependencies:
-      - rope @ git+https://github.com/marlon-costa-dc/rope.git@394d91c0d9669a6de02b8b54f081d014f784fd52
+      - rope @ git+https://github.com/marlon-costa-dc/rope.git@3a0cb69024fb5f17ba32064bf6c294d016c7d9d8
       # Moving selectors consumed by generated .mise.toml and CI. Only
       # `make upg` resolves them to the newest release and writes mise.lock;
       # setup installs exactly what the committed lock pins, and only these
@@ -337,7 +337,7 @@ Infra:
       # platform lock section must carry one.
       # Base toolchain: only what this generator's own verbs run (python, the
       # self-managed mise, uv, direnv, taplo, ast-grep, gitleaks, scc, node for
-      # the pyright wrapper, qlty, jscpd, waza, prek). A project that needs more
+      # pyrefly LSP, qlty, jscpd, waza, prek). A project that needs more
       # (kubectl, helm, kind, kubeconform, go, ...) declares them as additions
       # in its own config/codegen.yaml under Infra.codegen.toolchain.tools;
       # the config loader concatenates them onto this base. The library never
@@ -395,13 +395,6 @@ Infra:
           binary: scc
           arguments: [ --version ]
           pattern: "^scc version {version}$"
-      # pyright's PyPI wrapper runs node from PATH.
-      - name: node
-        version: latest
-        version_probe:
-          binary: node
-          arguments: [ --version ]
-          pattern: "^v{version}$"
       # Make, curl and Git remain system-owned. Recursive Make keeps the
       # physical executable that invoked the generated lifecycle.
       - name: qlty
@@ -640,7 +633,7 @@ Infra:
       # The committed lock contract supersedes the former lockfile-ban exclusion.
       # An empty list resets the setting and requires an empty effective readback.
       issue_exclusions:
-      # Axiom "generic facade publication" (python/mypy#22457; operator
+      # HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
       # decision 2026-11-13: "Yes, add to the axiom"): the generated
       # `Name: TypeAlias = Part.Name` publication is the only form mypy can
       # subscript; Sonar python:S6794 (use a `type` statement) rejects it as
@@ -650,12 +643,11 @@ Infra:
       - rule_key: python:S6794
         resource_key: "**/*.py"
         reason: >-
-          Axiom "generic facade publication" (python/mypy#22457; operator
+          HISTORICAL: Axiom "generic facade publication" (python/mypy#22457; operator
           decision 2026-11-13 "Yes, add to the axiom"): the generated
           `Name: TypeAlias = Part.Name` publication is the only form mypy can
-          subscript. Retire with ruff UP040, pyright reportMissingTypeArgument,
-          pyrefly implicit-any-type-argument and bad-override when mypy
-          resolves #22457.
+          subscript. Retire with ruff UP040, pyrefly implicit-any-type-argument
+          and bad-override when mypy resolves #22457.
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
@@ -795,21 +787,6 @@ Infra:
         maintenance_threshold_percent: 90
         block_threshold_percent: 95
         key_prefix: flext-testmon
-      # One warm Mypy cache serves every checkout, clone, linked worktree and
-      # .venv of a repository (u.Infra.mypy_cache_directory keys the directory
-      # by the repository identity, the project's path inside it and the Python
-      # implementation and version). Mypy revalidates every entry by source
-      # hash, so a different lock or different sources in another worktree only
-      # recompute the modules that differ and can never mask a finding. A cold
-      # analysis cache is the worst outcome this toolchain can give a
-      # developer: no cache key may ever include a checkout path or a
-      # virtualenv path.
-      mypy_cache:
-        cache_environment_variable: MYPY_CACHE_DIR
-        data_home_environment_variable: XDG_CACHE_HOME
-        user_home_environment_variable: HOME
-        home_cache_directory: .cache
-        external_storage_directory: flext/infra/mypy
       ruff_cache:
         external_storage_directory: flext/infra/ruff
       # Public verbs execute their declared operation without mode selectors.
@@ -849,8 +826,7 @@ Infra:
         # check row, which then runs only the commit-stage (fast) gates.
         pre_commit_value: C
         # Every remote runner exports this pair whatever CI token a step
-        # passes: a local-stage gate (Mypy) is never executed there and a
-        # remote check reports it as NOT EXECUTED.
+        # passes.
         remote_variable: GITHUB_ACTIONS
         remote_value: "true"
         # Gate baseline of the 0.12 line (tracker memory
@@ -865,20 +841,13 @@ Infra:
         # - CI=Y runs MakeSpec.check_gates_ci, the commit and CI stages
         #   (pyrefly included, so CI is never blind to types);
         # - CI=N and an unset CI (a developer's make check and the pre-push
-        #   hook) run every active gate: the whole-program checkers mypy and
-        #   pyright, the codemod rule set, smells and the project's own
-        #   validators block there. Mypy stays bounded by MYPY_MEMORY_LIMIT_MB
-        #   and the project-owned tools.mypy.timeout_seconds budget;
-        # - Mypy is a local-stage gate (GateStage.LOCAL): it never runs on a
-        #   remote runner, not even in the CI=N complete qualification run, and
-        #   a remote check reports it as NOT EXECUTED.
+        #   hook) run every active gate: pyrefly, the codemod rule set, smells
+        #   and the project's own validators block there.
         # tooling.tools.pytest.ci-excluded-markers defines the slow-test
         # exclusion for CI, not local/pre-push runs.
         # Tests discover the complete global population and execute Testmon's
-        # incremental selection. Pre-commit never runs tests. The pre-push hook
-        # CI owns the complete gate. A pre-push row that runs make check/tests over
-        # the whole tree blocks every push for minutes, so only the commit-stage
-        # incremental hook is emitted.
+        # incremental selection. Pre-commit never runs tests. An opt-in pre-push
+        # hook reuses the primary check; the local workflow owns its test steps.
       pre_commit: true
       pre_push: false
       # Public refactor violations-sweep default; custom sequences use verbs below.
@@ -897,9 +866,9 @@ Infra:
       - { identity: check-primary, verb: check, phase: primary, contexts: [ local, ci, pre_push ] }
       - identity: tests-primary
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check-primary, contexts: [ local, pre_push ] }
+        - { step: check-primary, contexts: [ local ] }
       # CI never generates: check's `codegen conform --mode check` is the
       # read-only projection verdict of the LOCKED generator, so a stale or
       # skewed projection fails there, while CI generation would run the
@@ -916,16 +885,15 @@ Infra:
         - { step: mod, contexts: [ local ] }
       - identity: check
         verb: check
-        contexts: [ local, pre_push, pre_commit ]
+        contexts: [ local, pre_commit ]
         requires:
-        - { step: tests-primary, contexts: [ local, pre_push ] }
+        - { step: tests-primary, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       - identity: tests
         verb: tests
-        contexts: [ local, pre_push ]
+        contexts: [ local ]
         requires:
-        - { step: check, contexts: [ local, pre_push ] }
-        - { step: check-primary, contexts: [ pre_push ] }
+        - { step: check, contexts: [ local ] }
         - { step: check-primary-refresh, contexts: [ local ] }
       # Acceptance composes operations explicitly; each operation retains its domain.
       lifecycle_steps:
@@ -953,7 +921,6 @@ Infra:
       clean:
         cache_dirs:
         - __pycache__
-        - .mypy_cache
         - .pytest_cache
         - .ruff_cache
         - .pyrefly_cache
@@ -1077,7 +1044,6 @@ Infra:
     # Agent tool state (hook-state/hook-status) is machine-local cache, never
     # production input.
     - { name: .mimosa, source_scan_ignore: true }
-    - { name: .mypy_cache, source_scan_ignore: true, analysis_exclude: true }
     - { name: .omo }
     - { name: .pylance_cache, analysis_exclude: true }
     - { name: .pytest_cache, source_scan_ignore: true, analysis_exclude: true }
@@ -1249,9 +1215,6 @@ Infra:
       - [ terminal.integrated.env.linux, { PATH: '${runtimeEnvironment}/bin:${env:PATH}', VIRTUAL_ENV: '${runtimeEnvironment}' } ]
       - [ ruff.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
       - [ ruff.path, [ '${runtimeEnvironment}/bin/ruff' ] ]
-      - [ mypy-type-checker.interpreter, [ '${runtimeEnvironment}/bin/python' ] ]
-      - [ mypy-type-checker.path, [ '${interpreter}', -m, mypy ] ]
-      - [ mypy-type-checker.cwd, '${nearestConfig}' ]
       - [ editor.mouseWheelZoom, true ]
       - [ explorer.excludeGitIgnore, true ]
       - [ files.autoSave, afterDelay ]
@@ -1264,7 +1227,7 @@ Infra:
       - [ python.analysis.autoImportCompletions, true ]
       - [ python.analysis.completeFunctionParens, true ]
       - [ python.analysis.diagnosticMode, workspace ]
-      - [ python.analysis.diagnosticsSource, Pylance + Pyright ]
+      - [ python.analysis.diagnosticsSource, Pylance + Pyrefly ]
       - [ python.analysis.displayEnglishDiagnostics, true ]
       - [ python.analysis.enableAsyncProgram, false ]
       - [ python.analysis.enableExternalTypeServer, false ]
@@ -1288,7 +1251,6 @@ Infra:
       - [ python.analysis.languageServerBackend, default ]
       - [ python.analysis.languageServerMode, default ]
       - [ python.analysis.logLevel, Information ]
-      - [ python.analysis.pyrightVersion, fromEnvironment ]
       - [ python.analysis.referencesCodeLens, true ]
       - [ python.analysis.renameInDocstrings, true ]
       - [ python.analysis.showOnlyDirectDependenciesInAutoImport, false ]
@@ -1504,7 +1466,6 @@ Infra:
       archive_globs:
       - "*.log"
       - pytest_*.txt
-      - pyright_errors*.log
       - test_output.txt
       # Content submodule trees and agent law dirs are out of product-docs relocate.
       # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
@@ -1567,10 +1528,8 @@ Infra:
         # breaking editable wheel builds (release/wheel tests) after any
         # re-sync; declared here so every projected project keeps it.
         - editables>=0.6
-        - mypy>=2.3.1
         - pymdown-extensions
         - pyrefly>=1.2.0
-        - pyright>=1.1.411
         - pytest>=9.1.1
         - hypothesis
         - pytest-asyncio
@@ -1607,8 +1566,12 @@ Infra:
         # Flask and Werkzeug ship inline typing; their legacy stubs shadow it.
         # ProperDocs replaced the unmaintained MkDocs engine (FLEXT ADR-009);
         # mkdocs stays only as the Material theme's own transitive dependency.
+        # Mypy and Pyright are retired: Ruff and Pyrefly own Python analysis
+        # (operator order 2026-11-13, ag-6w7a).
         retired_dev:
         - mkdocs
+        - mypy
+        - pyright
         - types-flask
         - types-werkzeug
         required_flext_dev: [ flext-infra, flext-tests ]
@@ -1967,7 +1930,6 @@ Infra:
         - "*.rej"
       - name: "Python caches inside allowed directories"
         patterns:
-        - "**/.mypy_cache/"
         - "**/.ruff_cache/"
         - "**/.pytest_cache/"
         - "**/.hypothesis/"
@@ -2444,8 +2406,6 @@ Infra:
             - tool.hatch.build
             - tool.ruff
             - tool.ruff.lint.isort
-            - tool.mypy
-            - tool.pyright
             - tool.pyrefly
             - tool.pytest
             - tool.coverage
@@ -2454,7 +2414,6 @@ Infra:
             - tool.yamlfix
             - tool.deptry
             - tool.hatch.version
-            - tool.pydantic-mypy
             - tool.vulture
             # Written by the conform pipeline from the project SSOT
             # (_sync_namespace_scope), so a conflict inside it is the owner's

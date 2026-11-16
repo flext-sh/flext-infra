@@ -421,9 +421,6 @@ install_lazy_exports(
         ),
         "TestsFlextInfraUtilitiesToolingFixture": (
             "PytestRunner",
-            "mypy_deadline_limit",
-            "reap_mypy_descendant",
-            "mypy_workload",
             "managed_uv",
             "workspace_source_projects",
             "python_dependency_projects",
@@ -458,6 +455,7 @@ install_lazy_exports(
             "demo_project",
             "src_package",
             "namespace_workspace",
+            "seed_workspace_root",
             "write_standalone_workspace_manifest",
             "declared_requirements",
             "standalone_workspace",

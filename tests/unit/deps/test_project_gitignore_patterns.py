@@ -35,7 +35,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             {
                 "tooling.yaml": (
                     "ManagedArtifacts:\n  Gitignore:\n    patterns:\n"
-                    "      - .dmypy/\n      - mcp/generated/*\n"
+                    "      - .dcache/\n      - mcp/generated/*\n"
                     "      - '!mcp/generated/.gitkeep'\n"
                 ),
             },
@@ -51,7 +51,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         text = tm.ok(rendered)
         section = text.index(c.Infra.GITIGNORE_PROJECT_SECTION_NAME)
         tm.that(
-            text.index(".dmypy/", section) < text.index("mcp/generated/*", section),
+            text.index(".dcache/", section) < text.index("mcp/generated/*", section),
             truth=True,
         )
         tm.that("!mcp/generated/.gitkeep" in text[section:], truth=True)
@@ -65,7 +65,7 @@ class TestsFlextInfraProjectGitignorePatterns:
             tmp_path / "project",
             {
                 "one.yaml": (
-                    "ManagedArtifacts:\n  Gitignore:\n    patterns: [.dmypy/, logs/]\n"
+                    "ManagedArtifacts:\n  Gitignore:\n    patterns: [.dcache/, logs/]\n"
                 ),
                 "two.yaml": (
                     "ManagedArtifacts:\n  Gitignore:\n    patterns: [logs/, .serena/]\n"
@@ -76,7 +76,7 @@ class TestsFlextInfraProjectGitignorePatterns:
         resolved = u.Infra.load_project_managed_artifacts(root)
 
         patterns = tm.ok(resolved).artifacts.Gitignore.patterns
-        tm.that(sorted(patterns) == [".dmypy/", ".serena/", "logs/"], truth=True)
+        tm.that(sorted(patterns) == [".dcache/", ".serena/", "logs/"], truth=True)
 
     def test_absent_declaration_adds_no_section(self, tmp_path: Path) -> None:
         """Test absent declaration adds no section."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import closing, nullcontext
 from pathlib import Path
 
-from flext_infra import c, config, m, p
+from flext_infra import FlextInfraConfig, c, config, m, p, u
 from flext_infra._utilities import FlextInfraUtilitiesDependencies
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitSemanticIdentity,
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
         *,
         source_project: p.Infra.RopeProject | None = None,
     ) -> Path | None:
-        """Find the nearest manifest owner inside one governed repository.
+        """Find the nearest manifest or bootstrap declaration owner.
 
         Returns:
             The resulting ``Path | None``.
@@ -247,6 +247,22 @@ class FlextInfraUtilitiesProjectDiscoveryShape:
             ):
                 return parent
             if parent == boundary:
+                _, declaration_path, _ = (
+                    FlextInfraConfig.config_layer_paths_for_repository(
+                        boundary, filename=c.Infra.CODEGEN_CONFIG_FILENAME
+                    )
+                )
+                if not (
+                    declaration_path.is_file()
+                    if source_project is None
+                    else source_project.source_query(declaration_path, "isfile")
+                ):
+                    return None
+                declaration = u.Infra.load_repository_declaration_inputs(
+                    boundary, source_project=source_project
+                ).unwrap()
+                if declaration.spec.project is not None:
+                    return boundary
                 return None
         return None
 

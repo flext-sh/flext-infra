@@ -449,10 +449,9 @@ class FlextInfraCodegenConformScaffoldPlan(FlextInfraCodegenConformExistingPlan)
     ) -> p.Result[Sequence[p.Infra.CodegenFilePlan]]:
         """Render the final pyproject over the sources the scaffold plans.
 
-        The pyproject renders before the sources, but its facade-rebind Mypy
-        scope and its first-party namespaces are facts of those sources:
-        derived from the tree before publication it omits every facade the
-        scaffold creates, and the next
+        The pyproject renders before the sources, but its first-party
+        namespaces are facts of those sources: derived from the tree before
+        publication it omits every facade the scaffold creates, and the next
         generation adds them. Once every source is planned, the scope is
         derived from the planned bytes and the pyproject is rendered once more
         with it; nothing rendered earlier reads that scope.

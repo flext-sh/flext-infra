@@ -160,10 +160,19 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
             The resulting ``m.Infra.LoopOutcome``.
 
         """
-        results: MutableMapping[str, p.Infra.ProjectResult] = {
-            result.project: result
-            for result in (() if previous is None else previous.results)
-        }
+        # Projects are keyed by exact root: equal basenames stay distinct.
+        # A previous phase ran the same ordered targets to completion.
+        results: MutableMapping[Path, p.Infra.ProjectResult] = (
+            {}
+            if previous is None
+            else dict(
+                zip(
+                    (target.path for target in projects),
+                    previous.results,
+                    strict=True,
+                )
+            )
+        )
         total = len(projects)
         failed = 0
         loop_start = time.monotonic()
@@ -182,7 +191,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                     if ctx.selected_files or gate_id in target.applicable_gates
                 ),
                 ctx,
-                results.get(target.name),
+                results.get(target.path),
             )
             if union_gates:
                 project_result = self._merged_union_result(
@@ -201,7 +210,7 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
                         if target.path in executions
                     },
                 )
-            results[target.name] = project_result
+            results[target.path] = project_result
             if not project_result.gates and ctx.check_progress is not None:
                 ctx.check_progress(target.path, project_result)
             project_failed = any(
@@ -226,19 +235,21 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
     @staticmethod
     def _gate_parallelism(stage_count: int) -> int:
-        """Bound concurrent read-only gates by the typed Mypy memory reservation.
+        """Bound concurrent read-only gates by the declared gate memory reservation.
 
         Each concurrent gate may host one whole-program checker, so the host's
-        physical memory divided by the memory the tooling policy reserves for
-        one Mypy run caps the concurrency.
+        physical memory divided by the memory reserved for one such gate caps
+        the concurrency.
 
         Returns:
             The number of gates that may run at once, at least one.
 
         """
         physical_bytes = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-        reserved_bytes = u.Infra.mypy_resource_limit().memory_limit_bytes
-        return max(1, min(stage_count, physical_bytes // reserved_bytes))
+        return max(
+            1,
+            min(stage_count, physical_bytes // c.Infra.GATE_MEMORY_RESERVATION_BYTES),
+        )
 
     @staticmethod
     def _prerequisite_parallelism(gate_id: str, stage_count: int) -> int:
@@ -315,11 +326,11 @@ class FlextInfraWorkspaceCheckGates(FlextInfraWorkspaceCheckUnion):
 
         Read-only gates share no mutable state, so they run concurrently
         through the public CLI pipeline inside one process signal wave,
-        bounded by the memory the typed Mypy policy reserves per
-        whole-program checker. Repairs share mutable files and keep their
-        declared serial order and locks; an explicit fail-fast run stays
-        serial so it can stop at the first failure. Every operation retains
-        its verdict and receipt, reported in declared order.
+        bounded by the memory reserved per whole-program checker. Repairs
+        share mutable files and keep their declared serial order and locks;
+        an explicit fail-fast run stays serial so it can stop at the first
+        failure. Every operation retains its verdict and receipt, reported in
+        declared order.
 
         Returns:
             The resulting ``m.Infra.ProjectResult``.

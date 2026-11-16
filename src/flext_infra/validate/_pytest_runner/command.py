@@ -29,7 +29,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
     """
 
     _NO_COVERAGE: ClassVar[tuple[str, ...]] = ("--no-cov",)
-    _ITEM_LIMITS: ClassVar[tuple[str, ...]] = (
+    _COLLECTION_TIMEOUT_OPTION: ClassVar[tuple[str, ...]] = (
         f"--timeout={c.Infra.PYTEST_CASE_TIMEOUT_DISABLED_SECONDS}",
     )
 
@@ -234,17 +234,18 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             The resulting ``tuple[str, ...],``.
 
         """
-        pytest = config.Infra.tooling.tools.pytest
         expression = self._marker_expression(execution_mode)
         tool_config = (
             u.Infra.load_tooling_inputs(self.repository_root).unwrap().document
         )
+        pytest = tool_config.tools.pytest
         fixture_scope = u.Infra.native_tool_setting(
             tool_config, "pytest.ini_options", "asyncio_default_fixture_loop_scope", str
         )
         return (
             "-p",
             pytest.enforcement_plugin,
+            f"--timeout={pytest.ordinary_timeout_seconds}",
             *(
                 c.Infra.TEST_SELECTION_DISABLE_PLUGIN_ARGS
                 if execution_mode == c.Infra.PytestExecutionMode.FULL
@@ -323,7 +324,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             *self._plugin_policy_args(execution_mode=execution_mode),
             "--benchmark-disable",
             "--strict-markers",
-            *self._ITEM_LIMITS,
+            *self._COLLECTION_TIMEOUT_OPTION,
             "-o",
             "filterwarnings=",
             "-p",
@@ -484,7 +485,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
         *,
         execution_mode: c.Infra.PytestExecutionMode,
     ) -> t.StrTuple:
-        """Return the aggregate graceful stop instant, without a unit item cap.
+        """Return the aggregate graceful suite stop deadline.
 
         Returns:
             The bounded suite's time-limit arguments.
@@ -494,10 +495,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             serial=workers == c.ParserBooleanToken.ZERO,
             execution_mode=execution_mode,
         )
-        return (
-            *self._ITEM_LIMITS,
-            f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",
-        )
+        return (f"{c.Infra.PYTEST_SUITE_STOP_OPTION}={suite_stop!r}",)
 
     def _suite_argv(
         self,
@@ -517,6 +515,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
 
         """
         pytest = config.Infra.tooling.tools.pytest
+        tooling = u.Infra.load_tooling_inputs(self.repository_root).unwrap()
         return (
             sys.executable,
             *(
@@ -544,7 +543,7 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             # pre-dispatched chunk, so the declared max-failures stop only took
             # effect after every worker drained its assigned items at fleet
             # scale. A one-item dispatch step makes that stop immediate.
-            *pytest.parallel_arguments,
+            *tooling.document.tools.pytest.parallel_arguments,
             "--benchmark-disable",
         )
 

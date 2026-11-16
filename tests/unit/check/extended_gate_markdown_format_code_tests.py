@@ -185,6 +185,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             issues_len=0,
         )
 
+    @c.Tests.MARK.slow
     def test_mkdocs_flavor_survives_cross_repository_union(
         self, tmp_path: Path
     ) -> None:
@@ -269,6 +270,8 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A ``notest`` fence is not embedded code to check (#1223 selection)."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-notest")
         (project_dir / "README.md").write_text(self.NOTEST_PSEUDO, encoding="utf-8")
+        # Gates select a checkout by its tracked files.
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
@@ -434,6 +437,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
             '    """Function.\n\n    >>> second = 2\n\n    """\n',
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(project_dir)
         sources = tuple(
             FlextInfraMarkdownCodeSources.docstring_sources(project_dir, None)
         )
@@ -456,6 +460,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """Prose-only documentation is an examined input without embedded code."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-empty")
         (project_dir / "README.md").write_text("# Prose only\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
         gate = FlextInfraGatesMarkdownCode(tmp_path)
 
         tm.ok(gate.selected_for(project_dir, u.Tests.gate_context(project_dir)))
@@ -467,6 +472,7 @@ class TestsFlextInfraMarkdownFormatAndCodeGates:
         """A parseable fenced Python block selects the embedded-code gate."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-code-present")
         (project_dir / "README.md").write_text(self.FORMATTED, encoding="utf-8")
+        u.Tests.initialize_git_repo(project_dir)
 
         tm.ok(
             FlextInfraGatesMarkdownCode(tmp_path).selected_for(

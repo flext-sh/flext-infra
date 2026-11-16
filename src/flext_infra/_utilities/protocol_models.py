@@ -3679,7 +3679,9 @@ class FlextInfraUtilitiesModelsProtocol:
                         )
                         raise ValueError(message)
                     ancestors = source.get_mro()
-                    if model_base in ancestors:
+                    if model_base in ancestors or self._source_mro_base_matches(
+                        source, node, model_base
+                    ):
                         classes.append((node, path))
                     elif any(
                         FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
@@ -3697,6 +3699,43 @@ class FlextInfraUtilitiesModelsProtocol:
 
             collect(tree.body, ())
             return classes
+
+        def _source_mro_base_matches(
+            self,
+            source: p.Infra.RopeSourceClass,
+            node: ast.ClassDef,
+            model_base: p.AttributeProbe,
+        ) -> bool:
+            """Resolve facade ``TYPE_CHECKING`` shadowed bases via inherited MRO.
+
+            Returns:
+                Whether any AST base resolves via inherited MRO to ``model_base``.
+
+            """
+            lexical = source.get_scope().parent
+            if lexical is None:
+                return False
+            for base_expr in node.bases:
+                expr = (
+                    base_expr.value
+                    if isinstance(base_expr, ast.Subscript)
+                    else base_expr
+                )
+                if not isinstance(expr, ast.Attribute):
+                    continue
+                holder_name = ast.unparse(expr.value)
+                if not holder_name:
+                    continue
+                binding = self.resolve_symbol(lexical, holder_name)
+                if binding is None:
+                    continue
+                holder = binding.get_object()
+                if not self.py_class(holder):
+                    continue
+                resolved = self.mro_class(holder, expr.attr)
+                if resolved is not None and model_base in resolved.get_mro():
+                    return True
+            return False
 
         def _source_generated_holder(self, destination: Path) -> str:
             """Name the holder class the generator owns for one protocol module.
@@ -5017,6 +5056,11 @@ class FlextInfraUtilitiesModelsProtocol:
             native = self.qualified_name(
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
+            if "model_copy" not in model.get_attributes() and any(
+                FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
+                for base in model.get_mro()
+            ):
+                return False
             method = model.get_attribute("model_copy").get_object()
             if method is native.get_attribute("model_copy").get_object():
                 return False
@@ -5050,7 +5094,12 @@ class FlextInfraUtilitiesModelsProtocol:
             ).get_object()
             # The protocol mirrors the concrete base: a model of the core model
             # base composes the core model contract (dump and copy).
-            port = self._source_class(facade.get_attribute(p.BaseModel.__name__))
+            resolved_port = self.mro_class(facade, p.BaseModel.__name__)
+            port = (
+                resolved_port
+                if resolved_port is not None
+                else self._source_class(facade.get_attribute(p.BaseModel.__name__))
+            )
             protocol = self.qualified_name(
                 self.project, "Protocol", module_name="typing"
             ).get_object()
@@ -5317,11 +5366,11 @@ class FlextInfraUtilitiesModelsProtocol:
             for decorator in method.decorator_list:
                 if self._denotes(decorator, scope, "functools", "cached_property"):
                     # The member keeps the source's own ``cached_property``
-                    # spelling: Pyright types a model's cached member as the
+                    # spelling: the model's cached member is typed as the
                     # ``cached_property[T]`` descriptor, which neither a plain
                     # ``property`` nor an attribute annotation accepts, while
-                    # Pyright, Pyrefly and Mypy all accept the same descriptor
-                    # declared on the Protocol. The source import that binds
+                    # Pyrefly accepts the same descriptor declared on the
+                    # Protocol. The source import that binds
                     # it is retained with the projected annotation providers.
                     decorators.append(copy.deepcopy(decorator))
                     continue
@@ -6132,7 +6181,12 @@ class FlextInfraUtilitiesModelsProtocol:
                 self.project, "BaseModel", module_name="pydantic"
             ).get_object()
             ancestry = value.get_mro()
-            if model_base not in ancestry:
+            resolved_mro_base = (
+                model_base not in ancestry
+                and isinstance(value_ast := value.get_ast(), ast.ClassDef)
+                and self._source_mro_base_matches(value, value_ast, model_base)
+            )
+            if model_base not in ancestry and not resolved_mro_base:
                 return None
             # A third-party model is an external boundary type with no FLEXT
             # projection; its concrete annotation stays as declared. Upstream
@@ -6145,7 +6199,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 0
             ] not in self.source_model_facade_import_roots | {self.source_package_name}:
                 return None
-            if any(
+            if not resolved_mro_base and any(
                 FlextInfraUtilitiesRopeRuntimeTypes.unresolved_witness(base)
                 for base in ancestry
             ):

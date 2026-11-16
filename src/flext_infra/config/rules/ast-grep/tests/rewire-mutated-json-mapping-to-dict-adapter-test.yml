@@ -17,5 +17,5 @@ invalid:
   - |
     def nested(document):
         tools = u.json_mapping_adapter().validate_python(document["tools"])
-        mypy = u.json_mapping_adapter().validate_python(tools["mypy"])
-        mypy["overrides"] = []
+        deps = u.json_mapping_adapter().validate_python(tools["deps"])
+        deps["overrides"] = []

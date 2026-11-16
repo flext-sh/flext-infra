@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, unique
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
@@ -109,20 +110,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
                 False,
                 True,
                 FlextInfraConstantsConfig.GateStage.CI,
-            ),
-            "mypy": (
-                "Mypy",
-                "https://mypy.readthedocs.io/",
-                False,
-                True,
-                FlextInfraConstantsConfig.GateStage.LOCAL,
-            ),
-            "pyright": (
-                "Pyright",
-                "https://github.com/microsoft/pyright",
-                False,
-                True,
-                FlextInfraConstantsConfig.GateStage.PUSH,
             ),
         }),
         FlextInfraConstantsConfig.GateKind.INFRA: MappingProxyType({
@@ -419,6 +406,10 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "SARIF 2.1.0 check report: the machine-readable findings owner of ``check run``."
     CHECK_PROFILE_FILENAME: ClassVar[str] = "check.pstats"
     "Optional native profile of the captured checker in its invocation directory."
+    CHECK_REPORT_RELATIVE_PATH: ClassVar[Path] = Path(CHECK_REPORT_SARIF_FILENAME)
+    "Repository-relative path to the latest check receipt."
+    TEST_REPORT_RELATIVE_PATH: ClassVar[Path] = Path("test-report.json")
+    "Repository-relative path to the latest test receipt."
     RUFF_FORMAT_FILE_RE: ClassVar[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$",
     )
@@ -494,9 +485,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
     "Extracted-source name (``MARKDOWN_CODE_SOURCE_FORMAT``) inside any ruff line."
     VALID_GATE_SEVERITIES: ClassVar[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    PYRIGHT_DIAGNOSTICS_KEY: ClassVar[str] = "generalDiagnostics"
-    PYRIGHT_PROJECT_ARG: ClassVar[str] = "--project"
-    PYRIGHT_PROJECT_CONFIG_TARGET: ClassVar[str] = "."
     BANDIT_RESULTS_KEY: ClassVar[str] = "results"
     PYREFLY_ERRORS_KEY: ClassVar[str] = "errors"
     PYREFLY_ZERO_ERRORS_RECEIPT: ClassVar[str] = "INFO 0 errors"
@@ -594,8 +582,6 @@ class FlextInfraConstantsCheck(FlextInfraConstantsConfig):
         "ruff",
         "pytest",
         "pyrefly",
-        "mypy",
-        "pyright",
     })
     MANUAL_CMD_BLOCKED_GIT: ClassVar[frozenset[str]] = frozenset({
         "commit",

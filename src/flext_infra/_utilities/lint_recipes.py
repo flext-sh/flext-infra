@@ -182,8 +182,13 @@ class FlextInfraUtilitiesLintRecipes(
                 license, or ``module`` has no identity.
 
         """
-        for candidate in (pkg_dir, *pkg_dir.parents):
-            if not (
+        candidates = (
+            (pkg_dir,)
+            if declaration_inputs is not None
+            else (pkg_dir, *pkg_dir.parents)
+        )
+        for candidate in candidates:
+            if declaration_inputs is None and not (
                 (candidate / c.PYPROJECT_FILENAME).is_file()
                 if source_project is None
                 else source_project.source_query(
@@ -1393,8 +1398,8 @@ class FlextInfraUtilitiesLintRecipes(
         parentheses; a long full-line comment is reflowed at the same indent,
         and a trailing comment on an otherwise fitting code line moves to its
         own line at the same indent. Directives that bind to their line
-        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pyright:``, ``pylint:``,
-        ``isort:``, ``mypy:``) keep their position. The parser folds implicit
+        (``type:``, ``noqa``, ``fmt:``, ``ruff:``, ``pylint:``, ``isort:``)
+        keep their position. The parser folds implicit
         concatenation and drops comments, so the repaired module's AST must
         equal the original one. A line holding neither keeps its text and its
         finding.
@@ -1493,10 +1498,8 @@ class FlextInfraUtilitiesLintRecipes(
             "noqa",
             "fmt:",
             "ruff:",
-            "pyright:",
             "pylint:",
             "isort:",
-            "mypy:",
         )):
             return None
         newline = line[len(line.rstrip("\r\n")) :]

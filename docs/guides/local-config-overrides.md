@@ -2,7 +2,6 @@
 
 <!-- TOC START -->
 
-- [Mandatory Mypy policy](#mandatory-mypy-policy)
 - [Native Ruff Policy](#native-ruff-policy)
 - [Local dependency binding](#local-dependency-binding)
 - [Generation and recovery](#generation-and-recovery)
@@ -53,35 +52,6 @@ project exclusion roster to hide incompatible requirements.
 Each Mise selector has one owner. A project declaration that duplicates a packaged
 selector is an ownership conflict and fails with its source path; generation never
 chooses a winner and reports the conflict as a warning.
-
-## Mandatory Mypy policy
-
-`config/tooling.yaml` owns the declared Mypy policy and both projection paths consume
-that same typed configuration. The project's Pydantic 2 contract requires the
-`pydantic.mypy` plugin; missing, empty, or v1 resolved plugin declarations fail validation
-rather than receiving a silent default.
-
-Diagnostic suspension catalogs are forbidden. The typed policy rejects the retired
-`disable-error-code` and `facade-rebind-error-codes` fields. Generated modules and
-facade rebindings receive no `ignore_errors` override. All reported native diagnostics
-remain blocking. Overrides that broaden analysis, such as `follow_untyped_imports`,
-retain their declared behavior.
-
-Generic Mypy options cannot replace `plugins`, `disable_error_code`, `python_version`,
-`overrides`, or generated `mypy_path`. Reserved aliases and duplicate declarations
-within or between the boolean and string maps fail validation. A string-valued
-`enable_error_code` may enable diagnostics without masking any other finding.
-Boolean enabling is invalid.
-Generic keys must be plain option identifiers, not quoted TOML keys or statements.
-Global `ignore_errors = true` is forbidden; an explicit false boolean remains valid.
-Dependency profiles in `config/codegen.yaml` restrict Pydantic to major version 2;
-dependency locks and project manifests are regenerated through `make upg` and
-`make gen`, respectively.
-
-Regenerate consumers through canonical `make gen` after changing the source owner;
-never patch generated pyprojects. Validate the public consumer with the plugin active
-and a negative diagnostic, then run the applicable native gates. A source
-inspection, generation receipt, or merged PR alone is not proof of green delivery.
 
 ## Native Ruff Policy
 

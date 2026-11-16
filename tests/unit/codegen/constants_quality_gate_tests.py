@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import FlextInfraCli, infra
 from flext_infra.codegen import FlextInfraGatesCodegenQuality
-from tests import tm, u
+from tests import c, tm, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,6 +90,7 @@ class TestsFlextInfraConstantsCodegenQualityGate:
         tm.that(report_result.value, has="verdict")
 
     @staticmethod
+    @c.Tests.MARK.slow
     def test_build_report_uses_canonical_census_duplicates(
         tmp_path: Path,
     ) -> None:

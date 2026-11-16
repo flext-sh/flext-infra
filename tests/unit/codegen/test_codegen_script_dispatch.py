@@ -158,7 +158,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         tm.ok("_builtin-incidente:" in rendered)
         tm.ok("_builtin-charts:" in rendered)
         # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.ok("scripts/dispatch.py" in rendered)
+        tm.ok("python -m scripts.dispatch " in rendered)
         # Script dispatch roots are recorded for operator visibility.
         tm.ok("apps/demo-app/scripts" in rendered)
 
@@ -230,7 +230,7 @@ class TestsFlextInfraScriptDispatchMakefile:
         )
         # No script routing leaks into non-opted-in repositories.
         tm.fail("tr '-' '_'" in rendered)
-        tm.fail("scripts/dispatch.py" in rendered)
+        tm.fail("scripts.dispatch" in rendered)
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self,
@@ -560,9 +560,8 @@ class TestsFlextInfraScriptDispatchMakefile:
             if script_dispatch is None
             else (("scripts/sync/all.sh", self._command("sync", "all")),),
         )
-        env_dirs = " ".join(config.Infra.tooling.tools.pyright.path_rules.env_dirs)
+        env_dirs = " ".join(config.Infra.tooling.tools.pyrefly.path_rules.env_dirs)
         tm.ok(f"for directory in {env_dirs}; do" in rendered)
-        tm.ok("MYPY_PATHS := $(RUFF_PATHS)" in rendered)
 
     def test_pytest_verbs_leave_basetemp_to_pytest(
         self,

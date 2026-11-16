@@ -344,25 +344,16 @@ class TestsFlextInfraCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         codegen: p.Infra.CodegenConfigSpec,
     ) -> None:
-        """The commit hook provisions then checks; pre-push adds the tests.
-
-        Operator order 2026-11-12: the commit hook is (setup, check), so a fresh
-        lane commits against its own locked toolchain; tests run on push.
-        """
+        """Commit provisions the toolchain; opt-in push reuses primary validation."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
 
         commit_verbs = tuple(step.verb for step in pre_commit)
-        push_verbs = {step.verb for step in pre_push}
         tm.that(commit_verbs, eq=(c.Infra.VERB_SETUP, c.Infra.VERB_CHECK))
-        tm.ok(c.Infra.VERB_CHECK in push_verbs)
-        tm.ok(c.Infra.VERB_TEST in push_verbs)
-        tm.ok(c.Infra.VERB_TEST not in commit_verbs)
-        tm.that(
-            push_verbs.issubset({verb.name for verb in codegen.make.verbs}),
-            eq=True,
-        )
+        tm.that(pre_push, len=1)
+        tm.that(pre_push[0].verb, eq=c.Infra.VERB_CHECK)
+        tm.that(pre_push[0].phase, eq=c.Infra.CheckPhase.PRIMARY)
 
     @staticmethod
     def test_rendered_vscode_document_consumes_projection_maps(

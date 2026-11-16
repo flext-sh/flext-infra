@@ -159,7 +159,6 @@ class TestsFlextInfraBindingInstall:
                 options=m.Cli.ProcessOptions(
                     env={"PYTHONPATH": str(checkout / c.Infra.DEFAULT_SRC_DIR)},
                     remove_env_keys=(
-                        "MYPYPATH",
                         "VIRTUAL_ENV",
                         "UV_PROJECT",
                         "UV_PROJECT_ENVIRONMENT",

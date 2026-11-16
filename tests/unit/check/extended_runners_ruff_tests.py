@@ -1,4 +1,4 @@
-"""Real gate behavior tests for Ruff and Pyright.
+"""Real gate behavior tests for Ruff.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,11 +9,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra.gates import (
-    FlextInfraGatesPyright,
-    FlextInfraGatesRuffFormat,
-    FlextInfraGatesRuffLint,
-)
+from flext_infra.gates import FlextInfraGatesRuffFormat, FlextInfraGatesRuffLint
 from tests import c, m, p, tm, u
 
 if TYPE_CHECKING:
@@ -282,27 +278,3 @@ class TestsFlextInfraRealGateRunners:
 
         tm.ok(result.result.passed)
         tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
-
-    @c.Tests.MARK.requires_engine("pyright")
-    def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
-        """Test pyright reports real type error."""
-        project_dir = u.Tests.mk_project(
-            tmp_path,
-            "pyright-project",
-            pyproject=(
-                '[tool.pyright]\ninclude = ["src"]\ntypeCheckingMode = "strict"\n'
-            ),
-            with_src=True,
-        )
-        (project_dir / "src" / "demo.py").write_text(
-            "value: str = 1\n",
-            encoding="utf-8",
-        )
-
-        result = FlextInfraGatesPyright(tmp_path).check(
-            project_dir,
-            self.make_ctx(tmp_path),
-        )
-
-        tm.ok(not result.result.passed)
-        tm.that(len(result.issues), gte=1)

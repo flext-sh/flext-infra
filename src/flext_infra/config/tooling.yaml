@@ -1,24 +1,57 @@
 Infra:
   tooling:
+    # EXTERMINATED: mypy/pyright removed from fleet. Kept for local compatibility only. DO NOT ADD NEW RULES.
     # Canonical validated native tooling policy; diagnostics remain blocking.
     raw-check-receipt-suffix: .raw.log
-    derived-tool-roots: [ deptry, mypy, pyrefly, pyright, pytest, ruff, vulture ]
+    derived-tool-roots: [ deptry, pyrefly, pytest, ruff, vulture ]
     derived-settings:
-      mypy: [ python_version, mypy_path, namespace_packages, explicit_package_bases, exclude, overrides, disable_error_code ]
       pyrefly: [ python-version, sub-config ]
-      pyright: [ pythonVersion, executionEnvironments, extraPaths, include, exclude, venv, venvPath ]
       pytest.ini_options: [ flext_slow_timeout_seconds, markers, flext_fixture_trees_root, flext_make_ci_variable, flext_make_ci_value ]
       ruff: [ target-version ]
     # Native options are free key/value pairs, grouped by their tool table.
     # The same catalog drives modernization and every projected template.
     settings:
-      codespell:
-      - [ check-filenames, true ]
-      - [ ignore-words-list, 'crate,nd' ]
+      # Passive local compatibility only; use in managed development is discouraged.
+      mypy:
+      - [ plugins, [ pydantic.mypy ] ]
+      - [ allow_redefinition, true ]
+      - [ check_untyped_defs, true ]
+      - [ extra_checks, true ]
+      - [ follow_untyped_imports, true ]
+      - [ local_partial_types, true ]
+      - [ no_implicit_reexport, true ]
+      - [ show_traceback, true ]
+      - [ strict_equality, true ]
+      - [ warn_redundant_casts, true ]
+      - [ warn_return_any, true ]
+      - [ warn_unreachable, true ]
+      - [ warn_unused_ignores, true ]
+      - [ follow_imports, normal ]
       pydantic-mypy:
       - [ init_forbid_extra, true ]
       - [ init_typed, true ]
       - [ warn_required_dynamic_aliases, true ]
+      pyright:
+      - [ pythonPlatform, Linux ]
+      - [ reportCallIssue, error ]
+      - [ reportConstantRedefinition, error ]
+      - [ reportIncompatibleMethodOverride, error ]
+      - [ reportInconsistentConstructor, error ]
+      - [ reportMissingImports, error ]
+      - [ reportMissingModuleSource, error ]
+      - [ reportPrivateUsage, error ]
+      - [ reportUnnecessaryCast, error ]
+      - [ reportUnnecessaryComparison, error ]
+      - [ reportUnnecessaryIsInstance, error ]
+      - [ reportUnusedClass, error ]
+      - [ reportUnusedFunction, error ]
+      - [ reportUnusedImport, error ]
+      - [ reportUnusedVariable, error ]
+      - [ typeCheckingMode, strict ]
+      - [ useLibraryCodeForTypes, true ]
+      codespell:
+      - [ check-filenames, true ]
+      - [ ignore-words-list, 'crate,nd' ]
       pyrefly:
       - [ disable-project-excludes-heuristics, true ]
       - [ use-ignore-files, false ]
@@ -140,24 +173,8 @@ Infra:
       - [ python_classes, [ "Test*" ] ]
       - [ filterwarnings, [ error, "once::pytest.PytestAssertRewriteWarning" ] ]
       - [ addopts, [ --benchmark-disable, --strict-markers, --markdown-docs, --durations=10 ] ]
-      pyright:
-      - [ pythonPlatform, Linux ]
-      - [ reportCallIssue, error ]
-      - [ reportConstantRedefinition, error ]
-      - [ reportIncompatibleMethodOverride, error ]
-      - [ reportInconsistentConstructor, error ]
-      - [ reportMissingImports, error ]
-      - [ reportMissingModuleSource, error ]
-      - [ reportPrivateUsage, error ]
-      - [ reportUnnecessaryCast, error ]
-      - [ reportUnnecessaryComparison, error ]
-      - [ reportUnnecessaryIsInstance, error ]
-      - [ reportUnusedClass, error ]
-      - [ reportUnusedFunction, error ]
-      - [ reportUnusedImport, error ]
-      - [ reportUnusedVariable, error ]
-      - [ typeCheckingMode, strict ]
-      - [ useLibraryCodeForTypes, true ]
+      - [ timeout, 20 ]
+      - [ timeout_method, thread ]
       ruff:
       - [ namespace-packages, [ tests, examples, scripts ] ]
       - [ fix, false ]
@@ -231,21 +248,6 @@ Infra:
       - [ 'scripts/**/*.py', [ commented-out-code, invalid-module-name, line-too-long ] ]
       # The fleet testing contract expresses expectations with ``assert``.
       - [ 'tests/**/*.py', [ assert ] ]
-      mypy:
-      - [ plugins, [ pydantic.mypy ] ]
-      - [ allow_redefinition, true ]
-      - [ check_untyped_defs, true ]
-      - [ extra_checks, true ]
-      - [ follow_untyped_imports, true ]
-      - [ local_partial_types, true ]
-      - [ no_implicit_reexport, true ]
-      - [ show_traceback, true ]
-      - [ strict_equality, true ]
-      - [ warn_redundant_casts, true ]
-      - [ warn_return_any, true ]
-      - [ warn_unreachable, true ]
-      - [ warn_unused_ignores, true ]
-      - [ follow_imports, normal ]
     tools:
       # Non-linter tool sections are config-owned as well.
       markdown:
@@ -469,98 +471,6 @@ Infra:
           # https://docs.python.org/3.13/reference/datamodel.html#type.__bases__
           # https://docs.astral.sh/ruff/rules/bad-dunder-method-name/
           # bad-dunder-method-name remains enabled for every other unrecognized dunder name.
-      mypy:
-        # Default analysis budget, not the project ceiling. Project overlays
-        # may select a measured finite budget up to max_timeout_seconds.
-        # Neither field is controlled through environment variables.
-        timeout_seconds: 90
-        max_timeout_seconds: 600
-        # Pydantic 2 and pydantic.mypy are mandatory (operator 2026-10-05).
-        # Missing, empty, and v1 plugin declarations fail validation rather
-        # than being silently repaired by schema defaults.
-        # Analyze source distributions that have real annotations but omit
-        # the PEP 561 marker. Rope 1.14 is one such runtime owner; skipping
-        # it converts every public boundary into Any and makes its imports
-        # fail before our typed protocols can validate them.
-        # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
-        # Operator ruling 2026-10-05 (mypy-pydantic law): call-arg and
-        # prop-decorator stay suspended until the fleet facade-alias family
-        # is cured; pydantic.mypy remains mandatory. Operator order 2026-11-13
-        # restores the 2026-11-08 suspension set that 387febe2ec reduced to two
-        # codes without authorization. Operator order 2026-11-14, verbatim: "o
-        # que vale são as 12 entradas de suspensão" — these fourteen are the
-        # whole set in every project, with no drift either way. Only the
-        # operator changes them; tests/unit/deps/test_modernizer_tool_tables.py
-        # fails on any addition or removal until that authorization is recorded.
-        ruling-disable-error-codes: [ call-arg, prop-decorator, arg-type, assignment, attr-defined, has-type, list-item, misc, name-defined, no-any-return, override, unreachable, valid-type, var-annotated ]
-        overrides:
-        - modules: [ rope.* ]
-          settings: [ [ follow_untyped_imports, true ] ]
-          justification: >-
-            Analyze Rope's installed source without suppressing import-untyped; https://mypy.readthedocs.io/en/stable/config_file.html#follow-untyped-imports
-      pyright:
-        # Global axioms (operator order 2026-11-03, verbatim:
-        # "reportMissingTypeStubs tb tem que entrar em tooling.yaml global como
-        # axioma, lembre-se que axiomas tem que ser autorizados unicamente pelo
-        # operador e ser globais"; earlier ruling
-        # operator-ruling-20261022-missing-type-stubs): strict mode requires a
-        # stub file for an untyped third-party import even when Pyright already
-        # infers the library source. Used surfaces stay typed through `p`
-        # protocols at one boundary module per library. Axioms are global and
-        # only the operator authorizes them; no project overrides them.
-         ruling-disabled-rules:
-         - reportMissingTypeStubs
-         # Axiom (operator authorization 2026-11-08): pyright cannot resolve
-         # structural protocol members / advanced type forms derived from
-         # Pydantic models the way pyrefly does; the canonical form uses p.*
-         # protocols and is validated by pyrefly + mypy. These codes are
-         # silenced globally until the canonical protocol projection lands.
-         - reportUnknownMemberType
-         - reportUnknownArgumentType
-         - reportInvalidTypeForm
-         - reportUnknownVariableType
-         - reportUnknownParameterType
-         - reportUnknownLambdaType
-         - reportIncompatibleVariableOverride
-         # Axiom (operator authorization 2026-11-08, continuation): pyright
-         # cannot resolve the protocol/model duality (p.* vs m.*) and the
-         # advanced typing forms used across the fleet; these are false
-         # positives from linter incapacity, not real defects. Silenced
-         # globally until the canonical projection lands.
-         - reportUndefinedVariable
-         - reportGeneralTypeIssues
-         - reportUnnecessaryIsInstance
-         - reportArgumentType
-         - reportAttributeAccessIssue
-         - reportCallIssue
-         - reportUntypedFunctionDecorator
-         - reportAssignmentType
-         - reportReturnType
-         - reportAbstractUsage
-         # Axiom "generic facade publication" (python/mypy#22457): justification
-         # and retirement condition at tools.ruff.lint.ruling-disabled-rules.
-         - reportMissingTypeArgument
-         path-rules:
-          # Source and tracked consumer surfaces are all
-          # first-class environments so no analyzer can hide their diagnostics.
-          source-dir: src
-          project-root: .
-          env-dirs: [ src, tests, examples, scripts ]
-          test-like-dirs: [ tests, examples, scripts ]
-          default-excludes:
-          - "**/.*"
-          ignored-diagnostic-globs: []
-          # Authorized, path-scoped type-checker rule exceptions: the single
-          # list for both checkers. One entry renders the Pyright
-          # executionEnvironment and the Pyrefly sub-config of its root. Each
-          # entry names root (an existing project-relative file or directory),
-          # rationale, authorization (tracker-key, or operator-words + date +
-          # channel) and changes (checker, rule, old, new). A missing
-          # authorization or root fails.
-          diagnostic-path-exceptions: []
-          source-report-private-usage: error
-          test-like-report-private-usage: error
-          other-report-private-usage: error
       pyrefly:
         findings-exit-codes: [ 1 ]
         # Axiom "generic facade publication" (python/mypy#22457): justification
@@ -577,27 +487,22 @@ Infra:
           # Empty: scripts/ owns scripts/__init__.py, so every script module
           # resolves as `scripts.*` with the repo root as CWD. Adding "." or
           # "scripts" here makes the same file reachable under a second module
-          # name, which mypy reports as source-file-found-twice. scripts/ is
-          # analyzed because `files` names it, not because the search path
-          # does.
+          # name. scripts/ is analyzed because `files` names it, not because
+          # the search path does.
           project-shared-search-paths: []
+          # Authorized, path-scoped type-checker rule exceptions: one entry
+          # renders the Pyrefly sub-config of its root. Each entry names root
+          # (an existing project-relative file or directory), rationale,
+          # authorization (tracker-key, or operator-words + date + channel) and
+          # changes (checker, rule, old, new). A missing authorization or root
+          # fails.
+          diagnostic-path-exceptions: []
       pytest:
-        # Scaffold and modernizer share the aggregate execution policy. Ordinary
-        # items have no per-item deadline; the runner owns the invocation wall.
-        # Slow marks are a narrow integration-harness budget, not permission
-        # for an unbounded test. Cases that exceed it require owner repair.
-        # Operator order operator-order-2026-10-25-make-timeout-60s-cprofile:
-        # every make verb finishes within 60s; slower runs are profiled with
-        # cProfile and cured at their owner. The slow-phase stop reserve is
-        # xdist items per worker x slow-timeout + grace = 2 x 25 + 2 = 52 s,
-        # which must stay below run-timeout-seconds.
-        slow-timeout-seconds: 25
-        # Marker selection never removes the aggregate operation deadline.
-        # Slow items also retain their declared per-item integration budget.
+        # Item deadlines cover setup, call, and teardown. The suite deadline
+        # also covers collection and reserves its own shutdown time.
+        ordinary-timeout-seconds: 2
+        slow-timeout-seconds: 20
         slow-marker: slow
-        # A local suite that cannot finish within run-timeout-seconds is a
-        # performance defect. Collection, lease waits and every suite child
-        # share the entrypoint clock, with termination grace inside this wall.
         run-timeout-seconds: 240
         termination-grace-seconds: 2
         # One failure stops the invocation. The next run starts from the
@@ -607,7 +512,7 @@ Infra:
         enforcement-plugin: flext_tests.enforcement_plugin
         # Retain the complete selection, but expose known failures first.
         progress-args: [ --verbose, --failed-first ]
-        report-args: [ -ra, --durations=25, --durations-min=0.001, --tb=short ]
+        report-args: [ -ra, --durations=25, --durations-min=2.0, --tb=short ]
         diagnostic-args: [ -rA, --durations=0, --tb=long, --showlocals ]
         # One worker makes maxfail exact: no second in-flight case can fail
         # after the first failure has stopped the invocation.
@@ -714,17 +619,14 @@ Infra:
         # `make tests` deselects them exactly as CI does and reports them NOT
         # EXECUTED; `make test-full` and a named file still select them.
         harness-gate-markers: [ remote ]
-        # CI and pre-commit share make.ci.value;
-        # local and pre-push execution retain slow tests. `make test-full`
-        # includes these markers in every context.
-        ci-excluded-markers: [ slow ]
+        # A slow mark grants an item budget, never a CI exclusion.
+        ci-excluded-markers: []
         # Fixtures declaring local engines or resolution cannot execute in approval.
         ci-excluded-fixtures: [ resolved_make_templates, detector_project, mod_workspace, smells_project, _clear_make_ci_token ]
         # The cross-layer enforcement catalog runs strict in every suite:
         # the test-reality laws (ENFORCE-019/051/054/055/098) fail the run
         # instead of warning; warnings are never a landing state.
-        # Per-item limits do not belong in baseline addopts; the runner owns
-        # the aggregate wall and the slow marker owns its narrow item policy.
+        # The runner passes item limits to the native timeout plugin.
       tomlsort:
         process-timeout-seconds: 60
       # Bandit test ids the security gate skips; every other test stays

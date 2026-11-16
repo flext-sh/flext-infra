@@ -19,6 +19,41 @@ class TestsFlextInfraCProfileReport:
     """Prove real pstats artifacts render through the typed owner."""
 
     @staticmethod
+    def test_capture_refuses_a_changed_resolver_lock(tmp_path: Path) -> None:
+        """Refuse a receipt if the resolver lock changed during execution."""
+        root, _ = u.Tests.create_lazy_init_workspace(tmp_path)
+        lock = root / c.Infra.UV_LOCK_FILENAME
+        lock.write_text("version = 1\n", encoding=c.DEFAULT_ENCODING)
+        command = (sys.executable, "-c", "pass")
+        started = u.Infra.git_begin_gate_capture(
+            m.Infra.GateCaptureBeginRequest(
+                repository_root=root,
+                gate=c.Infra.VERB_CHECK,
+                command=command,
+                runtime_identity=sys.executable,
+                intent=m.Infra.GateExecutionIntent(requested_gates=("lint",)),
+            ),
+            inputs=u.Infra.load_codegen_inputs(root).unwrap(),
+        )
+        outcome = u.Cli.run_raw(command, cwd=root).unwrap().outcome
+        lock.write_text("version = 1\nrevision = 2\n", encoding=c.DEFAULT_ENCODING)
+        report = u.Infra.git_finish_gate_capture(
+            m.Infra.GateCaptureFinishRequest.model_validate({
+                "started": started,
+                "process": outcome,
+                "reports": (),
+                "report_root": root,
+                "runtime_identity": sys.executable,
+            }),
+            inputs=u.Infra.load_codegen_inputs(root),
+        ).unwrap()
+        tm.that(report.receipt, eq=None)
+        tm.that(
+            report.issues[0].message,
+            eq="original gate configuration or native runtime changed during execution",
+        )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("selected_file", [None, False, True])
     @c.Tests.MARK.parametrize("suite_state", ["absent", "published", "stale"])
     def test_interrupted_suite_reports_native_outcome_before_artifacts(

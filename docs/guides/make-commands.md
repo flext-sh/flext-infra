@@ -69,10 +69,10 @@ verb is missing or broken, repair the root dispatcher owner and rerun that verb.
 ## Architecture admission and acceptance
 
 Command success does not replace architecture acceptance. Start with
-root AGENTS.md, the
-session router, and its exact
-routing and
-FLEXT law owners. The router composes
+`AGENTS.md`, the
+session router (`.agents/commands/flext-law.md`), and its exact
+routing (`.agents/skills/flext-context-routing/SKILL.md`) and
+FLEXT law (`.agents/skills/flext-law/SKILL.md`) owners. The router composes
 global `search-first`, `yagni`, `ssot`, `solid`, `simplify` and `dry`; concrete
 dependency and data boundaries additionally follow the canonical global
 `dep-injection`, `clean-architecture` and `pydantic-development` skills under
@@ -181,17 +181,8 @@ Release operations belong to an explicitly declared product protocol.
 engine's phase enumeration. The same declaration produces their project Make
 handlers and workflow references; no duplicate `repository.extra_verbs` rows are
 required. Each handler invokes the existing release CLI directly.
-`PR_TITLE` supplies the optional plan title and `INDEX=Y` the explicit
-package-index publication request; `release-version` takes no argument.
-`release-version` lists the pull requests merged into the integration line since the
-previous tag (first-parent merges, never merges inside a lane) in
-`docs/releases/<tag>.md`, which the release commit carries and the GitHub release
-publishes. The release pull request body is that file's summary, so it stays inside
-GitHub's body limit; the lane refuses any longer body before pushing.
-The GitHub release body is that file verbatim, as reviewed in the release pull
-request, so notes over GitHub's release body limit fail when `release-version`
-generates them, before the pull request or tag exists, and again before
-`release-publish` creates the draft.
+`PR_TITLE` supplies the optional plan title, `LANE_CHECKPOINT_REF` the optional
+versioning checkpoint and `INDEX=Y` the explicit package-index publication request.
 Generation, checks and local builds never perform tagging or publication.
 The same full-owned catalog declaration authorizes a workflow update or its
 retirement when its profile or capability no longer applies. Both operations
@@ -244,6 +235,7 @@ to repair authored declarations.
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | `setup`      | Install the declared frozen locks, synchronize the physical environment and configure local integrations; FLEXT=<path> reinstalls the FLEXT distributions that workspace provides as editable (local only). | FLEXT, RECREATE           |
 | `upg`        | Resolve declared dependency and tool updates and publish their resolution metadata and locks.                                                                                                               | —                         |
+| `lock`       | Resolve newly declared dependencies into the locks and keep every existing pin; only upg moves pins.                                                                                                        | —                         |
 | `gen`        | Materialize explicitly declared new projects and publish every applicable generated projection.                                                                                                             | ROOT                      |
 | `gen-scope`  | Run the focal generation surface (WHAT, MODULE for facades, SCOPE) through the same engine, lock and budget as gen.                                                                                         | ROOT, WHAT, MODULE, SCOPE |
 | `mod`        | Refactor declared source structure through the shared pipeline and publish the complete coherent change; LAWS (ENFORCE ids) or RULES (rule ids) diagnose or repair one law (ADR-028 Decision 18 item 2).    | LAWS, RULES               |
@@ -254,7 +246,7 @@ to repair authored declarations.
 | `tests-full` | Run the complete selected inventory once without Testmon.                                                                                                                                                   | —                         |
 | `help`       | Discover the declared public interface without effects.                                                                                                                                                     | —                         |
 | `build`      | Build local distribution and documentation artifacts without publishing them.                                                                                                                               | —                         |
-| `clean`      | Remove only declared disposable resources owned by the workspace root and each declared member, under each repository's own lock.                                                                           | —                         |
+| `clean`      | Remove only declared disposable resources owned by the selected target.                                                                                                                                     | —                         |
 
 ### Profiling and Semantic Publication Boundaries
 
@@ -558,17 +550,6 @@ accounting; it is never reported as tests passed. The native inventory and manif
 must agree; neither may silently expand into another target. Warnings remain visible
 in the native result.
 
-Pytest owns its temporary directories: the runner passes no `--basetemp` and no
-`TMPDIR`, so each run uses pytest's own numbered basetemp under
-`$TMPDIR/pytest-of-$USER/` and its native retention removes all but the latest runs.
-The runner requires a declared `TMPDIR` (an undeclared one would fall back to the
-system `/tmp`); generated CI exports the runner's own `RUNNER_TEMP`,
-which GitHub empties at every job boundary. Fixtures reuse the shared tool data
-(Mise, the uv cache with clone links) instead of copying it into a test tree.
-The `check` and `mod` codemod scans stage their scratch the same way, in a
-`tempfile` directory under `TMPDIR` that the scan removes on exit (a Make timeout's
-`SIGTERM` exits through the CLI, so the removal also runs when a verb is stopped).
-
 Connectivity tests follow the root environment and reachability prerequisites;
 availability skips never prove connectivity or production readiness. Once a service
 is available, authentication, protocol and assertion errors remain failures. Pure unit
@@ -580,7 +561,7 @@ private-method assertions or copied configuration expectations.
 
 - The first exception, traceback, and non-zero exit propagate unchanged.
 - Warnings, empty output, and missing tools are failures. Connectivity availability
-  skips follow root prerequisite law
+  skips follow root prerequisite law (`AGENTS.md`)
   and never count as successful connectivity or production validation.
 - No retry, fallback, suppression, normalization, partial run, or alternate raw tool
   path can replace the canonical verb.
@@ -626,9 +607,6 @@ the CLI, never the shared base or an implicitly selected latest run.
 
 Root `make check` checks the root and governed members through the existing
 `--scope all` checker selection. A standalone checkout selects its own repository.
-The checker reads managed operation targets from `.gitmodules`; ordinary gate
-execution does not require Beads ledger configuration or a Git origin.
-
 The approved campaign uses selector-free public verbs from the workspace root.
 Missing governed-member coverage is corrected at the existing dispatcher
 owner, not through a member Makefile or a new selector.
@@ -752,12 +730,7 @@ never automatically retired. Checked-out refs are not exempted from that proof.
 
 Failures include the full exact refs, stash OIDs, and registered worktrees. A branch
 already contained in integration is residue; integration refs and symbolic remote
-HEAD are protected. Active lanes are never residue: the branch checked out in the
-checking checkout (so a new branch cut from the integration tip can take its first
-commit) and any branch checked out in a worktree with staged, modified or untracked
-content, together with its configured-remote tracking ref, are derived from Git's
-own HEAD, worktree registry and per-worktree status. Only a merged ref with no WIP
-anywhere remains reported. Unknown ownership is inconclusive, never inferred from commit
+HEAD are protected. Unknown ownership is inconclusive, never inferred from commit
 age or directory mtime. Open PRs and fresh, explicitly owned Bead lanes are allowed.
 Inactive owned work requires correlated tracker, ref activity, and worktree evidence;
 the activity window comes from the global governance SSOT configured by

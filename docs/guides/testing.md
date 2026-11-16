@@ -8,7 +8,7 @@
 <!-- TOC START -->
 
 - [Test design](#test-design)
-- [Pydantic and mypy](#pydantic-and-mypy)
+- [Pydantic and type checking](#pydantic-and-type-checking)
 - [Canonical execution](#canonical-execution)
 - [Generated documentation](#generated-documentation)
 - [Related guides](#related-guides)
@@ -55,38 +55,31 @@ environment. Do not assume another city's activation or connection settings.
   Connectivity prerequisite skips follow root `AGENTS.md`, section "Production
   Readiness And Connectivity Tests"; they never prove the omitted service works.
 
-Private attribute usage is enforced by Pyright's resolved owner and export semantics in
+Private attribute usage is enforced by Ruff's `private-member-access` (`SLF001`) in
 source, tests, examples, and scripts according to the typed path policy. The
 `ban-test-private-access` ast-grep rule retains only dynamic private-module imports; it
-does not duplicate semantic attribute detection or require deleting test scenarios.
+does not duplicate that attribute detection or require deleting test scenarios.
 
-## Pydantic and mypy
+## Pydantic and type checking
 
 Pydantic 2 is mandatory for owned model contracts. Consume it through the canonical
 FLEXT facades and model presets; do not introduce `pydantic.v1`, raw consumer bases, or
-compatibility models. The [Pydantic mypy plugin](https://docs.pydantic.dev/latest/integrations/mypy/)
-adds model-aware static analysis; it does not replace runtime validation.
+compatibility models. Static analysis does not replace runtime validation.
 
 Upstream Pydantic declaration primitives retain their library/model owner. Moving
 project helpers does not authorize importing `u` backward into `m`, `config`, or
 `settings`, or changing validation behavior merely to relocate a decorator.
 
-`flext-infra/config/tooling.yaml` owns the mypy policy. Its generated configurations,
-runtime profiles, project overlays, and checker arguments must retain `pydantic.mypy`
-and the operator-mandated suspension of `prop-decorator` and `call-arg`. Change and
+Ruff is the one formatter and linter and Pyrefly the one type checker
+(operator order 2026-11-13 `ag-6w7a`; global `rules/python.md`).
+`flext-infra/config/tooling.yaml` owns the Ruff and Pyrefly policy. Change and
 regenerate the producer, never hand-edit a consumer projection. Correct YAML alone
-does not prove that the installed checker consumed the policy.
+does not prove that the installed checker consumed the policy. Never weaken an
+analyzer or exclude source, tests, examples, or scripts from their native gates.
 
-These two suspensions apply to mypy only. They do not authorize disabling unrelated
-diagnostics, removing the plugin, weakening another analyzer, or excluding source,
-tests, examples, or scripts from their native gates.
-
-Treat code changed to accommodate these two diagnostics as a regression. Use
-the original commit, diagnostic, canonical owner, and public behavior to establish
-causality; restore only the affected hunks and preserve unrelated changes. Revalidate
-the lawful Pydantic 2 declaration through the public consumer before encoding its
-behavior in tests. Do not replace a validator or computed field with a shim, unchecked
-mapping, cast, or alternate model to satisfy the checker.
+Revalidate a lawful Pydantic 2 declaration through the public consumer before encoding
+its behavior in tests. Do not replace a validator or computed field with a shim,
+unchecked mapping, cast, or alternate model to satisfy the checker.
 
 ## Canonical execution
 
@@ -134,7 +127,7 @@ Both operations retain source admission, runtime/input identity, applicability,
 original failures and the complete invocation deadline. Full execution is not
 a coverage-mode substitute or a second runner.
 
-CI and pre-push retain their declared workflow; pre-commit runs no tests. No
+CI and the generated pre-commit hook run the rows ADR-029 declares. No
 compatibility aliases or file selectors belong to either operation.
 
 The complete suite retains its declared services, network access and authentication
@@ -142,12 +135,6 @@ requirements. Connectivity prerequisite skips follow root `AGENTS.md`; they neve
 prove the omitted service works. Marker applicability belongs to typed configuration,
 and the runner records every excluded item. An exclusion is never a passed test. A
 runner that violates this contract is repaired at its owner and rerun through Make.
-`make tests` deselects `harness-gate-markers` (`remote`) locally exactly as CI
-does and reports them as `not_executed_external_gates`: their suites run only
-under the harness that provides their inputs, which names the suite. Other
-external gates (`docker`) stay local and run only when the untracked `.env`
-names `DOCKER_HOST`; without it they are skipped as an unmet prerequisite
-(operator decision 2026-11-14). `make tests-full` selects every marker.
 
 Each phase retains its mode, raw process outcome, collection manifest, and
 diagnostics. The latest receipt names the current attempt even when collection fails.

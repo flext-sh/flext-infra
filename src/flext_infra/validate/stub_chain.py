@@ -19,8 +19,7 @@ from flext_infra import FlextInfraProjectSelectionServiceBase, c, m, p, r, t, u
 class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """Validate typed dependency supply chain for workspace projects.
 
-    Coordinates mypy install hints, pyrefly missing imports, and installed
-    typing-package validation.
+    Coordinates pyrefly missing imports and installed typing-package validation.
     """
 
     all_projects: Annotated[
@@ -94,8 +93,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     ) -> p.Result[p.Infra.StubAnalysisReport]:
         """Analyze a project for missing typed dependencies.
 
-        Runs mypy for hints and pyrefly for missing imports, then
-        classifies each as internal, resolved, or unresolved.
+        Runs pyrefly for missing imports, then classifies each as internal,
+        resolved, or unresolved.
 
         Args:
             project_dir: Path to the project directory.
@@ -177,10 +176,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         """
         del repository_root
         proj = project_dir.resolve()
-        mypy_result = self._run_mypy_hints(proj)
-        if mypy_result.failure:
-            return r[p.Infra.StubAnalysisReport].from_failure(mypy_result)
-        mypy_hints = mypy_result.value
         pyrefly_result = self._run_pyrefly_missing(proj)
         if pyrefly_result.failure:
             return r[p.Infra.StubAnalysisReport].from_failure(pyrefly_result)
@@ -192,7 +187,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         return r[p.Infra.StubAnalysisReport].ok(
             m.Infra.StubAnalysisReport(
                 project=proj.name,
-                mypy_hints=list(mypy_hints),
                 internal_missing=list(internal),
                 unresolved_missing=list(unresolved),
                 total_missing=len(missing_imports),
@@ -215,10 +209,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return (f"{project_dir.name}: {result.error}",)
         data = result.value
         violations: MutableSequence[str] = []
-        if data.mypy_hints:
-            violations.append(
-                f"{project_dir.name}: {len(data.mypy_hints)} missing typing packages",
-            )
         if data.internal_missing:
             violations.append(
                 f"{project_dir.name}: {len(data.internal_missing)} "
@@ -292,41 +282,6 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(value=True) if report.passed else r[bool].fail(report.summary)
-
-    def _run_mypy_hints(self, project_dir: Path) -> p.Result[Sequence[str]]:
-        """Run mypy and extract install-package hints.
-
-        Returns:
-            The resulting ``p.Result[Sequence[str]]``.
-
-        """
-        runner = self.runner or u.Cli()
-        result = runner.run_raw(
-            u.Infra.mypy_limited_command(
-                m.Infra.MypyInvocation(
-                    targets=(project_dir / c.Infra.DEFAULT_SRC_DIR,),
-                    config_file=project_dir / c.PYPROJECT_FILENAME,
-                ),
-            ),
-            cwd=project_dir,
-            timeout=u.Infra.mypy_runner_timeout(),
-        )
-        if result.failure:
-            return r[Sequence[str]].fail(
-                u.Infra.mypy_launch_failure_diagnostic(
-                    result.error or "Mypy process launch failed",
-                ),
-            )
-        cmd_output: p.Cli.CommandOutput = result.value
-        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(cmd_output):
-            return r[Sequence[str]].fail(resource_diagnostic)
-        return r[Sequence[str]].ok(
-            sorted({
-                match.group(1).strip()
-                for match in c.Infra.MYPY_HINT_RE.finditer(cmd_output.stdout)
-                if match.group(1).strip()
-            }),
-        )
 
     def _run_pyrefly_missing(self, project_dir: Path) -> p.Result[Sequence[str]]:
         """Run pyrefly check and extract missing imports.

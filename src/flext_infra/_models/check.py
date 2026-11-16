@@ -101,11 +101,6 @@ class FlextInfraModelsCheck:
         ruff_args: str | None = m.Field(
             None, alias="ruff-args", description="Extra arguments forwarded to Ruff"
         )
-        pyright_args: str | None = m.Field(
-            None,
-            alias="pyright-args",
-            description="Extra arguments forwarded to Pyright",
-        )
         file: Annotated[
             str | None,
             m.Field(
@@ -147,65 +142,6 @@ class FlextInfraModelsCheck:
         source_identity: Annotated[
             FlextInfraModelsGitIdentity.GitIdentityReport | None,
             m.Field(description="Original exact repository identity before gates"),
-        ] = None
-
-    class MypyResourceLimit(m.ContractModel):
-        """Validated memory and wall-time limits for every Mypy process."""
-
-        memory_limit_mb: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                description="Positive Mypy memory limit in MiB (Linux AS; Darwin RSS)",
-            ),
-        ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
-        timeout_seconds: Annotated[
-            int,
-            m.Field(
-                gt=0,
-                description=(
-                    "Positive Mypy wall-time limit in seconds, resolved from"
-                    " tools.mypy.timeout_seconds in tooling.yaml or the env"
-                    " override"
-                ),
-            ),
-        ]
-
-        @m.computed_field
-        @property
-        def memory_limit_bytes(self) -> int:
-            """Validated memory limit converted to bytes for the platform owner.
-
-            Returns:
-                The resulting ``int``.
-
-            """
-            return self.memory_limit_mb * c.Infra.BYTES_PER_MIB
-
-    class MypyInvocation(m.ContractModel):
-        """Checker inputs; callers cannot select an executable or Python program."""
-
-        targets: Annotated[
-            tuple[Path, ...],
-            m.Field(min_length=1, description="Files or directories to check"),
-        ]
-        workspace: Annotated[
-            Path | None,
-            m.Field(description="Workspace owning the checker environment"),
-        ] = None
-        config_file: Annotated[
-            Path | None,
-            m.Field(description="Owned Mypy configuration"),
-        ] = None
-        report_json: Annotated[
-            bool,
-            m.Field(description="Emit native JSON diagnostics"),
-        ] = False
-        verbose: Annotated[bool, m.Field(description="Emit Mypy progress")] = False
-        profile_output: Annotated[
-            Path | None,
-            m.Field(description="Optional cProfile output destination"),
         ] = None
 
     class FixPyreflyConfigCommand(FlextInfraModelsMixins.WriteMixin, m.ContractModel):

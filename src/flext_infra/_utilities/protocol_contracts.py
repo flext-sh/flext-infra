@@ -1509,7 +1509,34 @@ class FlextInfraUtilitiesModelsProtocolContracts:
         return members
 
     @staticmethod
+    def mro_class(
+        holder: p.Infra.RopePyObject,
+        name: str,
+    ) -> p.Infra.RopeSourceClass | None:
+        """Resolve an attribute on ``holder`` or its MRO as a concrete Rope class.
+
+        Returns:
+            The inherited Rope class declaration, skipping ``TYPE_CHECKING``
+            ``TypeAlias`` shadows on facade classes, or ``None``.
+
+        """
+        runtime = FlextInfraUtilitiesRopeRuntime
+        if not runtime.py_class(holder):
+            return None
+        for base in holder.get_mro():
+            if not runtime.py_class(base):
+                continue
+            member = base.get_attributes().get(name)
+            if member is None:
+                continue
+            candidate = member.get_object()
+            if runtime.py_class(candidate):
+                return candidate
+        return None
+
+    @classmethod
     def upstream_protocol_facade(
+        cls,
         chain: Sequence[p.Infra.RopePyObject],
         package: Path,
         port: p.Infra.RopeSourceClass,
@@ -1540,13 +1567,12 @@ class FlextInfraUtilitiesModelsProtocolContracts:
             if resource is None or Path(resource.real_path).is_relative_to(package):
                 continue
             published = module.get_attributes().get("p")
-            exposed = ancestor.get_attributes().get(port.get_name())
+            exposed = cls.mro_class(ancestor, port.get_name()) is port
             if (
                 published is None
                 or published.get_object() is not ancestor
                 or "p" not in analysis.public_export_names_source(module)
-                or exposed is None
-                or exposed.get_object() is not port
+                or not exposed
             ):
                 continue
             # The declared source identity, not Rope's source-folder-relative
