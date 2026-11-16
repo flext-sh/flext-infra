@@ -9,9 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
-import signal
 import sys
 import time
 from datetime import UTC, datetime, timedelta
@@ -26,7 +26,7 @@ _WAIT_SECONDS = 180.0
 
 
 class TestsFlextInfraGateAdmission:
-    """Prove FIFO admission, capacity, liveness, TTL, nesting and repeat limit."""
+    """Prove FIFO admission, capacity, liveness, nesting and repeat limit."""
 
     @staticmethod
     def _environment(tmp_path: Path, level: str | None) -> dict[str, str]:
@@ -316,17 +316,12 @@ class TestsFlextInfraGateAdmission:
         tm.that(cls._release(tmp_path, "waiter", waiter), eq=0)
 
     @classmethod
-    def test_stalled_live_holder_is_reclaimed_after_its_ttl(
-        cls, tmp_path: Path
-    ) -> None:
-        """A held ticket whose heartbeat is older than the TTL stops blocking."""
+    def test_live_holder_is_never_reclaimed(cls, tmp_path: Path) -> None:
+        """A live owner keeps its slot even when its heartbeat is stale."""
         environment = cls._environment(tmp_path, "high")
         queue = tmp_path / "state" / Path(*c.Infra.GATE_ADMISSION_STATE_PARTS)
         queue.mkdir(parents=True)
-        stale = datetime.now(UTC) - timedelta(
-            seconds=FlextInfraConfig.fetch_global().Infra.gate_admission.ttl_seconds
-            + 60
-        )
+        stale = datetime.now(UTC) - timedelta(days=1)
         ticket = queue / f"{1:020d}{c.Infra.GATE_ADMISSION_TICKET_SUFFIX}"
         ticket.write_text(
             m.Infra.GateTicket(
@@ -342,22 +337,20 @@ class TestsFlextInfraGateAdmission:
         )
         (queue / c.Infra.GATE_ADMISSION_SEQUENCE_FILE).write_text("1", encoding="utf-8")
         liveness = queue / f"{ticket.name}{c.Infra.GATE_ADMISSION_LIVENESS_SUFFIX}"
-        holder = tm.ok(
-            u.Cli.process_start(
-                ["flock", "--exclusive", str(liveness), "sleep", "600"],
-                cwd=tmp_path,
-            )
-        )
+        lock = os.open(liveness, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        waiter = cls._gate(environment, "waiter")
         try:
-            time.sleep(1)
-            waiter = cls._gate(environment, "waiter")
-            cls._await(tmp_path / "waiter.started")
-            tm.that(ticket.exists(), eq=False)
-            tm.that(cls._release(tmp_path, "waiter", waiter), eq=0)
-            tm.that("reclaimed ticket 1" in waiter.stderr, eq=True)
+            cls._await_waiting(tmp_path, waiter)
+            policy = FlextInfraConfig.fetch_global().Infra.gate_admission
+            time.sleep(2 * policy.poll_seconds + 1)
+            tm.that(ticket.exists(), eq=True)
+            tm.that((tmp_path / "waiter.started").exists(), eq=False)
         finally:
-            os.kill(holder.pid, signal.SIGKILL)
-            tm.ok(holder.wait(timeout=_WAIT_SECONDS))
+            os.close(lock)
+        cls._await(tmp_path / "waiter.started")
+        tm.that(cls._release(tmp_path, "waiter", waiter), eq=0)
+        tm.that("released ticket 1" in waiter.stderr, eq=True)
 
     @classmethod
     def test_nested_gate_runs_under_its_ancestor_ticket(cls, tmp_path: Path) -> None:

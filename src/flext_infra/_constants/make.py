@@ -72,6 +72,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     VERB_CHECK: ClassVar[str] = "check"
     VERB_TEST: ClassVar[str] = "tests"
     VERB_TEST_FULL: ClassVar[str] = "tests-full"
+    VERB_NATIVE_GATE: ClassVar[str] = "native-gate"
     RUFF_UNSAFE_FIXES_FLAG: ClassVar[str] = "--unsafe-fixes"
     RUFF_CACHE_ENVIRONMENT_VARIABLE: ClassVar[str] = "RUFF_CACHE_DIR"
     """Ruff's immutable external cache-directory environment contract."""
@@ -103,6 +104,7 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     GATE_ADMISSION_SEQUENCE_FILE: ClassVar[str] = "sequence"
     GATE_ADMISSION_TICKET_SUFFIX: ClassVar[str] = ".json"
     GATE_ADMISSION_LIVENESS_SUFFIX: ClassVar[str] = ".lock"
+    GATE_ADMISSION_HEARTBEAT_DIVISOR: ClassVar[int] = 4
     GATE_ADMISSION_TICKET_ENV: ClassVar[str] = "FLEXT_GATE_ADMISSION_TICKET"
     GATE_ADMISSION_GENERATION: ClassVar[str] = "gen"
     GATE_ADMISSION_MODIFICATION: ClassVar[str] = "mod"

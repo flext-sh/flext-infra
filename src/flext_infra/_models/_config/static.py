@@ -122,11 +122,7 @@ class FlextInfraModelsConfigStatic:
         ]
         heartbeat_seconds: Annotated[
             t.PositiveInt,
-            m.Field(description="Interval at which a live ticket refreshes itself"),
-        ]
-        ttl_seconds: Annotated[
-            t.PositiveInt,
-            m.Field(description="Heartbeat age after which a held ticket is reclaimed"),
+            m.Field(description="Ceiling of the interval a live ticket renews"),
         ]
         poll_seconds: Annotated[
             t.PositiveInt,
@@ -147,21 +143,17 @@ class FlextInfraModelsConfigStatic:
 
         @m.model_validator(mode="after")
         def require_bounded_admission(self) -> Self:
-            """Keep pressure capacity and reclaim timing coherent.
+            """Keep the declared pressure capacity coherent.
 
             Returns:
                 The resulting ``Self``.
 
             Raises:
-                ValueError: If pressure capacity exceeds normal capacity or the
-                    TTL does not exceed the heartbeat interval.
+                ValueError: If pressure capacity exceeds normal capacity.
 
             """
             if self.capacity_high > self.capacity_normal:
                 msg = "capacity_high must not exceed capacity_normal"
-                raise ValueError(msg)
-            if self.ttl_seconds <= self.heartbeat_seconds:
-                msg = "ttl_seconds must exceed heartbeat_seconds"
                 raise ValueError(msg)
             return self
 
