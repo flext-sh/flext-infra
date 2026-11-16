@@ -2693,6 +2693,18 @@ from the primary checkout or Git common directory. The generated Makefile, gener
 `.envrc`, and `runtime_environment_dir` derive the same path. Neither a caller
 variable nor a checkout-local symlink may redirect the environment.
 
+An attached member remains governed by the superproject environment even when the
+superproject does not declare it as a native uv workspace member. Its own committed
+lock is then not the validation owner: a consumer gate that depends on a newer FLEXT
+owner revision observes it only after the workspace lock moves through `make upg` at
+the superproject. Conversely, a linked Git worktree owns its own
+`<RUNTIME_ROOT>/.venv` exactly like a standalone checkout; analyzer bindings follow
+that ownership and never resolve the primary checkout or the Git common directory.
+The generator derives `venvPath` from the topology: `"."` for an environment owner
+and the derived relative path for an attached member. A generated `venvPath` that
+resolves through the primary checkout is a defect, never an accepted fallback
+(tracked by `flext-itpd1.13.11` and `flext-do3lv.8`).
+
 Editable imports and packaged configuration share one delivery path: both resolve
 from the editable source tree, so a configuration edit is live without `make setup`.
 Only a declared build hook adds generated native UV cache keys, retaining UV's
