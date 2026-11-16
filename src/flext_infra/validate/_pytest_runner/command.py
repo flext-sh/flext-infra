@@ -257,6 +257,11 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             f"{c.Infra.ASYNCIO_DEFAULT_FIXTURE_LOOP_SCOPE}={fixture_scope}",
             "-o",
             f"{c.Infra.FLEXT_SLOW_TIMEOUT_SECONDS}={pytest.slow_timeout_seconds}",
+            *(
+                ("-o", "timeout_func_only=true")
+                if pytest.item_deadline_call_only
+                else ()
+            ),
             *(("-m", expression) if expression else ()),
         )
 

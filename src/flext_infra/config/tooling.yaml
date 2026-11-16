@@ -498,8 +498,11 @@ Infra:
           # fails.
           diagnostic-path-exceptions: []
       pytest:
-        # Item deadlines cover setup, call, and teardown. The suite deadline
-        # also covers collection and reserves its own shutdown time.
+        # An item deadline measures the test call. Fixture teardown, collection
+        # and plugin bookkeeping (for example incremental-selection
+        # fingerprinting) belong to the suite deadline, which reserves its own
+        # shutdown time; charging them to a test budget fails healthy runs.
+        item-deadline-call-only: true
         ordinary-timeout-seconds: 2
         slow-timeout-seconds: 20
         slow-marker: slow
