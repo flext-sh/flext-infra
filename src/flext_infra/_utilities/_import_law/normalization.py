@@ -498,6 +498,8 @@ class FlextInfraUtilitiesImportLawNormalization(
         namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             namespace_dir, project_root=project_root, source_project=inputs[2]
         )
+        if module == c.Infra.DIR_TESTS or module.startswith(f"{c.Infra.DIR_TESTS}."):
+            return r[tuple[p.Infra.ImportLawPass | None, str]].ok(value=(None, source))
         root_exports = cls.import_lazy_exports(
             project_root, namespace, sources=sources, source_project=inputs[2]
         )
@@ -505,14 +507,11 @@ class FlextInfraUtilitiesImportLawNormalization(
             return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
                 f"{namespace_dir} is a namespace without an owned package init",
             )
-        if import_graph is None:
-            return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
-                "import normalization requires its captured runtime graph",
-            )
         project = inputs[2]
-        if project is None:
+        if import_graph is None or project is None:
             return r[tuple[p.Infra.ImportLawPass | None, str]].fail(
-                "Import normalization requires its bound native source project",
+                "import normalization requires its captured runtime graph "
+                "and its bound native source project",
             )
         candidate = cls._import_law_candidate_module(
             project, file_path, source, namespace
