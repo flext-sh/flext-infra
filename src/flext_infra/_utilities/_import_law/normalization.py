@@ -498,8 +498,6 @@ class FlextInfraUtilitiesImportLawNormalization(
         namespace = FlextInfraUtilitiesProjectDiscovery.package_name_for_dir(
             namespace_dir, project_root=project_root, source_project=inputs[2]
         )
-        if module == c.Infra.DIR_TESTS or module.startswith(f"{c.Infra.DIR_TESTS}."):
-            return r[tuple[p.Infra.ImportLawPass | None, str]].ok(value=(None, source))
         root_exports = cls.import_lazy_exports(
             project_root, namespace, sources=sources, source_project=inputs[2]
         )
