@@ -592,7 +592,7 @@ Infra:
       preservation_ref_namespaces:
       - refs/heads/preserve/
       - refs/heads/wip/sweep-preserve/
-      - refs/ai-hub/wip/
+      - refs/wip/checkpoint/
     # SonarCloud automatic analysis (GitHub App) honors only the scope keys of
     # .sonarcloud.properties: sonar.sources/tests, exclusions/inclusions,
     # test.exclusions/inclusions, sourceEncoding and cpd.exclusions. Anything
