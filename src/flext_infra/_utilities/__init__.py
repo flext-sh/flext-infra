@@ -844,6 +844,8 @@ install_lazy_exports(
         "FlextInfraUtilitiesMarkdownTooling": ("markdown_native_configuration",),
         "FlextInfraUtilitiesMiseBinary": (
             "managed_mise_binary",
+            "resolve_declared_tools",
+            "_manifest_declares",
             "managed_mise_self",
             "_qualified_mise_reader",
             "committed_mise_self_release",
