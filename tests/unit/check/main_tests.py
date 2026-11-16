@@ -12,14 +12,14 @@ from flext_infra import FlextInfraCli
 from tests import tm
 
 if TYPE_CHECKING:
-    from _pytest.capture import CaptureFixture
+    import pytest
 
 
 class TestsFlextInfraCheckMain:
     """Tests for ``FlextInfraCheckMain``."""
 
     @staticmethod
-    def test_check_main_executes_real_cli(capsys: CaptureFixture[str]) -> None:
+    def test_check_main_executes_real_cli(capsys: pytest.CaptureFixture[str]) -> None:
         """Test check main executes real cli."""
         exit_code = FlextInfraCli.infra_main(["check", "run", "--help"])
         captured = capsys.readouterr()
