@@ -30,6 +30,82 @@ class FlextInfraLockIntegrityVerifier(s[bool]):
     )
 
     @classmethod
+    def verify_pin_convergence(
+        cls,
+        request: p.Infra.WorkspaceRequest,
+    ) -> p.Result[bool]:
+        """Verify every governed ``uv.lock`` pins shared Git deps to one SHA.
+
+        Returns:
+            Success when every shared Git pin converges, or the first drift.
+
+        """
+        resolved = FlextInfraWorkspaceDetector.resolution_context(
+            request.repository_root
+        )
+        if resolved.failure:
+            return r.from_failure(resolved)
+        runtime_root = resolved.value.runtime_root
+        observed: MutableMapping[tuple[str, str], MutableMapping[str, list[Path]]] = {}
+        for project_root in u.Infra.governed_project_roots(runtime_root):
+            lock_path = project_root / c.Infra.UV_LOCK_FILENAME
+            if not lock_path.is_file():
+                continue
+            parsed = u.Cli.toml_read_json(lock_path)
+            if parsed.failure:
+                return r[bool].from_failure(parsed)
+            cls._collect_git_pins(lock_path, parsed.value, observed)
+        return cls._validate_git_pin_convergence(runtime_root, observed)
+
+    @staticmethod
+    def _collect_git_pins(
+        lock_path: Path,
+        lock: t.JsonMapping,
+        observed: MutableMapping[tuple[str, str], MutableMapping[str, list[Path]]],
+    ) -> None:
+        packages = lock.get("package")
+        if not isinstance(packages, Sequence) or isinstance(packages, str):
+            return
+        for entry in packages:
+            if not isinstance(entry, Mapping):
+                continue
+            name = entry.get("name")
+            source = entry.get("source")
+            if not isinstance(name, str) or not isinstance(source, Mapping):
+                continue
+            git_url = source.get("git")
+            if not isinstance(git_url, str) or "#" not in git_url:
+                continue
+            url_and_rev, _, sha = git_url.partition("#")
+            if not sha:
+                continue
+            observed.setdefault((name, url_and_rev), {}).setdefault(sha, []).append(
+                lock_path
+            )
+
+    @staticmethod
+    def _validate_git_pin_convergence(
+        runtime_root: Path,
+        observed: Mapping[tuple[str, str], Mapping[str, Sequence[Path]]],
+    ) -> p.Result[bool]:
+        mismatches: list[str] = []
+        for (name, url_and_rev), by_sha in sorted(observed.items()):
+            if len(by_sha) <= 1:
+                continue
+            details = ", ".join(
+                f"{sha[:10]} "
+                f"({', '.join(str(p.relative_to(runtime_root)) for p in paths)})"
+                for sha, paths in sorted(by_sha.items())
+            )
+            mismatches.append(f"{name} [{url_and_rev}]: {details}")
+        if mismatches:
+            return r[bool].fail(
+                "git pin divergence across governed uv.lock files: "
+                + "; ".join(mismatches),
+            )
+        return r[bool].ok(value=True)
+
+    @classmethod
     def repair_mise_platforms(
         cls,
         request: p.Infra.WorkspaceRequest,
