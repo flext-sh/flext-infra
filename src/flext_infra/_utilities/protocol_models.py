@@ -2535,46 +2535,6 @@ class FlextInfraUtilitiesModelsProtocol:
                         names.add(node.name)
             return frozenset(names)
 
-        def _source_model_alias_names_by_tree(
-            self,
-            grouped: Mapping[
-                Path, list[tuple[ast.ClassDef, tuple[str, ...], ast.Module]]
-            ],
-        ) -> tuple[dict[int, set[str]], set[str], set[str]]:
-            """Index projected model aliases by their source tree.
-
-            Returns:
-                Alias names keyed by the id of the tree that declares them.
-
-            """
-            alias_names_by_tree: dict[int, set[str]] = {}
-            for (
-                _destination,
-                statement,
-                alias_tree,
-                _model,
-            ) in self.source_model_aliases.values():
-                if isinstance(statement.name, ast.Name):
-                    alias_names_by_tree.setdefault(id(alias_tree), set()).add(
-                        statement.name.id
-                    )
-            model_alias_names = {
-                target.id
-                for classes in grouped.values()
-                for _node, _path, tree in classes
-                for family in tree.body
-                if isinstance(family, ast.ClassDef)
-                for statement in family.body
-                if isinstance(statement, ast.Assign)
-                for target in statement.targets
-                if isinstance(target, ast.Name)
-            }
-            return (
-                alias_names_by_tree,
-                {name for names in alias_names_by_tree.values() for name in names},
-                model_alias_names,
-            )
-
         @staticmethod
         def _source_model_alias(statement: ast.stmt) -> ast.TypeAlias | None:
             """Normalize a model alias declaration to a PEP 695 alias node.
@@ -6975,68 +6935,6 @@ class FlextInfraUtilitiesModelsProtocol:
                         continue
                     routes.add(f"{alias.name}.{suffix}")
             return foreign_binding
-
-        def _source_imported_model_route(
-            self, expression: str, tree: ast.Module, model: ast.ClassDef
-        ) -> str | None:
-            """Resolve one first-party model import without name-only selection.
-
-            Returns:
-                The exact first-party model route, or ``None`` for other imports.
-
-            Raises:
-                ValueError: The imported owner is shadowed or ambiguous.
-
-            """
-            root, _, suffix = expression.partition(".")
-            routes: set[str] = set()
-            foreign_binding = False
-            for statement in tree.body:
-                if self._source_collect_import_routes(
-                    statement, (root, suffix), routes
-                ):
-                    foreign_binding = True
-            shadowed = any(
-                root in self._source_bound_names(statement)
-                for statement in (*tree.body, *model.body)
-                if not isinstance(statement, ast.Import | ast.ImportFrom)
-            )
-            if shadowed or foreign_binding or len(routes) > 1:
-                if root != "m" and (shadowed or len(routes) > 1):
-                    message = f"model import owner is shadowed or ambiguous: {root}"
-                    raise ValueError(message)
-                if routes and foreign_binding:
-                    message = f"model import has competing owners: {root}"
-                    raise ValueError(message)
-            return next(iter(routes), None)
-
-        def _source_model_facade_binding(
-            self, tree: ast.Module, model: ast.ClassDef
-        ) -> bool:
-            """Authenticate one import of this package's public model facade.
-
-            Returns:
-                Whether ``m`` is bound only to the package's model facade.
-
-            """
-            owners = [
-                statement.module
-                for statement in tree.body
-                if isinstance(statement, ast.ImportFrom)
-                for alias in statement.names
-                if alias.name == "m" and (alias.asname or alias.name) == "m"
-            ]
-            shadowed = any(
-                "m" in self._source_bound_names(statement)
-                for statement in (*tree.body, *model.body)
-                if not isinstance(statement, ast.Import | ast.ImportFrom)
-            )
-            return (
-                len(owners) == 1
-                and owners[0] is not None
-                and owners[0].partition(".")[0] in self.source_model_facade_import_roots
-                and not shadowed
-            )
 
         @classmethod
         def _source_typing_bindings(
