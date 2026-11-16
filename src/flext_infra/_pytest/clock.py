@@ -50,9 +50,9 @@ class FlextInfraPytestClock:
 
         def __exit__(
             self,
-            exc_type: type[BaseException] | None,
+            _exc_type: type[BaseException] | None,
             exc: BaseException | None,
-            exc_traceback: TracebackType | None,
+            _exc_traceback: TracebackType | None,
         ) -> bool:
             if exc is None:
                 return False
