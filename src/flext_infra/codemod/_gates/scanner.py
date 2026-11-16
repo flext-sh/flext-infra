@@ -157,9 +157,7 @@ class FlextInfraModGateScanner(FlextInfraModGateFixtures, FlextInfraModGateFindi
             fragments[path] = (
                 records.get(path, "")
                 if outcome.failure
-                else FlextInfraCodemodScanCache.store(
-                    keys[path], records.get(path, "")
-                )
+                else FlextInfraCodemodScanCache.store(keys[path], records.get(path, ""))
             )
         return (stderr, outcome, batch)
 
@@ -379,7 +377,9 @@ class FlextInfraModGateScanner(FlextInfraModGateFixtures, FlextInfraModGateFindi
         )
         sys.stderr.flush()
         ordered = sorted(missing)
-        batch_size = config.Infra.codegen.make.scan_batch_files
+        batch_size = (
+            context.scan_batch_files or config.Infra.codegen.make.scan_batch_files
+        )
         indexed_batches = tuple(
             (start, frozenset(ordered[start : start + batch_size]))
             for start in range(0, len(ordered), batch_size)

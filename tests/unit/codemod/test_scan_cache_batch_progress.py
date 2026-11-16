@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import config, r, u as infra_u
+from flext_infra import r, u as infra_u
 from flext_infra.codemod import FlextInfraModGateEngine
 from tests import c, p, t, tm, u
 
@@ -72,21 +72,24 @@ class TestsFlextInfraCodemodScanCacheBatchProgress:
         return root
 
     @classmethod
+    @c.Tests.MARK.slow
     def test_stopped_scan_keeps_completed_batches(
         cls,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        duplicate_project: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Only the batches after the stop are misses on the next run."""
-        root = cls._project(tmp_path)
-        monkeypatch.setitem(config.Infra.codegen.make.__dict__, "scan_batch_files", 1)
+        root = cls._project(duplicate_project)
         with u.Infra.codemod_workspace_snapshot(root) as snapshot:
             plan = tm.ok(u.Infra.codemod_rule_plan(snapshot))
         targets = u.Infra.ast_grep_scan_targets(root)
         stopped = tm.ok(
             FlextInfraModGateEngine.native_findings(
-                root, plan, targets, runner=cls._StopAfterTwo
+                root,
+                plan,
+                targets,
+                runner=cls._StopAfterTwo,
+                scan_batch_files=1,
             )
         )
         tm.that(len(stopped.native_failures), eq=1)
