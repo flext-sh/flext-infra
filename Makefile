@@ -709,7 +709,7 @@ GOVERNED_CHECKOUTS = root="$(PROJECT_ROOT)"; \
 # longer declared loses only setup's marked section; the hook file is
 # removed when no other owner's content remains in it.
 INSTALL_GIT_HOOKS_RECIPE = set -eu; \
-	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" which prek)"; \
+	prek_binary="$$($(MISE) -C "$(RUNTIME_ROOT)" exec -- which prek)"; \
 	if [ "$${OS:-}" = Windows_NT ]; then prek_binary="$$(cygpath --unix "$$prek_binary")"; fi; \
 	if [ ! -x "$$prek_binary" ]; then \
 		printf 'ERROR[setup] Mise-resolved prek is not executable: %s\n' "$$prek_binary" >&2; \
