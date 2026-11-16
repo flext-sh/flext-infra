@@ -95,8 +95,7 @@ class TestsFlextInfraMakefileBootstrapSoundness:
             rendered,
             has=(
                 "SYNC_UPGRADE_EXECUTOR_PRE_RESOLUTION_RECIPE = "
-                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen "
-                "--upgrade-package flext-infra)"
+                "$(call SYNC_UPGRADE_EXECUTOR_WITH,--no-frozen --upgrade)"
             ),
         )
         tm.that(
