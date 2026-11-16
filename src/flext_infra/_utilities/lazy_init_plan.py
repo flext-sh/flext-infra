@@ -1356,7 +1356,7 @@ class FlextInfraUtilitiesLazyInitPlan:
                 run, sibling, sibling_context.current_pkg
             ):
                 publics[name] = (sibling_context.current_pkg, name)
-        return publics
+        return {k: v for k, v in publics.items() if not k.startswith("__")}
 
     @staticmethod
     def _lazy_init_candidate_exports(
