@@ -89,7 +89,9 @@ class FlextInfraWorkspaceRoutes:
                 c.Infra.TIMEOUT_KILL_AFTER_SECONDS, params.budget_seconds // 2
             ),
         )
-        with u.Infra.gate_admitted("native-gate", params.repository_root, budget):
+        with u.Infra.gate_admitted(
+            c.Infra.VERB_NATIVE_GATE, params.repository_root, budget
+        ):
             result = u.Cli.run_raw(
                 params.argv, cwd=params.repository_root, capture=False
             )
@@ -525,6 +527,13 @@ class FlextInfraWorkspaceRoutes:
                     "Execute the original checker once and publish its receipt",
                     m.Infra.GateCaptureRequest,
                     cls._capture_gate,
+                    None,
+                ),
+                (
+                    c.Infra.VERB_NATIVE_GATE,
+                    "Run one native command under the admitted gate budget",
+                    m.Infra.NativeGateRequest,
+                    cls._native_gate,
                     None,
                 ),
                 (

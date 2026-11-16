@@ -53,12 +53,12 @@ Infra:
   # post-edit pyrefly/pytest) share one per-host FIFO queue (ADR-032):
   # two at normal host pressure, one when the host-budget owner publishes
   # high or critical pressure. A dead holder frees its slot at once; a live
-  # holder whose heartbeat is older than ttl_seconds is reclaimed.
+  # holder is never reclaimed, because its liveness lock, not its heartbeat,
+  # proves the slot is still owned.
   gate_admission:
     capacity_normal: 2
     capacity_high: 1
     heartbeat_seconds: 10
-    ttl_seconds: 120
     poll_seconds: 2
     # Each route arms its budget only after it is admitted. Generation keeps a
     # 30 s reserve so its profile checkpoint survives a budget kill; check

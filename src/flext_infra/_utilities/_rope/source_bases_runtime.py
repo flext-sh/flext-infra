@@ -482,19 +482,6 @@ class FlextInfraUtilitiesRopeSourceBasesRuntime:
             self._object_id = self._external_reference("builtins", ("object",))
             self._ordering_ready = True
 
-        def _index_modules(self) -> None:
-            """Index captured modules without changing interpreter resource policy."""
-            self._modules = {
-                module: self._inventory(module, captured)
-                for module, captured in self._sources.items()
-            }
-            self._namespaces = {
-                ".".join(parts[:index])
-                for module in self._modules
-                for parts in (module.split("."),)
-                for index in range(1, len(parts) + 1)
-            }
-
         def _build_module_alias_map(self) -> None:
             """Merge the captured and extra lazy-export alias maps.
 

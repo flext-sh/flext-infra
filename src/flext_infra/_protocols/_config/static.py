@@ -120,12 +120,7 @@ class FlextInfraProtocolsConfigStatic:
 
         @property
         def heartbeat_seconds(self) -> t.PositiveInt:
-            """Interval at which a live ticket refreshes itself."""
-            ...
-
-        @property
-        def ttl_seconds(self) -> t.PositiveInt:
-            """Heartbeat age after which a held ticket is reclaimed."""
+            """Ceiling of the interval a live ticket renews."""
             ...
 
         @property
