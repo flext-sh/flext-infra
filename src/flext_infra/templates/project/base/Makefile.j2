@@ -150,6 +150,16 @@ unexport GITHUB_TOKEN GH_TOKEN MISE_GITHUB_TOKEN
 endif
 unexport GITHUB_API_TOKEN
 
+# Git 2.38+ refuses the local file protocol uv uses to materialize its cached
+# git checkouts (`git clone --no-hardlinks <uv cache db> <checkout>`). Admit it
+# for this process tree only; global Git configuration stays untouched.
+ifeq ($(strip $(GIT_CONFIG_COUNT)),)
+GIT_CONFIG_COUNT := 1
+GIT_CONFIG_KEY_0 := protocol.file.allow
+GIT_CONFIG_VALUE_0 := always
+endif
+export GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
