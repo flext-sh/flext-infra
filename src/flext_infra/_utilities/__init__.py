@@ -652,6 +652,8 @@ install_lazy_exports(
             "_enqueue",
             "_await_admission",
             "_sweep",
+            "_renew",
+            "_heartbeat_interval",
             "_alive",
             "_try_lock",
             "_liveness_path",

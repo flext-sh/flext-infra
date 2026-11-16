@@ -128,6 +128,7 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
     @c.Tests.MARK.parametrize("nested", [False, True])
     @c.Tests.MARK.parametrize(
