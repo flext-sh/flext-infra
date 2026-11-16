@@ -4890,10 +4890,13 @@ annotation does not replace an existing facade binding.
 
 The pytest deadline correction applies the same absolute
 entrypoint clock to complete, incremental, file, coverage and profiled operations.
-Selection mode cannot disable that clock. The typed tooling policy bounds the
-operation, including lock waits, collection and execution, within the 120-second
-command contract. One declared budget replaces project-specific wall exceptions.
-Termination grace stays inside that budget.
+Selection mode cannot disable that clock. The typed tooling policy owns the values:
+`ordinary-timeout-seconds` (2 s) measures the test call, `slow-timeout-seconds`
+(20 s) applies to `slow` and the heavy capability markers, and
+`run-timeout-seconds` (240 s) is the fleet-wide suite clock — one invocation owns one
+budget across every member suite, and a per-member reset is rejected. Collection,
+session setup, fixture teardown and plugin bookkeeping belong to the suite deadline,
+which reserves its own shutdown time. Termination grace stays inside that budget.
 Historical 300-, 600- and 1200-second exceptions are superseded by the current
 performance requirement, rather than retained as measurement modes.
 
