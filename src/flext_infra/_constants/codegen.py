@@ -39,6 +39,8 @@ class FlextInfraConstantsCodegen(
         FlextInfraConstantsConfig.CodegenConformSurface.FACADES,
     ))
     "Surfaces planned for one exact module destination, never repository fans."
+    ATOMIC_SOURCE_DRIFT_PREFIX: ClassVar[str] = "atomic source changed: "
+    "Producer-owned prefix of the file utility concurrent-write refusal."
 
     IMPORT_NORMALIZATION_DEGRADED_MESSAGE: ClassVar[str] = (
         "import normalization degraded sources count={count}; recorded in "
