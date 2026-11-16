@@ -385,6 +385,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             + "import os, sysconfig\n"
             "from collections.abc import Iterable, Mapping, MutableSequence, Sequence\n"
             "from contextlib import ExitStack\n"
+            "from importlib import import_module\n"
             "from importlib.machinery import BuiltinImporter, ExtensionFileLoader, "
             "FrozenImporter, ModuleSpec\n"
             "from sys import modules\n"
