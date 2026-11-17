@@ -996,48 +996,70 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         if dotted is None:
             return None
-        provider = dotted
-        if not provider or provider.split(".", maxsplit=1)[0] == scope[0].surface:
-            return None
-        plan = next(
-            (
-                plan
-                for plan in run.plans.values()
-                if plan.context.current_pkg == provider
-            ),
-            None,
-        )
-        if plan is not None:
-            facts = FlextInfraUtilitiesPythonModel.python_model_module_at(
-                run.model, plan.context.init_path, provider
-            )
-            exports = FlextInfraUtilitiesPythonModel.python_model_exports(facts) or ()
-            published = plan.ownership == "generator" and (
-                name in plan.lazy_map or name in exports
-            )
+        module, separator, export = dotted.rpartition(".")
+        if not separator:
+            module = dotted
         else:
-            path = run.model.module_files.get(provider)
-            if path is None:
-                package_dir = run.index.package_dir_by_name.get(provider)
-                path = (
-                    package_dir / c.Infra.INIT_PY if package_dir is not None else None
-                )
-            if path is None:
-                try:
-                    spec = importlib.util.find_spec(provider)
-                except (ImportError, AttributeError, ValueError):
-                    spec = None
-                if spec is not None and spec.origin is not None:
-                    path = Path(spec.origin)
-            source = (
-                path.read_text(encoding=c.DEFAULT_ENCODING)
-                if path is not None and path.is_file()
-                else ""
+            name = export
+        surface = scope[0].surface
+        # A source imports the generated initializer either directly
+        # (``from flext_core import FlextTypes``) or through the module that
+        # re-exports it (``from flext_core.typings import FlextTypes``). The
+        # import route is the nearest provider that publishes the name, then
+        # the root package it belongs to; the root is the standalone route.
+        candidates = tuple(
+            dict.fromkeys(
+                provider
+                for provider in (module, module.split(".", maxsplit=1)[0])
+                if provider and provider.split(".", maxsplit=1)[0] != surface
+            ),
+        )
+        for provider in candidates:
+            plan = next(
+                (
+                    plan
+                    for plan in run.plans.values()
+                    if plan.context.current_pkg == provider
+                ),
+                None,
             )
-            published = source.startswith(
-                c.Infra.AUTOGEN_HEADER
-            ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
-        return (provider, name) if published else None
+            if plan is not None:
+                facts = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                    run.model, plan.context.init_path, provider
+                )
+                exports = (
+                    FlextInfraUtilitiesPythonModel.python_model_exports(facts) or ()
+                )
+                published = plan.ownership == "generator" and (
+                    name in plan.lazy_map or name in exports
+                )
+            else:
+                path = run.model.module_files.get(provider)
+                if path is None:
+                    package_dir = run.index.package_dir_by_name.get(provider)
+                    path = (
+                        package_dir / c.Infra.INIT_PY
+                        if package_dir is not None
+                        else None
+                    )
+                if path is None:
+                    try:
+                        spec = importlib.util.find_spec(provider)
+                    except (ImportError, AttributeError, ValueError):
+                        spec = None
+                    if spec is not None and spec.origin is not None:
+                        path = Path(spec.origin)
+                source = (
+                    path.read_text(encoding=c.DEFAULT_ENCODING)
+                    if path is not None and path.is_file()
+                    else ""
+                )
+                published = source.startswith(
+                    c.Infra.AUTOGEN_HEADER
+                ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
+            if published:
+                return (provider, name)
+        return None
 
     @staticmethod
     def _lazy_import_names(source: str) -> frozenset[str]:

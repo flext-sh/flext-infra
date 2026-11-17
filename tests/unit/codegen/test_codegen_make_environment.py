@@ -934,6 +934,65 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.that(envrc, lacks=forced)
 
     @staticmethod
+    def test_generated_make_routes_a_focal_what_to_the_scoped_surface(
+        tmp_path: Path,
+    ) -> None:
+        """A requested surface never plans the whole workspace first."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that(makefile, has='what="$(strip $(WHAT))"')
+        tm.that(makefile, has='--what "$$what" --scope "$$scope"')
+        tm.that(makefile, has='codegen generate --root "$$root" --scope "$$scope"')
+
+    @staticmethod
+    def test_generated_make_appends_the_uv_file_transport_to_caller_git_config(
+        tmp_path: Path,
+    ) -> None:
+        """An inherited Git policy cannot hide the uv cache file transport."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        (project_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
+            "post-help:\n"
+            "\t@printf 'key0=%s\\n' '$(GIT_CONFIG_KEY_0)'\n"
+            "\t@printf 'value0=%s\\n' '$(GIT_CONFIG_VALUE_0)'\n"
+            "\t@printf 'key1=%s\\n' '$(GIT_CONFIG_KEY_1)'\n"
+            "\t@printf 'value1=%s\\n' '$(GIT_CONFIG_VALUE_1)'\n",
+            encoding="utf-8",
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "help"],
+                cwd=project_root,
+                env={
+                    "GIT_CONFIG_COUNT": "1",
+                    "GIT_CONFIG_KEY_0": "caller.setting",
+                    "GIT_CONFIG_VALUE_0": "preserved",
+                },
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        tm.that(
+            process.stdout,
+            has=[
+                "key0=caller.setting",
+                "value0=preserved",
+                "key1=protocol.file.allow",
+                "value1=always",
+            ],
+        )
+
+    @staticmethod
     @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
     def test_bootstrap_selects_the_github_credential_from_declared_sources(
         tmp_path: Path,

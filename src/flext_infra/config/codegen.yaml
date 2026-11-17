@@ -2391,6 +2391,7 @@ Infra:
             - build-system
             - dependency-groups
             - tool.pytest.ini_options
+            - tool.uv
             - tool.uv.environments
             - tool.uv.link-mode
             - tool.uv.package

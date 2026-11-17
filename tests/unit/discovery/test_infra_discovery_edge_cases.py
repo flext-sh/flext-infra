@@ -204,6 +204,17 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         tm.that(result.value, empty=True)
 
     @staticmethod
+    def test_missing_source_root_yields_no_files(tmp_path: Path) -> None:
+        """An absent declared root owns no sources and is no Git failure."""
+        tm.that(
+            u.Infra.discover_python_files(
+                tmp_path / "tests",
+                workspace_excluded_top_dirs=frozenset(),
+            ),
+            eq=(),
+        )
+
+    @staticmethod
     def test_find_all_pyproject_files_with_nonexistent_path() -> None:
         """Test find all pyproject files with nonexistent path."""
         service = u.Infra()

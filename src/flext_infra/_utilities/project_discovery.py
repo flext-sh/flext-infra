@@ -615,10 +615,13 @@ class FlextInfraUtilitiesProjectDiscovery(
         project_dir = (
             project_dir.resolve() if source_project is None else project_dir.absolute()
         )
-        if not (
-            project_dir.is_dir()
-            if source_project is None
-            else source_project.source_query(project_dir, "isdir")
+        # A native source view registers every declared folder, including one the
+        # checkout never materialized; an absent directory owns no sources and is
+        # never a Git-scope failure.
+        if not project_dir.is_dir():
+            return ()
+        if source_project is not None and not source_project.source_query(
+            project_dir, "isdir"
         ):
             return ()
         skip_dirs = cls.excluded_parts()
