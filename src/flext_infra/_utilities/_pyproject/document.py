@@ -686,9 +686,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         requirement_sources = cls._normalized_requirement_sources(
             source,
             source_context,
-            workspace=(
-                workspace.repository.role is c.Infra.MakeProfile.WORKSPACE
-            ),
+            workspace=(workspace.repository.role is c.Infra.MakeProfile.WORKSPACE),
         )
         if requirement_sources.failure:
             return r[str].from_failure(requirement_sources)
