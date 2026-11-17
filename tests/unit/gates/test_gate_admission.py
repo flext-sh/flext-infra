@@ -101,6 +101,48 @@ class TestsFlextInfraGateAdmission:
             )
         )
 
+    @classmethod
+    def _gate_in(
+        cls,
+        environment: dict[str, str],
+        name: str,
+        root: Path,
+    ) -> p.Cli.ManagedProcess:
+        """Start one held gate whose ticket repository is ``root``.
+
+        Returns:
+            The running holder process.
+
+        """
+        ci = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        return tm.ok(
+            u.Cli.process_start(
+                [
+                    sys.executable,
+                    "-m",
+                    "tests.fixtures.gate_admission_holder",
+                    name,
+                    str(root),
+                    TestsFlextInfraGateAdmissionHolder.Mode.HOLD,
+                    "3600",
+                ],
+                cwd=Path.cwd(),
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=[
+                        key
+                        for key in (
+                            ci.variable,
+                            ci.remote_variable,
+                            c.Infra.GATE_REPEAT_HOOK_STAGE_ENV,
+                            c.Infra.GATE_ADMISSION_TICKET_ENV,
+                        )
+                        if key not in environment
+                    ],
+                ),
+            )
+        )
+
     @staticmethod
     def _await(path: Path) -> None:
         deadline = time.monotonic() + _WAIT_SECONDS
@@ -127,6 +169,37 @@ class TestsFlextInfraGateAdmission:
     def _release(cls, tmp_path: Path, name: str, process: p.Cli.ManagedProcess) -> int:
         (tmp_path / f"{name}.release").write_text("", encoding="utf-8")
         return tm.ok(process.wait(timeout=_WAIT_SECONDS))
+
+    @classmethod
+    @pytest.mark.slow
+    def test_mutating_gate_waits_for_an_overlapping_workspace(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A gen beside a gen on its parent or child checkout is not admitted."""
+        environment = cls._environment(tmp_path, "normal")
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        member.mkdir(parents=True)
+        gate = c.Infra.GATE_ADMISSION_GENERATION
+        holder = cls._gate_in(environment, gate, workspace)
+        waiter: p.Cli.ManagedProcess | None = None
+        try:
+            cls._await(workspace / f"{gate}.started")
+            waiter = cls._gate_in(environment, gate, member)
+            cls._await_waiting(tmp_path, waiter)
+            policy = FlextInfraConfig.fetch_global().Infra.gate_admission
+            time.sleep(2 * policy.poll_seconds + 1)
+            tm.that((member / f"{gate}.started").exists(), eq=False)
+            (workspace / f"{gate}.release").write_text("", encoding="utf-8")
+            cls._await(member / f"{gate}.started")
+        finally:
+            for process, root in ((holder, workspace), (waiter, member)):
+                if process is None:
+                    continue
+                if process.poll() is None:
+                    (root / f"{gate}.release").write_text("", encoding="utf-8")
+                tm.ok(process.wait(timeout=_WAIT_SECONDS))
 
     @classmethod
     @pytest.mark.slow

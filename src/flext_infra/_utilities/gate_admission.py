@@ -428,7 +428,21 @@ class FlextInfraUtilitiesGateAdmission:
                     key=lambda record: record.sequence,
                 )
                 mine = cls._read(ticket)
-                if waiting[0].sequence == mine.sequence and len(holders) < capacity:
+                blocked = next(
+                    (
+                        record
+                        for record in holders
+                        if FlextInfraUtilitiesGateAdmission._workspace_conflict(
+                            mine, record
+                        )
+                    ),
+                    None,
+                )
+                if (
+                    waiting[0].sequence == mine.sequence
+                    and len(holders) < capacity
+                    and blocked is None
+                ):
                     now = datetime.now(UTC)
                     admitted = mine.model_copy(
                         update={"admitted_at": now, "heartbeat_at": now}
@@ -440,6 +454,12 @@ class FlextInfraUtilitiesGateAdmission:
                         )
                     return admitted
                 position = [record.sequence for record in waiting].index(mine.sequence)
+            conflict = (
+                f"; workspace conflict with {blocked.gate} pid {blocked.pid} "
+                f"{blocked.repository}"
+                if blocked is not None
+                else ""
+            )
             state = (
                 f"gate admission: {mine.gate} waiting, position {position + 1}, "
                 f"capacity {capacity}, holders: "
@@ -447,6 +467,7 @@ class FlextInfraUtilitiesGateAdmission:
                     f"{record.gate} pid {record.pid} {record.repository}"
                     for record in holders
                 )
+                + conflict
             )
             if state != reported:
                 u.Cli.emit_raw(f"{state}\n", error=True)
@@ -455,6 +476,44 @@ class FlextInfraUtilitiesGateAdmission:
                 msg = f"{state} (wait of {wait_seconds}s expired)"
                 raise TimeoutError(msg)
             time.sleep(policy.poll_seconds)
+
+    @staticmethod
+    def _workspace_overlap(left: str, right: str) -> bool:
+        """Whether two ticket repositories are the same checkout or nested.
+
+        Returns:
+            True for the same path or a parent/child relationship.
+
+        """
+        first = Path(left).resolve()
+        second = Path(right).resolve()
+        return (
+            first == second
+            or first.is_relative_to(second)
+            or second.is_relative_to(first)
+        )
+
+    @classmethod
+    def _workspace_conflict(
+        cls,
+        mine: m.Infra.GateTicket,
+        holder: m.Infra.GateTicket,
+    ) -> bool:
+        """Whether admitting ``mine`` beside ``holder`` would race mutations.
+
+        A generation or modification route writes the workspace; another heavy
+        route on the same checkout or a member of it cannot run beside it.
+        Two read-only routes, or routes on unrelated workspaces, stay
+        concurrent under the declared capacity.
+
+        Returns:
+            True when either gate mutates and their repositories overlap.
+
+        """
+        mutating = c.Infra.GATE_ADMISSION_MUTATING_GATES
+        if mine.gate not in mutating and holder.gate not in mutating:
+            return False
+        return cls._workspace_overlap(mine.repository, holder.repository)
 
     @classmethod
     def _sweep(cls, root: Path, *, own: Path) -> list[m.Infra.GateTicket]:

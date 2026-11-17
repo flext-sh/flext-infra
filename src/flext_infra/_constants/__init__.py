@@ -456,6 +456,7 @@ install_lazy_exports(
         "FlextInfraConstantsCodegenLazy": (
             "MAX_ALIAS_LENGTH",
             "AUTOGEN_HEADER",
+            "LAZY_IMPORTS",
             "GENERATED_EXPORT_SIDECAR_RE",
             "OBSOLETE_ROOT_SUPPORT_NAMES",
             "LAZY_BOOTSTRAP_HELPERS",
@@ -708,6 +709,7 @@ install_lazy_exports(
             "GATE_ADMISSION_TICKET_ENV",
             "GATE_ADMISSION_GENERATION",
             "GATE_ADMISSION_MODIFICATION",
+            "GATE_ADMISSION_MUTATING_GATES",
             "GATE_ADMISSION_PRESSURE_FILE_ENV",
             "GATE_ADMISSION_HISTORY_DIR",
             "GATE_ADMISSION_HISTORY_SUFFIX",
