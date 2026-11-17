@@ -265,9 +265,6 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
                     u.Infra.project_development_requirements(
                         request.codegen.scaffold.project,
                         distribution=request.project_name,
-                        kind=declaration.value.spec.governing_kind(
-                            declaration.value.kind
-                        ),
                         declared=live_dev,
                     )
                 ),

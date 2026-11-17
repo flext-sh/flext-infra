@@ -145,7 +145,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
             required_dev_dependencies=u.Infra.project_development_requirements(
                 codegen.scaffold.project,
                 distribution=target.repository.distribution,
-                kind=target.repository.kind,
             ),
             uv_resolution=m.Infra.UvResolutionSpec.model_validate({
                 "link_mode": (cls.link_mode(target.repository, toolchain)),
@@ -575,7 +574,6 @@ class FlextInfraCodegenConformContextRender(FlextInfraCodegenConformPyprojectPol
         composed_dev = u.Infra.project_development_requirements(
             codegen.scaffold.project,
             distribution=repository.distribution,
-            kind=repository.kind,
             declared=declared_dev,
         )
         development_dependencies = r[tuple[t.NonEmptyStr, ...]].create_from_callable(
