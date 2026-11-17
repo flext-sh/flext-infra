@@ -444,6 +444,12 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             candidates.append(
                 Path(configured_runtime).expanduser() / c.PYPROJECT_FILENAME
             )
+        superproject = repository_root.parent
+        if (
+            superproject != repository_root
+            and (superproject / c.Infra.GITMODULES_FILENAME).is_file()
+        ):
+            candidates.append(superproject / c.PYPROJECT_FILENAME)
         seen: set[Path] = set()
         for pyproject_path in candidates:
             resolved = pyproject_path.resolve()
