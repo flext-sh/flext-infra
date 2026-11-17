@@ -3470,7 +3470,10 @@ class FlextInfraUtilitiesModelsProtocol:
         def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
-            A package without model declarations owns no model layout.
+            A package qualifies when it holds both a ``_models`` directory and
+            ``protocols.py``; a package whose protocols facade is still absent
+            is skipped: the facades surface creates it in the same generation
+            and the next pass projects its models.
             Non-canonical or competing public model and protocol facade names
             fail the discovery with ``ValueError``.
 
@@ -3493,7 +3496,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
                 return None
-            if not self.project.source_query(package_dir / "_models", "isdir"):
+            if not (
+                self.project.source_query(package_dir / "_models", "isdir")
+                and self.project.source_query(package_dir / "protocols.py", "isfile")
+            ):
                 return None
             return (
                 package_dir,

@@ -286,9 +286,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         Returns:
             Directory names in deterministic order.
 
-        Raises:
-            RuntimeError: If ``project_dir`` is outside a Git checkout.
-
         """
         if not (
             project_dir.is_dir()
@@ -307,10 +304,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         # Git owns which files belong to the checkout: one inventory, taken at
         # the checked root, decides the candidates. No directory below it is
         # probed, so an ignored or ceiling-bounded directory is never entered.
-        source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(project_dir)
-        if source_paths is None:
-            msg = f"Python source discovery requires a Git checkout: {project_dir}"
-            raise RuntimeError(msg)
+        source_paths = cls._source_scope_paths(project_dir)
         source_containers = frozenset(
             project_dir / path.relative_to(project_dir).parts[0]
             for path in source_paths
@@ -690,10 +684,6 @@ class FlextInfraUtilitiesProjectDiscovery(
         Yields:
             Each eligible Python source path.
 
-        Raises:
-            OSError: If a ``OSError`` is caught.
-            RuntimeError: If ``directory`` is outside a Git checkout.
-
         """
 
         def on_error(error: OSError) -> None:
@@ -720,18 +710,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             for artifact in config.Infra.codegen.artifacts
             if artifact.source_scan_ignore and not artifact.retired_typing_root
         ) | {c.Infra.GIT_DIR}
-        try:
-            source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
-        except OSError as error:
-            error.add_note(f"Python source discovery scope: {directory}")
-            raise
-        if source_paths is None:
-            source_paths = FlextInfraUtilitiesProjectDiscovery._staged_preview_sources(
-                directory
-            )
-            if source_paths is None:
-                msg = f"Python source discovery requires a Git checkout: {directory}"
-                raise RuntimeError(msg)
+        source_paths = cls._source_scope_paths(directory)
         source_containers = frozenset(
             parent
             for path in source_paths
@@ -805,19 +784,33 @@ class FlextInfraUtilitiesProjectDiscovery(
                     yield parent / file_name
 
     @staticmethod
-    def _staged_preview_sources(directory: Path) -> tuple[Path, ...] | None:
-        """Return the staged preview's own files, or None outside a preview.
+    def _source_scope_paths(directory: Path) -> tuple[Path, ...]:
+        """Return the one source inventory every discovery of a scope shares.
 
-        The generator materializes a candidate workspace beside the mutation
-        lock, inside the repository Git directory, and validates it without a
-        checkout of its own; that complete copy is the source scope.
+        Git owns the inventory of a checkout. The generator materializes a
+        candidate workspace beside the mutation lock, inside the repository Git
+        directory, and validates it without a checkout of its own; that
+        complete copy is the source scope of a staged preview.
 
         Returns:
-            The preview files, or no staged preview at this directory.
+            The Git inventory of the scope, or the staged preview's own files.
+
+        Raises:
+            OSError: If the Git inventory of the scope cannot be read.
+            RuntimeError: If ``directory`` is neither a Git checkout nor a
+                staged preview.
 
         """
+        try:
+            source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(directory)
+        except OSError as error:
+            error.add_note(f"Python source discovery scope: {directory}")
+            raise
+        if source_paths is not None:
+            return source_paths
         if not directory.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX):
-            return None
+            msg = f"Python source discovery requires a Git checkout: {directory}"
+            raise RuntimeError(msg)
         return tuple(path for path in directory.rglob("*") if path.is_file())
 
     @staticmethod
