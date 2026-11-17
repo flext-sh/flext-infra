@@ -62,11 +62,9 @@ Infra:
     poll_seconds: 2
     # Each route arms its budget only after it is admitted. Generation keeps a
     # 30 s reserve so its profile checkpoint survives a budget kill; check
-    # derives its budget from the gates it runs, tests from tools.pytest. The
-    # 32-member workspace generation plans every repository in one run; the
-    # budget must exceed that work or every run ends in timeout(1) exit 124.
+    # derives its budget from the gates it runs, tests from tools.pytest.
     generation:
-      budget_seconds: 1800
+      budget_seconds: 900
       grace_seconds: 30
     modification:
       # The mod census scans the complete catalog over every first-class root;

@@ -345,6 +345,29 @@ class TestsFlextInfraCodegenBeadsProjection:
         tm.that(rendered_envrc, lacks="BEADS_DOLT_")
         tm.that(rendered_envrc, lacks="BEADS_DIR")
 
+    def test_generated_envrc_places_the_host_shims_before_mise(
+        self, tmp_path: Path
+    ) -> None:
+        """The managed host tools outrank same-named system binaries."""
+        plan = self._standalone_governed_plan(tmp_path / "project")
+        rendered_envrc = u.Tests.planned_text(plan, ".envrc")
+
+        if rendered_envrc is None:
+            pytest.fail("standalone identity must produce the managed .envrc")
+        host_rm = rendered_envrc.find('PATH_rm "${host_shims}"')
+        host_add = rendered_envrc.find('PATH_add "${host_shims}"')
+        mise = rendered_envrc.find('mise_environment="$(')
+        tm.that(
+            host_rm != -1
+            and host_add != -1
+            and mise != -1
+            and host_rm < host_add < mise,
+            eq=True,
+            msg="host shims must precede mise:\n" + rendered_envrc,
+        )
+        tm.that(rendered_envrc.count('PATH_rm "${host_shims}"'), eq=1)
+        tm.that(rendered_envrc, lacks='export PATH="${PATH}:${MISE_DATA_DIR')
+
     def test_envrc_local_generated_residue_is_normalized(self, tmp_path: Path) -> None:
         """The merge keeps custom overrides and strips stale generated sections.
 
