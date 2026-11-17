@@ -6,12 +6,14 @@ single header constant c.Infra.BANNER to the final projection. -#}
 member sources at the root without rewriting the members' package metadata.
 Dependency lists remain CUSTOM after scaffolding. -#}
 {%- macro flext_requirement(item) -%}
-{%- set bare = item is string and item.startswith("flext-") and item.replace("-", "").replace("_", "").isalnum() -%}
-{%- if bare -%}
-"{{ item }} @ git+{{ flext_git_base_url }}/{{ item }}.git@{{ flext_git_branch }}"
-{%- else -%}
+{#- A bare fleet requirement stays a name. Pinning it to a git URL inside the
+requirement makes the native workspace unable to elect the member source: uv
+then sees two URLs for the same package (file:///... editable from the workspace
+source and git+... from this line) and refuses the resolution, which is what
+blocked `make upg`/`make gen` for flext-infra. The source is elected once by
+`[tool.uv.sources]`/the lock, so standalone consumers keep the locked git
+source and the workspace keeps the editable one. -#}
 {{ item | tojson }}
-{%- endif -%}
 {%- endmacro -%}
 
 {%- macro hatch_target_declaration(target) -%}
