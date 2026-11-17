@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import sys
 from collections.abc import Mapping, Sequence
 from keyword import iskeyword
@@ -33,10 +34,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesLazyInitRender,
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPythonModel,
-)
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
 )
 
 
@@ -1005,22 +1002,50 @@ class FlextInfraUtilitiesLazyInitPlan:
         if plan is not None:
             published = plan.ownership == "generator" and name in plan.lazy_map
         else:
-            initializer = FlextInfraUtilitiesRopeCore.package_initializer(
-                run.model.source_project, provider
+            path = run.model.module_files.get(provider)
+            source = (
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if path is not None and path.is_file()
+                else ""
             )
-            published = (
-                initializer is not None
-                and initializer.source_code.startswith(c.Infra.AUTOGEN_HEADER)
-                and any(
-                    name in names
-                    for _, names in (
-                        FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                            initializer.source_code
-                        )[0]
-                    )
-                )
-            )
+            published = source.startswith(
+                c.Infra.AUTOGEN_HEADER
+            ) and name in cls._lazy_import_names(source)
         return (provider, name) if published else None
+
+    @staticmethod
+    def _lazy_import_names(source: str) -> frozenset[str]:
+        """Read a generated initializer's published names from its own source.
+
+        Returns:
+            The ``_LAZY_IMPORTS`` keys, or no names when the initializer has none.
+
+        """
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return frozenset()
+        for node in tree.body:
+            targets = (
+                node.targets
+                if isinstance(node, ast.Assign)
+                else [node.target]
+                if isinstance(node, ast.AnnAssign)
+                else []
+            )
+            if not any(
+                isinstance(target, ast.Name) and target.id == c.Infra.LAZY_IMPORTS
+                for target in targets
+            ):
+                continue
+            if isinstance(node.value, ast.Dict):
+                return frozenset(
+                    key.value
+                    for key in node.value.keys
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str)
+                )
+            return frozenset()
+        return frozenset()
 
     @staticmethod
     def _lazy_init_base_target(
