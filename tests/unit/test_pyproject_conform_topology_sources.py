@@ -648,12 +648,16 @@ class TestsFlextInfraPyprojectConformTopologySources(
         tm.that(result.error or "", contains="not declared requirements: flext-cli")
 
     def test_removing_candidate_removes_global_override(self) -> None:
-        """A normal branch resolution leaves no stale candidate override."""
+        """A normal branch resolution leaves no stale candidate override.
+
+        The only override left is the one derived from the declared Git URL.
+        """
         infra = self._member_ref("flext-infra", "flext-infra")
         stale_commit = "a" * 40
+        declared = self._inline_requirement(infra)
         source = (
             '[project]\nname = "workspace"\nversion = "0.1.0"\n'
-            f'dependencies = ["{self._inline_requirement(infra)}"]\n'
+            f'dependencies = ["{declared}"]\n'
             "\n[tool.uv]\noverride-dependencies = "
             f'["{infra.distribution} @ git+{infra.url}@{stale_commit}"]\n'
         )
@@ -670,8 +674,8 @@ class TestsFlextInfraPyprojectConformTopologySources(
             ),
         )
         tm.that(
-            "override-dependencies" in u.Tests.toml_table_at(rendered, "tool", "uv"),
-            eq=False,
+            u.Tests.toml_strings_at(rendered, "tool", "uv", "override-dependencies"),
+            eq=(f"{infra.distribution} @ {declared.partition('@')[2].strip()}",),
         )
 
     def _assert_direct_source(self, rendered: str, ref: p.Infra.RepositoryRef) -> None:

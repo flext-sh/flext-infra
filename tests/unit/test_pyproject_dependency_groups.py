@@ -446,8 +446,7 @@ class TestsFlextInfraPyprojectDependencyGroups:
         source = self._source(
             f"{name} = [{tm.ok(u.Cli.json_dumps(group_first))}, "
             '{include-group = "shared"}, '
-            f"{tm.ok(u.Cli.json_dumps(group_last))}, "
-            f"{tm.ok(u.Cli.json_dumps(group_first))}]\n"
+            f"{tm.ok(u.Cli.json_dumps(group_last))}]\n"
             f"{other} = []\n"
             "shared = []\n"
             f'examples = [{{include-group = "{name}"}}]',

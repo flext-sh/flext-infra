@@ -865,10 +865,7 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
             path=root / c.PYPROJECT_FILENAME,
             codegen=codegen,
             runtime_dependency_overlay=project.runtime_dependency_overlay,
-            declared_project_dependencies=tuple(
-                u.Infra.fleet_requirement(requirement)
-                for requirement in metadata.project.dependencies
-            ),
+            declared_project_dependencies=tuple(metadata.project.dependencies),
             topology=self._existing_topology(target, codegen),
         )
 

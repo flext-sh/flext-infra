@@ -184,7 +184,12 @@ class TestsFlextInfraGitFacetWorktreeStatus:
 
     @staticmethod
     def test_missing_git_binary_fails_closed(tmp_path: Path) -> None:
-        """Missing git on PATH must Result.fail without raising."""
+        """A Git binary that leaves PATH after first use must Result.fail.
+
+        The facet is used once first, so the scenario does not depend on which
+        test happens to load the Git library first in its worker.
+        """
+        tm.ok(u.Infra.refresh_binary())
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
         with tm.scope(env={"PATH": str(empty_path)}):
