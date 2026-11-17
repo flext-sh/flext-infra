@@ -996,7 +996,11 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         if dotted is None:
             return None
-        provider = dotted
+        provider, _, export = dotted.rpartition(".")
+        if not provider:
+            provider = dotted
+        else:
+            name = export
         if not provider or provider.split(".", maxsplit=1)[0] == scope[0].surface:
             return None
         plan = next(

@@ -152,13 +152,16 @@ unexport GITHUB_API_TOKEN
 
 # Git 2.38+ refuses the local file protocol uv uses to materialize its cached
 # git checkouts (`git clone --no-hardlinks <uv cache db> <checkout>`). Admit it
-# for this process tree only; global Git configuration stays untouched.
-ifeq ($(strip $(GIT_CONFIG_COUNT)),)
-GIT_CONFIG_COUNT := 1
-GIT_CONFIG_KEY_0 := protocol.file.allow
-GIT_CONFIG_VALUE_0 := always
-endif
-export GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+# for this process tree only; global Git configuration stays untouched. Append
+# to any caller-declared GIT_CONFIG_COUNT so an inherited policy can never hide
+# the uv cache transport.
+GIT_CONFIG_ALLOW_INDEX := $(if $(strip $(GIT_CONFIG_COUNT)),$(strip $(GIT_CONFIG_COUNT)),0)
+GIT_CONFIG_KEY_$(GIT_CONFIG_ALLOW_INDEX) := protocol.file.allow
+GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX) := always
+GIT_CONFIG_COUNT := $(shell expr $(GIT_CONFIG_ALLOW_INDEX) + 1)
+export GIT_CONFIG_COUNT
+$(eval export GIT_CONFIG_KEY_$(GIT_CONFIG_ALLOW_INDEX))
+$(eval export GIT_CONFIG_VALUE_$(GIT_CONFIG_ALLOW_INDEX))
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode

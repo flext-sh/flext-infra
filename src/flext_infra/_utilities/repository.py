@@ -464,8 +464,14 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             )
             if declared.failure or declared.value[0]:
                 return declared
+        manifest_root = (
+            superproject
+            if superproject != repository_root
+            and (superproject / c.Infra.GITMODULES_FILENAME).is_file()
+            else repository_root
+        )
         manifest = cls._git_declared_distribution_url(
-            repository_root=repository_root,
+            repository_root=manifest_root,
             distribution=distribution,
         )
         if manifest.failure:
