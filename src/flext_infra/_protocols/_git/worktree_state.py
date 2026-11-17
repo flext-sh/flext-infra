@@ -274,24 +274,6 @@ class FlextInfraProtocolsGitWorktreeState:
             """
             ...
 
-    @runtime_checkable
-    class GitLaneOwnershipReceipt(FlextCliProtocols.BaseModel, Protocol):
-        """Structural data contract projected from the owning model."""
-
-        @property
-        def checkpoint(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitWorktreeStateCheckpoint:
-            """Full-repository capture identifying the prior owned branch."""
-            ...
-
-        @property
-        def publication(
-            self,
-        ) -> FlextInfraProtocolsGitWorktreeState.GitWorktreeCheckpointPublication:
-            """Live independently retained checkpoint publication."""
-            ...
-
 
 __all__: list[str] = [
     "FlextInfraProtocolsGitWorktreeState",

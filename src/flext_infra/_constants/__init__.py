@@ -659,8 +659,6 @@ install_lazy_exports(
             "GIT_REFS_TAGS",
             "GIT_REV_PARSE_ABSOLUTE_PATHS",
             "GIT_PROJECTION_ATTRIBUTES",
-            "LaneViolationKind",
-            "GIT_LANE_VIOLATION_REMEDY",
             "GIT_WORKTREES_DIRNAME",
             "GIT_WORKTREE_SCAN_FILE_CAP",
             "GIT_WORKTREE_SCAN_TIME_CAP_S",

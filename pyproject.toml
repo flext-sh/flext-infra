@@ -601,7 +601,6 @@ file = "src/**"
 [tool.uv.exclude-newer-package]
 soupsieve = false
 
-
 [tool.interrogate]
 fail-under = 70
 ignore-init-method = true

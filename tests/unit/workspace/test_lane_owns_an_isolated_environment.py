@@ -170,10 +170,20 @@ class TestsFlextInfraLaneOwnsAnIsolatedEnvironment:
         )
 
     def test_add_only_creates_git_lane_without_setup(self, tmp_path: Path) -> None:
-        """Test add only creates git lane without setup."""
+        """ADD registers the Git lane and provisions no environment in it."""
         repository = self._repository(tmp_path)
 
-        lane = self._lane(repository, "feature/git-only")
+        lane = Path(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    repository_root=repository,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch="feature/git-only",
+                    base=c.Infra.GIT_HEAD,
+                    apply_changes=True,
+                ).execute(),
+            ),
+        )
 
         tm.that(lane.is_dir(), truth=True)
         tm.that(u.Infra.runtime_environment_dir(lane).exists(), truth=False)

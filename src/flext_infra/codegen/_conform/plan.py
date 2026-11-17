@@ -1260,13 +1260,14 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
             The lazy-init file plans of the repository.
 
         """
-        planned = (
-            r[Sequence[p.Infra.CodegenFilePlan]].ok(())
-            if task.initial_workspace is not None
-            and task.initial_workspace.project is not None
-            and task.repository.name == task.initial_workspace.repository.name
-            else self._planned_lazy_init_files(repository_root)
-        )
+        with self.shared_source_views():
+            planned = (
+                r[Sequence[p.Infra.CodegenFilePlan]].ok(())
+                if task.initial_workspace is not None
+                and task.initial_workspace.project is not None
+                and task.repository.name == task.initial_workspace.repository.name
+                else self._planned_lazy_init_files(repository_root)
+            )
         if planned.failure:
             u.Infra.codegen_raise_failure(repository_root, planned)
         return m.Infra.CodegenRepositoryPlanOutcome(
