@@ -969,8 +969,9 @@ class FlextInfraUtilitiesLazyInitPlan:
                     pending.append(target)
         return tuple(members), routed
 
-    @staticmethod
+    @classmethod
     def _lazy_init_ancestor_route(
+        cls,
         run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         scope: tuple[
             FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
@@ -1060,10 +1061,13 @@ class FlextInfraUtilitiesLazyInitPlan:
                 )
             if c.Infra.LAZY_IMPORTS not in names:
                 continue
-            if isinstance(node.value, ast.Dict):
+            value = (
+                node.value if isinstance(node, (ast.Assign, ast.AnnAssign)) else None
+            )
+            if isinstance(value, ast.Dict):
                 return frozenset(
                     key.value
-                    for key in node.value.keys
+                    for key in value.keys
                     if isinstance(key, ast.Constant) and isinstance(key.value, str)
                 )
             return frozenset()
