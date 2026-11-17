@@ -1,4 +1,4 @@
-"""Concrete-syntax rewrite that extends a facade by its parent's class name.
+"""Concrete-syntax rewrite that extends a facade by its parent's letter.
 
 Copyright (c) 2026 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import override
+from collections.abc import Mapping
+from typing import ClassVar, override
 
 import libcst as cst
 
@@ -15,10 +16,18 @@ from flext_infra._utilities import FlextInfraUtilitiesQualifiedNames
 
 
 class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
-    """Preserve layout while a facade base moves from letter to class."""
+    """Preserve layout while a facade base stays the parent's declared letter."""
+
+    FACADE_LETTERS: ClassVar[Mapping[str, str]] = {
+        "Constants": "c",
+        "Models": "m",
+        "Protocols": "p",
+        "Types": "t",
+        "Utilities": "u",
+    }
 
     class _FacadeBaseTransformer(cst.CSTTransformer):
-        """Swap the letter import and base for the parent's declared class."""
+        """Swap the parent's declared class import and base for its letter."""
 
         def __init__(
             self,
@@ -33,6 +42,17 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             self.owner = owner
             self.owner_bound = owner_bound
             self.local_rebound = local_rebound
+            self.letter = next(
+                (
+                    letter
+                    for suffix, letter in (
+                        FlextInfraUtilitiesSemanticCutoverFacadeBaseCst.FACADE_LETTERS.items()
+                    )
+                    if self.imported.endswith(suffix) or self.facade.endswith(suffix)
+                ),
+                None,
+            )
+            self.root = self.module.split(".", maxsplit=1)[0]
             self.depth = 0
 
         @override
@@ -50,11 +70,12 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             self.depth -= 1
             if self.depth or original_node.name.value != self.facade:
                 return updated_node
+            target = self.letter or self.owner
             return updated_node.with_changes(
                 bases=[
-                    base.with_changes(value=cst.Name(self.owner))
+                    base.with_changes(value=cst.Name(target))
                     if isinstance(base.value, c.Infra.Cst.Name)
-                    and base.value.value == self.local
+                    and base.value.value in {self.local, self.owner, self.imported}
                     else base
                     for base in updated_node.bases
                 ],
@@ -89,7 +110,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
                 and self.local != self.imported
                 and original_node.value == self.local
             ):
-                return updated_node.with_changes(value=self.owner)
+                return updated_node.with_changes(value=self.letter or self.owner)
             return updated_node
 
         @override
@@ -113,7 +134,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
             retained = self._retained_aliases(original_node, updated_node)
             if not retained:
                 return cst.RemoveFromParent()
+            module = (
+                cst.Name(self.root) if self.letter is not None else updated_node.module
+            )
             return updated_node.with_changes(
+                module=module,
                 names=[
                     *retained[:-1],
                     retained[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT),
@@ -153,10 +178,10 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBaseCst:
                 )
                 if name != self.imported or bound != self.local:
                     retained.append(updated)
-                elif not self.owner_bound:
+                else:
                     retained.append(
                         updated.with_changes(
-                            name=cst.Name(self.owner),
+                            name=cst.Name(self.letter or self.owner),
                             asname=None,
                         ),
                     )
