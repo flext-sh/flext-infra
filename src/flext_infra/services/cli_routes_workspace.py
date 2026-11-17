@@ -9,20 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from flext_infra import (
-    FlextInfraGitService,
-    c,
-    check,
-    config,
-    docs,
-    infra,
-    m,
-    p,
-    r,
-    t,
-    u,
-    workspace,
-)
+from flext_infra import c, check, config, docs, infra, m, p, r, t, u, workspace
 
 
 class FlextInfraWorkspaceRoutes:
@@ -46,20 +33,6 @@ class FlextInfraWorkspaceRoutes:
         for repository in selected.value:
             u.Cli.emit_raw(f"{repository.path}\n")
         return r[int].ok(len(selected.value))
-
-    @staticmethod
-    def _verify_lane(
-        request: p.Infra.GitLaneVerificationRequest,
-    ) -> p.Cli.ErasedCommandResult:
-        """Publish the live integration identity as its owning model.
-
-        Returns:
-            The live integration identity or the original admission failure.
-
-        """
-        return FlextInfraGitService.verify_lane(request).map(
-            m.Infra.GitOidReport.model_validate
-        )
 
     @staticmethod
     def _git_identity(
@@ -214,9 +187,9 @@ class FlextInfraWorkspaceRoutes:
         """Run every read-only validation of the check verb in one process.
 
         The captured checker completes its declared global prerequisites before
-        other gates. The projection verdict, lane census (outside CI), and
-        documentation follow; a dirty or changing tree is never a check
-        condition. The commit hook token selects only commit-stage gates. The
+        other gates. The projection verdict and documentation follow; a dirty
+        or changing tree is never a check condition. The commit hook token
+        selects only commit-stage gates. The
         first failure stops the verb with its original status or cause. The
         verb joins the host queue first and arms the largest declared gate
         budget only once admitted; a complete check that succeeded in this
@@ -245,7 +218,7 @@ class FlextInfraWorkspaceRoutes:
             and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
         )
         # The gate registry bounds the captured gate phase, gate by gate. A
-        # complete run then composes conform, lane and documentation phases
+        # complete run then composes conform and documentation phases
         # whose owners carry their own native limits, so the route must not
         # inherit the largest single-gate budget as a total deadline: doing so
         # truncates a healthy complete run after the gates already passed.
@@ -287,34 +260,26 @@ class FlextInfraWorkspaceRoutes:
 
         """
         make = inputs.spec.make
-        token = u.Infra.env_value(make.ci.variable)
         complete = (
             params.phase == c.Infra.CheckPhase.COMPLETE
-            and token != make.ci.pre_commit_value
+            and u.Infra.env_value(make.ci.variable) != make.ci.pre_commit_value
         )
         status = cls._captured_gate_status(params, inputs)
         if status.failure:
             return r[bool].from_failure(status)
         if status.value:
             u.Cli.framework_exit(status.value)
-        if complete:
-            conformed = infra.codegen_conform(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.CHECK,
-                )
-            )
-            if conformed.failure:
-                return r[bool].from_failure(conformed)
         if not complete:
             return r[bool].ok(value=True)
-        if token != make.ci.value:
-            lanes = FlextInfraGitService.verify_lanes(
-                m.Infra.GitLaneVerificationRequest(repo_root=root)
+        conformed = infra.codegen_conform(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
             )
-            if lanes.failure:
-                return r[bool].from_failure(lanes)
+        )
+        if conformed.failure:
+            return r[bool].from_failure(conformed)
         for service in (docs.FlextInfraDocValidator, docs.FlextInfraDocAuditor):
             documented = service(
                 repository_root=root,
@@ -462,20 +427,6 @@ class FlextInfraWorkspaceRoutes:
                 success_formatter=cls._payload_json_formatter,
             ),
             m.Cli.ResultCommandRoute(
-                name="verify-lanes",
-                help_text="Read-only lane inventory, ownership census, and refusals",
-                model_cls=m.Infra.GitLaneVerificationRequest,
-                handler=FlextInfraGitService.verify_lanes,
-                success_formatter=cls._payload_json_formatter,
-            ),
-            m.Cli.ResultCommandRoute(
-                name="lane-ownership",
-                help_text="Authenticate a retained and integrated Git checkpoint",
-                model_cls=m.Infra.GitLaneOwnershipRequest,
-                handler=FlextInfraGitService.lane_ownership,
-                success_formatter=cls._payload_json_formatter,
-            ),
-            m.Cli.ResultCommandRoute(
                 name="create-gate-attestation",
                 help_text="Sign one original receipt as an immutable stage proof",
                 model_cls=m.Infra.GateAttestationCreateRequest,
@@ -542,16 +493,6 @@ class FlextInfraWorkspaceRoutes:
                     m.Infra.GateCaptureRequest,
                     cls._check,
                     "check verb validations passed",
-                ),
-                (
-                    "verify-lane",
-                    (
-                        "Verify stash absence and declared live integration ancestry "
-                        "without effects"
-                    ),
-                    m.Infra.GitLaneVerificationRequest,
-                    cls._verify_lane,
-                    "lane stash and live integration ancestry verified",
                 ),
                 (
                     "identity",

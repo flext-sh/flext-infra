@@ -567,9 +567,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
         ) -> Path:
             """Register ``branch`` as a native linked worktree at its canonical path.
 
-            Lane admission refuses every ``ADD`` until authoritative Beads
-            ownership reaches the native contract (bead flext-itpd1.3.26), so a
-            test whose subject is an existing lane obtains it the way Git
+            A test whose subject is an existing lane obtains it the way Git
             itself can: ``git worktree add -b`` at the path the production
             topology owner reserves for the branch.
 
@@ -605,28 +603,20 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             repository: Path,
             branch: str,
             *,
+            reason: str,
             base: str = "HEAD",
             epic_lane: Path | None = None,
-            reason: str = "new lane refused",
         ) -> Path:
             """Request ``ADD`` and prove the refusal left Git and disk untouched.
 
-            Like a real lane owner, the fixture fetches the declared remote
-            first, so the refusal is measured against a fresh remote-tracking
-            tip. The refusal must carry ``reason``, the canonical lane path
-            must not exist, and the refs and worktree registry must equal
-            their state before the request.
+            The refusal must carry ``reason``, the canonical lane path must
+            not exist, and the refs and worktree registry must equal their
+            state before the request.
 
             Returns:
                 The canonical lane path the refused request would have used.
 
             """
-            tm.ok(
-                u.Cli.run_checked(
-                    [c.Infra.GIT, "fetch", "--quiet", c.Infra.GIT_ORIGIN],
-                    cwd=repository,
-                ),
-            )
             state = (
                 tm.ok(u.Cli.capture([c.Infra.GIT, "show-ref"], cwd=repository)),
                 tm.ok(
@@ -753,9 +743,8 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 '\t@printf "setting up %s\\n" "$(WORKSPACE)"\n',
                 encoding="utf-8",
             )
-            # Lane admission demands authoritative Beads ownership over a
-            # governed manifest: the fixture declares both, exactly as a real
-            # checkout does.
+            # The fixture declares a governed manifest and its Beads project,
+            # exactly as a real checkout does.
             TestsFlextInfraUtilitiesProjectFixture.write_workspace_manifest(
                 repository,
                 "fixture",
@@ -769,8 +758,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
             TestsFlextInfraUtilitiesGit.initialize_git_repo(repository)
             remote = tmp_path / "integration.git"
             git = TestsFlextInfraUtilitiesGit
-            # A forge remote's HEAD declares its default branch; ADD reads it
-            # live through ``ls-remote --symref``.
+            # A forge remote's HEAD declares its default branch.
             git.git_bootstrap(
                 tmp_path,
                 (
@@ -781,17 +769,15 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                     str(remote),
                 ),
             )
-            policy = config.Infra.codegen.branch_policy
-            action = "set-url" if policy.lane_remote == c.Infra.GIT_ORIGIN else "add"
             git.git_bootstrap(
                 repository,
-                ("remote", action, policy.lane_remote, str(remote)),
+                ("remote", "set-url", c.Infra.GIT_ORIGIN, str(remote)),
             )
             git.git_bootstrap(
                 repository,
                 (
                     "push",
-                    policy.lane_remote,
+                    c.Infra.GIT_ORIGIN,
                     "HEAD:refs/heads/"
                     + TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
                 ),
@@ -826,7 +812,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixture:
                 repository,
                 (
                     "push",
-                    config.Infra.codegen.branch_policy.lane_remote,
+                    c.Infra.GIT_ORIGIN,
                     "HEAD:refs/heads/"
                     + TestsFlextInfraUtilitiesProjectFixture.provider_branch(),
                 ),

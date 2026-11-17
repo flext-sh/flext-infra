@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_infra._protocols._config import FlextInfraProtocolsConfigContract
@@ -74,26 +73,6 @@ class FlextInfraProtocolsConfigProvider:
     @runtime_checkable
     class BranchPolicySpec(FlextInfraProtocolsConfigContract.ConfigContract, Protocol):
         """Structural data contract projected from the owning model."""
-
-        @property
-        def lane_remote(self) -> t.NonEmptyStr:
-            """Remote whose live integration tip governs lanes."""
-            ...
-
-        @property
-        def lane_temporary_roots(self) -> tuple[Path, ...]:
-            """Temporary roots requiring registered ownership."""
-            ...
-
-        @property
-        def lane_pr_limit(self) -> int:
-            """PR page bound; saturation fails the inventory."""
-            ...
-
-        @property
-        def lane_governance_file(self) -> Path | None:
-            """Explicit host coordination SSOT, unavailable when undeclared."""
-            ...
 
         @property
         def ci_trigger_branches(self) -> tuple[t.NonEmptyStr, ...]:

@@ -1580,7 +1580,6 @@ defer_lazy_bases(
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitAttestation"),
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitScope"),
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitSemanticSubmodule"),
-            ("flext_infra._utilities._git", "FlextInfraUtilitiesGitLaneHygiene"),
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitStateCapture"),
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitSemanticIdentity"),
             ("flext_infra._utilities._git", "FlextInfraUtilitiesGitSemanticIndex"),

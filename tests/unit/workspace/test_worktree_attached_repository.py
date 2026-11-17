@@ -8,26 +8,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import FlextInfraWorktreeService
 from tests import c, m, tm, u
 
 
 class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
     """Exercise Git's primary registry for an attached repository."""
 
-    def test_attached_submodule_keeps_branch_and_registry_admission_distinct(
+    def test_attached_submodule_lane_cannot_prove_a_storage_only_primary(
         self,
         tmp_path: Path,
     ) -> None:
-        """Missing branch authority and missing primary identity remain distinct.
+        """A lane of an attached member derives from the member's own primary root.
 
-        ADD on a member whose ``.gitmodules`` entry declares no branch is
-        refused by lane admission (no integration line to bind). The lane is
-        therefore registered natively at the canonical path derived from the
+        The lane is registered natively at the canonical path derived from the
         member's own primary root. Listing from this linked lane cannot prove
-        the storage-only primary row without ``core.worktree``. REMOVE refuses
-        the absent integration branch before reaching that linked registry
-        boundary. Neither refusal removes the lane.
+        the storage-only primary row without ``core.worktree``, and the lane
+        stays in place.
         """
         child_source = tmp_path / "child-source"
         child_source.mkdir()
@@ -97,15 +93,7 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
                 cwd=linked,
             ),
         )
-        branch = "feature/attached"
-        # The member declares no ``.gitmodules`` branch, so lane admission has
-        # no integration line for it and refuses before any lane effect.
-        _ = self.refused_lane(
-            attached,
-            branch,
-            reason="Git submodule branch is missing: attached",
-        )
-        expected_lane = self.native_lane(attached, branch)
+        expected_lane = self.native_lane(attached, "feature/attached")
         tm.that(
             f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"
             not in expected_lane.as_posix(),
@@ -116,14 +104,5 @@ class TestsFlextInfraAttachedRepositoryWorktree(u.Tests.WorktreeFixture):
                 m.Infra.GitRepoRequest(repo_root=expected_lane),
             ),
             has="primary checkout is unproven for storage-only registry row",
-        )
-        tm.fail(
-            FlextInfraWorktreeService(
-                repository_root=attached,
-                operation=c.Infra.WorktreeOperation.REMOVE,
-                branch=branch,
-                apply_changes=True,
-            ).execute(),
-            has="Git submodule branch is missing: attached",
         )
         tm.ok(expected_lane.is_dir())

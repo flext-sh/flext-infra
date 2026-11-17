@@ -47,7 +47,6 @@ install_lazy_exports(
             "GitWorktreeObservedContent",
             "GitWorktreeStateSnapshot",
             "GitWorktreeStateCheckpoint",
-            "GitLaneOwnershipReceipt",
         ),
     },
 )
