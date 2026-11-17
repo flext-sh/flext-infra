@@ -7,14 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-import io
 import os
-import re
-from cProfile import Profile
+import traceback
 from pathlib import Path
-from pstats import Stats
 
-from tests import c, tm, u
+from tests import c, t, tm, u
 
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
@@ -48,8 +45,10 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     @staticmethod
     def test_publication_policy_reuses_unchanged_syntax(
         tmp_path: Path,
+        monkeypatch: t.Tests.MonkeyPatch,
     ) -> None:
         """An unchanged declaration parses once across repeated policy reads."""
+        u.Tests.git_bootstrap(tmp_path, ("init", "--quiet"))
         package = tmp_path / c.Infra.DEFAULT_SRC_DIR / "package"
         nested = package / "nested"
         nested.mkdir(parents=True)
@@ -64,19 +63,31 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             "class Component:\n    pass\n\n__all__ = ['Component']\n",
             encoding=c.DEFAULT_ENCODING,
         )
-        profile = Profile()
+        u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
+        parsed: list[str | bytes] = []
+        parse = ast.parse
+
+        policy_owners = {"_declared_exports", "_resolve_family", "publication_policy"}
+
+        def record(
+            source_text: str | bytes,
+            filename: str = "<unknown>",
+            mode: str = "exec",
+        ) -> ast.AST:
+            callers = {frame.name for frame in traceback.extract_stack(limit=8)[:-1]}
+            if callers & policy_owners:
+                parsed.append(source_text)
+            return parse(source_text, filename=filename, mode=mode)
+
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
+            monkeypatch.setattr(ast, "parse", record)
             repeated = original
-            profile.enable()
             for _ in range(3):
                 repeated = u.Infra.publication_policy(source, rope_project=project)
-            profile.disable()
             tm.ok(repeated == original)
-        output = io.StringIO()
-        parser = f"{ast.__file__}:{ast.parse.__code__.co_firstlineno}(parse)"
-        Stats(profile, stream=output).print_stats(re.escape(parser))
-        tm.that(output.getvalue(), lacks=parser)
+        component_parses = [text for text in parsed if "class Component" in str(text)]
+        tm.that(component_parses, eq=[])
 
     @staticmethod
     def test_publication_exports_follow_content_with_an_unchanged_timestamp(

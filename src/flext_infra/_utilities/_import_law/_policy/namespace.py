@@ -627,7 +627,10 @@ class FlextInfraUtilitiesImportLawPolicyNamespace:
             route = routes.get(alias_name)
             if route is None:
                 alias_name, _declaration = cls._declared_binding(
-                    ast.parse(source), alias_name
+                    FlextInfraUtilitiesRopeRuntime.require_parsed_module(
+                        project.get_module(module_name)
+                    ).get_ast(),
+                    alias_name,
                 )
                 binding = provider.get_attributes().get(alias_name)
                 if not isinstance(binding, p.Infra.RopeImportedName):
