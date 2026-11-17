@@ -981,40 +981,29 @@ class FlextInfraUtilitiesLazyInitPlan:
     ) -> tuple[str, str] | None:
         """Return the import route of a base that another package publishes.
 
-        A base read from a package outside this surface, by its class or by
-        the package's letter, is shared exactly as the source imports it when
-        that package's generated initializer publishes the name. A package
-        planned in this run answers through its plan, any other through the
-        initializer the project's module finder elects; both require generator
-        ownership, so a workspace run, a standalone member and an external
-        consumer render the same route.
+        A base read from an installed package outside this surface, by its
+        class or by the package's letter, is shared exactly as the source
+        imports it when that package's generated initializer publishes the
+        name. An indexed workspace package keeps the native target/letter
+        resolution; the installed provider answers through the initializer the
+        project's module finder elects, requiring generator ownership, so a
+        standalone member and an external consumer render the same route.
 
         Returns:
             The ``(package, export)`` route, or ``None`` when the base is local,
             a builtin, or published by no generated initializer.
 
         """
-        if dotted is None:
+        module, separator, export = (dotted or "").rpartition(".")
+        name = export if separator else name
+        module = module or dotted or ""
+        root_package = module.split(".", maxsplit=1)[0]
+        if any(plan.context.current_pkg == root_package for plan in run.plans.values()):
+            # Indexed workspace packages keep the native target/letter
+            # resolution; this route narrows installed standalone providers.
             return None
-        module, separator, export = dotted.rpartition(".")
-        if not separator:
-            module = dotted
-        else:
-            name = export
-        surface = scope[0].surface
-        # A source imports the generated initializer either directly
-        # (``from flext_core import FlextTypes``) or through the module that
-        # re-exports it (``from flext_core.typings import FlextTypes``). The
-        # import route is the nearest provider that publishes the name, then
-        # the root package it belongs to; the root is the standalone route.
-        candidates = tuple(
-            dict.fromkeys(
-                provider
-                for provider in (module, module.split(".", maxsplit=1)[0])
-                if provider and provider.split(".", maxsplit=1)[0] != surface
-            ),
-        )
-        for provider in candidates:
+
+        def resolve(provider: str) -> tuple[str, str] | None:
             plan = next(
                 (
                     plan
@@ -1036,19 +1025,12 @@ class FlextInfraUtilitiesLazyInitPlan:
             else:
                 path = run.model.module_files.get(provider)
                 if path is None:
-                    package_dir = run.index.package_dir_by_name.get(provider)
-                    path = (
-                        package_dir / c.Infra.INIT_PY
-                        if package_dir is not None
-                        else None
-                    )
-                if path is None:
                     try:
                         spec = importlib.util.find_spec(provider)
                     except (ImportError, AttributeError, ValueError):
                         spec = None
-                    if spec is not None and spec.origin is not None:
-                        path = Path(spec.origin)
+                    origin = getattr(spec, "origin", None)
+                    path = Path(origin) if origin is not None else None
                 source = (
                     path.read_text(encoding=c.DEFAULT_ENCODING)
                     if path is not None and path.is_file()
@@ -1057,9 +1039,25 @@ class FlextInfraUtilitiesLazyInitPlan:
                 published = source.startswith(
                     c.Infra.AUTOGEN_HEADER
                 ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
-            if published:
-                return (provider, name)
-        return None
+            return (provider, name) if published else None
+
+        surface = scope[0].surface
+        # A source imports the generated initializer either directly
+        # (``from flext_core import FlextTypes``) or through the module that
+        # re-exports it (``from flext_core.typings import FlextTypes``). The
+        # import route is the nearest provider that publishes the name, then
+        # the root package it belongs to; the root is the standalone route.
+        candidates = tuple(
+            dict.fromkeys(
+                provider
+                for provider in (module, root_package)
+                if provider and provider.split(".", maxsplit=1)[0] != surface
+            ),
+        )
+        return next(
+            (route for route in map(resolve, candidates) if route is not None),
+            None,
+        )
 
     @staticmethod
     def _lazy_import_names(source: str) -> frozenset[str]:
