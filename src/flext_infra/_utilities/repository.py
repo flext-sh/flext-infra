@@ -19,7 +19,7 @@ from flext_cli import u
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, r, settings, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesGit,
@@ -438,8 +438,24 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         )
         if metadata.success and metadata.value.project.name == distribution:
             return cls._checkout_origin_source(repository_root, policy_branch)
-        pyproject_path = repository_root / c.PYPROJECT_FILENAME
-        if pyproject_path.is_file():
+        configured_runtime = settings.Infra.runtime_root
+        candidates = [repository_root / c.PYPROJECT_FILENAME]
+        if configured_runtime:
+            candidates.append(
+                Path(configured_runtime).expanduser() / c.PYPROJECT_FILENAME
+            )
+        superproject = repository_root.parent
+        if (
+            superproject != repository_root
+            and (superproject / c.Infra.GITMODULES_FILENAME).is_file()
+        ):
+            candidates.append(superproject / c.PYPROJECT_FILENAME)
+        seen: set[Path] = set()
+        for pyproject_path in candidates:
+            resolved = pyproject_path.resolve()
+            if resolved in seen or not pyproject_path.is_file():
+                continue
+            seen.add(resolved)
             declared = cls._declared_dependency_source(
                 pyproject_path=pyproject_path,
                 distribution=distribution,

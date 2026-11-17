@@ -108,6 +108,10 @@ class FlextInfraConstantsMake(FlextInfraConstantsConfig):
     GATE_ADMISSION_TICKET_ENV: ClassVar[str] = "FLEXT_GATE_ADMISSION_TICKET"
     GATE_ADMISSION_GENERATION: ClassVar[str] = "gen"
     GATE_ADMISSION_MODIFICATION: ClassVar[str] = "mod"
+    GATE_ADMISSION_MUTATING_GATES: ClassVar[frozenset[str]] = frozenset({
+        GATE_ADMISSION_GENERATION,
+        GATE_ADMISSION_MODIFICATION,
+    })
     GATE_ADMISSION_PRESSURE_FILE_ENV: ClassVar[str] = (
         "FLEXT_GATE_ADMISSION_PRESSURE_FILE"
     )

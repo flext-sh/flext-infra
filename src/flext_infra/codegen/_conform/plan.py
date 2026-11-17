@@ -1238,6 +1238,10 @@ class FlextInfraCodegenConformPlan(FlextInfraCodegenConformScaffoldPlan):
                 and planner._repository_inputs_drifted(planned_inputs)
             ):
                 break
+            loaded = u.Infra.load_codegen_inputs(resolved.value)
+            if loaded.failure:
+                break
+            inputs = loaded.value
         if planned_inputs.failure:
             u.Infra.codegen_raise_failure(resolved.value, planned_inputs)
         return planner._governed_repository_outcome(

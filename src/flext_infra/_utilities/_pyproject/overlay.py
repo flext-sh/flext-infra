@@ -9,8 +9,10 @@ from __future__ import annotations
 from collections.abc import MutableMapping, Sequence
 
 from flext_cli import u
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesDependencies,
     FlextInfraUtilitiesManagedConflicts,
@@ -220,6 +222,19 @@ class FlextInfraUtilitiesPyprojectOverlay:
             u.Cli.toml_mapping_child(live_payload, c.Infra.DEPENDENCY_GROUPS) or {}
         )
         groups = dict(rendered_groups)
+        project = u.Cli.toml_mapping_child(merged, c.Infra.PROJECT) or {}
+        name = project.get(c.Infra.NAME)
+        is_root = isinstance(name, str) and canonicalize_name(
+            name
+        ) == canonicalize_name(c.Infra.PKG_ROOT)
+        fleet_suppliers = (
+            set()
+            if is_root
+            else {
+                canonicalize_name(Requirement(item).name)
+                for item in config.Infra.codegen.scaffold.project.required_flext_dev
+            }
+        )
         for name, entries in live_groups.items():
             authored_name = (
                 FlextInfraUtilitiesPyprojectRequirements.dependency_group_name(
@@ -246,6 +261,14 @@ class FlextInfraUtilitiesPyprojectOverlay:
             )
             if custom.failure:
                 return r[bool].from_failure(custom)
+            custom_entries = tuple(
+                item
+                for item in custom.value
+                if not (
+                    isinstance(item, str)
+                    and canonicalize_name(Requirement(item).name) in fleet_suppliers
+                )
+            )
             if group == c.Infra.DependencyGroup.CODEGEN:
                 required = u.validate_value(
                     m.Infra.DependencyGroupEntries,
@@ -263,7 +286,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
                 requirements = FlextInfraUtilitiesPyprojectRequirements
                 merged_entries = requirements.merge_dependency_group_entries(
                     required.value.root,
-                    custom.value,
+                    custom_entries,
                 )
                 groups[selected] = (
                     FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
@@ -273,7 +296,7 @@ class FlextInfraUtilitiesPyprojectOverlay:
             else:
                 groups[selected] = (
                     FlextInfraUtilitiesPyprojectRequirements.dependency_group_wire(
-                        custom.value,
+                        custom_entries,
                     )
                 )
         validated = u.validate_value(

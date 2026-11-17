@@ -686,6 +686,7 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         requirement_sources = cls._normalized_requirement_sources(
             source,
             source_context,
+            workspace=(workspace.repository.role is c.Infra.MakeProfile.WORKSPACE),
         )
         if requirement_sources.failure:
             return r[str].from_failure(requirement_sources)
@@ -801,6 +802,8 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
         cls,
         source: t.Cli.TomlDocument,
         provenance: p.Infra.RequirementsProvenance,
+        *,
+        workspace: bool = False,
     ) -> p.Result[tuple[Sequence[str], Mapping[str, str], Mapping[str, str]]]:
         """Validate composed declarations before applying the one source context.
 
@@ -823,7 +826,9 @@ class FlextInfraUtilitiesPyprojectDocument(FlextInfraUtilitiesPyprojectUvSources
                 "candidate dependencies are not declared requirements: "
                 + ", ".join(unused_candidates),
             )
-        normalized = cls._normalize_requirements(source, provenance=provenance)
+        normalized = cls._normalize_requirements(
+            source, provenance=provenance, workspace=workspace
+        )
         if normalized.failure:
             return result_type.from_failure(
                 normalized,

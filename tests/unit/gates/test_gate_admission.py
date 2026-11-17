@@ -59,13 +59,56 @@ class TestsFlextInfraGateAdmission:
         name: str,
         mode: str = TestsFlextInfraGateAdmissionHolder.Mode.HOLD,
         *,
-        budget_seconds: int = 3600,
-        repeat: bool = False,
+        policy: tuple[int, bool] = (3600, False),
     ) -> p.Cli.ManagedProcess:
         """Start one holder that admits itself, records its run and waits for release.
 
         The runner's own CI and hook-stage markers never leak into a holder:
         only ``environment`` decides whether the repeat limit applies.
+
+        Returns:
+            The running holder process.
+
+        """
+        ci = FlextInfraConfig.fetch_global().Infra.codegen.make.ci
+        budget_seconds, repeat = policy
+        return tm.ok(
+            u.Cli.process_start(
+                [
+                    sys.executable,
+                    "-m",
+                    "tests.fixtures.gate_admission_holder",
+                    name,
+                    str(Path(environment["XDG_STATE_HOME"]).parent),
+                    mode,
+                    str(budget_seconds),
+                    *(("repeat",) if repeat else ()),
+                ],
+                cwd=Path.cwd(),
+                options=m.Cli.ProcessOptions(
+                    env=environment,
+                    remove_env_keys=[
+                        key
+                        for key in (
+                            ci.variable,
+                            ci.remote_variable,
+                            c.Infra.GATE_REPEAT_HOOK_STAGE_ENV,
+                            c.Infra.GATE_ADMISSION_TICKET_ENV,
+                        )
+                        if key not in environment
+                    ],
+                ),
+            )
+        )
+
+    @classmethod
+    def _gate_in(
+        cls,
+        environment: dict[str, str],
+        name: str,
+        root: Path,
+    ) -> p.Cli.ManagedProcess:
+        """Start one held gate whose ticket repository is ``root``.
 
         Returns:
             The running holder process.
@@ -79,10 +122,9 @@ class TestsFlextInfraGateAdmission:
                     "-m",
                     "tests.fixtures.gate_admission_holder",
                     name,
-                    str(Path(environment["XDG_STATE_HOME"]).parent),
-                    mode,
-                    str(budget_seconds),
-                    *(("repeat",) if repeat else ()),
+                    str(root),
+                    TestsFlextInfraGateAdmissionHolder.Mode.HOLD,
+                    "3600",
                 ],
                 cwd=Path.cwd(),
                 options=m.Cli.ProcessOptions(
@@ -127,6 +169,37 @@ class TestsFlextInfraGateAdmission:
     def _release(cls, tmp_path: Path, name: str, process: p.Cli.ManagedProcess) -> int:
         (tmp_path / f"{name}.release").write_text("", encoding="utf-8")
         return tm.ok(process.wait(timeout=_WAIT_SECONDS))
+
+    @classmethod
+    @pytest.mark.slow
+    def test_mutating_gate_waits_for_an_overlapping_workspace(
+        cls,
+        tmp_path: Path,
+    ) -> None:
+        """A gen beside a gen on its parent or child checkout is not admitted."""
+        environment = cls._environment(tmp_path, "normal")
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        member.mkdir(parents=True)
+        gate = c.Infra.GATE_ADMISSION_GENERATION
+        holder = cls._gate_in(environment, gate, workspace)
+        waiter: p.Cli.ManagedProcess | None = None
+        try:
+            cls._await(workspace / f"{gate}.started")
+            waiter = cls._gate_in(environment, gate, member)
+            cls._await_waiting(tmp_path, waiter)
+            policy = FlextInfraConfig.fetch_global().Infra.gate_admission
+            time.sleep(2 * policy.poll_seconds + 1)
+            tm.that((member / f"{gate}.started").exists(), eq=False)
+            (workspace / f"{gate}.release").write_text("", encoding="utf-8")
+            cls._await(member / f"{gate}.started")
+        finally:
+            for process, root in ((holder, workspace), (waiter, member)):
+                if process is None:
+                    continue
+                if process.poll() is None:
+                    (root / f"{gate}.release").write_text("", encoding="utf-8")
+                tm.ok(process.wait(timeout=_WAIT_SECONDS))
 
     @classmethod
     @pytest.mark.slow
@@ -276,7 +349,7 @@ class TestsFlextInfraGateAdmission:
     ) -> None:
         """A route that outlives its budget stops with the timeout status."""
         environment = cls._environment(tmp_path, None)
-        gate = cls._gate(environment, "slow", budget_seconds=3)
+        gate = cls._gate(environment, "slow", policy=(3, False))
         cls._await(tmp_path / "slow.started")
         tm.that(
             tm.ok(gate.wait(timeout=_WAIT_SECONDS)),
@@ -291,7 +364,7 @@ class TestsFlextInfraGateAdmission:
         environment = cls._environment(tmp_path, "high")
         holder = cls._gate(environment, "holder")
         cls._await(tmp_path / "holder.started")
-        waiter = cls._gate(environment, "waiter", budget_seconds=2)
+        waiter = cls._gate(environment, "waiter", policy=(2, False))
         cls._await_waiting(tmp_path, waiter)
         time.sleep(2.05)
         tm.that((tmp_path / "waiter.started").exists(), eq=False)
@@ -387,7 +460,7 @@ class TestsFlextInfraGateAdmission:
     def _succeed(cls, tmp_path: Path, environment: dict[str, str]) -> None:
         """Run one full-weight gate to success, opening its repeat window."""
         (tmp_path / "check.started").unlink(missing_ok=True)
-        gate = cls._gate(environment, "check", repeat=True)
+        gate = cls._gate(environment, "check", policy=(3600, True))
         cls._await(tmp_path / "check.started")
         tm.that(cls._release(tmp_path, "check", gate), eq=0)
         (tmp_path / "check.release").unlink()
@@ -398,7 +471,7 @@ class TestsFlextInfraGateAdmission:
         environment = cls._environment(tmp_path, None)
         cls._succeed(tmp_path, environment)
         (tmp_path / "check.started").unlink()
-        repeated = cls._gate(environment, "check", repeat=True)
+        repeated = cls._gate(environment, "check", policy=(3600, True))
         tm.that(
             tm.ok(repeated.wait(timeout=_WAIT_SECONDS)),
             eq=c.Infra.GATE_ADMISSION_REFUSED_EXIT_CODE,
@@ -416,7 +489,7 @@ class TestsFlextInfraGateAdmission:
             environment,
             "check",
             TestsFlextInfraGateAdmissionHolder.Mode.FAIL,
-            repeat=True,
+            policy=(3600, True),
         )
         cls._await(tmp_path / "check.started")
         tm.that(

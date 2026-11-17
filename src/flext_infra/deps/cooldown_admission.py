@@ -50,32 +50,21 @@ class FlextInfraCooldownAdmission(s[bool]):
         root, uv = located.value
         violations: list[str] = []
         plans: dict[Path, Mapping[str, str]] = {}
-        for project_root in u.Infra.governed_project_roots(root):
-            pyproject = project_root / c.PYPROJECT_FILENAME
-            read = cls._declarations(pyproject)
-            if read.failure:
-                return r[bool].from_failure(read)
-            owned, registry = read.value
-            violations.extend(cls._managed_violations(pyproject, registry))
-            refused = cls._refused((runner, uv, project_root), registry)
-            if refused.failure:
-                return r[bool].from_failure(refused)
-            released: dict[str, str] = {}
-            for (section, line, name), reason in refused.value:
-                if (
-                    name in owned
-                    and section != c.Infra.UV_CONSTRAINT_DEPENDENCIES_SECTION
-                ):
-                    released[line] = u.Infra.bounded_requirement(
-                        line, owned[name], None
-                    )
-                    continue
-                violations.append(
-                    f"{pyproject}: {line} [{section}]; owner: "
-                    f"{cls._owner(line, pyproject, section)}\n{reason}",
-                )
-            if released:
-                plans[pyproject] = released
+        governed = u.Infra.governed_project_roots(root)
+        names = cls._workspace_distribution_names(governed)
+        if names.failure:
+            return r[bool].from_failure(names)
+        workspace_names = names.value
+        for project_root in governed:
+            admitted = cls._admit_project(
+                project_root,
+                workspace_names,
+                (runner, uv, project_root),
+                violations,
+                plans,
+            )
+            if admitted.failure:
+                return admitted
         if violations:
             for violation in violations:
                 u.Cli.error(f"cooldown: {violation}")
@@ -84,6 +73,44 @@ class FlextInfraCooldownAdmission(s[bool]):
                 "change each at its named owner before upg writes any lock",
             )
         return cls._published(plans, "released for the cooldown resolution")
+
+    @classmethod
+    def _admit_project(
+        cls,
+        project_root: Path,
+        workspace_names: frozenset[str],
+        scope: tuple[p.Cli.CommandRunner, Path, Path],
+        violations: list[str],
+        plans: dict[Path, Mapping[str, str]],
+    ) -> p.Result[bool]:
+        """Release or report one project's authored requirements.
+
+        Returns:
+            Success after recording the project's plan, or the first failure.
+
+        """
+        result = r[bool]
+        pyproject = project_root / c.PYPROJECT_FILENAME
+        read = cls._declarations(pyproject, workspace_names)
+        if read.failure:
+            return result.from_failure(read)
+        owned, registry = read.value
+        violations.extend(cls._managed_violations(pyproject, registry))
+        refused = cls._refused(scope, registry)
+        if refused.failure:
+            return result.from_failure(refused)
+        released: dict[str, str] = {}
+        for (section, line, name), reason in refused.value:
+            if name in owned and section != c.Infra.UV_CONSTRAINT_DEPENDENCIES_SECTION:
+                released[line] = u.Infra.bounded_requirement(line, owned[name], None)
+                continue
+            violations.append(
+                f"{pyproject}: {line} [{section}]; owner: "
+                f"{cls._owner(line, pyproject, section)}\n{reason}",
+            )
+        if released:
+            plans[pyproject] = released
+        return result.ok(value=True)
 
     @classmethod
     def record_bounds(
@@ -101,8 +128,12 @@ class FlextInfraCooldownAdmission(s[bool]):
         if root.failure:
             return r[bool].from_failure(root)
         plans: dict[Path, Mapping[str, str]] = {}
-        for project_root in u.Infra.governed_project_roots(root.value):
-            planned = cls._locked_bounds(project_root)
+        governed = u.Infra.governed_project_roots(root.value)
+        names = cls._workspace_distribution_names(governed)
+        if names.failure:
+            return r[bool].from_failure(names)
+        for project_root in governed:
+            planned = cls._locked_bounds(project_root, names.value)
             if planned.failure:
                 return r[bool].from_failure(planned)
             if planned.value:
@@ -122,7 +153,11 @@ class FlextInfraCooldownAdmission(s[bool]):
         ).map(lambda context: context.runtime_root)
 
     @classmethod
-    def _locked_bounds(cls, project_root: Path) -> p.Result[Mapping[str, str]]:
+    def _locked_bounds(
+        cls,
+        project_root: Path,
+        workspace_names: frozenset[str],
+    ) -> p.Result[Mapping[str, str]]:
         """Plan one project's upg-owned bounds from its own ``uv.lock``.
 
         Returns:
@@ -131,7 +166,7 @@ class FlextInfraCooldownAdmission(s[bool]):
         """
         result = r[Mapping[str, str]]
         pyproject = project_root / c.PYPROJECT_FILENAME
-        read = cls._declarations(pyproject)
+        read = cls._declarations(pyproject, workspace_names)
         if read.failure:
             return result.from_failure(read)
         owned, registry = read.value
@@ -170,11 +205,13 @@ class FlextInfraCooldownAdmission(s[bool]):
     @staticmethod
     def _declarations(
         pyproject: Path,
+        workspace_names: frozenset[str],
     ) -> p.Result[tuple[Mapping[str, str], Sequence[tuple[str, str, str]]]]:
         """Read one pyproject's upg record and its registry requirements.
 
-        Direct references and ``[tool.uv.sources]`` names (FLEXT members and
-        forks) resolve outside the index and its cooldown and are skipped.
+        Direct references, ``[tool.uv.sources]`` names and the governed
+        workspace members resolve outside the index and its cooldown and are
+        skipped; a bare member requirement is a workspace edge, not a release.
 
         Returns:
             The owned ``name -> operator`` record and the unique
@@ -206,7 +243,7 @@ class FlextInfraCooldownAdmission(s[bool]):
         uv_table = (
             u.Cli.toml_mapping_path(payload.value, (c.Infra.TOOL, c.Infra.UV)) or {}
         )
-        sourced = frozenset(
+        sourced = workspace_names | frozenset(
             u.Infra.dep_name(name) or name
             for name in u.Cli.toml_mapping_child(uv_table, c.Infra.UV_SOURCES_KEY) or {}
         )
@@ -223,6 +260,32 @@ class FlextInfraCooldownAdmission(s[bool]):
                 if name is not None and line not in registry:
                     registry[line] = (".".join((*path, key)), line, name)
         return result.ok((owned, tuple(registry.values())))
+
+    @staticmethod
+    def _workspace_distribution_names(
+        project_roots: Sequence[Path],
+    ) -> p.Result[frozenset[str]]:
+        """Return the canonical names of every governed workspace member.
+
+        A bare requirement on one of these names is a workspace edge; it never
+        resolves from the package registry and so never enters the cooldown.
+
+        Returns:
+            The canonical member names, or the first pyproject failure.
+
+        """
+        result = r[frozenset[str]]
+        names: set[str] = set()
+        for project_root in project_roots:
+            pyproject = project_root / c.PYPROJECT_FILENAME
+            payload = u.Cli.toml_read_json(pyproject)
+            if payload.failure:
+                return result.from_failure(payload)
+            project_name = u.Infra.project_name_from_payload(pyproject, payload.value)
+            canonical = u.Infra.dep_name(project_name)
+            if canonical:
+                names.add(canonical)
+        return result.ok(frozenset(names))
 
     @classmethod
     def _refused(

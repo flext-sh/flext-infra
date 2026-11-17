@@ -51,7 +51,6 @@ class TestsFlextInfraPyprojectDependencyGroups:
         composed = u.Infra.project_development_requirements(
             policy,
             distribution=own,
-            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             declared=declared,
         )
 
@@ -554,3 +553,23 @@ class TestsFlextInfraPyprojectDependencyGroups:
             actual["dependency-groups"],
             eq=expected["dependency-groups"],
         )
+
+    @staticmethod
+    def test_fleet_dev_suppliers_apply_only_to_the_workspace_root() -> None:
+        """A member drops a redeclared fleet dev supplier; the root keeps it."""
+        policy = config.Infra.codegen.scaffold.project
+        supplier = (
+            "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev"
+        )
+        member = u.Infra.project_development_requirements(
+            policy,
+            distribution="flext-cli",
+            declared=(supplier,),
+        )
+        tm.that(any("flext-infra" in item for item in member), truth=False)
+        root = u.Infra.project_development_requirements(
+            policy,
+            distribution=c.Infra.PKG_ROOT,
+            declared=(),
+        )
+        tm.that(any("flext-infra" in item for item in root), truth=True)

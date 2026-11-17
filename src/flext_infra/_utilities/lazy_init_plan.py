@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
+import importlib.util
 import sys
 from collections.abc import Mapping, Sequence
 from keyword import iskeyword
@@ -34,10 +36,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesProjectManagedArtifacts,
     FlextInfraUtilitiesPythonModel,
 )
-from flext_infra._utilities._rope import (
-    FlextInfraUtilitiesRopeAnalysis,
-    FlextInfraUtilitiesRopeCore,
-)
 
 
 class FlextInfraUtilitiesLazyInitPlan:
@@ -50,7 +48,10 @@ class FlextInfraUtilitiesLazyInitPlan:
         *,
         root: Path,
         scoped: bool,
-        snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None = None,
+        overrides: tuple[
+            FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None,
+            Mapping[str, Path] | None,
+        ] = (None, None),
     ) -> FlextInfraModelsCodegenLazyInit.LazyInitRun:
         """Open one repository run over its source inventory.
 
@@ -58,10 +59,12 @@ class FlextInfraUtilitiesLazyInitPlan:
             The run every planning step reads and caches through.
 
         """
+        snapshot, providers = overrides
         return FlextInfraModelsCodegenLazyInit.LazyInitRun.model_validate({
             "root": root,
             "scoped": scoped,
             "index": index,
+            "providers": dict(providers or {}),
             "model": FlextInfraUtilitiesPythonModel.python_model_run(
                 source_project,
                 {
@@ -753,7 +756,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         # An attribute base (``Root.Attr``) is shared through its root's route.
         root, _, path = base.partition(".")
         dotted = None if facts is None else facts.imports.get(root)
-        route = cls._lazy_init_ancestor_route(run, scope, dotted)
+        route = cls._lazy_init_ancestor_route(run, scope, dotted, root)
         if route is not None:
             return (route[0], f"{route[1]}.{path}" if path else route[1]), True
         if path:
@@ -966,13 +969,15 @@ class FlextInfraUtilitiesLazyInitPlan:
                     pending.append(target)
         return tuple(members), routed
 
-    @staticmethod
+    @classmethod
     def _lazy_init_ancestor_route(
+        cls,
         run: FlextInfraModelsCodegenLazyInit.LazyInitRun,
         scope: tuple[
             FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
         ],
         dotted: str | None,
+        name: str,
     ) -> tuple[str, str] | None:
         """Return the import route of a base that another package publishes.
 
@@ -991,7 +996,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         if dotted is None:
             return None
-        provider, _, name = dotted.rpartition(".")
+        provider = dotted
         if not provider or provider.split(".", maxsplit=1)[0] == scope[0].surface:
             return None
         plan = next(
@@ -1003,24 +1008,72 @@ class FlextInfraUtilitiesLazyInitPlan:
             None,
         )
         if plan is not None:
-            published = plan.ownership == "generator" and name in plan.lazy_map
+            facts = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                run.model, plan.context.init_path, provider
+            )
+            exports = FlextInfraUtilitiesPythonModel.python_model_exports(facts) or ()
+            published = plan.ownership == "generator" and (
+                name in plan.lazy_map or name in exports
+            )
         else:
-            initializer = FlextInfraUtilitiesRopeCore.package_initializer(
-                run.model.source_project, provider
-            )
-            published = (
-                initializer is not None
-                and initializer.source_code.startswith(c.Infra.AUTOGEN_HEADER)
-                and any(
-                    name in names
-                    for _, names in (
-                        FlextInfraUtilitiesRopeAnalysis.lazy_import_mapping_source(
-                            initializer.source_code
-                        )[0]
-                    )
+            path = run.model.module_files.get(provider)
+            if path is None:
+                package_dir = run.index.package_dir_by_name.get(provider)
+                path = (
+                    package_dir / c.Infra.INIT_PY if package_dir is not None else None
                 )
+            if path is None:
+                try:
+                    spec = importlib.util.find_spec(provider)
+                except (ImportError, AttributeError, ValueError):
+                    spec = None
+                if spec is not None and spec.origin is not None:
+                    path = Path(spec.origin)
+            source = (
+                path.read_text(encoding=c.DEFAULT_ENCODING)
+                if path is not None and path.is_file()
+                else ""
             )
+            published = source.startswith(
+                c.Infra.AUTOGEN_HEADER
+            ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
         return (provider, name) if published else None
+
+    @staticmethod
+    def _lazy_import_names(source: str) -> frozenset[str]:
+        """Read a generated initializer's published names from its own source.
+
+        Returns:
+            The ``_LAZY_IMPORTS`` keys, or no names when the initializer has none.
+
+        """
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return frozenset()
+        for node in tree.body:
+            if not isinstance(node, ast.Assign | ast.AnnAssign):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            names = {target.id for target in targets if isinstance(target, ast.Name)}
+            value = node.value
+            if c.Infra.DUNDER_ALL in names and isinstance(value, (ast.Tuple, ast.List)):
+                return frozenset(
+                    element.value
+                    for element in value.elts
+                    if isinstance(element, ast.Constant)
+                    and isinstance(element.value, str)
+                )
+            if c.Infra.LAZY_IMPORTS not in names:
+                continue
+            if isinstance(value, ast.Dict):
+                return frozenset(
+                    key.value
+                    for key in value.keys
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str)
+                )
+            return frozenset()
+        return frozenset()
 
     @staticmethod
     def _lazy_init_base_target(
