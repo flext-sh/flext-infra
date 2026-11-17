@@ -420,6 +420,33 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         )
 
     @classmethod
+    def _manifest_infra_source(
+        cls,
+        *,
+        repository_root: Path,
+        distribution: str,
+        policy_branch: str,
+    ) -> p.Result[tuple[str, str]] | None:
+        """Resolve the manifest-declared infrastructure source, when present.
+
+        Returns:
+            The resolved source, or ``None`` when the manifest declares none.
+
+        """
+        manifest = cls._git_declared_distribution_url(
+            repository_root=repository_root,
+            distribution=distribution,
+        )
+        if manifest.failure:
+            return r[tuple[str, str]].from_failure(manifest)
+        if not manifest.value:
+            return None
+        return cls.resolve_integration_branch(
+            repository_root,
+            policy_branch=policy_branch,
+        ).map(lambda branch: (manifest.value, branch))
+
+    @classmethod
     def _detected_infra_source(
         cls,
         *,
@@ -448,17 +475,25 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
             )
             if declared.failure or declared.value[0]:
                 return declared
-        manifest = cls._git_declared_distribution_url(
+        superproject = repository_root.parent
+        if (
+            superproject != repository_root
+            and (superproject / c.Infra.GITMODULES_FILENAME).is_file()
+        ):
+            detected = cls._detected_infra_source(
+                repository_root=superproject,
+                distribution=distribution,
+                policy_branch=policy_branch,
+            )
+            if detected.failure or detected.value[0]:
+                return detected
+        manifest_source = cls._manifest_infra_source(
             repository_root=repository_root,
             distribution=distribution,
+            policy_branch=policy_branch,
         )
-        if manifest.failure:
-            return r[tuple[str, str]].from_failure(manifest)
-        if manifest.value:
-            return cls.resolve_integration_branch(
-                repository_root,
-                policy_branch=policy_branch,
-            ).map(lambda branch: (manifest.value, branch))
+        if manifest_source is not None:
+            return manifest_source
         declared_line = cls._declared_flext_source(
             repository_root, distribution=distribution, policy_branch=policy_branch
         )

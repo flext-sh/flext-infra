@@ -1363,6 +1363,7 @@ install_lazy_exports(
             "configured_repository_ref",
             "flext_integration_line",
             "flext_integration_line_for_checkout",
+            "_manifest_infra_source",
             "_detected_infra_source",
             "_checkout_origin_source",
             "_declared_flext_source",
