@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import os
-import traceback
 from pathlib import Path
 
 from tests import c, t, tm, u
@@ -70,7 +69,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
-        profile = Profile()
+        Profile()
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
             monkeypatch.setattr(ast, "parse", record)
