@@ -3,6 +3,9 @@
 The workspace elects the editable checkout and a standalone consumer takes the
 locked git source. An embedded ``@ git+...`` makes uv see two URLs for the same
 package and refuse the resolution, which stopped ``make upg``/``make gen``.
+
+Copyright (c) 2026 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
