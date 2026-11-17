@@ -1056,20 +1056,16 @@ class FlextInfraUtilitiesLazyInitPlan:
                 continue
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             names = {target.id for target in targets if isinstance(target, ast.Name)}
-            if c.Infra.DUNDER_ALL in names and isinstance(
-                node.value, (ast.Tuple, ast.List)
-            ):
+            value = node.value
+            if c.Infra.DUNDER_ALL in names and isinstance(value, (ast.Tuple, ast.List)):
                 return frozenset(
                     element.value
-                    for element in node.value.elts
+                    for element in value.elts
                     if isinstance(element, ast.Constant)
                     and isinstance(element.value, str)
                 )
             if c.Infra.LAZY_IMPORTS not in names:
                 continue
-            value = (
-                node.value if isinstance(node, (ast.Assign, ast.AnnAssign)) else None
-            )
             if isinstance(value, ast.Dict):
                 return frozenset(
                     key.value

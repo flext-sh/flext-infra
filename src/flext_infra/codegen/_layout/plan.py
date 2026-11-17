@@ -184,9 +184,26 @@ class FlextInfraCodegenLayoutPlan:
         if declared.failure:
             raise ValueError(declared.error or "invalid .gitmodules")
         allowed.update(item.path.parts[0] for item in declared.value)
+        primary = u.Infra.git_primary_worktree_root(
+            m.Infra.GitRepoRequest(repo_root=project_dir),
+        )
+        topology = primary.value.primary_root if primary.success else project_dir
+        superproject = u.Infra.git_superproject_working_tree(
+            m.Infra.GitRepoRequest(repo_root=topology),
+        )
+        governed = False
+        if superproject.success and superproject.value.text.strip():
+            super_root = Path(superproject.value.text.strip())
+            try:
+                relative = topology.resolve().relative_to(super_root.resolve())
+            except ValueError:
+                relative = None
+            governed = relative is not None and (
+                relative.parts[0] in u.Infra.workspace_project_paths(super_root)
+            )
         profile = (
             c.Infra.MakeProfile.WORKSPACE
-            if declared.value
+            if declared.value or governed
             else c.Infra.MakeProfile.STANDALONE
         )
         allowed.update(
