@@ -750,7 +750,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         # An attribute base (``Root.Attr``) is shared through its root's route.
         root, _, path = base.partition(".")
         dotted = None if facts is None else facts.imports.get(root)
-        route = cls._lazy_init_ancestor_route(run, scope, dotted)
+        route = cls._lazy_init_ancestor_route(run, scope, dotted, root)
         if route is not None:
             return (route[0], f"{route[1]}.{path}" if path else route[1]), True
         if path:
@@ -971,6 +971,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
         ],
         dotted: str | None,
+        name: str,
     ) -> tuple[str, str] | None:
         """Return the import route of a base that another package publishes.
 
@@ -989,7 +990,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         if dotted is None:
             return None
-        provider, _, name = dotted.rpartition(".")
+        provider = dotted
         if not provider or provider.split(".", maxsplit=1)[0] == scope[0].surface:
             return None
         plan = next(
@@ -1011,7 +1012,7 @@ class FlextInfraUtilitiesLazyInitPlan:
             )
             published = source.startswith(
                 c.Infra.AUTOGEN_HEADER
-            ) and name in cls._lazy_import_names(source)
+            ) and name in FlextInfraUtilitiesLazyInitPlan._lazy_import_names(source)
         return (provider, name) if published else None
 
     @staticmethod
@@ -1034,10 +1035,17 @@ class FlextInfraUtilitiesLazyInitPlan:
                 if isinstance(node, ast.AnnAssign)
                 else []
             )
-            if not any(
-                isinstance(target, ast.Name) and target.id == c.Infra.LAZY_IMPORTS
-                for target in targets
+            names = {target.id for target in targets if isinstance(target, ast.Name)}
+            if c.Infra.DUNDER_ALL in names and isinstance(
+                node.value, (ast.Tuple, ast.List)
             ):
+                return frozenset(
+                    element.value
+                    for element in node.value.elts
+                    if isinstance(element, ast.Constant)
+                    and isinstance(element.value, str)
+                )
+            if c.Infra.LAZY_IMPORTS not in names:
                 continue
             value = (
                 node.value if isinstance(node, (ast.Assign, ast.AnnAssign)) else None
