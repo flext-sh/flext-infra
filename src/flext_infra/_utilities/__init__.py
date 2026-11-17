@@ -465,6 +465,7 @@ install_lazy_exports(
             "project_dev_groups",
             "canonical_dev_dependencies",
             "canonical_dev_dependencies_from_payload",
+            "fleet_requirement",
             "project_development_requirements",
             "project_dependency_names_from_payload",
             "workspace_dependency_order",
