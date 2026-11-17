@@ -429,23 +429,6 @@ class FlextInfraUtilitiesPyprojectRequirements:
             raise ValueError(message)
         return name, requirement
 
-    @staticmethod
-    def _plain_internal_requirement(requirement: str) -> str:
-        """Render an internal requirement for the local workspace source.
-
-        In a workspace the root ``[tool.uv.sources]`` owns the path/editable
-        mapping; an inline Git URL in the member requirement makes that source
-        unresolvable. Extras and markers survive.
-
-        Returns:
-            The distribution requirement without its source URL.
-
-        """
-        parsed = Requirement(requirement)
-        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
-        marker = f" ; {parsed.marker}" if parsed.marker is not None else ""
-        return f"{parsed.name}{extras}{marker}"
-
     @classmethod
     def _canonical_requirement(
         cls,
@@ -482,7 +465,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             or cls._declares_direct_source(requirement)
         ):
             return r[str].ok(
-                cls._plain_internal_requirement(requirement)
+                FlextInfraUtilitiesDependencies.fleet_requirement(requirement)
                 if workspace
                 else requirement.strip(),
             )
