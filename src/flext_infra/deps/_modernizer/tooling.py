@@ -283,38 +283,7 @@ class FlextInfraPyprojectModernizerTooling(FlextInfraPyprojectModernizerDocument
         if conformed.failure:
             return result_type.from_failure(conformed)
         state, _ = conformed.value
-        self._plain_fleet_requirements(state.payload)
         return result_type.ok(state.payload)
-
-    @staticmethod
-    def _plain_fleet_requirements(payload: t.MutableJsonMapping) -> None:
-        """Strip embedded source URLs from fleet requirements in the projection.
-
-        The workspace elects one source per fleet package and a standalone
-        consumer takes the locked git source. A requirement that carries its own
-        ``@ git+...`` cannot be overridden, so uv reports conflicting URLs for
-        the same package and refuses the resolution that ``make upg``/``make
-        gen`` depend on. Normalising the published projection keeps the
-        declarations valid in both scopes.
-        """
-        project = payload.get(c.Infra.PROJECT)
-        if isinstance(project, dict):
-            FlextInfraPyprojectModernizerTooling._rewrite_requirements(
-                project.get(c.Infra.DEPENDENCIES)
-            )
-        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, dict):
-            for requirements in groups.values():
-                FlextInfraPyprojectModernizerTooling._rewrite_requirements(requirements)
-
-    @staticmethod
-    def _rewrite_requirements(requirements: object) -> None:
-        """Replace fleet git requirements in place; other entries are untouched."""
-        if not isinstance(requirements, list):
-            return
-        for index, requirement in enumerate(requirements):
-            if isinstance(requirement, str):
-                requirements[index] = u.Infra.fleet_requirement(requirement)
 
 
 __all__: list[str] = ["FlextInfraPyprojectModernizerTooling"]
