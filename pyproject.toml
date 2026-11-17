@@ -615,7 +615,6 @@ name = "flext-core"
 [tool.uv.exclude-newer-package]
 soupsieve = false
 
-[tool.uv.sources]
 
 [tool.interrogate]
 fail-under = 70
