@@ -456,6 +456,7 @@ install_lazy_exports(
         "FlextInfraConstantsCodegenLazy": (
             "MAX_ALIAS_LENGTH",
             "AUTOGEN_HEADER",
+            "LAZY_IMPORTS",
             "GENERATED_EXPORT_SIDECAR_RE",
             "OBSOLETE_ROOT_SUPPORT_NAMES",
             "LAZY_BOOTSTRAP_HELPERS",
