@@ -1054,3 +1054,68 @@ class TestsFlextInfraCodegenMakeEnvironment:
             url, ref = tm.ok(u.Infra.declared_git_source(requirement))
             tm.that(url.endswith(f"/{u.Infra.dep_name(requirement)}.git"), truth=True)
             tm.that(ref == u.Tests.provider_branch(), truth=True)
+
+    @staticmethod
+    def test_activated_environment_resolves_managed_host_tools_first(
+        tmp_path: Path,
+    ) -> None:
+        """The activated checkout resolves host tools to the managed shim farm."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        managed = ("gc", "bd", "rtk", "openmoat")
+        (project_root / "custom.mk").write_text(
+            ".PHONY: probe-host-tools\n"
+            "probe-host-tools:\n"
+            "\t@printf '%s\\n' \"$$PATH\" > resolved-path.txt\n"
+            + "".join(
+                f"\t@command -v {tool} > resolved-{tool}.txt\n" for tool in managed
+            ),
+            encoding="utf-8",
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                (c.Infra.CLI_DIRENV, "allow", str(project_root)),
+                cwd=project_root,
+            ),
+        )
+        process = tm.ok(
+            u.Tests.run_isolated_make(
+                ["--no-print-directory", "probe-host-tools"],
+                cwd=project_root,
+            ),
+        )
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        entries = (
+            (project_root / "resolved-path.txt")
+            .read_text(
+                encoding="utf-8",
+            )
+            .split(os.pathsep)
+        )
+        resolved_gc = (
+            (project_root / "resolved-gc.txt")
+            .read_text(
+                encoding="utf-8",
+            )
+            .strip()
+        )
+        farm = entries.index(str(Path(resolved_gc).parent))
+        for system_root in ("/usr/sbin", "/usr/bin", "/bin"):
+            if system_root in entries:
+                tm.that(farm, lt=entries.index(system_root))
+        for tool in managed:
+            resolved = (
+                (project_root / f"resolved-{tool}.txt")
+                .read_text(
+                    encoding="utf-8",
+                )
+                .strip()
+            )
+            tm.that(Path(resolved).name, eq=tool)
+            tm.that(str(Path(resolved).parent.parent), has=["/mise/"], msg=resolved)
