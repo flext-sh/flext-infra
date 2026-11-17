@@ -446,10 +446,17 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if dependency_name is None:
             return r[str].ok(requirement.strip())
+        # A fleet distribution is never a source authority: the workspace
+        # elects its editable checkout and a standalone consumer takes the
+        # locked git source. Preserving the generator's own `@ git+...` seed
+        # here makes uv see two URLs for one package (file:///... editable and
+        # git+...@0.12.0-dev) and refuse the resolution that `make upg` and
+        # `make gen` depend on, so a fleet requirement keeps only its name.
+        fleet_distribution = dependency_name.startswith("flext-")
         if (
             not generated
             or dependency_name in provenance.native_sources
-            or cls._declares_direct_source(requirement)
+            or (cls._declares_direct_source(requirement) and not fleet_distribution)
         ) and dependency_name not in provenance.candidate_sources:
             return r[str].ok(requirement.strip())
         if "@" not in requirement.partition(";")[0] and (
