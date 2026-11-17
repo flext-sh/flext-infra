@@ -168,36 +168,30 @@ class UtilityFacadeOwnerPublication:
         self._write(package / "__init__.py", "")
         self._write(
             package / definition.directory / "__init__.py",
-            "from .base import FlextTestModelsBase\n"
-            "from .vocabulary import FlextTestVocabulary\n"
-            "__all__ = ['FlextTestModelsBase', 'FlextTestVocabulary']\n",
+            "from .base import OwnerBase\n"
+            "from .vocabulary import OwnerVocabulary\n"
+            "__all__ = ['OwnerBase', 'OwnerVocabulary']\n",
         )
-        self._write(
-            package / definition.directory / "base.py",
-            "from pydantic import BaseModel\n"
-            "class FlextTestModelsBase:\n"
-            "    class OwnerBase(BaseModel):\n"
-            "        value: int = 7\n"
-            "        class OwnerBaseEntity:\n"
-            "            pass\n"
-            "__all__ = ['FlextTestModelsBase']\n",
-        )
-        self._write(
-            package / definition.directory / "vocabulary.py",
-            "class FlextTestVocabulary:\n"
-            "    class OwnerVocabulary:\n"
-            "        value = 7\n"
-            "__all__ = ['FlextTestVocabulary']\n",
-        )
+        for module, name in (("base", "OwnerBase"), ("vocabulary", "OwnerVocabulary")):
+            self._write(
+                package / definition.directory / f"{module}.py",
+                "from pydantic import BaseModel\n"
+                + (
+                    f"class {name}(BaseModel):\n    value: int = 7\n"
+                    if module == "base"
+                    else f"class {name}:\n    value = 7\n"
+                )
+                + f"    class {name}Entity:\n        pass\n"
+                f"__all__ = [{name!r}]\n",
+            )
         facade = package / f"{definition.module}.py"
         indent = "        " if nested else "    "
         owner_module = f"{package.name}.{definition.directory}"
         imports = (
-            f"from {owner_module}.base import FlextTestModelsBase as LocalBase\n"
-            f"from {owner_module}.vocabulary import FlextTestVocabulary\n"
+            f"from {owner_module}.base import OwnerBase as LocalBase\n"
+            f"from {owner_module}.vocabulary import OwnerVocabulary\n"
             if publication[0] == "leaf"
-            else f"from {owner_module} import FlextTestModelsBase as LocalBase, "
-            "FlextTestVocabulary\n"
+            else f"from {owner_module} import OwnerBase as LocalBase, OwnerVocabulary\n"
         )
         self._write(
             facade,
@@ -205,8 +199,8 @@ class UtilityFacadeOwnerPublication:
             + imports
             + "class PublicFacade:\n"
             + ("    class Sample:\n" if nested else "")
-            + f"{indent}Base = LocalBase.OwnerBase\n"
-            + f"{indent}Vocabulary = FlextTestVocabulary.OwnerVocabulary\n"
+            + f"{indent}Base = LocalBase\n"
+            + f"{indent}Vocabulary = OwnerVocabulary\n"
             + f"{family} = PublicFacade\n"
             + f"__all__ = ['PublicFacade', {family!r}]\n",
         )
@@ -261,10 +255,9 @@ class UtilityFacadeOwnerPublication:
                     ".PublicFacade\n"
                     + ("facade = facade.Sample\n" if nested else "")
                     + f"base = import_module('{package.name}."
-                    f"{definition.directory}.base').FlextTestModelsBase.OwnerBase\n"
+                    f"{definition.directory}.base').OwnerBase\n"
                     + f"vocabulary = import_module('{package.name}."
-                    f"{definition.directory}.vocabulary').FlextTestVocabulary"
-                    ".OwnerVocabulary\n"
+                    f"{definition.directory}.vocabulary').OwnerVocabulary\n"
                     + "assert facade.Base is base\n"
                     + "assert facade.Vocabulary is vocabulary\n"
                     + "assert facade.__bases__ == (object,)\n"
