@@ -1052,13 +1052,9 @@ class FlextInfraUtilitiesLazyInitPlan:
         except SyntaxError:
             return frozenset()
         for node in tree.body:
-            targets = (
-                node.targets
-                if isinstance(node, ast.Assign)
-                else [node.target]
-                if isinstance(node, ast.AnnAssign)
-                else []
-            )
+            if not isinstance(node, ast.Assign | ast.AnnAssign):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             names = {target.id for target in targets if isinstance(target, ast.Name)}
             if c.Infra.DUNDER_ALL in names and isinstance(
                 node.value, (ast.Tuple, ast.List)
