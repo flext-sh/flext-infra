@@ -292,6 +292,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         document: t.Cli.TomlDocument,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Render internal requirements from their declared Git provenance.
 
@@ -304,6 +305,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
             project,
             c.Infra.DEPENDENCIES,
             provenance=provenance,
+            workspace=workspace,
         )
         if normalized.failure:
             return normalized
@@ -316,10 +318,13 @@ class FlextInfraUtilitiesPyprojectRequirements:
                     optional,
                     group_name,
                     provenance=provenance,
+                    workspace=workspace,
                 )
                 if group_result.failure:
                     return group_result
-        return cls._normalize_dependency_groups(document, provenance=provenance)
+        return cls._normalize_dependency_groups(
+            document, provenance=provenance, workspace=workspace
+        )
 
     @classmethod
     def _normalize_dependency_groups(
@@ -327,6 +332,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         document: t.Cli.TomlDocument,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Normalize PEP 508 strings in place around native inclusion entries.
 
@@ -349,7 +355,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
                 if not isinstance(entry, str):
                     values.append(entry)
                     continue
-                normalized = cls._canonical_requirement(entry, provenance=provenance)
+                normalized = cls._canonical_requirement(
+                    entry, provenance=provenance, workspace=workspace
+                )
                 if normalized.failure:
                     return r[bool].from_failure(normalized)
                 values.append(normalized.value)
@@ -367,6 +375,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         key: str,
         *,
         provenance: p.Infra.RequirementsProvenance,
+        workspace: bool = False,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries.
 
@@ -391,7 +400,9 @@ class FlextInfraUtilitiesPyprojectRequirements:
         items = validated_items.value
         normalized_items: MutableSequence[str] = []
         for item in items:
-            normalized = cls._canonical_requirement(item, provenance=provenance)
+            normalized = cls._canonical_requirement(
+                item, provenance=provenance, workspace=workspace
+            )
             if normalized.failure:
                 return r[bool].from_failure(normalized)
             normalized_items.append(normalized.value)
@@ -418,6 +429,23 @@ class FlextInfraUtilitiesPyprojectRequirements:
             raise ValueError(message)
         return name, requirement
 
+    @staticmethod
+    def _plain_internal_requirement(requirement: str) -> str:
+        """Render an internal requirement for the local workspace source.
+
+        In a workspace the root ``[tool.uv.sources]`` owns the path/editable
+        mapping; an inline Git URL in the member requirement makes that source
+        unresolvable. Extras and markers survive.
+
+        Returns:
+            The distribution requirement without its source URL.
+
+        """
+        parsed = Requirement(requirement)
+        extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
+        marker = f" ; {parsed.marker}" if parsed.marker is not None else ""
+        return f"{parsed.name}{extras}{marker}"
+
     @classmethod
     def _canonical_requirement(
         cls,
@@ -425,6 +453,7 @@ class FlextInfraUtilitiesPyprojectRequirements:
         *,
         provenance: p.Infra.RequirementsProvenance,
         generated: bool = False,
+        workspace: bool = False,
     ) -> p.Result[str]:
         """Render one internal requirement from its own declared Git source.
 
@@ -446,12 +475,17 @@ class FlextInfraUtilitiesPyprojectRequirements:
         )
         if dependency_name is None:
             return r[str].ok(requirement.strip())
-        if (
-            not generated
+        if dependency_name not in provenance.candidate_sources and (
+            workspace
+            or not generated
             or dependency_name in provenance.native_sources
             or cls._declares_direct_source(requirement)
-        ) and dependency_name not in provenance.candidate_sources:
-            return r[str].ok(requirement.strip())
+        ):
+            return r[str].ok(
+                cls._plain_internal_requirement(requirement)
+                if workspace
+                else requirement.strip(),
+            )
         if "@" not in requirement.partition(";")[0] and (
             FlextInfraUtilitiesDependencies
             .dependency_constraint(
