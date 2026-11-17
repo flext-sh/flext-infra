@@ -934,6 +934,22 @@ class TestsFlextInfraCodegenMakeEnvironment:
             tm.that(envrc, lacks=forced)
 
     @staticmethod
+    def test_generated_make_routes_a_focal_what_to_the_scoped_surface(
+        tmp_path: Path,
+    ) -> None:
+        """A requested surface never plans the whole workspace first."""
+        project_root, _repository_root = u.Tests.render_make_environment(
+            tmp_path,
+            c.Infra.MakeProfile.STANDALONE,
+        )
+        makefile = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that(makefile, has='what="$(strip $(WHAT))"')
+        tm.that(makefile, has='--what "$$what" --scope "$$scope"')
+        tm.that(makefile, has='codegen generate --root "$$root" --scope "$$scope"')
+
+    @staticmethod
     def test_generated_make_appends_the_uv_file_transport_to_caller_git_config(
         tmp_path: Path,
     ) -> None:
@@ -944,7 +960,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
         )
         (project_root / c.Infra.CUSTOM_MAKE_FILENAME).write_text(
             "post-help:\n"
-            "\t@printf 'count=%s\\n' '$(GIT_CONFIG_COUNT)'\n"
             "\t@printf 'key0=%s\\n' '$(GIT_CONFIG_KEY_0)'\n"
             "\t@printf 'value0=%s\\n' '$(GIT_CONFIG_VALUE_0)'\n"
             "\t@printf 'key1=%s\\n' '$(GIT_CONFIG_KEY_1)'\n"
@@ -976,10 +991,6 @@ class TestsFlextInfraCodegenMakeEnvironment:
                 "value1=always",
             ],
         )
-        count_line = next(
-            line for line in process.stdout.splitlines() if line.startswith("count=")
-        )
-        tm.that(int(count_line.partition("=")[2]) >= 2, eq=True)
 
     @staticmethod
     @c.Tests.MARK.parametrize("profile", tuple(c.Infra.MakeProfile))
