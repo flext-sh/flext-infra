@@ -218,7 +218,7 @@ class FlextInfraUtilitiesImportLawPolicyPublication(
                 )
             if name not in exports:
                 continue
-            declaration = cls._module_bindings(ast.parse(source)).get(name)
+            declaration = cls._module_bindings(native.get_ast()).get(name)
             if not isinstance(
                 declaration,
                 ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef | ast.ImportFrom,
