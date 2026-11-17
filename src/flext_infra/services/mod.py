@@ -22,7 +22,6 @@ from flext_infra.codemod.loop import (
 )
 from flext_infra.gates import FlextInfraGatesPyrefly
 from flext_infra.validate import FlextInfraValidateFreshImport
-from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 
 class FlextInfraModHandlers:
@@ -67,19 +66,7 @@ class FlextInfraModHandlers:
                 candidate = view / project.relative_to(stage_workspace)
                 report_directory = reports / project.name
                 u.Cli.ensure_dir(report_directory).unwrap()
-                # The candidate lives outside the working tree, so Git cannot
-                # inventory it: the checkout elects the targets, the candidate
-                # supplies their bytes.
-                targets = u.Infra.discover_python_targets(
-                    project,
-                    workspace_excluded_top_dirs=(
-                        FlextInfraWorkspaceDetector.analysis_excluded_top_dirs(
-                            project
-                        ).unwrap()
-                    ),
-                )
-                result = FlextInfraGatesPyrefly(repository_root=root).check_files(
-                    tuple(candidate / target for target in targets),
+                result = FlextInfraGatesPyrefly(repository_root=root).check(
                     candidate,
                     m.Infra.GateContext(
                         repository_root=candidate,

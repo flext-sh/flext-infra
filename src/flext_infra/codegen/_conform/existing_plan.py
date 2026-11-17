@@ -791,22 +791,24 @@ class FlextInfraCodegenConformExistingPlan(FlextInfraCodegenConformEditor):
         Complete generation stages every initializer before its project-wide
         admission; narrower surfaces retain their declared publication scope.
 
-        The initializers are planned over the model protocol contracts the
-        models project now, never over the previous protocol projection on
-        disk: a stale protocol module otherwise blocks its own regeneration
-        the same way.
-
         Planning reads the run snapshot's one Rope project, so every
         repository and stage shares its parsed modules and inference.
 
         Returns:
             The repository's planned lazy-init file plans, or the planning failure.
 
+        Raises:
+            RuntimeError: If lazy-init planning requires the run's workspace snapshot.
+
         """
-        protocols = self._model_protocol_sources(root, ())
-        if protocols.failure:
-            return r[Sequence[p.Infra.CodegenFilePlan]].from_failure(protocols)
-        return self._projected_exports(root, protocols.value)
+        snapshot = self.state.snapshot
+        if snapshot is None:
+            msg = "lazy-init planning requires the run's workspace snapshot"
+            raise RuntimeError(msg)
+        return FlextInfraCodegenLazyInit(
+            repository_root=root,
+            project_scope_roots=(root,),
+        ).plan_files(source_project=snapshot.engine, snapshot=snapshot)
 
     @staticmethod
     def _existing_tooling_context(
