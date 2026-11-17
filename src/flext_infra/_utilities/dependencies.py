@@ -433,35 +433,41 @@ class FlextInfraUtilitiesDependencies(
         scaffold: p.Infra.ScaffoldProjectSpec,
         *,
         distribution: str,
-        kind: c.Infra.ProjectKind,
         declared: Sequence[str] = (),
     ) -> Sequence[str]:
         """Compose development policy over the target's own requirement declarations.
 
         Existing requirement spellings, marker variants and sources stay intact.
-        FLEXT suppliers apply only to the declared FLEXT kind and never to their
-        own distribution; installed packages and project names do not elect policy.
+        The fleet codegen/test development suppliers belong to the workspace root
+        (``c.Infra.PKG_ROOT``) and never to a member: a member's own group must
+        not redeclare them beside the workspace's editable sources. Installed
+        packages and project names do not elect any other policy.
 
         Returns:
             Authored requirements followed by missing applicable suppliers.
 
         """
         own = canonicalize_name(distribution)
+        is_root = own == canonicalize_name(c.Infra.PKG_ROOT)
+        root_suppliers = (
+            set()
+            if is_root
+            else {
+                canonicalize_name(Requirement(item).name)
+                for item in scaffold.required_flext_dev
+            }
+        )
         authored: list[str] = []
         retained: set[Requirement] = set()
         for item in declared:
             parsed = Requirement(item)
-            if parsed in retained:
+            if parsed in retained or canonicalize_name(parsed.name) in root_suppliers:
                 continue
             retained.add(parsed)
             authored.append(item)
         policy = (
             *scaffold.dev,
-            *(
-                scaffold.required_flext_dev
-                if kind in c.Infra.TOOLCHAIN_GOVERNED_KINDS
-                else ()
-            ),
+            *(scaffold.required_flext_dev if is_root else ()),
         )
         additions: list[str] = []
         for requirement in policy:

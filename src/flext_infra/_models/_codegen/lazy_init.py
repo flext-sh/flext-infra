@@ -385,6 +385,16 @@ class FlextInfraModelsCodegenLazyInit:
             FlextInfraModelsCodegenLazyInit.PythonModelRun,
             m.Field(description="The run's parse-once static Python model"),
         ]
+        providers: Annotated[
+            Mapping[str, Path],
+            m.Field(
+                default_factory=dict,
+                description=(
+                    "Generated package initializers by package from the "
+                    "workspace inventory"
+                ),
+            ),
+        ]
         plans: Annotated[
             t.Port[
                 dict[
