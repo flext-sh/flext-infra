@@ -256,6 +256,11 @@ class FlextInfraCodegenLazyInit(
             )
             if targets.failure:
                 return result_type.from_failure(targets)
+            providers = {
+                package: directory / c.Infra.INIT_PY
+                for other_index in indexes.values()
+                for package, directory in other_index.package_dir_by_name.items()
+            }
             by_path: dict[Path, FlextInfraModelsCodegenTransaction.CodegenFilePlan] = {}
             for root, target in targets.value.items():
                 planned = self._plan_root(
@@ -264,7 +269,7 @@ class FlextInfraCodegenLazyInit(
                         indexes[root],
                         root=root,
                         scoped=scoped,
-                        snapshot=shared,
+                        overrides=(shared, providers),
                     ),
                     target,
                 )

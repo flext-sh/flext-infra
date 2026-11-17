@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import importlib.util
 import sys
 from collections.abc import Mapping, Sequence
 from keyword import iskeyword
@@ -47,7 +48,10 @@ class FlextInfraUtilitiesLazyInitPlan:
         *,
         root: Path,
         scoped: bool,
-        snapshot: FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None = None,
+        overrides: tuple[
+            FlextInfraProtocolsWorkspaceSnapshot.WorkspaceSnapshot | None,
+            Mapping[str, Path] | None,
+        ] = (None, None),
     ) -> FlextInfraModelsCodegenLazyInit.LazyInitRun:
         """Open one repository run over its source inventory.
 
@@ -55,10 +59,12 @@ class FlextInfraUtilitiesLazyInitPlan:
             The run every planning step reads and caches through.
 
         """
+        snapshot, providers = overrides
         return FlextInfraModelsCodegenLazyInit.LazyInitRun.model_validate({
             "root": root,
             "scoped": scoped,
             "index": index,
+            "providers": dict(providers or {}),
             "model": FlextInfraUtilitiesPythonModel.python_model_run(
                 source_project,
                 {
@@ -1002,9 +1008,27 @@ class FlextInfraUtilitiesLazyInitPlan:
             None,
         )
         if plan is not None:
-            published = plan.ownership == "generator" and name in plan.lazy_map
+            facts = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                run.model, plan.context.init_path, provider
+            )
+            exports = FlextInfraUtilitiesPythonModel.python_model_exports(facts) or ()
+            published = plan.ownership == "generator" and (
+                name in plan.lazy_map or name in exports
+            )
         else:
             path = run.model.module_files.get(provider)
+            if path is None:
+                package_dir = run.index.package_dir_by_name.get(provider)
+                path = (
+                    package_dir / c.Infra.INIT_PY if package_dir is not None else None
+                )
+            if path is None:
+                try:
+                    spec = importlib.util.find_spec(provider)
+                except (ImportError, AttributeError, ValueError):
+                    spec = None
+                if spec is not None and spec.origin is not None:
+                    path = Path(spec.origin)
             source = (
                 path.read_text(encoding=c.DEFAULT_ENCODING)
                 if path is not None and path.is_file()

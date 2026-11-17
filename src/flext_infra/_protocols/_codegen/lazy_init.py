@@ -387,6 +387,8 @@ class FlextInfraProtocolsCodegenLazyInit:
             """The run's parse-once static Python model."""
             ...
 
+        providers: Mapping[str, Path]
+
         @property
         def plans(
             self,
