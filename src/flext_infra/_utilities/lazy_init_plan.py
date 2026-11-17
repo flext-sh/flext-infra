@@ -756,7 +756,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         # An attribute base (``Root.Attr``) is shared through its root's route.
         root, _, path = base.partition(".")
         dotted = None if facts is None else facts.imports.get(root)
-        route = cls._lazy_init_ancestor_route(run, scope, dotted, root)
+        route = cls._lazy_init_ancestor_route(run, scope, dotted)
         if route is not None:
             return (route[0], f"{route[1]}.{path}" if path else route[1]), True
         if path:
@@ -977,7 +977,6 @@ class FlextInfraUtilitiesLazyInitPlan:
             FlextInfraModelsCodegenLazyInit.LazyInitPackageContext, t.LazyAliasMap
         ],
         dotted: str | None,
-        name: str,
     ) -> tuple[str, str] | None:
         """Return the import route of a base that another package publishes.
 
@@ -996,7 +995,7 @@ class FlextInfraUtilitiesLazyInitPlan:
         """
         if dotted is None:
             return None
-        provider = dotted
+        provider, _, name = dotted.rpartition(".")
         if not provider or provider.split(".", maxsplit=1)[0] == scope[0].surface:
             return None
         plan = next(
@@ -1008,7 +1007,13 @@ class FlextInfraUtilitiesLazyInitPlan:
             None,
         )
         if plan is not None:
-            published = plan.ownership == "generator" and name in plan.lazy_map
+            facts = FlextInfraUtilitiesPythonModel.python_model_module_at(
+                run.model, plan.context.init_path, provider
+            )
+            exports = FlextInfraUtilitiesPythonModel.python_model_exports(facts) or ()
+            published = plan.ownership == "generator" and (
+                name in plan.lazy_map or name in exports
+            )
         else:
             path = run.model.module_files.get(provider)
             if path is None:
