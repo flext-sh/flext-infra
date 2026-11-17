@@ -19,9 +19,6 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesGitAttestationEvidence,
     )
     from flext_infra._utilities._git.ignore import FlextInfraUtilitiesGitignore
-    from flext_infra._utilities._git.lane_hygiene import (
-        FlextInfraUtilitiesGitLaneHygiene,
-    )
     from flext_infra._utilities._git.mutation_scope import (
         FlextInfraUtilitiesGitMutationScope,
     )
@@ -109,7 +106,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestation",
     "FlextInfraUtilitiesGitAttestationEvidence",
-    "FlextInfraUtilitiesGitLaneHygiene",
     "FlextInfraUtilitiesGitMutationScope",
     "FlextInfraUtilitiesGitPhysicalScope",
     "FlextInfraUtilitiesGitRemote",
@@ -151,7 +147,6 @@ install_lazy_exports(
     {
         "FlextInfraUtilitiesGitAttestation": ".attestation",
         "FlextInfraUtilitiesGitAttestationEvidence": ".attestation_evidence",
-        "FlextInfraUtilitiesGitLaneHygiene": ".lane_hygiene",
         "FlextInfraUtilitiesGitMutationScope": ".mutation_scope",
         "FlextInfraUtilitiesGitPhysicalScope": ".physical_scope",
         "FlextInfraUtilitiesGitRemote": ".remote",
@@ -236,7 +231,6 @@ install_lazy_exports(
             "_report_bytes",
             "_verified_report_evidence",
         ),
-        "FlextInfraUtilitiesGitLaneHygiene": ("git_lane_facts",),
         "FlextInfraUtilitiesGitMutationScope": (
             "git_mutation_scope",
             "mutation_lock_path",
@@ -336,21 +330,8 @@ install_lazy_exports(
             "git_merge_ff_only",
             "git_create_branch",
             "git_switch_branch",
-            "git_stash_drop",
         ),
         "FlextInfraUtilitiesGitSemanticRefs": (
-            "git_verify_lane",
-            "_git_lane_ownership",
-            "_git_lane_retained_ownership",
-            "_git_lane_checkpoint_receipt",
-            "git_lane_ownership",
-            "_git_lane_clean_owned_branch",
-            "_git_lane_no_stash",
-            "_git_lane_tip",
-            "_git_lane_declared_remote",
-            "_git_lane_cached_tip",
-            "_git_lane_ancestry",
-            "_git_lane_retirement_clean",
             "git_list_worktrees",
             "git_check_branch_format",
             "git_ref_exists",
@@ -362,9 +343,8 @@ install_lazy_exports(
             "git_rev_parse",
             "git_ref_heads",
             "git_stash_oids",
+            "git_stash_drop",
             "git_remote_branch_oid",
-            "git_remote_default_branch",
-            "git_unique_patch_oids",
             "git_merge_is_noop",
             "git_last_activity",
             "git_ref_last_activity",
@@ -566,10 +546,7 @@ defer_lazy_bases(
             (".", "FlextInfraUtilitiesGitStateFiles"),
         ),
         "FlextInfraUtilitiesGitSemanticPublish": ((".", "FlextInfraUtilitiesGitRepo"),),
-        "FlextInfraUtilitiesGitSemanticRefs": (
-            (".", "FlextInfraUtilitiesGitStatePublication"),
-            (".", "FlextInfraUtilitiesGitWorktreeRoots"),
-        ),
+        "FlextInfraUtilitiesGitSemanticRefs": ((".", "FlextInfraUtilitiesGitRepo"),),
         "FlextInfraUtilitiesGitSemanticSubmodule": (
             (".", "FlextInfraUtilitiesGitRepo"),
         ),

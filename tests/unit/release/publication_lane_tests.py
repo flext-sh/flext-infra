@@ -106,15 +106,14 @@ class TestsFlextInfraReleasePublicationLane:
             self.LANE,
         ).strip()
 
-    def test_lane_publishes_from_a_clean_base_without_a_receipt(
+    def test_lane_publishes_from_a_clean_base(
         self,
         tmp_path: Path,
     ) -> None:
         """A clean integration checkout carries its production to one lane.
 
-        The protocol lane needs no agent-lane ownership receipt: a clean CI
-        checkout on the declared base enters the lane, commits exactly the
-        produced path, pushes the lane and opens its pull request.
+        A clean checkout on the declared base enters the lane, commits exactly
+        the produced path, pushes the lane and opens its pull request.
         """
         with self._lane(tmp_path) as (repo, request, gh_log):
             result = u.Infra.git_publish_lane(
@@ -193,27 +192,31 @@ class TestsFlextInfraReleasePublicationLane:
                 tm.that(calls, lacks="pr view")
 
     def test_dirty_checkout_is_refused(self, tmp_path: Path) -> None:
-        """A lane never absorbs changes it did not produce."""
+        """A lane never absorbs changes it did not produce, nor runs its producer."""
         with self._lane(tmp_path) as (repo, request, gh_log):
             (repo / "stray.txt").write_text("wip\n", encoding="utf-8")
+            produced = repo / "produced.txt"
 
             tm.fail(
-                u.Infra.git_publish_lane(request, self._produce(repo / "produced.txt"))
+                u.Infra.git_publish_lane(request, self._produce(produced)),
+                has="requires a clean checkout",
             )
+            tm.fail(produced.exists())
             tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
             tm.fail(gh_log.exists())
 
     def test_checkout_off_its_base_is_refused(self, tmp_path: Path) -> None:
         """A lane starts only from the branch its pull request targets."""
-        with self._lane(tmp_path) as (repo, request, _):
+        with self._lane(tmp_path) as (repo, request, gh_log):
             tm.ok(u.Tests.git_run(repo, "switch", "--create", "elsewhere"))
+            produced = repo / "produced.txt"
 
-            result = u.Infra.git_publish_lane(
-                request, self._produce(repo / "produced.txt")
-            )
+            result = u.Infra.git_publish_lane(request, self._produce(produced))
 
-            tm.fail(result)
+            tm.fail(result, has=f"starts from {request.base}")
+            tm.fail(produced.exists())
             tm.fail(u.Tests.git_ref_exists(repo, f"refs/heads/{self.LANE}"))
+            tm.fail(gh_log.exists())
 
     def test_failed_production_publishes_nothing(self, tmp_path: Path) -> None:
         """The first failure of the producing step ends the lane unpushed."""
@@ -225,35 +228,6 @@ class TestsFlextInfraReleasePublicationLane:
 
             tm.fail(result)
             tm.that(self._published(tmp_path), eq="")
-            tm.fail(gh_log.exists())
-
-    def test_refused_lane_never_runs_the_producer(self, tmp_path: Path) -> None:
-        """Admission refuses before production: no byte is written or staged."""
-        with self._lane(tmp_path) as (repo, request, gh_log):
-            (repo / "stashed.txt").write_text("stashed\n", encoding="utf-8")
-            u.Tests.git_run(repo, "stash", "push", "--include-untracked")
-            original_head = u.Tests.git_capture(repo, "rev-parse", "HEAD").strip()
-            produced = repo / "partial.txt"
-            calls: list[str] = []
-
-            def produce() -> p.Result[bool]:
-                calls.append("produce")
-                return u.Cli.files_write_text(produced, "partial production\n")
-
-            result = u.Infra.git_publish_lane(request, produce)
-
-            tm.fail(result)
-            tm.that(result.error or "", has="refuses existing stash state")
-            tm.that(calls, eq=[])
-            tm.fail(produced.exists())
-            tm.that(
-                u.Tests.git_capture(repo, "status", "--porcelain").strip(),
-                eq="",
-            )
-            tm.that(
-                u.Tests.git_capture(repo, "rev-parse", "HEAD").strip(),
-                eq=original_head,
-            )
             tm.fail(gh_log.exists())
 
     def _diverge(self, repo: Path, request: p.Infra.GitLaneRequest, name: str) -> None:

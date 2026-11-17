@@ -149,49 +149,6 @@ class FlextInfraConstantsGit:
     })
     "``git check-attr`` values ``.gitattributes`` gives a regenerated full projection."
 
-    # --- Lane hygiene audit (stashes, merged branches, orphan worktrees) ---
-
-    @unique
-    class LaneViolationKind(StrEnum):
-        """Classes of lane accumulation the lane hygiene audit rejects."""
-
-        STASH = "stash"
-        MERGED_BRANCH = "merged-branch"
-        TEMP_WORKTREE = "temp-worktree"
-        MISSING_WORKTREE = "missing-worktree"
-        MERGED_WORKTREE = "merged-worktree"
-        DETACHED_WORKTREE = "detached-worktree"
-
-    GIT_LANE_VIOLATION_REMEDY: ClassVar[Mapping[LaneViolationKind, str]] = (
-        MappingProxyType({
-            LaneViolationKind.STASH: (
-                "preserve every stash parent, index and untracked object; "
-                "coordinate validated integration before authorized retirement"
-            ),
-            LaneViolationKind.MERGED_BRANCH: (
-                "prove published integration ancestry, preservation and inactive "
-                "ownership before authorizing retirement of {ref}"
-            ),
-            LaneViolationKind.TEMP_WORKTREE: (
-                "adjudicate registered ownership and preserve all content at {ref}; "
-                "temporary location alone never authorizes removal"
-            ),
-            LaneViolationKind.MISSING_WORKTREE: (
-                "preserve registry and Git objects for {ref}; coordinator must "
-                "prove recovery and integration before authorized registry retirement"
-            ),
-            LaneViolationKind.MERGED_WORKTREE: (
-                "prove published ancestry, clean index/untracked content and "
-                "inactive unlocked ownership before authorized retirement of {ref}"
-            ),
-            LaneViolationKind.DETACHED_WORKTREE: (
-                "prove registered ownership and preserve detached content at {ref}; "
-                "never infer permission to discard it"
-            ),
-        })
-    )
-    "Fix instruction per lane violation class; ``{ref}`` names the offender."
-
     # --- Linked-worktree registry (filesystem discovery, no Git subprocess) ---
 
     GIT_WORKTREES_DIRNAME: ClassVar[str] = "worktrees"

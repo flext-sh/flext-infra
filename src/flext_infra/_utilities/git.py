@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from flext_infra._utilities._git import (
     FlextInfraUtilitiesGitAttestation,
-    FlextInfraUtilitiesGitLaneHygiene,
     FlextInfraUtilitiesGitMutationScope,
     FlextInfraUtilitiesGitRequirementSource,
     FlextInfraUtilitiesGitScope,
@@ -38,7 +37,6 @@ class FlextInfraUtilitiesGit(
     FlextInfraUtilitiesGitAttestation,
     FlextInfraUtilitiesGitScope,
     FlextInfraUtilitiesGitSemanticSubmodule,
-    FlextInfraUtilitiesGitLaneHygiene,
     FlextInfraUtilitiesGitStateCapture,
     FlextInfraUtilitiesGitSemanticIdentity,
     FlextInfraUtilitiesGitSemanticIndex,
@@ -51,8 +49,7 @@ class FlextInfraUtilitiesGit(
     """Canonical Git owner for flext-infra: every Git part composed flat.
 
     A part inherits only the parts whose protected helpers it calls and reaches
-    another part's public operation through that owner (removal calls
-    ``FlextInfraUtilitiesGitSemanticRefs.git_verify_lane``), so the parts stay
+    another part's public operation through that owner, so the parts stay
     shallow and only this owner composes them all.
     """
 

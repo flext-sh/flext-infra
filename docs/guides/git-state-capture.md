@@ -76,8 +76,10 @@ files that appeared after its ownership snapshot.
 ## Lane admission
 
 `flext-infra workspace verify-lane --repo-root <checkout>` calls the same
-`u.Infra.git_verify_lane` preflight used by branch creation, worktree creation,
-branch publication, automated lane publication, branch retirement, and worktree removal.
+`u.Infra.git_verify_lane` preflight used by automated lane publication and by the
+`flext-infra worktree add` service. The Git primitives themselves (branch creation,
+worktree creation, branch publication, ref and remote-branch deletion, worktree
+removal) run no preflight: each is the native Git operation and fails as Git fails.
 It does not fetch, write refs,
 refresh the index, create a lane, or retire one. No verb requires a clean or
 unchanged tree.
@@ -89,10 +91,9 @@ or a member that follows its superproject with `.` fails closed), compares the
 cached integration OID to its live remote advertisement, and proves ancestry before
 checking the remote advertisement again. `--expected-tip <oid>` binds a later
 verification to a prior observation; a changed tip is a refusal, never a retry.
-Fetch and merge-forward recovery remain separate existing operations. Ordinary
-`git_push_upstream` publication also requires absorbed live integration ancestry;
-the durable checkpoint publisher remains its separate preservation owner and does
-not acquire this admission gate.
+Fetch and merge-forward recovery remain separate existing operations.
+`git_push_upstream` is a plain, never-forced push: a diverged remote branch rejects
+it. The durable checkpoint publisher remains its separate preservation owner.
 
 The current native requests cannot authenticate Beads lane ownership, the previous
 owned lane's integration, or retirement's published preservation and active-session
@@ -100,9 +101,8 @@ proofs. Consequently `--operation create` and `--operation retire` fail closed e
 when the measured Git boundary is valid.
 
 No branch-name heuristic, caller boolean, correlation row, or foreign-lane count
-substitutes for the lane proofs. Creation checks run before directory creation;
-removal checks retain dirty, nested-submodule, and lock protection and do not force
-removal or prune other registrations.
+substitutes for the lane proofs. Worktree removal keeps its dirty, nested-submodule
+and lock protection and never forces removal or prunes other registrations.
 
 Automated lane publication (`u.Infra.git_publish_lane`, used by `make
 release-version` and `make propagate`) is not agent lane creation. It owns one
@@ -143,7 +143,6 @@ alias of an actual checkpoint only after revalidating its live independent remot
 retention and original scoped index/working bytes. It never switches HEAD, creates
 a worktree, accepts a caller-selected start, or carries uncaptured WIP. Creation is
 CAS-protected against an existing branch and uses the same writer lease as capture.
-Managed `git_create_branch` remains fail-closed for unproven lane ownership.
 
 `git_publish_checkpoint_branch` publishes only that exact captured commit without
 force and verifies its live advertisement. `git_delete_checkpoint_branch` removes

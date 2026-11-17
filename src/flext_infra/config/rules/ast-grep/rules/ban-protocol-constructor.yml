@@ -63,8 +63,7 @@ metadata:
 # The same law covers the validation target of a type adapter. `u.type_adapter`
 # and `TypeAdapter` build a pydantic validator for their type argument, and a
 # Protocol has no pydantic schema: a `p` path with a model twin inside that
-# argument (`tuple[p.Infra.GitLaneBead, ...]`, `MutableSequence[p.Metadata]`)
-# fails at runtime with PydanticSchemaGenerationError. Validation is value-level
+# argument (`MutableSequence[p.Metadata]`) fails at runtime with PydanticSchemaGenerationError. Validation is value-level
 # model behaviour (ADR-018, amendment 2026-11-02), so the path is retargeted to
 # its model twin by the same generated `protocol-model-path` set, while the
 # validated value stays typed through the protocol at its annotation. A

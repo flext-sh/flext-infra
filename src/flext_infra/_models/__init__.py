@@ -44,8 +44,6 @@ if TYPE_CHECKING:
     from flext_infra._models.gate_admission import FlextInfraModelsGateAdmission
     from flext_infra._models.gates import FlextInfraModelsGates
     from flext_infra._models.git import FlextInfraModelsGit
-    from flext_infra._models.git_lane_inputs import FlextInfraModelsGitLaneInputs
-    from flext_infra._models.git_lane_ownership import FlextInfraModelsGitLaneOwnership
     from flext_infra._models.layout import FlextInfraModelsLayout
     from flext_infra._models.mise_toolchain import FlextInfraModelsMiseToolchain
     from flext_infra._models.mise_toolchain_base import (
@@ -101,8 +99,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsGateAdmission",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
-    "FlextInfraModelsGitLaneInputs",
-    "FlextInfraModelsGitLaneOwnership",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMiseToolchain",
     "FlextInfraModelsMiseToolchainBase",
@@ -154,8 +150,6 @@ install_lazy_exports(
         "FlextInfraModelsGateAdmission": ".gate_admission",
         "FlextInfraModelsGates": ".gates",
         "FlextInfraModelsGit": ".git",
-        "FlextInfraModelsGitLaneInputs": ".git_lane_inputs",
-        "FlextInfraModelsGitLaneOwnership": ".git_lane_ownership",
         "FlextInfraModelsLayout": ".layout",
         "FlextInfraModelsMiseToolchain": ".mise_toolchain",
         "FlextInfraModelsMiseToolchainBase": ".mise_toolchain_base",
@@ -486,9 +480,6 @@ install_lazy_exports(
             "GitRepoRequest",
             "GitSigningConfigObservation",
             "GitSigningIdentityReport",
-            "GitLaneEvidence",
-            "GitLaneReport",
-            "GitLaneFacts",
             "GitStatusRequest",
             "GitStatusReport",
             "GitPrimaryRootReport",
@@ -509,8 +500,6 @@ install_lazy_exports(
             "GitPushRequest",
             "GitRemoteRequest",
             "GitRemoteBranchRequest",
-            "GitLaneOwnershipRequest",
-            "GitLaneVerificationRequest",
             "GitRefHeadsRequest",
             "GitRefHeadsReport",
             "GitOidListReport",
@@ -529,17 +518,6 @@ install_lazy_exports(
             "GitLaneRequest",
             "GitIndexScope",
             "GitCheckoutPathsRequest",
-        ),
-        "FlextInfraModelsGitLaneInputs": (
-            "GitLaneRef",
-            "GitLaneViolation",
-            "GitLanePullRequest",
-            "GitLaneBeadMetadata",
-            "GitLaneCoordinationPolicy",
-        ),
-        "FlextInfraModelsGitLaneOwnership": (
-            "GitLaneBead",
-            "GitLaneGovernance",
         ),
         "FlextInfraModelsLayout": (
             "LayoutMoveSpec",
@@ -865,12 +843,10 @@ defer_lazy_bases(
         ),
         "FlextInfraModelsGates": ((".", "FlextInfraModelsDuplication"),),
         "FlextInfraModelsGit": (
-            (".", "FlextInfraModelsGitLaneOwnership"),
             ("flext_infra._models._git", "FlextInfraModelsGitIdentity"),
             ("flext_infra._models._git", "FlextInfraModelsGitWorktreeFacts"),
             ("flext_infra._models._git", "FlextInfraModelsGitWorktreeState"),
         ),
-        "FlextInfraModelsGitLaneOwnership": ((".", "FlextInfraModelsGitLaneInputs"),),
         "FlextInfraModelsProjectArtifacts": (
             (".", "FlextInfraModelsProjectGitignore"),
         ),

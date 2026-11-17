@@ -9,10 +9,7 @@ from __future__ import annotations
 from git import GitCommandError, Repo
 
 from flext_infra import m, p, r
-from flext_infra._utilities._git import (
-    FlextInfraUtilitiesGitRepo,
-    FlextInfraUtilitiesGitSemanticRefs,
-)
+from flext_infra._utilities._git import FlextInfraUtilitiesGitRepo
 
 
 class FlextInfraUtilitiesGitSemanticWorktree(FlextInfraUtilitiesGitRepo):
@@ -29,15 +26,6 @@ class FlextInfraUtilitiesGitSemanticWorktree(FlextInfraUtilitiesGitRepo):
             The resulting ``p.Result[p.Infra.GitTextReport]``.
 
         """
-        admitted = FlextInfraUtilitiesGitSemanticRefs.git_verify_lane(
-            m.Infra.GitLaneVerificationRequest(
-                repo_root=request.repo_root,
-                operation="create",
-                candidate=request.base,
-            ),
-        )
-        if admitted.failure:
-            return r[p.Infra.GitTextReport].from_failure(admitted)
         try:
             repo = cls._repo(request.repo_root)
             text = cls._git_add_worktree_args(repo, request)
