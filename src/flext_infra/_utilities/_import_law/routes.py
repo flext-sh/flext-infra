@@ -99,6 +99,28 @@ class FlextInfraUtilitiesImportLawRoutes(
             native=(rope_project, member_resolver),
         )
 
+    @staticmethod
+    def _import_law_native_project(
+        native: tuple[
+            p.Infra.RopeProject | None,
+            p.Infra.RopeSourceMemberResolver | None,
+        ],
+    ) -> p.Infra.RopeProject:
+        """Require the captured source project of a native import route.
+
+        Returns:
+            The captured source project.
+
+        Raises:
+            ValueError: If the caller did not supply its source project.
+
+        """
+        rope_project, _ = native
+        if rope_project is None:
+            message = "import routes require the captured source project"
+            raise ValueError(message)
+        return rope_project
+
     @classmethod
     def _import_law_native_route_edits(
         cls,
@@ -115,16 +137,11 @@ class FlextInfraUtilitiesImportLawRoutes(
         Returns:
             Import edits with one provider per lexical facade binding.
 
-        Raises:
-            ValueError: If the caller did not supply its captured source project.
-
         """
         edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         bindings: dict[tuple[int, str], tuple[str, str]] = {}
-        rope_project, members = native
-        if rope_project is None:
-            message = "import routes require the captured source project"
-            raise ValueError(message)
+        rope_project = cls._import_law_native_project(native)
+        members = native[1]
         project = rope_project
 
         def resolve(module: str, name: str) -> p.Infra.RopePyName | None:
@@ -630,6 +647,39 @@ class FlextInfraUtilitiesImportLawRoutes(
                     ),
                 ),
             )
+        tests_edits, root_bindings = cls._import_law_tests_root_bindings(state, lines)
+        edits.extend(tests_edits)
+        missing = (
+            ()
+            if scope.direct_imports and scope.namespace != c.Infra.DIR_TESTS
+            else tuple(sorted(cls._import_law_unbound_root_aliases(state)))
+        )
+        root_names = tuple(sorted(set(missing) | set(root_bindings)))
+        if root_names:
+            anchor = cls._import_law_import_anchor(state.tree)
+            edits.append(
+                (
+                    anchor + 1,
+                    anchor,
+                    (f"from {scope.namespace} import {', '.join(root_names)}",),
+                ),
+            )
+        return edits
+
+    @classmethod
+    def _import_law_tests_root_bindings(
+        cls,
+        state: p.Infra.ImportLawPass,
+        lines: Sequence[str],
+    ) -> tuple[Sequence[tuple[int, int, Sequence[str]]], list[str]]:
+        """Root-bind tests-tier names the tests root already publishes.
+
+        Returns:
+            The edits and the bound root names.
+
+        """
+        scope = state.scope
+        edits: MutableSequence[tuple[int, int, Sequence[str]]] = []
         root_bindings: list[str] = []
         if scope.namespace == c.Infra.DIR_TESTS:
             # The tests tier root is the canonical package root for its own
@@ -657,34 +707,17 @@ class FlextInfraUtilitiesImportLawRoutes(
                 if len(kept) == len(node.names):
                     continue
                 indent = cls._import_law_line_indent(lines[node.lineno - 1])
+                clauses = ", ".join(cls._import_law_clause(alias) for alias in kept)
                 edits.append(
                     (
                         node.lineno,
                         cls._import_law_end_line(node),
-                        (
-                            f"{indent}from {node.module} import "
-                            f"{', '.join(cls._import_law_clause(alias) for alias in kept)}",
-                        )
+                        (f"{indent}from {node.module} import {clauses}",)
                         if kept
                         else (),
                     ),
                 )
-        missing = (
-            ()
-            if scope.direct_imports and scope.namespace != c.Infra.DIR_TESTS
-            else tuple(sorted(cls._import_law_unbound_root_aliases(state)))
-        )
-        root_names = tuple(sorted(set(missing) | set(root_bindings)))
-        if root_names:
-            anchor = cls._import_law_import_anchor(state.tree)
-            edits.append(
-                (
-                    anchor + 1,
-                    anchor,
-                    (f"from {scope.namespace} import {', '.join(root_names)}",),
-                ),
-            )
-        return edits
+        return edits, root_bindings
 
     @classmethod
     def _import_law_unbound_root_aliases(

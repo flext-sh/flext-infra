@@ -149,6 +149,7 @@ install_lazy_exports(
         "FlextInfraUtilitiesImportLawRoutes": (
             "_import_law_relative_import_edits",
             "_import_law_route_edits",
+            "_import_law_native_project",
             "_import_law_native_route_edits",
             "_import_law_own_family_provider",
             "_import_law_unpublished_owner",
@@ -158,6 +159,7 @@ install_lazy_exports(
             "_import_law_consumed_facade_paths",
             "_import_law_duplicate_alias",
             "_import_law_root_alias_binding_edits",
+            "_import_law_tests_root_bindings",
             "_import_law_unbound_root_aliases",
             "_import_law_root_alias_lexical_bindings",
             "_import_law_root_alias_read_is_unbound",
