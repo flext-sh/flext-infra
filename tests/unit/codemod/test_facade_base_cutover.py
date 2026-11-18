@@ -574,8 +574,8 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
 
         """
         return m.Infra.ModOccurrence(
-            rule_file="facade-base-by-class-name.yml",
-            rule_id="facade-base-by-class-name",
+            rule_file="namespace-structure.yml",
+            rule_id="require-facade-mro-completeness",
             repository="child",
             file=file_path,
             range={},
@@ -597,6 +597,19 @@ __all__ = [{self.PARENT_CLASS!r}, 'm']
             The originating immutable result view of semantic migration edits.
 
         """
+        u.Tests.declare_workspace_projects(tmp_path, ("parent", "child"))
+        u.Tests.initialize_git_repo(tmp_path)
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "test-root"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.13"\n',
+            encoding=c.DEFAULT_ENCODING,
+        )
+        root_package = tmp_path / "src" / "test_root"
+        root_package.mkdir(parents=True, exist_ok=True)
+        (root_package / "__init__.py").write_text("", encoding=c.DEFAULT_ENCODING)
+        for path, source in sources.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(source, encoding=c.DEFAULT_ENCODING)
         with infra.rope_workspace(tmp_path) as rope:
             return u.Infra.plan_semantic_cutover(
                 c.Infra.SemanticCutoverPhase.FACADE_BASE,

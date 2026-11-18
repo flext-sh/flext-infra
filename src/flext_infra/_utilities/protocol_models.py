@@ -2246,6 +2246,25 @@ class FlextInfraUtilitiesModelsProtocol:
                 module_name = self.module_name_for(relative)
                 imports[owner] = f"from {module_name} import {owner}"
                 modules[owner] = module_name
+            protocol_dir = package_dir / "_protocols"
+            if protocol_dir.is_dir():
+                for path in sorted(protocol_dir.glob("*.py")):
+                    if path.name.startswith("_"):
+                        continue
+                    relative = path.relative_to(self.repository_root)
+                    module_name = self.module_name_for(relative)
+                    for node in ast.parse(
+                        self.project.source_text(path), filename=str(path)
+                    ).body:
+                        if (
+                            isinstance(node, ast.ClassDef)
+                            and node.name in candidates
+                            and node.name not in modules
+                        ):
+                            imports[node.name] = (
+                                f"from {module_name} import {node.name}"
+                            )
+                            modules[node.name] = module_name
             return candidates, imports, modules
 
         def _source_aggregate_bases(
@@ -2297,6 +2316,14 @@ class FlextInfraUtilitiesModelsProtocol:
                     if binding is None or not self.py_class(
                         holder := binding.get_object()
                     ):
+                        if name not in modules:
+                            # The existing facade is this generator's previous
+                            # projection, never a source contract: a base whose
+                            # source class no longer exists (a renamed or
+                            # consolidated owner) retires with it instead of
+                            # blocking its own regeneration. A name this run
+                            # renders still fails loud.
+                            continue
                         msg = (
                             f"{destination.relative_to(self.repository_root)}:"
                             f"{namespace.name} base {name} resolves to no source "
@@ -2314,7 +2341,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 return [
                     name
                     for name in candidates
-                    if identity(holders[name]) not in inherited
+                    if name in holders and identity(holders[name]) not in inherited
                 ]
 
         def _source_model_facade_nested_namespace(
@@ -3470,7 +3497,10 @@ class FlextInfraUtilitiesModelsProtocol:
         def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
-            A package without model declarations owns no model layout.
+            A package qualifies when it holds both a ``_models`` directory and
+            ``protocols.py``; a package whose protocols facade is still absent
+            is skipped: the facades surface creates it in the same generation
+            and the next pass projects its models.
             Non-canonical or competing public model and protocol facade names
             fail the discovery with ``ValueError``.
 
@@ -3493,7 +3523,10 @@ class FlextInfraUtilitiesModelsProtocol:
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
                 return None
-            if not self.project.source_query(package_dir / "_models", "isdir"):
+            if not (
+                self.project.source_query(package_dir / "_models", "isdir")
+                and self.project.source_query(package_dir / "protocols.py", "isfile")
+            ):
                 return None
             return (
                 package_dir,

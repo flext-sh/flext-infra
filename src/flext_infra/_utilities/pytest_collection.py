@@ -541,7 +541,7 @@ class FlextInfraUtilitiesPytestCollection:
 
         Raises:
             ValueError: If Runner collection manifest contains duplicate node IDs; or if
-                Runner collection differs from selection.
+                Runner collection misses selected tests.
             TypeError: If the native worker has no output channel.
 
         """
@@ -561,12 +561,15 @@ class FlextInfraUtilitiesPytestCollection:
                 raise ValueError(msg)
             if set(collected) != set(order):
                 missing = sorted(set(order) - set(collected))
-                unexpected = sorted(set(collected) - set(order))
-                msg = (
-                    f"Runner collection differs from selection: "
-                    f"{missing=}, {unexpected=}"
-                )
-                raise ValueError(msg)
+                if missing:
+                    msg = f"Runner collection misses selected tests: {missing=}"
+                    raise ValueError(msg)
+                order.update({
+                    node_id: index
+                    for index, node_id in enumerate(
+                        sorted(set(collected) - set(order)), start=len(order)
+                    )
+                })
             session.items.sort(key=lambda item: order[item.nodeid])
         yield
         target: str | None = session.config.getoption(

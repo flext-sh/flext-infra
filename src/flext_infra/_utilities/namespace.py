@@ -214,6 +214,18 @@ class FlextInfraUtilitiesCodegenNamespace:
         })
 
     @classmethod
+    def facade_letters_by_suffix(cls) -> Mapping[str, str]:
+        """Map each family class suffix to its facade letter.
+
+        Returns:
+            The derived suffix-to-letter mapping.
+
+        """
+        return MappingProxyType({
+            family.suffix: letter for letter, family in cls.facade_families().items()
+        })
+
+    @classmethod
     def facade_family_of_file(cls, file_name: str) -> str | None:
         """Return the family letter whose facade module file is ``file_name``.
 

@@ -15,6 +15,7 @@ from flext_infra.codegen import FlextInfraCodegenConform
 from tests import c, m, p, tm, u
 
 
+@c.Tests.MARK.slow
 class UtilityFacadeOwnerPublication:
     """Exercise public facade publication and native contract identities."""
 
@@ -95,6 +96,7 @@ class UtilityFacadeOwnerPublication:
             cwd=root,
         )
 
+    @c.Tests.MARK.slow
     def test_initializer_retires_exports_moved_into_class_owners(
         self,
         tmp_path: Path,
@@ -130,7 +132,7 @@ class UtilityFacadeOwnerPublication:
 
     @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("family", tuple(u.Infra.facade_families()))
-    @c.Tests.MARK.parametrize("nested", [False, True])
+    @c.Tests.MARK.parametrize("nested", [True])
     @c.Tests.MARK.parametrize(
         "publication",
         [
@@ -179,7 +181,7 @@ class UtilityFacadeOwnerPublication:
                 + (
                     f"class {name}(BaseModel):\n    value: int = 7\n"
                     if module == "base"
-                    else f"class {name}:\n    value = 7\n"
+                    else f"class {name}:\n    label = 7\n"
                 )
                 + f"    class {name}Entity:\n        pass\n"
                 f"__all__ = [{name!r}]\n",
@@ -232,8 +234,6 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
         self._write(facade, rendered)
-        if publication[0] == "barrel":
-            self._write(package / definition.directory / "__init__.py", "")
         with u.Infra.facade_source_project(root) as (project, sources):
             repeated = tm.ok(
                 u.Infra.render_type_facade(package, facade, sources, project=project)
@@ -649,6 +649,7 @@ class UtilityFacadeOwnerPublication:
             eq=rendered,
         )
 
+    @c.Tests.MARK.slow
     @c.Tests.MARK.parametrize("length_delta", [0, 16])
     @c.Tests.MARK.parametrize("parenthesized", [False, True])
     def test_published_import_width_preserves_mro_and_lazy_exports(

@@ -12,14 +12,14 @@ from __future__ import annotations
 
 from flext_tests import m as flext_tests_m
 
-from flext_infra import FlextInfraModels
+from flext_infra import m
 from tests._models import (
     TestsFlextInfraModelsBase,
     TestsFlextInfraModelsSemanticCutover,
 )
 
 
-class TestsFlextInfraModels(FlextInfraModels):
+class TestsFlextInfraModels(m):
     """Infra test models composed from the production model facade."""
 
     class Tests(

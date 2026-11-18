@@ -309,6 +309,10 @@ class FlextInfraUtilitiesProjectDiscovery(
         # probed, so an ignored or ceiling-bounded directory is never entered.
         source_paths = FlextInfraUtilitiesGit.git_source_scope_paths(project_dir)
         if source_paths is None:
+            source_paths = FlextInfraUtilitiesProjectDiscovery._staged_preview_sources(
+                project_dir
+            )
+        if source_paths is None:
             msg = f"Python source discovery requires a Git checkout: {project_dir}"
             raise RuntimeError(msg)
         source_containers = frozenset(
@@ -810,13 +814,23 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         The generator materializes a candidate workspace beside the mutation
         lock, inside the repository Git directory, and validates it without a
-        checkout of its own; that complete copy is the source scope.
+        checkout of its own; that complete copy is the source scope. The
+        validator reaches a project candidate nested in that preview, so the
+        preview is recognized on any ancestor of the queried directory.
 
         Returns:
-            The preview files, or no staged preview at this directory.
+            The preview files under the queried directory, or no staged preview.
 
         """
-        if not directory.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX):
+        preview = next(
+            (
+                path
+                for path in (directory, *directory.parents)
+                if path.name.startswith(c.Infra.SOURCE_PREVIEW_PREFIX)
+            ),
+            None,
+        )
+        if preview is None:
             return None
         return tuple(path for path in directory.rglob("*") if path.is_file())
 
