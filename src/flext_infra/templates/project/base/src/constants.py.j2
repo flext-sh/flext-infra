@@ -24,12 +24,12 @@ from collections.abc import (
     Sequence,
 )
 
-from {{ upstream }} import c
+from {{ upstream }} import c as parent_c
 
 {{ constants_imports }}
 
 
-class {{ class_stem }}Constants(c):
+class {{ class_stem }}Constants(parent_c):
     """{{ class_stem }} constants extending the upstream facade."""
 
 {{ constants_namespace_declaration }}

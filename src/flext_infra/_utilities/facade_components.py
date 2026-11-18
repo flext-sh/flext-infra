@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 import io
 import re
 import sys
@@ -54,6 +55,7 @@ from flext_infra._utilities._rope._analysis import (
 )
 from flext_infra._utilities._semantic_cutover import (
     FlextInfraUtilitiesDeclarationPayload,
+    FlextInfraUtilitiesSemanticCutoverFacadeBases,
 )
 
 
@@ -677,9 +679,7 @@ class FlextInfraUtilitiesFacadeComponents:
         selected = c.Infra.FacadeFamily(
             family.letter if isinstance(family, m.Infra.FacadeFamily) else family
         )
-        rewrites = cls._facade_source_rewrites(
-            project, path, directory, family=selected
-        )
+        rewrites = cls._facade_source_rewrites(project, path, directory)
         if rewrites.failure:
             return r[str].from_failure(rewrites)
         if rewrites.value:
@@ -745,33 +745,29 @@ class FlextInfraUtilitiesFacadeComponents:
 
     @classmethod
     def _facade_source_rewrites(
-        cls,
-        project: p.Infra.RopeProject,
-        path: Path,
-        directory: Path,
-        *,
-        family: c.Infra.FacadeFamily,
+        cls, project: p.Infra.RopeProject, path: Path, directory: Path
     ) -> p.Result[Mapping[Path, str]]:
-        """Project the canonical facade base and domain nested class first.
-
-        The canonical facade extends the upstream letter (``from flext_cli
-        import m``; ``class FlextXModels(m)``) and nests the local composition
-        under the project domain (``DbOracle``), never the parent's declared
-        class name. Returns the retired foreign publications when the source
-        already conforms.
+        """Plan the facade source edits that precede composition.
 
         Returns:
-            The canonical source edit, the retired foreign publications, or no edit.
+            The upstream facade-base import edits, else the retired foreign
+            publications, else no edit.
 
         """
-        source = project.source_text(path)
-        canonical = cls._canonical_facade_source(
-            source,
-            family,
-            own_package=path.parent.name,
+        headers = (
+            FlextInfraUtilitiesSemanticCutoverFacadeBases.facade_import_base_edits(
+                Path(project.root.real_path),
+                {path: project.source_text(path)},
+                (path,),
+                source_project=project,
+            )
         )
-        if canonical != source:
-            return r[Mapping[Path, str]].ok({path: canonical})
+        if headers.failure:
+            return r[Mapping[Path, str]].from_failure(headers)
+        if headers.value:
+            return r[Mapping[Path, str]].ok({
+                edit.file_path: edit.updated_source for edit in headers.value
+            })
         unpublished = cls._facade_foreign_publications(
             project,
             FlextInfraUtilitiesRopeRuntimeModules.file_resource_at(project, path),
@@ -1207,6 +1203,11 @@ class FlextInfraUtilitiesFacadeComponents:
             for expression, base in bases
             if base not in wrappers
             and not cls._facade_foreign_class(project, module, directory, base)
+            and not any(
+                base in provider.get_mro()[1:]
+                for _origin, provider in resolved.value[2]
+                if provider is not base
+            )
         ]
         aliases = cls._facade_namespace_aliases(index, namespace)
         providers = cls._facade_admitted_providers(
@@ -2023,7 +2024,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             # A provider a namespace alias already publishes is never also
             # composed: the alias is its publication (``Base = Owner``).
-            if provider in aliases.values():
+            if family is not c.Infra.FacadeFamily.U and provider in aliases.values():
                 continue
             if family is c.Infra.FacadeFamily.U:
                 if cls._utility_provider_nominal(project, provider, bases):

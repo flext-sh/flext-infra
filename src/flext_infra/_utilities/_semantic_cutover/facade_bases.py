@@ -1481,15 +1481,7 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
                     local_rebound=local_rebound,
                 )
                 changes.append(f"extended {shape[0]}.{owner} in {shape[3]}")
-            letter_values = (
-                FlextInfraUtilitiesSemanticCutoverFacadeBaseCst.FACADE_LETTERS.values()
-            )
-            remaining = tuple(
-                shape
-                for shape in cls._facade_shapes(path, ast.parse(rewritten))
-                if shape[2] not in letter_values
-            )
-            if remaining:
+            if cls._facade_shapes(path, ast.parse(rewritten)):
                 msg = f"facade base cutover left residue in {path}"
                 raise ValueError(msg)
             return rewritten, tuple(changes)
@@ -1546,30 +1538,11 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             (module, imported, base.id, node.name, level)
             for node in tree.body
             if isinstance(node, ast.ClassDef)
-            for base in node.bases[:1]
+            for base in node.bases
             if isinstance(base, ast.Name) and base.id in imports
             for module, imported, level in (imports[base.id],)
             if rebinds.get(imported) == node.name or rebinds.get(base.id) == node.name
         }
-        letter_values = (
-            FlextInfraUtilitiesSemanticCutoverFacadeBaseCst.FACADE_LETTERS.values()
-        )
-        shapes.update(
-            (module, imported, base.id, node.name, level)
-            for node in tree.body
-            if isinstance(node, ast.ClassDef)
-            for base in node.bases[:1]
-            if isinstance(base, ast.Name)
-            for module, imported, level in (imports.get(base.id, ("", "", 0)),)
-            if module
-            and imported.endswith(
-                tuple(FlextInfraUtilitiesSemanticCutoverFacadeBaseCst.FACADE_LETTERS)
-            )
-            and any(
-                letter in letter_values and name == node.name
-                for letter, name in rebinds.items()
-            )
-        )
         if any(level for *_rest, level in shapes):
             msg = f"relative facade base import is not a declared owner in {path}"
             raise ValueError(msg)
@@ -1596,11 +1569,6 @@ class FlextInfraUtilitiesSemanticCutoverFacadeBases(
             The resulting ``str``.
 
         """
-        letter_values = (
-            FlextInfraUtilitiesSemanticCutoverFacadeBaseCst.FACADE_LETTERS.values()
-        )
-        if letter in letter_values:
-            return source
         rebind_line = max(
             node.lineno
             for node in tree.body
