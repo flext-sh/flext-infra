@@ -420,6 +420,33 @@ class FlextInfraUtilitiesRepository(FlextInfraUtilitiesGitRequirementSource):
         )
 
     @classmethod
+    def _manifest_infra_source(
+        cls,
+        *,
+        repository_root: Path,
+        distribution: str,
+        policy_branch: str,
+    ) -> p.Result[tuple[str, str]] | None:
+        """Resolve the manifest-declared infrastructure source, when present.
+
+        Returns:
+            The resolved source, or ``None`` when the manifest declares none.
+
+        """
+        manifest = cls._git_declared_distribution_url(
+            repository_root=repository_root,
+            distribution=distribution,
+        )
+        if manifest.failure:
+            return r[tuple[str, str]].from_failure(manifest)
+        if not manifest.value:
+            return None
+        return cls.resolve_integration_branch(
+            repository_root,
+            policy_branch=policy_branch,
+        ).map(lambda branch: (manifest.value, branch))
+
+    @classmethod
     def _detected_infra_source(
         cls,
         *,

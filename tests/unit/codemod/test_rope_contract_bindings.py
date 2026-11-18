@@ -11,12 +11,11 @@ import runpy
 import sys
 import tokenize
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from functools import partial
+from pathlib import Path
 
+from flext_infra.services import FlextInfraModHandlers
 from tests import c, m, p, tm, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @c.Tests.MARK.slow
@@ -440,6 +439,13 @@ class TestsFlextInfraRopeContractBindings:
             if rule.id.startswith("pydantic-")
         )
         tm.that(rules, empty=False)
+        # The fixture runtime carries no checker: the envelope gate runs on the
+        # generator's own runtime, through the workspace's checker port.
+        workspace.model_envelope_checker = partial(
+            FlextInfraModHandlers.model_envelope_diagnostics,
+            workspace.repository_root,
+            runtime_root=Path(sys.prefix).parent,
+        )
         path.write_text(source, encoding=c.DEFAULT_ENCODING)
         before = runpy.run_path(str(path))["evidence"]
         edits = tm.ok(u.Infra.plan_contract_rules(workspace, {path: source}, rules))

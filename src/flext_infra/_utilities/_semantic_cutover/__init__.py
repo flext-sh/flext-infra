@@ -468,6 +468,7 @@ install_lazy_exports(
             "_external_model_owner_target",
         ),
         "FlextInfraUtilitiesSemanticCutoverFacadeBaseCst": (
+            "FACADE_LETTERS",
             "_FacadeBaseTransformer",
             "_rewrite_facade_base_source",
         ),
