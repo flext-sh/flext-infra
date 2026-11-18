@@ -1925,7 +1925,7 @@ class FlextInfraUtilitiesFacadeComponents:
                 continue
             # A provider a namespace alias already publishes is never also
             # composed: the alias is its publication (``Base = Owner``).
-            if family is not c.Infra.FacadeFamily.U and provider in aliases.values():
+            if provider in aliases.values():
                 continue
             if family is c.Infra.FacadeFamily.U:
                 if cls._utility_provider_nominal(project, provider, bases):
