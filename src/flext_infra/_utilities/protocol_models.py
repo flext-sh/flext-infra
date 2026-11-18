@@ -2224,6 +2224,9 @@ class FlextInfraUtilitiesModelsProtocol:
         ) -> tuple[list[str], dict[str, str], dict[str, str]]:
             """Collect the namespace's declared and newly projected holder bases.
 
+            A rendered path is authoritative for its content: its on-disk copy is
+            the previous projection and contributes no candidate binding.
+
             Returns:
                 The candidate base names, their import lines and declaring modules.
 
@@ -2249,9 +2252,9 @@ class FlextInfraUtilitiesModelsProtocol:
             protocol_dir = package_dir / "_protocols"
             if protocol_dir.is_dir():
                 for path in sorted(protocol_dir.glob("*.py")):
-                    if path.name.startswith("_"):
-                        continue
                     relative = path.relative_to(self.repository_root)
+                    if path.name.startswith("_") or relative in rendered:
+                        continue
                     module_name = self.module_name_for(relative)
                     for node in ast.parse(
                         self.project.source_text(path), filename=str(path)
