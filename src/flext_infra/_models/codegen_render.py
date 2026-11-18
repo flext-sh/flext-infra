@@ -367,6 +367,10 @@ class FlextInfraModelsCodegenRender(FlextInfraModelsCodegenLazyInit):
     class GitHookRenderSpec(FlextInfraModelsConfigContract.ConfigContract):
         """Typed input consumed by the generated Git hook validator."""
 
+        make: Annotated[
+            FlextInfraModelsConfigMake.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
+        ]
         preservation_ref_namespaces: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Remote ref prefixes exempt from the pre-push matrix"),

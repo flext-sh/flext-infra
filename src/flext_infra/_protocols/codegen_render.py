@@ -380,6 +380,11 @@ class FlextInfraProtocolsCodegenRender:
         """Structural data contract projected from the owning model."""
 
         @property
+        def make(self) -> FlextInfraProtocolsConfigMake.MakeSpec:
+            """Canonical workflow command contract."""
+            ...
+
+        @property
         def preservation_ref_namespaces(self) -> tuple[t.NonEmptyStr, ...]:
             """Remote ref prefixes exempt from the pre-push matrix."""
             ...
