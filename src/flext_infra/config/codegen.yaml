@@ -43,7 +43,10 @@ Infra:
     # from CLI and editor alike, so its ignore projection is too.
     - path: .markdownlintignore
       evidence: '# @flext-regenerate: make gen'
-    - .github/scripts/install-git-hooks.sh
+    # Pre-marker generations carry no banner; the retired installer's own
+    # header proves machine provenance so consumers keep no stale copy.
+    - path: .github/scripts/install-git-hooks.sh
+      evidence: "Install the Beads git hooks at the composition root"
     - .github/scripts/flext-law-loop.sh
     # The unread per-id projection of generated ast-grep utilities and rules
     # (make mod renders them in memory): a retired directory removes every
@@ -1870,6 +1873,19 @@ Infra:
         patterns:
         - "*.bak"
         - "config/build-constraints.txt"
+      # Root-anchored local runtime state written by canonical verbs, tests and
+      # the project's build/publish lifecycle. A fresh checkout never needs
+      # these and a run removes its own files; the paths stay per-machine until
+      # then. Anchoring keeps a same-named source directory inside the governed
+      # trees from ever being swallowed.
+      - name: "Local runtime and transient state (never source)"
+        profiles: [ workspace, standalone ]
+        patterns:
+        - "/.build/"
+        - "/.runtime/"
+        - "/.test-tmp/"
+        - "/.zcode/"
+        - "/.mise-lock-transaction.lock"
       - name: "Aider AI data"
         patterns:
         - ".aider/"
