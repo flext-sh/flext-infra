@@ -17,6 +17,8 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
     """Prove where a generated member Makefile resolves its runtime."""
 
     RUNTIME_NAMES = (
+        "GIT_CEILING_DIRECTORIES",
+        "MISE_CEILING_PATHS",
         "PROJECT_ROOT",
         "REPOSITORY_ROOT",
         "RUNTIME_ROOT",
@@ -271,6 +273,10 @@ class TestsFlextInfraCodegenMakeMemberRuntime:
         for name in ("REPOSITORY_ROOT", "RUNTIME_ROOT"):
             tm.that(values[name], eq=str(workspace))
         tm.that(values["UV_PROJECT"], empty=True)
+        # The member's verbs read workspace paths, so Git discovery reaches
+        # the workspace repository instead of stopping at the member.
+        for name in ("GIT_CEILING_DIRECTORIES", "MISE_CEILING_PATHS"):
+            tm.that(values[name], eq=str(workspace.parent))
         for name in ("RUNTIME_VENV", "UV_PROJECT_ENVIRONMENT"):
             tm.that(
                 values[name],
