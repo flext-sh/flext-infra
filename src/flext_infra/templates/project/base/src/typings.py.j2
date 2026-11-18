@@ -22,12 +22,12 @@ from collections.abc import (
 )
 
 {# NOTE:extend the class the upstream declares for `t` in its own __all__; the letter is rebound below as a plain alias. -#}
-from {{ upstream }} import t
+from {{ upstream }} import t as parent_t
 
 {{ typings_import }}
 
 
-class {{ class_stem }}Types(t):
+class {{ class_stem }}Types(parent_t):
     """{{ class_stem }} types extending the upstream facade."""
 
 {{ typings_namespace_declaration }}

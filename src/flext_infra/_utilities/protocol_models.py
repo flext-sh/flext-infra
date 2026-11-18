@@ -2284,8 +2284,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 The candidate bases no other candidate's native ancestry carries.
 
             Raises:
-                ValueError: If a protocol aggregate base resolves to no source
-                    class, such as an import whose declaring module is gone.
+                ValueError: If a base this run renders resolves to no source
+                    class.
 
             """
             facade, namespace = classes
@@ -2319,21 +2319,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     if binding is None or not self.py_class(
                         holder := binding.get_object()
                     ):
-                        if name not in modules:
-                            # The existing facade is this generator's previous
-                            # projection, never a source contract: a base whose
-                            # source class no longer exists (a renamed or
-                            # consolidated owner) retires with it instead of
-                            # blocking its own regeneration. A name this run
-                            # renders still fails loud.
-                            continue
-                        msg = (
-                            f"{destination.relative_to(self.repository_root)}:"
-                            f"{namespace.name} base {name} resolves to no source "
-                            "class; its declaring module is missing or does not "
-                            "publish it"
-                        )
-                        raise ValueError(msg)
+                        if name in modules:
+                            msg = (
+                                f"{destination.relative_to(self.repository_root)}:"
+                                f"{namespace.name} base {name} resolves to no "
+                                "source class; its declaring module does not "
+                                "publish it"
+                            )
+                            raise ValueError(msg)
+                        # A base of the previous projection whose declaring
+                        # module is not in this run retired at its source.
+                        continue
                     holders[name] = holder
                 identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
                 inherited = {
@@ -3500,10 +3496,7 @@ class FlextInfraUtilitiesModelsProtocol:
         def _primarysource_layout(self) -> tuple[Path, str, str] | None:
             """Discover the package solely from the overlaid pyproject source.
 
-            A package qualifies when it holds both a ``_models`` directory and
-            ``protocols.py``; a package whose protocols facade is still absent
-            is skipped: the facades surface creates it in the same generation
-            and the next pass projects its models.
+            A package without model declarations owns no model layout.
             Non-canonical or competing public model and protocol facade names
             fail the discovery with ``ValueError``.
 
@@ -3526,10 +3519,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 package_dir = self.repository_root / package
             if not self.project.source_query(package_dir, "isdir"):
                 return None
-            if not (
-                self.project.source_query(package_dir / "_models", "isdir")
-                and self.project.source_query(package_dir / "protocols.py", "isfile")
-            ):
+            if not self.project.source_query(package_dir / "_models", "isdir"):
                 return None
             return (
                 package_dir,
