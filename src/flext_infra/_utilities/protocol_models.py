@@ -2262,8 +2262,8 @@ class FlextInfraUtilitiesModelsProtocol:
                 The candidate bases no other candidate's native ancestry carries.
 
             Raises:
-                ValueError: If a protocol aggregate base resolves to no source
-                    class, such as an import whose declaring module is gone.
+                ValueError: If a base this run renders resolves to no source
+                    class.
 
             """
             facade, namespace = classes
@@ -2297,13 +2297,17 @@ class FlextInfraUtilitiesModelsProtocol:
                     if binding is None or not self.py_class(
                         holder := binding.get_object()
                     ):
-                        msg = (
-                            f"{destination.relative_to(self.repository_root)}:"
-                            f"{namespace.name} base {name} resolves to no source "
-                            "class; its declaring module is missing or does not "
-                            "publish it"
-                        )
-                        raise ValueError(msg)
+                        if name in modules:
+                            msg = (
+                                f"{destination.relative_to(self.repository_root)}:"
+                                f"{namespace.name} base {name} resolves to no "
+                                "source class; its declaring module does not "
+                                "publish it"
+                            )
+                            raise ValueError(msg)
+                        # A base of the previous projection whose declaring
+                        # module is not in this run retired at its source.
+                        continue
                     holders[name] = holder
                 identity = FlextInfraUtilitiesRopeRuntime.native_object_identity
                 inherited = {
@@ -2314,7 +2318,7 @@ class FlextInfraUtilitiesModelsProtocol:
                 return [
                     name
                     for name in candidates
-                    if identity(holders[name]) not in inherited
+                    if name in holders and identity(holders[name]) not in inherited
                 ]
 
         def _source_model_facade_nested_namespace(

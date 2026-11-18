@@ -22,8 +22,8 @@ classifiers = [
 ]
 dependencies = [
   "defusedxml>=0.7.1",
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-cli",
+  "flext-core",
   "gitdb>=4.0.12",
   "GitPython>=3.2.1",
   "jinja2>=3.1.6",
@@ -71,6 +71,7 @@ Repository = "https://github.com/flext-sh/flext-infra"
 
 [dependency-groups]
 dev = [
+  "flext-tests",                                      # flext: derived member environment
   "properdocs>=1.6.7",
   "types-networkx",
   "mkdocstrings-python>=2.0.9",
@@ -78,7 +79,6 @@ dev = [
   "bandit>=1.9.4",
   "deptry",
   "editables>=0.6",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis",
   "mkdocs-autorefs",
   "mkdocs-exclude>=1.0.2",
@@ -586,9 +586,6 @@ exclude-newer = "P10D"
 link-mode = "clone"
 override-dependencies = [
   "rope @ git+https://github.com/marlon-costa-dc/rope.git@3a0cb69024fb5f17ba32064bf6c294d016c7d9d8",
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
 ]
 [[tool.uv.cache-keys]]
 file = "pyproject.toml"
@@ -601,24 +598,6 @@ file = "setup.cfg"
 
 [[tool.uv.cache-keys]]
 file = "src/**"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-cli"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-core"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
 
 [tool.uv.exclude-newer-package]
 soupsieve = false
