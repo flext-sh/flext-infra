@@ -87,14 +87,41 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
-    def git_merge_conclude_with_base(
+    def git_checkout_theirs(
         cls,
         request: p.Infra.GitPathsRequest,
     ) -> p.Result[p.Infra.GitBoolReport]:
-        """Take the merged-in side of ``paths`` and commit the open merge.
+        """Take the merged-in side of conflicted ``paths`` in the worktree.
+
+        Returns:
+            The resulting ``p.Result[p.Infra.GitBoolReport]``.
+
+        """
+        try:
+            cls._repo(request.repo_root).git.checkout(
+                "--theirs",
+                "--",
+                *request.paths,
+            )
+        except GitCommandError as exc:
+            return r[p.Infra.GitBoolReport].fail(str(exc), exception=exc)
+        except (OSError, ValueError) as exc:
+            return r[p.Infra.GitBoolReport].fail(
+                f"failed to take the merged-in side: {exc}",
+                exception=exc,
+            )
+        return r[p.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
+
+    @classmethod
+    def git_merge_conclude(
+        cls,
+        request: p.Infra.GitPathsRequest,
+    ) -> p.Result[p.Infra.GitBoolReport]:
+        """Stage ``paths`` as they stand and commit the open merge.
 
         The commit keeps ``MERGE_HEAD`` as its second parent, so the merge is
-        recorded as a merge, never squashed into a single-parent commit.
+        recorded as a merge, never squashed into a single-parent commit. A
+        conflicted gitlink stages the member checkout's current HEAD.
 
         Returns:
             The resulting ``p.Result[p.Infra.GitBoolReport]``.
@@ -103,7 +130,6 @@ class FlextInfraUtilitiesGitSemanticPublish(FlextInfraUtilitiesGitRepo):
         try:
             git = cls._repo(request.repo_root).git
             if request.paths:
-                git.checkout("--theirs", "--", *request.paths)
                 git.add("--", *request.paths)
             git.commit("--no-edit")
         except GitCommandError as exc:

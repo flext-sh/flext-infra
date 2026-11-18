@@ -398,6 +398,49 @@ class TestsFlextInfraGitFacetWorktreeStatus:
         tm.ok(defaulted.value)
 
     @staticmethod
+    def test_merge_conflict_is_listed_aborted_or_concluded_as_a_merge(
+        tmp_path: Path,
+    ) -> None:
+        """An open merge is listed, aborted cleanly, or concluded with two parents."""
+        repository = u.Tests.git_repository(tmp_path)
+        shared = repository / "shared.txt"
+        shared.write_text("base\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "add", "shared.txt")
+        _ = u.Tests.git_run(repository, "commit", "-m", "base")
+        _ = u.Tests.git_run(repository, "switch", "-c", "incoming")
+        shared.write_text("incoming\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "commit", "-am", "incoming")
+        _ = u.Tests.git_run(repository, "switch", "-")
+        shared.write_text("local\n", encoding="utf-8")
+        _ = u.Tests.git_run(repository, "commit", "-am", "local")
+        local = tm.ok(
+            u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=repository)),
+        ).oid
+        request = m.Infra.GitRepoRequest(repo_root=repository)
+        merge = m.Infra.GitCommitishRequest(repo_root=repository, commitish="incoming")
+
+        tm.fail(u.Infra.git_merge_no_edit(merge))
+        tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=("shared.txt",))
+        tm.ok(u.Infra.git_merge_abort(request))
+        tm.that(tm.ok(u.Infra.git_conflicted_paths(request)), eq=())
+        tm.that(shared.read_text(encoding="utf-8"), eq="local\n")
+
+        tm.fail(u.Infra.git_merge_no_edit(merge))
+        paths = m.Infra.GitPathsRequest(repo_root=repository, paths=("shared.txt",))
+        tm.ok(u.Infra.git_checkout_theirs(paths))
+        tm.ok(u.Infra.git_merge_conclude(paths))
+
+        tm.that(shared.read_text(encoding="utf-8"), eq="incoming\n")
+        parents = tm.ok(
+            u.Cli.capture(
+                (c.Infra.GIT, "rev-list", "--parents", "-n", "1", "HEAD"),
+                cwd=repository,
+            ),
+        ).split()
+        tm.that(len(parents), eq=3)
+        tm.that(parents[1], eq=local)
+
+    @staticmethod
     def test_is_ancestor_fails_on_unknown_commitish(tmp_path: Path) -> None:
         """An unresolvable side is a failure, never a silent negative."""
         repository = u.Tests.git_repository(tmp_path)

@@ -239,9 +239,17 @@ class FlextInfraUtilitiesGitSemanticLane:
                 f"{merge_error}\nconflicts outside generated projections: "
                 + ", ".join(foreign),
             )
-        return FlextInfraUtilitiesGitSemanticPublish.git_merge_conclude_with_base(
-            m.Infra.GitPathsRequest(repo_root=root, paths=conflicted),
-        ).map(lambda _concluded: True)
+        paths = m.Infra.GitPathsRequest(repo_root=root, paths=conflicted)
+        return (
+            FlextInfraUtilitiesGitSemanticPublish
+            .git_checkout_theirs(paths)
+            .flat_map(
+                lambda _taken: FlextInfraUtilitiesGitSemanticPublish.git_merge_conclude(
+                    paths,
+                ),
+            )
+            .map(lambda _concluded: True)
+        )
 
     @classmethod
     def _git_commit_produced(cls, request: p.Infra.GitLaneRequest) -> p.Result[bool]:
