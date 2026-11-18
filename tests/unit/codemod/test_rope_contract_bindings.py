@@ -679,6 +679,16 @@ class TestsFlextInfraRopeContractBindings:
         tm.that(runpy.run_path(str(path))["evidence"], eq=before)
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        [
+            {
+                "distribution": "flext-grpc",
+                "module": "flext_grpc.config_models",
+            }
+        ],
+        indirect=True,
+    )
     def test_metadata_destination_cannot_capture_a_generic_parameter(
         rope_contract_consumer: tuple[p.Infra.RopeWorkspaceDsl, Path],
     ) -> None:
@@ -730,6 +740,16 @@ class TestsFlextInfraRopeContractBindings:
         tm.ok(runpy.run_path(str(path))["evidence"])
 
     @staticmethod
+    @c.Tests.MARK.parametrize(
+        "rope_contract_consumer",
+        [
+            {
+                "distribution": "flext-grpc",
+                "module": "flext_grpc.config_models",
+            }
+        ],
+        indirect=True,
+    )
     @c.Tests.MARK.parametrize(
         ("source", "diagnostic"),
         [
