@@ -795,44 +795,23 @@ class FlextInfraUtilitiesFacadeComponents:
 
         """
         tree = ast.parse(source)
-        upstream: dict[str, str] = {}
-        for node in tree.body:
-            if (
-                isinstance(node, ast.ImportFrom)
-                and node.module is not None
-                and node.module.startswith("flext_")
-                and node.module.partition(".")[0] != own_package
-            ):
-                for alias in node.names:
-                    upstream[alias.asname or alias.name] = node.module
+        upstream = {
+            alias.asname or alias.name: node.module
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module is not None
+            and node.module.startswith("flext_")
+            and node.module.partition(".")[0] != own_package
+            for alias in node.names
+        }
         changed = False
         for node in tree.body:
-            if not isinstance(node, ast.ClassDef):
-                continue
-            for child in node.body:
-                if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
-                    child.name = child.name.removeprefix("Flext")
-                    changed = True
-            for base in node.bases:
-                if not isinstance(base, ast.Name) or base.id not in upstream:
-                    continue
-                if base.id == family.value:
-                    break
-                module = upstream[base.id]
-                for import_node in tree.body:
-                    if not (
-                        isinstance(import_node, ast.ImportFrom)
-                        and import_node.module == module
-                    ):
-                        continue
-                    for alias in import_node.names:
-                        if (alias.asname or alias.name) == base.id:
-                            alias.name = family.value
-                            alias.asname = None
-                            break
-                base.id = family.value
-                changed = True
-                break
+            if isinstance(node, ast.ClassDef):
+                renamed = FlextInfraUtilitiesFacadeComponents._strip_nested_prefix(node)
+                rebased = FlextInfraUtilitiesFacadeComponents._rebase_upstream_letter(
+                    tree, node, upstream, family
+                )
+                changed = changed or renamed or rebased
         if not changed:
             return source
         lines = source.splitlines()
@@ -845,6 +824,64 @@ class FlextInfraUtilitiesFacadeComponents:
         prefix = "\n".join(lines[:prefix_end]).rstrip()
         rendered = ast.unparse(tree)
         return f"{prefix}\n{rendered}" if prefix else rendered
+
+    @staticmethod
+    def _strip_nested_prefix(facade: ast.ClassDef) -> bool:
+        """Name each nested namespace by its domain stem, never ``Flext<Domain>``.
+
+        Returns:
+            Whether a nested class was renamed.
+
+        """
+        changed = False
+        for child in facade.body:
+            if isinstance(child, ast.ClassDef) and child.name.startswith("Flext"):
+                child.name = child.name.removeprefix("Flext")
+                changed = True
+        return changed
+
+    @staticmethod
+    def _rebase_upstream_letter(
+        tree: ast.Module,
+        facade: ast.ClassDef,
+        upstream: Mapping[str, str],
+        family: c.Infra.FacadeFamily,
+    ) -> bool:
+        """Replace the first upstream facade base by that package's letter.
+
+        A facade already based on the letter keeps every other base, so a
+        sister facade composed beside it is never removed.
+
+        Returns:
+            Whether the base and its import were rebound to the letter.
+
+        """
+        base = next(
+            (
+                item
+                for item in facade.bases
+                if isinstance(item, ast.Name) and item.id in upstream
+            ),
+            None,
+        )
+        if base is None or base.id == family.value:
+            return False
+        module = upstream[base.id]
+        alias = next(
+            (
+                alias
+                for node in tree.body
+                if isinstance(node, ast.ImportFrom) and node.module == module
+                for alias in node.names
+                if (alias.asname or alias.name) == base.id
+            ),
+            None,
+        )
+        if alias is not None:
+            alias.name = family.value
+            alias.asname = None
+        base.id = family.value
+        return True
 
     @classmethod
     def _facade_foreign_publications(

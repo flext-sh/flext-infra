@@ -69,7 +69,13 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             encoding=c.DEFAULT_ENCODING,
         )
         u.Tests.git_bootstrap(tmp_path, ("add", "-A"))
-        Profile()
+        parsed: list[str] = []
+        native_parse = ast.parse
+
+        def record(source: str, filename: str = "<unknown>") -> ast.Module:
+            parsed.append(source)
+            return native_parse(source, filename)
+
         with u.Infra.facade_source_project(tmp_path) as (project, _):
             original = u.Infra.publication_policy(source, rope_project=project)
             monkeypatch.setattr(ast, "parse", record)
@@ -77,7 +83,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             for _ in range(3):
                 repeated = u.Infra.publication_policy(source, rope_project=project)
             tm.ok(repeated == original)
-        component_parses = [text for text in parsed if "class Component" in str(text)]
+        component_parses = [text for text in parsed if "class Component" in text]
         tm.that(component_parses, eq=[])
 
     @staticmethod
